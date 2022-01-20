@@ -87,12 +87,12 @@ class ImageInfoSummary(ModelNormal):
         lazy_import()
         return {
             'image_id': (str,),  # noqa: E501
-            'image_build_status': (ImageBuildStatus,),  # noqa: E501
             'region': (str,),  # noqa: E501
             'version': (str,),  # noqa: E501
-            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
-            'cloudformation_stack_arn': (str,),  # noqa: E501
+            'image_build_status': (ImageBuildStatus,),  # noqa: E501
             'ec2_ami_info': (Ec2AmiInfoSummary,),  # noqa: E501
+            'cloudformation_stack_arn': (str,),  # noqa: E501
+            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
         }
 
     @cached_property
@@ -102,12 +102,12 @@ class ImageInfoSummary(ModelNormal):
 
     attribute_map = {
         'image_id': 'imageId',  # noqa: E501
-        'image_build_status': 'imageBuildStatus',  # noqa: E501
         'region': 'region',  # noqa: E501
         'version': 'version',  # noqa: E501
-        'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
-        'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
+        'image_build_status': 'imageBuildStatus',  # noqa: E501
         'ec2_ami_info': 'ec2AmiInfo',  # noqa: E501
+        'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
+        'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -122,14 +122,14 @@ class ImageInfoSummary(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, image_id, image_build_status, region, version, *args, **kwargs):  # noqa: E501
+    def __init__(self, image_id, region, version, image_build_status, *args, **kwargs):  # noqa: E501
         """ImageInfoSummary - a model defined in OpenAPI
 
         Args:
             image_id (str): Id of the image.
-            image_build_status (ImageBuildStatus):
             region (str): AWS region where the image is built.
             version (str): ParallelCluster version used to build the image.
+            image_build_status (ImageBuildStatus):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -162,9 +162,9 @@ class ImageInfoSummary(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
             ec2_ami_info (Ec2AmiInfoSummary): [optional]  # noqa: E501
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
+            cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -191,9 +191,9 @@ class ImageInfoSummary(ModelNormal):
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
         self.image_id = image_id
-        self.image_build_status = image_build_status
         self.region = region
         self.version = version
+        self.image_build_status = image_build_status
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

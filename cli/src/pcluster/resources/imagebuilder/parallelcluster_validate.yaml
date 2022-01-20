@@ -114,6 +114,14 @@ phases:
               set -v
               [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]] && echo "true" || echo "false"
 
+      - name: FabricManagerSupported
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]] && echo "false" || echo "true"
+
       - name: LustreSupported
         action: ExecuteBash
         inputs:
@@ -227,9 +235,11 @@ phases:
                   rpm -qa | grep libfabric && rpm -qa | grep efa-
                   [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
 
-                  echo "Checking intel mpi installed..."
-                  rpm -qa | grep intel-mpi
-                  [[ $? -ne 0 ]] && echo "Check intel-mpi rpm failed" && exit 1
+                  echo "Checking Intel MPI 20xx installed and module available..."
+                  unset MODULEPATH
+                  source /etc/profile.d/modules.sh
+                  (module avail intelmpi)2>&1 | grep "/opt/intel/mpi/20.*/modulefiles/"
+                  [[ $? -ne 0 ]] && echo "Check Intel MPI failed" && exit 1
                 else
                   dpkg -l | grep libfabric && modinfo efa | grep efa && [ -d /opt/amazon/efa ]
                   [[ $? -ne 0 ]] && echo "Check efa deb failed" && exit 1
@@ -260,16 +270,18 @@ phases:
               [[ "${driver_output}" != "Driver Version: ${driver_ver}" ]] && "ERROR Installed version ${driver_output} but expected ${driver_ver}" && exit 1
               echo "Correctly installed Nvidia ${driver_output}"
 
-              echo "Testing Nvidia Fabric Manager version"
-              nvidia_driver_version=$(modinfo -F version nvidia)
-              if [ "${PLATFORM}" == "RHEL" ]; then
-                yum list installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
-                yum versionlock list | grep "nvidia-fabric.*manager" || exit 1
-              else
-                apt list --installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
-                apt-mark showhold | grep "nvidia-fabric.*manager" || exit 1
+              if [ {{ validate.FabricManagerSupported.outputs.stdout }} == "true" ]; then
+                echo "Testing Nvidia Fabric Manager version"
+                nvidia_driver_version=$(modinfo -F version nvidia)
+                if [ "${PLATFORM}" == "RHEL" ]; then
+                  yum list installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                  yum versionlock list | grep "nvidia-fabric.*manager" || exit 1
+                else
+                  apt list --installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                  apt-mark showhold | grep "nvidia-fabric.*manager" || exit 1
+                fi
+                echo "Fabric Manager match Nvidia driver and version is locked"              
               fi
-              echo "Fabric Manager match Nvidia driver and version is locked"
 
               echo "Testing CUDA installation with nvcc"
               cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
@@ -280,8 +292,15 @@ phases:
               echo "Correctly installed CUDA ${cuda_output}"
 
               echo "Testing CUDA with deviceQuery..."
-              /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
-              [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+              if [ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]; then
+                /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
+                [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1              
+              else
+                 cd /usr/local/cuda-${cuda_ver}/samples/1_Utilities/deviceQuery
+                 make
+                 /usr/local/cuda-${cuda_ver}/samples/bin/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
+                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+              fi
               echo "CUDA deviceQuery test passed"
 
       - name: FSxLustre

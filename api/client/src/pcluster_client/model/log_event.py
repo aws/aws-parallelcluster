@@ -72,8 +72,8 @@ class LogEvent(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'message': (str,),  # noqa: E501
             'timestamp': (datetime,),  # noqa: E501
+            'message': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -82,8 +82,8 @@ class LogEvent(ModelNormal):
 
 
     attribute_map = {
-        'message': 'message',  # noqa: E501
         'timestamp': 'timestamp',  # noqa: E501
+        'message': 'message',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -98,12 +98,12 @@ class LogEvent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, message, timestamp, *args, **kwargs):  # noqa: E501
+    def __init__(self, timestamp, message, *args, **kwargs):  # noqa: E501
         """LogEvent - a model defined in OpenAPI
 
         Args:
-            message (str):
             timestamp (datetime):
+            message (str):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -161,8 +161,8 @@ class LogEvent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.message = message
         self.timestamp = timestamp
+        self.message = message
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

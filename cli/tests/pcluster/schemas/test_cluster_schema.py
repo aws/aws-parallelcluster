@@ -76,6 +76,7 @@ def test_cluster_schema_awsbatch(mocker, test_datadir, config_file_name):
     _check_cluster_schema(config_file_name)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("config_file_name", ["scheduler_plugin.required.yaml", "scheduler_plugin.full.yaml"])
 def test_cluster_schema_scheduler_plugin(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
@@ -402,6 +403,7 @@ def test_scheduler_constraints_for_intel_packages(
         )
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "x86, arm64, failure_message",
     [
@@ -429,6 +431,7 @@ def test_scheduler_plugin_supported_distros_schema(x86, arm64, failure_message):
         assert_that(scheduler_plugin_supported_distros.arm64).is_equal_to(arm64 or SUPPORTED_OSES)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "template, failure_message",
     [
@@ -457,6 +460,7 @@ def test_cloudformation_cluster_infrastructure_schema(mocker, template, failure_
         assert_that(scheduler_plugin_cloudformation_cluster_infrastructure.template).is_equal_to(template)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "source, failure_message",
     [
@@ -481,6 +485,7 @@ def test_scheduler_plugin_cluster_shared_artifact_schema(mocker, source, failure
         assert_that(scheduler_plugin_cluster_shared_artifact.source).is_equal_to(source)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "artifacts, failure_message",
     [
@@ -504,6 +509,7 @@ def test_scheduler_plugin_resources_schema(mocker, artifacts, failure_message):
             assert_that(artifact.source).is_equal_to(source)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "name, enable_imds, failure_message",
     [
@@ -530,24 +536,34 @@ def test_scheduler_plugin_user_schema(name, enable_imds, failure_message):
             assert_that(scheduler_plugin_user.enable_imds).is_equal_to(False)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
-    "file_path, timestamp_format, failure_message",
+    "file_path, timestamp_format, log_stream_name, failure_message",
     [
-        ("/var/log/slurmctld.log", None, None),
-        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", None),
+        ("/var/log/slurmctld.log", None, "slurmctld.log", None),
+        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", "slurmctld.log", None),
         (
             None,
             "%Y-%m-%d %H:%M:%S,%f",
+            "slurmctld.log",
+            "Missing data for required field.",
+        ),
+        (
+            "/var/log/slurmctld.log",
+            "%Y-%m-%d %H:%M:%S,%f",
+            None,
             "Missing data for required field.",
         ),
     ],
 )
-def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message):
+def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message, log_stream_name):
     scheduler_plugin_file_schema = {}
     if file_path:
         scheduler_plugin_file_schema["FilePath"] = file_path
     if timestamp_format:
         scheduler_plugin_file_schema["TimestampFormat"] = timestamp_format
+    if log_stream_name:
+        scheduler_plugin_file_schema["LogStreamName"] = log_stream_name
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
             SchedulerPluginFileSchema().load(scheduler_plugin_file_schema)
@@ -560,14 +576,22 @@ def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_messa
             assert_that(scheduler_plugin_file.timestamp_format).is_equal_to("%Y-%m-%dT%H:%M:%S%z")
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "files, failure_message",
     [
-        ([{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"}], None),
+        (
+            [{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f", "LogStreamName": "log"}],
+            None,
+        ),
         (
             [
-                {"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"},
-                {"FilePath": "/var/log/scaling.log", "TimestampFormat": ""},
+                {
+                    "FilePath": "/var/log/slurmctld.log",
+                    "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f",
+                    "LogStreamName": "log1",
+                },
+                {"FilePath": "/var/log/scaling.log", "TimestampFormat": "", "LogStreamName": "log2"},
             ],
             None,
         ),
@@ -588,6 +612,7 @@ def test_scheduler_plugin_logs_schema(files, failure_message):
             assert_that(file.timestamp_format).is_equal_to(expected_file["TimestampFormat"])
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "plugin_interface_version, events, failure_message",
     [
@@ -613,6 +638,7 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
         )
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "scheduler_definition, grant_sudo_privileges, s3_error, https_error, yaml_load_error, failure_message",
     [

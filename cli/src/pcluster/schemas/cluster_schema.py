@@ -15,6 +15,7 @@
 #
 
 import copy
+import logging
 import re
 from urllib.request import urlopen
 
@@ -118,6 +119,10 @@ from pcluster.schemas.common_schema import (
 from pcluster.validators.cluster_validators import FSX_MESSAGES
 
 # pylint: disable=C0302
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 # ---------------------- Storage ---------------------- #
 
@@ -1148,7 +1153,7 @@ class SchedulerPluginQueueSchema(_CommonQueueSchema):
 class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
-    disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     hosted_zone_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     use_ec2_hostnames = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
@@ -1195,7 +1200,6 @@ class SchedulerPluginQueueConstraintsSchema(BaseSchema):
     """Represent the schema for QueueConstraints in a Scheduler Plugin."""
 
     max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    max_subnets_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1207,7 +1211,6 @@ class SchedulerPluginComputeResourceConstraintsSchema(BaseSchema):
     """Represent the schema for ComputeResourceConstraints in a Scheduler Plugin."""
 
     max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    max_instance_types_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1230,7 +1233,10 @@ class SchedulerPluginRequirementsSchema(BaseSchema):
     )
     requires_sudo_privileges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     supports_cluster_update = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    supported_parallel_cluster_versions = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    supported_parallel_cluster_versions = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.Regexp(r"^((>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+,\s*)*(>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+$"),
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1343,8 +1349,16 @@ class SchedulerPluginEventsSchema(BaseSchema):
 class SchedulerPluginFileSchema(BaseSchema):
     """Represent the schema of the Scheduler Plugin."""
 
-    file_path = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    file_path = fields.Str(
+        required=True, validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
     timestamp_format = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    node_type = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["HEAD", "COMPUTE", "ALL"])
+    )
+    log_stream_name = fields.Str(
+        required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[^:*]*$")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1417,6 +1431,7 @@ class SchedulerPluginDefinitionSchema(BaseSchema):
         validate=validate.Length(max=SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"},
     )
+    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1443,6 +1458,7 @@ class SchedulerPluginSettingsSchema(BaseSchema):
         """Fetch scheduler definition if it is s3 or https url."""
         original_scheduler_definition = data["SchedulerDefinition"]
         if isinstance(original_scheduler_definition, str):
+            LOGGER.info("Downloading scheduler plugin definition from %s", original_scheduler_definition)
             try:
                 if original_scheduler_definition.startswith("s3"):
                     bucket_parsing_result = parse_bucket_url(original_scheduler_definition)
@@ -1461,6 +1477,7 @@ class SchedulerPluginSettingsSchema(BaseSchema):
                         "The provided value for SchedulerDefinition is invalid. "
                         "You can specify this as an S3 URL, HTTPS URL or as an inline YAML object."
                     )
+                LOGGER.info("Using the following scheduler plugin definition:\n%s", scheduler_definition)
                 data["SchedulerDefinition"] = yaml.safe_load(scheduler_definition)
             except YAMLError as e:
                 raise ValidationError(
@@ -1478,7 +1495,7 @@ class SchedulingSchema(BaseSchema):
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch", "plugin"]),
+        validate=validate.OneOf(["slurm", "awsbatch"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     # Slurm schema
@@ -1547,8 +1564,8 @@ class SchedulingSchema(BaseSchema):
     @validates_schema
     def same_subnet_in_different_queues(self, data, **kwargs):
         """Validate subnet_ids configured in different queues are the same."""
-        queues = "slurm_queues"
-        if queues in data:
+        if "slurm_queues" in data or "scheduler_queues" in data:
+            queues = "slurm_queues" if "slurm_queues" in data else "scheduler_queues"
 
             def _queue_has_subnet_ids(queue):
                 return queue.networking and queue.networking.subnet_ids

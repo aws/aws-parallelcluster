@@ -81,6 +81,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
+    get_slurm_specific_dna_json_for_head_node,
     get_user_data_content,
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
@@ -871,15 +872,8 @@ class ClusterCdkStack(Stack):
                         self.shared_storage_options, SharedStorageType.EBS
                     ),
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
-                    "dns_domain": self.scheduler_resources.cluster_hosted_zone.name
-                    if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
-                    else "",
-                    "hosted_zone": self.scheduler_resources.cluster_hosted_zone.ref
-                    if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
-                    else "",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
-                    "ddb_table": self.scheduler_resources.dynamodb_table.ref if self._condition_is_slurm() else "NONE",
                     "log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
@@ -896,9 +890,11 @@ class ClusterCdkStack(Stack):
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                     "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
-                    "use_private_hostname": str(self.config.scheduling.settings.dns.use_ec2_hostnames).lower()
-                    if self._condition_is_slurm()
-                    else "false",
+                    **(
+                        get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
+                        if self._condition_is_slurm()
+                        else {}
+                    ),
                     **get_directory_service_dna_json_for_head_node(self.config),
                 },
             },
@@ -951,8 +947,8 @@ class ClusterCdkStack(Stack):
                     "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
                     "jq": {
                         "command": (
-                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 "
-                            "| .cluster = $f1.cluster + $f2.cluster' > /etc/chef/dna.json "
+                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' "
+                            "> /etc/chef/dna.json "
                             '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
                         )
                     },

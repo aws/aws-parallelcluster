@@ -72,8 +72,8 @@ class Tag(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'value': (str,),  # noqa: E501
             'key': (str,),  # noqa: E501
+            'value': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -82,8 +82,8 @@ class Tag(ModelNormal):
 
 
     attribute_map = {
-        'value': 'value',  # noqa: E501
         'key': 'key',  # noqa: E501
+        'value': 'value',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -132,8 +132,8 @@ class Tag(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            value (str): Tag value. [optional]  # noqa: E501
             key (str): Tag name. [optional]  # noqa: E501
+            value (str): Tag value. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

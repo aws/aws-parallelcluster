@@ -73,9 +73,9 @@ class UpdateError(ModelNormal):
         """
         return {
             'parameter': (str,),  # noqa: E501
+            'current_value': (str,),  # noqa: E501
             'requested_value': (str,),  # noqa: E501
             'message': (str,),  # noqa: E501
-            'current_value': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -85,9 +85,9 @@ class UpdateError(ModelNormal):
 
     attribute_map = {
         'parameter': 'parameter',  # noqa: E501
+        'current_value': 'currentValue',  # noqa: E501
         'requested_value': 'requestedValue',  # noqa: E501
         'message': 'message',  # noqa: E501
-        'current_value': 'currentValue',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -137,9 +137,9 @@ class UpdateError(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             parameter (str): [optional]  # noqa: E501
+            current_value (str): [optional]  # noqa: E501
             requested_value (str): [optional]  # noqa: E501
             message (str): [optional]  # noqa: E501
-            current_value (str): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

@@ -15,16 +15,54 @@ from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "domain_addr, expected_message",
+    "domain_addr, additional_sssd_configs, expected_message",
     [
-        ("ldaps://172.31.8.14", None),
-        ("ldap://172.31.8.14", "use of the ldaps protocol is strongly encouraged for security reasons"),
-        ("https://172.31.8.14", "Unsupported protocol 'https'. Supported protocols are: ldaps ldap"),
-        ("172.31.8.14", "No protocol specified. Assuming the use of 'ldaps'"),
+        ("ldaps://172.31.8.14", "WHATEVER", None),
+        (
+            "ldap://172.31.8.14",
+            {"ldap_auth_disable_tls_never_use_in_production": "true"},
+            "The use of the ldaps protocol is strongly encouraged for security reasons.",
+        ),
+        (
+            "ldap://172.31.8.14",
+            {"ldap_auth_disable_tls_never_use_in_production": True},
+            "The use of the ldaps protocol is strongly encouraged for security reasons.",
+        ),
+        (
+            "ldap://172.31.8.14",
+            {},
+            [
+                "The use of the ldaps protocol is strongly encouraged for security reasons.",
+                "When using ldap, the additional SSSD config is required: "
+                "'ldap_auth_disable_tls_never_use_in_production: true'.",
+            ],
+        ),
+        (
+            "ldap://172.31.8.14",
+            {"ldap_auth_disable_tls_never_use_in_production": "false"},
+            [
+                "The use of the ldaps protocol is strongly encouraged for security reasons.",
+                "When using ldap, the additional SSSD config is required: "
+                "'ldap_auth_disable_tls_never_use_in_production: true'.",
+            ],
+        ),
+        (
+            "ldap://172.31.8.14",
+            {"ldap_auth_disable_tls_never_use_in_production": False},
+            [
+                "The use of the ldaps protocol is strongly encouraged for security reasons.",
+                "When using ldap, the additional SSSD config is required: "
+                "'ldap_auth_disable_tls_never_use_in_production: true'.",
+            ],
+        ),
+        ("https://172.31.8.14", "WHATEVER", "Unsupported protocol 'https'. Supported protocols are: ldaps ldap"),
+        ("172.31.8.14", "WHATEVER", "No protocol specified. Assuming the use of 'ldaps'"),
     ],
 )
-def test_domain_addr_protocol(domain_addr, expected_message):
-    actual_failures = DomainAddrValidator().execute(domain_addr=domain_addr)
+def test_domain_addr_protocol(domain_addr, additional_sssd_configs, expected_message):
+    actual_failures = DomainAddrValidator().execute(
+        domain_addr=domain_addr, additional_sssd_configs=additional_sssd_configs
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 

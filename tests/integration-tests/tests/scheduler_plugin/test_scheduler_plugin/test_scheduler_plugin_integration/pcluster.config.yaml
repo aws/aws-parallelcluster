@@ -39,6 +39,19 @@ Scheduling:
         HeadComputeFleetStop:
           ExecuteCommand:
             Command: env && echo "HeadComputeFleetStop executed"
+      Monitoring:
+        Logs:
+          Files:
+            - FilePath: /var/log/cfn-init-cmd.log
+              TimestampFormat: "%Y-%m-%d %H:%M:%S,%f"
+              NodeType: HEAD
+              LogStreamName: test_cfn_init_cmd.log
+            - FilePath: /opt/aws/amazon-cloudwatch-agent/logs/configuration-validation.log
+              NodeType: COMPUTE
+              LogStreamName: test_configuration_validation.log
+            - FilePath: /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log
+              TimestampFormat: "%Y/%m/%d %H:%M:%S"
+              LogStreamName: test_amazon_cloudwatch_agent.log
       PluginResources:
         ClusterSharedArtifacts:
           - Source: https://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/parallelcluster/3.0.0/cookbooks/aws-parallelcluster-cookbook-3.0.0.tgz
@@ -51,6 +64,9 @@ Scheduling:
           EnableImds: false
         - Name: {{ user2 }}
           EnableImds: true
+      Tags:
+        - Key: SchedulerPluginTag
+          Value: SchedulerPluginTagValue
   SchedulerQueues:
     - Name: q1
       CapacityType: ONDEMAND
@@ -70,3 +86,10 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
+Tags:
+  - Key: ConfigFileTag
+    Value: ConfigFileTagValue

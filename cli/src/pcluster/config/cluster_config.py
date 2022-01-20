@@ -35,11 +35,15 @@ from pcluster.constants import (
     MAX_NUMBER_OF_COMPUTE_RESOURCES,
     MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
-    SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT,
-    SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT,
     SUPPORTED_OSES,
 )
-from pcluster.utils import get_attr, get_partition, get_resource_name_from_resource_arn, replace_url_parameters
+from pcluster.utils import (
+    get_attr,
+    get_installed_version,
+    get_partition,
+    get_resource_name_from_resource_arn,
+    replace_url_parameters,
+)
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -112,7 +116,12 @@ from pcluster.validators.s3_validators import (
     S3BucketValidator,
     UrlValidator,
 )
-from pcluster.validators.scheduler_plugin_validators import SudoPrivilegesValidator
+from pcluster.validators.scheduler_plugin_validators import (
+    SchedulerPluginOsArchitectureValidator,
+    SchedulerPluginRegionValidator,
+    SudoPrivilegesValidator,
+    SupportedVersionsValidator,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -688,7 +697,9 @@ class DirectoryService(Resource):
 
     def _register_validators(self):
         if self.domain_addr:
-            self._register_validator(DomainAddrValidator, domain_addr=self.domain_addr)
+            self._register_validator(
+                DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
+            )
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
 
@@ -1022,9 +1033,11 @@ class BaseClusterConfig(Resource):
         )
         self._register_storage_validators()
         self._register_validator(
-            HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami, tags=self.tags
+            HeadNodeLaunchTemplateValidator,
+            head_node=self.head_node,
+            ami_id=self.head_node_ami,
+            tags=self.get_cluster_tags(),
         )
-
         if self.head_node.dcv:
             self._register_validator(
                 DcvValidator,
@@ -1235,6 +1248,10 @@ class BaseClusterConfig(Resource):
                 self.image.os, self.head_node.architecture, ami_filters
             )
         return self._official_ami
+
+    def get_cluster_tags(self):
+        """Return tags configured in the cluster configuration."""
+        return self.tags
 
 
 class AwsBatchComputeResource(BaseComputeResource):
@@ -1628,23 +1645,17 @@ class SchedulerPluginSupportedDistros(Resource):
 class SchedulerPluginQueueConstraints(Resource):
     """Represent the Queue Constraints for a Scheduler Plugin."""
 
-    def __init__(self, max_count: int = None, max_subnets_count: int = None, **kwargs):
+    def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_QUEUES)
-        self.max_subnets_count = Resource.init_param(
-            max_subnets_count, default=SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT
-        )
 
 
 class SchedulerPluginComputeResourceConstraints(Resource):
     """Represent the Compute Resource Constraints for a Scheduler Plugin."""
 
-    def __init__(self, max_count: int = None, max_instance_types_count: int = None, **kwargs):
+    def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_COMPUTE_RESOURCES)
-        self.max_instance_types_count = Resource.init_param(
-            max_instance_types_count, default=SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT
-        )
 
 
 class SchedulerPluginRequirements(Resource):
@@ -1669,6 +1680,14 @@ class SchedulerPluginRequirements(Resource):
         self.requires_sudo_privileges = Resource.init_param(requires_sudo_privileges, default=False)
         self.supports_cluster_update = Resource.init_param(supports_cluster_update, default=True)
         self.supported_parallel_cluster_versions = supported_parallel_cluster_versions
+
+    def _register_validators(self):
+        if self.supported_parallel_cluster_versions:
+            self._register_validator(
+                SupportedVersionsValidator,
+                installed_version=get_installed_version(),
+                supported_versions_string=self.supported_parallel_cluster_versions,
+            )
 
 
 class SchedulerPluginCloudFormationInfrastructure(Resource):
@@ -1756,10 +1775,14 @@ class SchedulerPluginEvents(Resource):
 class SchedulerPluginFile(Resource):
     """Represent the Scheduler Plugin file resource."""
 
-    def __init__(self, file_path: str, timestamp_format: str = None, **kwargs):
+    def __init__(
+        self, file_path: str, log_stream_name: str, node_type: str = None, timestamp_format: str = None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.file_path = file_path
         self.timestamp_format = Resource.init_param(timestamp_format, default="%Y-%m-%dT%H:%M:%S%z")
+        self.node_type = Resource.init_param(node_type, default="ALL")
+        self.log_stream_name = log_stream_name
 
 
 class SchedulerPluginLogs(Resource):
@@ -1800,6 +1823,7 @@ class SchedulerPluginDefinition(Resource):
         plugin_resources: SchedulerPluginPluginResources = None,
         monitoring: SchedulerPluginMonitoring = None,
         system_users: [SchedulerPluginUser] = None,
+        tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1811,6 +1835,7 @@ class SchedulerPluginDefinition(Resource):
         self.events = events
         self.monitoring = monitoring
         self.system_users = system_users
+        self.tags = tags
 
 
 class SchedulerPluginSettings(Resource):
@@ -1893,6 +1918,66 @@ class SchedulerPluginClusterConfig(BaseClusterConfig):
                 result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
         return result
 
+    def get_cluster_tags(self):
+        """Return tags configured in the root of the cluster config and under scheduler definition."""
+        return (self.tags if self.tags else []) + get_attr(
+            self.scheduling, "settings.scheduler_definition.tags", default=[]
+        )
+
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+        self._register_validator(
+            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
+        )
+        scheduler_definition = self.scheduling.settings.scheduler_definition
+        self._register_validator(
+            SchedulerPluginOsArchitectureValidator,
+            os=self.image.os,
+            architecture=self.head_node.architecture,
+            supported_x86=get_attr(scheduler_definition, "requirements.supported_distros.x86", default=SUPPORTED_OSES),
+            supported_arm64=get_attr(
+                scheduler_definition, "requirements.supported_distros.arm64", default=SUPPORTED_OSES
+            ),
+        )
+        self._register_validator(
+            SchedulerPluginRegionValidator,
+            region=self.region,
+            supported_regions=get_attr(scheduler_definition, "requirements.supported_regions"),
+        )
+
+        checked_images = []
+
+        for queue in self.scheduling.queues:
+            self._register_validator(
+                ComputeResourceLaunchTemplateValidator,
+                queue=queue,
+                ami_id=self.image_dict[queue.name],
+                tags=self.get_cluster_tags(),
+            )
+            queue_image = self.image_dict[queue.name]
+            if queue_image not in checked_images and queue.queue_ami:
+                checked_images.append(queue_image)
+                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
+            for compute_resource in queue.compute_resources:
+                if self.image_dict[queue.name]:
+                    self._register_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=compute_resource.instance_type,
+                        image=queue_image,
+                    )
+                self._register_validator(
+                    InstanceArchitectureCompatibilityValidator,
+                    instance_type=compute_resource.instance_type,
+                    architecture=self.head_node.architecture,
+                )
+                self._register_validator(
+                    EfaOsArchitectureValidator,
+                    efa_enabled=compute_resource.efa.enabled,
+                    os=self.image.os,
+                    architecture=self.head_node.architecture,
+                )
+
     @property
     def image_dict(self):
         """Return image dict of queues, key is queue name, value is image id."""
@@ -1943,7 +2028,10 @@ class SlurmClusterConfig(BaseClusterConfig):
 
         for queue in self.scheduling.queues:
             self._register_validator(
-                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name], tags=self.tags
+                ComputeResourceLaunchTemplateValidator,
+                queue=queue,
+                ami_id=self.image_dict[queue.name],
+                tags=self.get_cluster_tags(),
             )
             queue_image = self.image_dict[queue.name]
             if queue_image not in checked_images and queue.queue_ami:

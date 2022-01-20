@@ -19,7 +19,17 @@ import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
+from tags_utils import (
+    convert_tags_dicts_to_tags_list,
+    get_compute_node_root_volume_tags,
+    get_compute_node_tags,
+    get_head_node_root_volume_tags,
+    get_head_node_tags,
+    get_main_stack_tags,
+    get_shared_volume_tags,
+)
 from time_utils import minutes, seconds
+from utils import check_pcluster_list_cluster_log_streams
 
 from tests.common.assertions import assert_head_node_is_running, assert_instance_replaced_or_terminating
 from tests.common.utils import get_installed_parallelcluster_version
@@ -96,13 +106,18 @@ def test_scheduler_plugin_integration(
     _test_instance_types_data(command_executor, instance)
     # Test error log
     _test_error_log(command_executor)
+    # Test logs are uploaded to CW
+    _test_logs_uploaded(cluster, os)
+    # Test custom log files in Monitoring configuration
+    _test_custom_log(cluster, os)
+    # Test scheduler plugin tags
+    _test_tags(cluster, os)
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
 
     # TODO:
     #  test sudo privilege for the users
-    #  test log are uploaded to CW
 
 
 def _get_launch_templates(command_executor):
@@ -237,8 +252,7 @@ def _test_artifacts_shared_from_head(command_executor, compute_node):
     """Test artifacts shared from head to compute node"""
     compute_node_private_ip = compute_node.get("privateIpAddress")
     shared_listing = command_executor.run_remote_command(
-        f"ssh -q {compute_node_private_ip} "
-        f"\"sudo su - {SCHEDULER_PLUGIN_USER} -c 'ls {PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR}'\""
+        f"ssh -q {compute_node_private_ip} ls {PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR}"
     ).stdout
     assert_that(shared_listing).contains("sharedFromHead")
 
@@ -316,6 +330,66 @@ def _test_cluster_config(command_executor, cluster_config):
         )
 
 
+def _test_tags(cluster, os):
+    scheduler_plugin_tags = {"SchedulerPluginTag": "SchedulerPluginTagValue"}
+    config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
+
+    test_cases = [
+        {
+            "resource": "Main CloudFormation Stack",
+            "tag_getter": get_main_stack_tags,
+        },
+        {
+            "resource": "Head Node",
+            "tag_getter": get_head_node_tags,
+        },
+        {
+            "resource": "Head Node Root Volume",
+            "tag_getter": get_head_node_root_volume_tags,
+            "tag_getter_kwargs": {"cluster": cluster, "os": os},
+        },
+        {
+            "resource": "Compute Node",
+            "tag_getter": get_compute_node_tags,
+        },
+        {
+            "resource": "Compute Node Root Volume",
+            "tag_getter": get_compute_node_root_volume_tags,
+            "tag_getter_kwargs": {"cluster": cluster, "os": os},
+        },
+        {
+            "resource": "Shared EBS Volume",
+            "tag_getter": get_shared_volume_tags,
+        },
+    ]
+    for test_case in test_cases:
+        logging.info("Verifying tags were propagated to %s", test_case.get("resource"))
+        tag_getter = test_case.get("tag_getter")
+        # Assume tag getters use lone cluster object arg if none explicitly given
+        tag_getter_args = test_case.get("tag_getter_kwargs", {"cluster": cluster})
+        observed_tags = tag_getter(**tag_getter_args)
+        assert_that(observed_tags).contains(*convert_tags_dicts_to_tags_list([scheduler_plugin_tags, config_file_tags]))
+
+
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))
 def _test_compute_terminated(node, region):
     assert_instance_replaced_or_terminating(instance_id=node.get("instanceId"), region=region)
+
+
+def _test_custom_log(cluster, os):
+    """Verify custom log exist in Cloudwatch log."""
+    expected_log_streams = {
+        "HeadNode": {"test_cfn_init_cmd.log", "test_amazon_cloudwatch_agent.log"},
+        "Compute": {"test_configuration_validation.log", "test_amazon_cloudwatch_agent.log"},
+    }
+
+    check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=expected_log_streams)
+
+
+def _test_logs_uploaded(cluster, os):
+    """Verify scheduler plugin logs are uploaded to Cloudwatch."""
+    expected_log_streams = {
+        "HeadNode": {"cfn-init", "cloud-init", "chef-client", "scheduler-plugin-err", "scheduler-plugin-out"},
+        "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "supervisord", "scheduler-plugin-out"},
+    }
+    check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=expected_log_streams)

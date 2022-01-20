@@ -29,6 +29,7 @@ from pcluster.config.cluster_config import (
     LocalStorage,
     RootVolume,
     SharedStorageType,
+    SlurmClusterConfig,
     SlurmQueue,
 )
 from pcluster.constants import (
@@ -109,6 +110,16 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClus
     }
 
 
+def get_slurm_specific_dna_json_for_head_node(config: SlurmClusterConfig, scheduler_resources) -> dict:
+    """Return a dict containing slurm specific settings to be written to dna.json of head node."""
+    return {
+        "dns_domain": scheduler_resources.cluster_hosted_zone.name if scheduler_resources.cluster_hosted_zone else "",
+        "hosted_zone": scheduler_resources.cluster_hosted_zone.ref if scheduler_resources.cluster_hosted_zone else "",
+        "ddb_table": scheduler_resources.dynamodb_table.ref,
+        "use_private_hostname": str(config.scheduling.settings.dns.use_ec2_hostnames).lower(),
+    }
+
+
 def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> dict:
     """Return a dict containing directory service settings to be written to dna.json of head node."""
     directory_service = config.directory_service
@@ -170,10 +181,11 @@ def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedSto
 
 def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     """Return a list of tags set by the user."""
+    cluster_tags = config.get_cluster_tags()
     if raw_dict:
-        custom_tags = {tag.key: tag.value for tag in config.tags} if config.tags else {}
+        custom_tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
     else:
-        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in config.tags] if config.tags else []
+        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in cluster_tags] if cluster_tags else []
     return custom_tags
 
 

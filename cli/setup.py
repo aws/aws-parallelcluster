@@ -21,7 +21,7 @@ def readme():
 
 
 VERSION = "3.1.0b1"
-CDK_VERSION = "1.116"
+CDK_VERSION = "1.137"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",

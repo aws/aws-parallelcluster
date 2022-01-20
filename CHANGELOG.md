@@ -14,16 +14,25 @@ CHANGELOG
 
 **CHANGES**
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
-- Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
-- Upgrade Slurm to version 21.08.4.
+- Change SlurmQueues length and ComputeResources length schema validators to be config validators.
+- Upgrade Slurm to version 21.08.5.
 - Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
+- Disable packages update at instance launch time on Amazon Linux 2.
 
 **BUG FIXES**
 - Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
 - Fix ecs:ListContainerInstances permission in BatchUserRole
 - Fix exporting of cluster logs when there is no prefix specified, previously exported to a `None` prefix.
-- Fix rollback not being performed in case of cluster update failure.  
+- Fix rollback not being performed in case of cluster update failure.
 - Fix RootVolume schema for the HeadNode.
+- Fix EfaSecurityGroupValidator. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
+- Fix the way ExtraChefAttributes are merged into the final configuration.
+
+3.0.3
+-----
+
+**CHANGES**
+- Disable log4j-cve-2021-44228-hotpatch service on Amazon Linux to avoid incurring in potential performance degradation.
 
 3.0.2
 -----
@@ -71,7 +80,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add support for pcluster actions (e.g., create-cluster, update-cluster, delete-cluster) through HTTP endpoints
   with Amazon API Gateway.
-- Revamp custom AMI creation and management by leveraging EC2 Image Builder. This also includes the implementation of 
+- Revamp custom AMI creation and management by leveraging EC2 Image Builder. This also includes the implementation of
   `build-image`, `delete-image`, `describe-image` and `list-image` commands to manage custom ParallelCluster images.
 - Add `list-official-images` command to describe ParallelCluster official AMIs.
 - Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs
@@ -91,7 +100,7 @@ CHANGELOG
 - Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
 - Add prompt for availability zone in pcluster configure automated subnets creation.
 - Add configuration `HeadNode / Imds / Secured` to enable/disable restricted access to Instance Metadata Service (IMDS).
-- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' 
+- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED'
   state in case recurrent failures are encountered when provisioning nodes.
 - Add `--suppress-validators` and `--validation-failure-level` parameters to `create` and `update` commands.
 - Add support for associating an existing Elastic IP to the head node.
@@ -149,6 +158,7 @@ CHANGELOG
 - Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
 - Remove installation of MPICH and FFTW packages.
 - Remove Ganglia support.
+- Disable unattended packages update on Ubuntu.
 
 2.11.3
 -----
