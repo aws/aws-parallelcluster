@@ -1520,7 +1520,7 @@ class SchedulingSchema(BaseSchema):
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch"]),
+        validate=validate.OneOf(["slurm", "awsbatch", "plugin"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     # Slurm schema

@@ -12,13 +12,13 @@ arm_pl:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
-#scheduler_plugin:
-#  test_scheduler_plugin.py::test_scheduler_plugin_integration:
-#    dimensions:
-#      - regions: ["ca-central-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2", "centos7", "ubuntu2004"]
-#        schedulers: ["plugin"]
+scheduler_plugin:
+  test_scheduler_plugin.py::test_scheduler_plugin_integration:
+    dimensions:
+      - regions: ["ca-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2", "centos7", "ubuntu2004"]
+        schedulers: ["plugin"]
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
     dimensions:
