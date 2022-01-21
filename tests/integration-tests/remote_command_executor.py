@@ -14,6 +14,7 @@ import os
 import shlex
 
 from fabric import Connection
+from retrying import retry
 from utils import get_username_for_os, run_command
 
 
@@ -70,6 +71,10 @@ class RemoteCommandExecutor:
             # Catch all exceptions if we fail to close the clients
             logging.warning("Exception raised when closing remote ssh client: {0}".format(e))
 
+    @retry(wait_exponential_multiplier=1000, stop_max_attempt_number=5)
+    def _run_command(self, command, **kwargs):
+        return self.__connection.run(command, **kwargs)
+
     def run_remote_command(
         self,
         command,
@@ -101,7 +106,7 @@ class RemoteCommandExecutor:
         if login_shell:
             command = "/bin/bash --login -c {0}".format(shlex.quote(command))
 
-        result = self.__connection.run(command, warn=True, pty=True, hide=hide, timeout=timeout)
+        result = self._run_command(command, warn=True, pty=True, hide=hide, timeout=timeout)
         result.stdout = "\n".join(result.stdout.splitlines())
         result.stderr = "\n".join(result.stderr.splitlines())
         if log_output:
