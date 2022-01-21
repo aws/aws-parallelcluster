@@ -30,7 +30,7 @@ class ConfigureCommand(CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("--config", help="Path to output the generated config file.", required=True)
+        parser.add_argument("-c", "--config", help="Path to output the generated config file.", required=True)
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli.commands.configure.easyconfig import configure
