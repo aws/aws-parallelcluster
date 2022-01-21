@@ -10,7 +10,7 @@ CHANGELOG
 - Add abbreviated flags for `cluster-name` (-n), `region` (-r), `image-id` (-i) and `cluster-configuration` / `image-configuration` (-c) to the cli.
 - Add support for multiple compute resources with same instance type per queue.
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
-- Add support for GPUs scheduling with Slurm on ARM instances with NVIDIA cards. Install NVIDIA drivers and CUDA library for ARM.
+- Add support for GPU scheduling with Slurm on ARM instances with NVIDIA cards. Install NVIDIA drivers and CUDA library for ARM.
 - Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 - Improve Security Groups created within the cluster to allow inbound connections from custom security groups when `SecurityGroups` parameters are specified for some head node and/or queues.`
@@ -23,7 +23,7 @@ CHANGELOG
 - Upgrade NVIDIA Fabric manager to version 470.82.01.
 - Upgrade Intel MPI Library to 2021.4.0.441.
 - Upgrade PMIx to version 3.2.3.
-- Disable packages update at instance launch time on Amazon Linux 2.
+- Disable package update at instance launch time on Amazon Linux 2.
 - Enable possibility to suppress `SlurmQueues` and `ComputeResources` length validators.
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
 - Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
@@ -34,7 +34,7 @@ CHANGELOG
 - Fix rollback not being performed in case of cluster update failure.
 - Do not configure GPUs in Slurm when NVIDIA driver is not installed.
 - Fix `ecs:ListContainerInstances` permission in `BatchUserRole`.
-- Fix `RootVolume` schema for the `HeadNode` by raising a meaningful error if unsupported `KmsKeyId` is specified.
+- Fix `RootVolume` schema for the `HeadNode` by raising an error if unsupported `KmsKeyId` is specified.
 - Fix `EfaSecurityGroupValidator`. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
 
 3.0.3
