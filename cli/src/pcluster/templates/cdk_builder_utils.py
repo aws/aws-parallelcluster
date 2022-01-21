@@ -116,7 +116,7 @@ def get_slurm_specific_dna_json_for_head_node(config: SlurmClusterConfig, schedu
     return {
         "dns_domain": scheduler_resources.cluster_hosted_zone.name if scheduler_resources.cluster_hosted_zone else "",
         "hosted_zone": scheduler_resources.cluster_hosted_zone.ref if scheduler_resources.cluster_hosted_zone else "",
-        "ddb_table": scheduler_resources.dynamodb_table.ref,
+        "slurm_ddb_table": scheduler_resources.dynamodb_table.ref,
         "use_private_hostname": str(config.scheduling.settings.dns.use_ec2_hostnames).lower(),
     }
 

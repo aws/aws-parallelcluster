@@ -893,9 +893,6 @@ class ClusterCdkStack(Stack):
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
-                    "slurm_ddb_table": self.scheduler_resources.dynamodb_table.ref
-                    if self._condition_is_slurm()
-                    else "NONE",
                     "ddb_table": self.dynamodb_table_status.ref if not self._condition_is_batch() else "NONE",
                     "log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
