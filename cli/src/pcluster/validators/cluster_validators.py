@@ -10,6 +10,7 @@
 # limitations under the License.
 import re
 from abc import ABC
+from enum import Enum
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
@@ -28,6 +29,7 @@ from pcluster.constants import (
 from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
 
+# pylint: disable=C0302
 NAME_MAX_LENGTH = 25
 SHARED_STORAGE_NAME_MAX_LENGTH = 30
 NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
@@ -695,6 +697,49 @@ class DuplicateNameValidator(Validator):
                 ),
                 FailureLevel.ERROR,
             )
+
+
+class QueuesSecurityGroupOverwriteStatus(Enum):
+    """Define queues security group overwrite status."""
+
+    MIXED = "mixed"
+    CUSTOM = "custom"
+    MANAGED = "managed"
+
+
+class MixedSecurityGroupOverwriteValidator(Validator):
+    """Warn if some nodes are using custom security groups while others are using managed security groups."""
+
+    def _validate(self, head_node_security_groups, queues):
+        compute_security_group_overwrite_status = self._get_queues_security_group_overwrite_status(queues)
+        if (
+            head_node_security_groups
+            and compute_security_group_overwrite_status != QueuesSecurityGroupOverwriteStatus.CUSTOM
+        ) or (
+            head_node_security_groups is None
+            and compute_security_group_overwrite_status != QueuesSecurityGroupOverwriteStatus.MANAGED
+        ):
+            self._add_failure(
+                "Please make sure that all cluster nodes are reachable to each other, "
+                "or consider using additional security groups rather than replacing ParallelCluster security groups.",
+                FailureLevel.WARNING,
+            )
+
+    def _get_queues_security_group_overwrite_status(self, queues):
+        """Check if all queues need managed SG, or use custom SG, or are in mixed condition."""
+        managed = False
+        custom = False
+        for queue in queues:
+            if queue.networking.security_groups:
+                custom = True
+            else:
+                managed = True
+        if custom and managed:
+            return QueuesSecurityGroupOverwriteStatus.MIXED
+        if custom:
+            return QueuesSecurityGroupOverwriteStatus.CUSTOM
+        else:
+            return QueuesSecurityGroupOverwriteStatus.MANAGED
 
 
 # --------------- Instance settings validators --------------- #
