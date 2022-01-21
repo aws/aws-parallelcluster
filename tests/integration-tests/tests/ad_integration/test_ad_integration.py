@@ -575,10 +575,8 @@ def _run_benchmarks(
     "directory_type,directory_protocol,directory_certificate_verification",
     [
         ("SimpleAD", "ldap", False),
-        ("SimpleAD", "ldaps", False),
         ("SimpleAD", "ldaps", True),
         ("MicrosoftAD", "ldap", False),
-        ("MicrosoftAD", "ldaps", False),
         ("MicrosoftAD", "ldaps", True),
     ],
 )
