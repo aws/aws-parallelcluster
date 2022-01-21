@@ -10,7 +10,7 @@ CHANGELOG
 - Add abbreviated flags for `cluster-name` (-n), `region` (-r), `image-id` (-i) and `cluster-configuration` / `image-configuration` (-c) to the cli.
 - Add support for multiple compute resources with same instance type per queue.
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
-- Install NVIDIA drivers and CUDA library for ARM.
+- Add support for GPUs scheduling with Slurm on ARM instances with NVIDIA cards. Install NVIDIA drivers and CUDA library for ARM.
 - Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 - Improve Security Groups created within the cluster to allow inbound connections from custom security groups when `SecurityGroups` parameters are specified for some head node and/or queues.`
