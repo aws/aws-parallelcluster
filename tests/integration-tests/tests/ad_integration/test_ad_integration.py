@@ -571,14 +571,15 @@ def _run_benchmarks(
             cloudwatch_client.put_metric_data(Namespace="ParallelCluster/AdIntegration", MetricData=metric_data)
 
 
+# Some tests have been disabled to save time and reduce costs.
 @pytest.mark.parametrize(
     "directory_type,directory_protocol,directory_certificate_verification",
     [
         ("SimpleAD", "ldap", False),
-        ("SimpleAD", "ldaps", False),
+        # ("SimpleAD", "ldaps", False),
         ("SimpleAD", "ldaps", True),
         ("MicrosoftAD", "ldap", False),
-        ("MicrosoftAD", "ldaps", False),
+        # ("MicrosoftAD", "ldaps", False),
         ("MicrosoftAD", "ldaps", True),
     ],
 )
