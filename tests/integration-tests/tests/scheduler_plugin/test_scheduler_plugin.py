@@ -36,6 +36,7 @@ from tests.common.utils import get_installed_parallelcluster_version
 
 SCHEDULER_PLUGIN_LOCAL_CONFIGS_DIR = "/opt/parallelcluster/scheduler-plugin/.configs"
 PCLUSTER_CLUSTER_CONFIG = f"{SCHEDULER_PLUGIN_LOCAL_CONFIGS_DIR}/cluster-config.yaml"
+PCLUSTER_CLUSTER_CONFIG_OLD = f"{SCHEDULER_PLUGIN_LOCAL_CONFIGS_DIR}/previous-cluster-config.yaml"
 PCLUSTER_LAUNCH_TEMPLATES = f"{SCHEDULER_PLUGIN_LOCAL_CONFIGS_DIR}/launch-templates-config.json"
 PCLUSTER_INSTANCE_TYPES_DATA = f"{SCHEDULER_PLUGIN_LOCAL_CONFIGS_DIR}/instance-types-data.json"
 PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_OUTPUTS = (
@@ -78,6 +79,16 @@ def test_scheduler_plugin_integration(
         bucket.upload_file(str(test_datadir / file), f"scheduler_plugin/{file}")
     run_as_user = OS_MAPPING[os]
     # Create cluster
+    before_update_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.before_update.yaml",
+        bucket=bucket_name,
+        another_instance=ANOTHER_INSTANCE_TYPE,
+        user1=SCHEDULER_PLUGIN_USERS_LIST[0],
+        user2=SCHEDULER_PLUGIN_USERS_LIST[1],
+        account_id=account_id,
+        run_as_user=run_as_user,
+    )
+    cluster = clusters_factory(before_update_cluster_config)
     cluster_config = pcluster_config_reader(
         bucket=bucket_name,
         another_instance=ANOTHER_INSTANCE_TYPE,
@@ -86,14 +97,25 @@ def test_scheduler_plugin_integration(
         account_id=account_id,
         run_as_user=run_as_user,
     )
-    cluster = clusters_factory(cluster_config)
+    # Command executor
+    command_executor = RemoteCommandExecutor(cluster)
+    # Test cluster configuration before cluster update
+    _test_cluster_config(command_executor, before_update_cluster_config, PCLUSTER_CLUSTER_CONFIG)
+    # Test compute fleet status update
+    _test_compute_fleet_status_update(cluster, command_executor)
+    # Test cluster update
+    _test_cluster_update(cluster, cluster_config)
+    # Command executor after cluster update
+    command_executor = RemoteCommandExecutor(cluster)
+    # Test cluster configuration after cluster update
+    _test_cluster_config(command_executor, cluster_config, PCLUSTER_CLUSTER_CONFIG)
+    # Test PCLUSTER_CLUSTER_CONFIG_OLD content
+    _test_cluster_config(command_executor, before_update_cluster_config, PCLUSTER_CLUSTER_CONFIG_OLD)
     # Verify head node is running
     assert_head_node_is_running(region, cluster)
     head_node = _get_ec2_instance_from_id(
         ec2_client, cluster.describe_cluster_instances(node_type="HeadNode")[0].get("instanceId")
     )
-    # Command executor
-    command_executor = RemoteCommandExecutor(cluster)
     # Start and wait for compute node to setup
     compute_node = _start_compute_node(ec2_client, region, cluster, command_executor)
 
@@ -112,8 +134,6 @@ def test_scheduler_plugin_integration(
     _test_sudoer_configuration(command_executor, run_as_user)
     # Test user imds
     _test_imds(command_executor)
-    # Test cluster configuration
-    _test_cluster_config(command_executor, cluster_config)
     # Test instance types data
     _test_instance_types_data(command_executor, instance)
     # Test error log
@@ -124,13 +144,11 @@ def test_scheduler_plugin_integration(
     _test_custom_log(cluster, os)
     # Test scheduler plugin tags
     _test_tags(cluster, os)
-    # Test compute fleet status update
-    _test_compute_fleet_status_update(cluster, command_executor)
+    # Test get or update compute fleet_status_script
+    _test_update_compute_fleet_status_script(command_executor)
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
-    # TODO:
-    #  test sudo privilege for the users
 
 
 def _get_launch_templates(command_executor):
@@ -201,10 +219,10 @@ def _test_event_handler_execution(cluster, region, os, architecture, command_exe
     command_executor.run_remote_command(
         f"sudo su - {SCHEDULER_PLUGIN_USER} -c 'pip install aws-parallelcluster-node'", raise_on_error=True
     )
-    for event in ["HeadInit", "HeadConfigure", "HeadFinalize"]:
+    for event in ["HeadInit", "HeadConfigure", "HeadFinalize", "HeadClusterUpdate"]:
         assert_that(head_scheduler_plugin_log_output).contains(f"[{event}] - INFO: {event} executed")
         _test_event_handler_environment(
-            cluster, region, os, architecture, event, head_scheduler_plugin_log_output, head_node, python_root
+            cluster, region, os, architecture, event, head_scheduler_plugin_log_output, head_node, python_root, "head"
         )
 
     compute_node_private_ip = compute_node.get("privateIpAddress")
@@ -214,13 +232,23 @@ def _test_event_handler_execution(cluster, region, os, architecture, command_exe
     for event in ["ComputeInit", "ComputeConfigure", "ComputeFinalize"]:
         assert_that(compute_scheduler_plugin_log_output).contains(f"[{event}] - INFO: {event} executed")
         _test_event_handler_environment(
-            cluster, region, os, architecture, event, compute_scheduler_plugin_log_output, head_node, python_root
+            cluster,
+            region,
+            os,
+            architecture,
+            event,
+            compute_scheduler_plugin_log_output,
+            head_node,
+            python_root,
+            "compute",
         )
 
 
-def _test_event_handler_environment(cluster, region, os, architecture, event, log_output, head_node, python_root):
+def _test_event_handler_environment(
+    cluster, region, os, architecture, event, log_output, head_node, python_root, node_type
+):
     """Test event handler environment"""
-    for var in [
+    vars = [
         f"PCLUSTER_CLUSTER_CONFIG={PCLUSTER_CLUSTER_CONFIG}",
         f"PCLUSTER_LAUNCH_TEMPLATES={PCLUSTER_LAUNCH_TEMPLATES}",
         f"PCLUSTER_INSTANCE_TYPES_DATA={PCLUSTER_INSTANCE_TYPES_DATA}",
@@ -238,11 +266,20 @@ def _test_event_handler_environment(cluster, region, os, architecture, event, lo
         f"PCLUSTER_HEADNODE_PRIVATE_IP={head_node.get('PrivateIpAddress')}",
         f"PCLUSTER_HEADNODE_HOSTNAME={head_node.get('PrivateDnsName').split('.')[0]}",
         f"PCLUSTER_PYTHON_ROOT={python_root}",
-        f"PATH={python_root}"
+        f"PATH={python_root}",
+        f"PCLUSTER_NODE_TYPE={node_type}"
         # TODO
-        # PCLUSTER_<CLUSTER_CONFIG_OLD,
         # PROXY
-    ]:
+    ]
+    if event == "HeadClusterUpdate":
+        vars.append(f"PCLUSTER_CLUSTER_CONFIG_OLD={PCLUSTER_CLUSTER_CONFIG_OLD}")
+    if node_type == "compute":
+        # the compute node launched in the test is from the first queue and first compute resource from the launched
+        # template, it is from Queue q1 and ComputeResource c1.
+        vars.append("PCLUSTER_QUEUE_NAME=q1")
+        vars.append("PCLUSTER_COMPUTE_RESOURCE_NAME=c1")
+
+    for var in vars:
         assert_that(log_output).contains(f"[{event}] - INFO: {var}")
 
 
@@ -323,13 +360,13 @@ def _test_imds(command_executor):
     assert_that(result.stdout).is_not_empty()
 
 
-def _test_cluster_config(command_executor, cluster_config):
+def _test_cluster_config(command_executor, cluster_config, remote_config):
     """Test cluster configuration file is fetched by head node"""
     with open(cluster_config, encoding="utf-8") as cluster_config_file:
         source_config = yaml.safe_load(cluster_config_file)
         assert_that(source_config).is_not_empty()
 
-        target_config_content = command_executor.run_remote_command(f"sudo cat {PCLUSTER_CLUSTER_CONFIG}").stdout
+        target_config_content = command_executor.run_remote_command(f"sudo cat {remote_config}").stdout
         assert_that(target_config_content).is_not_empty()
         target_config = yaml.safe_load(target_config_content)
 
@@ -390,11 +427,15 @@ def _test_tags(cluster, os):
 def _test_compute_fleet_status_update(cluster, command_executor):
     cluster.stop()
     _check_fleet_status(cluster, "STOPPED")
+    # Test get-compute-fleet-status.sh
+    _test_get_compute_fleet_status_script(command_executor, "STOPPED")
     home_listing = command_executor.run_remote_command(f"sudo ls {SCHEDULER_PLUGIN_HOME}").stdout
     assert_that(home_listing).contains("stop_failure", "stop_executed")
     assert_that(home_listing).does_not_contain("start_failure", "start_executed")
     cluster.start()
     _check_fleet_status(cluster, "RUNNING")
+    # Test get-compute-fleet-status.sh
+    _test_get_compute_fleet_status_script(command_executor, "RUNNING")
     home_listing = command_executor.run_remote_command(f"sudo ls {SCHEDULER_PLUGIN_HOME}").stdout
     assert_that(home_listing).contains("start_failure", "start_executed")
     # assert that update event handler is not called multiple times
@@ -464,3 +505,27 @@ def _test_sudoer_configuration(command_executor, run_as_user):
     # Test user2 is able to run "ls" command as root
     result = command_executor.run_remote_command(f"sudo su {user2} -c 'sudo -u root ls'")
     assert_that(result.failed).is_false()
+
+
+def _test_update_compute_fleet_status_script(command_executor):
+    """Test update-compute-fllet-status.sh."""
+    result = command_executor.run_remote_command("update-compute-fleet-status.sh --status PROTECTED").stdout
+    assert_that(result).is_empty()
+    _test_get_compute_fleet_status_script(command_executor, "PROTECTED")
+
+
+def _test_get_compute_fleet_status_script(command_executor, expected_status):
+    """Test get-compute-fleet-status.sh."""
+    result = command_executor.run_remote_command("get-compute-fleet-status.sh").stdout
+    status = json.loads(result)
+    assert_that("lastStatusUpdatedTime" in status and "status" in status).is_true()
+    assert_that(status.get("status")).is_equal_to(expected_status)
+
+
+def _test_cluster_update(cluster, cluster_config):
+    """Test cluster update."""
+    cluster.stop()
+    _check_fleet_status(cluster, "STOPPED")
+    cluster.update(str(cluster_config), force_update="true")
+    cluster.start()
+    _check_fleet_status(cluster, "RUNNING")
