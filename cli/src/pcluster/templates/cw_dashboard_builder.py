@@ -184,7 +184,7 @@ class CWDashboardConstruct(Construct):
         metric_list = []
         for metric in metrics:
             cloudwatch_metric = cloudwatch.Metric(
-                namespace="AWS/EC2", metric_name=metric, dimensions={"InstanceId": self.head_node_instance.ref}
+                namespace="AWS/EC2", metric_name=metric, dimensions_map={"InstanceId": self.head_node_instance.ref}
             )
             metric_list.append(cloudwatch_metric)
         return metric_list
@@ -206,7 +206,7 @@ class CWDashboardConstruct(Construct):
                     cloudwatch_metric = cloudwatch.Metric(
                         namespace=namespace,
                         metric_name=metric_condition_params.metrics,
-                        dimensions={dimension_vol_name: volume.id},
+                        dimensions_map={dimension_vol_name: volume.id},
                     )
                     metric_list.append(cloudwatch_metric)
 
@@ -224,7 +224,7 @@ class CWDashboardConstruct(Construct):
                     cloudwatch_metric = cloudwatch.Metric(
                         namespace=namespace,
                         metric_name=metric,
-                        dimensions={dimension_name: storage.id},
+                        dimensions_map={dimension_name: storage.id},
                     )
                     metric_list.append(cloudwatch_metric)
             graph_widget = self._generate_graph_widget(metrics_param.title, metric_list)

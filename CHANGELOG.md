@@ -5,27 +5,43 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
-- Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
-- Add support for multiple compute resources with same instance type per queue.
-- Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
 - Add abbreviated flags for `cluster-name` (-n), `region` (-r), `image-id` (-i) and `cluster-configuration` / `image-configuration` (-c) to the cli.
 - Enable clusters to authenticate users by integrating with Active Directory (AD) domains managed via AWS Directory Service.
+- Enable cluster creation in subnets with no internet access.
+- Add support for multiple compute resources with same instance type per queue.
+- Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
+- Install NVIDIA drivers and CUDA library for ARM.
+- Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
+- Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 
 **CHANGES**
-- Use compute resource name rather than instance type in compute fleet Launch Template name.
-- Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
 - Upgrade Slurm to version 21.08.5.
+- Upgrade NICE DCV to version 2021.3-11591.
+- Upgrade NVIDIA driver to version 470.82.01.
+- Upgrade CUDA library to version 11.4.3.
+- Upgrade NVIDIA Fabric manager to version 470.82.01.
+- Upgrade Intel MPI Library to 2021.4.0.441.
+- Upgrade PMIx to version 3.2.3.
+- Do not configure GPUs in Slurm when NVIDIA driver is not installed.
+- Use compute resource name rather than instance type in compute fleet Launch Template name.
+- Enable possibility to suppress `SlurmQueues` and `ComputeResources` length validators.
 - Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
 - Disable packages update at instance launch time on Amazon Linux 2.
 
 **BUG FIXES**
-- Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
-- Fix ecs:ListContainerInstances permission in BatchUserRole
+- Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the `pcluster` CLI output.
+- Fix `ecs:ListContainerInstances` permission in `BatchUserRole`.
 - Fix exporting of cluster logs when there is no prefix specified, previously exported to a `None` prefix.
-- Fix rollback not being performed in case of cluster update failure.  
-- Fix RootVolume schema for the HeadNode.
-- Fix EfaSecurityGroupValidator. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
+- Fix rollback not being performed in case of cluster update failure.
+- Fix `RootVolume` schema for the `HeadNode`.
+- Fix `EfaSecurityGroupValidator`. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
+- Fix the way `ExtraChefAttributes` are merged into the final configuration.
+
+3.0.3
+-----
+
+**CHANGES**
+- Disable log4j-cve-2021-44228-hotpatch service on Amazon Linux to avoid incurring in potential performance degradation.
 
 3.0.2
 -----
@@ -73,7 +89,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add support for pcluster actions (e.g., create-cluster, update-cluster, delete-cluster) through HTTP endpoints
   with Amazon API Gateway.
-- Revamp custom AMI creation and management by leveraging EC2 Image Builder. This also includes the implementation of 
+- Revamp custom AMI creation and management by leveraging EC2 Image Builder. This also includes the implementation of
   `build-image`, `delete-image`, `describe-image` and `list-image` commands to manage custom ParallelCluster images.
 - Add `list-official-images` command to describe ParallelCluster official AMIs.
 - Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs
@@ -93,7 +109,7 @@ CHANGELOG
 - Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
 - Add prompt for availability zone in pcluster configure automated subnets creation.
 - Add configuration `HeadNode / Imds / Secured` to enable/disable restricted access to Instance Metadata Service (IMDS).
-- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' 
+- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED'
   state in case recurrent failures are encountered when provisioning nodes.
 - Add `--suppress-validators` and `--validation-failure-level` parameters to `create` and `update` commands.
 - Add support for associating an existing Elastic IP to the head node.

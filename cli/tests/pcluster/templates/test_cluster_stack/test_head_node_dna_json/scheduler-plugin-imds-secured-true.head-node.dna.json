@@ -10,10 +10,8 @@
     "cw_logging_enabled": "true",
     "dcv_enabled": "false",
     "dcv_port": "NONE",
-    "slurm_ddb_table": "NONE",
     "ddb_table": "{'Ref': 'DynamoDBTable'}",
     "disable_hyperthreading_manually": "false",
-    "dns_domain": "",
     "ebs_shared_dirs": "NONE,NONE,NONE,NONE,NONE",
     "efs_fs_id": "NONE",
     "efs_shared_dir": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
@@ -24,7 +22,6 @@
     "fsx_mount_name": "",
     "fsx_options": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     "head_node_imds_secured": "true",
-    "hosted_zone": "",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",
     "log_group_name": "/aws/parallelcluster/clustername-202101010101",
     "node_type": "HeadNode",
@@ -39,7 +36,6 @@
     "scheduler": "plugin",
     "stack_name": "clustername",
     "volume": "NONE",
-    "use_private_hostname": "false",
     "scheduler_plugin_substack_arn": "{'Ref': 'SchedulerPluginStack'}",
     "stack_arn": "{'Ref': 'AWS::StackId'}"
   }
