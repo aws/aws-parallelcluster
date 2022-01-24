@@ -54,7 +54,7 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
     ec2_client = boto3.client("ec2", region_name=region)
     instances = _get_instances_by_security_group(ec2_client, custom_security_group_id)
     logging.info("Asserting that head node and compute node has and only has the custom security group")
-    assert_that(instances).is_length(3)
+    assert_that(instances).is_length(3 if scheduler == "slurm" else 2)
     for instance in instances:
         assert_that(instance["SecurityGroups"]).is_length(1)
 
