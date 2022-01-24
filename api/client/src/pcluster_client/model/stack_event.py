@@ -77,17 +77,17 @@ class StackEvent(ModelNormal):
         """
         lazy_import()
         return {
-            'event_id': (str,),  # noqa: E501
-            'physical_resource_id': (str,),  # noqa: E501
-            'resource_status': (CloudFormationResourceStatus,),  # noqa: E501
             'stack_id': (str,),  # noqa: E501
+            'event_id': (str,),  # noqa: E501
             'stack_name': (str,),  # noqa: E501
             'logical_resource_id': (str,),  # noqa: E501
+            'physical_resource_id': (str,),  # noqa: E501
             'resource_type': (str,),  # noqa: E501
             'timestamp': (datetime,),  # noqa: E501
+            'resource_status': (CloudFormationResourceStatus,),  # noqa: E501
             'resource_status_reason': (str,),  # noqa: E501
-            'client_request_token': (str,),  # noqa: E501
             'resource_properties': (str,),  # noqa: E501
+            'client_request_token': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -96,17 +96,17 @@ class StackEvent(ModelNormal):
 
 
     attribute_map = {
-        'event_id': 'eventId',  # noqa: E501
-        'physical_resource_id': 'physicalResourceId',  # noqa: E501
-        'resource_status': 'resourceStatus',  # noqa: E501
         'stack_id': 'stackId',  # noqa: E501
+        'event_id': 'eventId',  # noqa: E501
         'stack_name': 'stackName',  # noqa: E501
         'logical_resource_id': 'logicalResourceId',  # noqa: E501
+        'physical_resource_id': 'physicalResourceId',  # noqa: E501
         'resource_type': 'resourceType',  # noqa: E501
         'timestamp': 'timestamp',  # noqa: E501
+        'resource_status': 'resourceStatus',  # noqa: E501
         'resource_status_reason': 'resourceStatusReason',  # noqa: E501
-        'client_request_token': 'clientRequestToken',  # noqa: E501
         'resource_properties': 'resourceProperties',  # noqa: E501
+        'client_request_token': 'clientRequestToken',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -121,18 +121,18 @@ class StackEvent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, event_id, physical_resource_id, resource_status, stack_id, stack_name, logical_resource_id, resource_type, timestamp, *args, **kwargs):  # noqa: E501
+    def __init__(self, stack_id, event_id, stack_name, logical_resource_id, physical_resource_id, resource_type, timestamp, resource_status, *args, **kwargs):  # noqa: E501
         """StackEvent - a model defined in OpenAPI
 
         Args:
-            event_id (str): The unique ID of this event.
-            physical_resource_id (str): The name or unique identifier associated with the physical instance of the resource.
-            resource_status (CloudFormationResourceStatus):
             stack_id (str): The unique ID name of the instance of the stack.
+            event_id (str): The unique ID of this event.
             stack_name (str): The name associated with a stack.
             logical_resource_id (str): The logical name of the resource specified in the template.
+            physical_resource_id (str): The name or unique identifier associated with the physical instance of the resource.
             resource_type (str): Type of resource.
             timestamp (datetime): Time the status was updated.
+            resource_status (CloudFormationResourceStatus):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -166,8 +166,8 @@ class StackEvent(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             resource_status_reason (str): Success/failure message associated with the resource.. [optional]  # noqa: E501
-            client_request_token (str): The token passed to the operation that generated this event.. [optional]  # noqa: E501
             resource_properties (str): BLOB of the properties used to create the resource.. [optional]  # noqa: E501
+            client_request_token (str): The token passed to the operation that generated this event.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -193,14 +193,14 @@ class StackEvent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.event_id = event_id
-        self.physical_resource_id = physical_resource_id
-        self.resource_status = resource_status
         self.stack_id = stack_id
+        self.event_id = event_id
         self.stack_name = stack_name
         self.logical_resource_id = logical_resource_id
+        self.physical_resource_id = physical_resource_id
         self.resource_type = resource_type
         self.timestamp = timestamp
+        self.resource_status = resource_status
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

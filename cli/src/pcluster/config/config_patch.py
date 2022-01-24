@@ -218,7 +218,7 @@ class ConfigPatch:
         report is generated. Each line of the report will contain all the details about the detected change, together
         with the corresponding reason if the change is not applicable and any action needed to unlock the problem.
 
-        :return A tuple containing the patch applicability and the report rows.
+        :return: A tuple containing the patch applicability and the report rows.
         """
         rows = [["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]]
 

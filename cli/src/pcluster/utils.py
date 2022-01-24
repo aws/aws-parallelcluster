@@ -94,7 +94,7 @@ def zip_dir(path):
 
     The archive is created in memory and a file handler is returned by the function.
     :param path: directory containing the resources to archive.
-    :return file handler pointing to the compressed archive.
+    :return: file handler pointing to the compressed archive.
     """
     file_out = BytesIO()
     with zipfile.ZipFile(file_out, "w", zipfile.ZIP_DEFLATED) as ziph:
@@ -132,7 +132,7 @@ def to_utc_datetime(time_in, default_timezone=datetime.timezone.utc) -> datetime
     be timestamps in UTC timezone.
     :param default_timezone: Timezone to assum in the event that the time is
     unspecified in the input parameter. This applies only for datetime and str inputs
-    :return time as a datetime in UTC timezone
+    :return: time as a datetime in UTC timezone
     """
     if isinstance(time_in, int):
         if time_in > 1e12:
@@ -155,7 +155,7 @@ def to_iso_timestr(time_in: datetime.datetime) -> str:
     Convert a given datetime ISO 8601 format with milliseconds.
 
     :param time_in: datetime to be converted
-    :return time in ISO 8601 UTC format with ms (e.g. 2021-07-15T01:22:02.655Z)
+    :return: time in ISO 8601 UTC format with ms (e.g. 2021-07-15T01:22:02.655Z)
     """
     if time_in.tzinfo is None:
         time_ = time_in.replace(tzinfo=datetime.timezone.utc)

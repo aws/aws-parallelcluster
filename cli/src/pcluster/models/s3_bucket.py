@@ -107,7 +107,7 @@ class S3Bucket:
 
         :param account_id
         :param region
-        :return ParallelCluster bucket name e.g. parallelcluster-b9033160b61390ef-v1-do-not-delete
+        :return: ParallelCluster bucket name e.g. parallelcluster-b9033160b61390ef-v1-do-not-delete
         """
         return "-".join(
             [

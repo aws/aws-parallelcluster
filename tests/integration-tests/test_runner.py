@@ -80,6 +80,7 @@ TEST_DEFAULTS = {
     "tests_root_dir": "./tests",
     "instance_types_data": None,
     "use_default_iam_credentials": False,
+    "iam_user_role_stack_name": None,
     "directory_stack_name": None,
     "ldaps_nlb_stack_name": None,
 }
@@ -353,6 +354,11 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("dry_run"),
     )
     debug_group.add_argument(
+        "--iam-user-role-stack-name",
+        help="Name of an existing IAM user role stack.",
+        default=TEST_DEFAULTS.get("iam_user_role_stack_name"),
+    )
+    debug_group.add_argument(
         "--directory-stack-name",
         help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
         default=TEST_DEFAULTS.get("directory_stack_name"),
@@ -373,7 +379,7 @@ def _is_file(value):
     return value
 
 
-@retry(stop_max_attempt_number=6, wait_fixed=5000)
+@retry(stop_max_attempt_number=10, wait_fixed=5000)
 def _is_url(value):
     scheme = urllib.request.urlparse(value).scheme
     if scheme in ["https", "s3", "file"]:
@@ -547,6 +553,9 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.no_delete:
         pytest_args.append("--no-delete")
+
+    if args.iam_user_role_stack_name:
+        pytest_args.extend(["--iam-user-role-stack-name", args.iam_user_role_stack_name])
 
     if args.directory_stack_name:
         pytest_args.extend(["--directory-stack-name", args.directory_stack_name])

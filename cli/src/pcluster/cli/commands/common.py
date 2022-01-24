@@ -53,19 +53,13 @@ def to_int(param, in_str):
 class CliCommand(ABC):
     """Abstract class for a CLI command."""
 
-    def __init__(
-        self,
-        subparsers,
-        region_arg: bool = True,
-        expects_extra_args: bool = False,
-        **argparse_kwargs,
-    ):
+    def __init__(self, subparsers, region_arg: bool = True, expects_extra_args: bool = False, **argparse_kwargs):
         """Initialize a CLI command."""
         parser_name = argparse_kwargs.pop("name")
         parser = subparsers.add_parser(parser_name, **argparse_kwargs)
         parser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
         if region_arg:
-            parser.add_argument("--region", help="AWS Region this operation corresponds to.")
+            parser.add_argument("-r", "--region", help="AWS Region this operation corresponds to.")
         self.register_command_args(parser)
         parser.set_defaults(func=self.execute, expects_extra_args=expects_extra_args)
 

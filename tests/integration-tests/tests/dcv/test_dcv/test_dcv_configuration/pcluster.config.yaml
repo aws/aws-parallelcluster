@@ -21,10 +21,10 @@ Scheduling:
           {% if scheduler == "awsbatch" %}
           InstanceTypes:
             - {{ instance }}
-          # Cpu count is valid for g3.8xlarge
-          MinvCpus: 32
-          DesiredvCpus: 32
-          MaxvCpus: 32
+          # Cpu count is valid for g4dn.2xlarge
+          MinvCpus: 8
+          DesiredvCpus: 8
+          MaxvCpus: 8
           {% else %}
           InstanceType: {{ instance }}
           MinCount: 1

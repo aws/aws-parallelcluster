@@ -319,7 +319,7 @@ def _add_compute_nodes(slurm_commands, partition, constraint, number_of_nodes=1)
     It is required because some changes will be available only on new compute nodes.
     :param cluster: the cluster
     :param number_of_nodes: number of nodes to add
-    :return an array containing the new compute nodes only
+    :return: an array containing the new compute nodes only
     """
     logging.info(f"launch a new {constraint} compute node in partition {partition}")
     initial_compute_nodes = slurm_commands.get_compute_nodes()

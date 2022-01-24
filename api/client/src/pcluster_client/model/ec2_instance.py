@@ -77,11 +77,11 @@ class EC2Instance(ModelNormal):
         """
         lazy_import()
         return {
-            'launch_time': (datetime,),  # noqa: E501
             'instance_id': (str,),  # noqa: E501
             'instance_type': (str,),  # noqa: E501
-            'state': (InstanceState,),  # noqa: E501
+            'launch_time': (datetime,),  # noqa: E501
             'private_ip_address': (str,),  # noqa: E501
+            'state': (InstanceState,),  # noqa: E501
             'public_ip_address': (str,),  # noqa: E501
         }
 
@@ -91,11 +91,11 @@ class EC2Instance(ModelNormal):
 
 
     attribute_map = {
-        'launch_time': 'launchTime',  # noqa: E501
         'instance_id': 'instanceId',  # noqa: E501
         'instance_type': 'instanceType',  # noqa: E501
-        'state': 'state',  # noqa: E501
+        'launch_time': 'launchTime',  # noqa: E501
         'private_ip_address': 'privateIpAddress',  # noqa: E501
+        'state': 'state',  # noqa: E501
         'public_ip_address': 'publicIpAddress',  # noqa: E501
     }
 
@@ -111,15 +111,15 @@ class EC2Instance(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, launch_time, instance_id, instance_type, state, private_ip_address, *args, **kwargs):  # noqa: E501
+    def __init__(self, instance_id, instance_type, launch_time, private_ip_address, state, *args, **kwargs):  # noqa: E501
         """EC2Instance - a model defined in OpenAPI
 
         Args:
-            launch_time (datetime):
             instance_id (str):
             instance_type (str):
-            state (InstanceState):
+            launch_time (datetime):
             private_ip_address (str):
+            state (InstanceState):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -178,11 +178,11 @@ class EC2Instance(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.launch_time = launch_time
         self.instance_id = instance_id
         self.instance_type = instance_type
-        self.state = state
+        self.launch_time = launch_time
         self.private_ip_address = private_ip_address
+        self.state = state
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

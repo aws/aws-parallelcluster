@@ -77,8 +77,8 @@ class BuildImageBadRequestExceptionResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'configuration_validation_errors': ([ConfigValidationMessage],),  # noqa: E501
             'message': (str,),  # noqa: E501
+            'configuration_validation_errors': ([ConfigValidationMessage],),  # noqa: E501
         }
 
     @cached_property
@@ -87,8 +87,8 @@ class BuildImageBadRequestExceptionResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'configuration_validation_errors': 'configurationValidationErrors',  # noqa: E501
         'message': 'message',  # noqa: E501
+        'configuration_validation_errors': 'configurationValidationErrors',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -137,8 +137,8 @@ class BuildImageBadRequestExceptionResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            configuration_validation_errors ([ConfigValidationMessage]): [optional]  # noqa: E501
             message (str): [optional]  # noqa: E501
+            configuration_validation_errors ([ConfigValidationMessage]): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

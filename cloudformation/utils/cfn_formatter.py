@@ -60,7 +60,7 @@ def check_formatting(filenames, format):
     Check that provided CFN docs are correctly formatted.
 
     :param filenames: list of CFN docs to check.
-    :return True if formatting is correct, False otherwise.
+    :return: True if formatting is correct, False otherwise.
     """
     has_failures = False
     for unexpanded_file in filenames:

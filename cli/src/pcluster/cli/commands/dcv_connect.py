@@ -155,7 +155,7 @@ class DcvConnectCommand(CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("--cluster-name", help="Name of the cluster to connect to", required=True)
+        parser.add_argument("-n", "--cluster-name", help="Name of the cluster to connect to", required=True)
         parser.add_argument("--key-path", dest="key_path", help="Key path of the SSH key to use for the connection")
         parser.add_argument("--show-url", action="store_true", default=False, help="Print URL and exit")
 

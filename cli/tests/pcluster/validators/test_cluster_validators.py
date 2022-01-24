@@ -10,6 +10,7 @@
 # limitations under the License.
 import pytest
 from assertpy import assert_that
+from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config.cluster_config import Tag
@@ -35,6 +36,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
+    MixedSecurityGroupOverwriteValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
@@ -124,12 +126,19 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
     "resource_name, resources_length, max_length, expected_message",
     [
         ("SlurmQueues", 5, 10, None),
+        ("SchedulerQueues", 10, 10, None),
         ("ComputeResources", 4, 5, None),
         (
             "SlurmQueues",
             11,
             10,
             "Invalid number of SlurmQueues (11) specified. Currently only supports up to 10 SlurmQueues.",
+        ),
+        (
+            "SchedulerQueues",
+            12,
+            10,
+            "Invalid number of SchedulerQueues (12) specified. Currently only supports up to 10 SchedulerQueues.",
         ),
         (
             "ComputeResources",
@@ -233,6 +242,31 @@ def test_efa_placement_group_validator(
             [],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            None,
+        ),
+        # right sg. Test when UserIdGroupPairs contains more entries
+        (
+            True,
+            ["sg-12345678"],
+            [],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [
+                        {"UserId": "123456789012", "GroupId": "sg-23456789"},
+                        {"UserId": "123456789012", "GroupId": "sg-12345678"},
+                    ],
+                }
+            ],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [
+                        {"UserId": "123456789012", "GroupId": "sg-23456789"},
+                        {"UserId": "123456789012", "GroupId": "sg-12345678"},
+                    ],
+                }
+            ],
             None,
         ),
         # Multiple sec groups, one right
@@ -918,3 +952,37 @@ def test_generate_tag_specifications(input_tags):
     else:
         expected_output_tags = []
     assert_that(_LaunchTemplateValidator._generate_tag_specifications(input_tags)).is_equal_to(expected_output_tags)
+
+
+@pytest.mark.parametrize(
+    "head_node_security_groups, queues, expect_warning",
+    [
+        [None, [{"networking": {"security_groups": None}}, {"networking": {"security_groups": None}}], False],
+        [None, [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": None}}], True],
+        [
+            None,
+            [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": "sg-123456"}}],
+            True,
+        ],
+        ["sg-123456", [{"networking": {"security_groups": None}}, {"networking": {"security_groups": None}}], True],
+        [
+            "sg-123456",
+            [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": None}}],
+            True,
+        ],
+        [
+            "sg-123456",
+            [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": "sg-123456"}}],
+            False,
+        ],
+    ],
+)
+def test_mixed_security_group_overwrite_validator(head_node_security_groups, queues, expect_warning):
+    """Verify validator for mixed security group."""
+    queues = DefaultMunch.fromDict(queues)
+    actual_failures = MixedSecurityGroupOverwriteValidator().execute(
+        head_node_security_groups=head_node_security_groups,
+        queues=queues,
+    )
+    expected_message = "make sure.*cluster nodes are reachable" if expect_warning else None
+    assert_failure_messages(actual_failures, expected_message)

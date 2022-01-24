@@ -231,7 +231,7 @@ def _get_metadata(metadata_path):
     Get EC2 instance metadata.
 
     :param metadata_path: the metadata relative path
-    :return the metadata value.
+    :return: the metadata value.
     """
     try:
         token = requests.put(

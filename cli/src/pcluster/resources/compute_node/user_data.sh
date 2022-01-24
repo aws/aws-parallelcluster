@@ -39,6 +39,10 @@ fi
 Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
 
+package_update: false
+package_upgrade: false
+repo_upgrade: none
+
 datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
@@ -167,7 +171,7 @@ cd /tmp
 
 mkdir -p /etc/chef/ohai/hints
 touch /etc/chef/ohai/hints/ec2.json
-jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cluster = $f1.cluster + $f2.cluster' > /etc/chef/dna.json || ( echo "jq not installed or invalid extra_json"; cp /tmp/dna.json /etc/chef/dna.json)
+jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' > /etc/chef/dna.json || ( echo "jq not installed or invalid extra_json"; cp /tmp/dna.json /etc/chef/dna.json)
 {
   pushd /etc/chef &&
   cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::init &&

@@ -22,7 +22,7 @@ Scheduling:
           MinvCpus: 1
           {% else %}
           InstanceType: {{ instance }}
-          MinCount: 1
+          MinCount: 2
           {% endif %}
       Networking:
         SubnetIds:

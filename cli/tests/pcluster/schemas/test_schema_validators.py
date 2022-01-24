@@ -19,6 +19,7 @@ from pcluster.schemas.cluster_schema import (
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
+    DirectoryServiceSchema,
     EbsSettingsSchema,
     EfsSettingsSchema,
     FsxLustreSettingsSchema,
@@ -591,3 +592,14 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
 def test_instance_role_validator(instance_role, expected_message):
     """Verify that instance role behaves as expected when parsed in a config file."""
     _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "password_secret_arn, expected_message",
+    [
+        ("arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx", None),
+        ("wrong_value", "String does not match expected pattern"),
+    ],
+)
+def test_password_secret_arn_validator(password_secret_arn, expected_message):
+    _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)

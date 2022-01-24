@@ -453,15 +453,16 @@ def get_arn_partition(region):
         return "aws"
 
 
-def check_pcluster_list_cluster_log_streams(cluster, os):
+def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):
     """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
     logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
 
     stream_names = cluster.get_all_log_stream_names()
-    expected_log_streams = {
-        "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
-        "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
-    }
+    if not expected_log_streams:
+        expected_log_streams = {
+            "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
+            "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
+        }
 
     # check there are the logs of all the instances
     cluster_info = cluster.describe_cluster()

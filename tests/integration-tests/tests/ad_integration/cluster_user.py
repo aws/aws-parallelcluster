@@ -12,7 +12,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 class ClusterUser:
     """Class to represent a cluster user in a multi-user environment."""
 
-    def __init__(self, user_num, test_datadir, cluster, scheduler, default_user_remote_command_executor):
+    def __init__(self, user_num, test_datadir, cluster, scheduler, default_user_remote_command_executor, password):
         self._default_user_remote_command_executor = default_user_remote_command_executor
         self.cluster = cluster
         self.scheduler = scheduler
@@ -23,7 +23,7 @@ class ClusterUser:
         self.ssh_public_key_path = f"{self.ssh_private_key_path}.pub"
         # TODO: randomly generate this. It's hardcoded here because it's also hard-coded in the script
         #       that creates users as part of the directory stack.
-        self.password = "ApplesBananasCherries!"
+        self.password = password
         self._personalized_remote_command_executor = RemoteCommandExecutor(
             self.cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
         )
@@ -97,11 +97,16 @@ class ClusterUser:
         logging.info("Removing home directory for user %s (%s)", self.alias, user_home_dir)
         self._default_user_remote_command_executor.run_remote_command(f"sudo rm -rf {user_home_dir}")
 
-    def validate_password_auth_and_automatic_homedir_creation(self, port=22):
-        """Ensure password can be used to login to cluster and that user's home directory is created."""
+    def ssh_connect(self, port=22):
+        """Establish a SSH connection to the cluster head node with the current user."""
         ssh = SSHClient()
         ssh.set_missing_host_key_policy(AutoAddPolicy())
         ssh.connect(self.cluster.head_node_ip, port, self.alias, self.password, allow_agent=False, look_for_keys=False)
+        return ssh
+
+    def validate_password_auth_and_automatic_homedir_creation(self, port=22):
+        """Ensure password can be used to login to cluster and that user's home directory is created."""
+        ssh = self.ssh_connect()
 
         homedir = f"/home/{self.alias}"
         command = f"[ -d {homedir} ] || echo failure"

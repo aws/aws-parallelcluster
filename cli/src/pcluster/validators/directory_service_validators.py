@@ -18,7 +18,7 @@ from pcluster.validators.common import FailureLevel, Validator
 class DomainAddrValidator(Validator):
     """Domain address validator."""
 
-    def _validate(self, domain_addr):
+    def _validate(self, domain_addr, additional_sssd_configs):
         """Warn user when ldap is used for the protocol instead of ldaps."""
         domain_addr_scheme = urlparse(domain_addr).scheme
         default_domain_addr_scheme = "ldaps"
@@ -35,9 +35,17 @@ class DomainAddrValidator(Validator):
                 FailureLevel.WARNING,
             )
         elif domain_addr_scheme == "ldap":
-            self._add_failure(
-                "The use of the ldaps protocol is strongly encouraged for security reasons.", FailureLevel.WARNING
+            warning_message = "The use of the ldaps protocol is strongly encouraged for security reasons."
+            tls_disabled = (
+                str(additional_sssd_configs.get("ldap_auth_disable_tls_never_use_in_production", "false")).lower()
+                == "true"
             )
+            if not tls_disabled:
+                warning_message += (
+                    " When using ldap, the additional SSSD config is required: "
+                    "'ldap_auth_disable_tls_never_use_in_production: true'."
+                )
+            self._add_failure(warning_message, FailureLevel.WARNING)
 
 
 class LdapTlsReqCertValidator(Validator):
