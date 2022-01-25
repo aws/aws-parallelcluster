@@ -13,12 +13,10 @@ import time
 
 import boto3
 import pytest
-from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from utils import check_status
 
-from tests.common.assertions import assert_instance_replaced_or_terminating
-from tests.common.compute_logs_common import wait_compute_log
+from tests.common.assertions import wait_for_num_instances_in_cluster, wait_instance_replaced_or_terminating
 from tests.common.schedulers_common import get_scheduler_commands
 
 
@@ -33,7 +31,7 @@ def test_replace_compute_on_failure(
     """
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "post_install.sh"), "post_install.sh")
+    bucket.upload_file(str(test_datadir / "failing_post_install.sh"), "failing_post_install.sh")
     cluster_config = pcluster_config_reader(bucket_name=bucket_name)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -41,14 +39,11 @@ def test_replace_compute_on_failure(
     # submit a job to spin up a compute node that will fail due to post_install script
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     scheduler_commands.submit_command("sleep 1")
-    instance_id = wait_compute_log(remote_command_executor)[0]
 
-    # extract logs and check one of them
-    _assert_compute_logs(remote_command_executor, instance_id)
+    # Wait for the instance to become running
+    instances = wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=1)
 
-    # check that instance got already replaced or is marked as Unhealthy
-    time.sleep(25)  # Instance waits for 10 seconds before terminating to allow logs to propagate to CloudWatch
-    assert_instance_replaced_or_terminating(instance_id, region)
+    wait_instance_replaced_or_terminating(instances[0], region)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -70,19 +65,6 @@ def test_install_args_quotes(region, pcluster_config_reader, s3_bucket_factory, 
 
     # Check head node and compute node status
     _assert_server_status(cluster)
-
-
-def _assert_compute_logs(remote_command_executor, instance_id):
-    remote_command_executor.run_remote_command(
-        "tar -xf /home/logs/compute/{0}.tar.gz --directory /tmp".format(instance_id)
-    )
-    remote_command_executor.run_remote_command("test -f /tmp/var/log/cloud-init-output.log")
-    output = remote_command_executor.run_remote_command(
-        'find /tmp/var/log -type f | xargs grep "Reporting instance as unhealthy and dumping logs to"',
-        hide=True,
-        login_shell=False,
-    ).stdout
-    assert_that(output).is_not_empty()
 
 
 def _assert_server_status(cluster):
