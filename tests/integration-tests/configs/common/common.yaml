@@ -200,11 +200,10 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      # Temporarily disabling p4d tests
-      # - regions: ["us-west-2"]
-      #   instances: ["p4d.24xlarge"]
-      #   oss: {{ common.OSS_COMMERCIAL_X86 }}
-      #   schedulers: ["slurm"]
+      - regions: ["us-west-2"]
+        instances: ["p4d.24xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
