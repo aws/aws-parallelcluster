@@ -28,6 +28,8 @@ CHANGELOG
 - Enable possibility to suppress `SlurmQueues` and `ComputeResources` length validators.
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
 - Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
+- Remove dumping of failed compute nodes to `/home/logs/compute`. Compute nodes log files are available in CloudWatch
+  and in EC2 console logs.
 
 **BUG FIXES**
 - Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the `pcluster` CLI output.
