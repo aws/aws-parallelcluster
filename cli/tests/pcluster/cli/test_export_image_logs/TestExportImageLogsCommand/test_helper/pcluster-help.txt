@@ -1,4 +1,4 @@
-usage: pcluster export-image-logs [-h] [--debug] [--region REGION]
+usage: pcluster export-image-logs [-h] [--debug] [-r REGION]
                                   [--output-file OUTPUT_FILE]
                                   [--bucket-prefix BUCKET_PREFIX]
                                   [--keep-s3-objects KEEP_S3_OBJECTS]
@@ -12,7 +12,8 @@ passing through an Amazon S3 Bucket.
 optional arguments:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
-  --region REGION       AWS Region this operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region this operation corresponds to.
   --output-file OUTPUT_FILE
                         File path to save log archive to. If this is provided
                         the logs are saved locally. Otherwise they are

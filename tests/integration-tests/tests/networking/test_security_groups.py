@@ -15,9 +15,10 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
+from remote_command_executor import RemoteCommandExecutor
 from troposphere import Ref, Template
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress
-from utils import check_head_node_security_group, generate_stack_name
+from utils import check_head_node_security_group, generate_stack_name, get_username_for_os
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -44,8 +45,8 @@ def test_additional_sg_and_ssh_from(region, custom_security_group, pcluster_conf
     check_head_node_security_group(region, cluster, 22, ssh_from)
 
 
-@pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_overwrite_sg(region, custom_security_group, pcluster_config_reader, clusters_factory):
+@pytest.mark.usefixtures("os", "instance")
+def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_reader, clusters_factory):
     """Test vpc_security_group_id overwrites pcluster default sg on head and compute nodes, efs, fsx"""
     custom_security_group_id = custom_security_group.cfn_resources["SecurityGroupResource"]
     cluster_config = pcluster_config_reader(vpc_security_group_id=custom_security_group_id)
@@ -53,7 +54,7 @@ def test_overwrite_sg(region, custom_security_group, pcluster_config_reader, clu
     ec2_client = boto3.client("ec2", region_name=region)
     instances = _get_instances_by_security_group(ec2_client, custom_security_group_id)
     logging.info("Asserting that head node and compute node has and only has the custom security group")
-    assert_that(instances).is_length(2)
+    assert_that(instances).is_length(3 if scheduler == "slurm" else 2)
     for instance in instances:
         assert_that(instance["SecurityGroups"]).is_length(1)
 
@@ -85,27 +86,80 @@ def test_overwrite_sg(region, custom_security_group, pcluster_config_reader, clu
         assert_that(mount_target_security_groups[0]).is_equal_to(custom_security_group_id)
         assert_that(mount_target_security_groups).is_length(1)
 
+    if scheduler == "slurm":
+        _check_connections_between_head_node_and_compute_nodes(cluster)
+        # Update the cluster by removing the custom security group from head node.
+        # As a result, head node uses pcluster created security group while compute nodes use custom security group.
+        # The aim is to test that the pcluster creates proper inbound rules in the head node security group to allow
+        # access from compute security groups.
+        updated_config_file = pcluster_config_reader(
+            config_file="pcluster.config.update.yaml",
+            vpc_security_group_id=custom_security_group_id,
+        )
+        cluster.update(str(updated_config_file), force_update="true")
+        _check_connections_between_head_node_and_compute_nodes(cluster)
+
+
+def _check_connections_between_head_node_and_compute_nodes(cluster):
+    username = get_username_for_os(cluster.os)
+    head_node = cluster.describe_cluster_instances(node_type="HeadNode")[0]
+    head_node_public_ip = head_node.get("publicIpAddress")
+    head_node_private_ip = head_node.get("privateIpAddress")
+    head_node_username_ip = f"{username}@{head_node_public_ip}"
+    head_node_remote_command_executor = RemoteCommandExecutor(cluster)
+
+    compute_nodes = cluster.describe_cluster_instances(node_type="Compute")
+    for compute_node in compute_nodes:
+        compute_node_ip = compute_node.get("privateIpAddress")
+        ping_ip = "ping {0} -c 5"
+        head_node_remote_command_executor.run_remote_command(ping_ip.format(compute_node_ip))
+        compute_remote_command_executor = RemoteCommandExecutor(
+            cluster, compute_node_ip=compute_node_ip, bastion=head_node_username_ip
+        )
+        compute_remote_command_executor.run_remote_command(ping_ip.format(head_node_private_ip))
+        for other_compute_node in compute_nodes:
+            other_compute_node_ip = other_compute_node.get("privateIpAddress")
+            compute_remote_command_executor.run_remote_command(ping_ip.format(other_compute_node_ip))
+
 
 @pytest.fixture(scope="class")
 def custom_security_group(vpc_stack, region, request, cfn_stacks_factory):
     template = Template()
     template.set_version("2010-09-09")
     template.set_description("custom security group stack for testing additional_sg and vpc_security_group_id")
+    vpc_id = vpc_stack.cfn_outputs["VpcId"]
     security_group = template.add_resource(
         SecurityGroup(
             "SecurityGroupResource",
             GroupDescription="custom security group for testing additional_sg and vpc_security_group_id",
-            VpcId=vpc_stack.cfn_outputs["VpcId"],
+            VpcId=vpc_id,
         )
     )
+    cidr_block_association_set = boto3.client("ec2").describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0][
+        "CidrBlockAssociationSet"
+    ]
+    # Allow inbound connection within the VPC
+    for index, cidr_block_association in enumerate(cidr_block_association_set):
+        vpc_cidr = cidr_block_association["CidrBlock"]
+        template.add_resource(
+            SecurityGroupIngress(
+                f"SecurityGroupIngressResource{index}",
+                IpProtocol="-1",
+                FromPort=0,
+                ToPort=65535,
+                CidrIp=vpc_cidr,
+                GroupId=Ref(security_group),
+            )
+        )
+    # Allow all inbound SSH connection
     template.add_resource(
         SecurityGroupIngress(
-            "SecurityGroupIngressResource",
-            IpProtocol="-1",
-            FromPort=0,
-            ToPort=65535,
-            SourceSecurityGroupId=Ref(security_group),
+            "SecurityGroupSSHIngressResource",
+            IpProtocol="tcp",
+            FromPort=22,
+            ToPort=22,
             GroupId=Ref(security_group),
+            CidrIp="0.0.0.0/0",
         )
     )
     stack = CfnStack(

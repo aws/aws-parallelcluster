@@ -42,7 +42,7 @@ Resources:
       {% if directory_type == "SimpleAD" %}
       Size: Large
       {% endif %}
-      ShortName: NET
+      ShortName: {{ ad_domain_short_name }}
   AdDomainAdminNodeWaitConditionHandle:
     Type: AWS::CloudFormation::WaitConditionHandle
   AdDomainAdminNodeWaitCondition:
@@ -126,6 +126,7 @@ Resources:
                 AD_ADMIN_PASSWORD='{{ ad_admin_password }}'
                 AD_DOMAIN='{{ ad_domain_name }}'
                 AD_ADMIN_USER='{{ ad_admin_user }}'
+                AD_USERS_BASE_SEARCH='{{ ad_users_base_search }}'
                 DEFAULT_EC2_DOMAIN={{ default_ec2_domain }}
 
                 cat << EOF > /etc/resolv.conf
@@ -158,19 +159,6 @@ Resources:
                 grep -E '\s*PasswordAuthentication\s+yes' "$SSHD_CONFIG_PATH"
                 systemctl restart sshd
 
-                # Write a script that will be invoked via SSM in order to add users to the domain
-                mkdir -p $(dirname /usr/local/bin/add_user.sh)
-                # Script to add a single user
-                cat << EOF > /usr/local/bin/add_user.sh
-                #!/bin/bash
-                NEW_USER_ALIAS=\$1
-                if [ -z "\${NEW_USER_ALIAS}" ]; then
-                    echo 1>&2 "Alias for new user must be passed as first arg"
-                    exit 1
-                fi
-                echo "${AD_ADMIN_PASSWORD}" | adcli create-user -U ${AD_ADMIN_USER} \${NEW_USER_ALIAS} --domain="${AD_DOMAIN}" --display-name="\${NEW_USER_ALIAS}" --stdin-password
-                EOF
-                chmod +x /usr/local/bin/add_user.sh
                 # Script to add a number of users
                 cat << EOF > /usr/local/bin/add_a_number_of_users.sh
                 #!/bin/bash
@@ -187,23 +175,60 @@ Resources:
                 for i in \$(seq 1 "\${NUM_USERS_TO_CREATE}"); do
                     NEW_USER_ALIASES="\${NEW_USER_ALIASES} PclusterUser\${i}"
                 done
+
+                # Create LDIF file to create users
+                LDIF_FILE="adusers.ldif"
+                rm -rf \${LDIF_FILE}
+                for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
+                  echo "dn: CN=\${NEW_USER_ALIAS},${AD_USERS_BASE_SEARCH}" >> \${LDIF_FILE}
+                  echo "objectClass: top" >> \${LDIF_FILE}
+                  echo "objectClass: person" >> \${LDIF_FILE}
+                  echo "objectClass: organizationalPerson" >> \${LDIF_FILE}
+                  echo "objectClass: user" >> \${LDIF_FILE}
+                  echo "userAccountControl: 514" >> \${LDIF_FILE}
+                  echo "accountExpires: 0" >> \${LDIF_FILE}
+                  echo "sAMAccountName: \${NEW_USER_ALIAS}" >> \${LDIF_FILE}
+                  echo "" >> \${LDIF_FILE}
+                done
+                echo "Wrote LDIF file: \${LDIF_FILE}"
+                cat \${LDIF_FILE}
+
                 # Create users in directory
                 # TODO: add ability to trigger this via lambda
-                for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
-                    echo "Creating \${NEW_USER_ALIAS} in directory \${DIRECTORY_ID}"
-                    /usr/local/bin/add_user.sh \${NEW_USER_ALIAS}
+                MAX_ATTEMPTS=5
+                for ATTEMPT in \$(seq 1 \${MAX_ATTEMPTS}); do
+                  echo "Creating users from LDIF file \${LDIF_FILE} (attempt \${ATTEMPT}/\${MAX_ATTEMPTS})"
+                  ldapadd -f "\${LDIF_FILE}" -x -h "${DNS_IP_ONE}" -D "CN=${AD_ADMIN_USER},${AD_USERS_BASE_SEARCH}" -w "${AD_ADMIN_PASSWORD}" && break
+                  if [ \${ATTEMPT} -ge \${MAX_ATTEMPTS} ]; then
+                    echo "ERROR: Cannot create users"
+                    exit 1
+                  else
+                    SLEEP_TIME=\${ATTEMPT}
+                    echo "WARNING: Cannot create users. Will retry in \${SLEEP_TIME} seconds"
+                    sleep \${SLEEP_TIME}
+                  fi
                 done
 
                 # Change user passwords
                 # TODO: put this in a lambda that can be triggered by users
                 for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
-                    sleep 1  # TODO: retry w/ backoff instead of sleeping
-                    echo "Setting password for user \${NEW_USER_ALIAS}"
-                    aws ds reset-user-password \
-                        --region {{ region }} \
-                        --directory-id "\${DIRECTORY_ID}" \
-                        --user-name "\${NEW_USER_ALIAS}" \
-                        --new-password "{{ ad_user_password }}"
+                    MAX_ATTEMPTS=5
+                    for ATTEMPT in \$(seq 1 \${MAX_ATTEMPTS}); do
+                      echo "Setting password for user \${NEW_USER_ALIAS} (attempt \${ATTEMPT}/\${MAX_ATTEMPTS})"
+                      aws ds reset-user-password \
+                          --region {{ region }} \
+                          --directory-id "\${DIRECTORY_ID}" \
+                          --user-name "\${NEW_USER_ALIAS}" \
+                          --new-password "{{ ad_user_password }}" && break
+                      if [ \${ATTEMPT} -ge \${MAX_ATTEMPTS} ]; then
+                        echo "ERROR: Cannot set password for user \${NEW_USER_ALIAS}"
+                        exit 1
+                      else
+                        SLEEP_TIME=\${ATTEMPT}
+                        echo "WARNING: Cannot set password for user \${NEW_USER_ALIAS}. Will retry in \${SLEEP_TIME} seconds"
+                        sleep \${SLEEP_TIME}
+                      fi
+                    done
                 done
                 EOF
                 chmod +x /usr/local/bin/add_a_number_of_users.sh
@@ -267,6 +292,14 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - DomainName
+  DomainShortName:
+    Value: {{ ad_domain_short_name }}
+    Export:
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - DomainShortName
   AdminPassword:
     Value: {{ ad_admin_password }}
     Export:
@@ -304,4 +337,3 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - DirectoryDnsIpAddresses
-

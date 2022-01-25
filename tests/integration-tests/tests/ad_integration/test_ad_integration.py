@@ -38,8 +38,8 @@ from tests.common.osu_common import compile_osu, run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import get_sts_endpoint, retrieve_latest_ami
 
-NUM_USERS_TO_CREATE = 100
-NUM_USERS_TO_TEST = 10
+NUM_USERS_TO_CREATE = 5
+NUM_USERS_TO_TEST = 3
 
 
 def get_infra_stack_outputs(stack_name):
@@ -58,19 +58,46 @@ def get_infra_stack_parameters(stack_name):
     }
 
 
-def get_ad_config_param_vals(directory_stack_outputs, nlb_stack_parameters, password_secret_arn, ldap_tls_ca_cert):
+def _get_ldap_base_search(domain_name):
+    return ",".join([f"dc={domain_component}" for domain_component in domain_name.split(".")])
+
+
+def get_ad_config_param_vals(
+    directory_stack_outputs,
+    nlb_stack_parameters,
+    password_secret_arn,
+    ldap_tls_ca_cert,
+    directory_type,
+    directory_protocol,
+    directory_certificate_verification,
+):
     """Return a dict used to set values for config file parameters."""
-    ldap_search_base = ",".join(
-        [f"dc={domain_component}" for domain_component in directory_stack_outputs.get("DomainName").split(".")]
-    )
+    ldap_search_base = _get_ldap_base_search(directory_stack_outputs.get("DomainName"))
+    domain_short_name = directory_stack_outputs.get("DomainShortName")
     read_only_username = directory_stack_outputs.get("ReadOnlyUserName")
+
+    if directory_type == "SimpleAD":
+        ldap_default_bind_dn = f"CN={read_only_username},CN=Users,{ldap_search_base}"
+    elif directory_type == "MicrosoftAD":
+        ldap_default_bind_dn = f"CN={read_only_username},OU=Users,OU={domain_short_name},{ldap_search_base}"
+    else:
+        raise Exception(f"Unknown directory type: {directory_type}")
+
+    if directory_protocol == "ldaps":
+        ldap_uri = nlb_stack_parameters.get("DomainName")
+    elif directory_protocol == "ldap":
+        directory_dns_ips = directory_stack_outputs.get("DirectoryDnsIpAddresses")
+        ldap_uri = ",".join(f"ldap://{ip}" for ip in directory_dns_ips.split(","))
+    else:
+        raise Exception(f"Unknown directory protocol: {directory_protocol}")
     return {
-        "ldaps_uri": nlb_stack_parameters.get("DomainName"),
+        "ldap_uri": ldap_uri,
         "ldap_search_base": ldap_search_base,
-        # TODO: is the CN=Users portion of this a valid assumption?
-        "ldap_default_bind_dn": f"CN={read_only_username},CN=Users,{ldap_search_base}",
+        "ldap_default_bind_dn": ldap_default_bind_dn,
         "password_secret_arn": password_secret_arn,
         "ldap_tls_ca_cert": ldap_tls_ca_cert,
+        "directory_protocol": directory_protocol,
+        "ldap_tls_req_cert": "never" if directory_certificate_verification is False else "hard",
     }
 
 
@@ -148,7 +175,7 @@ def store_secret_in_secret_manager(request, cfn_stacks_factory):
         for region, secrets in secret_arns.items():
             secrets_manager_client = boto3.client("secretsmanager", region_name=region)
             for secret_arn in secrets:
-                logging.info("Deleting secrete %s", secret_arn)
+                logging.info("Deleting secret %s", secret_arn)
                 secrets_manager_client.delete_secret(SecretId=secret_arn)
 
 
@@ -168,15 +195,27 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_re
     )
     ad_admin_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
     ad_user_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
+    ad_domain_name = f"{directory_type.lower()}.multiuser.pcluster"
+    ad_domain_short_name = "NET"
+    ad_base_search = _get_ldap_base_search(ad_domain_name)
+    if directory_type == "SimpleAD":
+        ad_users_base_search = f"CN=Users,{ad_base_search}"
+    elif directory_type == "MicrosoftAD":
+        ad_users_base_search = f"OU=Users,OU={ad_domain_short_name},{ad_base_search}"
+    else:
+        raise Exception(f"Unknown directory type: {directory_type}")
+
     config_args = {
         "region": region,
         "account": account_id,
         "admin_node_ami_id": retrieve_latest_ami(region, "alinux2"),
         "admin_node_instance_type": "c5.large",
         "admin_node_key_name": request.config.getoption("key_name"),
+        "ad_users_base_search": ad_users_base_search,
         "ad_admin_password": ad_admin_password,
         "ad_user_password": ad_user_password,
-        "ad_domain_name": f"{directory_type.lower()}.multiuser.pcluster",
+        "ad_domain_name": ad_domain_name,
+        "ad_domain_short_name": ad_domain_short_name,
         "default_ec2_domain": "ec2.internal" if region == "us-east-1" else f"{region}.compute.internal",
         "ad_admin_user": "Administrator" if directory_type == "SimpleAD" else "Admin",
         "num_users_to_create": 100,
@@ -312,6 +351,12 @@ def _generate_certificate(common_name):
     return certificate_arn, certificate
 
 
+@retry(stop_max_attempt_number=10, wait_exponential_multiplier=2000, wait_exponential_max=30000)
+def _delete_certificate(certificate_arn, region):
+    logging.info("Deleting ACM certificate %s in region %s", certificate_arn, region)
+    boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
+
+
 @pytest.fixture(scope="module")
 def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_secret_manager):  # noqa: C901
     # TODO: use external data file and file locking in order to share directories across processes
@@ -368,7 +413,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_s
     yield _directory_factory
 
     for region, stack_dict in created_directory_stacks.items():
-        for stack_type in ["nlb", "directory"]:
+        for stack_type in stack_dict:
             stack_name = stack_dict[stack_type]
             if request.config.getoption("no_delete"):
                 logging.info(
@@ -383,7 +428,19 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_s
 
     for region, certificate_arn in created_certificates.items():
         if request.config.getoption("no_delete"):
-            boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
+            logging.info(
+                "Not deleting ACM certificate %s in region %s because --no-delete option was specified",
+                certificate_arn,
+                region,
+            )
+        else:
+            logging.info(
+                "Sleeping 180 seconds to wait for the ACM certificate %s in region %s to become unused",
+                certificate_arn,
+                region,
+            )
+            time.sleep(180)
+            _delete_certificate(certificate_arn=certificate_arn, region=region)
 
 
 def _run_user_workloads(users, test_datadir, remote_command_executor):
@@ -514,10 +571,18 @@ def _run_benchmarks(
             cloudwatch_client.put_metric_data(Namespace="ParallelCluster/AdIntegration", MetricData=metric_data)
 
 
-# @pytest.mark.parametrize("directory_type", ["SimpleAD", "MicrosoftAD", None])
-# @pytest.mark.parametrize("directory_type", ["MicrosoftAD"])
-@pytest.mark.parametrize("directory_type", ["SimpleAD"])
-# @pytest.mark.parametrize("directory_type", [None])
+# Some tests have been disabled to save time and reduce costs.
+@pytest.mark.parametrize(
+    "directory_type,directory_protocol,directory_certificate_verification",
+    [
+        ("SimpleAD", "ldap", False),
+        # ("SimpleAD", "ldaps", False),
+        ("SimpleAD", "ldaps", True),
+        ("MicrosoftAD", "ldap", False),
+        # ("MicrosoftAD", "ldaps", False),
+        ("MicrosoftAD", "ldaps", True),
+    ],
+)
 def test_ad_integration(
     region,
     scheduler,
@@ -525,6 +590,8 @@ def test_ad_integration(
     os,
     pcluster_config_reader,
     directory_type,
+    directory_protocol,
+    directory_certificate_verification,
     test_datadir,
     s3_bucket_factory,
     directory_factory,
@@ -550,7 +617,15 @@ def test_ad_integration(
     nlb_stack_parameters = get_infra_stack_parameters(nlb_stack_name)
     ldap_tls_ca_cert = "/opt/parallelcluster/shared/directory_service/certificate.crt"
     config_params.update(
-        get_ad_config_param_vals(directory_stack_outputs, nlb_stack_parameters, password_secret_arn, ldap_tls_ca_cert)
+        get_ad_config_param_vals(
+            directory_stack_outputs,
+            nlb_stack_parameters,
+            password_secret_arn,
+            ldap_tls_ca_cert,
+            directory_type,
+            directory_protocol,
+            directory_certificate_verification,
+        )
     )
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
@@ -567,6 +642,8 @@ def test_ad_integration(
         f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo service sssd restart",
         additional_files=[test_datadir / "certificate.crt"],
     )
+
+    logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
     time.sleep(600)
     # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
     #  We should look for other methods to let the SSSD agent use the new certificate more quickly
@@ -595,3 +672,17 @@ def test_ad_integration(
     for user in users:
         user.reset_stateful_connection_objects(remote_command_executor)
     _check_ssh_key_generation(users[1], scheduler_commands, True)
+    for user in users:
+        logging.info(f"Checking SSH access for user {user.alias}")
+        _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser3")
+
+
+def _check_ssh_auth(user, expect_success=True):
+    try:
+        user.ssh_connect()
+    except Exception as e:
+        if expect_success:
+            logging.error(f"SSH access denied for user {user.alias}")
+            raise e
+        else:
+            logging.info(f"SSH access denied for user {user.alias}, as expected")

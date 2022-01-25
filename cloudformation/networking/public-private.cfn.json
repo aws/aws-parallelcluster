@@ -192,7 +192,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "parallelcluster::public-subnet"
+            "Value": "parallelcluster:public-subnet"
           },
           {
             "Key": "Stack",
