@@ -13,21 +13,19 @@
         "iam:PassRole"
       ],
       "Resource": [
-        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-definition/*",
-        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-definition/*",
-        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-queue/*",
+        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-definition/PclusterJobDefinition*:*",
+        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-queue/PclusterJobQueue*",
         "arn:{{ partition }}:cloudformation:{{ region }}:{{ account_id }}:stack/*",
         "arn:{{ partition }}:s3:::{{ cluster_bucket_name }}/*",
         "arn:{{ partition }}:iam::{{ account_id }}:role/*",
-        "arn:{{ partition }}:ecs:{{ region }}:{{ account_id }}:cluster/*",
-        "arn:{{ partition }}:ecs:{{ region }}:{{ account_id }}:container-instance/*",
-        "arn:{{ partition }}:logs:{{ region }}:{{ account_id }}:log-group:/aws/batch/job:log-stream:*"
+        "arn:{{ partition }}:ecs:{{ region }}:{{ account_id }}:cluster/AWSBatch-Pcluster*",
+        "arn:{{ partition }}:ecs:{{ region }}:{{ account_id }}:container-instance/AWSBatch-PclusterComputeEnviron*",
+        "arn:{{ partition }}:logs:{{ region }}:{{ account_id }}:log-group:/aws/batch/job:log-stream:PclusterJobDefinition*"
       ],
       "Effect": "Allow"
     },
     {
       "Action": [
-        "batch:RegisterJobDefinition",
         "logs:GetLogEvents"
       ],
       "Resource": [

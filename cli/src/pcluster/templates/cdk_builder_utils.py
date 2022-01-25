@@ -382,8 +382,6 @@ class NodeIamResourcesBase(Construct):
         additional_iam_policies = set(node.iam.additional_iam_policy_arns)
         if self._config.monitoring.logs.cloud_watch.enabled:
             additional_iam_policies.add(policy_name_to_arn("CloudWatchAgentServerPolicy"))
-        if self._config.scheduling.scheduler == "awsbatch":
-            additional_iam_policies.add(policy_name_to_arn("AWSBatchFullAccess"))
         return iam.CfnRole(
             Stack.of(self),
             name,

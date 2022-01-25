@@ -722,6 +722,67 @@ class AwsBatchConstruct(Construct):
                             )
                         ],
                     ),
+                    iam.PolicyStatement(
+                        sid="BatchReadPermissions",
+                        actions=[
+                            "batch:DescribeJobQueues",  # required by awsbqueues command
+                            "batch:DescribeJobs",  # required by awsbstat, awsbkill and awsbout
+                            "batch:ListJobs",  # required by awsbstat
+                            "batch:DescribeComputeEnvironments",  # required by awsbhosts
+                            "ec2:DescribeInstances",  # required by awsbhosts
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        resources=["*"],
+                    ),
+                    iam.PolicyStatement(
+                        sid="BatchWritePermissions",
+                        actions=[
+                            "batch:SubmitJob",  # required by awsbsub command
+                            "batch:TerminateJob",  # required by awsbkill
+                            "logs:GetLogEvents",  # required by awsbout
+                            "ecs:ListContainerInstances",  # required by awsbhosts
+                            "ecs:DescribeContainerInstances",  # required by awsbhosts
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="logs",
+                                account=self._stack_account,
+                                region=self._stack_region,
+                                resource="log-group:/aws/batch/job:log-stream:PclusterJobDefinition*",
+                            ),
+                            self._format_arn(
+                                service="ecs",
+                                account=self._stack_account,
+                                region=self._stack_region,
+                                resource="container-instance/AWSBatch-PclusterComputeEnviron*",
+                            ),
+                            self._format_arn(
+                                service="ecs",
+                                account=self._stack_account,
+                                region=self._stack_region,
+                                resource="cluster/AWSBatch-Pcluster*",
+                            ),
+                            self._format_arn(
+                                service="batch",
+                                account=self._stack_account,
+                                region=self._stack_region,
+                                resource="job-queue/PclusterJobQueue*",
+                            ),
+                            self._format_arn(
+                                service="batch",
+                                account=self._stack_account,
+                                region=self._stack_region,
+                                resource="job-definition/PclusterJobDefinition*:*",
+                            ),
+                            self._format_arn(
+                                service="batch",
+                                account=self._stack_account,
+                                region=self._stack_region,
+                                resource="job/*",
+                            ),
+                        ],
+                    ),
                 ]
             ),
             roles=[self.head_node_instance_role.ref],
