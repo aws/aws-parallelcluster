@@ -10,7 +10,6 @@
     "cw_logging_enabled": "true",
     "dcv_enabled": "false",
     "dcv_port": "NONE",
-    "ddb_table": "NONE",
     "disable_hyperthreading_manually": "false",
     "ebs_shared_dirs": "NONE,NONE,NONE,NONE,NONE",
     "efs_fs_id": "NONE",

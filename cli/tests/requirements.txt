@@ -8,3 +8,4 @@ pytest-html
 pytest-mock
 pytest-xdist
 recordclass
+munch

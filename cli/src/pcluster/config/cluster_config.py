@@ -74,6 +74,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
+    MixedSecurityGroupOverwriteValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
@@ -2031,6 +2032,11 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
+        )
+        self._register_validator(
+            MixedSecurityGroupOverwriteValidator,
+            head_node_security_groups=self.head_node.networking.security_groups,
+            queues=self.scheduling.queues,
         )
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(

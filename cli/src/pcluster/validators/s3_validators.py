@@ -98,7 +98,14 @@ class S3BucketUriValidator(Validator):
                 bucket = get_bucket_name_from_s3_url(url)
                 AWSApi.instance().s3.head_bucket(bucket_name=bucket)
             except AWSClientError as e:
-                self._add_failure(str(e), FailureLevel.ERROR)
+                if e.error_code == "403":
+                    self._add_failure(
+                        f"{str(e)}. Please attach a policy that allows the s3:ListBucket action for the resource "
+                        f"<ARN of bucket {bucket}> to the role or instance profile performing this operation.",
+                        FailureLevel.ERROR,
+                    )
+                else:
+                    self._add_failure(str(e), FailureLevel.ERROR)
         else:
             self._add_failure(f"The value '{url}' is not a valid S3 URI.", FailureLevel.ERROR)
 
