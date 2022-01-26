@@ -633,7 +633,6 @@ class TestCluster:
                     force=force,
                 )
 
-    @pytest.mark.skip
     @pytest.mark.parametrize("template_url", ["s3://bucketname/bucketkey", "https://test"])
     def test_render_and_upload_scheduler_plugin_template(self, mocker, cluster, template_url):
         scheduler_plugin_template = "Test"
@@ -670,7 +669,6 @@ class TestCluster:
             scheduler_plugin_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
         )
 
-    @pytest.mark.skip
     @pytest.mark.parametrize(
         "support_update, instance_type, match, update_changes",
         [
