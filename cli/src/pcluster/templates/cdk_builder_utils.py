@@ -509,12 +509,29 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     "ec2:DescribeInstanceAttribute",
                     "ec2:DescribeInstances",
                     "ec2:DescribeInstanceStatus",
-                    "ec2:CreateTags",
                     "ec2:DescribeVolumes",
-                    "ec2:AttachVolume",
                 ],
                 effect=iam.Effect.ALLOW,
                 resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="Ec2TagsAndVolumes",
+                actions=["ec2:AttachVolume", "ec2:CreateTags"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="ec2",
+                        resource="instance/*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    ),
+                    self._format_arn(
+                        service="ec2",
+                        resource="volume/*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    ),
+                ],
             ),
             iam.PolicyStatement(
                 sid="S3GetObj",
