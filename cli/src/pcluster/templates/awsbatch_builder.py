@@ -364,18 +364,13 @@ class AwsBatchConstruct(Construct):
                                     self._format_arn(service="s3", resource=self.bucket.name, region="", account=""),
                                 ],
                             ),
+                            self._get_awsbatch_cli_read_policy(),
+                            self._get_awsbatch_cli_write_policy(),
                             iam.PolicyStatement(
+                                # additional policies to interact with AWS Batch resources created within the cluster
+                                sid="BatchResourcesReadPermissions",
                                 effect=iam.Effect.ALLOW,
-                                actions=[
-                                    "batch:DescribeJobQueues",
-                                    "batch:TerminateJob",
-                                    "batch:DescribeJobs",
-                                    "batch:CancelJob",
-                                    "batch:DescribeJobDefinitions",
-                                    "batch:ListJobs",
-                                    "batch:DescribeComputeEnvironments",
-                                    "ec2:DescribeInstances",
-                                ],
+                                actions=["batch:CancelJob", "batch:DescribeJobDefinitions"],
                                 resources=["*"],
                             ),
                         ],
@@ -722,70 +717,79 @@ class AwsBatchConstruct(Construct):
                             )
                         ],
                     ),
-                    iam.PolicyStatement(
-                        sid="BatchReadPermissions",
-                        actions=[
-                            "batch:DescribeJobQueues",  # required by awsbqueues command
-                            "batch:DescribeJobs",  # required by awsbstat, awsbkill and awsbout
-                            "batch:ListJobs",  # required by awsbstat
-                            "batch:DescribeComputeEnvironments",  # required by awsbhosts
-                            "ec2:DescribeInstances",  # required by awsbhosts
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="BatchWritePermissions",
-                        actions=[
-                            "batch:SubmitJob",  # required by awsbsub command
-                            "batch:TerminateJob",  # required by awsbkill
-                            "logs:GetLogEvents",  # required by awsbout
-                            "ecs:ListContainerInstances",  # required by awsbhosts
-                            "ecs:DescribeContainerInstances",  # required by awsbhosts
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="logs",
-                                account=self._stack_account,
-                                region=self._stack_region,
-                                resource="log-group:/aws/batch/job:log-stream:PclusterJobDefinition*",
-                            ),
-                            self._format_arn(
-                                service="ecs",
-                                account=self._stack_account,
-                                region=self._stack_region,
-                                resource="container-instance/AWSBatch-PclusterComputeEnviron*",
-                            ),
-                            self._format_arn(
-                                service="ecs",
-                                account=self._stack_account,
-                                region=self._stack_region,
-                                resource="cluster/AWSBatch-Pcluster*",
-                            ),
-                            self._format_arn(
-                                service="batch",
-                                account=self._stack_account,
-                                region=self._stack_region,
-                                resource="job-queue/PclusterJobQueue*",
-                            ),
-                            self._format_arn(
-                                service="batch",
-                                account=self._stack_account,
-                                region=self._stack_region,
-                                resource="job-definition/PclusterJobDefinition*:*",
-                            ),
-                            self._format_arn(
-                                service="batch",
-                                account=self._stack_account,
-                                region=self._stack_region,
-                                resource="job/*",
-                            ),
-                        ],
-                    ),
+                    self._get_awsbatch_cli_read_policy(),
+                    self._get_awsbatch_cli_write_policy(),
                 ]
             ),
             roles=[self.head_node_instance_role.ref],
+        )
+
+    @staticmethod
+    def _get_awsbatch_cli_read_policy():
+        """Return list of READ policies required by ParallelCluster AWS Batch CLI."""
+        return iam.PolicyStatement(
+            sid="BatchCliReadPermissions",
+            actions=[
+                "batch:DescribeJobQueues",  # required by awsbqueues command
+                "batch:DescribeJobs",  # required by awsbstat, awsbkill and awsbout
+                "batch:ListJobs",  # required by awsbstat
+                "batch:DescribeComputeEnvironments",  # required by awsbhosts
+                "ec2:DescribeInstances",  # required by awsbhosts
+            ],
+            effect=iam.Effect.ALLOW,
+            resources=["*"],
+        )
+
+    def _get_awsbatch_cli_write_policy(self):
+        """Return list of WRITE policies required by ParallelCluster AWS Batch CLI."""
+        return iam.PolicyStatement(
+            sid="BatchCliWritePermissions",
+            actions=[
+                "batch:SubmitJob",  # required by awsbsub command
+                "batch:TerminateJob",  # required by awsbkill
+                "logs:GetLogEvents",  # required by awsbout
+                "ecs:ListContainerInstances",  # required by awsbhosts
+                "ecs:DescribeContainerInstances",  # required by awsbhosts
+            ],
+            effect=iam.Effect.ALLOW,
+            resources=[
+                self._format_arn(
+                    service="logs",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="log-group:/aws/batch/job:log-stream:PclusterJobDefinition*",
+                ),
+                self._format_arn(
+                    service="ecs",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="container-instance/AWSBatch-PclusterComputeEnviron*",
+                ),
+                self._format_arn(
+                    service="ecs",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="cluster/AWSBatch-Pcluster*",
+                ),
+                self._format_arn(
+                    service="batch",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="job-queue/PclusterJobQueue*",
+                ),
+                self._format_arn(
+                    service="batch",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="job-definition/PclusterJobDefinition*:*",
+                ),
+                self._format_arn(
+                    service="batch",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="job/*",
+                ),
+            ],
         )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
