@@ -221,7 +221,6 @@ class AwsBatchConstruct(Construct):
             "PclusterJobRole",
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
-                self._format_arn(service="iam", account="aws", region="", resource="policy/AmazonS3ReadOnlyAccess"),
                 self._format_arn(
                     service="iam",
                     account="aws",
@@ -232,13 +231,16 @@ class AwsBatchConstruct(Construct):
             assume_role_policy_document=get_assume_role_policy_document("ecs-tasks.amazonaws.com"),
             policies=[
                 iam.CfnRole.PolicyProperty(
-                    policy_name="s3PutObject",
+                    policy_name="s3Read",
                     policy_document=iam.PolicyDocument(
                         statements=[
                             iam.PolicyStatement(
-                                actions=["s3:PutObject"],
+                                actions=["s3:GetObject", "s3:ListBucket"],
                                 effect=iam.Effect.ALLOW,
                                 resources=[
+                                    self._format_arn(
+                                        service="s3", resource=f"{self.bucket.name}", region="", account=""
+                                    ),
                                     self._format_arn(
                                         service="s3",
                                         resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
@@ -246,7 +248,7 @@ class AwsBatchConstruct(Construct):
                                         account="",
                                     ),
                                 ],
-                                sid="S3PutObjectPolicy",
+                                sid="S3ReadPolicy",
                             ),
                         ],
                     ),
@@ -750,6 +752,7 @@ class AwsBatchConstruct(Construct):
                 "logs:GetLogEvents",  # required by awsbout
                 "ecs:ListContainerInstances",  # required by awsbhosts
                 "ecs:DescribeContainerInstances",  # required by awsbhosts
+                "s3:PutObject",  # required by awsbsub
             ],
             effect=iam.Effect.ALLOW,
             resources=[
@@ -788,6 +791,12 @@ class AwsBatchConstruct(Construct):
                     account=self._stack_account,
                     region=self._stack_region,
                     resource="job/*",
+                ),
+                self._format_arn(
+                    service="s3",
+                    account="",
+                    region="",
+                    resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
                 ),
             ],
         )
