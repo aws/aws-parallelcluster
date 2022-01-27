@@ -372,10 +372,10 @@ def _test_pcluster_get_cluster_log_events(cluster):
             assert_that(events).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).matches(first_event["message"])
+            assert_that(events[0]["message"]).is_equal_to(first_event["message"])
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_match(first_event["message"])
+            assert_that(events[0]["message"]).is_not_equal_to(first_event["message"])
 
 
 def _test_pcluster_get_cluster_stack_events(cluster):
