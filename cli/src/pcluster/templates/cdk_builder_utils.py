@@ -549,7 +549,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             iam.PolicyStatement(
                 sid="ResourcesS3Bucket",
                 effect=iam.Effect.ALLOW,
-                actions=["s3:*"],
+                actions=["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketLocation", "s3:ListBucket"],
                 resources=[
                     self._format_arn(service="s3", resource=self._cluster_bucket.name, region="", account=""),
                     self._format_arn(
