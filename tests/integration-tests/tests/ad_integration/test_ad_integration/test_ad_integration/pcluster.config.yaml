@@ -47,7 +47,6 @@ DirectoryService:
   GenerateSshKeysForUsers: false
   AdditionalSssdConfigs:
     debug_level: "0x1ff"
-    enumerate: True
     {% if directory_protocol == "ldap" %}
     ldap_auth_disable_tls_never_use_in_production: True
     {% endif %}
