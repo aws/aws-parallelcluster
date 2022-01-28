@@ -344,7 +344,6 @@ def _test_pcluster_get_cluster_log_events(cluster):
     logging.info("Testing that pcluster get-cluster-log-events is working as expected")
     cluster_info = cluster.describe_cluster()
     cfn_init_log_stream = instance_stream_name(cluster_info["headNode"], "cfn-init")
-    cloud_init_debug_msg = "[DEBUG] CloudFormation client initialized with endpoint"
 
     # Get the first event to establish time boundary for testing
     initial_events = cluster.get_log_events(cfn_init_log_stream, limit=1, start_from_head=True)
@@ -373,10 +372,10 @@ def _test_pcluster_get_cluster_log_events(cluster):
             assert_that(events).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).contains(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).is_equal_to(first_event["message"])
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_contain(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).is_not_equal_to(first_event["message"])
 
 
 def _test_pcluster_get_cluster_stack_events(cluster):
