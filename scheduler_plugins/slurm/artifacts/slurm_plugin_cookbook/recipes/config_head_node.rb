@@ -96,6 +96,26 @@ template "#{node['slurm']['install_dir']}/etc/slurm.csh" do
   mode '0755'
 end
 
+template "#{node['pcluster']['local_dir']}/scripts/slurm/slurm_fleet_status_manager" do
+  source 'slurm/fleet_status_manager_program.erb'
+  owner node['slurm']['user']
+  group node['slurm']['group']
+  mode '0744'
+end
+
+file "/var/log/parallelcluster/slurm_fleet_status_manager.log" do
+  owner node['plugin']['fleet_mgt_user']
+  group node['plugin']['fleet_mgt_user']
+  mode '0644'
+end
+
+template "#{node['pcluster']['local_dir']}/parallelcluster_slurm_fleet_status_manager.conf" do
+  source 'slurm/parallelcluster_slurm_fleet_status_manager.conf.erb'
+  owner node['plugin']['user']
+  group node['plugin']['user']
+  mode '0644'
+end
+
 template "#{node['pcluster']['local_dir']}/scripts/slurm/slurm_resume" do
   source 'slurm/resume_program.erb'
   owner node['slurm']['user']

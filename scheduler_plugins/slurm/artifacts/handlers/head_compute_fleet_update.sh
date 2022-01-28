@@ -12,11 +12,6 @@
 
 set -e
 
-# FIXME: temporary workaround
-PLUGIN_TABLE=$(jq -r .Outputs.DynamoDBTable ${PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_OUTPUTS})
-STATUS=$(jq -r .status ${PCLUSTER_COMPUTEFLEET_STATUS})
-LAST_UPDATED_TIME=$(jq -r .lastStatusUpdatedTime ${PCLUSTER_COMPUTEFLEET_STATUS})
-aws dynamodb put-item --table-name "${PLUGIN_TABLE}"\
-    --item "{\"Id\": {\"S\": \"COMPUTE_FLEET\"}, \"Status\": {\"S\": \"${STATUS}\"}, \"LastUpdatedTime\": {\"S\": \"${LAST_UPDATED_TIME}\"}}"\
-    --region ${PCLUSTER_AWS_REGION}
-sleep 120
+sudo "${PCLUSTER_PYTHON_ROOT}/supervisorctl" -c "${PCLUSTER_LOCAL_SCHEDULER_PLUGIN_DIR}/supervisord.conf" stop clustermgtd
+sudo "${PCLUSTER_LOCAL_SCHEDULER_PLUGIN_DIR}/scripts/slurm/slurm_fleet_status_manager" -cf "${PCLUSTER_COMPUTEFLEET_STATUS}"
+sudo "${PCLUSTER_PYTHON_ROOT}/supervisorctl" -c "${PCLUSTER_LOCAL_SCHEDULER_PLUGIN_DIR}/supervisord.conf" start clustermgtd
