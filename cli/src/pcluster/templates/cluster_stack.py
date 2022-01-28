@@ -77,6 +77,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_default_instance_tags,
     get_default_volume_tags,
     get_directory_service_dna_json_for_head_node,
+    get_lambda_log_group_prefix,
     get_log_group_deletion_policy,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
@@ -363,7 +364,7 @@ class ClusterCdkStack(Stack):
                             service="logs",
                             account=self.account,
                             region=self.region,
-                            resource="log-group:/aws/lambda/pcluster-CleanupResources-*",
+                            resource=get_lambda_log_group_prefix("CleanupResources-*"),
                         )
                     ),
                 ],

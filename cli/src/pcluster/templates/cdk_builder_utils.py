@@ -49,6 +49,8 @@ from pcluster.utils import (
     policy_name_to_arn,
 )
 
+PCLUSTER_LAMBDA_PREFIX = "pcluster-"
+
 
 def get_block_device_mappings(local_storage: LocalStorage, os: str):
     """Return block device mapping."""
@@ -733,6 +735,11 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         ]
 
 
+def get_lambda_log_group_prefix(function_id: str):
+    """Return the prefix of the log group associated to Lambda functions created using PclusterLambdaConstruct."""
+    return f"log-group:/aws/lambda/{PCLUSTER_LAMBDA_PREFIX}{function_id}"
+
+
 class PclusterLambdaConstruct(Construct):
     """Create a Lambda function with some pre-filled fields."""
 
@@ -749,7 +756,7 @@ class PclusterLambdaConstruct(Construct):
     ):
         super().__init__(scope, id)
 
-        function_name = f"pcluster-{function_id}-{self._stack_unique_id()}"
+        function_name = f"{PCLUSTER_LAMBDA_PREFIX}{function_id}-{self._stack_unique_id()}"
 
         self.log_group = logs.CfnLogGroup(
             scope,
