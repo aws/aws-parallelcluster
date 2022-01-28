@@ -48,7 +48,7 @@ class TestComputeFleetStatusManager:
             get_item_mock = mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", return_value=get_item_response)
         status, _ = compute_fleet_status_manager.get_status_with_last_updated_time(fallback)
         assert_that(status).is_equal_to(expected_status)
-        get_item_mock.assert_called_with("parallelcluster-slurm-cluster-name", {"Id": "COMPUTE_FLEET"})
+        get_item_mock.assert_called_with("parallelcluster-cluster-name", {"Id": "COMPUTE_FLEET"})
 
     @pytest.mark.parametrize(
         "put_item_response, expected_exception",
