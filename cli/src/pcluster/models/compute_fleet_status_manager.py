@@ -19,7 +19,7 @@ from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.constants import PCLUSTER_DYNAMODB_PREFIX, PCLUSTER_SLURM_DYNAMODB_PREFIX
+from pcluster.constants import PCLUSTER_DYNAMODB_PREFIX
 
 LOGGER = logging.getLogger(__name__)
 
@@ -148,10 +148,8 @@ class ComputeFleetStatusManager(metaclass=ABCMeta):
         """Return compute fleet status manager based on version and plugin."""
         if packaging.version.parse(version) < packaging.version.parse("3.2.0a0") and scheduler != "plugin":
             return PlainTextComputeFleetStatusManager(cluster_name)
-        elif scheduler == "plugin":
-            return JsonComputeFleetStatusManager(cluster_name)
         else:
-            return PlainTextComputeFleetStatusManager(cluster_name)
+            return JsonComputeFleetStatusManager(cluster_name)
 
     @staticmethod
     def _timeout_expired(start_time, timeout):
@@ -243,7 +241,7 @@ class PlainTextComputeFleetStatusManager(ComputeFleetStatusManager):
     LAST_UPDATED_TIME_ATTRIBUTE = "LastUpdatedTime"
 
     def __init__(self, cluster_name):
-        super().__init__(PCLUSTER_SLURM_DYNAMODB_PREFIX + cluster_name)
+        super().__init__(PCLUSTER_DYNAMODB_PREFIX + cluster_name)
 
     def get_status_with_last_updated_time(
         self, status_fallback=ComputeFleetStatus.UNKNOWN, last_updated_time_fallback=None

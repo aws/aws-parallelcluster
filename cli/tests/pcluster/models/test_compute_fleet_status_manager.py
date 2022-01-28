@@ -173,8 +173,8 @@ class TestComputeFleetStatusManager:
             (
                 "3.2.0",
                 "slurm",
-                PlainTextComputeFleetStatusManager,
-            ),  # TODO to be changed after slurm refactoring
+                JsonComputeFleetStatusManager,
+            ),
             (
                 "3.2.0",
                 "plugin",
