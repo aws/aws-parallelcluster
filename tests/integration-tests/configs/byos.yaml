@@ -1,12 +1,37 @@
 {%- import 'common.jinja2' as common with context -%}
 ---
 test-suites:
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
+      dimensions:
+        - regions: [ "ap-northeast-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "ubuntu1804" ]
+          schedulers: [ "slurm" ]
   schedulers:
     test_slurm.py::test_slurm:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_scaling:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_slurm.py::test_error_handling:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_protected_mode:
+      dimensions:
+        - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
           schedulers: ["slurm"]
   update:
     test_update.py::test_update_slurm:
