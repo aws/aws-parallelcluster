@@ -33,6 +33,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_cloud_watch_logs_retention_days,
     get_custom_tags,
     get_default_instance_tags,
+    get_lambda_log_group_prefix,
     get_log_group_deletion_policy,
     get_mount_dirs_by_type,
     get_queue_security_groups_full,
@@ -595,7 +596,7 @@ class AwsBatchConstruct(Construct):
                             service="logs",
                             account=self._stack_account,
                             region=self._stack_region,
-                            resource="log-group:/aws/lambda/pcluster-ManageDockerImages-*",
+                            resource=get_lambda_log_group_prefix("ManageDockerImages-*"),
                         )
                     ),
                 ],
@@ -658,7 +659,7 @@ class AwsBatchConstruct(Construct):
                             service="logs",
                             account=self._stack_account,
                             region=self._stack_region,
-                            resource="log-group:/aws/lambda/pcluster-BuildNotification-*",
+                            resource=get_lambda_log_group_prefix("BuildNotification-*"),
                         )
                     )
                 ],
