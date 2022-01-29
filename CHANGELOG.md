@@ -36,6 +36,7 @@ CHANGELOG
 - Fix `ecs:ListContainerInstances` permission in `BatchUserRole`.
 - Fix `RootVolume` schema for the `HeadNode` by raising an error if unsupported `KmsKeyId` is specified.
 - Fix `EfaSecurityGroupValidator`. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
+- Fix FSx metrics not displayed in Cloudwatch Dashboard.
 
 3.0.3
 -----
