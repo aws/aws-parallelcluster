@@ -143,7 +143,7 @@ Issues
 
 Please open a GitHub issue for any feedback or issues:
 https://github.com/aws/aws-parallelcluster/issues.  There is also an active AWS
-HPC forum which may be helpful: https://forums.aws.amazon.com/forum.jspa?forumID=192.
+HPC forum which may be helpful: https://repost.aws/tags/TAbl-DsTlyQMe0T2i-d5Rr8g/aws-parallel-cluster.
 
 Changes
 -------
