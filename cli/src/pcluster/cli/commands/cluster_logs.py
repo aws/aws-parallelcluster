@@ -88,7 +88,7 @@ class _FiltersArg:
 
     def __init__(self, accepted_filters: list):
         filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
-        self._pattern = re.compile(fr"^({filter_regex})(\s+{filter_regex})*$")
+        self._pattern = re.compile(rf"^({filter_regex})(\s+{filter_regex})*$")
 
     def __call__(self, value):
         if not self._pattern.match(value):
