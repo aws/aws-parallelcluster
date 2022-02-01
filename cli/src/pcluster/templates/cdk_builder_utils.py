@@ -49,6 +49,8 @@ from pcluster.utils import (
     policy_name_to_arn,
 )
 
+PCLUSTER_LAMBDA_PREFIX = "pcluster-"
+
 
 def get_block_device_mappings(local_storage: LocalStorage, os: str):
     """Return block device mapping."""
@@ -179,14 +181,22 @@ def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedSto
     return option_list[0]
 
 
+def dict_to_cfn_tags(tags: dict):
+    """Convert a dictionary to a list of CfnTag."""
+    return [CfnTag(key=key, value=value) for key, value in tags.items()] if tags else []
+
+
+def get_cluster_tags(stack_name: str, raw_dict: bool = False):
+    """Return a list of cluster tags to be used for all the resources."""
+    tags = {PCLUSTER_CLUSTER_NAME_TAG: stack_name}
+    return tags if raw_dict else dict_to_cfn_tags(tags)
+
+
 def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     """Return a list of tags set by the user."""
     cluster_tags = config.get_cluster_tags()
-    if raw_dict:
-        custom_tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
-    else:
-        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in cluster_tags] if cluster_tags else []
-    return custom_tags
+    tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_default_instance_tags(
@@ -199,8 +209,8 @@ def get_default_instance_tags(
 ):
     """Return a list of default tags to be used for instances."""
     tags = {
+        **get_cluster_tags(stack_name, raw_dict=True),
         "Name": node_type,
-        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
         "parallelcluster:attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
             BaseOS=config.image.os,
@@ -220,16 +230,16 @@ def get_default_instance_tags(
     }
     if config.is_intel_hpc_platform_enabled:
         tags["parallelcluster:intel-hpc"] = "enable_intel_hpc_platform=true"
-    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = False):
     """Return a list of default tags to be used for volumes."""
     tags = {
-        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
+        **get_cluster_tags(stack_name, raw_dict=True),
         PCLUSTER_NODE_TYPE_TAG: node_type,
     }
-    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_assume_role_policy_document(service: str):
@@ -374,8 +384,6 @@ class NodeIamResourcesBase(Construct):
         additional_iam_policies = set(node.iam.additional_iam_policy_arns)
         if self._config.monitoring.logs.cloud_watch.enabled:
             additional_iam_policies.add(policy_name_to_arn("CloudWatchAgentServerPolicy"))
-        if self._config.scheduling.scheduler == "awsbatch":
-            additional_iam_policies.add(policy_name_to_arn("AWSBatchFullAccess"))
         return iam.CfnRole(
             Stack.of(self),
             name,
@@ -503,12 +511,29 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     "ec2:DescribeInstanceAttribute",
                     "ec2:DescribeInstances",
                     "ec2:DescribeInstanceStatus",
-                    "ec2:CreateTags",
                     "ec2:DescribeVolumes",
-                    "ec2:AttachVolume",
                 ],
                 effect=iam.Effect.ALLOW,
                 resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="Ec2TagsAndVolumes",
+                actions=["ec2:AttachVolume", "ec2:CreateTags"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="ec2",
+                        resource="instance/*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    ),
+                    self._format_arn(
+                        service="ec2",
+                        resource="volume/*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    ),
+                ],
             ),
             iam.PolicyStatement(
                 sid="S3GetObj",
@@ -526,7 +551,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             iam.PolicyStatement(
                 sid="ResourcesS3Bucket",
                 effect=iam.Effect.ALLOW,
-                actions=["s3:*"],
+                actions=["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketLocation", "s3:ListBucket"],
                 resources=[
                     self._format_arn(service="s3", resource=self._cluster_bucket.name, region="", account=""),
                     self._format_arn(
@@ -710,6 +735,11 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         ]
 
 
+def get_lambda_log_group_prefix(function_id: str):
+    """Return the prefix of the log group associated to Lambda functions created using PclusterLambdaConstruct."""
+    return f"log-group:/aws/lambda/{PCLUSTER_LAMBDA_PREFIX}{function_id}"
+
+
 class PclusterLambdaConstruct(Construct):
     """Create a Lambda function with some pre-filled fields."""
 
@@ -726,7 +756,7 @@ class PclusterLambdaConstruct(Construct):
     ):
         super().__init__(scope, id)
 
-        function_name = f"pcluster-{function_id}-{self._stack_unique_id()}"
+        function_name = f"{PCLUSTER_LAMBDA_PREFIX}{function_id}-{self._stack_unique_id()}"
 
         self.log_group = logs.CfnLogGroup(
             scope,
