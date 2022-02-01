@@ -19,6 +19,7 @@ import os
 import random
 import re
 from itertools import product
+from functools import partial
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
@@ -68,7 +69,7 @@ from tests.common.utils import (
     get_installed_parallelcluster_version,
     retrieve_pcluster_ami_without_standard_naming,
 )
-
+from tests.common.schedulers_common import get_scheduler_commands
 
 def pytest_addoption(parser):
     """Register argparse-style options and ini-style config values, called once at the beginning of a test run."""
@@ -489,7 +490,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks, scheduler_plugin_configuration):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -515,7 +516,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks)
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         config_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(config_file_path, request, region, benchmarks)
+            inject_additional_config_settings(config_file_path, request, region, benchmarks, scheduler_plugin_configuration)
         else:
             inject_additional_image_configs_settings(config_file_path, request)
         return config_file_path
@@ -547,7 +548,9 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
-def inject_additional_config_settings(cluster_config, request, region, benchmarks):  # noqa C901
+def inject_additional_config_settings(
+        cluster_config, request, region, scheduler_plugin_configuration=None
+):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -633,8 +636,26 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
                     # Use larger max count to support performance tests if not specified explicitly.
                     compute_resource["MaxCount"] = 150
 
+    configure_scheduler_plugin(scheduler_plugin_configuration, config_content)
+
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
+
+
+def configure_scheduler_plugin(scheduler_plugin_configuration, config_content):
+    if scheduler_plugin_configuration and not dict_has_nested_key(
+        config_content, ("Scheduling", "SchedulerSettings", "SchedulerDefinition")
+    ):
+        dict_add_nested_key(
+            config_content,
+            scheduler_plugin_configuration["scheduler-definition"],
+            ("Scheduling", "SchedulerSettings", "SchedulerDefinition"),
+        )
+        dict_add_nested_key(
+            config_content,
+            scheduler_plugin_configuration["requires-sudo"],
+            ("Scheduling", "SchedulerSettings", "GrantSudoPrivileges"),
+        )
 
 
 def _add_policy_for_pre_post_install(node_config, custom_option, request, region):
@@ -668,8 +689,16 @@ def _get_default_template_values(vpc_stack, request):
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
-    scheduler = request.node.funcargs.get("scheduler")
-    default_values["imds_secured"] = scheduler in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    if default_values.get("scheduler") in request.config.getoption("tests_config", default={}).get(
+        "scheduler-plugins", {}
+    ):
+        default_values["scheduler"] = "plugin"
+    default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    default_values["scheduler_prefix"] = {
+        "slurm": "Slurm",
+        "awsbatch": "AwsBatch",
+        "plugin": "Scheduler",
+    }.get(default_values.get("scheduler"))
 
     return default_values
 
@@ -1253,3 +1282,35 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
         logging.info("Finished benchmarks for %s", function_name)
 
     yield _run_benchmarks
+
+
+@pytest.fixture()
+def scheduler_plugin_configuration(request, scheduler):
+    return request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
+
+
+@pytest.fixture()
+def test_custom_config(request):
+    feature, test_id = request.node.nodeid.split("/", 1)
+    test_id = test_id.split("[", 1)[0]
+    tests_config = request.config.getoption("tests_config")
+    if tests_config:
+        return tests_config["test-suites"][feature][test_id].get("test-config")
+    return None
+
+
+@pytest.fixture()
+def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
+    if scheduler_plugin_configuration:
+        import importlib
+
+        scheduler_commands = scheduler_plugin_configuration["scheduler-commands"]
+        logging.info("Loading scheduler commands from %s", scheduler_commands)
+        try:
+            module_name, class_name = scheduler_commands.rsplit(".", 1)
+            return getattr(importlib.import_module(module_name), class_name)
+        except Exception as e:
+            logging.error("Failed when loading scheduler commands from %s: %s", scheduler_commands, e)
+            raise
+    else:
+        return partial(get_scheduler_commands, scheduler=scheduler)
