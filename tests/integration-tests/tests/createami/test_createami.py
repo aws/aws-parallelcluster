@@ -416,7 +416,7 @@ def test_build_image_wrong_pcluster_version(
     _test_build_image_failed(image)
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
-    assert_that(log_data).matches(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
+    assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
 def _test_build_image_failed(image):

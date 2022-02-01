@@ -182,7 +182,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Effect: Allow
-                Resource: !Sub "arn:${AWS::Partition}:logs:*:*:*"
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
                 Sid: CloudWatchLogsPolicy
             Version: '2012-10-17'
           PolicyName: LambdaPolicy

@@ -205,7 +205,7 @@ def get_arn_partition(region):
         return "aws"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def enable_vpc_endpoints(vpc_stack, region, cfn_stacks_factory, request):
     prefix = "cn." if region.startswith("cn-") else ""
     # Note that the endpoints service name in China is irregular.
