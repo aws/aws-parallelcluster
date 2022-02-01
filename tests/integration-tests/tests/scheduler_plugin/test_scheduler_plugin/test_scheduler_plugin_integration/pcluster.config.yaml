@@ -9,6 +9,7 @@ HeadNode:
 Scheduling:
   Scheduler: plugin
   SchedulerSettings:
+    GrantSudoPrivileges: true
     SchedulerDefinition:
       PluginInterfaceVersion: "1.0"
       Events:

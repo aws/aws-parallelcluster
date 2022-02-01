@@ -118,6 +118,7 @@ from pcluster.validators.s3_validators import (
     UrlValidator,
 )
 from pcluster.validators.scheduler_plugin_validators import (
+    GrantSudoPrivilegesValidator,
     SchedulerPluginOsArchitectureValidator,
     SchedulerPluginRegionValidator,
     SudoPrivilegesValidator,
@@ -1881,6 +1882,12 @@ class SchedulerPluginSettings(Resource):
             requires_sudo_privileges=self.scheduler_definition.requirements.requires_sudo_privileges
             if self.scheduler_definition.requirements
             else None,
+        )
+
+        self._register_validator(
+            GrantSudoPrivilegesValidator,
+            grant_sudo_privileges=self.grant_sudo_privileges,
+            system_users=get_attr(self.scheduler_definition, "system_users"),
         )
 
 
