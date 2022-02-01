@@ -28,8 +28,10 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+      {% if scheduler != "awsbatch" %}
       Iam:
         InstanceRole: {{ ec2_iam_role }}
+      {% endif %}
 SharedStorage:
   - MountDir: {{ mount_dir }}
     StorageType: Ebs
