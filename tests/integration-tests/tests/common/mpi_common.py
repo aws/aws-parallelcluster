@@ -4,7 +4,6 @@ import pathlib
 from assertpy import assert_that
 
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
-from tests.common.schedulers_common import get_scheduler_commands
 
 MPI_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/mpi/"
 
@@ -23,6 +22,7 @@ def _test_mpi(
     remote_command_executor,
     slots_per_instance,
     scheduler,
+    scheduler_commands_factory,
     region=None,
     stack_name=None,
     scaledown_idletime=None,
@@ -33,7 +33,7 @@ def _test_mpi(
     mpi_module = "openmpi"
     # Compile mpi script
     compile_mpi_ring(mpi_module, remote_command_executor)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     if partition:
         # submit script using additional files

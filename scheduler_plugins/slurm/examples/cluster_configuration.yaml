@@ -3,9 +3,9 @@ Image:
 HeadNode:
   InstanceType: c5.2xlarge
   Ssh:
-    KeyName: <KEY_NAME>
+    KeyName: fdm-jenkins
   Networking:
-    SubnetId: <HEAD_SUBNET>
+    SubnetId: subnet-054c929102b5e4c47
 Scheduling:
   Scheduler: plugin
   SchedulerSettings:
@@ -20,7 +20,7 @@ Scheduling:
       CapacityType: ONDEMAND
       Networking:
         SubnetIds:
-          - <COMPUTE_SUBNET>
+          - subnet-0a94506a608268ef3
       ComputeResources:
         - Name: computeresource1
           InstanceType: c5.xlarge
@@ -29,7 +29,10 @@ Scheduling:
       CapacityType: SPOT
       Networking:
         SubnetIds:
-          - <COMPUTE_SUBNET>
+          - subnet-0a94506a608268ef3
       ComputeResources:
         - Name: computeresource1
           InstanceType: c5.xlarge
+DevSettings:
+  AmiSearchFilters:
+    Owner: '447714826191'

@@ -526,6 +526,7 @@ def _check_ssh_key_generation(user, scheduler_commands, generate_ssh_keys_for_us
 def test_ad_integration(
     region,
     scheduler,
+    scheduler_commands_factory,
     instance,
     os,
     pcluster_config_reader,
@@ -601,7 +602,7 @@ def test_ad_integration(
         additional_files={str(test_datadir / metric_publisher_script): remote_metric_publisher_script_path},
     )
 
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands_factory = scheduler_commands_factory(remote_command_executor)
     assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
     users = []
     for user_num in range(1, NUM_USERS_TO_TEST + 1):

@@ -36,14 +36,14 @@ that lists all the available options:
 
 ```
 python -m test_runner --help
-usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
+usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--use-default-iam-credentials] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
                       [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
-                      [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
-                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL]
-                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
-                      [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks]
-                      [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
-                      [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
+                      [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR] [--custom-node-url CUSTOM_NODE_URL]
+                      [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL]
+                      [--pre-install PRE_INSTALL] [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF]
+                      [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
+                      [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--public-ecr-image-uri PUBLIC_ECR_IMAGE_URI] [--api-uri API_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER]
+                      [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME]
 
 Run integration tests suite.
 
@@ -55,18 +55,19 @@ optional arguments:
                         Tests parallelism for every region. (default: None)
   --sequential          Run tests in a single process. When not specified tests will spawn a process for each region under test. (default: False)
   --credential CREDENTIAL
-                        STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times.
-                        <region> represents the region credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role
-                        to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-
-                        assume,externalId) (default: None)
+                        STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times. <region> represents the region
+                        credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role to assume is defined, <externalId> is the id to use when
+                        assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId) (default: None)
+  --use-default-iam-credentials
+                        Use the default IAM creds to run pcluster CLI commands. Skips the creation of pcluster CLI IAM role. (default: False)
   --retry-on-failures   Retry once more the failed tests after a delay of 60 seconds. (default: False)
   --tests-root-dir TESTS_ROOT_DIR
                         Root dir where integration tests are defined (default: ./tests)
 
 Test dimensions:
   -c TESTS_CONFIG, --tests-config TESTS_CONFIG
-                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss,
-                        schedulers. Refer to the docs for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
+                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. Refer to the docs
+                        for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
   -i [INSTANCES [INSTANCES ...]], --instances [INSTANCES [INSTANCES ...]]
                         AWS instances under test. Ignored when tests-config is used. (default: [])
   -o [OSS [OSS ...]], --oss [OSS [OSS ...]]
@@ -81,8 +82,8 @@ Test dimensions:
 Test reports:
   --show-output         Do not redirect tests stdout to file. Not recommended when running in multiple regions. (default: None)
   --reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]
-                        create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes
-                        tests metrics into CloudWatch (default: [])
+                        create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into
+                        CloudWatch (default: [])
   --cw-region CW_REGION
                         Region where to publish CloudWatch metrics (default: us-east-1)
   --cw-namespace CW_NAMESPACE
@@ -107,6 +108,8 @@ Custom packages and templates:
                         URL to a pre install script (default: None)
   --post-install POST_INSTALL
                         URL to a post install script (default: None)
+  --instance-types-data INSTANCE_TYPES_DATA
+                        Additional information about instance types used in the tests. The format is a JSON map instance_type -> data, where data must respect the same structure returned by ec2 describe-instance-types (default: None)
 
 AMI selection parameters:
   --custom-ami CUSTOM_AMI
@@ -123,6 +126,15 @@ AMI selection parameters:
 Benchmarks:
   --benchmarks          Run benchmarks tests. Benchmarks tests will be run together with functionality tests. (default: False)
 
+API options:
+  --api-definition-s3-uri API_DEFINITION_S3_URI
+                        URI of the Docker image for the Lambda of the ParallelCluster API (default: None)
+  --api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI
+                        URI of the CloudFormation template for the ParallelCluster API (default: None)
+  --public-ecr-image-uri PUBLIC_ECR_IMAGE_URI
+                        S3 URI of the ParallelCluster API spec (default: None)
+  --api-uri API_URI     URI of an existing ParallelCluster API (default: None)
+
 Debugging/Development options:
   --vpc-stack VPC_STACK
                         Name of an existing vpc stack. (default: None)
@@ -136,10 +148,14 @@ Debugging/Development options:
 
   --no-delete           Don't delete stacks after tests are complete. (default: False)
   --delete-logs-on-success
-                        delete CloudWatch logs when a test success (default: True)
+                        delete CloudWatch logs when a test succeeds (default: False)
   --stackname-suffix STACKNAME_SUFFIX
                         set a suffix in the integration tests stack names (default: )
   --dry-run             Only show the list of tests that would run with specified options. (default: False)
+  --directory-stack-name DIRECTORY_STACK_NAME
+                        Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
+  --ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME
+                        Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
 ```
 
 Here is an example of tests submission:
@@ -620,6 +636,8 @@ The idea is to create a single VPC per region and have multiple subnets that all
 At the moment three subnets are generated with the following configuration:
 
 ```python
+# Subnets visual representation:
+# http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
 public_subnet = SubnetConfig(
     name="Public",
     cidr="192.168.32.0/19",  # 8190 IPs
@@ -644,10 +662,18 @@ private_subnet_different_cidr = SubnetConfig(
     availability_zone=availability_zones[1],
     default_gateway=Gateways.NAT_GATEWAY,
 )
+no_internet_subnet = SubnetConfig(
+    name="NoInternet",
+    cidr="192.168.16.0/20",  # 4094 IPs
+    map_public_ip_on_launch=False,
+    has_nat_gateway=False,
+    availability_zone=availability_zones[0],
+    default_gateway=Gateways.NONE,
+)
 vpc_config = VPCConfig(
     cidr="192.168.0.0/17",
     additional_cidr_blocks=["192.168.128.0/17"],
-    subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
+    subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
 )
 ```
 
@@ -861,3 +887,79 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 * `IdentityFile` option in `ssh/config` will trigger a `str has no attribute extend` bug in the `fabric` package. 
 Please remove `IdentityFile` option from `ssh/config` before running the testing framework
+
+
+## Testing a scheduler plugin
+
+In order to run tests for a scheduler plugin you need to make sure the plugin is defined in the tests configuration
+file. This is done by including the following object:
+
+```yaml
+scheduler-plugins:
+  plugin_name:
+    scheduler-definition: https://url|s3://url
+    scheduler-commands: "path.to.module.SchedulerCommandsClass"
+    requires-sudo: true|false
+```
+
+`scheduler-plugin` defines an entry for each scheduler plugin you intend to enable in tests.
+For each scheduler plugin you can specify the following fields:
+* `scheduler-definition`: this is the S3 or HTTPs URL pointing to the scheduler plugin definition.
+* `scheduler-commands`: this is the path to a Python class implementing the scheduler commands interface
+  defined in `tests.common.schedulers_common.SchedulerCommands`.
+* `requires-sudo`: this needs to be set to true in case the scheduler plugin requires sudo privileges.
+
+Once this is done you can use the specified `plugin_name` as the value for the schedulers dimension.
+For example:
+
+```yaml
+test-suites:
+  scaling:
+    test_scaling.py::test_multiple_jobs_submission:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: ["c5.xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm_plugin"]
+scheduler-plugins:
+  slurm_plugin:
+    scheduler-definition: s3://my-bucket/scheduler_plugins/slurm/plugin_definition.yaml
+    scheduler-commands: "tests.common.schedulers_common.SlurmCommands"
+    requires-sudo: true
+```
+
+In order to implement a test that is compatible with a scheduler plugin do the following:
+* Use the `scheduler_commands_factory` fixture to retrieve a scheduler_commands object to interact with the scheduler
+```python
+@pytest.mark.usefixtures("region", "os", "instance")
+def test_multiple_jobs_submission(
+    scheduler, region, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
+    scaledown_idletime = 4
+    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    ...
+```
+* Use `scheduler_prefix` jinja variable to define a generic cluster configuration
+```yaml
+...
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {{ scheduler_prefix }}Settings:
+    {% if scheduler == "plugin" %}
+    CustomSettings:
+      ScaledownIdletime: {{ scaledown_idletime }}
+    {% else %}
+    ScaledownIdletime: {{ scaledown_idletime }}
+    {% endif %}
+  {{ scheduler_prefix }}Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+```
