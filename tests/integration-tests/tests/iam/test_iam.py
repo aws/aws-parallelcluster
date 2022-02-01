@@ -22,7 +22,7 @@ from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.schedulers_common import get_scheduler_commands
-from tests.schedulers.test_awsbatch import _test_job_submission as test_job_submission_awsbatch
+from tests.schedulers.test_awsbatch import _test_job_submission as _test_job_submission_awsbatch
 from tests.schedulers.test_slurm import _wait_for_computefleet_changed as wait_for_computefleet_changed
 
 
@@ -143,7 +143,7 @@ def _test_cluster_scaling(cluster, is_awsbatch, region, scheduler):
         timeout = (
             120 if region.startswith("cn-") else 60
         )  # Longer timeout in china regions due to less reliable networking
-        test_job_submission_awsbatch(
+        _test_job_submission_awsbatch(
             remote_command_executor, f"awsbsub --vcpus 2 --memory 256 --timeout {timeout} sleep 1"
         )
     else:
@@ -286,9 +286,7 @@ def _get_resource_name_from_resource_arn(resource_arn):
 @pytest.mark.usefixtures("os", "instance")
 def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factory):
     """Test IAM Policies"""
-    cluster_config = pcluster_config_reader(
-        iam_policies=["arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess", "arn:aws:iam::aws:policy/AWSBatchFullAccess"]
-    )
+    cluster_config = pcluster_config_reader(iam_policies=["arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"])
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 

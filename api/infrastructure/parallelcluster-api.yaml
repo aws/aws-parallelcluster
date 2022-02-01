@@ -1099,7 +1099,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterApi-UpdateParallelClusterLambda-*
         - PolicyName: UpdateParallelClusterLambdaPolicy
           PolicyDocument:
             Version: 2012-10-17
@@ -1214,7 +1214,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterApi-EcrImageDeletionLambda-*
         - PolicyName: BatchDeletePolicy
           PolicyDocument:
             Version: 2012-10-17

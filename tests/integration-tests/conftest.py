@@ -18,12 +18,12 @@ import logging
 import os
 import random
 import re
+from functools import partial
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
 
 import boto3
-import pkg_resources
 import pytest
 import yaml
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
@@ -62,11 +62,8 @@ from utils import (
     set_logger_formatter,
 )
 
-from tests.common.utils import (
-    get_installed_parallelcluster_version,
-    get_sts_endpoint,
-    retrieve_pcluster_ami_without_standard_naming,
-)
+from tests.common.schedulers_common import get_scheduler_commands
+from tests.common.utils import get_installed_parallelcluster_version, retrieve_pcluster_ami_without_standard_naming
 
 
 def pytest_addoption(parser):
@@ -489,7 +486,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_plugin_configuration):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -515,7 +512,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         config_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(config_file_path, request, region)
+            inject_additional_config_settings(config_file_path, request, region, scheduler_plugin_configuration)
         else:
             inject_additional_image_configs_settings(config_file_path, request)
         return config_file_path
@@ -547,7 +544,9 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
-def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
+def inject_additional_config_settings(
+    cluster_config, request, region, scheduler_plugin_configuration=None
+):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -594,6 +593,7 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
     if instance_types_data:
         dict_add_nested_key(config_content, json.dumps(instance_types_data), ("DevSettings", "InstanceTypesData"))
 
+    scheduler = config_content["Scheduling"]["Scheduler"]
     for option, config_param in [("pre_install", "OnNodeStart"), ("post_install", "OnNodeConfigured")]:
         if request.config.getoption(option):
             if not dict_has_nested_key(config_content, ("HeadNode", "CustomActions", config_param)):
@@ -604,7 +604,6 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
                 )
                 _add_policy_for_pre_post_install(config_content["HeadNode"], option, request, region)
 
-            scheduler = config_content["Scheduling"]["Scheduler"]
             if scheduler != "awsbatch":
                 scheduler_prefix = "Scheduler" if scheduler == "plugin" else scheduler.capitalize()
                 for queue in config_content["Scheduling"][f"{scheduler_prefix}Queues"]:
@@ -621,8 +620,26 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
             dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
+    configure_scheduler_plugin(scheduler_plugin_configuration, config_content)
+
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
+
+
+def configure_scheduler_plugin(scheduler_plugin_configuration, config_content):
+    if scheduler_plugin_configuration and not dict_has_nested_key(
+        config_content, ("Scheduling", "SchedulerSettings", "SchedulerDefinition")
+    ):
+        dict_add_nested_key(
+            config_content,
+            scheduler_plugin_configuration["scheduler-definition"],
+            ("Scheduling", "SchedulerSettings", "SchedulerDefinition"),
+        )
+        dict_add_nested_key(
+            config_content,
+            scheduler_plugin_configuration["requires-sudo"],
+            ("Scheduling", "SchedulerSettings", "GrantSudoPrivileges"),
+        )
 
 
 def _add_policy_for_pre_post_install(node_config, custom_option, request, region):
@@ -656,8 +673,14 @@ def _get_default_template_values(vpc_stack, request):
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
-    scheduler = request.node.funcargs.get("scheduler")
-    default_values["imds_secured"] = scheduler in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    if default_values.get("scheduler") in request.config.getoption("tests_config").get("scheduler-plugins", {}):
+        default_values["scheduler"] = "plugin"
+    default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    default_values["scheduler_prefix"] = {
+        "slurm": "Slurm",
+        "awsbatch": "AwsBatch",
+        "plugin": "Scheduler",
+    }.get(default_values.get("scheduler"))
 
     return default_values
 
@@ -935,24 +958,6 @@ def create_roles_stack(request, region):
         logging.warning("Skipping deletion of IAM roles stack because --no-delete option is set")
 
 
-def _create_iam_policies(iam_policy_name, region, policy_filename):
-    logging.info("Creating iam policy {0}...".format(iam_policy_name))
-    file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/resources"))
-    env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
-    partition = get_arn_partition(region)
-    account_id = (
-        boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
-        .get_caller_identity()
-        .get("Account")
-    )
-    parallel_cluster_instance_policy = env.get_template(policy_filename).render(
-        partition=partition, region=region, account_id=account_id, cluster_bucket_name="parallelcluster-*"
-    )
-    return boto3.client("iam", region_name=region).create_policy(
-        PolicyName=iam_policy_name, PolicyDocument=parallel_cluster_instance_policy
-    )["Policy"]["Arn"]
-
-
 @pytest.fixture(scope="class")
 def vpc_stack(vpc_stacks, region):
     return vpc_stacks[region]
@@ -1202,3 +1207,19 @@ def mpi_variants(architecture):
     if architecture == "x86_64":
         variants.append("intelmpi")
     return variants
+
+
+@pytest.fixture()
+def scheduler_plugin_configuration(request, scheduler):
+    return request.config.getoption("tests_config").get("scheduler-plugins", {}).get(scheduler)
+
+
+@pytest.fixture()
+def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
+    if scheduler_plugin_configuration:
+        import importlib
+
+        module_name, class_name = scheduler_plugin_configuration["scheduler-commands"].rsplit(".", 1)
+        return getattr(importlib.import_module(module_name), class_name)
+    else:
+        return partial(get_scheduler_commands, scheduler=scheduler)

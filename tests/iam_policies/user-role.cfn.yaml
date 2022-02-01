@@ -740,7 +740,7 @@ Resources:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Effect: Allow
-            Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
           - Action:
               - dynamodb:DescribeTable
               - dynamodb:Query

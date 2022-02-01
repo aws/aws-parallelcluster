@@ -111,14 +111,10 @@ MIME-Version: 1.0
 
 function error_exit
 {
-  instance_id=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/instance-id)
-  log_dir=/home/logs/compute
-  mkdir -p ${!log_dir}
-  echo "Reporting instance as unhealthy and dumping logs to ${!log_dir}/${!instance_id}.tar.gz"
-  tar -czf ${!log_dir}/${!instance_id}.tar.gz /var/log
-  # TODO: add possibility to disable this behavior
+  echo "Bootstrap failed with error: $1"
   # wait logs flush before signaling the failure
   sleep 10
+  # TODO: add possibility to override this behavior and keep the instance for debugging
   shutdown -h now
   exit 1
 }

@@ -9,9 +9,6 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
-  CustomActions:
-    OnNodeConfigured:
-      Script: s3://{{ bucket_name }}/post_install.sh
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -22,7 +19,7 @@ Scheduling:
     - Name: compute
       CustomActions:
         OnNodeConfigured:
-          Script: s3://{{ bucket_name }}/post_install.sh
+          Script: s3://{{ bucket_name }}/failing_post_install.sh
       ComputeResources:
         - Name: compute-i1
           InstanceType: {{ instance }}
