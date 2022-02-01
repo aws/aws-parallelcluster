@@ -30,7 +30,7 @@ def join_filters(accepted_filters, filters):
     state = None
 
     filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
-    pattern = re.compile(fr"^({filter_regex})(\s+{filter_regex})*$")
+    pattern = re.compile(rf"^({filter_regex})(\s+{filter_regex})*$")
 
     def fail():
         raise BadRequestException(f"filters parameter must be in the form {pattern.pattern}.")
