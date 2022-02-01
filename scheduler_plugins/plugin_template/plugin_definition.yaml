@@ -23,8 +23,6 @@ Requirements:
   # QueueConstraints:
   #   # Max number of scheduler queues that can be configured for the plugin. Defaults to 10.
   #   MaxCount: 10
-  #   # Max number of subnets that can be configured for each queue. Defaults to 1.
-  #   MaxSubnetsCount: 1
   # ComputeResourceConstraints:
   #   # Max number of ComputeResources that can be configured for each queue. Defaults to 5.
   #   MaxCount: 5
