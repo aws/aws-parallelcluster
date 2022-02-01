@@ -238,12 +238,12 @@ def orchestrate_pcluster_configure_stages(
             "response": instance,
             "skip_for_batch": True,
         },
-        {"prompt": fr"Maximum {size_name} \[10\]: ", "response": ""},
+        {"prompt": rf"Maximum {size_name} \[10\]: ", "response": ""},
         {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
         {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
-        {"prompt": fr"{omitted_note}head node subnet ID \[subnet-.+\]: ", "response": head_node_subnet_id},
-        {"prompt": fr"{omitted_note}compute subnet ID \[{default_compute_subnet}\]: ", "response": compute_subnet_id},
+        {"prompt": rf"{omitted_note}head node subnet ID \[subnet-.+\]: ", "response": head_node_subnet_id},
+        {"prompt": rf"{omitted_note}compute subnet ID \[{default_compute_subnet}\]: ", "response": compute_subnet_id},
     ]
     # When a user selects Batch as the scheduler, pcluster configure does not prompt for OS or compute instance type.
     return [stage for stage in stage_list if scheduler != "awsbatch" or not stage.get("skip_for_batch")]
