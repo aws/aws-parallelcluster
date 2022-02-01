@@ -6,6 +6,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix DCV connection through browsers.
+- Fix Tags in number interpreted as integer.
 
 **CHANGES**
 - Upgrade NVIDIA driver to version 470.103.01.

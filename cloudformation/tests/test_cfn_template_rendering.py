@@ -20,7 +20,7 @@ def substack_rendering(tmp_path, template_name, test_config):
     env.filters["bool"] = lambda value: value.lower() == "true"
     template = env.get_template(template_name)
     output_from_parsed_template = template.render(
-        config=test_config, config_version="version", tags=[{"Key": "TagKey", "Value": "TagValue"}]
+        config=test_config, config_version="version", tags=[{"Key": "000000", "Value": "000000"}]
     )
     rendered_file = tmp_path / template_name
     rendered_file.write_text(output_from_parsed_template)
