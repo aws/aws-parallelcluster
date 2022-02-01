@@ -11,7 +11,9 @@
 
 import pytest
 
+from pcluster.config.cluster_config import SchedulerPluginUser, SudoerConfiguration
 from pcluster.validators.scheduler_plugin_validators import (
+    GrantSudoPrivilegesValidator,
     SchedulerPluginOsArchitectureValidator,
     SchedulerPluginRegionValidator,
     SudoPrivilegesValidator,
@@ -43,6 +45,40 @@ from tests.pcluster.validators.utils import assert_failure_messages
 )
 def test_sudo_privileges_validator(grant_sudo_privileges, requires_sudo_privileges, expected_message):
     actual_failures = SudoPrivilegesValidator().execute(grant_sudo_privileges, requires_sudo_privileges)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "grant_sudo_privileges, system_users, expected_message",
+    [
+        (False, [SchedulerPluginUser(name="name", enable_imds=True)], None),
+        (
+            True,
+            [
+                SchedulerPluginUser(
+                    name="name",
+                    enable_imds=True,
+                    sudoer_configuration=[SudoerConfiguration(commands="ALL", run_as="Root")],
+                )
+            ],
+            None,
+        ),
+        (
+            False,
+            [
+                SchedulerPluginUser(
+                    name="name",
+                    enable_imds=False,
+                    sudoer_configuration=[SudoerConfiguration(commands="ALL", run_as="Root")],
+                )
+            ],
+            "The used scheduler plugin requires the creation of SystemUsers with sudo access. To grant such rights "
+            "please set GrantSudoPrivileges to true.",
+        ),
+    ],
+)
+def test_grant_sudo_privileges_validator(grant_sudo_privileges, system_users, expected_message):
+    actual_failures = GrantSudoPrivilegesValidator().execute(grant_sudo_privileges, system_users)
     assert_failure_messages(actual_failures, expected_message)
 
 
