@@ -201,8 +201,8 @@ Resources:
               - Key: aws-parallelcluster-node-type
                 Value: Compute
     {%- for tag in tags %}
-              - Key: {{ tag.Key }}
-                Value: {{ tag.Value }}
+              - Key: '{{ tag.Key }}'
+                Value: '{{ tag.Value }}'
     {%- endfor %}
           - ResourceType: volume
             Tags:
@@ -219,8 +219,8 @@ Resources:
               - Key: aws-parallelcluster-node-type
                 Value: Compute
     {%- for tag in tags %}
-              - Key: {{ tag.Key }}
-                Value: {{ tag.Value }}
+              - Key: '{{ tag.Key }}'
+                Value: '{{ tag.Value }}'
     {%- endfor %}
         BlockDeviceMappings:
           - DeviceName: /dev/xvdba
