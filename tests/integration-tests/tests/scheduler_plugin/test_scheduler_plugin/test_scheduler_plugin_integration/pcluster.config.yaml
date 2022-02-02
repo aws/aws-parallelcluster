@@ -86,7 +86,7 @@ Scheduling:
           SudoerConfiguration:
             - Commands: ALL
               RunAs: root
-            - Commands: /usr/bin/ls, /usr/bin/touch
+            - Commands: /bin/ls, /usr/bin/touch
               RunAs: {{ run_as_user }}
         - Name: {{ user2 }}
           EnableImds: true
