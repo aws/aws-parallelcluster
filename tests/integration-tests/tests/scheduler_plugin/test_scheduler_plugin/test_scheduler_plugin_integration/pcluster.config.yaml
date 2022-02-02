@@ -91,7 +91,7 @@ Scheduling:
         - Name: {{ user2 }}
           EnableImds: true
           SudoerConfiguration:
-            - Commands: /usr/bin/ls
+            - Commands: /bin/ls
               RunAs: root
       Tags:
         - Key: SchedulerPluginTag
