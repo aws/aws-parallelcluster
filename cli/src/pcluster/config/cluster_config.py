@@ -1702,7 +1702,11 @@ class SchedulerPluginCloudFormationInfrastructure(Resource):
 
     def _register_validators(self):
         self._register_validator(
-            UrlValidator, url=self.template, fail_on_https_error=True, expected_bucket_owner=self.s3_bucket_owner
+            UrlValidator,
+            url=self.template,
+            fail_on_https_error=True,
+            fail_on_s3_error=True,
+            expected_bucket_owner=self.s3_bucket_owner,
         )
 
 
