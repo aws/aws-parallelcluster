@@ -326,7 +326,7 @@ class CWDashboardConstruct(Construct):
         widgets_list = self._add_storage_widgets(
             metrics=fsx_metrics,
             storages_list=fsx_volumes_list,
-            namespace="AWS/FSX",
+            namespace="AWS/FSx",
             dimension_name="FileSystemId",
         )
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
