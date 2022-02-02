@@ -18,9 +18,9 @@ CHANGELOG
 **CHANGES**
 - Upgrade Slurm to version 21.08.5.
 - Upgrade NICE DCV to version 2021.3-11591.
-- Upgrade NVIDIA driver to version 470.82.01.
-- Upgrade CUDA library to version 11.4.3.
-- Upgrade NVIDIA Fabric manager to version 470.82.01.
+- Upgrade NVIDIA driver to version 470.103.01.
+- Upgrade CUDA library to version 11.4.4.
+- Upgrade NVIDIA Fabric manager to version 470.103.01.
 - Upgrade Intel MPI Library to 2021.4.0.441.
 - Upgrade PMIx to version 3.2.3.
 - Disable package update at instance launch time on Amazon Linux 2.
