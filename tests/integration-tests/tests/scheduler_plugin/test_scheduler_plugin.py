@@ -52,7 +52,10 @@ SCHEDULER_PLUGIN_HOME = "/home/pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USER = "pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USERS_LIST = ["user1", "schedulerPluginUser"]
 
-ANOTHER_INSTANCE_TYPE = "c5.xlarge"
+ANOTHER_INSTANCE_TYPE_BY_ARCH = {
+    "x86_64": "c5.large",
+    "arm64": "m6g.large",
+}
 OS_MAPPING = {
     "centos7": "centos",
     "alinux2": "ec2-user",
@@ -79,10 +82,11 @@ def test_scheduler_plugin_integration(
         bucket.upload_file(str(test_datadir / file), f"scheduler_plugin/{file}")
     run_as_user = OS_MAPPING[os]
     # Create cluster
+    another_instance_type = ANOTHER_INSTANCE_TYPE_BY_ARCH[architecture]
     before_update_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.before_update.yaml",
         bucket=bucket_name,
-        another_instance=ANOTHER_INSTANCE_TYPE,
+        another_instance=another_instance_type,
         user1=SCHEDULER_PLUGIN_USERS_LIST[0],
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],
         account_id=account_id,
@@ -91,7 +95,7 @@ def test_scheduler_plugin_integration(
     cluster = clusters_factory(before_update_cluster_config)
     cluster_config = pcluster_config_reader(
         bucket=bucket_name,
-        another_instance=ANOTHER_INSTANCE_TYPE,
+        another_instance=another_instance_type,
         user1=SCHEDULER_PLUGIN_USERS_LIST[0],
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],
         account_id=account_id,
@@ -135,7 +139,7 @@ def test_scheduler_plugin_integration(
     # Test user imds
     _test_imds(command_executor)
     # Test instance types data
-    _test_instance_types_data(command_executor, instance)
+    _test_instance_types_data(command_executor, instance, another_instance_type)
     # Test error log
     _test_error_log(command_executor)
     # Test logs are uploaded to CW
@@ -330,13 +334,13 @@ def _get_ec2_instance_from_id(ec2, instance_id):
     return ec2.describe_instances(Filters=[], InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
 
 
-def _test_instance_types_data(command_executor, instance_type):
+def _test_instance_types_data(command_executor, instance_type, another_instance_type):
     """Test instance types data is fetched by head node"""
     instance_types_data_content = command_executor.run_remote_command(f"sudo cat {PCLUSTER_INSTANCE_TYPES_DATA}").stdout
     assert_that(instance_types_data_content).is_not_empty()
     instance_types_data = json.loads(instance_types_data_content)
     assert_that(instance_types_data.get(instance_type).get("InstanceType")).is_equal_to(instance_type)
-    assert_that(instance_types_data.get(ANOTHER_INSTANCE_TYPE).get("InstanceType")).is_equal_to(ANOTHER_INSTANCE_TYPE)
+    assert_that(instance_types_data.get(another_instance_type).get("InstanceType")).is_equal_to(another_instance_type)
 
 
 def _test_imds(command_executor):

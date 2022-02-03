@@ -87,12 +87,12 @@ Scheduling:
           SudoerConfiguration:
             - Commands: ALL
               RunAs: root
-            - Commands: /usr/bin/ls, /usr/bin/touch
+            - Commands: /bin/ls, /usr/bin/touch
               RunAs: {{ run_as_user }}
         - Name: {{ user2 }}
           EnableImds: true
           SudoerConfiguration:
-            - Commands: /usr/bin/ls
+            - Commands: /bin/ls
               RunAs: root
       Tags:
         - Key: SchedulerPluginTag

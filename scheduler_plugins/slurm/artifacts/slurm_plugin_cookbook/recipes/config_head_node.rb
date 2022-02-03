@@ -65,16 +65,6 @@ execute 'generate_pcluster_slurm_configs' do
           " --input-file #{node['pcluster']['cluster_config_path']}  --instance-types-data #{node['pcluster']['instance_types_data_path']} #{no_gpu}"
 end
 
-# TODO: REMOVE
-execute 'initialize compute fleet status in DynamoDB' do
-  # Initialize the status of the compute fleet in the DynamoDB table. Set it to RUNNING.
-  command "#{node['pcluster']['python_root']}/aws dynamodb put-item --table-name #{node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable']}"\
-            " --item '{\"Id\": {\"S\": \"COMPUTE_FLEET\"}, \"Status\": {\"S\": \"RUNNING\"}, \"LastUpdatedTime\": {\"S\": \"#{Time.now.utc}\"}}'"\
-            " --region #{node['pcluster']['region']}"
-  retries 3
-  retry_delay 5
-end
-
 template "#{node['slurm']['install_dir']}/etc/cgroup.conf" do
   source 'slurm/cgroup.conf.erb'
   owner 'root'

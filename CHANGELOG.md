@@ -13,6 +13,7 @@ CHANGELOG
 - Install NVIDIA drivers and CUDA library for ARM.
 - Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
+- Improve Security Groups created within the cluster to allow inbound connections from custom security groups when `SecurityGroups` parameters are specified for some head node and/or queues.`
 
 **CHANGES**
 - Upgrade Slurm to version 21.08.5.
