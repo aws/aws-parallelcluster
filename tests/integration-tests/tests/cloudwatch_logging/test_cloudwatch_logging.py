@@ -72,12 +72,12 @@ class CloudWatchLoggingClusterState:
                 "hostname": "ip-10-0-155-82.us-west-1.compute.internal",
                 "instance_id": "i-0d80db39340ce94d8",
                 "logs": {
-                    "/var/spool/torque/client_logs/*": {
-                        "file_path": "/var/spool/torque/client_logs/*",
-                        "log_stream_name": "torque-client",
+                    "/var/log-folder/*": {
+                        "file_path": "/var/log-folder/*",
+                        "log_stream_name": "filename",
                         "exists": true,
                         "is_empty": false,
-                        "tail": "2019-11-01 22:00:14.7647 TORQUE authd daemon started"
+                        "tail": "2019-11-01 22:00:14.7647 authd daemon started"
                     }
                 },
                 "agent_status": "running"

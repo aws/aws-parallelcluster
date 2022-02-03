@@ -206,7 +206,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
         ),
         (
             "alinux2",
-            "sge",
+            "slurm",
             True,
             "vol1,NONE,NONE,NONE,NONE",  # single ebs section
             "io1,io1,io1,io1,io1",  # No gp2,sc1,st1 metrics
@@ -218,7 +218,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
         ),
         (
             "ubuntu1804",
-            "torque",
+            "slurm",
             True,
             "shared",  # No ebs section
             "standard,standard,standard,standard,standard",
@@ -441,33 +441,7 @@ def _verify_head_node_logs_conditions(rendered_template, cw_log_options, os, sch
             assert_that(rendered_template).contains("slurm_resume")
             assert_that(rendered_template).contains("slurm_suspend")
             assert_that(rendered_template).contains("slurmctld")
-            assert_that(rendered_template).does_not_contain("jobwatcher")
-            assert_that(rendered_template).does_not_contain("sqswatcher")
-            assert_that(rendered_template).does_not_contain("sge-qmaster")
-            assert_that(rendered_template).does_not_contain("torque-server")
-        elif scheduler == "sge":
-            assert_that(rendered_template).contains("jobwatcher")
-            assert_that(rendered_template).contains("sqswatcher")
-            assert_that(rendered_template).contains("sge-qmaster")
-            assert_that(rendered_template).does_not_contain("torque-server")
-            assert_that(rendered_template).does_not_contain("clustermgtd")
-            assert_that(rendered_template).does_not_contain("slurm_resume")
-            assert_that(rendered_template).does_not_contain("slurm_suspend")
-            assert_that(rendered_template).does_not_contain("slurmctld")
-        elif scheduler == "torque":
-            assert_that(rendered_template).contains("jobwatcher")
-            assert_that(rendered_template).contains("sqswatcher")
-            assert_that(rendered_template).contains("torque-server")
-            assert_that(rendered_template).does_not_contain("sge-qmaster")
-            assert_that(rendered_template).does_not_contain("clustermgtd")
-            assert_that(rendered_template).does_not_contain("slurm_resume")
-            assert_that(rendered_template).does_not_contain("slurm_suspend")
-            assert_that(rendered_template).does_not_contain("slurmctld")
         else:  # scheduler == "awsbatch"
-            assert_that(rendered_template).does_not_contain("jobwatcher")
-            assert_that(rendered_template).does_not_contain("sqswatcher")
-            assert_that(rendered_template).does_not_contain("torque-server")
-            assert_that(rendered_template).does_not_contain("sge-qmaster")
             assert_that(rendered_template).does_not_contain("clustermgtd")
             assert_that(rendered_template).does_not_contain("slurm_resume")
             assert_that(rendered_template).does_not_contain("slurm_suspend")

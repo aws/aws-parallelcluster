@@ -56,14 +56,18 @@ def boto3_stubber_path():
     "section_dict, expected_message, expected_warning",
     [
         # traditional scheduler
-        ({"scheduler": "sge", "initial_queue_size": 1, "max_queue_size": 2, "maintain_initial_size": True}, None, None),
         (
-            {"scheduler": "sge", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": True},
+            {"scheduler": "slurm", "initial_queue_size": 1, "max_queue_size": 2, "maintain_initial_size": True},
+            None,
+            None,
+        ),
+        (
+            {"scheduler": "slurm", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": True},
             "initial_queue_size must be fewer than or equal to max_queue_size",
             None,
         ),
         (
-            {"scheduler": "sge", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": False},
+            {"scheduler": "slurm", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": False},
             "initial_queue_size must be fewer than or equal to max_queue_size",
             None,
         ),
@@ -112,15 +116,15 @@ def test_head_node_instance_type_validator(mocker, instance_type, expected_messa
 @pytest.mark.parametrize(
     "scheduler, instance_type, expected_message, expected_warnings",
     [
-        ("sge", "t2.micro", None, None),
-        ("sge", "c4.xlarge", None, None),
-        ("sge", "c5.xlarge", "is not supported", None),
+        ("slurm", "t2.micro", None, None),
+        ("slurm", "c4.xlarge", None, None),
+        ("slurm", "c5.xlarge", "is not supported", None),
         # NOTE: compute_instance_type_validator calls ec2_instance_type_validator only if the scheduler is not awsbatch
         ("awsbatch", "t2.micro", None, None),
         ("awsbatch", "c4.xlarge", "is not supported", None),
         ("awsbatch", "t2", None, None),  # t2 family
         ("awsbatch", "optimal", None, None),
-        ("sge", "p4d.24xlarge", None, "has 4 Network Interfaces."),
+        ("slurm", "p4d.24xlarge", None, "has 4 Network Interfaces."),
         ("slurm", "p4d.24xlarge", None, None),
     ],
 )
@@ -293,16 +297,12 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("cn-north-1", "alinux2", "awsbatch", None),
         ("cn-northwest-1", "alinux2", "awsbatch", None),
         # verify traditional schedulers are supported in all the regions but ap-northeast-3
-        ("cn-northwest-1", "alinux2", "sge", None),
-        ("us-gov-east-1", "alinux2", "sge", None),
         ("cn-northwest-1", "alinux2", "slurm", None),
         ("us-gov-east-1", "alinux2", "slurm", None),
-        ("cn-northwest-1", "alinux2", "torque", None),
-        ("us-gov-east-1", "alinux2", "torque", None),
         (
             "ap-northeast-3",
             "alinux2",
-            "sge",
+            "slurm",
             "Region 'ap-northeast-3' is not yet officially supported by ParallelCluster",
         ),
         # verify awsbatch supported OSes
@@ -310,29 +310,24 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("eu-west-1", "ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "alinux2", "awsbatch", None),
         # verify sge supports all the OSes
-        ("eu-west-1", "centos7", "sge", None),
-        ("eu-west-1", "ubuntu1804", "sge", None),
-        ("eu-west-1", "alinux2", "sge", None),
+        ("eu-west-1", "centos7", "sge", "The configuration parameter 'scheduler' has an invalid value 'sge'"),
+        ("eu-west-1", "ubuntu1804", "sge", "The configuration parameter 'scheduler' has an invalid value 'sge'"),
+        ("eu-west-1", "alinux2", "sge", "The configuration parameter 'scheduler' has an invalid value 'sge'"),
         # verify slurm supports all the OSes
         ("eu-west-1", "centos7", "slurm", None),
         ("eu-west-1", "ubuntu1804", "slurm", None),
         ("eu-west-1", "alinux2", "slurm", None),
         # verify torque supports all the OSes
-        ("eu-west-1", "centos7", "torque", None),
-        ("eu-west-1", "ubuntu1804", "torque", None),
-        ("eu-west-1", "alinux2", "torque", None),
+        ("eu-west-1", "centos7", "torque", "The configuration parameter 'scheduler' has an invalid value 'torque'"),
+        ("eu-west-1", "ubuntu1804", "torque", "The configuration parameter 'scheduler' has an invalid value 'torque'"),
+        ("eu-west-1", "alinux2", "torque", "The configuration parameter 'scheduler' has an invalid value 'torque'"),
     ],
 )
 def test_scheduler_validator(mocker, capsys, region, base_os, scheduler, expected_message):
     # we need to set the region in the environment because it takes precedence respect of the config file
     os.environ["AWS_DEFAULT_REGION"] = region
     config_parser_dict = {"cluster default": {"base_os": base_os, "scheduler": scheduler}}
-    # Deprecation warning should be printed for sge and torque
-    expected_warning = None
-    wiki_url = "https://github.com/aws/aws-parallelcluster/wiki/Deprecation-of-SGE-and-Torque-in-ParallelCluster"
-    if scheduler in ["sge", "torque"]:
-        expected_warning = ".{0}. is scheduled to be deprecated.*{1}".format(scheduler, wiki_url)
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message, capsys, expected_warning)
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message, capsys)
 
 
 def test_placement_group_validator(mocker, boto3_stubber):
@@ -1537,9 +1532,9 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
     "section_dict, expected_error, expected_warning",
     [
         ({"enable_efa": "NONE"}, "invalid value", None),
-        ({"enable_efa": "compute", "scheduler": "sge"}, "is required to set the 'compute_instance_type'", None),
+        ({"enable_efa": "compute", "scheduler": "slurm"}, "is required to set the 'compute_instance_type'", None),
         (
-            {"enable_efa": "compute", "compute_instance_type": "t2.large", "scheduler": "sge"},
+            {"enable_efa": "compute", "compute_instance_type": "t2.large", "scheduler": "slurm"},
             None,
             "You may see better performance using a cluster placement group",
         ),
@@ -1558,7 +1553,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
                 "base_os": "centos7",
-                "scheduler": "sge",
+                "scheduler": "slurm",
                 "placement_group": "DYNAMIC",
             },
             None,
@@ -1569,7 +1564,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
                 "base_os": "alinux2",
-                "scheduler": "sge",
+                "scheduler": "slurm",
                 "placement_group": "DYNAMIC",
             },
             None,
@@ -1581,7 +1576,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
                 "enable_efa": "compute",
                 "compute_instance_type": "additional-instance-type",
                 "base_os": "alinux2",
-                "scheduler": "sge",
+                "scheduler": "slurm",
                 "placement_group": "DYNAMIC",
                 "instance_types_data": json.dumps(
                     {
@@ -1731,7 +1726,7 @@ def test_efa_validator_with_vpc_security_group(
             "compute_instance_type": "t2.large",
             "placement_group": "DYNAMIC",
             "vpc_settings": "default",
-            "scheduler": "sge",
+            "scheduler": "slurm",
         },
         "vpc default": {"vpc_security_group_id": "sg-12345678"},
     }
@@ -2976,9 +2971,7 @@ def test_check_usage_class(
         assert_that(warnings).is_empty()
 
 
-@pytest.mark.parametrize(
-    "scheduler, expected_usage_class_check", [("sge", True), ("torque", True), ("slurm", True), ("awsbatch", False)]
-)
+@pytest.mark.parametrize("scheduler, expected_usage_class_check", [("slurm", True), ("awsbatch", False)])
 def test_cluster_type_validator(mocker, scheduler, expected_usage_class_check):
     # Usage class validation logic is tested in `test_check_usage_class`.
     # This test only makes sure that the logic is triggered from validator.

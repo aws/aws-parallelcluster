@@ -299,22 +299,6 @@ Resources:
                 'section_title': "ParallelCluster''s logs",
                 'widgets': [
                   {
-                    'title': "jobwatcher",
-                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["sge","torque"]}],
-                    'fields': ["@timestamp", "@message"],
-                    'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*jobwatcher"}],
-                    'sort': "@timestamp desc",
-                    'limit': 100
-                  },
-                  {
-                    'title': "sqswatcher",
-                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["sge","torque"]}],
-                    'fields': ["@timestamp", "@message"],
-                    'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*sqswatcher"}],
-                    'sort': "@timestamp desc",
-                    'limit': 100
-                  },
-                  {
                     'title': "clustermgtd",
                     'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}],
                     'fields': ["@timestamp", "@message"],
@@ -349,24 +333,6 @@ Resources:
                     'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*slurmctld"}],
-                    'sort': "@timestamp desc",
-                    'limit': 100
-                  },
-                  {
-                    'title': "sge-qmaster",
-                    'conditions': [
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["sge"]}
-                    ],
-                    'fields': ["@timestamp", "@message"],
-                    'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*sge-qmaster"}],
-                    'sort': "@timestamp desc",
-                    'limit': 100
-                  },
-                  {
-                    'title': "torque-server",
-                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["torque"]}],
-                    'fields': ["@timestamp", "@message"],
-                    'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*torque-server"}],
                     'sort': "@timestamp desc",
                     'limit': 100
                   }

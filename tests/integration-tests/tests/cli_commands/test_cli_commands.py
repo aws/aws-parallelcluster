@@ -40,7 +40,7 @@ def test_hit_cli_commands(scheduler, region, pcluster_config_reader, clusters_fa
 
 @pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["centos7"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_sit_cli_commands(scheduler, region, pcluster_config_reader, clusters_factory):

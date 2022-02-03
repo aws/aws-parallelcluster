@@ -47,8 +47,8 @@ key_name = mykey
 # Maximum number of vcpus that can be launched when scheduler is awsbatch.
 #max_vcpus = 20
 # Cluster scheduler
-# (defaults to sge)
-#scheduler = sge
+# (defaults to slurm)
+#scheduler = slurm
 # Type of cluster to launch i.e. ondemand or spot
 # (defaults to ondemand)
 #cluster_type = ondemand

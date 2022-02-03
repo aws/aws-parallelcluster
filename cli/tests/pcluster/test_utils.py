@@ -446,9 +446,7 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
 @pytest.mark.parametrize(
     "scheduler, supported_oses",
     [
-        ("sge", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
         ("slurm", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
-        ("torque", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
         ("awsbatch", ["alinux2"]),
         # doesn't check architecture's validity, only whether it's awsbatch or not
         ("madeup-scheduler", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
@@ -595,9 +593,7 @@ def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
 @pytest.mark.parametrize(
     "scheduler, expected_is_hit_enabled",
     [
-        ("sge", False),
         ("slurm", True),
-        ("torque", False),
         ("awsbatch", False),
         # doesn't check scheduler's validity, only whether it's slurm or not
         ("madeup-scheduler", False),
@@ -645,7 +641,7 @@ def test_validate_pcluster_version_based_on_ami_name(mocker, ami_name, error_exp
         utils.validate_pcluster_version_based_on_ami_name(ami_name)
 
 
-@pytest.mark.parametrize("scheduler", ["slurm", "sge", "torque", "awsbatch"])
+@pytest.mark.parametrize("scheduler", ["slurm", "awsbatch"])
 def test_get_supported_compute_instance_types(mocker, scheduler):
     """Verify that the correct function to get supported instance types is called based on the scheduler used."""
     batch_function_patch = mocker.patch("pcluster.utils.get_supported_batch_instance_types")

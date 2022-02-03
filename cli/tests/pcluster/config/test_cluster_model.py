@@ -48,23 +48,6 @@ from pcluster.cluster_model import ClusterModel, infer_cluster_model
             },
             ClusterModel.SIT,
         ),
-        # no queue_settings in config and no slurm scheduler in cfn params
-        (
-            {},
-            {
-                "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "sge"}],
-                "Tags": [{"Key": "Version", "Value": "2.8.91"}],
-            },
-            ClusterModel.SIT,
-        ),
-        (
-            {},
-            {
-                "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "torque"}],
-                "Tags": [{"Key": "Version", "Value": "2.10.0"}],
-            },
-            ClusterModel.SIT,
-        ),
     ],
 )
 def test_cluster_model(config_parser_cluster_dict, cfn_stack, expected_cluster_model):

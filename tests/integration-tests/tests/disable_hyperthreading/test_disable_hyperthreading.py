@@ -22,10 +22,10 @@ from tests.common.utils import fetch_instance_slots
 
 
 # Manually disabled HT
-@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1804", "sge")
+@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1804", "slurm")
 # HT disabled via CpuOptions
-@pytest.mark.dimensions("sa-east-1", "c5.xlarge", "alinux2", "sge")
-@pytest.mark.dimensions("sa-east-1", "c5.xlarge", "centos7", "torque")
+@pytest.mark.dimensions("sa-east-1", "c5.xlarge", "alinux2", "slurm")
+@pytest.mark.dimensions("sa-east-1", "c5.xlarge", "centos7", "slurm")
 def test_sit_disable_hyperthreading(
     region, scheduler, instance, os, pcluster_config_reader, clusters_factory, default_threads_per_core
 ):

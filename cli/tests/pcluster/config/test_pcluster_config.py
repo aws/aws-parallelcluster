@@ -49,12 +49,6 @@ def boto3_stubber_path():
             "2.8.0",
             None,
         ),
-        (
-            # ResourceS3Bucket not expected
-            {"Scheduler": "sge"},
-            "2.9.0",
-            None,
-        ),
     ],
 )
 def test_load_json_config(mocker, cfn_params_dict, version, expected_json):

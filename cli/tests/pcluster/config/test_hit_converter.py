@@ -132,37 +132,6 @@ def boto3_stubber_path():
                 },
             },
         ),
-        (
-            # If scheduler != slurm no conversion must be done
-            {
-                "cluster default": {
-                    "scheduler": "sge",
-                    "cluster_type": "ondemand",
-                    "enable_efa": "compute",
-                    "disable_hyperthreading": True,
-                    "placement_group": "DYNAMIC",
-                    "compute_instance_type": "t2.micro",
-                    "max_queue_size": 10,
-                    "spot_price": 0.4,
-                    "maintain_initial_size": True,
-                    "initial_queue_size": 2,
-                }
-            },
-            {
-                "cluster default": {
-                    "scheduler": "sge",
-                    "cluster_type": "ondemand",
-                    "enable_efa": "compute",
-                    "disable_hyperthreading": True,
-                    "placement_group": "DYNAMIC",
-                    "compute_instance_type": "t2.micro",
-                    "max_queue_size": 10,
-                    "spot_price": 0.4,
-                    "maintain_initial_size": True,
-                    "initial_queue_size": 2,
-                }
-            },
-        ),
     ],
 )
 def test_hit_converter(mocker, boto3_stubber, src_config_dict, dst_config_dict):

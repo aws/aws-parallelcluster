@@ -46,7 +46,7 @@ def _mock_pcluster_config(mocker, scheduler, region, bucket_name=None):
     [
         ("slurm", ["resources/custom_resources"], True, "bucket", "bucket", None, True),
         ("awsbatch", ["resources/custom_resources", "resources/batch"], False, "bucket", "bucket", None, True),
-        ("sge", [], False, None, None, None, True),
+        ("slurm", [], False, None, None, None, True),
         (
             "slurm",
             ["resources/custom_resources"],

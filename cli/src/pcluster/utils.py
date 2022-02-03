@@ -567,7 +567,7 @@ def get_supported_schedulers():
 
     :return: a tuple of strings of the supported scheduler
     """
-    return "sge", "torque", "slurm", "awsbatch"
+    return "slurm", "awsbatch"
 
 
 def get_stack_output_value(stack_outputs, output_key):

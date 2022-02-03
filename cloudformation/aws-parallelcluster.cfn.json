@@ -230,8 +230,6 @@
       "Default": "slurm",
       "ConstraintDescription": "must be a supported scheduler",
       "AllowedValues": [
-        "sge",
-        "torque",
         "slurm",
         "awsbatch"
       ]
