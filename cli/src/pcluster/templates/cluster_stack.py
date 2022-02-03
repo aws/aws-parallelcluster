@@ -479,20 +479,20 @@ class ClusterCdkStack(Stack):
         managed_head_security_group,
     ):
         if managed_head_security_group:
-            for security_group in compute_security_groups:
+            for index, security_group in enumerate(compute_security_groups):
                 # Access to head node from compute nodes
                 self._allow_all_ingress(
-                    "HeadNodeSecurityGroupComputeIngress", security_group, managed_head_security_group.ref
+                    f"HeadNodeSecurityGroupComputeIngress{index}", security_group, managed_head_security_group.ref
                 )
         if managed_compute_security_group:
             # Access to compute nodes from head node
-            for security_group in head_node_security_groups:
+            for index, security_group in enumerate(head_node_security_groups):
                 self._allow_all_ingress(
-                    "ComputeSecurityGroupHeadNodeIngress", security_group, managed_compute_security_group.ref
+                    f"ComputeSecurityGroupHeadNodeIngress{index}", security_group, managed_compute_security_group.ref
                 )
-            for security_group in custom_compute_security_groups:
+            for index, security_group in enumerate(custom_compute_security_groups):
                 self._allow_all_ingress(
-                    "ComputeSecurityGroupCustomComputeSecurityGroupIngress",
+                    f"ComputeSecurityGroupCustomComputeSecurityGroupIngress{index}",
                     security_group,
                     managed_compute_security_group.ref,
                 )
