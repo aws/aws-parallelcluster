@@ -72,6 +72,10 @@ Monitoring:
       TimestampFormat: '%Y-%m-%d %H:%M:%S,%f'
       NodeType: HEAD
       LogStreamName: slurm_suspend
+    - FilePath: /var/log/parallelcluster/slurm_fleet_status_manager.log
+      TimestampFormat: '%Y-%m-%d %H:%M:%S,%f'
+      NodeType: HEAD
+      LogStreamName: slurm_fleet_status_manager
     - FilePath: /var/log/slurmd.log
       TimestampFormat: '%Y-%m-%dT%H:%M:%S.%f'
       NodeType: COMPUTE
