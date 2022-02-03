@@ -1,6 +1,6 @@
 ERROR: The configuration parameter 'invalid_key' is not allowed in the [aws] section
 ERROR: The configuration parameter 'scheduler' has an invalid value 'invalid_value'
-Allowed values are: ['awsbatch', 'sge', 'slurm', 'torque']
+Allowed values are: ['awsbatch', 'slurm']
 ERROR: Configuration parameter 'max_queue_size' must be an Integer
 ERROR: Configuration parameter 'maintain_initial_size' must be a Boolean
 WARNING: Configuration file {{ CONFIG_FILE }} will be overwritten.
@@ -32,10 +32,8 @@ Allowed values for EC2 Key Pair Name:
 5. key5
 6. key6
 Allowed values for Scheduler:
-1. sge
-2. torque
-3. slurm
-4. awsbatch
+1. slurm
+2. awsbatch
 Allowed values for Operating System:
 1. alinux2
 2. centos7

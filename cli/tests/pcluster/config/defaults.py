@@ -236,7 +236,7 @@ class DefaultDict(Enum):
 
 # number of CFN parameters created by the PclusterConfig object.
 CFN_SIT_CONFIG_NUM_OF_PARAMS = 63
-CFN_HIT_CONFIG_NUM_OF_PARAMS = 53
+CFN_HIT_CONFIG_NUM_OF_PARAMS = 52
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ArtifactS3RootDirectory", "RemoveBucketOnDeletion"]

@@ -492,7 +492,7 @@ def efa_validator(param_key, param_value, pcluster_config):
         if cluster_section.get_param_value("placement_group") is None:
             warnings.append("You may see better performance using a cluster placement group.")
 
-    allowed_schedulers = ["sge", "slurm", "torque"]
+    allowed_schedulers = ["slurm"]
     if cluster_section.get_param_value("scheduler") not in allowed_schedulers:
         errors.append(
             "When using 'enable_efa = {0}' it is required to set the 'scheduler' parameter "
@@ -963,14 +963,6 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     supported_os = get_supported_os_for_scheduler(param_value)
     if pcluster_config.get_section("cluster").get_param_value("base_os") not in supported_os:
         errors.append("'{0}' scheduler supports the following Operating Systems: {1}".format(param_value, supported_os))
-
-    will_be_deprecated = ["sge", "torque"]
-    wiki_url = "https://github.com/aws/aws-parallelcluster/wiki/Deprecation-of-SGE-and-Torque-in-ParallelCluster"
-    if param_value in will_be_deprecated:
-        warnings.append(
-            "The job scheduler you are using ({0}) is scheduled to be deprecated in future releases of "
-            "ParallelCluster. More information is available here: {1}".format(param_value, wiki_url)
-        )
 
     return errors, warnings
 

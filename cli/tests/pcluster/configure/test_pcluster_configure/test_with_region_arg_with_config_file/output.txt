@@ -10,10 +10,8 @@ Allowed values for EC2 Key Pair Name:
 5. key5
 6. key6
 Allowed values for Scheduler:
-1. sge
-2. torque
-3. slurm
-4. awsbatch
+1. slurm
+2. awsbatch
 Allowed values for Operating System:
 1. alinux2
 2. centos7

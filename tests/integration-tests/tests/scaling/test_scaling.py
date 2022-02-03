@@ -10,22 +10,16 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-from os import environ
 
 import pytest
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
 
 from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
 from tests.common.hit_common import wait_for_num_nodes_in_scheduler
-from tests.common.scaling_common import (
-    assert_maintain_initial_size_behavior,
-    get_compute_nodes_allocation,
-    get_desired_asg_capacity,
-)
+from tests.common.scaling_common import get_compute_nodes_allocation
 from tests.common.schedulers_common import get_scheduler_commands
 
 
@@ -67,53 +61,6 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 
     logging.info("Verifying no error in logs")
     assert_no_errors_in_logs(remote_command_executor, scheduler)
-
-
-@pytest.mark.regions(["sa-east-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["sge", "torque"])
-@pytest.mark.oss(["alinux2", "centos7", "ubuntu1804"])
-@pytest.mark.usefixtures("region", "instance", "os")
-@pytest.mark.nodewatcher
-def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
-    # slurm test use more nodes because of internal request to test in multi-node settings
-    initial_queue_size = 1
-    maintain_initial_size = "true"
-    environ["AWS_DEFAULT_REGION"] = region
-    cluster_config = pcluster_config_reader(
-        initial_queue_size=initial_queue_size, maintain_initial_size=maintain_initial_size
-    )
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-
-    compute_nodes = scheduler_commands.get_compute_nodes()
-    instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
-    hostname_to_instance_id = get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname=False)
-
-    logging.info("Testing that nodewatcher will terminate a node in failing state")
-    # submit a job to run on all nodes
-    scheduler_commands.submit_command("sleep infinity", nodes=initial_queue_size)
-    expected_num_nodes_killed = 1
-    # simulate unexpected hardware failure by killing first x nodes
-    nodes_to_remove = compute_nodes[:expected_num_nodes_killed]
-    for node in nodes_to_remove:
-        remote_command_executor.run_remote_script(
-            str(test_datadir / "{0}_kill_scheduler_job.sh".format(scheduler)), args=[node]
-        )
-
-    # assert failing nodes are terminated according to ASG
-    _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, region)
-    nodes_to_retain = [compute for compute in compute_nodes if compute not in nodes_to_remove]
-    # verify that desired capacity is still the initial_queue_size
-    assert_that(get_desired_asg_capacity(region, cluster.cfn_name)).is_equal_to(initial_queue_size)
-    # assert failing nodes are removed from scheduler config
-    _assert_nodes_removed_and_replaced_in_scheduler(
-        scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=initial_queue_size
-    )
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-    assert_maintain_initial_size_behavior(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
 
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(15))

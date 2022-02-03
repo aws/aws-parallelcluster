@@ -21,12 +21,10 @@ from troposphere import Template
 from troposphere.ec2 import PlacementGroup
 from utils import generate_stack_name
 
-from tests.common.scaling_common import get_asg
-
 
 @pytest.mark.regions(["af-south-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os", "instance", "scheduler", "region")
 def test_existing_placement_group_in_cluster(
@@ -47,7 +45,7 @@ def test_existing_placement_group_in_cluster(
 
 @pytest.mark.regions(["eu-north-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os", "instance", "scheduler", "region")
 def test_dynamic_placement_group_in_cluster(region, scheduler, pcluster_config_reader, clusters_factory, instance):
@@ -106,18 +104,13 @@ def _get_placement_group(scheduler, region, cluster, queue_name, instance):
     For slurm, the information of placement group can be retrieved from launch template, for traditional scheduler,
     the information of placement group can be retrieved from auto-scaling group.
     """
-    if scheduler == "slurm":
-        ec2_client = boto3.client("ec2", region_name=region)
-        launch_template_name = _get_launch_template_name(cluster, queue_name, instance)
-        launch_template_data = ec2_client.describe_launch_template_versions(
-            LaunchTemplateName=launch_template_name, Versions=["$Latest"]
-        )["LaunchTemplateVersions"][0]["LaunchTemplateData"]
-        placement_group_name = launch_template_data["Placement"]["GroupName"]
-        return placement_group_name
-    else:
-        asg = get_asg(region, cluster.cfn_name)
-        placement_group_name = asg["PlacementGroup"]
-        return placement_group_name
+    ec2_client = boto3.client("ec2", region_name=region)
+    launch_template_name = _get_launch_template_name(cluster, queue_name, instance)
+    launch_template_data = ec2_client.describe_launch_template_versions(
+        LaunchTemplateName=launch_template_name, Versions=["$Latest"]
+    )["LaunchTemplateVersions"][0]["LaunchTemplateData"]
+    placement_group_name = launch_template_data["Placement"]["GroupName"]
+    return placement_group_name
 
 
 def _get_launch_template_name(cluster, queue_name, instance):

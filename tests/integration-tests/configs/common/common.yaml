@@ -11,7 +11,7 @@ cfn-init:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
   test_cfn_init.py::test_install_args_quotes:
     dimensions:
       - regions: ["us-west-1"]
@@ -30,7 +30,7 @@ cli_commands:
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
 cloudwatch_logging:
   test_cloudwatch_logging.py::test_cloudwatch_logging:
     dimensions:
@@ -59,7 +59,7 @@ configure:
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
@@ -169,7 +169,7 @@ dcv:
       - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
 disable_hyperthreading:
   test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
     dimensions:
@@ -186,14 +186,14 @@ disable_hyperthreading:
   test_disable_hyperthreading.py::test_sit_disable_hyperthreading:
     dimensions:
       # Manually disabled HT
-      {%- for os, scheduler in [("ubuntu2004", "torque"), ("ubuntu1804", "sge")] %}
+      {%- for os, scheduler in [("ubuntu2004", "slurm"), ("ubuntu1804", "slurm")] %}
       - regions: ["sa-east-1"]
         instances: ["m4.xlarge"]
         oss: ["{{ os }}"]
         schedulers: ["{{ scheduler }}"]
       {%- endfor %}
       # HT disabled via CpuOptions
-      {%- for os, scheduler in [("alinux2", "sge"), ("centos7", "torque")] %}
+      {%- for os, scheduler in [("alinux2", "slurm"), ("centos7", "slurm")] %}
       - regions: ["sa-east-1"]
         instances: ["c5.xlarge"]
         oss: ["{{ os }}"]
@@ -226,9 +226,8 @@ efa:
       - regions: ["me-south-1"]
         instances: ["c5n.18xlarge"]
         oss: {{ common.OSS_COMMERCIAL_X86 }}
-        # Torque is not supported by OpenMPI distributed with EFA
         # Slurm test is to verify EFA works correctly when using the SIT model in the config file
-        schedulers: ["sge", "slurm"]
+        schedulers: ["slurm"]
 iam:
   test_iam.py::test_iam_policies:
     dimensions:
@@ -239,7 +238,7 @@ iam:
   test_iam.py::test_iam_roles:
     dimensions:
       - regions: ["us-east-2"]
-        schedulers: ["awsbatch", "slurm", "sge"]
+        schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
   test_iam.py::test_s3_read_write_resource:
@@ -265,7 +264,7 @@ networking:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
   test_networking.py::test_public_network_topology:
     dimensions:
       - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
@@ -303,13 +302,13 @@ networking:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
   test_placement_group.py::test_dynamic_placement_group_in_cluster:
     dimensions:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
   test_placement_group.py::test_placement_group_in_queue:
     dimensions:
       - regions: ["eu-central-1"]
@@ -317,53 +316,23 @@ networking:
         oss: ["alinux2"]
         schedulers: ["slurm"]
 scaling:
-  test_scaling.py::test_nodewatcher_terminates_failing_node:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["sge", "torque"]
   test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
     dimensions:
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
   test_mpi.py::test_mpi_ssh:
     dimensions:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      - regions: ["ca-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["sge"]
 schedulers:
-  test_sge.py::test_sge:
-    dimensions:
-      - regions: ["eu-south-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["sge"]
-      - regions: ["eu-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["sge"]
-  test_torque.py::test_torque:
-    dimensions:
-      - regions: ["ca-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["torque"]
-      - regions: ["ap-northeast-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["torque"]
   test_awsbatch.py::test_awsbatch:
     dimensions:
       - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
@@ -416,7 +385,7 @@ spot:
       - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
-        schedulers: ["sge", "slurm"]
+        schedulers: ["slurm"]
 storage:
   test_fsx_lustre.py::test_fsx_lustre:
     dimensions:
@@ -447,11 +416,11 @@ storage:
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
   test_fsx_lustre.py::test_existing_fsx:
     dimensions:
       - regions: ["us-west-2"]
@@ -499,11 +468,11 @@ storage:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_GOVCLOUD_X86 }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_BATCH }}
@@ -530,20 +499,20 @@ storage:
       - regions: ["{{ region }}"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ oss }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       {%- endfor %}
   test_ebs.py::test_ebs_single_empty:
     dimensions:
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
-        schedulers: ["torque"]
+        schedulers: ["slurm"]
   test_ebs.py::test_ebs_snapshot:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
@@ -553,45 +522,25 @@ storage:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
 tags:
   test_tag_propagation.py::test_tag_propagation:
     dimensions:
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm", "torque", "awsbatch"]
+        schedulers: ["slurm", "awsbatch"]
 update:
   test_update.py::test_update_awsbatch:
     dimensions:
       - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["awsbatch"]
-  test_update.py::test_update_hit:
+  test_update.py::test_update_slurm:
     dimensions:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm"]
-  test_update.py::test_update_sit:
-    dimensions:
-      - regions: ["eu-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
-  test_update.py::test_sit_update_compute_instance_disable_ht:
-    dimensions:
-      - regions: ["us-west-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
-  test_update.py::test_sit_update_compute_instance_extra_json:
-    dimensions:
-      - regions: ["us-west-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
     dimensions:

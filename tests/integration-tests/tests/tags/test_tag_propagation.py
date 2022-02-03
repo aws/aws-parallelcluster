@@ -156,8 +156,6 @@ def get_compute_fleet_substack_name(cluster, scheduler):
     """Return the name of the given cluster's compute fleet substack."""
     scheduler_to_compute_fleet_logical_stack_name = {
         "slurm": "ComputeFleetHITSubstack",
-        "sge": "ComputeFleetSubstack",
-        "torque": "ComputeFleetSubstack",
         "awsbatch": "AWSBatchStack",
     }
     return cluster.cfn_resources.get(scheduler_to_compute_fleet_logical_stack_name[scheduler])

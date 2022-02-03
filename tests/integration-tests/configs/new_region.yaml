@@ -60,9 +60,9 @@ test-suites:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
-          schedulers: ["sge"]
+          schedulers: ["slurm"]
   update:
-    test_update.py::test_update_hit:
+    test_update.py::test_update_slurm:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}

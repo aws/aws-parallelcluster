@@ -809,7 +809,7 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("scheduler", {
         "cfn_param_mapping": "Scheduler",
-        "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
+        "allowed_values": ["awsbatch", "slurm"],
         "validators": [scheduler_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED

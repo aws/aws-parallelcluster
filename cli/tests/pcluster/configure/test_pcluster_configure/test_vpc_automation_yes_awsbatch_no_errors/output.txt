@@ -27,10 +27,8 @@ Allowed values for EC2 Key Pair Name:
 5. key5
 6. key6
 Allowed values for Scheduler:
-1. sge
-2. torque
-3. slurm
-4. awsbatch
+1. slurm
+2. awsbatch
 Beginning VPC creation. Please do not leave the terminal until the creation is finalized
 Configuration file written to {{ CONFIG_FILE }}
 You can edit your configuration file or simply run 'pcluster create -c {{ CONFIG_FILE }} cluster-name' to create your cluster

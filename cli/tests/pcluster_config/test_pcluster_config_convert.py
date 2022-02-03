@@ -15,12 +15,6 @@ from assertpy import assert_that
 from pcluster_config import cli
 
 
-def test_sge_sit(mocker, test_datadir, tmpdir, capsys):
-    # Template not specified, it takes the cluster_template value from global section.
-    # The scheduler is sge so it should skip the conversion
-    _convert_and_assert_file_content(mocker, test_datadir, tmpdir, capsys, expected_skip_message="scheduler is sge")
-
-
 def test_slurm_hit(mocker, test_datadir, tmpdir, capsys):
     # The cluster is already HIT so it should skip the conversion
     _convert_and_assert_file_content(
