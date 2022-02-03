@@ -131,7 +131,7 @@ def test_createami_wrong_os(region, instance, os, request, pcluster_config_reade
     base_ami = amis_dict.get(wrong_os)
 
     command = _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config)
-    _createami_and_assert_error(command, fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}")
+    _createami_and_assert_error(command, rf"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}")
 
 
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "*")
@@ -149,7 +149,7 @@ def test_createami_wrong_pcluster_version(
     wrong_ami = pcluster_ami_without_standard_naming(wrong_version)
 
     command = _compose_command(region, instance, os, request, vpc_stack, wrong_ami, cluster_config)
-    _createami_and_assert_error(command, fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
+    _createami_and_assert_error(command, rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
 def _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config):

@@ -253,19 +253,19 @@ def orchestrate_pcluster_configure_stages(
         {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
         {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
         {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
-        {"prompt": fr"Minimum cluster size \({compute_units}\) \[0\]: ", "response": "1"},
-        {"prompt": fr"Maximum cluster size \({compute_units}\) \[10\]: ", "response": ""},
+        {"prompt": rf"Minimum cluster size \({compute_units}\) \[0\]: ", "response": "1"},
+        {"prompt": rf"Maximum cluster size \({compute_units}\) \[10\]: ", "response": ""},
         {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
         {"prompt": r"Compute instance type \[t.\.micro\]: ", "response": instance, "skip_for_batch": True},
         {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
         {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
         {
-            "prompt": fr"{omitted_note}head node Subnet ID \[subnet-.+\]: ",
+            "prompt": rf"{omitted_note}head node Subnet ID \[subnet-.+\]: ",
             "response": headnode_subnet_id,
         },
         {
-            "prompt": fr"{omitted_note}compute Subnet ID \[{default_compute_subnet}\]: ",
+            "prompt": rf"{omitted_note}compute Subnet ID \[{default_compute_subnet}\]: ",
             "response": compute_subnet_id,
         },
     ]

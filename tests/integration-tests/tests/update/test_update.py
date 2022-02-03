@@ -342,10 +342,10 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
         for compute_resource_config in queue_config["compute_resources"].values():
             instance_type = compute_resource_config["instance_type"].replace(".", "")
             running_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
+                re.compile(rf"{queue}-(dy|st)-{instance_type}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
             )
             power_saved_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle~\n").findall(slurm_nodes_str)
+                re.compile(rf"{queue}-(dy|st)-{instance_type}-\d+ idle~\n").findall(slurm_nodes_str)
             )
             assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])

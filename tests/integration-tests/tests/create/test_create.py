@@ -40,7 +40,7 @@ def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, a
     assert_errors_in_logs(
         remote_command_executor,
         ["/var/log/chef-client.log"],
-        ["RuntimeError", fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}"],
+        ["RuntimeError", rf"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}"],
     )
 
 
@@ -67,7 +67,7 @@ def test_create_wrong_pcluster_version(
     assert_errors_in_logs(
         remote_command_executor,
         ["/var/log/cloud-init-output.log"],
-        ["error_exit", fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}"],
+        ["error_exit", rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}"],
     )
 
 
