@@ -7,6 +7,11 @@ CHANGELOG
 **BUG FIXES**
 - Fix DCV connection through browsers.
 
+**CHANGES**
+- Upgrade NVIDIA driver to version 470.103.01.
+- Upgrade CUDA library to version 11.4.4.
+- Upgrade NVIDIA Fabric manager to version 470.103.01.
+
 2.11.4
 -----
 
