@@ -99,6 +99,7 @@ Scheduling:
         AssignPublicIp: true
         SecurityGroups:
           - sg-12345678
+          - sg-12345679
         PlacementGroup:
           Enabled: true
           Id: String
