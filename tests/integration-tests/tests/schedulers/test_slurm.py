@@ -55,7 +55,12 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
     supports_impi = architecture == "x86_64"
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, gpu_instance_type=gpu_instance_type)
+    compute_node_bootstrap_timeout = 1600
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        gpu_instance_type=gpu_instance_type,
+        compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
+    )
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
@@ -92,6 +97,15 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
     assert_no_errors_in_logs(remote_command_executor, "slurm")
+    # Test compute node bootstrap timeout
+    _test_compute_node_bootstrap_timeout(
+        cluster,
+        pcluster_config_reader,
+        remote_command_executor,
+        compute_node_bootstrap_timeout,
+        scaledown_idletime,
+        gpu_instance_type,
+    )
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -1145,3 +1159,40 @@ def _test_recover_from_protected_mode(
     # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
     # not enter protected mode
     check_status(cluster, compute_fleet_status="RUNNING")
+
+
+def _test_compute_node_bootstrap_timeout(
+    cluster,
+    pcluster_config_reader,
+    remote_command_executor,
+    compute_node_bootstrap_timeout,
+    scaledown_idletime,
+    gpu_instance_type,
+):
+    """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
+    slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
+        "sudo cat /opt/slurm/etc/slurm_parallelcluster.conf"
+    ).stdout
+    assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={compute_node_bootstrap_timeout}")
+    clustermgtd_conf = remote_command_executor.run_remote_command(
+        "sudo cat /etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    ).stdout
+    assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
+    # Update cluster
+    update_compute_node_bootstrap_timeout = 1200
+    updated_config_file = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        gpu_instance_type=gpu_instance_type,
+        compute_node_bootstrap_timeout=update_compute_node_bootstrap_timeout,
+        config_file="pcluster.update.config.yaml",
+    )
+    _update_and_start_cluster(cluster, updated_config_file)
+    slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
+        "sudo cat /opt/slurm/etc/slurm_parallelcluster.conf"
+    ).stdout
+    assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={update_compute_node_bootstrap_timeout}")
+    clustermgtd_conf = remote_command_executor.run_remote_command(
+        "sudo cat /etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    ).stdout
+    assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
+    assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")

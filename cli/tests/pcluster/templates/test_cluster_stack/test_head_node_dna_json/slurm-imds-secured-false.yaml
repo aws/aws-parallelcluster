@@ -20,3 +20,7 @@ Scheduling:
           InstanceType: c5.2xlarge
         - Name: compute_resource2
           InstanceType: c4.2xlarge
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1200
+    ComputeNodeBootstrapTimeout: 1000
