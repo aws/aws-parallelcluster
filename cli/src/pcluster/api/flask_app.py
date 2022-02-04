@@ -22,7 +22,7 @@ from pcluster.api.errors import (
     ParallelClusterApiException,
     exception_message,
 )
-from pcluster.api.util import assert_node_executable
+from pcluster.api.util import assert_valid_node_js
 from pcluster.aws.common import AWSClientError, Cache
 
 LOGGER = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class ParallelClusterFlaskApp:
     """Flask app that implements the ParallelCluster API."""
 
     def __init__(self, swagger_ui: bool = False, validate_responses=False):
-        assert_node_executable()
+        assert_valid_node_js()
         options = {"swagger_ui": swagger_ui}
 
         self.app = connexion.FlaskApp(__name__, specification_dir="openapi/", skip_error_handlers=True)
