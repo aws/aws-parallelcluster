@@ -77,6 +77,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_default_instance_tags,
     get_default_volume_tags,
     get_directory_service_dna_json_for_head_node,
+    get_lambda_log_group_prefix,
     get_log_group_deletion_policy,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
@@ -359,7 +360,12 @@ class ClusterCdkStack(Stack):
                         sid="S3BucketPolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self.format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self.format_arn(
+                            service="logs",
+                            account=self.account,
+                            region=self.region,
+                            resource=get_lambda_log_group_prefix("CleanupResources-*"),
+                        )
                     ),
                 ],
             )
@@ -460,20 +466,20 @@ class ClusterCdkStack(Stack):
         managed_head_security_group,
     ):
         if managed_head_security_group:
-            for security_group in compute_security_groups:
+            for index, security_group in enumerate(compute_security_groups):
                 # Access to head node from compute nodes
                 self._allow_all_ingress(
-                    "HeadNodeSecurityGroupComputeIngress", security_group, managed_head_security_group.ref
+                    f"HeadNodeSecurityGroupComputeIngress{index}", security_group, managed_head_security_group.ref
                 )
         if managed_compute_security_group:
             # Access to compute nodes from head node
-            for security_group in head_node_security_groups:
+            for index, security_group in enumerate(head_node_security_groups):
                 self._allow_all_ingress(
-                    "ComputeSecurityGroupHeadNodeIngress", security_group, managed_compute_security_group.ref
+                    f"ComputeSecurityGroupHeadNodeIngress{index}", security_group, managed_compute_security_group.ref
                 )
-            for security_group in custom_compute_security_groups:
+            for index, security_group in enumerate(custom_compute_security_groups):
                 self._allow_all_ingress(
-                    "ComputeSecurityGroupCustomComputeSecurityGroupIngress",
+                    f"ComputeSecurityGroupCustomComputeSecurityGroupIngress{index}",
                     security_group,
                     managed_compute_security_group.ref,
                 )

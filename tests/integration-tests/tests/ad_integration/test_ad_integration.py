@@ -445,6 +445,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_s
 
 def _run_user_workloads(users, test_datadir, remote_command_executor):
     compile_osu("openmpi", remote_command_executor)
+    _check_whoami(users)
     _check_files_permissions(users)
     job_submission_outputs = [
         # TODO: render script from template to dynamically provide path to benchmarks and other paramters
@@ -458,6 +459,15 @@ def _run_user_workloads(users, test_datadir, remote_command_executor):
     for user, job_id in zip(users, job_ids):
         user.wait_job_completed(job_id)
         user.assert_job_succeeded(job_id)
+
+
+def _check_whoami(users):
+    logging.info("Checking whoami")
+    for user in users:
+        result = user.run_remote_command("whoami").stdout
+        assert_that(result).is_equal_to(user.alias)
+        result = user.run_remote_command("srun whoami").stdout
+        assert_that(result).is_equal_to(user.alias)
 
 
 def _check_files_permissions(users):
@@ -642,11 +652,11 @@ def test_ad_integration(
         f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo service sssd restart",
         additional_files=[test_datadir / "certificate.crt"],
     )
-
-    logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
-    time.sleep(600)
-    # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
-    #  We should look for other methods to let the SSSD agent use the new certificate more quickly
+    if directory_certificate_verification:
+        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
+        time.sleep(600)
+        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
+        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
     remote_command_executor = RemoteCommandExecutor(cluster)
     metric_publisher_script = "publish_compute_node_count_metric.sh"
     remote_metric_publisher_script_path = f"/shared/{metric_publisher_script}"

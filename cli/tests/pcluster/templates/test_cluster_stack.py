@@ -24,7 +24,6 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_buc
 from tests.pcluster.utils import load_cluster_model_from_yaml
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize(
     "config_file_name",
     [

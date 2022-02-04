@@ -3,7 +3,19 @@ ad_integration:
     dimensions:
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: ["centos7"]
+        schedulers: ["slurm"]
+      - regions: [ "ap-southeast-1" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+      - regions: ["ap-southeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu1804"]
+        schedulers: ["slurm"]
+      - regions: ["ap-northeast-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
 arm_pl:
   test_arm_pl.py::test_arm_pl:
@@ -219,11 +231,10 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      # Temporarily disabling p4d tests
-      # - regions: ["us-west-2"]
-      #   instances: ["p4d.24xlarge"]
-      #   oss: {{ common.OSS_COMMERCIAL_X86 }}
-      #   schedulers: ["slurm"]
+      - regions: ["us-west-2"]
+        instances: ["p4d.24xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
