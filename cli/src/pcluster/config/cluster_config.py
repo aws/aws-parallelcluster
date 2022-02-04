@@ -35,6 +35,7 @@ from pcluster.constants import (
     MAX_NUMBER_OF_COMPUTE_RESOURCES,
     MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
+    NODE_BOOTSTRAP_TIMEOUT,
     SUPPORTED_OSES,
 )
 from pcluster.utils import (
@@ -744,6 +745,19 @@ class AmiSearchFilters(Resource):
         self.owner = owner
 
 
+class Timeouts(Resource):
+    """Represent the configuration for node boostrap timeout."""
+
+    def __init__(self, head_node_bootstrap_timeout: int = None, compute_node_bootstrap_timeout: int = None):
+        super().__init__()
+        self.head_node_bootstrap_timeout = Resource.init_param(
+            head_node_bootstrap_timeout, default=NODE_BOOTSTRAP_TIMEOUT
+        )
+        self.compute_node_bootstrap_timeout = Resource.init_param(
+            compute_node_bootstrap_timeout, default=NODE_BOOTSTRAP_TIMEOUT
+        )
+
+
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
@@ -752,12 +766,14 @@ class ClusterDevSettings(BaseDevSettings):
         cluster_template: str = None,
         ami_search_filters: AmiSearchFilters = None,
         instance_types_data: str = None,
+        timeouts: Timeouts = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.cluster_template = Resource.init_param(cluster_template)
         self.ami_search_filters = Resource.init_param(ami_search_filters)
         self.instance_types_data = Resource.init_param(instance_types_data)
+        self.timeouts = Resource.init_param(timeouts)
 
     def _register_validators(self):
         super()._register_validators()

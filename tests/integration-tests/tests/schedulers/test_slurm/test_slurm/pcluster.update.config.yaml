@@ -7,15 +7,10 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: {{ scheduler }}
-  {{ scheduler_prefix }}Settings:
-    {% if scheduler == "plugin" %}
-    CustomSettings:
-      ScaledownIdletime: {{ scaledown_idletime }}
-    {% else %}
+  Scheduler: slurm
+  SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
-    {% endif %}
-  {{ scheduler_prefix }}Queues:
+  SlurmQueues:
     - Name: ondemand
       Networking:
         SubnetIds:
@@ -43,3 +38,4 @@ DevSettings:
   Timeouts:
     HeadNodeBootstrapTimeout: 1700
     ComputeNodeBootstrapTimeout: {{compute_node_bootstrap_timeout}}
+

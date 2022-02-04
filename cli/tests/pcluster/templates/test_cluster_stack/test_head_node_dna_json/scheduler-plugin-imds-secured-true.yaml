@@ -26,3 +26,6 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource1
           InstanceType: c5.2xlarge
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1201

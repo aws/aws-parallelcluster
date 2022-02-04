@@ -8,8 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
+from datetime import datetime
 
 import pytest
 import yaml
@@ -204,6 +204,34 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     expected_head_node_dna_json = load_json_dict(test_datadir / expected_head_node_dna_json_file_name)
 
     assert_that(generated_head_node_dna_json).is_equal_to(expected_head_node_dna_json)
+
+
+@freeze_time("2021-01-01T01:01:01")
+@pytest.mark.parametrize(
+    "config_file_name, expected_head_node_bootstrap_timeout",
+    [
+        ("slurm.required.yaml", "1800"),
+        ("slurm.full.yaml", "1201"),
+        ("awsbatch.simple.yaml", "1800"),
+        ("awsbatch.full.yaml", "1000"),
+        ("scheduler_plugin.required.yaml", "1800"),
+        ("scheduler_plugin.full.yaml", "1201"),
+    ],
+)
+def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_node_bootstrap_timeout):
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    assert_that(
+        generated_template["Resources"]
+        .get("HeadNodeWaitCondition" + datetime.utcnow().strftime("%Y%m%d%H%M%S"))
+        .get("Properties")
+        .get("Timeout")
+    ).is_equal_to(expected_head_node_bootstrap_timeout)
 
 
 def _get_cfn_init_file_content(template, resource, file):

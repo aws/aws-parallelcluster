@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import base64
 import json
 import logging
 import time
@@ -90,6 +91,7 @@ def test_scheduler_plugin_integration(
     bucket_name = s3_bucket
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     account_id = boto3.client("sts", region_name=region).get_caller_identity().get("Account")
+    compute_node_bootstrap_timeout = 1600
     for file in ["scheduler_plugin_infra.cfn.yaml", "artifact"]:
         bucket.upload_file(str(test_datadir / file), f"{s3_bucket_key_prefix}/scheduler_plugin/{file}")
     run_as_user = OS_MAPPING[os]
@@ -114,6 +116,7 @@ def test_scheduler_plugin_integration(
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],
         account_id=account_id,
         run_as_user=run_as_user,
+        compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
     )
     # Command executor
     command_executor = RemoteCommandExecutor(cluster)
@@ -199,7 +202,7 @@ def _start_compute_node(ec2_client, region, cluster, command_executor):
     # Get one launch template for compute node
     lt = _get_launch_templates(command_executor)[0]
     run_instance_command = (
-        f"aws ec2 run-instances --region {region}" f" --count 1" f" --launch-template LaunchTemplateId={lt}"
+        f"aws ec2 run-instances --region {region} --count 1 --launch-template LaunchTemplateId={lt},Version=$Latest"
     )
     command_executor.run_remote_command(run_instance_command)
     # Wait instance to start
@@ -607,3 +610,13 @@ def _test_invoke_scheduler_plugin_event_handler_script(command_executor, compute
             f"ssh -q {compute_node_private_ip} cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
         ).stdout
         assert_that(compute_scheduler_plugin_log_output).contains(f"[{event}] - INFO: dummy config {event} executed")
+
+
+def _test_compute_node_bootstrap_timeout(compute_node, compute_node_bootstrap_timeout):
+    """Test compute node bootstrap timeout in userdata is the same as set in DevSettings."""
+    user_data = boto3.client("ec2").describe_instance_attribute(
+        Attribute="userData", InstanceId=compute_node.get("instanceId")
+    )["UserData"]["Value"]
+    assert_that(str(base64.b64decode(user_data))).contains(
+        f"timeout {compute_node_bootstrap_timeout} /tmp/bootstrap.sh"
+    )
