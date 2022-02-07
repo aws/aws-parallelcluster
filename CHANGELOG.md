@@ -12,6 +12,7 @@ CHANGELOG
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
 - Add support for GPU scheduling with Slurm on ARM instances with NVIDIA cards. Install NVIDIA drivers and CUDA library for ARM.
 - Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
+- Add support for `NEW_CHANGED_DELETED` as value of FSx for Lustre `AutoImportPolicy` option.
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 - Improve Security Groups created within the cluster to allow inbound connections from custom security groups when `SecurityGroups` parameters are specified for some head node and/or queues.`
 

@@ -375,7 +375,8 @@ class FsxLustreSettingsSchema(BaseSchema):
         validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     auto_import_policy = fields.Str(
-        validate=validate.OneOf(["NEW", "NEW_CHANGED"]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        validate=validate.OneOf(["NEW", "NEW_CHANGED", "NEW_CHANGED_DELETED"]),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     drive_cache_type = fields.Str(
         validate=validate.OneOf(["READ"]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
