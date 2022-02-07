@@ -13,7 +13,7 @@ ad_integration:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
-      - regions: ["ap-northeast-1"]
+      - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
