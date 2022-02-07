@@ -158,7 +158,7 @@ SharedStorage:
       # BackupId: backup-fedcba98 # BackupId cannot coexist with some of the fields
       KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
       # FileSystemId: fs-12345678123456789 # FileSystemId cannot coexist with other fields
-      AutoImportPolicy: NEW  # NEW | NEW_CHANGED
+      AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
 Iam:
