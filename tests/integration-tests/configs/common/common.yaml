@@ -128,48 +128,48 @@ dashboard:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
-#dcv:
-#  test_dcv.py::test_dcv_configuration:
-#    dimensions:
-#      # DCV on GPU enabled instance
-#      - regions: ["us-east-1"]
-#        instances: ["g4dn.2xlarge"]
-#        oss: {{common.OSS_COMMERCIAL_X86}}
-#        schedulers: ["slurm"]
-#      # DCV on ARM
-#      - regions: ["eu-west-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-#        # DCV does not support ubuntu2004 yet
-#        {{- common.OSS_COMMERCIAL_ARM.remove("ubuntu2004") or "" }}
-#        oss: {{ common.OSS_COMMERCIAL_ARM }}
-#        {{- common.OSS_COMMERCIAL_ARM.append("ubuntu2004") or "" }}
-#        schedulers: ["slurm"]
-#      # DCV on Batch
-#      - regions: ["us-east-1"]
-#        instances: ["g4dn.2xlarge"]
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
-#      # DCV on Batch + ARM
-#      - regions: ["us-east-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
-#      # DCV in cn regions and non GPU enabled instance
-#      - regions: ["cn-northwest-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["slurm"]
-#      # DCV in gov-cloud regions and non GPU enabled instance
-#      - regions: ["us-gov-west-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["ubuntu1804"]
-#        schedulers: ["slurm"]
-#  test_dcv.py::test_dcv_with_remote_access:
-#    dimensions:
-#      - regions: ["ap-southeast-2"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["centos7"]
-#        schedulers: ["sge"]
+dcv:
+  test_dcv.py::test_dcv_configuration:
+    dimensions:
+      # DCV on GPU enabled instance
+      - regions: ["us-east-1"]
+        instances: ["g4dn.2xlarge"]
+        oss: {{common.OSS_COMMERCIAL_X86}}
+        schedulers: ["slurm"]
+      # DCV on ARM
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        # DCV does not support ubuntu2004 yet
+        {{- common.OSS_COMMERCIAL_ARM.remove("ubuntu2004") or "" }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        {{- common.OSS_COMMERCIAL_ARM.append("ubuntu2004") or "" }}
+        schedulers: ["slurm"]
+      # DCV on Batch
+      - regions: ["us-east-1"]
+        instances: ["g4dn.2xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+      # DCV on Batch + ARM
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+      # DCV in cn regions and non GPU enabled instance
+      - regions: ["cn-northwest-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+      # DCV in gov-cloud regions and non GPU enabled instance
+      - regions: ["us-gov-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu1804"]
+        schedulers: ["slurm"]
+  test_dcv.py::test_dcv_with_remote_access:
+    dimensions:
+      - regions: ["ap-southeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["centos7"]
+        schedulers: ["sge"]
 disable_hyperthreading:
   test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
     dimensions:
