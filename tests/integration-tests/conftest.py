@@ -41,6 +41,7 @@ from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_fr
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
+from framework.fixture_utils import xdist_session_fixture
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
@@ -843,7 +844,7 @@ def get_availability_zones(region, credential):
     return az_list
 
 
-@pytest.fixture(scope="session", autouse=True)
+@xdist_session_fixture(autouse=True)
 def initialize_cli_creds(cfn_stacks_factory, request):
     if request.config.getoption("use_default_iam_credentials"):
         logging.info("Using default IAM credentials to run pcluster commands")
@@ -853,6 +854,7 @@ def initialize_cli_creds(cfn_stacks_factory, request):
     stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
     with open(stack_template_path, encoding="utf-8") as stack_template_file:
         stack_template_data = stack_template_file.read()
+    cli_creds = {}
     for region in regions:
         if request.config.getoption("iam_user_role_stack_name"):
             stack_name = request.config.getoption("iam_user_role_stack_name")
@@ -867,8 +869,15 @@ def initialize_cli_creds(cfn_stacks_factory, request):
                 name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
             )
             cfn_stacks_factory.create_stack(stack)
-        # register providers
-        register_cli_credentials_for_region(region, stack.cfn_outputs["ParallelClusterUserRole"])
+        cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
+
+    return cli_creds
+
+
+@pytest.fixture(scope="session", autouse=True)
+def register_cli_credentials(initialize_cli_creds):
+    for region, creds in initialize_cli_creds.items():
+        register_cli_credentials_for_region(region, creds)
 
 
 @pytest.fixture(scope="session", autouse=True)
