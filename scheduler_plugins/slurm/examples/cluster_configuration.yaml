@@ -11,6 +11,8 @@ Scheduling:
   SchedulerSettings:
     GrantSudoPrivileges: true
     SchedulerDefinition: <PLUGIN_DEFINITION>
+#    SchedulerDefinitionS3BucketOwner: <ACCOUNT_ID>
+    SchedulerDefinitionChecksum: <PLUGIN_DEFINITION_CHECKSUM>
     CustomSettings:
       ScaledownIdletime: 10
   SchedulerQueues:

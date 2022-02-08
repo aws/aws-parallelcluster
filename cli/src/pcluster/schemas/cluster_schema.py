@@ -15,6 +15,7 @@
 #
 
 import copy
+import hashlib
 import logging
 import re
 from urllib.request import urlopen
@@ -24,6 +25,7 @@ from marshmallow import ValidationError, fields, post_load, pre_dump, pre_load, 
 from yaml import YAMLError
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AdditionalPackages,
     AmiSearchFilters,
@@ -1474,6 +1476,93 @@ class SchedulerPluginSettingsSchema(BaseSchema):
     )
     grant_sudo_privileges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    scheduler_definition_s3_bucket_owner = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
+    )
+    scheduler_definition_checksum = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
+    )
+
+    def _verify_checksum(self, file_content, original_definition, expected_checksum):
+        if expected_checksum:
+            actual_checksum = hashlib.sha256(file_content.encode()).hexdigest()
+            if actual_checksum != expected_checksum:
+                raise ValidationError(
+                    f"Error when validating SchedulerDefinition '{original_definition}': "
+                    f"checksum ({actual_checksum}) does not match expected one ({expected_checksum})"
+                )
+
+    def _fetch_scheduler_definition_from_s3(self, original_scheduler_definition, s3_bucket_owner):
+        try:
+            bucket_parsing_result = parse_bucket_url(original_scheduler_definition)
+            result = AWSApi.instance().s3.get_object(
+                bucket_name=bucket_parsing_result["bucket_name"],
+                key=bucket_parsing_result["object_key"],
+                expected_bucket_owner=s3_bucket_owner,
+            )
+            scheduler_definition = result["Body"].read().decode("utf-8")
+            return scheduler_definition
+        except AWSClientError as e:
+            error_message = (
+                f"Error while downloading scheduler definition from {original_scheduler_definition}: {str(e)}"
+            )
+            if s3_bucket_owner and e.error_code == "AccessDenied":
+                error_message = (
+                    f"{error_message}. This can be due to bucket owner not matching the expected "
+                    f"one '{s3_bucket_owner}'"
+                )
+            raise ValidationError(error_message) from e
+        except Exception as e:
+            raise ValidationError(
+                f"Error while downloading scheduler definition from {original_scheduler_definition}: {str(e)}"
+            ) from e
+
+    def _fetch_scheduler_definition_from_https(self, original_scheduler_definition):
+        try:
+            with urlopen(original_scheduler_definition) as f:  # nosec nosemgrep
+                scheduler_definition = f.read().decode("utf-8")
+                return scheduler_definition
+        except Exception:
+            error_message = (
+                f"Error while downloading scheduler definition from {original_scheduler_definition}: "
+                "The provided URL is invalid or unavailable."
+            )
+            raise ValidationError(error_message)
+
+    def _validate_scheduler_definition_url(self, original_scheduler_definition, s3_bucket_owner):
+        """Validate SchedulerDefinition url is valid."""
+        if not original_scheduler_definition.startswith("s3") and not original_scheduler_definition.startswith("https"):
+            raise ValidationError(
+                f"Error while downloading scheduler definition from {original_scheduler_definition}: The provided value"
+                " for SchedulerDefinition is invalid. You can specify this as an S3 URL, HTTPS URL or as an inline "
+                "YAML object."
+            )
+        if original_scheduler_definition.startswith("https") and s3_bucket_owner:
+            raise ValidationError(
+                f"Error while downloading scheduler definition from {original_scheduler_definition}: "
+                "SchedulerDefinitionS3BucketOwner can only be specified when SchedulerDefinition is S3 URL."
+            )
+
+    def _fetch_scheduler_definition_from_url(
+        self, original_scheduler_definition, s3_bucket_owner, scheduler_definition_checksum, data
+    ):
+        LOGGER.info("Downloading scheduler plugin definition from %s", original_scheduler_definition)
+        if original_scheduler_definition.startswith("s3"):
+            scheduler_definition = self._fetch_scheduler_definition_from_s3(
+                original_scheduler_definition, s3_bucket_owner
+            )
+        elif original_scheduler_definition.startswith("https"):
+            scheduler_definition = self._fetch_scheduler_definition_from_https(original_scheduler_definition)
+
+        self._verify_checksum(scheduler_definition, original_scheduler_definition, scheduler_definition_checksum)
+
+        LOGGER.info("Using the following scheduler plugin definition:\n%s", scheduler_definition)
+        try:
+            data["SchedulerDefinition"] = yaml.safe_load(scheduler_definition)
+        except YAMLError as e:
+            raise ValidationError(
+                f"The retrieved SchedulerDefinition ({original_scheduler_definition}) is not a valid YAML."
+            ) from e
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1484,36 +1573,18 @@ class SchedulerPluginSettingsSchema(BaseSchema):
     def fetch_scheduler_definition(self, data, **kwargs):
         """Fetch scheduler definition if it is s3 or https url."""
         original_scheduler_definition = data["SchedulerDefinition"]
+        s3_bucket_owner = data.get("SchedulerDefinitionS3BucketOwner", None)
+        scheduler_definition_checksum = data.get("SchedulerDefinitionChecksum", None)
         if isinstance(original_scheduler_definition, str):
-            LOGGER.info("Downloading scheduler plugin definition from %s", original_scheduler_definition)
-            try:
-                if original_scheduler_definition.startswith("s3"):
-                    bucket_parsing_result = parse_bucket_url(original_scheduler_definition)
-                    result = AWSApi.instance().s3.get_object(
-                        bucket_name=bucket_parsing_result["bucket_name"], key=bucket_parsing_result["object_key"]
-                    )
-                    scheduler_definition = result["Body"].read().decode("utf-8")
-                elif original_scheduler_definition.startswith("https"):
-                    try:
-                        with urlopen(original_scheduler_definition) as f:  # nosec nosemgrep
-                            scheduler_definition = f.read().decode("utf-8")
-                    except Exception:
-                        raise ValidationError("The provided URL is invalid or unavailable.")
-                else:
-                    raise ValidationError(
-                        "The provided value for SchedulerDefinition is invalid. "
-                        "You can specify this as an S3 URL, HTTPS URL or as an inline YAML object."
-                    )
-                LOGGER.info("Using the following scheduler plugin definition:\n%s", scheduler_definition)
-                data["SchedulerDefinition"] = yaml.safe_load(scheduler_definition)
-            except YAMLError as e:
-                raise ValidationError(
-                    f"The retrieved SchedulerDefinition ({original_scheduler_definition}) is not a valid YAML."
-                ) from e
-            except Exception as e:
-                raise ValidationError(
-                    f"Error while downloading scheduler definition from {original_scheduler_definition}: {str(e)}"
-                ) from e
+            self._validate_scheduler_definition_url(original_scheduler_definition, s3_bucket_owner)
+            self._fetch_scheduler_definition_from_url(
+                original_scheduler_definition, s3_bucket_owner, scheduler_definition_checksum, data
+            )
+        elif s3_bucket_owner or scheduler_definition_checksum:
+            raise ValidationError(
+                "SchedulerDefinitionS3BucketOwner or SchedulerDefinitionChecksum can only specified when "
+                "SchedulerDefinition is a URL."
+            )
         return data
 
 
