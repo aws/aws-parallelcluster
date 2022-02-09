@@ -370,6 +370,8 @@ Resources:
               nameserver       ${DnsIp1}
               nameserver       ${DnsIp2}
               EOF
+              sed -i 's/PEERDNS=.*/PEERDNS=no/' /etc/sysconfig/network-scripts/ifcfg-eth0
+              chattr +i /etc/resolv.conf
               ADMIN_PW=${AdminPassword}
               echo $ADMIN_PW | sudo realm join -U Admin ${DirectoryDomain}
               sleep 10
