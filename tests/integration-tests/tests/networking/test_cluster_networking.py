@@ -229,6 +229,12 @@ def enable_vpc_endpoints(vpc_stack, region, cfn_stacks_factory, request):
             enable_private_dns=True,
         ),
         VPCEndpointConfig(
+            name="SecretsManager",
+            service_name=prefix + f"com.amazonaws.{region}.secretsmanager",
+            type=VPCEndpointConfig.EndpointType.INTERFACE,
+            enable_private_dns=True,
+        ),
+        VPCEndpointConfig(
             name="S3Endpoint",
             service_name=f"com.amazonaws.{region}.s3",
             type=VPCEndpointConfig.EndpointType.GATEWAY,
