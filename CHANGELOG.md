@@ -9,6 +9,7 @@ x.x.x
 
 **CHANGES**
 - Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
+- Add validator to detect when using FSx for Lustre with AWS Batch as a scheduler, this combination is not supported yet.
 
 3.1.2
 ------
