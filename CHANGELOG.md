@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+x.x.x
+------
+
+**BUG FIXES**
+- Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
+
 3.1.1
 ------
 

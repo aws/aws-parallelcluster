@@ -298,6 +298,9 @@ class ClusterCdkStack(Stack):
 
         # Head Node
         self.head_node_instance = self._add_head_node()
+        # Add a dependency to the cleanup Route53 resource, so that Route53 Hosted Zone is cleaned after node is deleted
+        if self._condition_is_slurm() and hasattr(self.scheduler_resources, "cleanup_route53_custom_resource"):
+            self.head_node_instance.add_depends_on(self.scheduler_resources.cleanup_route53_custom_resource)
 
         # AWS Batch related resources
         if self._condition_is_batch():
