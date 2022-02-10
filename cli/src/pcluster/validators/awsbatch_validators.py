@@ -195,3 +195,14 @@ class AwsBatchInstancesArchitectureCompatibilityValidator(Validator):
     def _is_instance_type_format(candidate):
         """Return a boolean describing whether or not candidate is of the format of an instance type."""
         return re.search(r"^([a-z0-9\-]+)\.", candidate) is not None
+
+
+class AwsBatchFsxValidator(Validator):
+    """
+    Validator for FSx and AWS Batch scheduler.
+
+    Fail if using AWS Batch and FSx for Lustre, not supported yet.
+    """
+
+    def _validate(self):
+        self._add_failure("FSx for Lustre is not supported when using AWS Batch as scheduler.", FailureLevel.ERROR)
