@@ -96,6 +96,7 @@ from pcluster.config.cluster_config import (
     SlurmScheduling,
     SlurmSettings,
     Ssh,
+    SudoerConfiguration,
 )
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
@@ -1236,7 +1237,9 @@ class SchedulerPluginRequirementsSchema(BaseSchema):
     supports_cluster_update = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     supported_parallel_cluster_versions = fields.Str(
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-        validate=validate.Regexp(r"^((>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+,\s*)*(>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+$"),
+        validate=validate.Regexp(
+            r"^((>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?,\s*)*(>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?$"
+        ),
     )
 
     @post_load
@@ -1249,6 +1252,12 @@ class SchedulerPluginCloudFormationClusterInfrastructureSchema(BaseSchema):
     """Represent the CloudFormation section of the Scheduler Plugin ClusterInfrastructure schema."""
 
     template = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    s3_bucket_owner = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
+    )
+    checksum = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1275,6 +1284,12 @@ class SchedulerPluginClusterSharedArtifactSchema(BaseSchema):
     """Represent the schema for Cluster Shared Artifact in a Scheduler Plugin."""
 
     source = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    s3_bucket_owner = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
+    )
+    checksum = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1334,10 +1349,7 @@ class SchedulerPluginEventsSchema(BaseSchema):
     head_cluster_update = fields.Nested(
         SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
-    head_compute_fleet_start = fields.Nested(
-        SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    head_compute_fleet_stop = fields.Nested(
+    head_compute_fleet_update = fields.Nested(
         SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
 
@@ -1394,11 +1406,26 @@ class SchedulerPluginMonitoringSchema(BaseSchema):
         return SchedulerPluginMonitoring(**data)
 
 
+class SudoerConfigurationSchema(BaseSchema):
+    """Represent the SudoerConfiguration for scheduler plugin SystemUsers declared in the SchedulerDefinition."""
+
+    commands = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    run_as = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SudoerConfiguration(**data)
+
+
 class SchedulerPluginUserSchema(BaseSchema):
     """Represent the schema of the Scheduler Plugin."""
 
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     enable_imds = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    sudoer_configuration = fields.Nested(
+        SudoerConfigurationSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1498,7 +1525,7 @@ class SchedulingSchema(BaseSchema):
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch"]),
+        validate=validate.OneOf(["slurm", "awsbatch", "plugin"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     # Slurm schema

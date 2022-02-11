@@ -65,15 +65,6 @@ execute 'generate_pcluster_slurm_configs' do
           " --input-file #{node['pcluster']['cluster_config_path']}  --instance-types-data #{node['pcluster']['instance_types_data_path']} #{no_gpu}"
 end
 
-execute 'initialize compute fleet status in DynamoDB' do
-  # Initialize the status of the compute fleet in the DynamoDB table. Set it to RUNNING.
-  command "#{node['pcluster']['python_root']}/aws dynamodb put-item --table-name #{node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable']}"\
-            " --item '{\"Id\": {\"S\": \"COMPUTE_FLEET\"}, \"Status\": {\"S\": \"RUNNING\"}, \"LastUpdatedTime\": {\"S\": \"#{Time.now.utc}\"}}'"\
-            " --region #{node['pcluster']['region']}"
-  retries 3
-  retry_delay 5
-end
-
 template "#{node['slurm']['install_dir']}/etc/cgroup.conf" do
   source 'slurm/cgroup.conf.erb'
   owner 'root'
@@ -93,6 +84,26 @@ template "#{node['slurm']['install_dir']}/etc/slurm.csh" do
   owner 'root'
   group 'root'
   mode '0755'
+end
+
+template "#{node['pcluster']['local_dir']}/scripts/slurm/slurm_fleet_status_manager" do
+  source 'slurm/fleet_status_manager_program.erb'
+  owner node['slurm']['user']
+  group node['slurm']['group']
+  mode '0744'
+end
+
+file "/var/log/parallelcluster/slurm_fleet_status_manager.log" do
+  owner node['plugin']['fleet_mgt_user']
+  group node['plugin']['fleet_mgt_user']
+  mode '0644'
+end
+
+template "#{node['pcluster']['local_dir']}/parallelcluster_slurm_fleet_status_manager.conf" do
+  source 'slurm/parallelcluster_slurm_fleet_status_manager.conf.erb'
+  owner node['plugin']['user']
+  group node['plugin']['user']
+  mode '0644'
 end
 
 template "#{node['pcluster']['local_dir']}/scripts/slurm/slurm_resume" do
@@ -143,9 +154,9 @@ template "#{node['pcluster']['local_dir']}/parallelcluster_clustermgtd.conf" do
 end
 
 # Create shared directory used to store clustermgtd heartbeat and computemgtd config
-directory "#{node['slurm']['install_dir']}/etc/pcluster/.slurm_plugin" do
-  owner node['plugin']['user']
-  group node['plugin']['user']
+directory "#{node['pcluster']['shared_dir']}/.slurm_plugin" do
+  owner node['plugin']['fleet_mgt_user']
+  group node['plugin']['fleet_mgt_user']
   mode '0755'
   action :create
   recursive true

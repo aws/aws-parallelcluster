@@ -4,8 +4,12 @@ import os
 import pytest
 from assertpy import assert_that
 
-from pcluster.aws.common import AWSClientError
-from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
+from pcluster.models.compute_fleet_status_manager import (
+    ComputeFleetStatus,
+    ComputeFleetStatusManager,
+    JsonComputeFleetStatusManager,
+    PlainTextComputeFleetStatusManager,
+)
 
 
 class TestComputeFleetStatusManager:
@@ -15,59 +19,9 @@ class TestComputeFleetStatusManager:
             # We need to provide a region to boto3 to avoid no region exception.
             # Which region to provide is arbitrary.
             os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-        status_manager = ComputeFleetStatusManager("cluster-name")
+        status_manager = JsonComputeFleetStatusManager("cluster-name")
 
         return status_manager
-
-    @pytest.mark.parametrize(
-        "get_item_response, fallback, expected_status",
-        [
-            ({"Item": {"Id": "COMPUTE_FLEET", "Status": "RUNNING"}}, None, ComputeFleetStatus.RUNNING),
-            (
-                {},
-                ComputeFleetStatus.STOPPED,
-                ComputeFleetStatus.STOPPED,
-            ),
-            (
-                Exception,
-                ComputeFleetStatus.STOPPED,
-                ComputeFleetStatus.STOPPED,
-            ),
-        ],
-        ids=["success", "empty_response", "exception"],
-    )
-    def test_get_status(self, mocker, compute_fleet_status_manager, get_item_response, fallback, expected_status):
-        if get_item_response is Exception:
-            get_item_mock = mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", side_effect=get_item_response)
-        else:
-            get_item_mock = mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", return_value=get_item_response)
-        status = compute_fleet_status_manager.get_status(fallback)
-        assert_that(status).is_equal_to(expected_status)
-        get_item_mock.assert_called_with("parallelcluster-cluster-name", {"Id": "COMPUTE_FLEET"})
-
-    @pytest.mark.parametrize(
-        "put_item_response, expected_exception",
-        [
-            (
-                {},
-                None,
-            ),
-            (
-                AWSClientError("function", "message", "ConditionalCheckFailedException"),
-                ComputeFleetStatusManager.ConditionalStatusUpdateFailed,
-            ),
-            (Exception(), Exception),
-        ],
-        ids=["success", "conditional_check_failed", "exception"],
-    )
-    def test_put_status(self, mocker, compute_fleet_status_manager, put_item_response, expected_exception):
-        if isinstance(put_item_response, Exception):
-            mocker.patch("pcluster.aws.dynamo.DynamoResource.put_item", side_effect=put_item_response)
-            with pytest.raises(expected_exception):
-                compute_fleet_status_manager.put_status(ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING)
-        else:
-            mocker.patch("pcluster.aws.dynamo.DynamoResource.put_item", return_value=put_item_response)
-            compute_fleet_status_manager.put_status(ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING)
 
     @pytest.mark.parametrize(
         "request_status, get_status_responses, update_status_responses, expected_exception, expected_error_message,"
@@ -183,7 +137,7 @@ class TestComputeFleetStatusManager:
             compute_fleet_status_manager, "get_status", side_effect=get_status_responses
         )
         update_status_mock = mocker.patch.object(
-            compute_fleet_status_manager, "put_status", side_effect=update_status_responses
+            compute_fleet_status_manager, "_put_status", side_effect=update_status_responses
         )
         mocker.patch("time.sleep")
 
@@ -212,3 +166,32 @@ class TestComputeFleetStatusManager:
         assert_that(update_status_mock.call_count).is_equal_to(len(update_status_responses))
         assert_that(get_status_mock.call_count).is_equal_to(len(get_status_responses))
         assert_that(caplog.text).is_empty()
+
+    @pytest.mark.parametrize(
+        "version, scheduler, expected_compute_fleet_status_manager_instance",
+        [
+            (
+                "3.2.0",
+                "slurm",
+                JsonComputeFleetStatusManager,
+            ),
+            (
+                "3.2.0",
+                "plugin",
+                JsonComputeFleetStatusManager,
+            ),
+            (
+                "3.1.1",
+                "slurm",
+                PlainTextComputeFleetStatusManager,
+            ),
+            (
+                "3.1.1",
+                "plugin",
+                JsonComputeFleetStatusManager,
+            ),
+        ],
+    )
+    def test_get_manager(self, version, scheduler, expected_compute_fleet_status_manager_instance):
+        compute_fleet_status_manager = ComputeFleetStatusManager.get_manager("cluster-name", version, scheduler)
+        assert_that(compute_fleet_status_manager).is_instance_of(expected_compute_fleet_status_manager_instance)
