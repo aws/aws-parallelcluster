@@ -24,6 +24,7 @@ from pcluster.models.cluster import Cluster, ClusterStack
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_NAME = "cluster-name"
+FAKE_VERSION = "0.0.0"
 
 
 @pytest.fixture()

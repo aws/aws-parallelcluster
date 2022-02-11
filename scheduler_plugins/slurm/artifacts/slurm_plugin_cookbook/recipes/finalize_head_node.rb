@@ -22,7 +22,7 @@ service 'supervisord_pcluster_plugin' do
 end
 
 execute 'check if clustermgtd heartbeat is available' do
-  command "cat #{node['slurm']['install_dir']}/etc/pcluster/.slurm_plugin/clustermgtd_heartbeat"
+  command "cat #{node['pcluster']['shared_dir']}/.slurm_plugin/clustermgtd_heartbeat"
   retries 30
   retry_delay 10
 end
@@ -47,23 +47,5 @@ ruby_block 'wait for static fleet capacity' do
       sleep(15)
     end
     Chef::Log.info('Static fleet capacity is ready')
-  end
-end
-
-ruby_block 'wait for dynamic fleet capacity' do
-  block do
-    require 'chef/mixin/shell_out'
-    require 'shellwords'
-
-    # $ squeue --name='parallelcluster-init-cluster' -O state -h
-    # CONFIGURING
-    # RUNNING
-    are_jobs_running_command = Shellwords.escape("set -o pipefail && #{node['slurm']['install_dir']}/bin/squeue --name='parallelcluster-init-cluster' -O state -h | { grep -v 'RUNNING' || true; }")
-    until shell_out!("/bin/bash -c #{are_jobs_running_command}").stdout.strip.empty?
-      Chef::Log.info('Waiting for dynamic fleet capacity provisioning')
-      sleep(15)
-    end
-    Chef::Log.info('Dynamic fleet capacity is ready. Terminating provisioning jobs.')
-    shell_out!("#{node['slurm']['install_dir']}/bin/scancel --jobname=parallelcluster-init-cluster")
   end
 end

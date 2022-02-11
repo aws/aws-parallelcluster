@@ -1,8 +1,0 @@
-Cmnd_Alias SLURM_COMMANDS = <%= node['slurm']['install_dir'] %>/bin/scontrol
-Cmnd_Alias SLURM_HOOKS_COMMANDS = <%= node['pcluster']['python_root'] %>/slurm_suspend, <%= node['pcluster']['python_root'] %>/slurm_resume
-Cmnd_Alias SHUTDOWN = /usr/sbin/shutdown
-
-<%= node['plugin']['user'] %> ALL = (root) NOPASSWD: SLURM_COMMANDS
-<%= node['plugin']['user'] %> ALL = (root) NOPASSWD: SHUTDOWN
-
-<%= node['slurm']['user'] %> ALL = (<%= node['plugin']['user'] %>) NOPASSWD:SETENV: SLURM_HOOKS_COMMANDS

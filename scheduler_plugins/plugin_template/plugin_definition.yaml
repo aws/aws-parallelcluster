@@ -12,7 +12,6 @@ Metadata:
   License: link
   Version: 1.0.0
 # Define the plugin requirements that are validated by ParallelCluster against a cluster configuration.
-# NOT SUPPORTED YET
 Requirements:
   RequiresSudoPrivileges: true
   # # Select the list of distributions supported by the plugin. Defaults to all ParallelCluster supported distros.
@@ -24,13 +23,9 @@ Requirements:
   # QueueConstraints:
   #   # Max number of scheduler queues that can be configured for the plugin. Defaults to 10.
   #   MaxCount: 10
-  #   # Max number of subnets that can be configured for each queue. Defaults to 1.
-  #   MaxSubnetsCount: 1
   # ComputeResourceConstraints:
   #   # Max number of ComputeResources that can be configured for each queue. Defaults to 5.
   #   MaxCount: 5
-  #   # Max number of instance types that can be configured for each ComputeResource. Defaults to 1.
-  #   MaxInstanceTypesCount: 1
   # # When set to false all ClusterUpdate operations that modify the Scheduling section are forbidden.
   # SupportsClusterUpdate: true
   # This allows to constrain the ParallelCluster version supported by the plugin.
@@ -44,6 +39,7 @@ ClusterInfrastructure:
     # when defining this url. The template can be specified as an S3 or HTTPS url.
     Template: s3://<BUCKET>/scheduler_plugins/plugin_template/additional_cluster_infrastructure.cfn.yaml
     # Template: https://<BUCKET>.s3.${Region}.${URLSuffix}/scheduler_plugins/plugin_template/additional_cluster_infrastructure.cfn.yaml
+    Checksum: <TEMPLATE_CHECKSUM>
 PluginResources:
   # HTTPS or S3 URL of remote resources that ParallelCluster downloads and makes available to plugin event handlers.
   # In order to allow access to regionalized resources the ${Region} and the ${URLSuffix} variables are made available
@@ -51,12 +47,20 @@ PluginResources:
   ClusterSharedArtifacts:
     - Source: s3://<BUCKET>/scheduler_plugins/plugin_template/artifacts.tar.gz
       # Source: https://<BUCKET>.s3.${Region}.${URLSuffix}/scheduler_plugins/plugin_template/artifacts.tar.gz
+      Checksum: <ARTIFACTS_CHECKSUM>
 # The scheduler plugins will (possibly) require a number of “system” level users to run various processes.
 # This section can be used to create system users with a consistent user id on all cluster nodes.
 SystemUsers:
-  - Name: user1
-    # # Whether or not such user has access to IMDS, hence to IAM Instance Profile
-    # EnableImds: true
+  - Name: super-user
+    # Whether or not such user has access to IMDS, hence to IAM Instance Profile
+    EnableImds: true
+    # Sudoer configuration for the user
+    SudoerConfiguration:
+      - Commands: ALL
+        RunAs: root
+  - Name: unprivileged-user
+  - Name: imds-only-user
+    EnableImds: true
 # Allows the definition of the actions to execute in order to handle the various events triggered by ParallelCluster.
 Events:
   HeadInit:
@@ -80,10 +84,17 @@ Events:
   HeadClusterUpdate:
     ExecuteCommand:
       Command: artifacts/handlers/head_cluster_update.sh
-# NOT AVAILABLE YET
+  HeadComputeFleetUpdate:
+    ExecuteCommand:
+      Command: artifacts/handlers/head_compute_fleet_update.sh
 # Allows the registration of custom log files to be uploaded to the CloudWatch log group managed by ParallelCluster
-# Monitoring:
-#   Logs:
-#     Files:
-#     - FilePath: /var/log/parallelcluster-plugin/mylog.log
-#     - TimestampFormat: '%Y-%m-%dT%H:%M:%S%z'
+Monitoring:
+  Logs:
+    Files:
+    - FilePath: /var/log/parallelcluster-plugin/mypluginlog.log
+      TimestampFormat: '%Y-%m-%dT%H:%M:%S%z'
+      NodeType: ALL
+      LogStreamName: mypluginlog
+Tags:
+  - Key: pcluster-plugin-tag
+    Value: example

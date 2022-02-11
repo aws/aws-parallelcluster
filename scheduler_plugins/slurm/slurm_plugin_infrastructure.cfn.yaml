@@ -46,7 +46,7 @@ Resources:
       KeySchema:
         - AttributeName: Id
           KeyType: HASH
-      TableName: "parallelcluster-{{ cluster_name | lower }}"
+      TableName: "parallelcluster-slurm-plugin-{{ cluster_name | lower }}"
     Type: AWS::DynamoDB::Table
     UpdateReplacePolicy: Retain
 
@@ -69,6 +69,10 @@ Resources:
     Type: AWS::CloudFormation::CustomResource
   CleanupRoute53Function:
     Properties:
+      FunctionName:
+        Fn::Sub:
+          - pcluster-CleanupRoute53-${Id}
+          - { Id: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Code:
         ZipFile: |
           import cfnresponse

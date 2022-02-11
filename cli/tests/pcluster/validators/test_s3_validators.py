@@ -1,39 +1,73 @@
 import pytest
 
+from pcluster.aws.common import AWSClientError
 from pcluster.validators.s3_validators import S3BucketRegionValidator, S3BucketUriValidator, UrlValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "url, response, expected_message, error",
+    "url, expected_bucket_owner, response, expected_message, error, head_object_error",
     [
-        ("s3://test/post_install.sh", True, None, None),
-        ("https://test/cookbook.tgz", True, None, None),
+        ("s3://test/post_install.sh", None, True, None, None, None),
+        (
+            "s3://test/post_install.sh",
+            "01234567890",
+            None,
+            "Failed when accessing object 's3://test/post_install.sh' from bucket 'test'. "
+            "This can be due to bucket owner not matching the expected one '01234567890'",
+            None,
+            AWSClientError(
+                function_name="head_object",
+                message="Failed when accessing object 's3://test/post_install.sh' from bucket 'test'. "
+                "This can be due to bucket owner not matching the expected one '01234567890'",
+                error_code="403",
+            ),
+        ),
+        ("s3://test/post_install.sh", "01234567890", True, None, None, None),
+        ("s3://test/post_install.sh", None, True, None, None, None),
+        ("https://test/cookbook.tgz", None, True, None, None, None),
         (
             "file:///test/node.tgz",
+            None,
             False,
             "The value 'file:///test/node.tgz' is not a valid URL, " "choose URL with 'https' or 's3' prefix.",
+            None,
             None,
         ),
         (
             "fake://test/cookbook.tgz",
+            None,
             False,
             "The value 'fake://test/cookbook.tgz' is not a valid URL, " "choose URL with 'https' or 's3' prefix.",
+            None,
             None,
         ),
         (
             "https://test/cookbook.tgz",
-            True,
+            None,
+            False,
             "The url 'https://test/cookbook.tgz' causes ConnectionError",
             ConnectionError(),
+            None,
+        ),
+        (
+            "https://test/cookbook.tgz",
+            "01234567890",
+            False,
+            "S3BucketOwner can only be specified with S3 URL",
+            None,
+            None,
         ),
     ],
 )
-def test_url_validator(mocker, url, response, expected_message, aws_api_mock, error):
+def test_url_validator(
+    mocker, url, expected_bucket_owner, response, expected_message, aws_api_mock, error, head_object_error
+):
     aws_api_mock.s3.head_object.return_value = response
+    aws_api_mock.s3.head_object.side_effect = head_object_error
     mocker.patch("pcluster.validators.s3_validators.urlopen", side_effect=error)
 
-    actual_failures = UrlValidator().execute(url=url)
+    actual_failures = UrlValidator().execute(url=url, expected_bucket_owner=expected_bucket_owner)
     assert_failure_messages(actual_failures, expected_message)
 
 

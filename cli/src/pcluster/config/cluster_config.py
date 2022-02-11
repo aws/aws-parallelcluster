@@ -118,6 +118,7 @@ from pcluster.validators.s3_validators import (
     UrlValidator,
 )
 from pcluster.validators.scheduler_plugin_validators import (
+    GrantSudoPrivilegesValidator,
     SchedulerPluginOsArchitectureValidator,
     SchedulerPluginRegionValidator,
     SudoPrivilegesValidator,
@@ -1694,12 +1695,20 @@ class SchedulerPluginRequirements(Resource):
 class SchedulerPluginCloudFormationInfrastructure(Resource):
     """Represent the CloudFormation infrastructure for a Scheduler Plugin."""
 
-    def __init__(self, template: str, **kwargs):
+    def __init__(self, template: str, s3_bucket_owner: str = None, checksum: str = None, **kwargs):
         super().__init__(**kwargs)
         self.template = replace_url_parameters(template)
+        self.s3_bucket_owner = s3_bucket_owner
+        self.checksum = checksum
 
     def _register_validators(self):
-        self._register_validator(UrlValidator, url=self.template, fail_on_https_error=True)
+        self._register_validator(
+            UrlValidator,
+            url=self.template,
+            fail_on_https_error=True,
+            fail_on_s3_error=True,
+            expected_bucket_owner=self.s3_bucket_owner,
+        )
 
 
 class SchedulerPluginClusterInfrastructure(Resource):
@@ -1713,12 +1722,14 @@ class SchedulerPluginClusterInfrastructure(Resource):
 class SchedulerPluginClusterSharedArtifact(Resource):
     """Represent the ClusterSharedArtifact config for a Scheduler Plugin."""
 
-    def __init__(self, source: str, **kwargs):
+    def __init__(self, source: str, s3_bucket_owner: str = None, checksum: str = None, **kwargs):
         super().__init__(**kwargs)
         self.source = replace_url_parameters(source)
+        self.s3_bucket_owner = s3_bucket_owner
+        self.checksum = checksum
 
     def _register_validators(self):
-        self._register_validator(UrlValidator, url=self.source)
+        self._register_validator(UrlValidator, url=self.source, expected_bucket_owner=self.s3_bucket_owner)
 
 
 class SchedulerPluginPluginResources(Resource):
@@ -1757,8 +1768,7 @@ class SchedulerPluginEvents(Resource):
         compute_configure: SchedulerPluginEvent = None,
         compute_finalize: SchedulerPluginEvent = None,
         head_cluster_update: SchedulerPluginEvent = None,
-        head_compute_fleet_start: SchedulerPluginEvent = None,
-        head_compute_fleet_stop: SchedulerPluginEvent = None,
+        head_compute_fleet_update: SchedulerPluginEvent = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1769,8 +1779,7 @@ class SchedulerPluginEvents(Resource):
         self.compute_configure = compute_configure
         self.compute_finalize = compute_finalize
         self.head_cluster_update = head_cluster_update
-        self.head_compute_fleet_start = head_compute_fleet_start
-        self.head_compute_fleet_stop = head_compute_fleet_stop
+        self.head_compute_fleet_update = head_compute_fleet_update
 
 
 class SchedulerPluginFile(Resource):
@@ -1802,13 +1811,25 @@ class SchedulerPluginMonitoring(Resource):
         self.logs = logs
 
 
+class SudoerConfiguration(Resource):
+    """Represent the SudoerConfiguration resource."""
+
+    def __init__(self, commands: str, run_as: str, **kwargs):
+        super().__init__(**kwargs)
+        self.commands = commands
+        self.run_as = run_as
+
+
 class SchedulerPluginUser(Resource):
     """Represent the Scheduler Plugin user resource."""
 
-    def __init__(self, name: str, enable_imds: bool = None, **kwargs):
+    def __init__(
+        self, name: str, enable_imds: bool = None, sudoer_configuration: List[SudoerConfiguration] = (), **kwargs
+    ):
         super().__init__(**kwargs)
         self.name = name
         self.enable_imds = Resource.init_param(enable_imds, default=False)
+        self.sudoer_configuration = sudoer_configuration
 
 
 class SchedulerPluginDefinition(Resource):
@@ -1861,6 +1882,12 @@ class SchedulerPluginSettings(Resource):
             requires_sudo_privileges=self.scheduler_definition.requirements.requires_sudo_privileges
             if self.scheduler_definition.requirements
             else None,
+        )
+
+        self._register_validator(
+            GrantSudoPrivilegesValidator,
+            grant_sudo_privileges=self.grant_sudo_privileges,
+            system_users=get_attr(self.scheduler_definition, "system_users"),
         )
 
 

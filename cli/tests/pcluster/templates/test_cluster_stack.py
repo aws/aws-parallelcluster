@@ -31,8 +31,8 @@ from tests.pcluster.utils import load_cluster_model_from_yaml
         "slurm.full.yaml",
         "awsbatch.simple.yaml",
         "awsbatch.full.yaml",
-        # "scheduler_plugin.required.yaml",
-        # "scheduler_plugin.full.yaml",
+        "scheduler_plugin.required.yaml",
+        "scheduler_plugin.full.yaml",
     ],
 )
 def test_cluster_builder_from_configuration_file(mocker, capsys, config_file_name):
@@ -48,7 +48,6 @@ def test_cluster_builder_from_configuration_file(mocker, capsys, config_file_nam
     yaml.dump(generated_template)
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize(
     "config_file_name, expected_scheduler_plugin_stack",
     [
@@ -183,7 +182,7 @@ def test_scheduler_plugin_substack(mocker, config_file_name, expected_scheduler_
         ("slurm-imds-secured-true.yaml", "slurm-imds-secured-true.head-node.dna.json"),
         ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
         ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
-        # ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
+        ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value

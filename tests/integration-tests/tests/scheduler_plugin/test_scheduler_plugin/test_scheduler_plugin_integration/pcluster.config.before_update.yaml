@@ -103,16 +103,6 @@ Scheduling:
       ComputeResources:
         - Name: c1
           InstanceType: {{ instance }}
-        - Name: c2
-          InstanceType: {{ instance }}
-      Networking:
-        SubnetIds:
-          - {{ private_subnet_id }}
-    - Name: q2
-      CapacityType: ONDEMAND
-      ComputeResources:
-        - Name: c1
-          InstanceType: {{ another_instance }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}

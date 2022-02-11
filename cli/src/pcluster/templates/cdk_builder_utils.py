@@ -38,6 +38,7 @@ from pcluster.constants import (
     IAM_ROLE_PATH,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
+    PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
 )
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
@@ -117,7 +118,7 @@ def get_slurm_specific_dna_json_for_head_node(config: SlurmClusterConfig, schedu
     return {
         "dns_domain": scheduler_resources.cluster_hosted_zone.name if scheduler_resources.cluster_hosted_zone else "",
         "hosted_zone": scheduler_resources.cluster_hosted_zone.ref if scheduler_resources.cluster_hosted_zone else "",
-        "ddb_table": scheduler_resources.dynamodb_table.ref,
+        "slurm_ddb_table": scheduler_resources.dynamodb_table.ref,
         "use_private_hostname": str(config.scheduling.settings.dns.use_ec2_hostnames).lower(),
     }
 
@@ -632,6 +633,17 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         effect=iam.Effect.ALLOW,
                         resources=self._generate_head_node_pass_role_resources(),
                     ),
+                    iam.PolicyStatement(
+                        sid="DynamoDBTable",
+                        actions=["dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:GetItem"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="dynamodb",
+                                resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{Stack.of(self).stack_name}",
+                            )
+                        ],
+                    ),
                 ]
             )
 
@@ -662,6 +674,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                                 ),
                             ]
                         )
+
         if self._config.directory_service:
             policy.append(
                 iam.PolicyStatement(

@@ -10,6 +10,8 @@
 # - PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_ARN: ARN of the nested CloudFormation stack defining scheduler plugin custom resources.
 # - PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_OUTPUTS: path to a JSON file containing a key value pair mapping of all outputs present in the CFN substack defined by the scheduler plugin.
 #   Changes to this file are not preserved across handlers invocations.
+# - PCLUSTER_COMPUTEFLEET_STATUS: path to a JSON file containing the ComputeFleet status requests
+#   Changes to this file are not preserved across handlers invocations.
 # - PCLUSTER_SHARED_SCHEDULER_DIR: cluster shared dir to use when installing the scheduler or other packages (/opt/parallecluster/shared/byos)
 # - PCLUSTER_LOCAL_SCHEDULER_DIR: local dir to use when installing the scheduler or other packages (/opt/parallecluster/byos)
 # - PCLUSTER_AWS_REGION: AWS region name
@@ -29,7 +31,7 @@
 
 set -e
 
-echo "Handling event: HeadFinalize"
+echo "Handling event: HeadComputeFleetUpdate"
 
-echo "Launching a compute node for queue 'queue1' and compute resource 'cr1'"
-aws ec2 run-instances --region ${PCLUSTER_AWS_REGION} --launch-template LaunchTemplateName=${PCLUSTER_CLUSTER_NAME}-queue1-cr1
+echo "ComputeFleet status:"
+jq . ${PCLUSTER_COMPUTEFLEET_STATUS}

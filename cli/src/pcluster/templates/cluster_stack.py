@@ -20,6 +20,7 @@ from datetime import datetime
 from typing import Dict, List, Union
 
 from aws_cdk import aws_cloudformation as cfn
+from aws_cdk import aws_dynamodb as dynamomdb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
@@ -28,6 +29,7 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import (
     CfnCustomResource,
+    CfnDeletionPolicy,
     CfnOutput,
     CfnParameter,
     CfnResource,
@@ -55,6 +57,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
+    PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
 )
@@ -253,6 +256,22 @@ class ClusterCdkStack(Stack):
                 cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
                 cleanup_lambda=cleanup_lambda,
             )
+
+        if not self._condition_is_batch():
+            _dynamodb_table_status = dynamomdb.CfnTable(
+                self,
+                "DynamoDBTable",
+                table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack_name,
+                attribute_definitions=[
+                    dynamomdb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
+                ],
+                key_schema=[dynamomdb.CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
+                billing_mode="PAY_PER_REQUEST",
+            )
+            _dynamodb_table_status.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+            _dynamodb_table_status.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
+            self.dynamodb_table_status = _dynamodb_table_status
+
         self.compute_fleet_resources = None
         if not self._condition_is_batch():
             self.compute_fleet_resources = ComputeFleetConstruct(
@@ -918,6 +937,7 @@ class ClusterCdkStack(Stack):
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
+                    "ddb_table": self.dynamodb_table_status.ref if not self._condition_is_batch() else "NONE",
                     "log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
@@ -1478,7 +1498,7 @@ class ComputeFleetConstruct(Construct):
                                 if self._cluster_hosted_zone
                                 else "",
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
-                                "DynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
+                                "SlurmDynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
                                 "LogGroupName": self._log_group.log_group_name
                                 if self._config.monitoring.logs.cloud_watch.enabled
                                 else "NONE",
