@@ -54,6 +54,7 @@ write_files:
       {
         "cluster": {
           "stack_name": "${AWS::StackName}",
+          "stack_arn": "${AWS::StackId}",
           "enable_efa": "${EnableEfa}",
           "raid_parameters": "${RAIDOptions}",
           "base_os": "${BaseOS}",

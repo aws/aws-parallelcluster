@@ -156,6 +156,8 @@ def test_scheduler_plugin_integration(
     _test_update_compute_fleet_status_script(command_executor)
     # Test no errors in log
     _test_no_errors_in_logs(command_executor)
+    # Test invoke scheduler plugin event handler script
+    _test_invoke_scheduler_plugin_event_handler_script(command_executor, compute_node, run_as_user)
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
@@ -544,3 +546,54 @@ def _test_cluster_update(cluster, cluster_config):
     cluster.update(str(cluster_config), force_update="true")
     cluster.start()
     _check_fleet_status(cluster, "RUNNING")
+
+
+def _test_invoke_scheduler_plugin_event_handler_script(command_executor, compute_node, run_as_user):
+    """Test invoke-scheduler-plugin-event-handler.sh."""
+    # Create a dummy cluster config for test, echo "dummy config {Event} executed" during handler execution.
+    cluster_config = "/opt/parallelcluster/shared/cluster-config.yaml"
+    dummy_cluster_config = "/opt/parallelcluster/shared/dummy-cluster-config.yaml"
+    command_executor.run_remote_command(
+        f"sudo sed 's/echo \\\\\"/echo \\\\\"dummy config /g' {cluster_config} | sudo tee "
+        f"{dummy_cluster_config} >/dev/null"
+    )
+    command_executor.run_remote_command(f"sudo sed -i 's/echo \"/echo \"dummy config /g' {dummy_cluster_config}")
+    # remove file "start_failure" to make HeadComputeFleetUpdate fail and exit.
+    command_executor.run_remote_command(f"sudo rm -rf {SCHEDULER_PLUGIN_HOME}/start_failure").stdout
+    compute_node_private_ip = compute_node.get("privateIpAddress")
+    for event in ["HeadInit", "HeadConfigure", "HeadFinalize"]:
+        command_executor.run_remote_command(
+            f"sudo invoke-scheduler-plugin-event-handler.sh --cluster-configuration {dummy_cluster_config}"
+            f" --event-name {event}"
+        ).stdout
+        head_scheduler_plugin_log_output = command_executor.run_remote_command(
+            f"cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+        ).stdout
+        assert_that(head_scheduler_plugin_log_output).contains(f"[{event}] - INFO: dummy config {event} executed")
+    for event in ["HeadClusterUpdate", "HeadComputeFleetUpdate"]:
+        raise_on_error = False if event == "HeadComputeFleetUpdate" else True
+        result = command_executor.run_remote_command(
+            f"sudo invoke-scheduler-plugin-event-handler.sh --cluster-configuration {dummy_cluster_config}"
+            f" --event-name {event} --previous-cluster-configuration {cluster_config} "
+            "--computefleet-status START_REQUESTED",
+            raise_on_error=raise_on_error,
+        )
+        head_scheduler_plugin_log_output = command_executor.run_remote_command(
+            f"cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+        ).stdout
+        if event == "HeadClusterUpdate":
+            assert_that(head_scheduler_plugin_log_output).contains(f"[{event}] - INFO: dummy config {event} executed")
+        else:
+            assert_that(head_scheduler_plugin_log_output).contains(
+                f"[{event}] - INFO: dummy config {event} failing the first start execution"
+            )
+            assert_that(result.failed).is_equal_to(True)
+    for event in ["ComputeInit", "ComputeConfigure", "ComputeFinalize"]:
+        command_executor.run_remote_command(
+            f"ssh -q {compute_node_private_ip} sudo invoke-scheduler-plugin-event-handler.sh --cluster-configuration "
+            f"{dummy_cluster_config} --event-name {event} --skip-artifacts-download"
+        ).stdout
+        compute_scheduler_plugin_log_output = command_executor.run_remote_command(
+            f"ssh -q {compute_node_private_ip} cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+        ).stdout
+        assert_that(compute_scheduler_plugin_log_output).contains(f"[{event}] - INFO: dummy config {event} executed")
