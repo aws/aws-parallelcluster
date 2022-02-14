@@ -24,10 +24,10 @@ from fabric import Connection
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import GetAtt, Output, Ref, Template, ec2
 from troposphere.ec2 import EIP, VPCEndpoint
-from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os
+from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os, render_jinja_template
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
-from tests.common.osu_common import compile_osu, render_jinja_template
+from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
 from tests.storage.test_fsx_lustre import (
