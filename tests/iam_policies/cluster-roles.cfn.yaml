@@ -26,7 +26,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Effect: Allow
-                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/pcluster-*
               - Action: ec2:DescribeInstances
                 Effect: Allow
                 Resource: '*'
@@ -103,12 +103,17 @@ Resources:
               - Action:
                   - ec2:DescribeInstances
                   - ec2:DescribeInstanceStatus
-                  - ec2:CreateTags
                   - ec2:DescribeVolumes
-                  - ec2:AttachVolume
                   - ec2:DescribeInstanceAttribute
                 Effect: Allow
                 Resource: '*'
+              - Action:
+                  - ec2:CreateTags
+                  - ec2:AttachVolume
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
               - Action:
                   - cloudformation:DescribeStackResource
                   - cloudformation:SignalResource
@@ -179,7 +184,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Effect: Allow
-                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/pcluster-*
               - Action:
                   - s3:DeleteObject
                   - s3:DeleteObjectVersion
@@ -216,7 +221,6 @@ Resources:
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
       Policies:
         - PolicyName: HeadNodeRoleBatchPolicy
           PolicyDocument:
@@ -244,24 +248,46 @@ Resources:
                     iam:PassedToService:
                       - batch.amazonaws.com
               - Action:
+                  - batch:DescribeJobQueues
+                  - batch:DescribeJobs
+                  - batch:ListJobs
+                  - batch:DescribeComputeEnvironments
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - batch:SubmitJob
+                  - batch:TerminateJob
+                  - logs:GetLogEvents
+                  - ecs:ListContainerInstances
+                  - ecs:DescribeContainerInstances
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:PclusterJobDefinition*
+                  - !Sub arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/AWSBatch-PclusterComputeEnviron*
+                  - !Sub arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/AWSBatch-Pcluster*
+                  - !Sub arn:${AWS::Partition}:batch:${AWS::Region}:${AWS::AccountId}:job-queue/PclusterJobQueue*
+                  - !Sub arn:${AWS::Partition}:batch:${AWS::Region}:${AWS::AccountId}:job-definition/PclusterJobDefinition*:*
+                  - !Sub arn:${AWS::Partition}:batch:${AWS::Region}:${AWS::AccountId}:job/*
+              - Action:
                   - ec2:DescribeInstances
                   - ec2:DescribeInstanceStatus
-                  - ec2:CreateTags
                   - ec2:DescribeVolumes
-                  - ec2:AttachVolume
                   - ec2:DescribeInstanceAttribute
                 Effect: Allow
                 Resource: '*'
+              - Action:
+                  - ec2:CreateTags
+                  - ec2:AttachVolume
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
               - Action:
                   - cloudformation:DescribeStackResource
                   - cloudformation:DescribeStacks
                   - cloudformation:SignalResource
                 Effect: Allow
                 Resource: '*'
-              - Action:
-                  - route53:ChangeResourceRecordSets
-                Resource: '*'
-                Effect: Allow
             Version: '2012-10-17'
     Type: AWS::IAM::Role
 

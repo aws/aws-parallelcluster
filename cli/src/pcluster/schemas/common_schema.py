@@ -140,7 +140,7 @@ class TagSchema(BaseSchema):
         required=True, validate=validate.Length(max=128), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     value = fields.Str(
-        required=True, validate=validate.Length(max=256), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+        required=True, validate=validate.Length(max=256), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
 
     @post_load

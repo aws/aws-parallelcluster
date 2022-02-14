@@ -205,7 +205,7 @@ def get_arn_partition(region):
         return "aws"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def enable_vpc_endpoints(vpc_stack, region, cfn_stacks_factory, request):
     prefix = "cn." if region.startswith("cn-") else ""
     # Note that the endpoints service name in China is irregular.
@@ -225,6 +225,12 @@ def enable_vpc_endpoints(vpc_stack, region, cfn_stacks_factory, request):
         VPCEndpointConfig(
             name="EC2Endpoint",
             service_name=prefix + f"com.amazonaws.{region}.ec2",
+            type=VPCEndpointConfig.EndpointType.INTERFACE,
+            enable_private_dns=True,
+        ),
+        VPCEndpointConfig(
+            name="SecretsManager",
+            service_name=prefix + f"com.amazonaws.{region}.secretsmanager",
             type=VPCEndpointConfig.EndpointType.INTERFACE,
             enable_private_dns=True,
         ),

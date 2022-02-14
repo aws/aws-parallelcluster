@@ -1,0 +1,528 @@
+Parameters:
+  DomainName:
+    Description: AD Domain Name.
+    Type: String
+    Default: corp.pcluster.com
+    AllowedPattern: ^([a-zA-Z0-9]+[\\.-])+([a-zA-Z0-9])+$
+  AdminPassword:
+    Description: AD Admin Password.
+    Type: String
+    MinLength: 8
+    MaxLength: 64
+    AllowedPattern: (?=^.{8,64}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9\s])(?=.*[a-z])|(?=.*[^A-Za-z0-9\s])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9\s]))^.*
+    NoEcho: true
+  ReadOnlyPassword:
+    Description: AD ReadOnlyUser Password.
+    Type: String
+    MinLength: 8
+    MaxLength: 64
+    AllowedPattern: (?=^.{8,64}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9\s])(?=.*[a-z])|(?=.*[^A-Za-z0-9\s])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9\s]))^.*
+    NoEcho: true
+  UserName:
+    Description: Cluster user that is created in the Active Directory.
+    Type: String
+    Default: user000
+    MinLength: 3
+    MaxLength: 64
+  UserPassword:
+    Description: Cluster user Password.
+    Type: String
+    MinLength: 8
+    MaxLength: 64
+    AllowedPattern: (?=^.{8,64}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9\s])(?=.*[a-z])|(?=.*[^A-Za-z0-9\s])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9\s]))^.*
+    NoEcho: true
+
+  Keypair:
+    Description: EC2 Keypair to access management instance.
+    Type: AWS::EC2::KeyPair::KeyName
+  Vpc:
+    Description: VPC ID to create the Directory Service in (leave BLANK to create a new one.)
+    Type: String
+    # Type: AWS::EC2::VPC::Id
+    Default: ""
+  # Ad:
+  #   Description: AD ID
+  #   Type: String
+  #   Default: ""
+  PrivateSubnetOne:
+    Description: Subnet ID of the first subnet. If the VPC is left blank, this will be created.
+    Type: String
+    # Type: AWS::EC2::Subnet::Id
+    Default: ""
+  PrivateSubnetTwo:
+    Description: Subnet ID of the second subnet. This subnet should be in another availability zone. . If the VPC is left blank, this will be created.
+    Type: String
+    # Type: AWS::EC2::Subnet::Id
+    Default: ""
+  AdminNodeAmiId:
+    Description: AMI for the Admin Node
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+
+Transform: AWS::Serverless-2016-10-31
+
+Conditions:
+  CreateVPC: !Equals [!Ref Vpc, '']
+  # CreateAD: !Equals [!Ref Ad, '']
+  CreateAD: !Equals ['', '']
+
+Resources:
+  PrepRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyName: LogOutput
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                Effect: Allow
+                # Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-Prep:*
+                Resource: '*'
+        - PolicyName: DescribeDirectory
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ds:DescribeDirectories
+                # Resource: !Sub arn:${AWS::Partition}:ds:*:${AWS::AccountId}:directory/*
+                Resource: '*'
+
+  PclusterVpc:
+    Type: AWS::EC2::VPC
+    Condition: CreateVPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+  PclusterVpcIGW:
+    Type: AWS::EC2::InternetGateway
+    Condition: CreateVPC
+  PclusterVpcSubnet1Route:
+    Type: AWS::EC2::Route
+    Condition: CreateVPC
+    DependsOn:
+    - PclusterVpcGWA
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: PclusterVpcIGW
+      RouteTableId:
+        Ref: PclusterVpcSubnet1RouteTable
+  PclusterVpcSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: CreateVPC
+    Properties:
+      VpcId:
+        Ref: PclusterVpc
+  PclusterVpcSubnet1RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateVPC
+    Properties:
+      RouteTableId:
+        Ref: PclusterVpcSubnet1RouteTable
+      SubnetId:
+        Ref: PclusterVpcSubnet1
+  PclusterVpcSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: CreateVPC
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: 10.0.0.0/17
+      MapPublicIpOnLaunch: true
+      VpcId:
+        Ref: PclusterVpc
+  PclusterVpcSunet1Route:
+    Type: AWS::EC2::Route
+    Condition: CreateVPC
+    DependsOn:
+    - PclusterVpcGWA
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: PclusterVpcIGW
+      RouteTableId:
+        Ref: PclusterVpcSubnet2RouteTable
+  PclusterVpcSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: CreateVPC
+    Properties:
+      VpcId:
+        Ref: PclusterVpc
+  PclusterVpcSubnet2RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateVPC
+    Properties:
+      RouteTableId:
+        Ref: PclusterVpcSubnet2RouteTable
+      SubnetId:
+        Ref: PclusterVpcSubnet2
+  PclusterVpcSubnet2:
+    Type: AWS::EC2::Subnet
+    Condition: CreateVPC
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}b
+      CidrBlock: 10.0.128.0/17
+      MapPublicIpOnLaunch: true
+      VpcId:
+        Ref: PclusterVpc
+  PclusterVpcGWA:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Condition: CreateVPC
+    Properties:
+      InternetGatewayId:
+        Ref: PclusterVpcIGW
+      VpcId:
+        Ref: PclusterVpc
+
+  PrepLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Lambda function to prepare stack
+      FunctionName: !Sub ${AWS::StackName}-Prep
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt PrepRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      TracingConfig:
+        Mode: Active
+      Code:
+        ZipFile: |
+          import time
+          import cfnresponse
+          import boto3
+          import logging
+          import random
+          import string
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          ec2 = boto3.client("ec2")
+          ds = boto3.client("ds")
+
+          def create_physical_resource_id():
+              alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
+              return ''.join(random.choice(alnum) for _ in range(16))
+
+          def handler(event, context):
+              print(event)
+              print( 'boto version {}'.format(boto3.__version__))
+              domain = event['ResourceProperties']['DomainName']
+              vpc_id = event['ResourceProperties']['Vpc']
+              directory_id = event['ResourceProperties']['DirectoryId']
+              subnet1_id = event['ResourceProperties']['PrivateSubnetOne']
+              subnet2_id = event['ResourceProperties']['PrivateSubnetTwo']
+
+              directory = ds.describe_directories(DirectoryIds=[directory_id])['DirectoryDescriptions'][0]
+              dns_ip_addrs = directory['DnsIpAddrs']
+
+              response_data = {}
+              reason = None
+              response_status = cfnresponse.SUCCESS
+              stack_id_suffix = event['StackId'].split("/")[1]
+
+              if event['RequestType'] == 'Create':
+                  response_data['Message'] = 'Resource creation successful!'
+                  physical_resource_id = create_physical_resource_id()
+
+                  # provide outputs
+                  response_data['DomainName'] = domain
+                  response_data['DomainShortName'] = domain.split(".")[0].upper()
+                  response_data['VpcId'] = vpc_id
+                  response_data['Subnet1Id'] = subnet1_id
+                  response_data['Subnet2Id'] = subnet2_id
+                  response_data['DnsIpAddresses'] = dns_ip_addrs
+                  for i, addr in enumerate(dns_ip_addrs):
+                    addr_index = i + 1
+                    response_data[f'DnsIpAddress{addr_index}'] = addr
+              else:
+                  physical_resource_id = event['PhysicalResourceId']
+              cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
+
+  Directory:
+    Type: AWS::DirectoryService::MicrosoftAD
+    Condition: CreateAD
+    Properties:
+      Name: !Ref DomainName
+      Password: !Ref AdminPassword
+      Edition: Standard
+      VpcSettings:
+        SubnetIds:
+          - !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
+          - !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
+        VpcId: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
+
+  Prep:
+    Type: Custom::PrepLambda
+    Properties:
+      ServiceToken: !GetAtt PrepLambda.Arn
+      DomainName:  !Ref DomainName
+      Vpc: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
+      PrivateSubnetOne: !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
+      PrivateSubnetTwo: !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
+      # DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ]
+      DirectoryId: !Ref Directory
+
+  AdDomainAdminNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: -1
+          IpProtocol: "-1"
+          ToPort: -1
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+      VpcId: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
+
+
+  JoinRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - ds:ResetUserPassword
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
+                  # - { DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ] }
+                  - { DirectoryId: !Ref Directory }
+          PolicyName: !Sub ${AWS::StackName}resetuserpassword
+  JoinProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - Ref: JoinRole
+
+  AdDomainAdminNode:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    Metadata:
+      "AWS::CloudFormation::Init":
+        configSets:
+          setup:
+            - install_dependencies
+        install_dependencies:
+          packages:
+            yum:
+              sssd: []
+              realmd: []
+              oddjob: []
+              oddjob-mkhomedir: []
+              adcli: []
+              samba-common: []
+              samba-common-tools: []
+              krb5-workstation: []
+              openldap-clients: []
+              policycoreutils-python: []
+    Properties:
+      IamInstanceProfile:
+        Ref: JoinProfile
+      ImageId: !Ref AdminNodeAmiId
+      InstanceType: t2.micro
+      KeyName: !Ref Keypair
+      SecurityGroupIds:
+        - Ref: AdDomainAdminNodeSecurityGroup
+      SubnetId: !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
+      UserData:
+        Fn::Base64:
+          !Sub
+            - |
+              #!/bin/bash -e
+              exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+              yum update -y aws-cfn-bootstrap
+              /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource AdDomainAdminNode --configsets setup --region ${AWS::Region}
+              echo "Domain Name: " ${DirectoryDomain}
+              cat << EOF > /etc/resolv.conf
+              search           ${DirectoryDomain}
+              nameserver       ${DnsIp1}
+              nameserver       ${DnsIp2}
+              EOF
+              sed -i 's/PEERDNS=.*/PEERDNS=no/' /etc/sysconfig/network-scripts/ifcfg-eth0
+              chattr +i /etc/resolv.conf
+              ADMIN_PW=${AdminPassword}
+              echo $ADMIN_PW | sudo realm join -U Admin ${DirectoryDomain}
+              sleep 10
+              echo "Registering ReadOnlyUser..."
+              echo $ADMIN_PW | adcli create-user -x -U Admin --domain=${DirectoryDomain} --display-name=ReadOnlyUser ReadOnlyUser
+              sleep 0.5
+              echo "Registering User..."
+              echo $ADMIN_PW | adcli create-user -x -U Admin --domain=${DirectoryDomain} --display-name=${UserName} ${UserName}
+              /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AdDomainAdminNode --region ${AWS::Region}
+
+            - { DirectoryDomain: !GetAtt Prep.DomainName,
+                AdminPassword: !Ref AdminPassword,
+                UserName: !Ref UserName,
+                DnsIp1: !GetAtt Prep.DnsIpAddress1,
+                DnsIp2: !GetAtt Prep.DnsIpAddress2}
+
+  PostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyName: LogOutput
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                Effect: Allow
+                # Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-Prep:*
+                Resource: '*'
+        - PolicyName: ResetPassword
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ds:ResetUserPassword
+                Resource: !Sub
+                  - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
+                  # - { DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ] }
+                  - { DirectoryId: !Ref Directory }
+        - PolicyName: StopInstances
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:StopInstances
+                Resource: !Sub
+                  - arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${InstanceId}
+                  - { InstanceId: !Ref AdDomainAdminNode }
+
+  PostLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Lambda function to finish setting up stack after other resources have been created.
+      FunctionName: !Sub ${AWS::StackName}-Post
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt PostRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      TracingConfig:
+        Mode: Active
+      Code:
+        ZipFile: |
+          import time
+          import cfnresponse
+          import boto3
+          import logging
+          import random
+          import string
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          ds = boto3.client("ds")
+          ec2 = boto3.client("ec2")
+
+          def create_physical_resource_id():
+              alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
+              return ''.join(random.choice(alnum) for _ in range(16))
+
+          def handler(event, context):
+              redact_keys = {"ReadOnlyPassword", "UserPassword", "AdminPassword"}
+              print({k:event[k] if k not in redact_keys else "[REDACTED]" for k in event.keys()})
+              print( 'boto version {}'.format(boto3.__version__))
+              directory_id = event['ResourceProperties']['DirectoryId']
+              instance_id = event['ResourceProperties']['AdminNodeInstanceId']
+
+              read_only_password = event['ResourceProperties']['ReadOnlyPassword']
+              user_name = event['ResourceProperties']['UserName']
+              user_password = event['ResourceProperties']['UserPassword']
+              admin_password = event['ResourceProperties']['AdminPassword']
+
+              response_data = {}
+              reason = None
+              response_status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Create':
+                  response_data['Message'] = 'Resource creation successful!'
+                  physical_resource_id = create_physical_resource_id()
+                  ds.reset_user_password(DirectoryId=directory_id, UserName='ReadOnlyUser', NewPassword=read_only_password)
+                  ds.reset_user_password(DirectoryId=directory_id, UserName=user_name, NewPassword=user_password)
+                  ds.reset_user_password(DirectoryId=directory_id, UserName='Admin', NewPassword=admin_password)
+                  ec2.stop_instances(InstanceIds=[instance_id])
+
+              else:
+                  physical_resource_id = event['PhysicalResourceId']
+              cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
+
+  Post:
+    Type: Custom::PostLambda
+    Properties:
+      ServiceToken: !GetAtt PostLambda.Arn
+      AdminNodeInstanceId: !Ref AdDomainAdminNode
+      # DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ]
+      DirectoryId: !Ref Directory
+      UserName: !Ref UserName
+      UserPassword: !Ref UserPassword
+      AdminPassword: !Ref AdminPassword
+      ReadOnlyPassword: !Ref ReadOnlyPassword
+
+  PasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Password for Microsoft AD
+      Name: !Sub [ "ADSecretPassword-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
+      SecretString: !Ref ReadOnlyPassword
+Outputs:
+  VpcId:
+    Value: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
+  PrivateSubnetIds:
+    Value: !Join [",", [!If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ], !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]]]
+  DomainName:
+    Value: !Sub
+      - dc=${dc}
+      - dc: !Join [",dc=", !Split [".", !Ref DomainName ]]
+  PasswordSecretArn:
+    Value: !Ref PasswordSecret
+  DomainReadOnlyUser:
+    Value: !Sub
+      - cn=ReadOnlyUser,ou=Users,ou=${ou},dc=${dc}
+      - { dc: !Join [",dc=", !Split [".", !Ref DomainName ]], ou: !GetAtt Prep.DomainShortName }
+  DomainAddr:
+    Value: !Join [",", !GetAtt Prep.DnsIpAddresses]

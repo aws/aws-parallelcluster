@@ -467,6 +467,7 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"BackupId": "backup-0a1b2c3d4e5f6a7b8"}, None),
         ({"AutoImportPolicy": "NEW"}, None),
         ({"AutoImportPolicy": "NEW_CHANGED"}, None),
+        ({"AutoImportPolicy": "NEW_CHANGED_DELETED"}, None),
         ({"StorageType": "SSD"}, None),
         ({"StorageType": "HDD"}, None),
         ({"StorageType": "INVALID_VALUE"}, "Must be one of"),

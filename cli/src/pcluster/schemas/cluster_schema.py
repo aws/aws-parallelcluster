@@ -378,7 +378,8 @@ class FsxLustreSettingsSchema(BaseSchema):
         validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     auto_import_policy = fields.Str(
-        validate=validate.OneOf(["NEW", "NEW_CHANGED"]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        validate=validate.OneOf(["NEW", "NEW_CHANGED", "NEW_CHANGED_DELETED"]),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     drive_cache_type = fields.Str(
         validate=validate.OneOf(["READ"]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
@@ -1460,7 +1461,9 @@ class SchedulerPluginDefinitionSchema(BaseSchema):
         validate=validate.Length(max=SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"},
     )
-    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"})
+    tags = fields.Nested(
+        TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1748,7 +1751,9 @@ class ClusterSchema(BaseSchema):
 
     monitoring = fields.Nested(MonitoringSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     additional_packages = fields.Nested(AdditionalPackagesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"})
+    tags = fields.Nested(
+        TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
+    )
     iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     directory_service = fields.Nested(
         DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}

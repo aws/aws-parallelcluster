@@ -26,6 +26,7 @@ from pcluster.templates.cdk_builder_utils import (
     add_lambda_cfn_role,
     create_hash_suffix,
     get_cloud_watch_logs_policy_statement,
+    get_lambda_log_group_prefix,
 )
 
 CustomDns = namedtuple("CustomDns", ["ref", "name"])
@@ -252,7 +253,12 @@ class SlurmConstruct(Construct):
                         sid="Route53DeletePolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource=get_lambda_log_group_prefix("CleanupRoute53-*"),
+                        )
                     ),
                 ],
             )

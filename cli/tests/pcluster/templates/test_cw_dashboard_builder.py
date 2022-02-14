@@ -63,10 +63,10 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
 def _verify_ec2_metrics_conditions(cluster_config, output_yaml):
     storage_resource = {storage_type: [] for storage_type in SharedStorageType}
     storage_type_title_dict = {
-        SharedStorageType.EBS: "EBS Metrics",
-        SharedStorageType.RAID: "RAID Metrics",
-        SharedStorageType.EFS: "EFS Metrics",
-        SharedStorageType.FSX: "FSx Metrics",
+        SharedStorageType.EBS: {"title": "EBS Metrics", "namespace": "AWS/EBS"},
+        SharedStorageType.RAID: {"title": "RAID Metrics", "namespace": "AWS/EBS"},
+        SharedStorageType.EFS: {"title": "EFS Metrics", "namespace": "AWS/EFS"},
+        SharedStorageType.FSX: {"title": "FSx Metrics", "namespace": "AWS/FSx"},
     }
 
     for storage in cluster_config.shared_storage:
@@ -75,9 +75,10 @@ def _verify_ec2_metrics_conditions(cluster_config, output_yaml):
     # Check each section title
     for storage_type, storages in storage_resource.items():
         if len(storages) > 0:
-            assert_that(output_yaml).contains(storage_type_title_dict[storage_type])
+            for field in ["title", "namespace"]:
+                assert_that(output_yaml).contains(storage_type_title_dict[storage_type].get(field))
         else:
-            assert_that(output_yaml).does_not_contain(storage_type_title_dict[storage_type])
+            assert_that(output_yaml).does_not_contain(storage_type_title_dict[storage_type].get("title"))
 
     # Conditional EBS and RAID metrics
     ebs_and_raid_storage = storage_resource[SharedStorageType.EBS] + storage_resource[SharedStorageType.RAID]

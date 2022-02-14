@@ -376,7 +376,7 @@ def _test_build_image_success(image):
     pcluster_describe_image_result = image.describe()
     logging.info(pcluster_describe_image_result)
 
-    while image.image_status == "BUILD_IN_PROGRESS":
+    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
         time.sleep(600)
         pcluster_describe_image_result = image.describe()
         logging.info(pcluster_describe_image_result)
@@ -425,7 +425,7 @@ def _test_build_image_failed(image):
     pcluster_describe_image_result = image.describe()
     logging.info(pcluster_describe_image_result)
 
-    while image.image_status == "BUILD_IN_PROGRESS":
+    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
         time.sleep(600)
         pcluster_describe_image_result = image.describe()
         logging.info(pcluster_describe_image_result)

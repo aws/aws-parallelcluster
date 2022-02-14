@@ -89,22 +89,33 @@ class TestBuildImageCommand:
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])
 
+    @staticmethod
+    def run_build_image_command(test_datadir):
+        run(
+            [
+                "build-image",
+                "--region",
+                "eu-west-1",
+                "--image-configuration",
+                str(test_datadir / "config.yaml"),
+                "--image-id",
+                "image-id",
+            ]
+        )
+
     def test_no_nodejs_error(self, mocker, test_datadir):
         """Test expected message is printed out if nodejs is not installed."""
         mocker.patch("pcluster.api.util.shutil.which", return_value=None)
         with pytest.raises(APIOperationException) as exc_info:
-            run(
-                [
-                    "build-image",
-                    "--region",
-                    "eu-west-1",
-                    "--image-configuration",
-                    str(test_datadir / "config.yaml"),
-                    "--image-id",
-                    "image-id",
-                ]
-            )
+            self.run_build_image_command(test_datadir)
         assert_that(exc_info.value.data.get("message")).matches("Node.js is required")
+
+    def test_nodejs_wrong_version_error(self, mocker, test_datadir):
+        """Test expected message is printed out if nodejs is wrong version."""
+        mocker.patch("pcluster.api.util.subprocess.check_output", return_value="0.0.0")
+        with pytest.raises(APIOperationException) as exc_info:
+            self.run_build_image_command(test_datadir)
+        assert_that(exc_info.value.data.get("message")).matches("requires Node.js version >=")
 
     def _build_args(self, args):
         args = [[k, v] if v is not None else [k] for k, v in args.items()]

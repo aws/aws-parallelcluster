@@ -65,8 +65,8 @@ MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1, "raid": 1}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.2.0b1",
-    "cookbook": "aws-parallelcluster-cookbook-3.2.0b1",
+    "parallelcluster": "3.2.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.2.0",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",
@@ -153,3 +153,7 @@ SUPPORTED_REGIONS = [
 ]
 
 SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS = 10
+
+# see https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html
+NODEJS_MIN_VERSION = "10.13.0"
+NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
