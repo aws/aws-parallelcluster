@@ -22,6 +22,7 @@ import subprocess
 import boto3
 from assertpy import assert_that
 from constants import OS_TO_ROOT_VOLUME_DEVICE
+from jinja2 import Environment, FileSystemLoader
 from retrying import retry
 
 
@@ -476,3 +477,13 @@ def instance_stream_name(instance, stream_name):
     """Return a stream name given an instance."""
     ip_str = instance["privateIpAddress"].replace(".", "-")
     return "ip-{}.{}.{}".format(ip_str, instance["instanceId"], stream_name)
+
+
+def render_jinja_template(template_file_path, **kwargs):
+    file_loader = FileSystemLoader(str(os.path.dirname(template_file_path)))
+    env = Environment(loader=file_loader)
+    rendered_template = env.get_template(os.path.basename(template_file_path)).render(**kwargs)
+    logging.info("Writing the following to %s\n%s", template_file_path, rendered_template)
+    with open(template_file_path, "w", encoding="utf-8") as f:
+        f.write(rendered_template)
+    return template_file_path

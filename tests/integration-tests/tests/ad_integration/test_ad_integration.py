@@ -24,13 +24,12 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
-from jinja2 import Environment, FileSystemLoader
 from OpenSSL import crypto
 from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import generate_stack_name
+from utils import generate_stack_name, render_jinja_template
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu
@@ -98,17 +97,6 @@ def get_ad_config_param_vals(
         "directory_protocol": directory_protocol,
         "ldap_tls_req_cert": "never" if directory_certificate_verification is False else "hard",
     }
-
-
-# TODO: move this to a common place, since it's a copy of code from osu_common.py
-def render_jinja_template(template_file_path, **kwargs):
-    file_loader = FileSystemLoader(str(os_lib.path.dirname(template_file_path)))
-    env = Environment(loader=file_loader)
-    rendered_template = env.get_template(os_lib.path.basename(template_file_path)).render(**kwargs)
-    logging.info("Writing the following to %s\n%s", template_file_path, rendered_template)
-    with open(template_file_path, "w", encoding="utf-8") as f:
-        f.write(rendered_template)
-    return template_file_path
 
 
 def _add_file_to_zip(zip_file, path, arcname):
