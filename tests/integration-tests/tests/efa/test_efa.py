@@ -45,10 +45,9 @@ def test_efa(
     # We collected OSU benchmarks results for c5n.18xlarge only.
     osu_benchmarks_instances = ["c5n.18xlarge"]
 
-    # 4 instances are required to see performance differences in collective OSU benchmarks.
-    # 2 instances are enough for other EFA tests.
-    max_queue_size = 4 if instance in osu_benchmarks_instances else 2
-    slots_per_instance = fetch_instance_slots(region, instance)
+    # 32 instances are required to see performance differences in collective OSU benchmarks.
+    max_queue_size = 32 if instance in osu_benchmarks_instances else 2
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
 
     # Post-install script to use P4d targeted ODCR
@@ -175,9 +174,6 @@ def _test_osu_benchmarks_collective(
     slots_per_instance,
     partition=None,
 ):
-    # OSU collective benchmarks can be executed with any number of instances,
-    # 4 instances are enough to see performance differences with c5n.18xlarge.
-
     # Accept a max number of 3 failures on a total of 19-21 packet size tests.
     accepted_number_of_failures = 3
 
@@ -193,6 +189,7 @@ def _test_osu_benchmarks_collective(
             num_of_instances,
             slots_per_instance,
             test_datadir,
+            timeout=24,
         )
         failures = _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output)
         if failures > accepted_number_of_failures:
