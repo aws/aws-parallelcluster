@@ -138,8 +138,9 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=5000)
-def fetch_instance_slots(region, instance_type):
-    return get_instance_info(instance_type, region).get("VCpuInfo").get("DefaultVCpus")
+def fetch_instance_slots(region, instance_type, multithreading_disabled=False):
+    vcpus = get_instance_info(instance_type, region).get("VCpuInfo").get("DefaultVCpus")
+    return int(vcpus / 2) if multithreading_disabled else vcpus
 
 
 @retry(stop_max_attempt_number=10, wait_fixed=seconds(50))
