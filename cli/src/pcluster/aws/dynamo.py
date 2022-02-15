@@ -12,7 +12,7 @@ from pcluster.aws.common import AWSExceptionHandler, Boto3Resource
 
 
 class DynamoResource(Boto3Resource):
-    """S3 Boto3 resource."""
+    """DynamoDB Boto3 resource."""
 
     def __init__(self):
         super().__init__("dynamodb")
@@ -29,3 +29,25 @@ class DynamoResource(Boto3Resource):
         if condition_expression:
             optional_args["ConditionExpression"] = condition_expression
         self._resource.Table(table_name).put_item(Item=item, **optional_args)
+
+    @AWSExceptionHandler.handle_client_exception
+    def update_item(
+        self,
+        table_name,
+        key,
+        update_expression=None,
+        expression_attribute_names=None,
+        expression_attribute_values=None,
+        condition_expression=None,
+    ):
+        """Update item into a DynamoDB table."""
+        optional_args = {}
+        if update_expression:
+            optional_args["UpdateExpression"] = update_expression
+        if expression_attribute_names:
+            optional_args["ExpressionAttributeNames"] = expression_attribute_names
+        if expression_attribute_values:
+            optional_args["ExpressionAttributeValues"] = expression_attribute_values
+        if condition_expression:
+            optional_args["ConditionExpression"] = condition_expression
+        self._resource.Table(table_name).update_item(Key=key, **optional_args)

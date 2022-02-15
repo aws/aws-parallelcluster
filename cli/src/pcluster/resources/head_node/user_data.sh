@@ -55,7 +55,8 @@ function error_exit
 {
   # wait logs flush before signaling the failure
   sleep 10
-  cfn-signal --exit-code=1 --reason="$1" "${!wait_condition_handle_presigned_url}"
+  reason=$(cat /var/log/parallelcluster/chef_error_msg 2>/dev/null) || reason="$1"
+  cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}"
   exit 1
 }
 function vendor_cookbook

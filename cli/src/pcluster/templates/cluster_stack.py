@@ -20,6 +20,7 @@ from datetime import datetime
 from typing import Dict, List, Union
 
 from aws_cdk import aws_cloudformation as cfn
+from aws_cdk import aws_dynamodb as dynamomdb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
@@ -28,6 +29,7 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import (
     CfnCustomResource,
+    CfnDeletionPolicy,
     CfnOutput,
     CfnParameter,
     CfnResource,
@@ -55,6 +57,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
+    PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
 )
@@ -239,46 +242,16 @@ class ClusterCdkStack(Stack):
             for storage in self.config.shared_storage:
                 self._add_shared_storage(storage)
 
-        # Compute Fleet and scheduler related resources
-        self.scheduler_resources = None
-        if self._condition_is_slurm():
-            self.scheduler_resources = SlurmConstruct(
-                scope=self,
-                id="Slurm",
-                stack_name=self._stack_name,
-                cluster_config=self.config,
-                bucket=self.bucket,
-                managed_head_node_instance_role=self._managed_head_node_instance_role,
-                managed_compute_instance_roles=self._managed_compute_instance_roles,
-                cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
-                cleanup_lambda=cleanup_lambda,
-            )
-        self.compute_fleet_resources = None
-        if not self._condition_is_batch():
-            self.compute_fleet_resources = ComputeFleetConstruct(
-                scope=self,
-                id="ComputeFleet",
-                cluster_config=self.config,
-                log_group=self.log_group,
-                cleanup_lambda=cleanup_lambda,
-                cleanup_lambda_role=cleanup_lambda_role,
-                compute_security_group=self._compute_security_group,
-                shared_storage_mappings=self.shared_storage_mappings,
-                shared_storage_options=self.shared_storage_options,
-                shared_storage_attributes=self.shared_storage_attributes,
-                compute_node_instance_profiles=self._compute_instance_profiles,
-                cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
-                dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
-                head_eni=self._head_eni,
-            )
-
-        self._add_scheduler_plugin_substack()
+        self._add_fleet_and_scheduler_resources(cleanup_lambda, cleanup_lambda_role)
 
         # Wait condition
         self.wait_condition, self.wait_condition_handle = self._add_wait_condition()
 
         # Head Node
         self.head_node_instance = self._add_head_node()
+        # Add a dependency to the cleanup Route53 resource, so that Route53 Hosted Zone is cleaned after node is deleted
+        if self._condition_is_slurm() and hasattr(self.scheduler_resources, "cleanup_route53_custom_resource"):
+            self.head_node_instance.add_depends_on(self.scheduler_resources.cleanup_route53_custom_resource)
 
         # AWS Batch related resources
         if self._condition_is_batch():
@@ -334,6 +307,55 @@ class ClusterCdkStack(Stack):
         )
         log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(self.config)
         return log_group
+
+    def _add_fleet_and_scheduler_resources(self, cleanup_lambda, cleanup_lambda_role):
+        # Compute Fleet and scheduler related resources
+        self.scheduler_resources = None
+        if self._condition_is_slurm():
+            self.scheduler_resources = SlurmConstruct(
+                scope=self,
+                id="Slurm",
+                stack_name=self._stack_name,
+                cluster_config=self.config,
+                bucket=self.bucket,
+                managed_head_node_instance_role=self._managed_head_node_instance_role,
+                managed_compute_instance_roles=self._managed_compute_instance_roles,
+                cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
+                cleanup_lambda=cleanup_lambda,
+            )
+        if not self._condition_is_batch():
+            _dynamodb_table_status = dynamomdb.CfnTable(
+                self,
+                "DynamoDBTable",
+                table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack_name,
+                attribute_definitions=[
+                    dynamomdb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
+                ],
+                key_schema=[dynamomdb.CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
+                billing_mode="PAY_PER_REQUEST",
+            )
+            _dynamodb_table_status.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+            _dynamodb_table_status.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
+            self.dynamodb_table_status = _dynamodb_table_status
+        self.compute_fleet_resources = None
+        if not self._condition_is_batch():
+            self.compute_fleet_resources = ComputeFleetConstruct(
+                scope=self,
+                id="ComputeFleet",
+                cluster_config=self.config,
+                log_group=self.log_group,
+                cleanup_lambda=cleanup_lambda,
+                cleanup_lambda_role=cleanup_lambda_role,
+                compute_security_group=self._compute_security_group,
+                shared_storage_mappings=self.shared_storage_mappings,
+                shared_storage_options=self.shared_storage_options,
+                shared_storage_attributes=self.shared_storage_attributes,
+                compute_node_instance_profiles=self._compute_instance_profiles,
+                cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
+                dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
+                head_eni=self._head_eni,
+            )
+        self._add_scheduler_plugin_substack()
 
     def _add_cleanup_resources_lambda(self):
         """Create Lambda cleanup resources function and its role."""
@@ -918,6 +940,7 @@ class ClusterCdkStack(Stack):
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
+                    "ddb_table": self.dynamodb_table_status.ref if not self._condition_is_batch() else "NONE",
                     "log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
@@ -1478,7 +1501,7 @@ class ComputeFleetConstruct(Construct):
                                 if self._cluster_hosted_zone
                                 else "",
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
-                                "DynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
+                                "SlurmDynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
                                 "LogGroupName": self._log_group.log_group_name
                                 if self._config.monitoring.logs.cloud_watch.enabled
                                 else "NONE",

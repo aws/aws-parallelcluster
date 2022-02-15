@@ -2,7 +2,7 @@
 cluster_name = <%= node['pcluster']['cluster_name'] %>
 region = <%= node['pcluster']['region'] %>
 proxy = <%= node['pcluster']['proxy'] %>
-heartbeat_file_path =  <%= node['slurm']['install_dir'] %>/etc/pcluster/.slurm_plugin/clustermgtd_heartbeat
+heartbeat_file_path =  <%= node['pcluster']['shared_dir'] %>/.slurm_plugin/clustermgtd_heartbeat
 dynamodb_table = <%= node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable'] %>
 hosted_zone = <%= node['pcluster']['cfn_stack_outputs']['Outputs']['Route53HostedZone'] %>
 dns_domain = <%= node['dns']['domain'] %>

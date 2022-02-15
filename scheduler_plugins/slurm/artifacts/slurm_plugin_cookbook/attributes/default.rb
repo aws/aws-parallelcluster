@@ -14,7 +14,7 @@ default['pcluster']['shared_dir'] = ENV['PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR']
 default['pcluster']['region'] = ENV['PCLUSTER_AWS_REGION']
 default['pcluster']['cluster_config_path'] = ENV['PCLUSTER_CLUSTER_CONFIG']
 default['pcluster']['previous_cluster_config_path'] = ENV['PCLUSTER_CLUSTER_CONFIG_OLD']
-default['pcluster']['cluster_config'] = YAML.load_file("#{node['pcluster']['cluster_config_path']}")
+default['pcluster']['cluster_config'] = YAML.safe_load(File.read(node['pcluster']['cluster_config_path']))
 default['pcluster']['launch_templates_config_path'] = ENV['PCLUSTER_LAUNCH_TEMPLATES']
 default['pcluster']['launch_templates_config'] = JSON.load_file(node['pcluster']['launch_templates_config_path'])
 default['pcluster']['cfn_stack_outputs_file'] = ENV['PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_OUTPUTS']
@@ -26,7 +26,7 @@ default['pcluster']['python_root'] = ENV['PCLUSTER_PYTHON_ROOT']
 default['slurm']['version'] = '21-08-5-1'
 default['slurm']['url'] = "https://github.com/SchedMD/slurm/archive/slurm-#{node['slurm']['version']}.tar.gz"
 default['slurm']['sha1'] = '1416539a06c866605b8d464daf6c98d881592361'
-default['slurm']['user'] = 'slurm_user'
+default['slurm']['user'] = 'slurm-user'
 default['slurm']['group'] = node['slurm']['user']
 default['slurm']['install_dir'] = "#{node['pcluster']['shared_dir']}/slurm"
 
@@ -34,4 +34,5 @@ default['munge']['user'] = 'munge'
 default['munge']['group'] = node['munge']['user']
 
 default['plugin']['user'] = 'pcluster-scheduler-plugin'
+default['plugin']['fleet_mgt_user'] = 'fleet-mgt-user'
 default['dns']['domain'] = "#{node['pcluster']['cluster_name']}.pcluster"

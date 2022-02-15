@@ -65,8 +65,8 @@ MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1, "raid": 1}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.1.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.1.0",
+    "parallelcluster": "3.2.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.2.0",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",
@@ -83,6 +83,7 @@ STACK_EVENTS_LOG_STREAM_NAME_FORMAT = "{}-cfn-events"
 PCLUSTER_IMAGE_NAME_REGEX = r"^[-_A-Za-z0-9{][-_A-Za-z0-9\s:{}\.]+[-_A-Za-z0-9}]$"
 PCLUSTER_IMAGE_ID_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,127})$"
 
+PCLUSTER_SLURM_DYNAMODB_PREFIX = "parallelcluster-slurm-"
 PCLUSTER_DYNAMODB_PREFIX = "parallelcluster-"
 PCLUSTER_PREFIX = "parallelcluster:"
 PCLUSTER_IMAGE_NAME_TAG = f"{PCLUSTER_PREFIX}image_name"

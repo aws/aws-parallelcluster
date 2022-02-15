@@ -14,6 +14,7 @@ from collections import namedtuple
 
 from pkg_resources import packaging
 
+from pcluster.utils import get_attr
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -27,6 +28,24 @@ class SudoPrivilegesValidator(Validator):
                 "but these privileges were not granted because GrantSudoPrivileges was not set or set to false.",
                 FailureLevel.ERROR,
             )
+
+
+class GrantSudoPrivilegesValidator(Validator):
+    """Verify SystemUsers does not have SudoerConfiguration set when GrantSudoPrivileges is true."""
+
+    def _validate(self, grant_sudo_privileges: bool, system_users):
+        if not grant_sudo_privileges and system_users:
+            sudoer_configuration = [
+                get_attr(user, "sudoer_configuration")
+                for user in system_users
+                if get_attr(user, "sudoer_configuration")
+            ]
+            if sudoer_configuration:
+                self._add_failure(
+                    "The used scheduler plugin requires the creation of SystemUsers with sudo access. To grant such "
+                    "rights please set GrantSudoPrivileges to true.",
+                    FailureLevel.ERROR,
+                )
 
 
 class SchedulerPluginOsArchitectureValidator(Validator):
