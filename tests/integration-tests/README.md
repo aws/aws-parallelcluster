@@ -121,16 +121,19 @@ AMI selection parameters:
                         Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon. (default: None)
 
 Benchmarks:
-  --benchmarks          run benchmarks tests. This disables the execution of all tests defined under the tests directory. (default: False)
-  --benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY
-                        set the target capacity for benchmarks tests (default: 200)
-  --benchmarks-max-time BENCHMARKS_MAX_TIME
-                        set the max waiting time in minutes for benchmarks tests (default: 30)
+  --benchmarks          Run benchmarks tests. Benchmarks tests will be run together with functionality tests. (default: False)
 
 Debugging/Development options:
   --vpc-stack VPC_STACK
                         Name of an existing vpc stack. (default: None)
   --cluster CLUSTER     Use an existing cluster instead of creating one. (default: None)
+  --iam-user-role-stack-name
+                        Name of an existing IAM user role stack. (default: None)
+  --directory-stack-name
+                        Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
+  --ldaps-nlb-stack-name
+                        Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
+
   --no-delete           Don't delete stacks after tests are complete. (default: False)
   --delete-logs-on-success
                         delete CloudWatch logs when a test success (default: True)
@@ -379,25 +382,6 @@ python -m test_runner \
 
 Keep in mind, the cluster you pass can have different `scheduler`, `os` or other features 
 than what is specified in the test. This can break the tests in unexpected ways. Be mindful.
-
-### Benchmark and performance tests
-
-Performance tests are disabled by default due to the high resource utilization involved with their execution.
-In order to run performance tests you can use the following options:
-* `--benchmarks`: run benchmarks tests. This disables the execution of all tests defined under the tests directory.
-* `--benchmarks-target-capacity`: set the target capacity for benchmarks tests (default: 200).
-* `--benchmarks-max-time`: set the max waiting time in minutes for benchmarks tests (default: 30).
-
-The same filters by dimensions and features can be applied to this kind of tests.
-
-The output produced by the performance tests is stored under the following directory tree:
-```
-tests_outputs
-└── $timestamp..out
-    └── benchmarks: directory storing all cluster configs used by test
-                  ├── test_scaling_speed.py-test_scaling_speed[c5.xlarge-eu-west-1-centos7-slurm].png
-            └── ...
-```
 
 ## Cross Account Integration Tests
 If you want to distribute integration tests across multiple accounts you can make use of the `--credential` flag. 
@@ -771,13 +755,107 @@ def vpc(cfn_stacks_factory):
     return stack
 ```
 
-### Benchmark and performance tests
+## Run Performance Tests with Integration Tests
 
-Benchmark and performance tests follow the same rules described above for a normal integration test.
-The only differences are the following:
-- the tests are defined under the `benchmarks/` directory
-- they are not executed by default with the rest of the integration tests
-- they write their output to a specific benchmarks directory created in the output dir
+Performance tests can run together with functionality tests, reusing clusters created by functionality test.
+
+To run performance test for a specific integration test, the following changes are required:
+1. Add `run_benchmarks` fixture to the test:
+```python
+def test_ad_integration(..., run_benchmarks):
+    ...
+```
+
+2. Decide the exact location in the test where the `run_benchmarks` should be called. The location is arbitrary. It can be the last line  of the test. Or if the test deletes/updates the cluster in the middle, you may want to call `run_benchmarks` before the deletes/updates.
+```python
+def test_ad_integration(..., run_benchmarks):
+    ...
+    run_benchmarks(remote_command_executor, scheduler_commands)
+    ...
+```
+3. You may add more keyword arguments to the `run_benchmarks` calls. The keyword arguments will be added to the dimensions of CloudWatch metrics.
+```python
+def test_ad_integration(..., run_benchmarks):
+    ...
+    run_benchmarks(remote_command_executor, scheduler_commands, diretory_type="MicrosoftAD")
+    ...
+```
+4. Decide if a larger head node instance type is needed and change the cluster configuration accordingly.
+5. Specify what benchmarks to run in the tests suite definition file
+```yaml
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  ad_integration:
+    test_ad_integration.py::test_ad_integration:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: ["openmpi"]
+              num_instances: [100]
+              osu_benchmarks:
+                # Available collective benchmarks "osu_allgather", "osu_allreduce", "osu_alltoall", "osu_barrier", "osu_bcast", "osu_gather", "osu_reduce", "osu_reduce_scatter", "osu_scatter"
+                collective: ["osu_allreduce", "osu_alltoall"]
+                pt2pt: []
+```
+The definition above means the `osu_allreduce` and `osu_alltoall` will run in `eu-west-1`. You can extend the list under `benchmarks` or each parameters to get various combinations
+
+6. Use `--benchmarks` option to run performance tests. Performance tests are disabled by default due to the high resource utilization involved with their execution. 
+
+In conclusion, the performance test will run for a test only if:
+1. The test calls the `run_benchmark` fixture
+2. Tests suite definition file contains benchmarks specification
+3. `--benchmarks` option is used
+
+
+## Expand Performance Tests
+The current performance tests only support running OSU benchmarks. This section discusses how the current code is structured and how it facilitates adding more other performance test suites.
+1. The `benchmarks` in the tests suite definition file is a list of arbitrary structure, which means other benchmarks definition can be added without any change to the code.
+```yaml
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  ad_integration:
+    test_ad_integration.py::test_ad_integration:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: ["openmpi"]
+              num_instances: [100]
+              other_benchmarks:
+                other_benchmarks_group: ["other_allreduce", "other_alltoall"]
+```
+2. The `run_benchmarks` fixture runs benchmarks for different `mpi_variants`, `num_instances` and pushes the result to CloudWatch with the correct namespace. The detailed execution of the OSU benchmarks is in `osu_common.py`, decoupled from the `run_benchmarks` fixture. So in the future, the `run_benchmarks` fixture will look like:
+```python
+@pytest.fixture()
+def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, benchmarks):
+  def _run_benchmarks(remote_command_executor, scheduler_commands, **kwargs):
+    ...
+    for mpi_variant, num_instances in product(benchmark.get("mpi_variants"), benchmark.get("num_instances")):
+        metric_namespace = f"ParallelCluster/{function_name}"
+        ...
+        osu_benchmarks = benchmark.get("osu_benchmarks", [])
+        if osu_benchmarks:
+            metric_data_list = run_osu_benchmarks(...)
+            for metric_data in metric_data_list:
+                cloudwatch_client.put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
+
+        other_benchmarks = benchmark.get("other_benchmarks", [])
+        if other_benchmarks:
+            metric_data_list = run_other_benchmarks(...)
+            for metric_data in metric_data_list:
+                cloudwatch_client.put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
+```
 
 ### Troubleshooting and fixes
 
