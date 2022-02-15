@@ -1206,14 +1206,12 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
         logging.info("Running benchmarks for %s", function_name)
         cloudwatch_client = boto3.client("cloudwatch")
         for benchmark in benchmarks:
-            for mpi_variant, num_of_instances in product(
-                benchmark.get("mpi_variants"), benchmark.get("num_of_instances")
-            ):
+            for mpi_variant, num_instances in product(benchmark.get("mpi_variants"), benchmark.get("num_instances")):
                 partition = benchmark.get("partition")
                 metric_namespace = f"ParallelCluster/{function_name}"
                 dimensions = {
                     "MpiVariant": mpi_variant,
-                    "NumOfInstances": num_of_instances,
+                    "NumInstances": num_instances,
                     "Instance": instance,
                     "Os": os,
                     "Partition": partition,
@@ -1231,7 +1229,7 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
                         partition,
                         remote_command_executor,
                         scheduler_commands,
-                        num_of_instances,
+                        num_instances,
                         region,
                         instance,
                         test_datadir,
