@@ -80,7 +80,7 @@ def test_efa(
                     scheduler_commands,
                     test_datadir,
                     instance,
-                    num_of_instances=max_queue_size,
+                    num_instances=max_queue_size,
                     slots_per_instance=slots_per_instance,
                     partition="efa-enabled",
                 )
@@ -129,7 +129,7 @@ def _test_osu_benchmarks_pt2pt(
 ):
     # OSU pt2pt benchmarks cannot be executed with more than 2 MPI ranks.
     # Run them in 2 instances with 1 proc per instance, defined by map-by parameter.
-    num_of_instances = 2
+    num_instances = 2
     # Accept a max number of 4 failures on a total of 23-24 packet size tests.
     accepted_number_of_failures = 4
 
@@ -142,7 +142,7 @@ def _test_osu_benchmarks_pt2pt(
             partition,
             remote_command_executor,
             scheduler_commands,
-            num_of_instances,
+            num_instances,
             slots_per_instance,
             test_datadir,
         )
@@ -159,7 +159,7 @@ def _test_osu_benchmarks_collective(
     scheduler_commands,
     test_datadir,
     instance,
-    num_of_instances,
+    num_instances,
     slots_per_instance,
     partition=None,
 ):
@@ -178,7 +178,7 @@ def _test_osu_benchmarks_collective(
             partition,
             remote_command_executor,
             scheduler_commands,
-            num_of_instances,
+            num_instances,
             slots_per_instance,
             test_datadir,
         )
@@ -192,7 +192,7 @@ def _test_osu_benchmarks_collective(
 def _test_osu_benchmarks_multiple_bandwidth(
     remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
 ):
-    num_of_instances = 2
+    num_instances = 2
     run_individual_osu_benchmark(
         "openmpi",
         "mbw_mr",
@@ -200,7 +200,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
         partition,
         remote_command_executor,
         scheduler_commands,
-        num_of_instances,
+        num_instances,
         slots_per_instance,
         test_datadir,
     )

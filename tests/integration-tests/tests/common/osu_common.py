@@ -46,7 +46,7 @@ def run_individual_osu_benchmark(
     partition,
     remote_command_executor,
     scheduler_commands,
-    num_of_instances,
+    num_instances,
     slots_per_instance,
     test_datadir,
     submission_script_template_path=None,
@@ -63,7 +63,7 @@ def run_individual_osu_benchmark(
     :param partition: string, partition on which to benchmark job (assumes the use of Slurm scheduler)
     :param remote_command_executor: RemoteCommandExecutor instance, used to submit jobs
     :param scheduler_commands: SchedulerlurmCommands instance, used to submit jobs
-    :param num_of_instances: int, number of instances to run benchmark across
+    :param num_instances: int, number of instances to run benchmark across
     :param slots_per_instance: int, number of processes to run on each node
     :param test_datadir: Path, used to construct default output path when rendering submission script template
     :param submission_script_template_path: string, override default path for source submission script template
@@ -84,7 +84,7 @@ def run_individual_osu_benchmark(
     if not rendered_template_path:
         rendered_template_path = test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh"
     copyfile(submission_script_template_path, rendered_template_path)
-    slots = num_of_instances * slots_per_instance
+    slots = num_instances * slots_per_instance
     submission_script = render_jinja_template(
         template_file_path=rendered_template_path,
         benchmark_name=benchmark_name,
@@ -93,10 +93,10 @@ def run_individual_osu_benchmark(
     )
     if partition:
         result = scheduler_commands.submit_script(
-            str(submission_script), slots=slots, partition=partition, nodes=num_of_instances
+            str(submission_script), slots=slots, partition=partition, nodes=num_instances
         )
     else:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots, nodes=num_of_instances)
+        result = scheduler_commands.submit_script(str(submission_script), slots=slots, nodes=num_instances)
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id, timeout=timeout)
     scheduler_commands.assert_job_succeeded(job_id)
@@ -111,7 +111,7 @@ def run_osu_benchmarks(
     partition,
     remote_command_executor,
     scheduler_commands,
-    num_of_instances,
+    num_instances,
     region,
     instance,
     test_datadir,
@@ -128,7 +128,7 @@ def run_osu_benchmarks(
                 partition=partition,
                 remote_command_executor=remote_command_executor,
                 scheduler_commands=scheduler_commands,
-                num_of_instances=num_of_instances,
+                num_instances=num_instances,
                 slots_per_instance=fetch_instance_slots(region, instance),
                 test_datadir=test_datadir,
                 timeout=40,
