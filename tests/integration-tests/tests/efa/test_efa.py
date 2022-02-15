@@ -108,12 +108,22 @@ def test_hit_efa(
     # We collected OSU benchmarks results for c5n.18xlarge only.
     osu_benchmarks_instances = ["c5n.18xlarge"]
 
-    # 4 instances are required to see performance differences in collective OSU benchmarks.
-    # 2 instances are enough for other EFA tests.
-    max_queue_size = 4 if instance in osu_benchmarks_instances else 2
-    slots_per_instance = fetch_instance_slots(region, instance)
-    head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
+    # 32 instances are required to see performance differences in collective OSU benchmarks.
+    max_queue_size = 32 if instance in osu_benchmarks_instances else 2
+
+    if architecture == "x86_64":
+        head_node_instance = "c5.18xlarge"
+        multithreading_disabled = True
+    else:
+        head_node_instance = "c6g.16xlarge"
+        multithreading_disabled = False
+
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=multithreading_disabled)
+    cluster_config = pcluster_config_reader(
+        max_queue_size=max_queue_size,
+        head_node_instance=head_node_instance,
+        multithreading_disabled=multithreading_disabled,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
