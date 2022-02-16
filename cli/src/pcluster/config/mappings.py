@@ -171,7 +171,7 @@ ALLOWED_VALUES = {
     "fsx_ssd_throughput": FSX_SSD_THROUGHPUT,
     "fsx_hdd_throughput": FSX_HDD_THROUGHPUT,
     "architectures": SUPPORTED_ARCHITECTURES,
-    "fsx_auto_import_policy": ["NEW", "NEW_CHANGED"],
+    "fsx_auto_import_policy": ["NEW", "NEW_CHANGED", "NEW_CHANGED_DELETED"],
     "fsx_storage_type": ["SSD", "HDD"],
     "fsx_drive_cache_type": ["READ"],
     "fsx_data_compression_type": ["LZ4"]
