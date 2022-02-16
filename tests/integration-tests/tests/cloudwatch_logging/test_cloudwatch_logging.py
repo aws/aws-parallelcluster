@@ -356,6 +356,7 @@ class CloudWatchLoggingClusterState:
                 "/var/log/parallelcluster/clustermgtd",
                 "/var/log/parallelcluster/slurm_resume.log",
                 "/var/log/parallelcluster/slurm_suspend.log",
+                "/var/log/parallelcluster/slurm_fleet_status_manager.log",
             ]
             if self.scheduler == "slurm"
             else []
