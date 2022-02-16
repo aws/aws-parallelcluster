@@ -9,6 +9,11 @@ ad_integration:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+        benchmarks:
+          - mpi_variants: ["openmpi"]
+            num_instances: [100]
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
       - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
