@@ -16,7 +16,7 @@ Scheduling:
         - Name: cit
           InstanceType: {{ compute_instance_type }}
           MinCount: 2
-          MaxCount: 3000
+          MaxCount: 150
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
