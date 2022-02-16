@@ -630,21 +630,35 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
 
 
 @pytest.mark.parametrize(
-    "scheduler_definition, grant_sudo_privileges, s3_error, https_error, yaml_load_error, failure_message",
+    "scheduler_definition, grant_sudo_privileges, scheduler_definition_s3_bucket_owner, scheduler_definition_checksum, "
+    "s3_error, https_error, yaml_load_error, failure_message",
     [
-        ("s3://bucket/scheduler_definition.yaml", True, None, None, None, None),
+        ("s3://bucket/scheduler_definition.yaml", True, None, None, None, None, None, None),
         (
             "s3://bucket/scheduler_definition_fake.yaml",
             True,
+            None,
+            None,
             AWSClientError(function_name="get_object", message="The specified key does not exist."),
             None,
             None,
             "Error while downloading scheduler definition from "
             "s3://bucket/scheduler_definition_fake.yaml: The specified key does not exist.",
         ),
-        ("https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition.yaml", False, None, None, None, None),
+        (
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition.yaml",
+            False,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
         (
             "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+            None,
+            None,
             None,
             None,
             HTTPError(
@@ -666,10 +680,14 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
             None,
             None,
             None,
+            None,
+            None,
         ),
         (
             "ftp://bucket/scheduler_definition_fake.yaml",
             True,
+            None,
+            None,
             None,
             None,
             None,
@@ -682,13 +700,75 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
             True,
             None,
             None,
+            None,
+            None,
             ParserError("parse error"),
             r"The retrieved SchedulerDefinition \(s3://bucket/scheduler_definition.yaml\) is not a valid YAML.",
+        ),
+        (
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+            True,
+            "01234567890",
+            "123467",
+            None,
+            None,
+            None,
+            r"SchedulerDefinitionS3BucketOwner can only be specified when SchedulerDefinition is S3 URL",
+        ),
+        (
+            {"PluginInterfaceVersion": "1.0", "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}},
+            True,
+            "01234567890",
+            "123467",
+            None,
+            None,
+            None,
+            r"SchedulerDefinitionS3BucketOwner or SchedulerDefinitionChecksum can only specified when "
+            "SchedulerDefinition is a URL.",
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            "012345678910",
+            "7f48cf28d516b51efa5deb9af3c338c29444199811751ddcfbe71366847c1ab0",
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            "01234567890",
+            None,
+            AWSClientError(function_name="get_object", message="Access Denied", error_code="AccessDenied"),
+            None,
+            None,
+            r"Error while downloading scheduler definition from s3://bucket/scheduler_definition.yaml: Access Denied. "
+            "This can be due to bucket owner not matching the expected one '01234567890'",
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            "012345678910",
+            "7f48cf28d516b51efa5deb9af3c338c29444199811751ddcfbe71366847c1ab1",
+            None,
+            None,
+            None,
+            r"Error when validating SchedulerDefinition",
         ),
     ],
 )
 def test_scheduler_plugin_settings_schema(
-    mocker, scheduler_definition, grant_sudo_privileges, s3_error, https_error, yaml_load_error, failure_message
+    mocker,
+    scheduler_definition,
+    grant_sudo_privileges,
+    scheduler_definition_s3_bucket_owner,
+    scheduler_definition_checksum,
+    s3_error,
+    https_error,
+    yaml_load_error,
+    failure_message,
 ):
     scheduler_plugin_settings_schema = {}
     body_encoded = json.dumps(
@@ -713,6 +793,10 @@ def test_scheduler_plugin_settings_schema(
         scheduler_plugin_settings_schema["SchedulerDefinition"] = scheduler_definition
     if grant_sudo_privileges:
         scheduler_plugin_settings_schema["GrantSudoPrivileges"] = grant_sudo_privileges
+    if scheduler_definition_s3_bucket_owner:
+        scheduler_plugin_settings_schema["SchedulerDefinitionS3BucketOwner"] = scheduler_definition_s3_bucket_owner
+    if scheduler_definition_checksum:
+        scheduler_plugin_settings_schema["SchedulerDefinitionChecksum"] = scheduler_definition_checksum
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
             SchedulerPluginSettingsSchema().load(scheduler_plugin_settings_schema)

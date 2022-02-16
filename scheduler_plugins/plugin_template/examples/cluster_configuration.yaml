@@ -10,6 +10,8 @@ Scheduling:
   Scheduler: plugin
   SchedulerSettings:
     SchedulerDefinition: <PLUGIN_DEFINITION>
+#    SchedulerDefinitionS3BucketOwner: <ACCOUNT_ID>
+    SchedulerDefinitionChecksum: <PLUGIN_DEFINITION_CHECKSUM>
     GrantSudoPrivileges: true
     CustomSettings:
       CustomKey1: CustomValue1

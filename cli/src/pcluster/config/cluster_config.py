@@ -1868,12 +1868,16 @@ class SchedulerPluginSettings(Resource):
         scheduler_definition: SchedulerPluginDefinition,
         grant_sudo_privileges: bool = None,
         custom_settings: Dict = None,
+        scheduler_definition_s3_bucket_owner: str = None,
+        scheduler_definition_checksum: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.scheduler_definition = scheduler_definition
         self.grant_sudo_privileges = Resource.init_param(grant_sudo_privileges, default=False)
         self.custom_settings = custom_settings
+        self.scheduler_definition_s3_bucket_owner = scheduler_definition_s3_bucket_owner
+        self.scheduler_definition_checksum = scheduler_definition_checksum
 
     def _register_validators(self):
         self._register_validator(
