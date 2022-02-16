@@ -37,8 +37,14 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
     if scheduler == "slurm":
         log_files = [
             "/var/log/parallelcluster/clustermgtd",
+            "/var/log/parallelcluster/clusterstatusmgtd",
             "/var/log/parallelcluster/slurm_resume.log",
             "/var/log/parallelcluster/slurm_suspend.log",
+            "/var/log/parallelcluster/slurm_fleet_status_manager.log",
+        ]
+    elif scheduler == "plugin":
+        log_files = [
+            "/var/log/parallelcluster/clusterstatusmgtd",
         ]
     else:
         log_files = []
