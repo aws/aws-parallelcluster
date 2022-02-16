@@ -24,6 +24,7 @@ CHANGELOG
 - Upgrade NVIDIA driver to version 470.82.01.
 - Upgrade CUDA library to version 11.4.3.
 - Upgrade NVIDIA Fabric manager to 470.82.01.
+- Upgrade Intel MPI Library to 2021.4.0.441.
 - Disable packages update at instance launch time on Amazon Linux 2.
 - Disable unattended packages update on Ubuntu.
 - Install Python 3 version of `aws-cfn-bootstrap` scripts on CentOS 7 and Ubuntu 18.04, aligning with Ubuntu 20.04 and Amazon Linux 2.
