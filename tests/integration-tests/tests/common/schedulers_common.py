@@ -212,6 +212,16 @@ class SlurmCommands(SchedulerCommands):
         match = re.search(r"ExitCode=(.+?) ", result.stdout)
         return match.group(1)
 
+    def get_job_start_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"StartTime=(.+?) ", result.stdout)
+        return match.group(1)
+
+    def get_job_submit_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"SubmitTime=(.+?) ", result.stdout)
+        return match.group(1)
+
     def assert_job_submitted(self, sbatch_output):  # noqa: D102
         __tracebackhide__ = True
         match = re.search(r"Submitted batch job ([0-9]+)", sbatch_output)

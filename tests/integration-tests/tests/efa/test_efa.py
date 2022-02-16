@@ -134,7 +134,7 @@ def _test_osu_benchmarks_pt2pt(
 
     failed_benchmarks = []
     for benchmark_name in ["osu_latency", "osu_bibw"]:
-        output = run_individual_osu_benchmark(
+        _, output = run_individual_osu_benchmark(
             mpi_version,
             "pt2pt",
             benchmark_name,
@@ -167,7 +167,7 @@ def _test_osu_benchmarks_collective(
 
     failed_benchmarks = []
     for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
-        output = run_individual_osu_benchmark(
+        _, output = run_individual_osu_benchmark(
             mpi_version,
             "collective",
             benchmark_name,
