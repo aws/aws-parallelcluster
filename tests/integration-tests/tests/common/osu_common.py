@@ -18,8 +18,6 @@ from shutil import copyfile
 from constants import OSU_BENCHMARK_VERSION
 from utils import render_jinja_template
 
-from tests.common.utils import fetch_instance_slots
-
 OSU_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/osu/"
 SUPPORTED_MPIS = ["openmpi", "intelmpi"]
 
@@ -113,6 +111,7 @@ def run_osu_benchmarks(
     remote_command_executor,
     scheduler_commands,
     num_instances,
+    slots_per_instance,
     region,
     instance,
     test_datadir,
@@ -130,7 +129,7 @@ def run_osu_benchmarks(
                 remote_command_executor=remote_command_executor,
                 scheduler_commands=scheduler_commands,
                 num_instances=num_instances,
-                slots_per_instance=fetch_instance_slots(region, instance),
+                slots_per_instance=slots_per_instance,
                 test_datadir=test_datadir,
                 timeout=40,
             )
