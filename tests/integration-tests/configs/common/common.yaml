@@ -215,6 +215,13 @@ disable_hyperthreading:
         instances: ["c5.xlarge"]
         oss: ["ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
+        benchmarks:
+          - mpi_variants: ["openmpi", "intelmpi"]
+            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+            slots_per_instance: 2
+            partition: "ht-disabled"
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
 dns:
   test_dns.py::test_hit_no_cluster_dns_mpi:
     dimensions:
