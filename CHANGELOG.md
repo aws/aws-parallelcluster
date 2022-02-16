@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.1.2
+------
+
+**BUG FIXES**
+- Fix update of `/etc/hosts` files for clusters deployed in VPC without internet access.
+
 3.1.1
 ------
 
