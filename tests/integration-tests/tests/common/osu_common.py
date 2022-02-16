@@ -12,6 +12,7 @@
 import logging
 import pathlib
 import re
+from datetime import datetime
 from shutil import copyfile
 
 from constants import OSU_BENCHMARK_VERSION
@@ -102,7 +103,7 @@ def run_individual_osu_benchmark(
     scheduler_commands.assert_job_succeeded(job_id)
 
     output = remote_command_executor.run_remote_command(f"cat /shared/{benchmark_name}.out").stdout
-    return output
+    return job_id, output
 
 
 def run_osu_benchmarks(
@@ -121,7 +122,7 @@ def run_osu_benchmarks(
         for osu_benchmark_name in osu_benchmark_names:
             dimensions_copy = dimensions.copy()
             logging.info("Running benchmark %s", osu_benchmark_name)
-            output = run_individual_osu_benchmark(
+            job_id, output = run_individual_osu_benchmark(
                 mpi_version=mpi_variant,
                 benchmark_group=osu_benchmark_group,
                 benchmark_name=osu_benchmark_name,
@@ -135,6 +136,21 @@ def run_osu_benchmarks(
             )
             logging.info("Preparing benchmarks %s metrics", osu_benchmark_name)
             metric_data = []
+            submit_time = datetime.strptime(scheduler_commands.get_job_submit_time(job_id), "%Y-%m-%dT%H:%M:%S")
+            start_time = datetime.strptime(scheduler_commands.get_job_start_time(job_id), "%Y-%m-%dT%H:%M:%S")
+            wait_seconds = (start_time - submit_time).total_seconds()
+            if wait_seconds >= 15:
+                # After submission, if job waited more than 15 seconds before running, the job was probably
+                # waiting for compute nodes to be launched. Therefore, the wait time is pushed to CloudWatch
+                # as an indicator of how fast the compute nodes were launched.
+                metric_data.append(
+                    {
+                        "MetricName": "JobWaitTime",
+                        "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions_copy.items()],
+                        "Value": wait_seconds,
+                        "Unit": "Seconds",
+                    }
+                )
             for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
                 dimensions_copy.update(
                     {
