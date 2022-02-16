@@ -628,6 +628,10 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
             networking = queue["Networking"]
             if not networking.get("PlacementGroup"):
                 networking["PlacementGroup"] = {"Enabled": True}
+            for compute_resource in queue["ComputeResources"]:
+                if not compute_resource.get("MaxCount"):
+                    # Use larger max count to support performance tests if not specified explicitly.
+                    compute_resource["MaxCount"] = 150
 
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
