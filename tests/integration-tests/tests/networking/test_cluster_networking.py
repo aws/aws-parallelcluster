@@ -26,7 +26,7 @@ from troposphere import GetAtt, Output, Ref, Template, ec2
 from troposphere.ec2 import EIP, VPCEndpoint
 from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os, render_jinja_template
 
-from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
+from tests.common.assertions import assert_no_errors_in_logs, assert_no_msg_in_logs, wait_for_num_instances_in_cluster
 from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
@@ -111,7 +111,10 @@ def test_cluster_in_no_internet_subnet(
     mpi_variants,
     bastion_instance,
 ):
-    """This test creates a cluster in a subnet with no internet, run osu latency and checks that no failures occur."""
+    """
+    This test creates a cluster in a subnet with no internet, run simple integration test to check prolog and epilog
+    script failure, then run osu latency and checks that no failures occur.
+    """
     bucket_name = s3_bucket_factory()
     _upload_pre_install_script(bucket_name, test_datadir)
 
@@ -129,6 +132,7 @@ def test_cluster_in_no_internet_subnet(
 
     _check_no_internet_access(remote_command_executor)
     _check_hostname(remote_command_executor)
+    _run_prolog_epilog_jobs(remote_command_executor, slurm_commands)
     _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region)
     expected_log_streams = {
         "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
@@ -160,6 +164,31 @@ def _check_hostname(remote_command_executor):
     logging.info("Checking compute node's hostname is ip-x-x-x-x")
     hostname = remote_command_executor.run_remote_command("srun hostname").stdout
     assert_that(hostname).matches(r"^ip-\d+-\d+-\d+-\d+$")
+
+
+def _run_prolog_epilog_jobs(remote_command_executor, slurm_commands):
+    logging.info("Running simple test to verify prolog and epilog")
+    logging.info("Test one job on 2 nodes")
+    job_id = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "uptime", "nodes": 2}
+    )
+    slurm_commands.wait_job_completed(job_id)
+    assert_no_msg_in_logs(remote_command_executor, ["/var/log/slurmctld.log"], ["launch failure"])
+    logging.info("Test 2 jobs simultaneously run on 2 nodes")
+    # 720 to have enough to run another job even node creation
+    job_id = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 720", "nodes": 2}
+    )
+    slurm_commands.wait_job_running(job_id)
+    # --no-requeue to make the job fail in case of prolog or epilog error
+    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "uptime", "nodes": 2, "other_options": "--no-requeue"}
+    )
+    slurm_commands.wait_job_completed(job_id_1)
+    # Check if the prolog and epilog run correctly
+    slurm_commands.assert_job_succeeded(job_id_1)
+    assert_no_msg_in_logs(remote_command_executor, ["/var/log/slurmctld.log"], ["launch failure"])
+    slurm_commands.cancel_job(job_id)
 
 
 def _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region):
