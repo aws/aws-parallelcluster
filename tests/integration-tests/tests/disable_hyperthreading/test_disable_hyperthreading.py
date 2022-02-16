@@ -21,7 +21,7 @@ from tests.common.utils import fetch_instance_slots
 
 
 def test_hit_disable_hyperthreading(
-    region, scheduler, instance, os, pcluster_config_reader, clusters_factory, default_threads_per_core
+    region, scheduler, instance, os, pcluster_config_reader, clusters_factory, default_threads_per_core, run_benchmarks
 ):
     """Test Disable Hyperthreading for HIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -49,6 +49,7 @@ def test_hit_disable_hyperthreading(
     )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
+    run_benchmarks(remote_command_executor, scheduler_commands)
 
 
 def _test_disable_hyperthreading_settings(
