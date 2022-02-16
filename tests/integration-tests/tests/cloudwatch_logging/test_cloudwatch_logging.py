@@ -354,6 +354,7 @@ class CloudWatchLoggingClusterState:
         critical_head_node_logs = (
             [
                 "/var/log/parallelcluster/clustermgtd",
+                "/var/log/parallelcluster/clusterstatusmgtd",
                 "/var/log/parallelcluster/slurm_resume.log",
                 "/var/log/parallelcluster/slurm_suspend.log",
                 "/var/log/parallelcluster/slurm_fleet_status_manager.log",
