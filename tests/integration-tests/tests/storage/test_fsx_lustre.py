@@ -49,7 +49,7 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
     [
         ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024, None),
         ("SCRATCH_1", None, "NEW", None, None, 1200, 1024, "LZ4"),
-        ("SCRATCH_2", None, None, None, None, 1200, 1024, "LZ4"),
+        ("SCRATCH_2", None, "NEW_CHANGED_DELETED", None, None, 1200, 1024, "LZ4"),
         ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048, "LZ4"),
         ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512, "LZ4"),
         ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
@@ -469,24 +469,33 @@ def _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bu
     s3.put_object(Bucket=bucket_name, Key=filename, Body=new_file_body)
     # AutoImport has a P99.9 of 1 min for new/changed files to be imported onto the filesystem
     remote_command_executor.run_remote_command("sleep 1m")
-    if auto_import_policy in ("NEW", "NEW_CHANGED"):
+    if auto_import_policy in ("NEW", "NEW_CHANGED", "NEW_CHANGED_DELETED"):
         result = remote_command_executor.run_remote_command(f"cat {mount_dir}/{filename}")
         assert_that(result.stdout).is_equal_to(new_file_body)
     else:
-        result = remote_command_executor.run_remote_command(f"ls {mount_dir}/")
-        assert_that(result.stdout).does_not_contain(filename)
+        _assert_file_does_not_exist(remote_command_executor, filename, mount_dir)
 
     # Test modified file
     s3.put_object(Bucket=bucket_name, Key=filename, Body=modified_file_body)
     remote_command_executor.run_remote_command("sleep 1m")
-    if auto_import_policy in ("NEW", "NEW_CHANGED"):
-        result = remote_command_executor.run_remote_command(f"cat {mount_dir}/{filename}".format(mount_dir=mount_dir))
+    if auto_import_policy in ("NEW", "NEW_CHANGED", "NEW_CHANGED_DELETED"):
+        result = remote_command_executor.run_remote_command(f"cat {mount_dir}/{filename}")
         assert_that(result.stdout).is_equal_to(
-            modified_file_body if auto_import_policy == "NEW_CHANGED" else new_file_body
+            modified_file_body if auto_import_policy in ["NEW_CHANGED", "NEW_CHANGED_DELETED"] else new_file_body
         )
     else:
-        result = remote_command_executor.run_remote_command(f"ls {mount_dir}/")
-        assert_that(result.stdout).does_not_contain(filename)
+        _assert_file_does_not_exist(remote_command_executor, filename, mount_dir)
+
+    if auto_import_policy == "NEW_CHANGED_DELETED":
+        # Test deleted file
+        s3.delete_object(Bucket=bucket_name, Key=filename)
+        remote_command_executor.run_remote_command("sleep 1m")
+        _assert_file_does_not_exist(remote_command_executor, filename, mount_dir)
+
+
+def _assert_file_does_not_exist(remote_command_executor, filename, mount_dir):
+    result = remote_command_executor.run_remote_command(f"ls {mount_dir}/")
+    assert_that(result.stdout).does_not_contain(filename)
 
 
 @retry(

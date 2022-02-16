@@ -309,6 +309,7 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("auto_import_policy", None, None, None),
         ("auto_import_policy", "NEW", "NEW", None),
         ("auto_import_policy", "NEW_CHANGED", "NEW_CHANGED", None),
+        ("auto_import_policy", "NEW_CHANGED_DELETED", "NEW_CHANGED_DELETED", None),
         ("storage_type", None, None, None),
         ("storage_type", "SSD", "SSD", None),
         ("storage_type", "HDD", "HDD", None),
