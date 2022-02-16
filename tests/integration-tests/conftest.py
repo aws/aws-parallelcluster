@@ -63,7 +63,11 @@ from utils import (
 )
 
 from tests.common.osu_common import run_osu_benchmarks
-from tests.common.utils import get_installed_parallelcluster_version, retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import (
+    fetch_instance_slots,
+    get_installed_parallelcluster_version,
+    retrieve_pcluster_ami_without_standard_naming,
+)
 
 
 def pytest_addoption(parser):
@@ -1206,6 +1210,7 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
         logging.info("Running benchmarks for %s", function_name)
         cloudwatch_client = boto3.client("cloudwatch")
         for benchmark in benchmarks:
+            slots_per_instance = benchmark.get("slots_per_instance") or fetch_instance_slots(region, instance)
             for mpi_variant, num_instances in product(benchmark.get("mpi_variants"), benchmark.get("num_instances")):
                 partition = benchmark.get("partition")
                 metric_namespace = f"ParallelCluster/{function_name}"
@@ -1230,6 +1235,7 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
                         remote_command_executor,
                         scheduler_commands,
                         num_instances,
+                        slots_per_instance,
                         region,
                         instance,
                         test_datadir,
