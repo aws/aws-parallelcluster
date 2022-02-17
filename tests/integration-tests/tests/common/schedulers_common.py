@@ -212,6 +212,16 @@ class SlurmCommands(SchedulerCommands):
         match = re.search(r"ExitCode=(.+?) ", result.stdout)
         return match.group(1)
 
+    def get_job_start_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"StartTime=(.+?) ", result.stdout)
+        return match.group(1)
+
+    def get_job_submit_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"SubmitTime=(.+?) ", result.stdout)
+        return match.group(1)
+
     def assert_job_submitted(self, sbatch_output):  # noqa: D102
         __tracebackhide__ = True
         match = re.search(r"Submitted batch job ([0-9]+)", sbatch_output)
@@ -436,7 +446,7 @@ class SlurmCommands(SchedulerCommands):
             f'/opt/slurm/bin/scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
         ).stdout
 
-    @retry(wait_fixed=seconds(20), stop_max_delay=minutes(8))
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(13))
     def wait_job_running(self, job_id):
         """Wait till job starts running."""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))

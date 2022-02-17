@@ -22,7 +22,7 @@ A clear and concise description of what the bug is and the steps to reproduce th
 We cannot work on issues without proper logs. We **STRONGLY** recommend following [this guide](https://github.com/aws/aws-parallelcluster/wiki/Creating-an-Archive-of-a-Cluster's-Logs) and attach the complete cluster log archive with the ticket.
 
 For issues with AWS ParallelCluster >= v2.9.0 and scheduler == slurm, please attach the following logs:
-* From Head node: `/var/log/parallelcluster/clustermgtd.log`, `/var/log/parallelcluster/slurm_resume.log`, `/var/log/parallelcluster/slurm_suspend.log`, and `/var/log/slurmctld.log`
+* From Head node: `/var/log/parallelcluster/clustermgtd`, `/var/log/parallelcluster/clusterstatusmgtd` (if version >= 3.2.0), `/var/log/parallelcluster/slurm_resume.log`, `/var/log/parallelcluster/slurm_suspend.log`, `/var/log/parallelcluster/slurm_fleet_status_manager.log` (if version >= 3.2.0) and`/var/log/slurmctld.log` 
 * From Compute node:  `/var/log/parallelcluster/computemgtd.log`, and `/var/log/slurmd.log`
 
 Otherwise, please attach the following logs:

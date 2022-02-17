@@ -7,6 +7,12 @@ x.x.x
 **BUG FIXES**
 - Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
 
+3.1.2
+------
+
+**BUG FIXES**
+- Fix update of `/etc/hosts` files for clusters deployed in VPC without internet access.
+
 3.1.1
 ------
 

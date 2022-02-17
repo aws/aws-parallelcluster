@@ -18,6 +18,7 @@ import logging
 import os
 import random
 import re
+from itertools import product
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
@@ -61,7 +62,12 @@ from utils import (
     set_logger_formatter,
 )
 
-from tests.common.utils import get_installed_parallelcluster_version, retrieve_pcluster_ami_without_standard_naming
+from tests.common.osu_common import run_osu_benchmarks
+from tests.common.utils import (
+    fetch_instance_slots,
+    get_installed_parallelcluster_version,
+    retrieve_pcluster_ami_without_standard_naming,
+)
 
 
 def pytest_addoption(parser):
@@ -112,8 +118,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
     )
-    parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
-    parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
+    parser.addoption("--benchmarks", action="store_true", default=False, help="enable benchmark tests")
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
     parser.addoption(
         "--delete-logs-on-success", help="delete CloudWatch logs when a test succeeds", action="store_true"
@@ -484,7 +489,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -510,7 +515,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         config_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(config_file_path, request, region)
+            inject_additional_config_settings(config_file_path, request, region, benchmarks)
         else:
             inject_additional_image_configs_settings(config_file_path, request)
         return config_file_path
@@ -542,7 +547,7 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
-def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
+def inject_additional_config_settings(cluster_config, request, region, benchmarks):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -589,6 +594,7 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
     if instance_types_data:
         dict_add_nested_key(config_content, json.dumps(instance_types_data), ("DevSettings", "InstanceTypesData"))
 
+    scheduler = config_content["Scheduling"]["Scheduler"]
     for option, config_param in [("pre_install", "OnNodeStart"), ("post_install", "OnNodeConfigured")]:
         if request.config.getoption(option):
             if not dict_has_nested_key(config_content, ("HeadNode", "CustomActions", config_param)):
@@ -599,7 +605,6 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
                 )
                 _add_policy_for_pre_post_install(config_content["HeadNode"], option, request, region)
 
-            scheduler = config_content["Scheduling"]["Scheduler"]
             if scheduler != "awsbatch":
                 scheduler_prefix = "Scheduler" if scheduler == "plugin" else scheduler.capitalize()
                 for queue in config_content["Scheduling"][f"{scheduler_prefix}Queues"]:
@@ -615,6 +620,18 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
     ]:
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
             dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
+
+    if request.config.getoption("benchmarks") and benchmarks and scheduler == "slurm":
+        # If benchmarks are enabled and there are benchmarks to run for the test,
+        # placement groups are added to queue to ensure the performance is comparable with previous runs.
+        for queue in config_content["Scheduling"]["SlurmQueues"]:
+            networking = queue["Networking"]
+            if not networking.get("PlacementGroup"):
+                networking["PlacementGroup"] = {"Enabled": True}
+            for compute_resource in queue["ComputeResources"]:
+                if not compute_resource.get("MaxCount"):
+                    # Use larger max count to support performance tests if not specified explicitly.
+                    compute_resource["MaxCount"] = 150
 
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
@@ -1179,3 +1196,60 @@ def mpi_variants(architecture):
     if architecture == "x86_64":
         variants.append("intelmpi")
     return variants
+
+
+def to_pascal_case(snake_case_word):
+    """Convert the given snake case word into a PascalCase one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
+
+
+@pytest.fixture()
+def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, benchmarks):
+    def _run_benchmarks(remote_command_executor, scheduler_commands, **kwargs):
+        function_name = request.function.__name__
+        if not request.config.getoption("benchmarks"):
+            logging.info("Skipped benchmarks for %s", function_name)
+            return
+        logging.info("Running benchmarks for %s", function_name)
+        cloudwatch_client = boto3.client("cloudwatch")
+        for benchmark in benchmarks:
+            slots_per_instance = benchmark.get("slots_per_instance") or fetch_instance_slots(region, instance)
+            for mpi_variant, num_instances in product(benchmark.get("mpi_variants"), benchmark.get("num_instances")):
+                partition = benchmark.get("partition")
+                metric_namespace = f"ParallelCluster/{function_name}"
+                dimensions = {
+                    "MpiVariant": mpi_variant,
+                    "NumInstances": num_instances,
+                    "Instance": instance,
+                    "Os": os,
+                    "Partition": partition,
+                }
+                for key, value in kwargs.items():
+                    # Additional keyword arguments are put into dimensions
+                    dimensions[to_pascal_case(key)] = value
+
+                osu_benchmarks = benchmark.get("osu_benchmarks", [])
+                if osu_benchmarks:
+                    logging.info("Running OSU benchmarks for %s", function_name)
+                    metric_data_list = run_osu_benchmarks(
+                        osu_benchmarks,
+                        mpi_variant,
+                        partition,
+                        remote_command_executor,
+                        scheduler_commands,
+                        num_instances,
+                        slots_per_instance,
+                        region,
+                        instance,
+                        test_datadir,
+                        dimensions,
+                    )
+                    for metric_data in metric_data_list:
+                        cloudwatch_client.put_metric_data(
+                            Namespace=metric_namespace,
+                            MetricData=metric_data,
+                        )
+        logging.info("Finished benchmarks for %s", function_name)
+
+    yield _run_benchmarks

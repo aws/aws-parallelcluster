@@ -31,7 +31,11 @@ from tags_utils import (
 from time_utils import minutes, seconds
 from utils import check_pcluster_list_cluster_log_streams, check_status
 
-from tests.common.assertions import assert_head_node_is_running, assert_instance_replaced_or_terminating
+from tests.common.assertions import (
+    assert_head_node_is_running,
+    assert_instance_replaced_or_terminating,
+    assert_no_errors_in_logs,
+)
 from tests.common.utils import get_installed_parallelcluster_version
 
 SCHEDULER_PLUGIN_LOCAL_CONFIGS_DIR = "/opt/parallelcluster/scheduler-plugin/.configs"
@@ -150,9 +154,16 @@ def test_scheduler_plugin_integration(
     _test_tags(cluster, os)
     # Test get or update compute fleet_status_script
     _test_update_compute_fleet_status_script(command_executor)
+    # Test no errors in log
+    _test_no_errors_in_logs(command_executor)
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
+
+
+def _test_no_errors_in_logs(command_executor):
+    logging.info("Verifying no error in logs")
+    assert_no_errors_in_logs(command_executor, "plugin")
 
 
 def _get_launch_templates(command_executor):

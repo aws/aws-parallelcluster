@@ -40,7 +40,10 @@ Resources:
         VpcId:
           Ref: Vpc
       {% if directory_type == "SimpleAD" %}
-      Size: Large
+      Size: Small
+      {% endif %}
+      {% if directory_type == "MicrosoftAD" %}
+      Edition: Standard
       {% endif %}
       ShortName: {{ ad_domain_short_name }}
   AdDomainAdminNodeWaitConditionHandle:

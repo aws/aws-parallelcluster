@@ -49,6 +49,9 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
                 dimensions_values.append(values)
             elif dim in argnames:
                 argnames.remove(dim)
+        benchmarks_value = [item.get("benchmarks")]  # the benchmarks list is treated as a single item in a list
+        argnames.append("benchmarks")
+        dimensions_values.append(benchmarks_value)
         argvalues.extend(list(product(*dimensions_values)))
 
     return argnames, argvalues

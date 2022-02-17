@@ -18,7 +18,7 @@ from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
-from tests.common.osu_common import run_osu_benchmarks
+from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
@@ -43,10 +43,9 @@ def test_efa(
     # We collected OSU benchmarks results for c5n.18xlarge only.
     osu_benchmarks_instances = ["c5n.18xlarge"]
 
-    # 4 instances are required to see performance differences in collective OSU benchmarks.
-    # 2 instances are enough for other EFA tests.
-    max_queue_size = 4 if instance in osu_benchmarks_instances else 2
-    slots_per_instance = fetch_instance_slots(region, instance)
+    # 32 instances are required to see performance differences in collective OSU benchmarks.
+    max_queue_size = 32 if instance in osu_benchmarks_instances else 2
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
     cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
     cluster = clusters_factory(cluster_config)
@@ -80,7 +79,7 @@ def test_efa(
                     scheduler_commands,
                     test_datadir,
                     instance,
-                    num_of_instances=max_queue_size,
+                    num_instances=max_queue_size,
                     slots_per_instance=slots_per_instance,
                     partition="efa-enabled",
                 )
@@ -129,20 +128,20 @@ def _test_osu_benchmarks_pt2pt(
 ):
     # OSU pt2pt benchmarks cannot be executed with more than 2 MPI ranks.
     # Run them in 2 instances with 1 proc per instance, defined by map-by parameter.
-    num_of_instances = 2
+    num_instances = 2
     # Accept a max number of 4 failures on a total of 23-24 packet size tests.
     accepted_number_of_failures = 4
 
     failed_benchmarks = []
     for benchmark_name in ["osu_latency", "osu_bibw"]:
-        output = run_osu_benchmarks(
+        _, output = run_individual_osu_benchmark(
             mpi_version,
             "pt2pt",
             benchmark_name,
             partition,
             remote_command_executor,
             scheduler_commands,
-            num_of_instances,
+            num_instances,
             slots_per_instance,
             test_datadir,
         )
@@ -159,28 +158,26 @@ def _test_osu_benchmarks_collective(
     scheduler_commands,
     test_datadir,
     instance,
-    num_of_instances,
+    num_instances,
     slots_per_instance,
     partition=None,
 ):
-    # OSU collective benchmarks can be executed with any number of instances,
-    # 4 instances are enough to see performance differences with c5n.18xlarge.
-
     # Accept a max number of 3 failures on a total of 19-21 packet size tests.
     accepted_number_of_failures = 3
 
     failed_benchmarks = []
     for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
-        output = run_osu_benchmarks(
+        _, output = run_individual_osu_benchmark(
             mpi_version,
             "collective",
             benchmark_name,
             partition,
             remote_command_executor,
             scheduler_commands,
-            num_of_instances,
+            num_instances,
             slots_per_instance,
             test_datadir,
+            timeout=24,
         )
         failures = _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output)
         if failures > accepted_number_of_failures:
@@ -192,15 +189,15 @@ def _test_osu_benchmarks_collective(
 def _test_osu_benchmarks_multiple_bandwidth(
     remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
 ):
-    num_of_instances = 2
-    run_osu_benchmarks(
+    num_instances = 2
+    run_individual_osu_benchmark(
         "openmpi",
         "mbw_mr",
         "osu_mbw_mr",
         partition,
         remote_command_executor,
         scheduler_commands,
-        num_of_instances,
+        num_instances,
         slots_per_instance,
         test_datadir,
     )
