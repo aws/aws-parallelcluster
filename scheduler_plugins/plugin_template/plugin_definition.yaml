@@ -13,7 +13,7 @@ Metadata:
   Version: 1.0.0
 # Define the plugin requirements that are validated by ParallelCluster against a cluster configuration.
 Requirements:
-  RequiresSudoPrivileges: false
+  RequiresSudoPrivileges: true
   # # Select the list of distributions supported by the plugin. Defaults to all ParallelCluster supported distros.
   # SupportedDistros:
   #   x86_64: ["alinux2", "ubuntu2004", "ubuntu1804", "centos7"]
