@@ -72,6 +72,7 @@ class SharedFixture:
                 data.counter = data.counter - 1
                 logging.info("Releasing shared fixture %s. Currently in use by %d processes", self.name, data.counter)
                 self._save_fixture_data(data)
+                return
 
         if data.counter > 1:
             logging.info(
