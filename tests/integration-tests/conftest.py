@@ -18,8 +18,8 @@ import logging
 import os
 import random
 import re
-from itertools import product
 from functools import partial
+from itertools import product
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
@@ -1041,6 +1041,51 @@ def s3_bucket_factory(request, region):
     created_buckets = []
 
     def _create_bucket():
+        bucket_name = "integ-tests-" + random_alphanumeric()
+        logging.info("Creating S3 bucket {0}".format(bucket_name))
+        create_s3_bucket(bucket_name, region)
+        created_buckets.append((bucket_name, region))
+        return bucket_name
+
+    yield _create_bucket
+
+    for bucket in created_buckets:
+        if request.config.getoption("no_delete"):
+            logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        else:
+            logging.info(f"Deleting S3 bucket {bucket[0]}")
+            try:
+                delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
+            except Exception as e:
+                logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
+
+
+@xdist_session_fixture(autouse=True)
+def s3_buckets(session_s3_bucket_factory, request):
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    s3_buckets_dict = {}
+    for region in regions:
+        s3_buckets_dict[region] = session_s3_bucket_factory(region)
+
+    return s3_buckets_dict
+
+
+@pytest.fixture(scope="class")
+def s3_bucket(s3_buckets, region):
+    return s3_buckets.get(region)
+
+
+@pytest.fixture(scope="class")
+def s3_bucket_key_prefix():
+    return random_alphanumeric()
+
+
+@pytest.fixture(scope="session")
+def session_s3_bucket_factory(request):
+    """Define a fixture to manage the creation and destruction of S3 buckets."""
+    created_buckets = []
+
+    def _create_bucket(region):
         bucket_name = "integ-tests-" + random_alphanumeric()
         logging.info("Creating S3 bucket {0}".format(bucket_name))
         create_s3_bucket(bucket_name, region)
