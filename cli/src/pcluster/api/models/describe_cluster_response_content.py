@@ -20,6 +20,7 @@ from pcluster.api.models.cluster_configuration_structure import ClusterConfigura
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
 from pcluster.api.models.ec2_instance import EC2Instance
+from pcluster.api.models.scheduler import Scheduler
 from pcluster.api.models.tag import Tag
 
 
@@ -44,6 +45,7 @@ class DescribeClusterResponseContent(Model):
         last_updated_time=None,
         region=None,
         cluster_status=None,
+        scheduler=None,
     ):
         """DescribeClusterResponseContent - a model defined in OpenAPI
 
@@ -73,6 +75,8 @@ class DescribeClusterResponseContent(Model):
         :type region: str
         :param cluster_status: The cluster_status of this DescribeClusterResponseContent.
         :type cluster_status: ClusterStatus
+        :param scheduler: The scheduler of this DescribeClusterResponseContent.  # noqa: E501
+        :type scheduler: Scheduler
         """
         self.openapi_types = {
             "creation_time": datetime,
@@ -88,6 +92,7 @@ class DescribeClusterResponseContent(Model):
             "last_updated_time": datetime,
             "region": str,
             "cluster_status": ClusterStatus,
+            "scheduler": Scheduler,
         }
 
         self.attribute_map = {
@@ -104,6 +109,7 @@ class DescribeClusterResponseContent(Model):
             "last_updated_time": "lastUpdatedTime",
             "region": "region",
             "cluster_status": "clusterStatus",
+            "scheduler": "scheduler",
         }
 
         self._creation_time = creation_time
@@ -119,6 +125,7 @@ class DescribeClusterResponseContent(Model):
         self._region = region
         self._cluster_status = cluster_status
         self._head_node = head_node
+        self._scheduler = scheduler
 
     @classmethod
     def from_dict(cls, dikt) -> "DescribeClusterResponseContent":
@@ -351,6 +358,29 @@ class DescribeClusterResponseContent(Model):
         """
 
         self._failure_reason = failure_reason
+
+    @property
+    def scheduler(self):
+        """Gets the scheduler of this DescribeClusterResponseContent.
+
+
+        :return: The scheduler of this DescribeClusterResponseContent.
+        :rtype: Scheduler
+        """
+        return self._scheduler
+
+    @scheduler.setter
+    def scheduler(self, scheduler):
+        """Sets the scheduler of this DescribeClusterResponseContent.
+
+
+        :param scheduler: The scheduler of this DescribeClusterResponseContent.
+        :type scheduler: Scheduler
+        """
+        if scheduler is None:
+            raise ValueError("Invalid value for `scheduler`, must not be `None`")  # noqa: E501
+
+        self._scheduler = scheduler
 
     @property
     def cloudformation_stack_arn(self):

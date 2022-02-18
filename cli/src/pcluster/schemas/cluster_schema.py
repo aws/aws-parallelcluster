@@ -1459,7 +1459,7 @@ class SchedulerPluginDefinitionSchema(BaseSchema):
     plugin_interface_version = fields.Str(
         required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["1.0"])
     )
-    metadata = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    metadata = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, required=True)
     requirements = fields.Nested(
         SchedulerPluginRequirementsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
@@ -1487,6 +1487,13 @@ class SchedulerPluginDefinitionSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return SchedulerPluginDefinition(**data)
+
+    @validates("metadata")
+    def validate_metadata(self, value):
+        """Validate metadata contains fieds 'name' and 'version'."""
+        for key in ["Name", "Version"]:
+            if key not in value.keys():
+                raise ValidationError(f"{key} is required for scheduler plugin Metadata.")
 
 
 class SchedulerPluginSettingsSchema(BaseSchema):

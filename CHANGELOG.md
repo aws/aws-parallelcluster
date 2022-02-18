@@ -7,6 +7,9 @@ x.x.x
 **BUG FIXES**
 - Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
 
+**CHANGES**
+- Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
+
 3.1.2
 ------
 

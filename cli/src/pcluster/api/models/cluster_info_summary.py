@@ -15,6 +15,7 @@ from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
 from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
+from pcluster.api.models.scheduler import Scheduler
 
 
 class ClusterInfoSummary(Model):
@@ -31,6 +32,7 @@ class ClusterInfoSummary(Model):
         region=None,
         version=None,
         cluster_status=None,
+        scheduler=None,
     ):
         """ClusterInfoSummary - a model defined in OpenAPI
 
@@ -46,6 +48,8 @@ class ClusterInfoSummary(Model):
         :type version: str
         :param cluster_status: The cluster_status of this ClusterInfoSummary.
         :type cluster_status: ClusterStatus
+        :param scheduler: The scheduler of this ClusterInfoSummary.  # noqa: E501
+        :type scheduler: Scheduler
         """
         self.openapi_types = {
             "cluster_name": str,
@@ -54,6 +58,7 @@ class ClusterInfoSummary(Model):
             "region": str,
             "version": str,
             "cluster_status": ClusterStatus,
+            "scheduler": Scheduler,
         }
 
         self.attribute_map = {
@@ -63,6 +68,7 @@ class ClusterInfoSummary(Model):
             "region": "region",
             "version": "version",
             "cluster_status": "clusterStatus",
+            "scheduler": "scheduler",
         }
 
         self._cluster_name = cluster_name
@@ -71,6 +77,7 @@ class ClusterInfoSummary(Model):
         self._region = region
         self._version = version
         self._cluster_status = cluster_status
+        self._scheduler = scheduler
 
     @classmethod
     def from_dict(cls, dikt) -> "ClusterInfoSummary":
@@ -236,3 +243,26 @@ class ClusterInfoSummary(Model):
             raise ValueError("Invalid value for `cluster_status`, must not be `None`")
 
         self._cluster_status = cluster_status
+
+    @property
+    def scheduler(self):
+        """Gets the scheduler of this ClusterInfoSummary.
+
+
+        :return: The scheduler of this ClusterInfoSummary.
+        :rtype: Scheduler
+        """
+        return self._scheduler
+
+    @scheduler.setter
+    def scheduler(self, scheduler):
+        """Sets the scheduler of this ClusterInfoSummary.
+
+
+        :param scheduler: The scheduler of this ClusterInfoSummary.
+        :type scheduler: Scheduler
+        """
+        if scheduler is None:
+            raise ValueError("Invalid value for `scheduler`, must not be `None`")  # noqa: E501
+
+        self._scheduler = scheduler

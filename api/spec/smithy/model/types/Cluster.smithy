@@ -30,6 +30,9 @@ structure ClusterInfoSummary {
     @required
     @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,
+    @required
+    @documentation("Scheduler of the cluster.")
+    scheduler: Scheduler,
 }
 
 @enum([
@@ -76,3 +79,15 @@ structure Change {
     currentValue: String,
     requestedValue: String,
 }
+
+structure Scheduler {
+    @required
+    type: String,
+    metadata: Metadata,
+}
+
+structure Metadata {
+    name: String,
+    version: String,
+}
+
