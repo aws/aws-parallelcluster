@@ -876,8 +876,9 @@ def initialize_cli_creds(cfn_stacks_factory, request):
 
 @pytest.fixture(scope="session", autouse=True)
 def register_cli_credentials(initialize_cli_creds):
-    for region, creds in initialize_cli_creds.items():
-        register_cli_credentials_for_region(region, creds)
+    if initialize_cli_creds:
+        for region, creds in initialize_cli_creds.items():
+            register_cli_credentials_for_region(region, creds)
 
 
 @pytest.fixture(scope="session", autouse=True)
