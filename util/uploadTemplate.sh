@@ -105,7 +105,6 @@ main() {
     sed -i "s#.*aws-parallelcluster.*/templates/fsx-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/fsx-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     sed -i "s#.*aws-parallelcluster.*/templates/batch-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/batch-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     sed -i "s#.*aws-parallelcluster.*/templates/cw-logs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/cw-logs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
-    sed -i "s#.*aws-parallelcluster.*/templates/compute-fleet-substack-\${version}.cfn.yaml.*#\"https://${_s3_folder_url}/compute-fleet-substack.cfn.yaml\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     sed -i "s#.*aws-parallelcluster.*/templates/master-server-substack-\${version}.cfn.yaml.*#\"https://${_s3_folder_url}/master-server-substack.cfn.yaml\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
 
     # upload templates

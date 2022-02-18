@@ -1157,8 +1157,6 @@ def test_cluster_section_to_cfn(
                 DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
-                    # scaling
-                    "ScaleDownIdleTime": "15",
                     # vpc
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1220,8 +1218,6 @@ def test_cluster_section_to_cfn(
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
                     "IntelHPCPlatform": "false",
-                    # scaling
-                    "ScaleDownIdleTime": "15",
                     # vpc
                     "VPCId": "vpc-12345678",
                     #

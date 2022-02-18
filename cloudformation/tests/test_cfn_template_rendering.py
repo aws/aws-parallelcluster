@@ -344,7 +344,6 @@ def test_cw_dashboard_substack_rendering(
         "AdditionalCfnTemplate": "NONE",
         "CustomChefCookbook": "NONE",
         "IntelHPCPlatform": "false",
-        "ScaleDownIdleTime": "3",
         "VPCId": "vpc-034545fa84d175bc0",
         "MasterSubnetId": "subnet-021ceb759253eeb29",
         "AccessFrom": "0.0.0.0/0",

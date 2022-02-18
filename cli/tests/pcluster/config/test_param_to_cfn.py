@@ -80,9 +80,9 @@ def test_param_to_cfn_value(mocker, section_definition, param_key, param_value, 
         (CLUSTER_SIT, "encrypted_ephemeral", True, {"EncryptedEphemeral": "true"}),
         (CLUSTER_SIT, "encrypted_ephemeral", False, {"EncryptedEphemeral": "false"}),
         # IntParam
-        (SCALING, "scaledown_idletime", None, {"ScaleDownIdleTime": "10"}),
-        (SCALING, "scaledown_idletime", 10, {"ScaleDownIdleTime": "10"}),
-        (SCALING, "scaledown_idletime", 3, {"ScaleDownIdleTime": "3"}),
+        (CLUSTER_SIT, "master_root_volume_size", None, {"MasterRootVolumeSize": "35"}),
+        (CLUSTER_SIT, "master_root_volume_size", 10, {"MasterRootVolumeSize": "10"}),
+        (CLUSTER_SIT, "master_root_volume_size", 3, {"MasterRootVolumeSize": "3"}),
         # SharedDirParam
         (CLUSTER_SIT, "shared_dir", "test", {"SharedDir": "test"}),
         # (CLUSTER_SIT, "shared_dir", {"ebs": [], "shared_dir": "test"}, {"SharedDir": "test"}),

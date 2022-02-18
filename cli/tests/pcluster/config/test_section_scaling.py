@@ -12,20 +12,6 @@ import pytest
 
 import tests.pcluster.config.utils as utils
 from pcluster.config.mappings import SCALING
-from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
-
-
-@pytest.mark.parametrize(
-    "cfn_params_dict, expected_section_dict",
-    [
-        (DefaultCfnParams["scaling"].value, DefaultDict["scaling"].value),
-        ({}, DefaultDict["scaling"].value),
-        ({"ScaleDownIdleTime": "NONE"}, DefaultDict["scaling"].value),
-        ({"ScaleDownIdleTime": "20"}, {"scaledown_idletime": 20}),
-    ],
-)
-def test_scaling_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
-    utils.assert_section_from_cfn(mocker, SCALING, cfn_params_dict, expected_section_dict)
 
 
 @pytest.mark.parametrize(
@@ -58,17 +44,6 @@ def test_scaling_section_from_file(mocker, config_parser_dict, expected_dict_par
 )
 def test_scaling_section_to_file(mocker, section_dict, expected_config_parser_dict, expected_message):
     utils.assert_section_to_file(mocker, SCALING, section_dict, expected_config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_cfn_params",
-    [
-        (DefaultDict["scaling"].value, DefaultCfnParams["scaling"].value),
-        ({"scaledown_idletime": 20}, {"ScaleDownIdleTime": "20"}),
-    ],
-)
-def test_scaling_section_to_cfn(mocker, section_dict, expected_cfn_params):
-    utils.assert_section_to_cfn(mocker, SCALING, section_dict, expected_cfn_params)
 
 
 @pytest.mark.parametrize(

@@ -28,7 +28,7 @@ from tests.common.schedulers_common import SlurmCommands
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("os", "instance")
-def test_update_slurm(region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -385,7 +385,7 @@ def _check_volume(cluster, config, region):
 
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.usefixtures("os", "scheduler", "instance")
+@pytest.mark.usefixtures("os", "instance")
 def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader()

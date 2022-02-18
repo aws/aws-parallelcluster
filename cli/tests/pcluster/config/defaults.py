@@ -235,14 +235,12 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 63
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 62
 CFN_HIT_CONFIG_NUM_OF_PARAMS = 52
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ArtifactS3RootDirectory", "RemoveBucketOnDeletion"]
 
-
-DEFAULT_SCALING_CFN_PARAMS = {"ScaleDownIdleTime": "10"}
 
 DEFAULT_VPC_CFN_PARAMS = {
     "VPCId": "NONE",
@@ -315,8 +313,6 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
     # "ArtifactS3RootDirectory": "NONE",  # parameter added by the CLI
     # "RemoveBucketOnDeletion": "NONE",  # parameter added by the CLI
-    # scaling
-    "ScaleDownIdleTime": "10",
     # vpc
     "VPCId": "NONE",
     "MasterSubnetId": "NONE",
@@ -386,8 +382,6 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
     # "ArtifactS3RootDirectory": "NONE",  # parameter added by the CLI
     # "RemoveBucketOnDeletion": "NONE",  # parameter added by the CLI
-    # scaling
-    "ScaleDownIdleTime": "10",
     # vpc
     "VPCId": "NONE",
     "MasterSubnetId": "NONE",
@@ -430,7 +424,6 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
 class DefaultCfnParams(Enum):
     """Utility class to store default values for CFN parameters."""
 
-    scaling = DEFAULT_SCALING_CFN_PARAMS
     vpc = DEFAULT_VPC_CFN_PARAMS
     ebs = DEFAULT_EBS_CFN_PARAMS
     efs = DEFAULT_EFS_CFN_PARAMS
