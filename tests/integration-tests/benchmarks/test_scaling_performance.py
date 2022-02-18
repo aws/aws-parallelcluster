@@ -19,12 +19,13 @@ from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
 
 from tests.common.assertions import assert_no_errors_in_logs
-from tests.common.schedulers_common import get_scheduler_commands
 
 
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.benchmarks
-def test_scaling_performance(region, scheduler, os, instance, pcluster_config_reader, clusters_factory, request):
+def test_scaling_performance(
+    region, scheduler, os, instance, pcluster_config_reader, clusters_factory, request, scheduler_commands_factory
+):
     """The test runs benchmarks for the scaling logic."""
     benchmarks_max_time = request.config.getoption("benchmarks_max_time")
 
@@ -43,7 +44,7 @@ def test_scaling_performance(region, scheduler, os, instance, pcluster_config_re
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     logging.info("Starting benchmark with following parameters: %s", benchmark_params)
     start_time = datetime.datetime.utcnow()

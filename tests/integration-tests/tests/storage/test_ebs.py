@@ -17,14 +17,15 @@ import utils
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.storage.kms_key_factory import KMSKeyFactory
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
 @pytest.mark.usefixtures("instance")
-def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region, os):
+def test_ebs_single(
+    scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region, os, scheduler_commands_factory
+):
     mount_dir = "ebs_mount_dir"
     kms_key_id = kms_key_factory.create_kms_key(region)
     cluster_config = pcluster_config_reader(
@@ -34,7 +35,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     volume_id = get_ebs_volume_ids(cluster, region)[0]
 
     _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
@@ -46,7 +47,14 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
 
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_snapshot(
-    request, vpc_stacks, region, scheduler, pcluster_config_reader, snapshots_factory, clusters_factory
+    request,
+    vpc_stacks,
+    region,
+    scheduler,
+    pcluster_config_reader,
+    snapshots_factory,
+    clusters_factory,
+    scheduler_commands_factory,
 ):
     logging.info("Testing ebs snapshot")
     mount_dir = "ebs_mount_dir"
@@ -64,7 +72,7 @@ def test_ebs_snapshot(
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.8")
     _test_ebs_resize(remote_command_executor, mount_dir, volume_size=volume_size)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
@@ -75,7 +83,7 @@ def test_ebs_snapshot(
 
 
 @pytest.mark.usefixtures("instance")
-def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region, os):
+def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region, os, scheduler_commands_factory):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
 
@@ -86,7 +94,7 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, regio
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     for mount_dir, volume_size in zip(mount_dirs, volume_sizes):
         # for volume size equal to 500G, the filesystem size is only about 492G
         # This is because the file systems use some of the total space available on a device for storing internal
@@ -130,7 +138,14 @@ def _get_ebs_settings_by_name(config, name):
 
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
-    request, vpc_stacks, region, scheduler, pcluster_config_reader, snapshots_factory, clusters_factory
+    request,
+    vpc_stacks,
+    region,
+    scheduler,
+    pcluster_config_reader,
+    snapshots_factory,
+    clusters_factory,
+    scheduler_commands_factory,
 ):
     logging.info("Testing ebs existing")
     existing_mount_dir = "existing_mount_dir"
@@ -146,7 +161,7 @@ def test_ebs_existing(
 
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     existing_mount_dir = "/" + existing_mount_dir
     _test_ebs_correctly_mounted(remote_command_executor, existing_mount_dir, volume_size="9.8")
     _test_ebs_correctly_shared(remote_command_executor, existing_mount_dir, scheduler_commands)

@@ -15,12 +15,11 @@ from remote_command_executor import RemoteCommandExecutor
 from utils import check_status
 
 from tests.common.assertions import wait_for_num_instances_in_cluster, wait_instance_replaced_or_terminating
-from tests.common.schedulers_common import get_scheduler_commands
 
 
 @pytest.mark.usefixtures("os", "instance")
 def test_replace_compute_on_failure(
-    region, scheduler, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir
+    region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir, scheduler_commands_factory
 ):
     """
     Test that compute nodes get replaced on userdata failures and logs get saved in shared directory.
@@ -35,7 +34,7 @@ def test_replace_compute_on_failure(
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     # submit a job to spin up a compute node that will fail due to post_install script
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     scheduler_commands.submit_command("sleep 1")
 
     # Wait for the instance to become running

@@ -19,7 +19,6 @@ from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.scaling_common import get_compute_nodes_allocation
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.schedulers.test_slurm import _assert_job_state
 
 

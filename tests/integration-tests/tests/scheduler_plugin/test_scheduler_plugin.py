@@ -70,7 +70,15 @@ OS_MAPPING = {
 
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_scheduler_plugin_integration(
-    region, os, architecture, instance, pcluster_config_reader, s3_bucket, s3_bucket_key_prefix, clusters_factory, test_datadir
+    region,
+    os,
+    architecture,
+    instance,
+    pcluster_config_reader,
+    s3_bucket,
+    s3_bucket_key_prefix,
+    clusters_factory,
+    test_datadir,
 ):
     """Test usage of a custom scheduler integration."""
     logging.info("Testing plugin scheduler integration.")
