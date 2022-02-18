@@ -41,6 +41,9 @@ structure DescribeClusterResponse {
     @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,
     @required
+    @documentation("Scheduler of the cluster.")
+    scheduler: Scheduler,
+    @required
     @documentation("ARN of the main CloudFormation stack.")
     cloudformationStackArn: String,
     @required

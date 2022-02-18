@@ -11,6 +11,10 @@ Scheduling:
   SchedulerSettings:
     SchedulerDefinition:
       PluginInterfaceVersion: "1.0"
+      Metadata:
+        Version: 1.0.0
+        Name: my-scheduler
+        Documentation: link
       ClusterInfrastructure:
         CloudFormation:
           Template: https://bucket/scheduler_plugin/additional_cluster_infrastructure_no_jinja.cfn.yaml

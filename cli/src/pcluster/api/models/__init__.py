@@ -64,9 +64,11 @@ from pcluster.api.models.list_images_response_content import ListImagesResponseC
 from pcluster.api.models.list_official_images_response_content import ListOfficialImagesResponseContent
 from pcluster.api.models.log_event import LogEvent
 from pcluster.api.models.log_stream import LogStream
+from pcluster.api.models.metadata import Metadata
 from pcluster.api.models.node_type import NodeType
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster.api.models.requested_compute_fleet_status import RequestedComputeFleetStatus
+from pcluster.api.models.scheduler import Scheduler
 from pcluster.api.models.stack_event import StackEvent
 from pcluster.api.models.tag import Tag
 from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent

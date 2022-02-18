@@ -720,6 +720,10 @@ Scheduling:
   SchedulerSettings:
     SchedulerDefinition:
       PluginInterfaceVersion: "1.0"
+      Metadata:
+        documentation: link
+        Name: Slurm
+        Version: "1.0.0"
       Requirements:
         SupportsClusterUpdate: {support_update}
       Events:
@@ -754,6 +758,10 @@ Scheduling:
   SchedulerSettings:
     SchedulerDefinition:
       PluginInterfaceVersion: "1.0"
+      Metadata:
+        documentation: link
+        Name: Slurm
+        Version: "1.0.0"
       Requirements:
         SupportsClusterUpdate: {support_update}
       Events:

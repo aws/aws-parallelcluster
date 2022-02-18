@@ -11,6 +11,7 @@ Metadata:
   Documentation: link
   License: link
   Version: 1.0.0
+  Name: my-scheduler
 # Define the plugin requirements that are validated by ParallelCluster against a cluster configuration.
 Requirements:
   RequiresSudoPrivileges: true

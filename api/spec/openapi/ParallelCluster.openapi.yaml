@@ -1724,12 +1724,15 @@ components:
           $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
+        scheduler:
+          $ref: '#/components/schemas/Scheduler'
       required:
         - cloudformationStackArn
         - cloudformationStackStatus
         - clusterName
         - clusterStatus
         - region
+        - scheduler
         - version
     ClusterInstance:
       type: object
@@ -1892,6 +1895,8 @@ components:
           $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
+        scheduler:
+          $ref: '#/components/schemas/Scheduler'
         cloudformationStackArn:
           type: string
           description: ARN of the main CloudFormation stack.
@@ -1927,6 +1932,7 @@ components:
         - creationTime
         - lastUpdatedTime
         - region
+        - scheduler
         - tags
         - version
     DescribeComputeFleetResponseContent:
@@ -2306,6 +2312,13 @@ components:
         - logStreamArn
         - logStreamName
         - uploadSequenceToken
+    Metadata:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
     NodeType:
       type: string
       enum:
@@ -2324,6 +2337,15 @@ components:
         - STOP_REQUESTED
         - ENABLED
         - DISABLED
+    Scheduler:
+      type: object
+      properties:
+        type:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+      required:
+        - type
     StackEvent:
       type: object
       properties:
