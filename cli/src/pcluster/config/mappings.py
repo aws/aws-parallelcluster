@@ -238,7 +238,6 @@ SCALING = {
         "scaledown_idletime": {
             "type": IntCfnParam,
             "default": 10,
-            "cfn_param_mapping": "ScaleDownIdleTime",
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         },
         "_scaledown_idletime": {

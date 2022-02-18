@@ -84,8 +84,6 @@ Parameters:
     Type: Number
   DynamoDBTable:
     Type: String
-  SQSQueueName:
-    Type: String
   DCVEnabled:
     Type: String
   DCVPort:
@@ -615,7 +613,6 @@ Resources:
                       "cfn_node_type": "MasterServer",
                       "cfn_cluster_user": "${OSUser}",
                       "cfn_ddb_table": "${DynamoDBTable}",
-                      "cfn_sqs_queue": "${SQSQueueName}",
                       "dcv_enabled": "${DCVEnabled}",
                       "dcv_port": "${DCVPort}",
                       "enable_intel_hpc_platform": "${IntelHPCPlatform}",

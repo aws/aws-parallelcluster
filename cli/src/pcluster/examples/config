@@ -35,7 +35,7 @@ key_name = mykey
 # Maximum number of EC2 instances that can be launched in the cluster for schedulers other than awsbatch.
 # (defaults to 10)
 #max_queue_size = 10
-# Boolean flag to set autoscaling group to maintain initial size and scale back for schedulers other than awsbatch.
+# Boolean flag to maintain initial size and scale back for schedulers other than awsbatch.
 # (defaults to false)
 #maintain_initial_size = false
 # Minimum number of vcpus that will be running when scheduler is awsbatch.
