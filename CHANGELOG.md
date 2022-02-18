@@ -12,6 +12,7 @@ x.x.x
 
 **BUG FIXES**
 - Fix update of `/etc/hosts` files for clusters deployed in VPC without internet access.
+- Wait for ephemeral drives setup before having a compute node join the scheduler.
 
 3.1.1
 ------
