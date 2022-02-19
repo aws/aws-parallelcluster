@@ -61,6 +61,7 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
+    scheduler_plugin_definition_uploader,
     set_logger_formatter,
 )
 
@@ -70,7 +71,7 @@ from tests.common.utils import (
     get_installed_parallelcluster_version,
     retrieve_pcluster_ami_without_standard_naming,
 )
-from tests.common.schedulers_common import get_scheduler_commands
+
 
 def pytest_addoption(parser):
     """Register argparse-style options and ini-style config values, called once at the beginning of a test run."""
@@ -517,7 +518,9 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks,
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         config_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(config_file_path, request, region, benchmarks, scheduler_plugin_configuration)
+            inject_additional_config_settings(
+                config_file_path, request, region, benchmarks, scheduler_plugin_configuration
+            )
         else:
             inject_additional_image_configs_settings(config_file_path, request)
         return config_file_path
@@ -550,7 +553,7 @@ def inject_additional_image_configs_settings(image_config, request):
 
 
 def inject_additional_config_settings(
-        cluster_config, request, region, scheduler_plugin_configuration=None
+    cluster_config, request, region, benchmarks, scheduler_plugin_configuration=None
 ):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
@@ -1066,14 +1069,16 @@ def s3_buckets(session_s3_bucket_factory, request):
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     s3_buckets_dict = {}
     for region in regions:
-        s3_buckets_dict[region] = session_s3_bucket_factory(region)
+        s3_bucket = session_s3_bucket_factory(region)
+        scheduler_definitions_dict = _upload_scheduler_plugin_definitions(request, s3_bucket, region)
+        s3_buckets_dict[region] = {"s3-bucket": s3_bucket, "scheduler-definitions": scheduler_definitions_dict}
 
     return s3_buckets_dict
 
 
 @pytest.fixture(scope="class")
 def s3_bucket(s3_buckets, region):
-    return s3_buckets.get(region)
+    return s3_buckets.get(region).get("s3-bucket")
 
 
 @pytest.fixture(scope="class")
@@ -1104,6 +1109,30 @@ def session_s3_bucket_factory(request):
                 delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
             except Exception as e:
                 logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
+
+
+def _upload_scheduler_plugin_definitions(request, s3_bucket, region) -> dict:
+    scheduler_definition_dict = {}
+    tests_config = request.config.getoption("tests_config", default={})
+    if tests_config:
+        plugins = tests_config.get("scheduler-plugins", {})
+        for plugin_name in plugins:
+            plugin = plugins.get(plugin_name)
+            scheduler_definition = plugin.get("scheduler-definition")
+            if os.path.isfile(scheduler_definition):
+                logging.info(
+                    "Found scheduler-definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
+                )
+                scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
+                    scheduler_definition, s3_bucket, plugin_name, region
+                )
+                scheduler_definition_dict[plugin_name] = scheduler_plugin_definition_url
+            else:
+                logging.info(
+                    "Found scheduler definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
+                )
+
+    return scheduler_definition_dict
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -1340,8 +1369,18 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 
 @pytest.fixture()
-def scheduler_plugin_configuration(request, scheduler):
-    return request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
+def scheduler_plugin_configuration(request, scheduler, region, s3_buckets):
+    scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
+    scheduler_definition_url = s3_buckets.get(region).get("scheduler-definitions", {}).get(scheduler, {})
+    if scheduler_definition_url:
+        logging.info(
+            "Overriding scheduler plugin (%s) scheduler-definition to be (%s)",
+            scheduler,
+            scheduler_definition_url,
+        )
+        scheduler_plugin["scheduler-definition"] = scheduler_definition_url
+
+    return scheduler_plugin
 
 
 @pytest.fixture()

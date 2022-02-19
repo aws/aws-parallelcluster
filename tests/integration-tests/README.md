@@ -897,14 +897,17 @@ file. This is done by including the following object:
 ```yaml
 scheduler-plugins:
   plugin_name:
-    scheduler-definition: https://url|s3://url
+    scheduler-definition: https://url|s3://url|<path to upload_artifacts.sh script>
     scheduler-commands: "path.to.module.SchedulerCommandsClass"
     requires-sudo: true|false
 ```
 
 `scheduler-plugin` defines an entry for each scheduler plugin you intend to enable in tests.
 For each scheduler plugin you can specify the following fields:
-* `scheduler-definition`: this is the S3 or HTTPs URL pointing to the scheduler plugin definition.
+* `scheduler-definition`: this can be a S3 or HTTPs URL pointing to the scheduler plugin definition. Alternatively, 
+  it can be the path (relative or absolute) to the upload_artifacts.sh script. If the path is relative, it's relative to
+  integration tests suite root folder. The upload_artifacts.sh script is in charge to upload the scheduler-definition
+  into a given bucket, that will be created and passed by the test suite. 
 * `scheduler-commands`: this is the path to a Python class implementing the scheduler commands interface
   defined in `tests.common.schedulers_common.SchedulerCommands`.
 * `requires-sudo`: this needs to be set to true in case the scheduler plugin requires sudo privileges.
