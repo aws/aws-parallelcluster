@@ -128,10 +128,10 @@ def xdist_session_fixture(**pytest_fixture_args):
     @xdist_session_fixture() is used the fixture code is executed only for the first pytest-xdist process that
     requests it, while later invocations will obtain a cached value.
 
-    IMPORTANT: in case this fixture is not used with autouse=True, therefore the initialization is delayed until the first
-    test/fixture requires it, this could in rare circumstances lead to dead locks. This is due to the fact that not all
-    shared fixtures are owned by the same xdist process and the owning process is responsible to wait for all other
-    processes to release the fixture before invoking the clean-up code.
+    IMPORTANT: in case this fixture is not used with autouse=True, therefore the initialization is delayed until the
+    first test/fixture requires it, this could in rare circumstances lead to dead locks. This is due to the fact that
+    not all shared fixtures are owned by the same xdist process and the owning process is responsible to wait for
+    all other processes to release the fixture before invoking the clean-up code.
     """
 
     def _xdist_session_fixture_decorator(func):
