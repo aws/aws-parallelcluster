@@ -552,7 +552,7 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
-def inject_additional_config_settings(
+def inject_additional_config_settings(  # noqa: C901
     cluster_config, request, region, benchmarks, scheduler_plugin_configuration=None
 ):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
