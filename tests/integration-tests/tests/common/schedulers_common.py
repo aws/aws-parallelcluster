@@ -351,6 +351,7 @@ class SlurmCommands(SchedulerCommands):
         try:
             assert_that(result.stdout).contains("JobState=COMPLETED")
         except AssertionError:
+            logging.error("JobState of jobid %s not in COMPLETED:\n%s", job_id, result.stdout)
             self._dump_job_output(result.stdout)
             raise
 
