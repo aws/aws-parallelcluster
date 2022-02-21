@@ -40,6 +40,7 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
                    ('region2', 'inst1', 'os2', 's'), ('region3', 'inst2', 'os1', 's'), ('region3', 'inst3', 'os1', 's')]
     """
     argnames = list(DIMENSIONS_MARKER_ARGS)
+    argnames.append("benchmarks")
     argvalues = []
     for item in configured_dimensions_items:
         dimensions_values = []
@@ -50,7 +51,6 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
             elif dim in argnames:
                 argnames.remove(dim)
         benchmarks_value = [item.get("benchmarks")]  # the benchmarks list is treated as a single item in a list
-        argnames.append("benchmarks")
         dimensions_values.append(benchmarks_value)
         argvalues.extend(list(product(*dimensions_values)))
 

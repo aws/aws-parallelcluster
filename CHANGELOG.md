@@ -11,7 +11,8 @@ x.x.x
 ------
 
 **BUG FIXES**
-- Fix update of `/etc/hosts` files for clusters deployed in VPC without internet access.
+- Fix the update of `/etc/hosts` file on computes nodes when a cluster is deployed in subnets without internet access.
+- Fix compute nodes bootstrap by waiting for ephemeral drives initialization before joining the cluster.
 
 3.1.1
 ------
