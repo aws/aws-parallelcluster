@@ -558,7 +558,7 @@ storage:
   # Ephemeral test requires instance type with instance store
   test_ephemeral.py::test_head_node_stop:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["us-east-2"]
         instances: ["m5d.xlarge", "h1.2xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
