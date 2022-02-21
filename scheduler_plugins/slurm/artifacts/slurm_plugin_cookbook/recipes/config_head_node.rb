@@ -114,8 +114,8 @@ template "#{node['pcluster']['local_dir']}/scripts/slurm/slurm_resume" do
 end
 
 file '/var/log/parallelcluster/slurm_resume.log' do
-  owner node['plugin']['user']
-  group node['plugin']['user']
+  owner node['plugin']['fleet_mgt_user']
+  group node['plugin']['fleet_mgt_user']
   mode '0644'
 end
 
@@ -134,8 +134,8 @@ template "#{node['pcluster']['local_dir']}/scripts/slurm/slurm_suspend" do
 end
 
 file '/var/log/parallelcluster/slurm_suspend.log' do
-  owner node['plugin']['user']
-  group node['plugin']['user']
+  owner node['plugin']['fleet_mgt_user']
+  group node['plugin']['fleet_mgt_user']
   mode '0644'
 end
 
@@ -197,4 +197,12 @@ template 'supervisord-service' do
   owner 'root'
   group 'root'
   mode '0644'
+end
+
+# Ensure slurm user can sudo on slurm commands.
+template '/etc/sudoers.d/99-parallelcluster-slurm' do
+  source 'slurm/99-parallelcluster-slurm.erb'
+  owner 'root'
+  group 'root'
+  mode '0600'
 end
