@@ -38,10 +38,20 @@ class SharedFixture:
     the shared fixture. Only when such counter reaches 0 the actual fixture clean-up code is invoked.
     """
 
-    def __init__(self, name: str, shared_save_location: Path, fixture_func: Callable, xdist_worker_id: str):
+    def __init__(
+        self,
+        name: str,
+        shared_save_location: Path,
+        fixture_func: Callable,
+        fixture_func_args: tuple,
+        fixture_func_kwargs: dict,
+        xdist_worker_id: str,
+    ):
         self.name = name
         self.shared_save_location = shared_save_location
         self.fixture_func = fixture_func
+        self.fixture_func_args = fixture_func_args
+        self.fixture_func_kwargs = fixture_func_kwargs
         self.xdist_worker_id = xdist_worker_id
         self._lock_file = shared_save_location / f"{name}.lock"
         self._fixture_file = shared_save_location / f"{name}.fixture"
@@ -80,7 +90,7 @@ class SharedFixture:
                 self.name,
                 data.counter,
             )
-            time.sleep(60)
+            time.sleep(10)
             self.release()
         else:
             logging.info("Deleting shared fixture %s.", self.name)
@@ -112,12 +122,12 @@ class SharedFixture:
     def _invoke_fixture(self):
         logging.info("Initializing fixture data for %s", self.name)
         # Fixtures with yield and clean-up code are implemented as python generators.
-        # In such cases we need to
+        # In such cases we need to return the first value of the generator object returned by the fixture function
         if isgeneratorfunction(self.fixture_func):
-            self._generator = self.fixture_func()
+            self._generator = self.fixture_func(*self.fixture_func_args, **self.fixture_func_kwargs)
             return next(self._generator)
         else:
-            return self.fixture_func()
+            return self.fixture_func(*self.fixture_func_args, **self.fixture_func_kwargs)
 
 
 def xdist_session_fixture(**pytest_fixture_args):
@@ -145,7 +155,9 @@ def xdist_session_fixture(**pytest_fixture_args):
             shared_fixture = SharedFixture(
                 name=func.__name__,
                 shared_save_location=Path(f"{request.config.getoption('output_dir')}/tmp/shared_fixtures"),
-                fixture_func=functools.partial(func, *args, **kwargs),
+                fixture_func=func,
+                fixture_func_args=args,
+                fixture_func_kwargs=kwargs,
                 xdist_worker_id=get_xdist_worker_id(request),
             )
             yield shared_fixture.acquire().fixture_return_value
