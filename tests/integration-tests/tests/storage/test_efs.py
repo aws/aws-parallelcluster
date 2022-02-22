@@ -21,13 +21,12 @@ from troposphere.ec2 import Instance
 from troposphere.efs import FileSystem, MountTarget
 from utils import generate_stack_name, get_vpc_snakecase_value, random_alphanumeric
 
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import get_default_vpc_security_group, retrieve_latest_ami
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
 @pytest.mark.usefixtures("region", "os", "instance")
-def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack):
+def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
     """
     Test when compute subnet is in a different AZ from head node subnet.
 
@@ -40,13 +39,13 @@ def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_fact
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     _test_efs_correctly_mounted(remote_command_executor, mount_dir)
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
 @pytest.mark.usefixtures("region", "os", "instance")
-def test_efs_same_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack):
+def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
     """
     Test when compute subnet is in the same AZ as head node subnet.
 
@@ -59,7 +58,7 @@ def test_efs_same_az(region, scheduler, pcluster_config_reader, clusters_factory
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     _test_efs_correctly_mounted(remote_command_executor, mount_dir)
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
@@ -67,7 +66,6 @@ def test_efs_same_az(region, scheduler, pcluster_config_reader, clusters_factory
 @pytest.mark.usefixtures("os", "instance")
 def test_existing_efs(
     region,
-    scheduler,
     efs_stack,
     pcluster_config_reader,
     clusters_factory,
@@ -75,6 +73,7 @@ def test_existing_efs(
     request,
     key_name,
     cfn_stacks_factory,
+    scheduler_commands_factory,
 ):
     """
     Test when efs_fs_id is provided in the config file, the existing efs can be correctly mounted.
@@ -97,7 +96,7 @@ def test_existing_efs(
     assert_that(result.stdout).contains(mount_dir)
 
     remote_command_executor.run_remote_command(f"cat {mount_dir}/{file_name}")
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     _test_efs_correctly_mounted(remote_command_executor, mount_dir)
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
     remote_command_executor.run_remote_command(f"cat {mount_dir}/{file_name}")

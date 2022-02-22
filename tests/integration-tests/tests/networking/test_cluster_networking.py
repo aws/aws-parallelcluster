@@ -28,7 +28,7 @@ from utils import generate_stack_name, get_compute_nodes_instance_ids, get_usern
 
 from tests.common.assertions import assert_no_errors_in_logs, assert_no_msg_in_logs, wait_for_num_instances_in_cluster
 from tests.common.osu_common import compile_osu
-from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
+from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
 from tests.storage.test_fsx_lustre import (
     assert_fsx_lustre_correctly_mounted,
@@ -38,7 +38,7 @@ from tests.storage.test_fsx_lustre import (
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_cluster_in_private_subnet(region, os, scheduler, pcluster_config_reader, clusters_factory, bastion_instance):
+def test_cluster_in_private_subnet(region, scheduler, pcluster_config_reader, clusters_factory, bastion_instance):
     # This test just creates a cluster in the private subnet and just checks that no failures occur
     fsx_mount_dir = "/fsx_mount"
     cluster_config = pcluster_config_reader(fsx_mount_dir=fsx_mount_dir)
@@ -46,7 +46,7 @@ def test_cluster_in_private_subnet(region, os, scheduler, pcluster_config_reader
     assert_that(cluster).is_not_none()
 
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(1)
-    _test_fsx_in_private_subnet(cluster, os, region, scheduler, fsx_mount_dir, bastion_instance)
+    _test_fsx_in_private_subnet(cluster, region, scheduler, fsx_mount_dir, bastion_instance)
 
 
 @pytest.fixture(scope="class")
@@ -84,15 +84,15 @@ def test_existing_eip(existing_eip, pcluster_config_reader, clusters_factory):
     connection.run("cat /var/log/cfn-init.log", timeout=60)
 
 
-def _test_fsx_in_private_subnet(cluster, os, region, scheduler, fsx_mount_dir, bastion_instance):
+def _test_fsx_in_private_subnet(cluster, region, fsx_mount_dir, bastion_instance, scheduler_commands_factory):
     """Test FSx can be mounted in private subnet."""
     logging.info("Sleeping for 60 sec to wait for bastion ssh to become ready.")
     time.sleep(60)
     logging.info(f"Bastion: {bastion_instance}")
     remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion_instance)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
-    assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, os, region, fsx_fs_id)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, region, fsx_fs_id)
     assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
 
 

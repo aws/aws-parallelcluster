@@ -18,6 +18,7 @@ import logging
 import os
 import random
 import re
+from functools import partial
 from itertools import product
 from pathlib import Path
 from shutil import copyfile
@@ -40,6 +41,7 @@ from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_fr
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
+from framework.fixture_utils import xdist_session_fixture
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
@@ -59,10 +61,12 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
+    scheduler_plugin_definition_uploader,
     set_logger_formatter,
 )
 
 from tests.common.osu_common import run_osu_benchmarks
+from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
@@ -489,7 +493,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks, scheduler_plugin_configuration):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -515,7 +519,9 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks)
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         config_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(config_file_path, request, region, benchmarks)
+            inject_additional_config_settings(
+                config_file_path, request, region, benchmarks, scheduler_plugin_configuration
+            )
         else:
             inject_additional_image_configs_settings(config_file_path, request)
         return config_file_path
@@ -547,7 +553,9 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
-def inject_additional_config_settings(cluster_config, request, region, benchmarks):  # noqa C901
+def inject_additional_config_settings(  # noqa: C901
+    cluster_config, request, region, benchmarks, scheduler_plugin_configuration=None
+):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -633,8 +641,26 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
                     # Use larger max count to support performance tests if not specified explicitly.
                     compute_resource["MaxCount"] = 150
 
+    configure_scheduler_plugin(scheduler_plugin_configuration, config_content)
+
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
+
+
+def configure_scheduler_plugin(scheduler_plugin_configuration, config_content):
+    if scheduler_plugin_configuration and not dict_has_nested_key(
+        config_content, ("Scheduling", "SchedulerSettings", "SchedulerDefinition")
+    ):
+        dict_add_nested_key(
+            config_content,
+            scheduler_plugin_configuration["scheduler-definition"],
+            ("Scheduling", "SchedulerSettings", "SchedulerDefinition"),
+        )
+        dict_add_nested_key(
+            config_content,
+            scheduler_plugin_configuration["requires-sudo"],
+            ("Scheduling", "SchedulerSettings", "GrantSudoPrivileges"),
+        )
 
 
 def _add_policy_for_pre_post_install(node_config, custom_option, request, region):
@@ -668,8 +694,16 @@ def _get_default_template_values(vpc_stack, request):
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
-    scheduler = request.node.funcargs.get("scheduler")
-    default_values["imds_secured"] = scheduler in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    if default_values.get("scheduler") in request.config.getoption("tests_config", default={}).get(
+        "scheduler-plugins", {}
+    ):
+        default_values["scheduler"] = "plugin"
+    default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    default_values["scheduler_prefix"] = {
+        "slurm": "Slurm",
+        "awsbatch": "AwsBatch",
+        "plugin": "Scheduler",
+    }.get(default_values.get("scheduler"))
 
     return default_values
 
@@ -814,16 +848,19 @@ def get_availability_zones(region, credential):
     return az_list
 
 
-@pytest.fixture(scope="session", autouse=True)
-def initialize_cli_creds(cfn_stacks_factory, request):
+@xdist_session_fixture(autouse=True)
+def initialize_cli_creds(request):
     if request.config.getoption("use_default_iam_credentials"):
         logging.info("Using default IAM credentials to run pcluster commands")
         return
+
+    stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
     with open(stack_template_path, encoding="utf-8") as stack_template_file:
         stack_template_data = stack_template_file.read()
+    cli_creds = {}
     for region in regions:
         if request.config.getoption("iam_user_role_stack_name"):
             stack_name = request.config.getoption("iam_user_role_stack_name")
@@ -837,9 +874,23 @@ def initialize_cli_creds(cfn_stacks_factory, request):
             stack = CfnStack(
                 name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
             )
-            cfn_stacks_factory.create_stack(stack)
-        # register providers
-        register_cli_credentials_for_region(region, stack.cfn_outputs["ParallelClusterUserRole"])
+
+            stack_factory.create_stack(stack)
+        cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
+
+    yield cli_creds
+
+    if not request.config.getoption("no_delete"):
+        stack_factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def register_cli_credentials(initialize_cli_creds):
+    if initialize_cli_creds:
+        for region, creds in initialize_cli_creds.items():
+            register_cli_credentials_for_region(region, creds)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -1020,6 +1071,77 @@ def s3_bucket_factory(request, region):
                 delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
             except Exception as e:
                 logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
+
+
+@xdist_session_fixture(autouse=True)
+def s3_bucket_factory_shared(request):
+    """
+    Define a fixture to create S3 buckets, shared among session. One bucket per region will be created.
+    :return: a dictionary of buckets with region as key
+    """
+
+    created_buckets = []
+
+    def _create_bucket(region):
+        bucket_name = "integ-tests-" + random_alphanumeric()
+        logging.info("Creating S3 bucket {0}".format(bucket_name))
+        create_s3_bucket(bucket_name, region)
+        created_buckets.append((bucket_name, region))
+        return bucket_name
+
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    s3_buckets_dict = {}
+    for region in regions:
+        s3_buckets_dict[region] = _create_bucket(region)
+
+    yield s3_buckets_dict
+
+    for bucket in created_buckets:
+        if request.config.getoption("no_delete"):
+            logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        else:
+            logging.info(f"Deleting S3 bucket {bucket[0]}")
+            try:
+                delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
+            except Exception as e:
+                logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
+
+
+@pytest.fixture(scope="class")
+def s3_bucket(s3_bucket_factory_shared, region):
+    return s3_bucket_factory_shared.get(region)
+
+
+@pytest.fixture(scope="class")
+def s3_bucket_key_prefix():
+    return random_alphanumeric()
+
+
+@xdist_session_fixture(autouse=True)
+def upload_scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> dict:
+    scheduler_definition_dict = {}
+    tests_config = request.config.getoption("tests_config", default={})
+    if tests_config:
+        plugins = tests_config.get("scheduler-plugins", {})
+        for plugin_name in plugins:
+            plugin = plugins.get(plugin_name)
+            scheduler_definition = plugin.get("scheduler-definition")
+            if os.path.isfile(scheduler_definition):
+                logging.info(
+                    "Found scheduler-definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
+                )
+                scheduler_definition_dict[plugin_name] = {}
+                for region, s3_bucket in s3_bucket_factory_shared.items():
+                    scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
+                        scheduler_definition, s3_bucket, plugin_name, region
+                    )
+                    scheduler_definition_dict[plugin_name].update({region: scheduler_plugin_definition_url})
+            else:
+                logging.info(
+                    "Found scheduler definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
+                )
+
+    return scheduler_definition_dict
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -1253,3 +1375,45 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
         logging.info("Finished benchmarks for %s", function_name)
 
     yield _run_benchmarks
+
+
+@pytest.fixture()
+def scheduler_plugin_configuration(request, scheduler, region, upload_scheduler_plugin_definitions):
+    scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
+    scheduler_definition_url = upload_scheduler_plugin_definitions.get(scheduler).get(region, {})
+    if scheduler_definition_url:
+        logging.info(
+            "Overriding scheduler plugin (%s) scheduler-definition to be (%s)",
+            scheduler,
+            scheduler_definition_url,
+        )
+        scheduler_plugin["scheduler-definition"] = scheduler_definition_url
+
+    return scheduler_plugin
+
+
+@pytest.fixture()
+def test_custom_config(request):
+    feature, test_id = request.node.nodeid.split("/", 1)
+    test_id = test_id.split("[", 1)[0]
+    tests_config = request.config.getoption("tests_config")
+    if tests_config:
+        return tests_config["test-suites"][feature][test_id].get("test-config")
+    return None
+
+
+@pytest.fixture()
+def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
+    if scheduler_plugin_configuration:
+        import importlib
+
+        scheduler_commands = scheduler_plugin_configuration["scheduler-commands"]
+        logging.info("Loading scheduler commands from %s", scheduler_commands)
+        try:
+            module_name, class_name = scheduler_commands.rsplit(".", 1)
+            return getattr(importlib.import_module(module_name), class_name)
+        except Exception as e:
+            logging.error("Failed when loading scheduler commands from %s: %s", scheduler_commands, e)
+            raise
+    else:
+        return partial(get_scheduler_commands, scheduler=scheduler)

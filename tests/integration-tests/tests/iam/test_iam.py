@@ -21,8 +21,7 @@ from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 
 from tests.common.assertions import assert_no_errors_in_logs
-from tests.common.schedulers_common import get_scheduler_commands
-from tests.schedulers.test_awsbatch import _test_job_submission as test_job_submission_awsbatch
+from tests.schedulers.test_awsbatch import _test_job_submission as _test_job_submission_awsbatch
 from tests.schedulers.test_slurm import _wait_for_computefleet_changed as wait_for_computefleet_changed
 
 
@@ -34,6 +33,7 @@ def test_iam_roles(
     pcluster_config_reader,
     clusters_factory,
     test_datadir,
+    scheduler_commands_factory,
 ):
     is_awsbatch = scheduler == "awsbatch"
 
@@ -76,7 +76,7 @@ def test_iam_roles(
         update_config,
     )
 
-    _test_cluster_scaling(cluster, is_awsbatch, region, scheduler)
+    _test_cluster_scaling(cluster, is_awsbatch, region, scheduler_commands_factory)
 
 
 def _get_config_create_and_update(test_datadir):
@@ -137,17 +137,17 @@ def _test_cluster_create(
     return cluster
 
 
-def _test_cluster_scaling(cluster, is_awsbatch, region, scheduler):
+def _test_cluster_scaling(cluster, is_awsbatch, region, scheduler_commands_factory):
     remote_command_executor = RemoteCommandExecutor(cluster)
     if is_awsbatch:
         timeout = (
             120 if region.startswith("cn-") else 60
         )  # Longer timeout in china regions due to less reliable networking
-        test_job_submission_awsbatch(
+        _test_job_submission_awsbatch(
             remote_command_executor, f"awsbsub --vcpus 2 --memory 256 --timeout {timeout} sleep 1"
         )
     else:
-        scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+        scheduler_commands = scheduler_commands_factory(remote_command_executor)
         job_id = scheduler_commands.submit_command_and_assert_job_accepted(
             submit_command_args={"command": "sleep 1", "nodes": 1}
         )

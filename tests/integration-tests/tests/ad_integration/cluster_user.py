@@ -6,13 +6,20 @@ from paramiko import AutoAddPolicy, SSHClient
 from remote_command_executor import RemoteCommandExecutor
 from utils import run_command
 
-from tests.common.schedulers_common import get_scheduler_commands
-
 
 class ClusterUser:
     """Class to represent a cluster user in a multi-user environment."""
 
-    def __init__(self, user_num, test_datadir, cluster, scheduler, default_user_remote_command_executor, password):
+    def __init__(
+        self,
+        user_num,
+        test_datadir,
+        cluster,
+        scheduler,
+        default_user_remote_command_executor,
+        password,
+        scheduler_commands_factory,
+    ):
         self._default_user_remote_command_executor = default_user_remote_command_executor
         self.cluster = cluster
         self.scheduler = scheduler
@@ -27,9 +34,7 @@ class ClusterUser:
         self._personalized_remote_command_executor = RemoteCommandExecutor(
             self.cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
         )
-        self._personalized_scheduler_commands = get_scheduler_commands(
-            scheduler, self._personalized_remote_command_executor
-        )
+        self._personalized_scheduler_commands = scheduler_commands_factory(self._personalized_remote_command_executor)
         self.validate_password_auth_and_automatic_homedir_creation()
         self._configure_public_ssh_keys()
 
@@ -122,7 +127,7 @@ class ClusterUser:
         logging.info("Output from command %s\nstdout:\n%s\nstderr:\n%s", command, stdout_str, stderr_str)
         assert_that(stdout.read().decode()).does_not_contain("failure")
 
-    def reset_stateful_connection_objects(self, default_user_remote_command_executor):
+    def reset_stateful_connection_objects(self, default_user_remote_command_executor, scheduler_commands_factory):
         """Reset objects that might maintain an open SSH connection."""
         del self._default_user_remote_command_executor
         del self._personalized_remote_command_executor
@@ -131,9 +136,7 @@ class ClusterUser:
         self._personalized_remote_command_executor = RemoteCommandExecutor(
             self.cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
         )
-        self._personalized_scheduler_commands = get_scheduler_commands(
-            self.scheduler, self._personalized_remote_command_executor
-        )
+        self._personalized_scheduler_commands = scheduler_commands_factory(self._personalized_remote_command_executor)
 
     def remote_command_executor(self):
         """Get remote command executor."""

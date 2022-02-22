@@ -25,8 +25,6 @@ from time_utils import minutes, seconds
 from troposphere import Ref, Template, ec2
 from troposphere.fsx import FileSystem, LustreConfiguration
 
-from tests.common.schedulers_common import get_scheduler_commands
-
 BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING", "PENDING"}
 # Maximum number of minutes to wait past when an file system's automatic backup is scheduled to start creating.
 # If after this many minutes past the scheduled time backup creation has not started, the test will fail.
@@ -65,7 +63,6 @@ def test_fsx_lustre_configuration_options(
     s3_bucket_factory,
     clusters_factory,
     test_datadir,
-    os,
     scheduler,
     storage_type,
     drive_cache_type,
@@ -96,7 +93,6 @@ def test_fsx_lustre_configuration_options(
         cluster,
         region,
         scheduler,
-        os,
         mount_dir,
         bucket_name,
         storage_type,
@@ -113,7 +109,6 @@ def _test_fsx_lustre_configuration_options(
     cluster,
     region,
     scheduler,
-    os,
     mount_dir,
     bucket_name,
     storage_type,
@@ -124,7 +119,7 @@ def _test_fsx_lustre_configuration_options(
     imported_file_chunk_size,
     storage_capacity,
 ):
-    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
+    _test_fsx_lustre(cluster, region, scheduler, mount_dir, bucket_name)
     remote_command_executor = RemoteCommandExecutor(cluster)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
     fsx = boto3.client("fsx", region_name=region).describe_file_systems(FileSystemIds=[fsx_fs_id])
@@ -145,7 +140,6 @@ def test_fsx_lustre(
     s3_bucket_factory,
     clusters_factory,
     test_datadir,
-    os,
     scheduler,
 ):
     """
@@ -167,7 +161,6 @@ def test_fsx_lustre(
         cluster,
         region,
         scheduler,
-        os,
         mount_dir,
         bucket_name,
     )
@@ -176,16 +169,15 @@ def test_fsx_lustre(
 def _test_fsx_lustre(
     cluster,
     region,
-    scheduler,
-    os,
     mount_dir,
     bucket_name,
+    scheduler_commands_factory,
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
 
-    assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
     _test_import_path(remote_command_executor, mount_dir)
     assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
@@ -193,7 +185,7 @@ def _test_fsx_lustre(
 
 
 @pytest.mark.usefixtures("instance")
-def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os, scheduler):
+def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, scheduler_commands_factory):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
     1. Create a cluster with FSx automatic backups feature enabled.
@@ -219,28 +211,26 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
     # Create a cluster with automatic backup parameters.
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
 
     # Mount file system
-    assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
 
     # Create a text file in the mount directory.
     create_backup_test_file(scheduler_commands, remote_command_executor, mount_dir)
 
     # Wait for the creation of automatic backup and assert if it is in available state.
-    automatic_backup = monitor_automatic_backup_creation(
-        remote_command_executor, fsx_fs_id, region, daily_automatic_backup_start_time
-    )
+    automatic_backup = monitor_automatic_backup_creation(fsx_fs_id, region, daily_automatic_backup_start_time)
 
     # Create a manual FSx Lustre backup using boto3 client.
-    manual_backup = create_manual_fs_backup(remote_command_executor, fsx_fs_id, region)
+    manual_backup = create_manual_fs_backup(fsx_fs_id, region)
 
     # Delete original cluster.
     cluster.delete()
 
     # Verify whether automatic backup is also deleted along with the cluster.
-    _test_automatic_backup_deletion(remote_command_executor, automatic_backup, region)
+    _test_automatic_backup_deletion(automatic_backup, region)
 
     # Restore backup into a new cluster
     cluster_config_restore = pcluster_config_reader(
@@ -252,13 +242,13 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
     fsx_fs_id_restore = get_fsx_fs_id(cluster_restore, region)
 
     # Mount the restored file system
-    assert_fsx_lustre_correctly_mounted(remote_command_executor_restore, mount_dir, os, region, fsx_fs_id_restore)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor_restore, mount_dir, region, fsx_fs_id_restore)
 
     # Validate whether text file created in the original file system is present in the restored file system.
     _test_restore_from_backup(remote_command_executor_restore, mount_dir)
 
     # Test deletion of manual backup
-    _test_delete_manual_backup(remote_command_executor, manual_backup, region)
+    _test_delete_manual_backup(manual_backup, region)
 
 
 @pytest.mark.usefixtures("instance")
@@ -269,7 +259,6 @@ def test_existing_fsx(
     pcluster_config_reader,
     s3_bucket_factory,
     clusters_factory,
-    os,
     scheduler,
     test_datadir,
 ):
@@ -299,7 +288,7 @@ def test_existing_fsx(
     )
     cluster = clusters_factory(cluster_config)
 
-    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
+    _test_fsx_lustre(cluster, region, scheduler, mount_dir, bucket_name)
 
 
 @pytest.fixture(scope="class")
@@ -352,7 +341,7 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
         cfn_stacks_factory.delete_stack(fsx_stack_name, region)
 
 
-def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id):
+def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id):
     logging.info("Testing fsx lustre is correctly mounted")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
     mount_name = get_mount_name(fsx_fs_id, region)
@@ -595,7 +584,7 @@ def create_backup_test_file(scheduler_commands, remote_command_executor, mount_d
     assert_that(result.stdout).is_equal_to("FSx Lustre Backup test file")
 
 
-def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region, backup_start_time):
+def monitor_automatic_backup_creation(fsx_fs_id, region, backup_start_time):
     logging.info("Monitoring automatic backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
     fsx = boto3.client("fsx", region_name=region)
     sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time)
@@ -636,7 +625,7 @@ def poll_on_automatic_backup_creation_start(fsx_fs_id, fsx):
     return backup
 
 
-def _test_automatic_backup_deletion(remote_command_executor, automatic_backup, region):
+def _test_automatic_backup_deletion(automatic_backup, region):
     backup_id = automatic_backup.get("BackupId")
     logging.info("Verifying whether automatic backup '{0}' was deleted".format(backup_id))
     error_message = "Backup '{backup_id}' does not exist.".format(backup_id=backup_id)
@@ -645,7 +634,7 @@ def _test_automatic_backup_deletion(remote_command_executor, automatic_backup, r
         return fsx.describe_backups(BackupIds=[backup_id])
 
 
-def create_manual_fs_backup(remote_command_executor, fsx_fs_id, region):
+def create_manual_fs_backup(fsx_fs_id, region):
     logging.info("Create manual backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
     fsx = boto3.client("fsx", region_name=region)
     backup = fsx.create_backup(FileSystemId=fsx_fs_id).get("Backup")
@@ -670,7 +659,7 @@ def _test_restore_from_backup(remote_command_executor, mount_dir):
     assert_that(result.stdout).is_equal_to("FSx Lustre Backup test file")
 
 
-def _test_delete_manual_backup(remote_command_executor, backup, region):
+def _test_delete_manual_backup(backup, region):
     backup_id = backup.get("BackupId")
     logging.info("Testing deletion of manual backup {0}".format(backup_id))
     fsx = boto3.client("fsx", region_name=region)

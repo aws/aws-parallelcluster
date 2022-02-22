@@ -37,16 +37,16 @@ ClusterInfrastructure:
     # Reference to a CloudFormation template that is created as a nested stack of the main cluster stack.
     # In order to allow access to regionalized resources the ${Region} and the ${URLSuffix} variables are made available
     # when defining this url. The template can be specified as an S3 or HTTPS url.
-    Template: s3://<BUCKET>/scheduler_plugins/plugin_template/additional_cluster_infrastructure.cfn.yaml
-    # Template: https://<BUCKET>.s3.${Region}.${URLSuffix}/scheduler_plugins/plugin_template/additional_cluster_infrastructure.cfn.yaml
+    Template: s3://<BUCKET>/additional_cluster_infrastructure.cfn.yaml
+    # Template: https://<BUCKET_NAME>.s3.${Region}.${URLSuffix}/<BUCKET_KEY_PREFIX>/additional_cluster_infrastructure.cfn.yaml
     Checksum: <TEMPLATE_CHECKSUM>
 PluginResources:
   # HTTPS or S3 URL of remote resources that ParallelCluster downloads and makes available to plugin event handlers.
   # In order to allow access to regionalized resources the ${Region} and the ${URLSuffix} variables are made available
   # when defining this String.
   ClusterSharedArtifacts:
-    - Source: s3://<BUCKET>/scheduler_plugins/plugin_template/artifacts.tar.gz
-      # Source: https://<BUCKET>.s3.${Region}.${URLSuffix}/scheduler_plugins/plugin_template/artifacts.tar.gz
+    - Source: s3://<BUCKET>/artifacts.tar.gz
+      # Source: https://<BUCKET_NAME>.s3.${Region}.${URLSuffix}/<BUCKET_KEY_PREFIX>/artifacts.tar.gz
       Checksum: <ARTIFACTS_CHECKSUM>
 # The scheduler plugins will (possibly) require a number of “system” level users to run various processes.
 # This section can be used to create system users with a consistent user id on all cluster nodes.

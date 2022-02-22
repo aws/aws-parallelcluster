@@ -71,7 +71,15 @@ OS_MAPPING = {
 
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_scheduler_plugin_integration(
-    region, os, architecture, instance, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir
+    region,
+    os,
+    architecture,
+    instance,
+    pcluster_config_reader,
+    s3_bucket,
+    s3_bucket_key_prefix,
+    clusters_factory,
+    test_datadir,
 ):
     """Test usage of a custom scheduler integration."""
     logging.info("Testing plugin scheduler integration.")
@@ -80,18 +88,19 @@ def test_scheduler_plugin_integration(
     # Get EC2 client
     ec2_client = boto3.client("ec2", region_name=region)
     # Create bucket and upload resources
-    bucket_name = s3_bucket_factory()
+    bucket_name = s3_bucket
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     account_id = boto3.client("sts", region_name=region).get_caller_identity().get("Account")
     compute_node_bootstrap_timeout = 1600
     for file in ["scheduler_plugin_infra.cfn.yaml", "artifact"]:
-        bucket.upload_file(str(test_datadir / file), f"scheduler_plugin/{file}")
+        bucket.upload_file(str(test_datadir / file), f"{s3_bucket_key_prefix}/scheduler_plugin/{file}")
     run_as_user = OS_MAPPING[os]
     # Create cluster
     another_instance_type = ANOTHER_INSTANCE_TYPE_BY_ARCH[architecture]
     before_update_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.before_update.yaml",
         bucket=bucket_name,
+        bucket_key_prefix=s3_bucket_key_prefix,
         another_instance=another_instance_type,
         user1=SCHEDULER_PLUGIN_USERS_LIST[0],
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],
@@ -101,6 +110,7 @@ def test_scheduler_plugin_integration(
     cluster = clusters_factory(before_update_cluster_config)
     cluster_config = pcluster_config_reader(
         bucket=bucket_name,
+        bucket_key_prefix=s3_bucket_key_prefix,
         another_instance=another_instance_type,
         user1=SCHEDULER_PLUGIN_USERS_LIST[0],
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],

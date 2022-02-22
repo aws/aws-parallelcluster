@@ -12,8 +12,8 @@ HeadNode:
       - BucketName: {{ bucket }}
         EnableWriteAccess: true
 Scheduling:
-  Scheduler: slurm
-  SlurmQueues:
+  Scheduler: {{ scheduler }}
+  {{ scheduler_prefix }}Queues:
     - Name: broken
       Networking:
         SubnetIds:

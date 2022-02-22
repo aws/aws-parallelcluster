@@ -39,11 +39,13 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
-from tests.common.schedulers_common import SlurmCommands, TorqueCommands, get_scheduler_commands
+from tests.common.schedulers_common import TorqueCommands
 
 
 @pytest.mark.usefixtures("instance", "scheduler", "os")
-def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+def test_slurm(
+    region, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory
+):
     """
     Test all AWS Slurm related features.
 
@@ -63,11 +65,11 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     )
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    slurm_commands = SlurmCommands(remote_command_executor)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
     _test_slurm_version(remote_command_executor)
 
     if supports_impi:
-        _test_mpi_job_termination(remote_command_executor, test_datadir)
+        _test_mpi_job_termination(remote_command_executor, test_datadir, scheduler_commands_factory)
 
     _assert_no_node_in_cluster(region, cluster.cfn_name, slurm_commands)
     _test_job_dependencies(slurm_commands, region, cluster.cfn_name, scaledown_idletime)
@@ -140,12 +142,14 @@ def test_slurm_pmix(pcluster_config_reader, clusters_factory):
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_scaling
-def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
+def test_slurm_scaling(
+    scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
     """Test that slurm-specific scaling logic is behaving as expected for normal actions and failures."""
     cluster_config = pcluster_config_reader(scaledown_idletime=3)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _assert_cluster_initial_conditions(scheduler_commands, 20, 20, 4)
     _test_online_node_configured_correctly(
@@ -199,12 +203,14 @@ def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clus
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_error_handling
-def test_error_handling(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
+def test_error_handling(
+    scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
     """Test that slurm-specific scaling logic can handle rare failures."""
     cluster_config = pcluster_config_reader(scaledown_idletime=3)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _assert_cluster_initial_conditions(scheduler_commands, 10, 10, 1)
     _test_cloud_node_health_check(
@@ -244,7 +250,12 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_protected_mode
 def test_slurm_protected_mode(
-    scheduler, region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    scheduler_commands_factory,
 ):
     """Test that slurm protected mode logic can handle bootstrap failure nodes."""
     # Create S3 bucket for pre-install scripts
@@ -254,7 +265,7 @@ def test_slurm_protected_mode(
     cluster_config = pcluster_config_reader(bucket=bucket_name)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     _test_disable_protected_mode(remote_command_executor, cluster, bucket_name, pcluster_config_reader)
     pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor)
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
@@ -663,7 +674,7 @@ def _terminate_nodes_manually(instance_ids, region):
     logging.info("Terminated nodes: {}".format(instance_ids))
 
 
-def _test_mpi_job_termination(remote_command_executor, test_datadir):
+def _test_mpi_job_termination(remote_command_executor, test_datadir, scheduler_commands_factory):
     """
     Test canceling mpirun job will not leave stray processes.
 
@@ -673,7 +684,7 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     This bug cannot be reproduced using OpenMPI
     """
     logging.info("Testing no stray process left behind after mpirun job is terminated")
-    slurm_commands = SlurmCommands(remote_command_executor)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
 
     # Submit mpi_job, which runs Intel MPI benchmarks with intelmpi
     # Leaving 1 vcpu on each node idle so that the process check job can run while mpi_job is running
@@ -684,18 +695,18 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
         slurm_commands, job_id, job_state="RUNNING"
     )
-    _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=False)
+    _check_mpi_process(remote_command_executor, slurm_commands, num_nodes=2, after_completion=False)
     slurm_commands.cancel_job(job_id)
 
     # Make sure mpirun job is cancelled
     _assert_job_state(slurm_commands, job_id, job_state="CANCELLED")
 
     # Check that mpi processes are terminated
-    _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=True)
+    _check_mpi_process(remote_command_executor, slurm_commands, num_nodes=2, after_completion=True)
 
 
 @retry(wait_fixed=seconds(10), stop_max_attempt_number=4)
-def _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes, after_completion):
+def _check_mpi_process(remote_command_executor, slurm_commands, num_nodes, after_completion):
     """Submit script and check for MPI processes."""
     # Clean up old datafiles
     remote_command_executor.run_remote_command("rm -f /shared/check_proc.out")

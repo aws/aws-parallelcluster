@@ -23,10 +23,10 @@ Scheduling:
         RequiresSudoPrivileges: true
       ClusterInfrastructure:
         CloudFormation:
-          Template: s3://<BUCKET>/scheduler_plugins/slurm/slurm_plugin_infrastructure.cfn.yaml
+          Template: s3://<BUCKET>/slurm_plugin_infrastructure.cfn.yaml
       PluginResources:
         ClusterSharedArtifacts:
-          - Source: s3://<BUCKET>/scheduler_plugins/slurm/artifacts.tar.gz
+          - Source: s3://<BUCKET>/artifacts.tar.gz
       SystemUsers:
         - Name: slurm_user
           EnableImds: true
