@@ -380,11 +380,11 @@ class SlurmCommands(SchedulerCommands):
 
     @retry(retry_on_result=lambda result: "drain" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(5))
     def wait_for_locked_node(self):  # noqa: D102
-        return self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -h -o '%t'").stdout
+        return self._remote_command_executor.run_remote_command("sinfo -h -o '%t'").stdout
 
     def get_node_cores(self, partition=None):
         """Return number of slots from the scheduler."""
-        check_core_cmd = "/opt/slurm/bin/sinfo -o '%c' -h"
+        check_core_cmd = "sinfo -o '%c' -h"
         if partition:
             check_core_cmd += " -p {}".format(partition)
         result = self._remote_command_executor.run_remote_command(check_core_cmd)
@@ -401,21 +401,19 @@ class SlurmCommands(SchedulerCommands):
     def set_nodes_state(self, compute_nodes, state):
         """Put nodes into a state."""
         self._remote_command_executor.run_remote_command(
-            "sudo /opt/slurm/bin/scontrol update NodeName={} state={} reason=testing".format(
-                ",".join(compute_nodes), state
-            )
+            "sudo -i scontrol update NodeName={} state={} reason=testing".format(",".join(compute_nodes), state)
         )
 
     def set_partition_state(self, partition, state):
         """Put partition into a state."""
         self._remote_command_executor.run_remote_command(
-            "sudo /opt/slurm/bin/scontrol update partition={} state={}".format(partition, state)
+            "sudo -i scontrol update partition={} state={}".format(partition, state)
         )
 
     def get_nodes_status(self, filter_by_nodes=None):
         """Retrieve node state/status from scheduler"""
         result = self._remote_command_executor.run_remote_command(
-            "/opt/slurm/bin/sinfo -N --long -h | awk '{print$1, $4}'"
+            "sinfo -N --long -h | awk '{print$1, $4}'"
         ).stdout.splitlines()
         current_node_states = {}
         for entry in result:
@@ -433,7 +431,7 @@ class SlurmCommands(SchedulerCommands):
         # q1-dy-c5xlarge-2 172.31.4.136 q1-dy-c5xlarge-2
         # q1-dy-c5xlarge-3 q1-dy-c5xlarge-3 q1-dy-c5xlarge-3
         return self._remote_command_executor.run_remote_command(
-            "/opt/slurm/bin/sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
+            "sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
         ).stdout.splitlines()
 
     def submit_command_and_assert_job_accepted(self, submit_command_args):
@@ -444,7 +442,7 @@ class SlurmCommands(SchedulerCommands):
     def get_partition_state(self, partition):
         """Get the state of the partition."""
         return self._remote_command_executor.run_remote_command(
-            f'/opt/slurm/bin/scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
+            f'scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
         ).stdout
 
     @retry(wait_fixed=seconds(10), stop_max_delay=minutes(13))
