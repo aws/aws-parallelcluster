@@ -1092,9 +1092,7 @@ def s3_bucket_factory_shared(request):
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     s3_buckets_dict = {}
     for region in regions:
-        s3_bucket = _create_bucket(region)
-        scheduler_definitions_dict = _upload_scheduler_plugin_definitions(request, s3_bucket, region)
-        s3_buckets_dict[region] = {"s3-bucket": s3_bucket, "scheduler-definitions": scheduler_definitions_dict}
+        s3_buckets_dict[region] = _create_bucket(region)
 
     yield s3_buckets_dict
 
@@ -1111,7 +1109,7 @@ def s3_bucket_factory_shared(request):
 
 @pytest.fixture(scope="class")
 def s3_bucket(s3_bucket_factory_shared, region):
-    return s3_bucket_factory_shared.get(region).get("s3-bucket")
+    return s3_bucket_factory_shared.get(region)
 
 
 @pytest.fixture(scope="class")
@@ -1119,7 +1117,8 @@ def s3_bucket_key_prefix():
     return random_alphanumeric()
 
 
-def _upload_scheduler_plugin_definitions(request, s3_bucket, region) -> dict:
+@xdist_session_fixture(autouse=True)
+def upload_scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> dict:
     scheduler_definition_dict = {}
     tests_config = request.config.getoption("tests_config", default={})
     if tests_config:
@@ -1131,10 +1130,12 @@ def _upload_scheduler_plugin_definitions(request, s3_bucket, region) -> dict:
                 logging.info(
                     "Found scheduler-definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
                 )
-                scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
-                    scheduler_definition, s3_bucket, plugin_name, region
-                )
-                scheduler_definition_dict[plugin_name] = scheduler_plugin_definition_url
+                scheduler_definition_dict[plugin_name] = {}
+                for region, s3_bucket in s3_bucket_factory_shared.items():
+                    scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
+                        scheduler_definition, s3_bucket, plugin_name, region
+                    )
+                    scheduler_definition_dict[plugin_name].update({region: scheduler_plugin_definition_url})
             else:
                 logging.info(
                     "Found scheduler definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
@@ -1377,9 +1378,9 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 
 @pytest.fixture()
-def scheduler_plugin_configuration(request, scheduler, region, s3_bucket_factory_shared):
+def scheduler_plugin_configuration(request, scheduler, region, upload_scheduler_plugin_definitions):
     scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
-    scheduler_definition_url = s3_bucket_factory_shared.get(region).get("scheduler-definitions", {}).get(scheduler, {})
+    scheduler_definition_url = upload_scheduler_plugin_definitions.get(scheduler).get(region, {})
     if scheduler_definition_url:
         logging.info(
             "Overriding scheduler plugin (%s) scheduler-definition to be (%s)",
