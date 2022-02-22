@@ -45,9 +45,20 @@ def test_efa(
 
     # 32 instances are required to see performance differences in collective OSU benchmarks.
     max_queue_size = 32 if instance in osu_benchmarks_instances else 2
-    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
-    head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
+
+    if architecture == "x86_64":
+        head_node_instance = "c5.18xlarge"
+        multithreading_disabled = True
+    else:
+        head_node_instance = "c6g.16xlarge"
+        multithreading_disabled = False
+
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=multithreading_disabled)
+    cluster_config = pcluster_config_reader(
+        max_queue_size=max_queue_size,
+        head_node_instance=head_node_instance,
+        multithreading_disabled=multithreading_disabled,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
