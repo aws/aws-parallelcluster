@@ -47,8 +47,6 @@ def test_efa(
 
     # 32 instances are required to see performance differences in collective OSU benchmarks.
     max_queue_size = 32 if instance in osu_benchmarks_instances else 2
-    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
-    head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
 
     # Post-install script to use P4d targeted ODCR
     bucket_name = ""
@@ -57,8 +55,19 @@ def test_efa(
         bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
         bucket.upload_file(str(test_datadir / "run_instance_override.sh"), "run_instance_override.sh")
 
+    if architecture == "x86_64":
+        head_node_instance = "c5.18xlarge"
+        multithreading_disabled = True
+    else:
+        head_node_instance = "c6g.16xlarge"
+        multithreading_disabled = False
+
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=multithreading_disabled)
     cluster_config = pcluster_config_reader(
-        max_queue_size=max_queue_size, head_node_instance=head_node_instance, bucket_name=bucket_name
+        max_queue_size=max_queue_size,
+        head_node_instance=head_node_instance,
+        bucket_name=bucket_name,
+        multithreading_disabled=multithreading_disabled,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
