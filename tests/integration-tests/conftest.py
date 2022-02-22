@@ -493,7 +493,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks, scheduler_plugin_configuration):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_plugin_configuration):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -509,7 +509,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, benchmarks,
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(config_file="pcluster.config.yaml", **kwargs):
+    def _config_renderer(config_file="pcluster.config.yaml", benchmarks=None, **kwargs):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
@@ -554,7 +554,7 @@ def inject_additional_image_configs_settings(image_config, request):
 
 
 def inject_additional_config_settings(  # noqa: C901
-    cluster_config, request, region, benchmarks, scheduler_plugin_configuration=None
+    cluster_config, request, region, benchmarks=None, scheduler_plugin_configuration=None
 ):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)

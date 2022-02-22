@@ -786,22 +786,32 @@ def vpc(cfn_stacks_factory):
 Performance tests can run together with functionality tests, reusing clusters created by functionality test.
 
 To run performance test for a specific integration test, the following changes are required:
-1. Add `run_benchmarks` fixture to the test:
+1. Add `run_benchmarks` and `benchmarks` fixtures to the test:
 ```python
-def test_ad_integration(..., run_benchmarks):
+def test_feature(..., run_benchmarks, benchmarks):
     ...
 ```
-
-2. Decide the exact location in the test where the `run_benchmarks` should be called. The location is arbitrary. It can be the last line  of the test. Or if the test deletes/updates the cluster in the middle, you may want to call `run_benchmarks` before the deletes/updates.
+2. Add `benchmarks` parameter to `pcluster_config_reader`. This addition lets the `pcluster_config_reader` know benchmarks are used, therefore add placement groups and set larger max count in the configuration file.
 ```python
-def test_ad_integration(..., run_benchmarks):
+def test_feature(..., run_benchmarks, benchmarks):
+    ...
+    cluster_config = pcluster_config_reader(benchmarks=benchmarks)
+    ...
+```
+3. Decide the exact location in the test where the `run_benchmarks` should be called. The location is arbitrary. It can be the last line  of the test. Or if the test deletes/updates the cluster in the middle, you may want to call `run_benchmarks` before the deletes/updates.
+```python
+def test_feature(..., run_benchmarks, benchmarks):
+    ...
+    cluster_config = pcluster_config_reader(benchmarks=benchmarks)
     ...
     run_benchmarks(remote_command_executor, scheduler_commands)
     ...
 ```
 3. You may add more keyword arguments to the `run_benchmarks` calls. The keyword arguments will be added to the dimensions of CloudWatch metrics.
 ```python
-def test_ad_integration(..., run_benchmarks):
+def test_feature(..., run_benchmarks):
+    ...
+    cluster_config = pcluster_config_reader(benchmarks=benchmarks)
     ...
     run_benchmarks(remote_command_executor, scheduler_commands, diretory_type="MicrosoftAD")
     ...
@@ -812,8 +822,8 @@ def test_ad_integration(..., run_benchmarks):
 {%- import 'common.jinja2' as common -%}
 ---
 test-suites:
-  ad_integration:
-    test_ad_integration.py::test_ad_integration:
+  feature:
+    test_feature.py::test_feature:
       dimensions:
         - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -848,8 +858,8 @@ The current performance tests only support running OSU benchmarks. This section 
 {%- import 'common.jinja2' as common -%}
 ---
 test-suites:
-  ad_integration:
-    test_ad_integration.py::test_ad_integration:
+  feature:
+    test_feature.py::test_feature:
       dimensions:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}

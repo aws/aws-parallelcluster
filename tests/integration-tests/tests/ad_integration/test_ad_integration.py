@@ -537,6 +537,7 @@ def test_ad_integration(
     store_secret_in_secret_manager,
     clusters_factory,
     run_benchmarks,
+    benchmarks,
 ):
     """Verify AD integration works as expected."""
     head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
@@ -570,7 +571,7 @@ def test_ad_integration(
             directory_certificate_verification,
         )
     )
-    cluster_config = pcluster_config_reader(**config_params)
+    cluster_config = pcluster_config_reader(benchmarks=benchmarks, **config_params)
     cluster = clusters_factory(cluster_config)
 
     certificate_secret_arn = nlb_stack_parameters.get("CertificateSecretArn")
@@ -617,7 +618,9 @@ def test_ad_integration(
     _run_user_workloads(users, test_datadir, remote_command_executor)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], scheduler_commands, False)
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", **config_params)
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml", benchmarks=benchmarks, **config_params
+    )
     cluster.update(str(updated_config_file), force_update="true")
     # Reset stateful connection variables after the cluster update
     remote_command_executor = RemoteCommandExecutor(cluster)
