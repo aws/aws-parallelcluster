@@ -14,15 +14,13 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
-from tests.common.schedulers_common import get_scheduler_commands
-
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_multiple_nics(scheduler, region, pcluster_config_reader, clusters_factory):
+def test_multiple_nics(region, pcluster_config_reader, clusters_factory, scheduler_commands_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _test_head_node_nics(remote_command_executor, region)
     _test_compute_node_nics(cluster, region, remote_command_executor, scheduler_commands)

@@ -9,7 +9,7 @@ HeadNode:  # Head Node section without a KeyName will generate an warning
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  SlurmQueues:
+  {{ scheduler_prefix }}Queues:
     - Name: ondemand1
       Networking:
         SubnetIds:

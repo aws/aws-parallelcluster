@@ -19,7 +19,6 @@ from utils import get_compute_nodes_instance_ids
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.osu_common import run_individual_osu_benchmark
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
@@ -34,6 +33,7 @@ def test_efa(
     architecture,
     network_interfaces_count,
     mpi_variants,
+    scheduler_commands_factory,
 ):
     """
     Test all EFA Features.
@@ -50,7 +50,7 @@ def test_efa(
     cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")

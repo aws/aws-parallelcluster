@@ -33,7 +33,6 @@ from utils import generate_stack_name, render_jinja_template
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import get_sts_endpoint, retrieve_latest_ami
 
 NUM_USERS_TO_CREATE = 5
@@ -526,8 +525,7 @@ def _check_ssh_key_generation(user, scheduler_commands, generate_ssh_keys_for_us
 def test_ad_integration(
     region,
     scheduler,
-    instance,
-    os,
+    scheduler_commands_factory,
     pcluster_config_reader,
     directory_type,
     directory_protocol,
@@ -601,11 +599,21 @@ def test_ad_integration(
         additional_files={str(test_datadir / metric_publisher_script): remote_metric_publisher_script_path},
     )
 
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
     users = []
     for user_num in range(1, NUM_USERS_TO_TEST + 1):
-        users.append(ClusterUser(user_num, test_datadir, cluster, scheduler, remote_command_executor, ad_user_password))
+        users.append(
+            ClusterUser(
+                user_num,
+                test_datadir,
+                cluster,
+                scheduler,
+                remote_command_executor,
+                ad_user_password,
+                scheduler_commands_factory,
+            )
+        )
     _run_user_workloads(users, test_datadir, remote_command_executor)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], scheduler_commands, False)
@@ -613,7 +621,7 @@ def test_ad_integration(
     cluster.update(str(updated_config_file), force_update="true")
     # Reset stateful connection variables after the cluster update
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(scheduler, remote_command_executor)
     for user in users:
         user.reset_stateful_connection_objects(remote_command_executor)
     _check_ssh_key_generation(users[1], scheduler_commands, True)

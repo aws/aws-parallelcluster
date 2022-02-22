@@ -16,17 +16,16 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
 @pytest.mark.usefixtures("region", "os", "instance")
-def test_raid_performance_mode(scheduler, pcluster_config_reader, clusters_factory):
+def test_raid_performance_mode(pcluster_config_reader, clusters_factory, scheduler_commands_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     mount_dir = "/raid_dir"
     _test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
     _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=74)
@@ -34,12 +33,12 @@ def test_raid_performance_mode(scheduler, pcluster_config_reader, clusters_facto
 
 
 @pytest.mark.usefixtures("region", "os", "instance")
-def test_raid_fault_tolerance_mode(scheduler, pcluster_config_reader, clusters_factory):
+def test_raid_fault_tolerance_mode(pcluster_config_reader, clusters_factory, scheduler_commands_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     mount_dir = "/raid_dir"
     _test_raid_correctly_configured(remote_command_executor, raid_type="1", volume_size=35, raid_devices=2)
     _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)

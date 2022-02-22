@@ -7,8 +7,8 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: slurm
-  SlurmQueues:
+  Scheduler: {{ scheduler }}
+  {{ scheduler_prefix }}Queues:
     - Name: ondemand
       CapacityType: ONDEMAND
       Networking:
