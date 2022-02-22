@@ -122,6 +122,8 @@ def test_scheduler_plugin_integration(
     command_executor = RemoteCommandExecutor(cluster)
     # Test cluster configuration before cluster update
     _test_cluster_config(command_executor, before_update_cluster_config, PCLUSTER_CLUSTER_CONFIG)
+    # Test no errors in clusterstatusmgtd log
+    _test_no_errors_in_logs(command_executor)
     # Test compute fleet status update
     _test_compute_fleet_status_update(cluster, command_executor)
     # Test cluster update
@@ -167,8 +169,6 @@ def test_scheduler_plugin_integration(
     _test_tags(cluster, os)
     # Test get or update compute fleet_status_script
     _test_update_compute_fleet_status_script(command_executor)
-    # Test no errors in log
-    _test_no_errors_in_logs(command_executor)
     # Test invoke scheduler plugin event handler script
     _test_invoke_scheduler_plugin_event_handler_script(command_executor, compute_node, run_as_user)
     # Test computes are terminated on cluster deletion
