@@ -66,6 +66,7 @@ from utils import (
 )
 
 from tests.common.osu_common import run_osu_benchmarks
+from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
@@ -848,10 +849,12 @@ def get_availability_zones(region, credential):
 
 
 @xdist_session_fixture(autouse=True)
-def initialize_cli_creds(cfn_stacks_factory, request):
+def initialize_cli_creds(request):
     if request.config.getoption("use_default_iam_credentials"):
         logging.info("Using default IAM credentials to run pcluster commands")
         return
+
+    stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
@@ -871,10 +874,16 @@ def initialize_cli_creds(cfn_stacks_factory, request):
             stack = CfnStack(
                 name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
             )
-            cfn_stacks_factory.create_stack(stack)
+
+            stack_factory.create_stack(stack)
         cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
 
-    return cli_creds
+    yield cli_creds
+
+    if not request.config.getoption("no_delete"):
+        stack_factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -1065,30 +1074,12 @@ def s3_bucket_factory(request, region):
 
 
 @xdist_session_fixture(autouse=True)
-def s3_buckets(session_s3_bucket_factory, request):
-    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-    s3_buckets_dict = {}
-    for region in regions:
-        s3_bucket = session_s3_bucket_factory(region)
-        scheduler_definitions_dict = _upload_scheduler_plugin_definitions(request, s3_bucket, region)
-        s3_buckets_dict[region] = {"s3-bucket": s3_bucket, "scheduler-definitions": scheduler_definitions_dict}
+def s3_bucket_factory_shared(request):
+    """
+    Define a fixture to create S3 buckets, shared among session. One bucket per region will be created.
+    :return: a dictionary of buckets with region as key
+    """
 
-    return s3_buckets_dict
-
-
-@pytest.fixture(scope="class")
-def s3_bucket(s3_buckets, region):
-    return s3_buckets.get(region).get("s3-bucket")
-
-
-@pytest.fixture(scope="class")
-def s3_bucket_key_prefix():
-    return random_alphanumeric()
-
-
-@pytest.fixture(scope="session")
-def session_s3_bucket_factory(request):
-    """Define a fixture to manage the creation and destruction of S3 buckets."""
     created_buckets = []
 
     def _create_bucket(region):
@@ -1098,7 +1089,14 @@ def session_s3_bucket_factory(request):
         created_buckets.append((bucket_name, region))
         return bucket_name
 
-    yield _create_bucket
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    s3_buckets_dict = {}
+    for region in regions:
+        s3_bucket = _create_bucket(region)
+        scheduler_definitions_dict = _upload_scheduler_plugin_definitions(request, s3_bucket, region)
+        s3_buckets_dict[region] = {"s3-bucket": s3_bucket, "scheduler-definitions": scheduler_definitions_dict}
+
+    yield s3_buckets_dict
 
     for bucket in created_buckets:
         if request.config.getoption("no_delete"):
@@ -1109,6 +1107,16 @@ def session_s3_bucket_factory(request):
                 delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
             except Exception as e:
                 logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
+
+
+@pytest.fixture(scope="class")
+def s3_bucket(s3_bucket_factory_shared, region):
+    return s3_bucket_factory_shared.get(region).get("s3-bucket")
+
+
+@pytest.fixture(scope="class")
+def s3_bucket_key_prefix():
+    return random_alphanumeric()
 
 
 def _upload_scheduler_plugin_definitions(request, s3_bucket, region) -> dict:
@@ -1369,9 +1377,9 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 
 @pytest.fixture()
-def scheduler_plugin_configuration(request, scheduler, region, s3_buckets):
+def scheduler_plugin_configuration(request, scheduler, region, s3_bucket_factory_shared):
     scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
-    scheduler_definition_url = s3_buckets.get(region).get("scheduler-definitions", {}).get(scheduler, {})
+    scheduler_definition_url = s3_bucket_factory_shared.get(region).get("scheduler-definitions", {}).get(scheduler, {})
     if scheduler_definition_url:
         logging.info(
             "Overriding scheduler plugin (%s) scheduler-definition to be (%s)",
