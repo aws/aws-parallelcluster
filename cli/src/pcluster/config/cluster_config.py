@@ -36,6 +36,7 @@ from pcluster.constants import (
     MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
     NODE_BOOTSTRAP_TIMEOUT,
+    PLUGIN_INTERFACE_VERSION,
     SUPPORTED_OSES,
 )
 from pcluster.utils import (
@@ -120,6 +121,7 @@ from pcluster.validators.s3_validators import (
 )
 from pcluster.validators.scheduler_plugin_validators import (
     GrantSudoPrivilegesValidator,
+    PluginInterfaceVersionValidator,
     SchedulerPluginOsArchitectureValidator,
     SchedulerPluginRegionValidator,
     SudoPrivilegesValidator,
@@ -1881,6 +1883,13 @@ class SchedulerPluginDefinition(Resource):
         self.monitoring = monitoring
         self.system_users = system_users
         self.tags = tags
+
+    def _register_validators(self):
+        self._register_validator(
+            PluginInterfaceVersionValidator,
+            plugin_version=self.plugin_interface_version,
+            support_version=PLUGIN_INTERFACE_VERSION,
+        )
 
 
 class SchedulerPluginSettings(Resource):

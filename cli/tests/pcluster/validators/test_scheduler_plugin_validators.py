@@ -14,6 +14,7 @@ import pytest
 from pcluster.config.cluster_config import SchedulerPluginUser, SudoerConfiguration
 from pcluster.validators.scheduler_plugin_validators import (
     GrantSudoPrivilegesValidator,
+    PluginInterfaceVersionValidator,
     SchedulerPluginOsArchitectureValidator,
     SchedulerPluginRegionValidator,
     SudoPrivilegesValidator,
@@ -235,4 +236,20 @@ def test_supported_versions_validator(installed_version, supported_versions, exp
 )
 def test_queue_name_validator(user_name, expected_message):
     actual_failures = UserNameValidator().execute(user_name)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "plugin_version, support_version, expected_message",
+    [
+        ("1.0", "1.1", None),
+        ("1.1", "1.1", None),
+        ("1.1", "1.0", "The PluginInterfaceVersion '1.1' is not supported. Supported version is '1.0'."),
+        ("1.1", "2.0", "The PluginInterfaceVersion '1.1' is not supported. Supported version is '2.0'."),
+        ("2.3", "2.2", "The PluginInterfaceVersion '2.3' is not supported. Supported versions are '>=2.0, <= 2.2'."),
+        ("1.3", "2.5", "The PluginInterfaceVersion '1.3' is not supported. Supported versions are '>=2.0, <= 2.5'."),
+    ],
+)
+def test_plugin_interface_version_validator(plugin_version, support_version, expected_message):
+    actual_failures = PluginInterfaceVersionValidator().execute(plugin_version, support_version)
     assert_failure_messages(actual_failures, expected_message)

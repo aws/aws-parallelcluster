@@ -611,6 +611,8 @@ def test_scheduler_plugin_logs_schema(files, failure_message):
         ("1.0", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, None),
         (None, {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "Missing data for required field."),
         ("1.0", None, "Missing data for required field."),
+        ("1.2.0", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "String does not match expected pattern."),
+        ("1", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "String does not match expected pattern."),
     ],
 )
 def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, events, failure_message):

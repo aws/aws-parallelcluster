@@ -18,6 +18,7 @@ import boto3
 import pytest
 import yaml
 from assertpy import assert_that
+from constants import PLUGIN_INTERFACE_VERSION
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from tags_utils import (
@@ -106,6 +107,7 @@ def test_scheduler_plugin_integration(
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],
         account_id=account_id,
         run_as_user=run_as_user,
+        plugin_interface_version=PLUGIN_INTERFACE_VERSION,
     )
     cluster = clusters_factory(before_update_cluster_config)
     cluster_config = pcluster_config_reader(
@@ -117,6 +119,7 @@ def test_scheduler_plugin_integration(
         account_id=account_id,
         run_as_user=run_as_user,
         compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
+        plugin_interface_version=PLUGIN_INTERFACE_VERSION,
     )
     # Command executor
     command_executor = RemoteCommandExecutor(cluster)
