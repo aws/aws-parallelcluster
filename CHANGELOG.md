@@ -14,10 +14,11 @@ CHANGELOG
 - Upgrade NVIDIA driver to version 470.103.01.
 - Upgrade CUDA library to version 11.4.4.
 - Upgrade NVIDIA Fabric manager to version 470.103.01.
+- Extend head node creation timeout to 1h.
 
 **BUG FIXES**
 - Fix DCV connection through browsers.
-- Fix Tags in number interpreted as integer.
+- Fix YAML quoting to prevent custom Tags being parsed as numbers.
 
 2.11.4
 -----
