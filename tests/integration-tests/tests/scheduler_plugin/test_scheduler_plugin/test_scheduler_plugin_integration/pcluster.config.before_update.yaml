@@ -11,7 +11,7 @@ Scheduling:
   SchedulerSettings:
     GrantSudoPrivileges: true
     SchedulerDefinition:
-      PluginInterfaceVersion: "1.0"
+      PluginInterfaceVersion: '{{ plugin_interface_version }}'
       Metadata:
         Version: 1.0.0
         Name: my-scheduler
