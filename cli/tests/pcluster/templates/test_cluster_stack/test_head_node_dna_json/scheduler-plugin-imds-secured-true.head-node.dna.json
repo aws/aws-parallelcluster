@@ -37,6 +37,7 @@
     "stack_name": "clustername",
     "volume": "NONE",
     "scheduler_plugin_substack_arn": "{'Ref': 'SchedulerPluginStack'}",
-    "stack_arn": "{'Ref': 'AWS::StackId'}"
+    "stack_arn": "{'Ref': 'AWS::StackId'}",
+    "compute_node_bootstrap_timeout": 1800
   }
 }

@@ -23,3 +23,7 @@ Scheduling:
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1000
+    ComputeNodeBootstrapTimeout: 1200

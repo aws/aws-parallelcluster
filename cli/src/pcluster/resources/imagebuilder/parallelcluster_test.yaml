@@ -264,6 +264,19 @@ phases:
               done
               echo "SchedulerPlugin Group test passed"
 
+      - name: SchedulerPluginEventHandlerScript
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              Script=/usr/local/sbin/invoke-scheduler-plugin-event-handler.sh
+              if [ -x ${Script} ]; then
+                echo "Scheduler plugin handler script '${Script}' is executable."
+              else
+                echo "Scheduler plugin handler script '${Script}' is not executable." && exit 1
+              fi
+
       - name: Log4jPatcher
         action: ExecuteBash
         inputs:

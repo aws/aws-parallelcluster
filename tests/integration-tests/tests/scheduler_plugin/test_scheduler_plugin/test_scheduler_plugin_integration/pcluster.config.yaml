@@ -123,3 +123,7 @@ SharedStorage:
 Tags:
   - Key: ConfigFileTag
     Value: ConfigFileTagValue
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1700
+    ComputeNodeBootstrapTimeout: {{compute_node_bootstrap_timeout}}

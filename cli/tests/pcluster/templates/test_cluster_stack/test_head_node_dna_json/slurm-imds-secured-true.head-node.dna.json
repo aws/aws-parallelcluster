@@ -41,6 +41,7 @@
     "volume": "NONE",
     "use_private_hostname": "false",
     "scheduler_plugin_substack_arn": "",
-    "stack_arn": "{'Ref': 'AWS::StackId'}"
+    "stack_arn": "{'Ref': 'AWS::StackId'}",
+    "compute_node_bootstrap_timeout": 1800
   }
 }

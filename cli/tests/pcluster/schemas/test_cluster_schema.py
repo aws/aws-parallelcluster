@@ -21,7 +21,7 @@ from marshmallow.validate import ValidationError
 from yaml.parser import ParserError
 
 from pcluster.aws.common import AWSClientError
-from pcluster.constants import SUPPORTED_OSES
+from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
     HeadNodeIamSchema,
@@ -39,6 +39,7 @@ from pcluster.schemas.cluster_schema import (
     SchedulerPluginUserSchema,
     SchedulingSchema,
     SharedStorageSchema,
+    TimeoutsSchema,
 )
 from pcluster.utils import replace_url_parameters
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -810,3 +811,33 @@ def test_scheduler_plugin_settings_schema(
             assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(grant_sudo_privileges)
         else:
             assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(False)
+
+
+@pytest.mark.parametrize(
+    "head_node_bootstrap_timeout, compute_node_bootstrap_timeout, failure_message",
+    [
+        (1800, None, None),
+        (1200, 1000, None),
+        (-1, None, "Must be greater than or equal to 1."),
+        (None, -1, "Must be greater than or equal to 1."),
+        (None, None, None),
+    ],
+)
+def test_timeouts_schema(head_node_bootstrap_timeout, compute_node_bootstrap_timeout, failure_message):
+    timeouts_schema = {}
+    if head_node_bootstrap_timeout:
+        timeouts_schema["HeadNodeBootstrapTimeout"] = head_node_bootstrap_timeout
+    if compute_node_bootstrap_timeout:
+        timeouts_schema["ComputeNodeBootstrapTimeout"] = compute_node_bootstrap_timeout
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            TimeoutsSchema().load(timeouts_schema)
+    else:
+        timeouts = TimeoutsSchema().load(timeouts_schema)
+        assert_that(timeouts.head_node_bootstrap_timeout).is_equal_to(
+            head_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
+        )
+        assert_that(timeouts.compute_node_bootstrap_timeout).is_equal_to(
+            compute_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
+        )

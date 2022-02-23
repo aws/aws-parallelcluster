@@ -99,6 +99,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Ssh,
     SudoerConfiguration,
+    Timeouts,
 )
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
@@ -873,12 +874,29 @@ class AmiSearchFiltersSchema(BaseSchema):
         return AmiSearchFilters(**data)
 
 
+class TimeoutsSchema(BaseSchema):
+    """Represent the schema of the Timeouts section."""
+
+    head_node_bootstrap_timeout = fields.Int(
+        validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+    compute_node_bootstrap_timeout = fields.Int(
+        validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Timeouts(**data)
+
+
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of Dev Setting."""
 
     cluster_template = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     ami_search_filters = fields.Nested(AmiSearchFiltersSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    timeouts = fields.Nested(TimeoutsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

@@ -135,3 +135,5 @@ DevSettings:
     ExtraChefAttributes: '{ "cluster" : { "custom_node_package" : "https://s3.eu-west-1.amazonaws.com/cfncluster-fdm-build-artifacts-eu-west-1/node/aws-parallelcluster-node-2.8.1.tgz", "skip_install_recipes": "no" } }'
   AwsBatchCliPackage: https://batchcli.url
   NodePackage: https://nodepackage.url
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1000  # Default 1800 (seconds)

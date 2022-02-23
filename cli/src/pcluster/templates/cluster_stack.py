@@ -54,6 +54,7 @@ from pcluster.config.cluster_config import (
 from pcluster.constants import (
     CW_LOG_GROUP_NAME_PREFIX,
     CW_LOGS_CFN_PARAM_NAME,
+    NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
@@ -818,7 +819,13 @@ class ClusterCdkStack(Stack):
     def _add_wait_condition(self):
         wait_condition_handle = cfn.CfnWaitConditionHandle(self, id="HeadNodeWaitConditionHandle" + self.timestamp)
         wait_condition = cfn.CfnWaitCondition(
-            self, id="HeadNodeWaitCondition" + self.timestamp, count=1, handle=wait_condition_handle.ref, timeout="1800"
+            self,
+            id="HeadNodeWaitCondition" + self.timestamp,
+            count=1,
+            handle=wait_condition_handle.ref,
+            timeout=str(
+                get_attr(self.config, "dev_settings.timeouts.head_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT)
+            ),
         )
         if self.scheduler_plugin_stack:
             wait_condition.add_depends_on(self.scheduler_plugin_stack)
@@ -957,6 +964,9 @@ class ClusterCdkStack(Stack):
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                     "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
+                    "compute_node_bootstrap_timeout": get_attr(
+                        self.config, "dev_settings.timeouts.compute_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT
+                    ),
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
                         if self._condition_is_slurm()
@@ -1520,6 +1530,13 @@ class ComputeFleetConstruct(Construct):
                                 ).lower(),
                                 "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
                                 "DirectoryServiceEnabled": str(self._config.directory_service is not None).lower(),
+                                "Timeout": str(
+                                    get_attr(
+                                        self._config,
+                                        "dev_settings.timeouts.compute_node_bootstrap_timeout",
+                                        NODE_BOOTSTRAP_TIMEOUT,
+                                    )
+                                ),
                             },
                             **get_common_user_data_env(queue, self._config),
                         },
