@@ -541,7 +541,7 @@ class TorqueCommands(SchedulerCommands):
         raise NotImplementedError
 
 
-def get_scheduler_commands(scheduler, remote_command_executor):
+def get_scheduler_commands(remote_command_executor, scheduler):
     scheduler_commands = {
         "awsbatch": AWSBatchCommands,
         "slurm": SlurmCommands,
