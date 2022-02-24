@@ -8,24 +8,18 @@ test-suites:
   runtime_bake:
     test_runtime_bake.py::test_runtime_bake: # arm instance tests are temporarily skipped
       dimensions:
-        {%- for os, scheduler in [("alinux2", "slurm")] %}
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["{{ os }}"]
-          schedulers: ["{{ scheduler }}"]
-        {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1804", "slurm")] %}
+          oss: ["alinux2", "centos7"]
+          schedulers: ["slurm"]
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["{{ os }}"]
-          schedulers: ["{{ scheduler }}"]
-        {%- endfor %}
-#        {%- for os, scheduler in [("ubuntu1804", "slurm"), ("alinux2", "slurm")] %}
+          oss: ["ubuntu1804", "ubuntu2004"]
+          schedulers: ["slurm"]
 #        - regions: ["us-east-1"]
 #          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-#          oss: ["{{ os }}"]
-#          schedulers: ["{{ scheduler }}"]
-#        {%- endfor %}
+#          oss: ["ubuntu1804", "alinux2"]
+#          schedulers: ["slurm"]
   scaling:
     test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
       dimensions:
