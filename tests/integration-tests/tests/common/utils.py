@@ -29,7 +29,7 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     },
     "ubuntu2004": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-*-server-*",
-        "owners": ["099720109477"],
+        "owners": ["099720109477", "513442679011", "837727238323"],
     },
 }
 
