@@ -399,6 +399,10 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
+      - regions: ["eu-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
+        schedulers: ["slurm-plugin"]
   test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
     dimensions:
       - regions: ["ap-southeast-2"]
@@ -415,6 +419,10 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
+      - regions: ["me-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm-plugin"]
       - regions: [ "us-east-2" ]
         instances: [{{ common.instance("instance_type_1") }}]
         oss: [ "alinux2" ]
@@ -424,13 +432,13 @@ schedulers:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"]
+        schedulers: ["slurm", "slurm-plugin"]
   test_slurm.py::test_slurm_protected_mode:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"]
+        schedulers: ["slurm", "slurm-plugin"]
 spot:
   test_spot.py::test_spot_default:
     dimensions:
