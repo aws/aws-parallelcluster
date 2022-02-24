@@ -10,4 +10,14 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-source /opt/parallelcluster/pyenv/versions/cookbook_virtualenv/bin/activate && supervisorctl start clustermgtd
+
+PIDS=($(pgrep supervisord$))
+for PID in "${PIDS[@]}"
+do
+    CMD_LINE=($(ps -p ${PID} -o args --no-headers))
+    # CMD_LINE is in the form
+    # /opt/parallelcluster/shared/scheduler-plugin/pyenv/versions/3.9.9/envs/scheduler_plugin_virtualenv/bin/python3.9 /opt/parallelcluster/shared/scheduler-plugin/pyenv/versions/3.9.9/envs/scheduler_plugin_virtualenv/bin/supervisord -n -c /opt/parallelcluster/scheduler-plugin/supervisord.conf
+    if ${CMD_LINE[0]} $(dirname ${CMD_LINE[1]})/supervisorctl -c ${CMD_LINE[4]} status clustermgtd &>/dev/null; then
+        ${CMD_LINE[0]} $(dirname ${CMD_LINE[1]})/supervisorctl -c ${CMD_LINE[4]} start clustermgtd
+    fi
+done
