@@ -522,6 +522,7 @@ def _check_ssh_key_generation(user, scheduler_commands, generate_ssh_keys_for_us
         ("MicrosoftAD", "ldaps", True),
     ],
 )
+@pytest.mark.usefixtures("os", "instance")
 def test_ad_integration(
     region,
     scheduler,

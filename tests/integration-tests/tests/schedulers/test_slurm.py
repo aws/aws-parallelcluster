@@ -110,7 +110,7 @@ def test_slurm(
     )
 
 
-@pytest.mark.usefixtures("os", "instance", "scheduler")
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_slurm_pmix(pcluster_config_reader, clusters_factory):
     """Test interactive job submission using PMIx."""
     num_computes = 2

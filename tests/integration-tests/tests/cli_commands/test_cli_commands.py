@@ -34,7 +34,7 @@ from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_insta
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
-@pytest.mark.usefixtures("region", "instance")
+@pytest.mark.usefixtures("instance")
 def test_slurm_cli_commands(
     request, scheduler, region, os, pcluster_config_reader, clusters_factory, s3_bucket_factory
 ):

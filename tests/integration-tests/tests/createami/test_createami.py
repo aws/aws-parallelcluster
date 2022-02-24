@@ -33,9 +33,9 @@ from tests.common.utils import (
 )
 
 
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_invalid_config(
     region,
-    instance,
     os,
     pcluster_config_reader,
     architecture,
@@ -83,9 +83,9 @@ def test_invalid_config(
     assert_that(suppressed.message).contains("Request would have succeeded")
 
 
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_build_image(
     region,
-    instance,
     os,
     pcluster_config_reader,
     architecture,
@@ -385,9 +385,9 @@ def _test_build_image_success(image):
     assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
 
 
+@pytest.mark.usefixtures("os", "scheduler")
 def test_build_image_wrong_pcluster_version(
     region,
-    os,
     instance,
     pcluster_config_reader,
     architecture,

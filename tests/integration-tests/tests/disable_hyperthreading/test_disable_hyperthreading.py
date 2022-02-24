@@ -12,6 +12,7 @@
 import logging
 import re
 
+import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
@@ -19,6 +20,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.utils import fetch_instance_slots
 
 
+@pytest.mark.usefixtures("os")
 def test_hit_disable_hyperthreading(
     region,
     scheduler,
