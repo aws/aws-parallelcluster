@@ -403,8 +403,8 @@ def _test_cluster_config(command_executor, cluster_config, remote_config):
         assert_that(
             source_config.get("Scheduling").get("SchedulerSettings").get("SchedulerDefinition").get("Events")
         ).is_equal_to(target_config.get("Scheduling").get("SchedulerSettings").get("SchedulerDefinition").get("Events"))
-        assert_that(source_config.get("Scheduling").get("SchedulerQeueus")).is_equal_to(
-            target_config.get("Scheduling").get("SchedulerQeueus")
+        assert_that(source_config.get("Scheduling").get("SchedulerQueues")).is_equal_to(
+            target_config.get("Scheduling").get("SchedulerQueues")
         )
         assert_that(
             source_config.get("Scheduling").get("SchedulerSettings").get("SchedulerDefinition").get("SystemUsers")
