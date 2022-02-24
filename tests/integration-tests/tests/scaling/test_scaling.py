@@ -22,7 +22,7 @@ from tests.common.scaling_common import get_compute_nodes_allocation
 from tests.schedulers.test_slurm import _assert_job_state
 
 
-@pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.usefixtures("os", "instance")
 def test_multiple_jobs_submission(
     scheduler,
     region,

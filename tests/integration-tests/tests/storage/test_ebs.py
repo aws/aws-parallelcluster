@@ -45,12 +45,11 @@ def test_ebs_single(
     _test_root_volume_encryption(cluster, os, region, scheduler, encrypted=True)
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_ebs_snapshot(
     request,
     vpc_stacks,
     region,
-    scheduler,
     pcluster_config_reader,
     snapshots_factory,
     clusters_factory,

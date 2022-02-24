@@ -26,7 +26,7 @@ from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import generate_random_string, retrieve_latest_ami
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
@@ -352,7 +352,7 @@ def _check_extra_json(command_executor, slurm_commands, host, expected_value):
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader()
@@ -376,7 +376,7 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     _verify_initialization(region, cluster, updated_config)
 
 
-@pytest.mark.usefixtures("instance")
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir, request):
     # Create cluster with initial configuration
     ec2 = boto3.client("ec2", region)

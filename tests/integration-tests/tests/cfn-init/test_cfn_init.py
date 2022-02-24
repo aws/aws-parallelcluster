@@ -17,7 +17,7 @@ from utils import check_status
 from tests.common.assertions import wait_for_num_instances_in_cluster, wait_instance_replaced_or_terminating
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_replace_compute_on_failure(
     region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir, scheduler_commands_factory
 ):

@@ -21,7 +21,7 @@ from tests.common.schedulers_common import AWSBatchCommands
 
 @pytest.mark.batch_dockerfile_deps
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog, region):
+def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog):
     """
     Test all AWS Batch related features.
 

@@ -25,7 +25,7 @@ from tests.common.utils import get_default_vpc_security_group, retrieve_latest_a
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
-@pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
     """
     Test when compute subnet is in a different AZ from head node subnet.
@@ -44,7 +44,7 @@ def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_st
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
     """
     Test when compute subnet is in the same AZ as head node subnet.
@@ -63,7 +63,7 @@ def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_existing_efs(
     region,
     efs_stack,

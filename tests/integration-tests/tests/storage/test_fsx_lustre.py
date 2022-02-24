@@ -53,7 +53,7 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
     ],
 )
-@pytest.mark.usefixtures("instance")
+@pytest.mark.usefixtures("os", "instance")
 def test_fsx_lustre_configuration_options(
     deployment_type,
     per_unit_storage_throughput,
@@ -133,7 +133,7 @@ def _test_fsx_lustre_configuration_options(
     _test_data_compression_type(data_compression_type, fsx)
 
 
-@pytest.mark.usefixtures("instance")
+@pytest.mark.usefixtures("os", "instance")
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
@@ -184,7 +184,7 @@ def _test_fsx_lustre(
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
-@pytest.mark.usefixtures("instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, scheduler_commands_factory):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
@@ -251,7 +251,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
     _test_delete_manual_backup(manual_backup, region)
 
 
-@pytest.mark.usefixtures("instance")
+@pytest.mark.usefixtures("os", "instance")
 def test_existing_fsx(
     region,
     fsx_factory,

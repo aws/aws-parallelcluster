@@ -12,6 +12,7 @@
 import logging
 
 import boto3
+import pytest
 from assertpy import assert_that
 from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
@@ -19,6 +20,7 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.assertions import assert_no_errors_in_logs
 
 
+@pytest.mark.usefixtures("os", "instance")
 def test_intel_hpc(
     region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
 ):

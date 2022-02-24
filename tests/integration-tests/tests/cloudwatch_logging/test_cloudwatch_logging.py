@@ -18,6 +18,7 @@ from os import environ
 from pathlib import Path
 
 import boto3
+import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -633,6 +634,7 @@ def get_config_param_vals():
     return {"enable": "true", "retention_days": retention_days, "queue_size": queue_size}
 
 
+@pytest.mark.usefixtures("instance")
 def test_cloudwatch_logging(
     region, scheduler, os, pcluster_config_reader, test_datadir, clusters_factory, scheduler_commands_factory
 ):

@@ -12,11 +12,13 @@
 import logging
 import re
 
+import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 
-def test_arm_pl(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
+@pytest.mark.usefixtures("region", "instance", "scheduler")
+def test_arm_pl(os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Arm Performance Library"""
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)

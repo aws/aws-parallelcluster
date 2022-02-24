@@ -51,7 +51,7 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
     )
 
 
-@pytest.mark.usefixtures("region", "instance", "os")
+@pytest.mark.usefixtures("region", "instance", "os", "scheduler")
 def test_mpi_ssh(pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
