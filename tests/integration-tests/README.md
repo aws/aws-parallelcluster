@@ -18,14 +18,14 @@ config generation.
 To run the integration tests you have to use Python >= 3.7.
 
 Before executing integration tests it is required to install all the Python dependencies required by the framework.
-In order to do that simply run the following command:
+In order to do that simply run the following commands:
 ```bash
+cd tests/integration-tests
 pip install -r tests/integration-tests/requirements.txt
 ```
 
 After that you can run the CLI by simply executing the following
 ```
-cd tests/integration-tests
 python -m test_runner --help
 ```
 
