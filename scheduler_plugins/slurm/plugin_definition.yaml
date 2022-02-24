@@ -2,7 +2,7 @@ PluginInterfaceVersion: "1.0"
 Metadata:
   Scheduler:
     Name: Slurm
-    Version: 21.08.5
+    Version: 21.08.6
   Author: fdm
   Documentation: link
   License: link
