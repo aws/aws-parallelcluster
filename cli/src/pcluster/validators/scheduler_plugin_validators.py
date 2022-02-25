@@ -17,6 +17,8 @@ from pkg_resources import packaging
 from pcluster.utils import get_attr
 from pcluster.validators.common import FailureLevel, Validator
 
+USER_NAME_REGEX = r"^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$"
+
 
 class SudoPrivilegesValidator(Validator):
     """Sudo Privileges Validator."""
@@ -131,3 +133,18 @@ class SupportedVersionsValidator(Validator):
                     "{1}.".format(installed_version, supported_versions_string),
                     FailureLevel.ERROR,
                 )
+
+
+class UserNameValidator(Validator):
+    """Validate queue name length and format."""
+
+    def _validate(self, user_name):
+        match = re.match(USER_NAME_REGEX, user_name)
+        if not match:
+            self._add_failure(
+                (
+                    f"Invalid SystemUser name '{user_name}'. SystemUser name must match the following pattern: "
+                    f"{USER_NAME_REGEX}"
+                ),
+                FailureLevel.ERROR,
+            )

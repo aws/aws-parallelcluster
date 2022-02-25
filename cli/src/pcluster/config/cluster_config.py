@@ -124,6 +124,7 @@ from pcluster.validators.scheduler_plugin_validators import (
     SchedulerPluginRegionValidator,
     SudoPrivilegesValidator,
     SupportedVersionsValidator,
+    UserNameValidator,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -1846,6 +1847,12 @@ class SchedulerPluginUser(Resource):
         self.name = name
         self.enable_imds = Resource.init_param(enable_imds, default=False)
         self.sudoer_configuration = sudoer_configuration
+
+    def _register_validators(self):
+        self._register_validator(
+            UserNameValidator,
+            user_name=self.name,
+        )
 
 
 class SchedulerPluginDefinition(Resource):
