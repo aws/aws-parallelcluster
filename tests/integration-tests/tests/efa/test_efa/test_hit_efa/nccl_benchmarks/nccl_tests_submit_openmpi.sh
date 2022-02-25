@@ -5,7 +5,11 @@
 
 
 module load openmpi
+
+# The following variables must be aligned with those in init_nccl_benchmarks.sh
+NCCL_BENCHMARKS_VERSION='2.0.0'
 NCCL_VERSION='2.7.8-1'
+
 mpirun \
 -x FI_PROVIDER="efa" \
 -x FI_EFA_USE_DEVICE_RDMA=1 \
@@ -14,4 +18,4 @@ mpirun \
 -x NCCL_ALGO=ring \
 -x NCCL_DEBUG=WARNING \
 --mca pml ^cm --mca btl tcp,self --mca btl_tcp_if_exclude lo,docker0 --bind-to none \
-/shared/openmpi/nccl-tests-2.10.0/build/all_reduce_perf -b 8 -e 1G -f 2 -g 1 -c 1 -n 100 > /shared/nccl_tests.out
+/shared/openmpi/nccl-tests-${NCCL_BENCHMARKS_VERSION}/build/all_reduce_perf -b 8 -e 1G -f 2 -g 1 -c 1 -n 100 > /shared/nccl_tests.out
