@@ -51,9 +51,10 @@ def test_hit_no_cluster_dns_mpi(
         remote_command_executor,
         slots_per_instance,
         scheduler,
-        region,
-        cluster.cfn_name,
-        scaledown_idletime,
+        scheduler_commands,
+        region=region,
+        stack_name=cluster.cfn_name,
+        scaledown_idletime=scaledown_idletime,
         verify_scaling=False,
     )
 
@@ -84,6 +85,7 @@ def test_existing_hosted_zone(
         remote_command_executor,
         slots_per_instance=fetch_instance_slots(region, instance),
         scheduler=scheduler,
+        scheduler_commands=scheduler_commands,
         region=region,
         stack_name=cluster.cfn_name,
         scaledown_idletime=3,
