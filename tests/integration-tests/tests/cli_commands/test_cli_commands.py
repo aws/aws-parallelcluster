@@ -82,6 +82,7 @@ def _test_create_cluster(clusters_factory, cluster_config, request):
         "region": cluster.region,
         "version": get_installed_parallelcluster_version(),
         "clusterStatus": "CREATE_IN_PROGRESS",
+        "scheduler": {"type": "slurm"},
     }
     assert_that(cluster.creation_response.get("cluster")).is_equal_to(expected_creation_response)
     _test_list_cluster(cluster.name, "CREATE_IN_PROGRESS")
@@ -200,6 +201,7 @@ def _test_describe_cluster(cluster):
     assert_that(cluster_info).contains("cloudformationStackArn")
     assert_that(cluster_info).contains("creationTime")
     assert_that(cluster_info).contains("clusterConfiguration")
+    assert_that(cluster_info).contains("scheduler")
 
 
 def _test_list_cluster(cluster_name, expected_status):
@@ -217,6 +219,7 @@ def _test_list_cluster(cluster_name, expected_status):
     found_cluster = _find_cluster_with_pagination(cmd_args, cluster_name)
     assert_that(found_cluster).is_not_none()
     assert_that(found_cluster["cloudformationStackStatus"]).is_equal_to(expected_status)
+    assert_that(found_cluster["scheduler"]).is_equal_to({"type": "slurm"})
 
 
 def _find_cluster_with_pagination(cmd_args, cluster_name):

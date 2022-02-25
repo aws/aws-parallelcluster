@@ -29,8 +29,10 @@ from pcluster_client.model_utils import (  # noqa: F401
 def lazy_import():
     from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
     from pcluster_client.model.cluster_status import ClusterStatus
+    from pcluster_client.model.scheduler import Scheduler
     globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
     globals()['ClusterStatus'] = ClusterStatus
+    globals()['Scheduler'] = Scheduler
 
 
 class ClusterInfoSummary(ModelNormal):
@@ -90,6 +92,7 @@ class ClusterInfoSummary(ModelNormal):
             'cloudformation_stack_arn': (str,),  # noqa: E501
             'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cluster_status': (ClusterStatus,),  # noqa: E501
+            'scheduler': (Scheduler,),  # noqa: E501
         }
 
     @cached_property
@@ -104,6 +107,7 @@ class ClusterInfoSummary(ModelNormal):
         'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
         'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
         'cluster_status': 'clusterStatus',  # noqa: E501
+        'scheduler': 'scheduler',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -118,7 +122,7 @@ class ClusterInfoSummary(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, cluster_name, region, version, cloudformation_stack_arn, cloudformation_stack_status, cluster_status, *args, **kwargs):  # noqa: E501
+    def __init__(self, cluster_name, region, version, cloudformation_stack_arn, cloudformation_stack_status, cluster_status, scheduler, *args, **kwargs):  # noqa: E501
         """ClusterInfoSummary - a model defined in OpenAPI
 
         Args:
@@ -128,6 +132,7 @@ class ClusterInfoSummary(ModelNormal):
             cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
             cloudformation_stack_status (CloudFormationStackStatus):
             cluster_status (ClusterStatus):
+            scheduler (Scheduler):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -191,6 +196,7 @@ class ClusterInfoSummary(ModelNormal):
         self.cloudformation_stack_arn = cloudformation_stack_arn
         self.cloudformation_stack_status = cloudformation_stack_status
         self.cluster_status = cluster_status
+        self.scheduler = scheduler
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

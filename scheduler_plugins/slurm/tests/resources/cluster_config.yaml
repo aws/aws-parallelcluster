@@ -12,13 +12,11 @@ Scheduling:
     SchedulerDefinition:
       PluginInterfaceVersion: "1.0"
       Metadata:
-        Scheduler:
-          Name: Slurm
-          Version: 20.11.8
         Author: fdm
         Documentation: link
         License: link
         Version: 1.0.0
+        Name: Slurm
       Requirements:
         RequiresSudoPrivileges: true
       ClusterInfrastructure:

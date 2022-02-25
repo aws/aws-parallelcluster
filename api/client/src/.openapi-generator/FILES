@@ -57,9 +57,11 @@ docs/ListImagesResponseContent.md
 docs/ListOfficialImagesResponseContent.md
 docs/LogEvent.md
 docs/LogStream.md
+docs/Metadata.md
 docs/NodeType.md
 docs/NotFoundExceptionResponseContent.md
 docs/RequestedComputeFleetStatus.md
+docs/Scheduler.md
 docs/StackEvent.md
 docs/Tag.md
 docs/UnauthorizedClientErrorResponseContent.md
@@ -133,9 +135,11 @@ pcluster_client/model/list_images_response_content.py
 pcluster_client/model/list_official_images_response_content.py
 pcluster_client/model/log_event.py
 pcluster_client/model/log_stream.py
+pcluster_client/model/metadata.py
 pcluster_client/model/node_type.py
 pcluster_client/model/not_found_exception_response_content.py
 pcluster_client/model/requested_compute_fleet_status.py
+pcluster_client/model/scheduler.py
 pcluster_client/model/stack_event.py
 pcluster_client/model/tag.py
 pcluster_client/model/unauthorized_client_error_response_content.py

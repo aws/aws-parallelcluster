@@ -30,6 +30,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from marshmallow import ValidationError
 
+from pcluster.api.models import Metadata
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError, get_region
 from pcluster.config.cluster_config import BaseClusterConfig, SchedulerPluginScheduling, SlurmScheduling, Tag
@@ -1175,3 +1176,8 @@ class Cluster:
                     f"Error when validating scheduler plugin template '{scheduler_plugin_template}': "
                     f"checksum: {actual_checksum} does not match expected one: {checksum}"
                 )
+
+    def get_plugin_metadata(self):
+        """Get the metadata name and version used for the response of DescribeCluster when the scheduler is plugin."""
+        full_metadata = get_attr(self.config, "scheduling.settings.scheduler_definition.metadata")
+        return Metadata(name=full_metadata.get("Name"), version=full_metadata.get("Version")) if full_metadata else None

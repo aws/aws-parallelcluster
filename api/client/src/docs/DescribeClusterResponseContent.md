@@ -9,6 +9,7 @@ Name | Type | Description | Notes
 **version** | **str** | ParallelCluster version used to create the cluster. | 
 **cloud_formation_stack_status** | [**CloudFormationStackStatus**](CloudFormationStackStatus.md) |  | 
 **cluster_status** | [**ClusterStatus**](ClusterStatus.md) |  | 
+**scheduler** | [**Scheduler**](Scheduler.md) |  | 
 **cloudformation_stack_arn** | **str** | ARN of the main CloudFormation stack. | 
 **creation_time** | **datetime** | Timestamp representing the cluster creation time. | 
 **last_updated_time** | **datetime** | Timestamp representing the last cluster update time. | 
