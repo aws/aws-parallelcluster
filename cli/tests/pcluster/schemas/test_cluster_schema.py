@@ -521,7 +521,7 @@ def test_scheduler_plugin_user_schema(name, enable_imds, failure_message):
         scheduler_plugin_user_schema["EnableImds"] = enable_imds
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SchedulerPluginResourcesSchema().load(scheduler_plugin_user_schema)
+            SchedulerPluginUserSchema().load(scheduler_plugin_user_schema)
     else:
         scheduler_plugin_user = SchedulerPluginUserSchema().load(scheduler_plugin_user_schema)
         assert_that(scheduler_plugin_user.name).is_equal_to(name)

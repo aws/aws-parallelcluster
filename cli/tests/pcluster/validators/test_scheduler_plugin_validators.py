@@ -18,6 +18,7 @@ from pcluster.validators.scheduler_plugin_validators import (
     SchedulerPluginRegionValidator,
     SudoPrivilegesValidator,
     SupportedVersionsValidator,
+    UserNameValidator,
 )
 from tests.pcluster.validators.utils import assert_failure_messages
 
@@ -215,4 +216,23 @@ def test_scheduler_plugin_region_validator(region, supported_regions, expected_m
 )
 def test_supported_versions_validator(installed_version, supported_versions, expected_message):
     actual_failures = SupportedVersionsValidator().execute(installed_version, supported_versions)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "user_name, expected_message",
+    [
+        ("user1", None),
+        ("test1\ntest2", "Invalid SystemUser name"),
+        (
+            """ |
+             test1
+             test2
+             """,
+            "Invalid SystemUser name",
+        ),
+    ],
+)
+def test_queue_name_validator(user_name, expected_message):
+    actual_failures = UserNameValidator().execute(user_name)
     assert_failure_messages(actual_failures, expected_message)
