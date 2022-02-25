@@ -53,7 +53,7 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
     ],
 )
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_fsx_lustre_configuration_options(
     deployment_type,
     per_unit_storage_throughput,
@@ -63,7 +63,7 @@ def test_fsx_lustre_configuration_options(
     s3_bucket_factory,
     clusters_factory,
     test_datadir,
-    scheduler,
+    scheduler_commands_factory,
     storage_type,
     drive_cache_type,
     data_compression_type,
@@ -92,7 +92,7 @@ def test_fsx_lustre_configuration_options(
     _test_fsx_lustre_configuration_options(
         cluster,
         region,
-        scheduler,
+        scheduler_commands_factory,
         mount_dir,
         bucket_name,
         storage_type,
@@ -108,7 +108,7 @@ def test_fsx_lustre_configuration_options(
 def _test_fsx_lustre_configuration_options(
     cluster,
     region,
-    scheduler,
+    scheduler_commands_factory,
     mount_dir,
     bucket_name,
     storage_type,
@@ -119,7 +119,7 @@ def _test_fsx_lustre_configuration_options(
     imported_file_chunk_size,
     storage_capacity,
 ):
-    _test_fsx_lustre(cluster, region, scheduler, mount_dir, bucket_name)
+    _test_fsx_lustre(cluster, region, scheduler_commands_factory, mount_dir, bucket_name)
     remote_command_executor = RemoteCommandExecutor(cluster)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
     fsx = boto3.client("fsx", region_name=region).describe_file_systems(FileSystemIds=[fsx_fs_id])
@@ -133,14 +133,14 @@ def _test_fsx_lustre_configuration_options(
     _test_data_compression_type(data_compression_type, fsx)
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
     s3_bucket_factory,
     clusters_factory,
     test_datadir,
-    scheduler,
+    scheduler_commands_factory,
 ):
     """
     Test all FSx Lustre related features.
@@ -160,7 +160,7 @@ def test_fsx_lustre(
     _test_fsx_lustre(
         cluster,
         region,
-        scheduler,
+        scheduler_commands_factory,
         mount_dir,
         bucket_name,
     )
@@ -169,9 +169,9 @@ def test_fsx_lustre(
 def _test_fsx_lustre(
     cluster,
     region,
+    scheduler_commands_factory,
     mount_dir,
     bucket_name,
-    scheduler_commands_factory,
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -251,7 +251,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
     _test_delete_manual_backup(manual_backup, region)
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_existing_fsx(
     region,
     fsx_factory,
@@ -259,7 +259,7 @@ def test_existing_fsx(
     pcluster_config_reader,
     s3_bucket_factory,
     clusters_factory,
-    scheduler,
+    scheduler_commands_factory,
     test_datadir,
 ):
     """
@@ -288,7 +288,7 @@ def test_existing_fsx(
     )
     cluster = clusters_factory(cluster_config)
 
-    _test_fsx_lustre(cluster, region, scheduler, mount_dir, bucket_name)
+    _test_fsx_lustre(cluster, region, scheduler_commands_factory, mount_dir, bucket_name)
 
 
 @pytest.fixture(scope="class")
