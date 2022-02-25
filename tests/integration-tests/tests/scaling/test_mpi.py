@@ -20,19 +20,21 @@ from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.usefixtures("os")
-def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory):
+def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory, scheduler_commands_factory):
     scaledown_idletime = 3
     max_queue_size = 3
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     # This verifies that the job completes correctly
     _test_mpi(
         remote_command_executor,
         slots_per_instance,
         scheduler,
+        scheduler_commands,
         region,
         cluster.cfn_name,
         scaledown_idletime,
@@ -44,6 +46,7 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
         remote_command_executor,
         slots_per_instance,
         scheduler,
+        scheduler_commands,
         region,
         cluster.cfn_name,
         scaledown_idletime,
