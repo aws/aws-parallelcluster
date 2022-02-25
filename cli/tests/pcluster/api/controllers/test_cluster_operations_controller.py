@@ -47,6 +47,9 @@ def cfn_describe_stack_mock_response(edits=None):
                 "Value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
             },
         ],
+        "Parameters": [
+            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+        ],
     }
     if edits:
         stack_data.update(edits)
@@ -57,7 +60,26 @@ class TestCreateCluster:
     url = "/v3/clusters"
     method = "POST"
 
-    CONFIG = "Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t2.micro"
+    CONFIG = """
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: ec2-key-name
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: c5.2xlarge
+"""
 
     def _send_test_request(
         self,
@@ -155,6 +177,7 @@ class TestCreateCluster:
                 "clusterStatus": "CREATE_IN_PROGRESS",
                 "region": region,
                 "version": get_installed_version(),
+                "scheduler": {"type": "slurm"},
             }
         }
 
@@ -430,6 +453,7 @@ class TestDeleteCluster:
                         "clusterStatus": "DELETE_IN_PROGRESS",
                         "region": "us-east-1",
                         "version": get_installed_version(),
+                        "scheduler": {"type": "slurm"},
                     }
                 },
             ),
@@ -443,6 +467,7 @@ class TestDeleteCluster:
                         "clusterStatus": "DELETE_IN_PROGRESS",
                         "region": "us-east-1",
                         "version": get_installed_version(),
+                        "scheduler": {"type": "slurm"},
                     }
                 },
             ),
@@ -547,10 +572,16 @@ class TestDescribeCluster:
         )
 
     @pytest.mark.parametrize(
-        "cfn_stack_data, head_node_data, fail_on_bucket_check, expected_response",
+        "cfn_stack_data, head_node_data, fail_on_bucket_check, scheduler, metadata, expected_response",
         [
             (
-                cfn_describe_stack_mock_response(),
+                cfn_describe_stack_mock_response(
+                    {
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
+                    }
+                ),
                 {
                     "InstanceId": "i-020c2ec1b6d550000",
                     "InstanceType": "t2.micro",
@@ -560,6 +591,8 @@ class TestDescribeCluster:
                     "State": {"Code": 16, "Name": "running"},
                 },
                 False,
+                "slurm",
+                None,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -587,12 +620,21 @@ class TestDescribeCluster:
                         "publicIpAddress": "34.251.236.164",
                         "state": "running",
                     },
+                    "scheduler": {"type": "slurm"},
                 },
             ),
             (
-                cfn_describe_stack_mock_response(),
+                cfn_describe_stack_mock_response(
+                    {
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "awsbatch"},
+                        ],
+                    }
+                ),
                 None,
                 False,
+                "awsbatch",
+                None,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -612,12 +654,21 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
+                    "scheduler": {"type": "awsbatch"},
                 },
             ),
             (
-                cfn_describe_stack_mock_response(),
+                cfn_describe_stack_mock_response(
+                    {
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "plugin"},
+                        ],
+                    }
+                ),
                 None,
                 True,
+                "plugin",
+                {"Name": "my_scheduler", "Version": "1.0.0"},
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -637,14 +688,23 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
+                    "scheduler": {"type": "plugin", "metadata": {"name": "my_scheduler", "version": "1.0.0"}},
                 },
             ),
             (
                 cfn_describe_stack_mock_response(
-                    {"LastUpdatedTime": datetime(2021, 5, 30), "StackStatus": "ROLLBACK_IN_PROGRESS"}
+                    {
+                        "LastUpdatedTime": datetime(2021, 5, 30),
+                        "StackStatus": "ROLLBACK_IN_PROGRESS",
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "plugin"},
+                        ],
+                    }
                 ),
                 None,
                 False,
+                "plugin",
+                {"Name": "plugin", "Version": "1.0.0"},
                 {
                     "cloudFormationStackStatus": "ROLLBACK_IN_PROGRESS",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -664,10 +724,17 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
+                    "scheduler": {"type": "plugin", "metadata": {"name": "plugin", "version": "1.0.0"}},
                 },
             ),
             (
-                cfn_describe_stack_mock_response(),
+                cfn_describe_stack_mock_response(
+                    {
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "plugin"},
+                        ],
+                    }
+                ),
                 {
                     "InstanceId": "i-020c2ec1b6d550000",
                     "InstanceType": "t2.micro",
@@ -676,6 +743,8 @@ class TestDescribeCluster:
                     "State": {"Code": 16, "Name": "running"},
                 },
                 False,
+                "plugin",
+                {"Name": "plugin", "Version": "1.0.0"},
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -702,13 +771,22 @@ class TestDescribeCluster:
                         "privateIpAddress": "192.168.61.109",
                         "state": "running",
                     },
+                    "scheduler": {"type": "plugin", "metadata": {"name": "plugin", "version": "1.0.0"}},
                 },
             ),
         ],
         ids=["all", "no_head_node", "no_bucket", "mix", "no_head_public_ip"],
     )
     def test_successful_request(
-        self, mocker, client, cfn_stack_data, head_node_data, fail_on_bucket_check, expected_response
+        self,
+        mocker,
+        client,
+        cfn_stack_data,
+        head_node_data,
+        fail_on_bucket_check,
+        scheduler,
+        metadata,
+        expected_response,
     ):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
         mocker.patch(
@@ -726,7 +804,9 @@ class TestDescribeCluster:
             mocker.patch(
                 "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
             ).side_effect = ClusterActionError("failed")
-
+        config_mock = mocker.patch("pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock)
+        config_mock.return_value.scheduling.settings.scheduler_definition.metadata = metadata
+        config_mock.return_value.scheduling.scheduler = scheduler
         response = self._send_test_request(client)
 
         with soft_assertions():
@@ -837,6 +917,9 @@ class TestListClusters:
                         "CreationTime": datetime(2021, 4, 30),
                         "StackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
                     },
                     {
                         "StackName": "name2",
@@ -844,6 +927,9 @@ class TestListClusters:
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
                     },
                 ],
                 {
@@ -855,6 +941,7 @@ class TestListClusters:
                             "clusterStatus": ClusterStatus.CREATE_IN_PROGRESS,
                             "region": "us-east-1",
                             "version": "3.0.0",
+                            "scheduler": {"type": "slurm"},
                         },
                         {
                             "cloudformationStackArn": "arn:id2",
@@ -863,6 +950,7 @@ class TestListClusters:
                             "clusterStatus": ClusterStatus.UPDATE_FAILED,
                             "region": "us-east-1",
                             "version": "3.1.0",
+                            "scheduler": {"type": "slurm"},
                         },
                     ]
                 },
@@ -878,6 +966,9 @@ class TestListClusters:
                         "CreationTime": datetime(2021, 4, 30),
                         "StackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
                     },
                     {
                         "StackName": "name2",
@@ -885,6 +976,9 @@ class TestListClusters:
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
                     },
                     {
                         "StackName": "name3",
@@ -892,6 +986,9 @@ class TestListClusters:
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStackStatus.DELETE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
                     },
                 ],
                 {
@@ -903,6 +1000,7 @@ class TestListClusters:
                             "clusterStatus": ClusterStatus.CREATE_IN_PROGRESS,
                             "region": "eu-west-1",
                             "version": "3.0.0",
+                            "scheduler": {"type": "slurm"},
                         },
                         {
                             "cloudformationStackArn": "arn:id2",
@@ -911,6 +1009,7 @@ class TestListClusters:
                             "clusterStatus": ClusterStatus.UPDATE_FAILED,
                             "region": "eu-west-1",
                             "version": "3.1.0",
+                            "scheduler": {"type": "slurm"},
                         },
                     ]
                 },
@@ -926,6 +1025,9 @@ class TestListClusters:
                         "CreationTime": datetime(2021, 4, 30),
                         "StackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
                     },
                     {
                         "StackName": "name2",
@@ -933,6 +1035,9 @@ class TestListClusters:
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
+                        "Parameters": [
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                        ],
                     },
                 ],
                 {
@@ -944,6 +1049,7 @@ class TestListClusters:
                             "clusterStatus": ClusterStatus.CREATE_IN_PROGRESS,
                             "region": "eu-west-1",
                             "version": "3.0.0",
+                            "scheduler": {"type": "slurm"},
                         }
                     ],
                     "nextToken": "token",
@@ -1117,6 +1223,7 @@ class TestUpdateCluster:
                 "clusterStatus": "UPDATE_IN_PROGRESS",
                 "region": "us-east-1",
                 "version": get_installed_version(),
+                "scheduler": {"type": "slurm"},
             },
             "changeSet": [
                 {"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"}

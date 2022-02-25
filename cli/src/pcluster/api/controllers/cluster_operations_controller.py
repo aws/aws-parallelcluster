@@ -44,6 +44,7 @@ from pcluster.api.models import (
     EC2Instance,
     InstanceState,
     ListClustersResponseContent,
+    Scheduler,
     Tag,
     UpdateClusterBadRequestExceptionResponseContent,
     UpdateClusterRequestContent,
@@ -135,6 +136,7 @@ def create_cluster(
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=get_installed_version(),
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.CREATE_IN_PROGRESS),
+                scheduler=Scheduler(type=cluster.config.scheduling.scheduler),
             ),
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
@@ -180,6 +182,7 @@ def delete_cluster(cluster_name, region=None):
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=cluster.stack.version,
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.DELETE_IN_PROGRESS),
+                scheduler=Scheduler(type=cluster.stack.scheduler),
             )
         )
     except StackNotFoundError:
@@ -228,6 +231,7 @@ def describe_cluster(cluster_name, region=None):
         last_updated_time=to_utc_datetime(cfn_stack.last_updated_time),
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cloud_formation_status_to_cluster_status(cfn_stack.status),
+        scheduler=Scheduler(type=cluster.stack.scheduler, metadata=cluster.get_plugin_metadata()),
     )
 
     try:
@@ -276,6 +280,7 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=stack.version,
                 cluster_status=current_cluster_status,
+                scheduler=Scheduler(type=stack.scheduler),
             )
             clusters.append(cluster_info)
 
@@ -365,6 +370,7 @@ def update_cluster(
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=cluster.stack.version,
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.UPDATE_IN_PROGRESS),
+                scheduler=Scheduler(type=cluster.stack.scheduler),
             ),
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
             change_set=change_set,

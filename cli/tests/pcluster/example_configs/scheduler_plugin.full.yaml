@@ -51,6 +51,10 @@ Scheduling:
   SchedulerSettings:
     SchedulerDefinition:
       PluginInterfaceVersion: "1.0"
+      Metadata:
+        Version: 1.0.0
+        Name: my-scheduler
+        Documentation: link
       Requirements:
         SupportedDistros:
           X86: ["ubuntu1804", "centos7"]

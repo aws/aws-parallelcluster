@@ -24,6 +24,7 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_logs_utils
+from tests.common.schedulers_common import get_scheduler_commands
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_SHARED_DIR = "/shared"
@@ -89,9 +90,7 @@ class CloudWatchLoggingClusterState:
     }
     """
 
-    def __init__(
-        self, scheduler, os, cluster, scheduler_commands_factory, feature_key=None, shared_dir=DEFAULT_SHARED_DIR
-    ):
+    def __init__(self, scheduler, os, cluster, feature_key=None, shared_dir=DEFAULT_SHARED_DIR):
         """Get the state of the cluster as it pertains to the CloudWatch logging feature."""
         self.scheduler = scheduler
         self.platform = self._base_os_to_platform(os)
@@ -99,7 +98,7 @@ class CloudWatchLoggingClusterState:
         self.feature_key = feature_key
         self.shared_dir = self._get_shared_dir(shared_dir)
         self.remote_command_executor = RemoteCommandExecutor(self.cluster)
-        self.scheduler_commands = scheduler_commands_factory(self.remote_command_executor)
+        self.scheduler_commands = get_scheduler_commands(self.scheduler, self.remote_command_executor)
         self._relevant_logs = {HEAD_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: []}
         self._cluster_log_state = {HEAD_NODE_ROLE_NAME: {}, COMPUTE_NODE_ROLE_NAME: {}}
         self._set_cluster_log_state()
@@ -657,9 +656,7 @@ def test_cloudwatch_logging(
         retention_days=config_params.get("retention_days"),
         logs_persist_after_delete=True,
     )
-    cluster_logs_state = CloudWatchLoggingClusterState(
-        scheduler, os, cluster, scheduler_commands_factory
-    ).get_logs_state()
+    cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster).get_logs_state()
     _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner, remote_command_executor)
 
 

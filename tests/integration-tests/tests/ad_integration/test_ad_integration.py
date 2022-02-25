@@ -625,7 +625,7 @@ def test_ad_integration(
     cluster.update(str(updated_config_file), force_update="true")
     # Reset stateful connection variables after the cluster update
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     for user in users:
         user.reset_stateful_connection_objects(remote_command_executor)
     _check_ssh_key_generation(users[1], scheduler_commands, True)

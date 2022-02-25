@@ -120,6 +120,8 @@ def test_scheduler_plugin_integration(
     )
     # Command executor
     command_executor = RemoteCommandExecutor(cluster)
+    # Test log file permission
+    _test_log_file_permission(command_executor)
     # Test cluster configuration before cluster update
     _test_cluster_config(command_executor, before_update_cluster_config, PCLUSTER_CLUSTER_CONFIG)
     # Test no errors in clusterstatusmgtd log
@@ -240,7 +242,7 @@ def _wait_compute_cloudinit_done(command_executor, compute_node):
 def _test_event_handler_execution(cluster, region, os, architecture, command_executor, head_node, compute_node):
     """Test event handler execution and environment"""
     head_scheduler_plugin_log_output = command_executor.run_remote_command(
-        f"cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+        f"sudo cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
     ).stdout
     python_root = command_executor.run_remote_command(f"sudo su - {SCHEDULER_PLUGIN_USER} -c 'which python'").stdout[
         : -len("/python")
@@ -257,7 +259,7 @@ def _test_event_handler_execution(cluster, region, os, architecture, command_exe
 
     compute_node_private_ip = compute_node.get("privateIpAddress")
     compute_scheduler_plugin_log_output = command_executor.run_remote_command(
-        f"ssh -q {compute_node_private_ip} cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+        f"ssh -q {compute_node_private_ip} sudo cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
     ).stdout
     for event in ["ComputeInit", "ComputeConfigure", "ComputeFinalize"]:
         assert_that(compute_scheduler_plugin_log_output).contains(f"[{event}] - INFO: {event} executed")
@@ -321,7 +323,9 @@ def _test_artifacts_download(command_executor):
 
 def _test_error_log(command_executor):
     """Test error log is written"""
-    head_scheduler_plugin_log_error = command_executor.run_remote_command(f"cat {SCHEDULER_PLUGIN_LOG_ERR_PATH}").stdout
+    head_scheduler_plugin_log_error = command_executor.run_remote_command(
+        f"sudo cat {SCHEDULER_PLUGIN_LOG_ERR_PATH}"
+    ).stdout
     assert_that(head_scheduler_plugin_log_error).contains("[HeadInit] - ERROR: log to stderr")
     # assert that nothing else is written after the error log
     assert_that(
@@ -580,7 +584,7 @@ def _test_invoke_scheduler_plugin_event_handler_script(command_executor, compute
             f" --event-name {event}"
         ).stdout
         head_scheduler_plugin_log_output = command_executor.run_remote_command(
-            f"cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+            f"sudo cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
         ).stdout
         assert_that(head_scheduler_plugin_log_output).contains(f"[{event}] - INFO: dummy config {event} executed")
     for event in ["HeadClusterUpdate", "HeadComputeFleetUpdate"]:
@@ -592,7 +596,7 @@ def _test_invoke_scheduler_plugin_event_handler_script(command_executor, compute
             raise_on_error=raise_on_error,
         )
         head_scheduler_plugin_log_output = command_executor.run_remote_command(
-            f"cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+            f"sudo cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
         ).stdout
         if event == "HeadClusterUpdate":
             assert_that(head_scheduler_plugin_log_output).contains(f"[{event}] - INFO: dummy config {event} executed")
@@ -607,7 +611,7 @@ def _test_invoke_scheduler_plugin_event_handler_script(command_executor, compute
             f"{dummy_cluster_config} --event-name {event} --skip-artifacts-download"
         ).stdout
         compute_scheduler_plugin_log_output = command_executor.run_remote_command(
-            f"ssh -q {compute_node_private_ip} cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+            f"ssh -q {compute_node_private_ip} sudo cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
         ).stdout
         assert_that(compute_scheduler_plugin_log_output).contains(f"[{event}] - INFO: dummy config {event} executed")
 
@@ -620,3 +624,17 @@ def _test_compute_node_bootstrap_timeout(compute_node, compute_node_bootstrap_ti
     assert_that(str(base64.b64decode(user_data))).contains(
         f"timeout {compute_node_bootstrap_timeout} /tmp/bootstrap.sh"
     )
+
+
+def _test_log_file_permission(command_executor):
+    """Test log files permission for scheduler plugin."""
+    result = command_executor.run_remote_command("stat -c '%a %U %G' /var/log/parallelcluster/clusterstatusmgtd").stdout
+    assert_that(result).is_equal_to("640 root root")
+    result = command_executor.run_remote_command(
+        "stat -c '%a %U %G' /var/log/parallelcluster/scheduler-plugin.err.log"
+    ).stdout
+    assert_that(result).is_equal_to("640 pcluster-scheduler-plugin pcluster-scheduler-plugin")
+    result = command_executor.run_remote_command(
+        "stat -c '%a %U %G' /var/log/parallelcluster/scheduler-plugin.out.log"
+    ).stdout
+    assert_that(result).is_equal_to("640 pcluster-scheduler-plugin pcluster-scheduler-plugin")
