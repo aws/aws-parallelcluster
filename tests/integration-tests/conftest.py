@@ -1092,7 +1092,8 @@ def s3_bucket_factory_shared(request):
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     s3_buckets_dict = {}
     for region in regions:
-        s3_buckets_dict[region] = _create_bucket(region)
+        with aws_credential_provider(region, request.config.getoption("credential")):
+            s3_buckets_dict[region] = _create_bucket(region)
 
     yield s3_buckets_dict
 
@@ -1102,7 +1103,8 @@ def s3_bucket_factory_shared(request):
         else:
             logging.info(f"Deleting S3 bucket {bucket[0]}")
             try:
-                delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
+                with aws_credential_provider(region, request.config.getoption("credential")):
+                    delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
             except Exception as e:
                 logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
 

@@ -22,7 +22,7 @@ def _test_mpi(
     remote_command_executor,
     slots_per_instance,
     scheduler,
-    scheduler_commands_factory,
+    scheduler_commands,
     region=None,
     stack_name=None,
     scaledown_idletime=None,
@@ -33,7 +33,6 @@ def _test_mpi(
     mpi_module = "openmpi"
     # Compile mpi script
     compile_mpi_ring(mpi_module, remote_command_executor)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     if partition:
         # submit script using additional files
