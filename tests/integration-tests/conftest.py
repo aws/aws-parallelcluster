@@ -1134,9 +1134,10 @@ def upload_scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> di
                 )
                 scheduler_definition_dict[plugin_name] = {}
                 for region, s3_bucket in s3_bucket_factory_shared.items():
-                    scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
-                        scheduler_definition, s3_bucket, plugin_name, region
-                    )
+                    with aws_credential_provider(region, request.config.getoption("credential")):
+                        scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
+                            scheduler_definition, s3_bucket, plugin_name, region
+                        )
                     scheduler_definition_dict[plugin_name].update({region: scheduler_plugin_definition_url})
             else:
                 logging.info(
