@@ -627,7 +627,7 @@ def test_ad_integration(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     for user in users:
-        user.reset_stateful_connection_objects(remote_command_executor)
+        user.reset_stateful_connection_objects(remote_command_executor, scheduler_commands_factory)
     _check_ssh_key_generation(users[1], scheduler_commands, True)
     for user in users:
         logging.info(f"Checking SSH access for user {user.alias}")
