@@ -98,7 +98,9 @@ class CloudWatchLoggingClusterState:
         self.feature_key = feature_key
         self.shared_dir = self._get_shared_dir(shared_dir)
         self.remote_command_executor = RemoteCommandExecutor(self.cluster)
-        self.scheduler_commands = get_scheduler_commands(self.scheduler, self.remote_command_executor)
+        self.scheduler_commands = get_scheduler_commands(
+            scheduler=self.scheduler, remote_command_executor=self.remote_command_executor
+        )
         self._relevant_logs = {HEAD_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: []}
         self._cluster_log_state = {HEAD_NODE_ROLE_NAME: {}, COMPUTE_NODE_ROLE_NAME: {}}
         self._set_cluster_log_state()
