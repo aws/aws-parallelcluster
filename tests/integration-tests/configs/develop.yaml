@@ -1,7 +1,7 @@
 {%- import 'common.jinja2' as common with context -%}
 ---
 scheduler-plugins:
-  slurm-plugin:
+  slurm_plugin:
     scheduler-definition: "../../scheduler_plugins/slurm/utils/upload_artifacts.sh"
     scheduler-commands: "tests.common.schedulers_common.SlurmCommands"
     requires-sudo: true
