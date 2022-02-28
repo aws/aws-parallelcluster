@@ -7,7 +7,7 @@ module load ${1}
 
 # The following variables must be aligned with those in nccl_tests_submit_openmpi.sh
 # NCCL and Cuda compatibility available here: https://docs.nvidia.com/deeplearning/nccl/release-notes/
-NCCL_BENCHMARKS_VERSION='2.0.0'
+NCCL_BENCHMARKS_VERSION='2.10.0'
 NCCL_VERSION='2.7.8-1'
 ML_REPO_PKG='nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb'
 CUDA_VERSION='11.4'
