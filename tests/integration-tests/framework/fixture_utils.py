@@ -10,10 +10,10 @@ import logging
 import os
 import pickle
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from inspect import getfullargspec, isgeneratorfunction
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Set
 
 import pytest
 from filelock import FileLock
@@ -27,6 +27,7 @@ class SharedFixtureData:
     owning_xdist_worker_id: str
     counter: int = 0
     fixture_return_value: Any = None
+    currently_using_processes: Set[str] = field(default_factory=set)
 
 
 class SharedFixture:
@@ -67,6 +68,7 @@ class SharedFixture:
         with FileLock(self._lock_file):
             data = self._load_fixture_data()
             data.counter = data.counter + 1
+            data.currently_using_processes.add(self.xdist_worker_id)
             self._save_fixture_data(data)
             return data
 
@@ -80,15 +82,17 @@ class SharedFixture:
             data = self._load_fixture_data()
             if self.xdist_worker_id != data.owning_xdist_worker_id:
                 data.counter = data.counter - 1
+                data.currently_using_processes.remove(self.xdist_worker_id)
                 logging.info("Releasing shared fixture %s. Currently in use by %d processes", self.name, data.counter)
                 self._save_fixture_data(data)
                 return
 
         while data.counter > 1:
             logging.info(
-                "Waiting for all processes to release shared fixture %s, currently in use by %d processes",
+                "Waiting for all processes to release shared fixture %s, currently in use by %d processes (%s)",
                 self.name,
                 data.counter,
+                data.currently_using_processes,
             )
             time.sleep(30)
             with FileLock(self._lock_file):
