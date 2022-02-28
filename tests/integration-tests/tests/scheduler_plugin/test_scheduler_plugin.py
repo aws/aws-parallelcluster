@@ -55,7 +55,7 @@ SCHEDULER_PLUGIN_LOG_OUT_PATH = "/var/log/parallelcluster/scheduler-plugin.out.l
 SCHEDULER_PLUGIN_LOG_ERR_PATH = "/var/log/parallelcluster/scheduler-plugin.err.log"
 SCHEDULER_PLUGIN_HOME = "/home/pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USER = "pcluster-scheduler-plugin"
-SCHEDULER_PLUGIN_USERS_LIST = ["user1", "schedulerPluginUser"]
+SCHEDULER_PLUGIN_USERS_LIST = ["user1", "scheduler-plugin-user"]
 
 ANOTHER_INSTANCE_TYPE_BY_ARCH = {
     "x86_64": "c5.large",
