@@ -1381,7 +1381,7 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 
 @pytest.fixture()
-def scheduler_plugin_configuration(request, scheduler, region, upload_scheduler_plugin_definitions):
+def scheduler_plugin_configuration(request, region, upload_scheduler_plugin_definitions, scheduler=None):
     scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
     scheduler_definition_url = upload_scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
     if scheduler_definition_url:
