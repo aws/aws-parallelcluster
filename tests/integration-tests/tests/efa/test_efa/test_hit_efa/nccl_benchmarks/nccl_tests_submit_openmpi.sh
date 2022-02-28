@@ -7,7 +7,7 @@
 module load openmpi
 
 # The following variables must be aligned with those in init_nccl_benchmarks.sh
-NCCL_BENCHMARKS_VERSION='2.0.0'
+NCCL_BENCHMARKS_VERSION='2.10.0'
 NCCL_VERSION='2.7.8-1'
 
 mpirun \
