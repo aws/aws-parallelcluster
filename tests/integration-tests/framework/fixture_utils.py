@@ -84,24 +84,28 @@ class SharedFixture:
                 self._save_fixture_data(data)
                 return
 
-        if data.counter > 1:
+        while data.counter > 1:
             logging.info(
                 "Waiting for all processes to release shared fixture %s, currently in use by %d processes",
                 self.name,
                 data.counter,
             )
-            time.sleep(10)
-            self.release()
-        else:
-            logging.info("Deleting shared fixture %s.", self.name)
-            os.remove(self._fixture_file)
-            if self._generator:
-                try:
-                    # This is required to run the fixture cleanup code after the yield statement.
-                    # This invocation will always throw a StopIteration exception.
-                    next(self._generator)
-                except StopIteration:
-                    pass
+            time.sleep(30)
+            with FileLock(self._lock_file):
+                data = self._load_fixture_data()
+
+        self._destroy_fixture()
+
+    def _destroy_fixture(self):
+        logging.info("Deleting shared fixture %s.", self.name)
+        os.remove(self._fixture_file)
+        if self._generator:
+            try:
+                # This is required to run the fixture cleanup code after the yield statement.
+                # This invocation will always throw a StopIteration exception.
+                next(self._generator)
+            except StopIteration:
+                pass
 
     def _load_fixture_data(self) -> SharedFixtureData:
         try:
