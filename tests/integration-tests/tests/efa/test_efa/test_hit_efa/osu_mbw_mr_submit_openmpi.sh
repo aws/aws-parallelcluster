@@ -5,6 +5,7 @@ module load openmpi
 BENCHMARK_NAME={{ benchmark_name }}
 OSU_BENCHMARK_VERSION={{ osu_benchmark_version }}
 
+env
 # Run multiple bandwidth/message rate benchmark
 # NOTE: The test is sized for two P4d compute nodes.
 # -N: number of processes per node (48, 1 for each CPU)
