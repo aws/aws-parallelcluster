@@ -80,6 +80,7 @@ def test_scheduler_plugin_integration(
     s3_bucket_key_prefix,
     clusters_factory,
     test_datadir,
+    request,
 ):
     """Test usage of a custom scheduler integration."""
     logging.info("Testing plugin scheduler integration.")
@@ -123,7 +124,14 @@ def test_scheduler_plugin_integration(
     # Test log file permission
     _test_log_file_permission(command_executor)
     # Test cluster configuration before cluster update
-    _test_cluster_config(command_executor, before_update_cluster_config, PCLUSTER_CLUSTER_CONFIG)
+    _test_cluster_config(
+        request,
+        region,
+        command_executor,
+        before_update_cluster_config,
+        str(test_datadir / f"scheduler_queues.before_update_{architecture}.yaml"),
+        PCLUSTER_CLUSTER_CONFIG,
+    )
     # Test no errors in clusterstatusmgtd log
     _test_no_errors_in_logs(command_executor)
     # Test compute fleet status update
@@ -133,9 +141,23 @@ def test_scheduler_plugin_integration(
     # Command executor after cluster update
     command_executor = RemoteCommandExecutor(cluster)
     # Test cluster configuration after cluster update
-    _test_cluster_config(command_executor, cluster_config, PCLUSTER_CLUSTER_CONFIG)
+    _test_cluster_config(
+        request,
+        region,
+        command_executor,
+        cluster_config,
+        str(test_datadir / f"scheduler_queues_{architecture}.yaml"),
+        PCLUSTER_CLUSTER_CONFIG,
+    )
     # Test PCLUSTER_CLUSTER_CONFIG_OLD content
-    _test_cluster_config(command_executor, before_update_cluster_config, PCLUSTER_CLUSTER_CONFIG_OLD)
+    _test_cluster_config(
+        request,
+        region,
+        command_executor,
+        before_update_cluster_config,
+        str(test_datadir / f"scheduler_queues.before_update_{architecture}.yaml"),
+        PCLUSTER_CLUSTER_CONFIG_OLD,
+    )
     # Verify head node is running
     assert_head_node_is_running(region, cluster)
     head_node = _get_ec2_instance_from_id(
@@ -394,7 +416,7 @@ def _test_imds(command_executor):
     assert_that(result.stdout).is_not_empty()
 
 
-def _test_cluster_config(command_executor, cluster_config, remote_config):
+def _test_cluster_config(request, region, command_executor, cluster_config, rendered_queue_config_path, remote_config):
     """Test cluster configuration file is fetched by head node"""
     with open(cluster_config, encoding="utf-8") as cluster_config_file:
         source_config = yaml.safe_load(cluster_config_file)
@@ -407,9 +429,20 @@ def _test_cluster_config(command_executor, cluster_config, remote_config):
         assert_that(
             source_config.get("Scheduling").get("SchedulerSettings").get("SchedulerDefinition").get("Events")
         ).is_equal_to(target_config.get("Scheduling").get("SchedulerSettings").get("SchedulerDefinition").get("Events"))
-        assert_that(source_config.get("Scheduling").get("SchedulerQueues")).is_equal_to(
-            target_config.get("Scheduling").get("SchedulerQueues")
+
+        assert_that(len(source_config.get("Scheduling").get("SchedulerQueues"))).is_equal_to(
+            len(target_config.get("Scheduling").get("SchedulerQueues"))
         )
+        with open(rendered_queue_config_path, encoding="utf-8") as rendered_queue_config:
+            private_subnet_id = request.getfixturevalue("vpc_stacks").get(region).cfn_outputs.get("PrivateSubnetId")
+            rendered_queue = yaml.safe_load(rendered_queue_config)
+            # inject subnet id into rendered queue before the assertion
+            for queue in rendered_queue:
+                queue.get("Networking")["SubnetIds"] = [private_subnet_id]
+            assert_that(yaml.dump(rendered_queue)).is_equal_to(
+                yaml.dump(target_config.get("Scheduling").get("SchedulerQueues"))
+            )
+
         assert_that(
             source_config.get("Scheduling").get("SchedulerSettings").get("SchedulerDefinition").get("SystemUsers")
         ).is_equal_to(
