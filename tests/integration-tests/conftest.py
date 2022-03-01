@@ -852,38 +852,40 @@ def get_availability_zones(region, credential):
 def initialize_cli_creds(request):
     if request.config.getoption("use_default_iam_credentials"):
         logging.info("Using default IAM credentials to run pcluster commands")
-        return
-
-    stack_factory = CfnStacksFactory(request.config.getoption("credential"))
-
-    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-    stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
-    with open(stack_template_path, encoding="utf-8") as stack_template_file:
-        stack_template_data = stack_template_file.read()
-    cli_creds = {}
-    for region in regions:
-        if request.config.getoption("iam_user_role_stack_name"):
-            stack_name = request.config.getoption("iam_user_role_stack_name")
-            logging.info(f"Using stack {stack_name} in region {region}")
-            stack = CfnStack(
-                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-            )
-        else:
-            logging.info("Creating IAM roles for pcluster CLI")
-            stack_name = generate_stack_name("integ-tests-iam-user-role", request.config.getoption("stackname_suffix"))
-            stack = CfnStack(
-                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-            )
-
-            stack_factory.create_stack(stack)
-        cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
-
-    yield cli_creds
-
-    if not request.config.getoption("no_delete"):
-        stack_factory.delete_all_stacks()
+        yield None
     else:
-        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+        stack_factory = CfnStacksFactory(request.config.getoption("credential"))
+
+        regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+        stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
+        with open(stack_template_path, encoding="utf-8") as stack_template_file:
+            stack_template_data = stack_template_file.read()
+        cli_creds = {}
+        for region in regions:
+            if request.config.getoption("iam_user_role_stack_name"):
+                stack_name = request.config.getoption("iam_user_role_stack_name")
+                logging.info(f"Using stack {stack_name} in region {region}")
+                stack = CfnStack(
+                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                )
+            else:
+                logging.info("Creating IAM roles for pcluster CLI")
+                stack_name = generate_stack_name(
+                    "integ-tests-iam-user-role", request.config.getoption("stackname_suffix")
+                )
+                stack = CfnStack(
+                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                )
+
+                stack_factory.create_stack(stack)
+            cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
+
+        yield cli_creds
+
+        if not request.config.getoption("no_delete"):
+            stack_factory.delete_all_stacks()
+        else:
+            logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture(scope="session", autouse=True)
