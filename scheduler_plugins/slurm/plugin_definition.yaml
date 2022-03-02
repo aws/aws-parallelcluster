@@ -11,10 +11,12 @@ ClusterInfrastructure:
   CloudFormation:
     Template: s3://<BUCKET>/slurm_plugin_infrastructure.cfn.yaml
     Checksum: <TEMPLATE_CHECKSUM>
+    S3BucketOwner: '<BUCKET_OWNER>'
 PluginResources:
   ClusterSharedArtifacts:
     - Source: s3://<BUCKET>/artifacts.tar.gz
       Checksum: <ARTIFACTS_CHECKSUM>
+      S3BucketOwner: '<BUCKET_OWNER>'
 SystemUsers:
   - Name: slurm-user
     EnableImds: false
