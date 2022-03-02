@@ -436,9 +436,13 @@ def _test_cluster_config(request, region, command_executor, cluster_config, rend
         with open(rendered_queue_config_path, encoding="utf-8") as rendered_queue_config:
             private_subnet_id = request.getfixturevalue("vpc_stacks").get(region).cfn_outputs.get("PrivateSubnetId")
             rendered_queue = yaml.safe_load(rendered_queue_config)
-            # inject subnet id into rendered queue before the assertion
+            # inject subnet id into rendered queue
             for queue in rendered_queue:
                 queue.get("Networking")["SubnetIds"] = [private_subnet_id]
+            # clean custom actions and additional IAM policies from target queue
+            for target_queue in target_config.get("Scheduling").get("SchedulerQueues"):
+                target_queue["CustomActions"] = None
+                target_queue.get("Iam")["AdditionalIamPolicies"] = []
             assert_that(yaml.dump(rendered_queue)).is_equal_to(
                 yaml.dump(target_config.get("Scheduling").get("SchedulerQueues"))
             )
