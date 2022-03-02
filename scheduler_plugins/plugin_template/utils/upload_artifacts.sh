@@ -54,6 +54,7 @@ done
 
 [ -z "${S3_BUCKET}" ] || [ -z "${AWS_REGION}" ] && usage
 [ -z "${S3_BUCKET_PREFIX}" ] && S3_BUCKET_PREFIX="/scheduler_plugins/plugin_template"
+TMP=$(TMPDIR="/tmp" mktemp -d)
 
 ADDITIONAL_CLUSTER_INFRASTRUCTURE_FILE="./additional_cluster_infrastructure.cfn.yaml"
 ADDITIONAL_CLUSTER_INFRASTRUCTURE_S3_URL="s3://${S3_BUCKET}${S3_BUCKET_PREFIX}/additional_cluster_infrastructure.cfn.yaml"
@@ -64,7 +65,7 @@ aws s3 cp --region "${AWS_REGION}" "${ADDITIONAL_CLUSTER_INFRASTRUCTURE_FILE}" "
 ADDITIONAL_CLUSTER_INFRASTRUCTURE_CHECKSUM=$(shasum --algorithm 256 "${ADDITIONAL_CLUSTER_INFRASTRUCTURE_FILE}" | cut -d' ' -f1)
 
 PLUGIN_ARTIFACTS_DIR="./artifacts"
-PLUGIN_ARTIFACTS_ARCHIVE="/tmp/artifacts.tar.gz"
+PLUGIN_ARTIFACTS_ARCHIVE="${TMP}/artifacts.tar.gz"
 PLUGIN_ARTIFACTS_S3_URL="s3://${S3_BUCKET}${S3_BUCKET_PREFIX}/artifacts.tar.gz"
 echo "Uploading plugin artifacts to ${PLUGIN_ARTIFACTS_S3_URL}"
 tar czf "${PLUGIN_ARTIFACTS_ARCHIVE}" "${PLUGIN_ARTIFACTS_DIR}"
@@ -73,7 +74,7 @@ aws s3 cp --region "${AWS_REGION}" "${PLUGIN_ARTIFACTS_ARCHIVE}" "${PLUGIN_ARTIF
 PLUGIN_ARTIFACTS_CHECKSUM=$(shasum --algorithm 256 "${PLUGIN_ARTIFACTS_ARCHIVE}" | cut -d' ' -f1)
 
 PLUGIN_DEFINITION_S3_URL="s3://${S3_BUCKET}${S3_BUCKET_PREFIX}/plugin_definition.yaml"
-GENERATED_PLUGIN_DEFINITION_PATH="/tmp/plugin_template_plugin_definition.yaml"
+GENERATED_PLUGIN_DEFINITION_PATH="${TMP}/plugin_template_plugin_definition.yaml"
 cp plugin_definition.yaml ${GENERATED_PLUGIN_DEFINITION_PATH}
 sed -i "s|<TEMPLATE_CHECKSUM>|${ADDITIONAL_CLUSTER_INFRASTRUCTURE_CHECKSUM}|g" ${GENERATED_PLUGIN_DEFINITION_PATH}
 sed -i "s|<ARTIFACTS_CHECKSUM>|${PLUGIN_ARTIFACTS_CHECKSUM}|g" ${GENERATED_PLUGIN_DEFINITION_PATH}
@@ -83,7 +84,7 @@ echo "Generated plugin definition:" && cat ${GENERATED_PLUGIN_DEFINITION_PATH}
 echo "Uploading plugin_definition to ${PLUGIN_DEFINITION_S3_URL}"
 aws s3 cp --region "${AWS_REGION}" "${GENERATED_PLUGIN_DEFINITION_PATH}" "${PLUGIN_DEFINITION_S3_URL}"
 
-GENERATED_CONFIG_PATH="/tmp/plugin_template_cluster_config.yaml"
+GENERATED_CONFIG_PATH="${TMP}/plugin_template_cluster_config.yaml"
 cp examples/cluster_configuration.yaml ${GENERATED_CONFIG_PATH}
 sed -i "s|<PLUGIN_DEFINITION>|${PLUGIN_DEFINITION_S3_URL}|g" ${GENERATED_CONFIG_PATH}
 PLUGIN_DEFINITION_CHECKSUM=$(shasum --algorithm 256 "${GENERATED_PLUGIN_DEFINITION_PATH}" | cut -d' ' -f1)
