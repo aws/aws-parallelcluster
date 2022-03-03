@@ -148,10 +148,11 @@ def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> d
 
 def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
     """Return shared storage ids from the given list for the given type."""
+    default = "" if storage_type == SharedStorageType.EFS else "NONE"
     return (
         ",".join(storage_mapping.id for storage_mapping in shared_storage_ids[storage_type])
         if shared_storage_ids[storage_type]
-        else "NONE"
+        else default
     )
 
 
@@ -160,7 +161,7 @@ def get_shared_storage_options_by_type(shared_storage_options: dict, storage_typ
     default_storage_options = {
         SharedStorageType.EBS: "NONE,NONE,NONE,NONE,NONE",
         SharedStorageType.RAID: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-        SharedStorageType.EFS: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+        SharedStorageType.EFS: "",
         SharedStorageType.FSX: ("NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"),
     }
     return (
@@ -173,10 +174,8 @@ def get_shared_storage_options_by_type(shared_storage_options: dict, storage_typ
 def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedStorageType):
     """Return mount dirs retrieved from shared storage, formatted as comma separated list."""
     storage_options = shared_storage_options.get(storage_type)
-    if not storage_options:
-        return "NONE"
-    if storage_type == SharedStorageType.EBS:
-        # The whole options for EBS represent the mount dirs.
+    if storage_type in (SharedStorageType.EBS, SharedStorageType.EFS):
+        # The whole options for EBS, EFS represent the mount dirs.
         return storage_options
     option_list = storage_options.split(",")
     return option_list[0]
