@@ -653,7 +653,7 @@ def configure_scheduler_plugin(scheduler_plugin_configuration, config_content):
     ):
         dict_add_nested_key(
             config_content,
-            scheduler_plugin_configuration["scheduler-definition"],
+            scheduler_plugin_configuration["scheduler-definition-url"],
             ("Scheduling", "SchedulerSettings", "SchedulerDefinition"),
         )
         dict_add_nested_key(
@@ -1122,7 +1122,7 @@ def s3_bucket_key_prefix():
 
 
 @xdist_session_fixture(autouse=True)
-def upload_scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> dict:
+def scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> dict:
     scheduler_definition_dict = {}
     tests_config = request.config.getoption("tests_config", default={})
     if tests_config:
@@ -1145,6 +1145,9 @@ def upload_scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> di
                 logging.info(
                     "Found scheduler definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
                 )
+                scheduler_definition_dict[plugin_name] = {}
+                for region in s3_bucket_factory_shared.keys():
+                    scheduler_definition_dict[plugin_name].update({region: scheduler_definition})
 
     return scheduler_definition_dict
 
@@ -1383,20 +1386,20 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 
 @pytest.fixture()
-def scheduler_plugin_configuration(request, region, upload_scheduler_plugin_definitions):
+def scheduler_plugin_configuration(request, region, scheduler_plugin_definitions):
     try:
         scheduler = request.getfixturevalue("scheduler")
     except pytest.FixtureLookupError:
         scheduler = None
     scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
-    scheduler_definition_url = upload_scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
+    scheduler_definition_url = scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
     if scheduler_definition_url:
         logging.info(
-            "Overriding scheduler plugin (%s) scheduler-definition to be (%s)",
+            "Adding scheduler plugin (%s) scheduler-definition-url to be (%s)",
             scheduler,
             scheduler_definition_url,
         )
-        scheduler_plugin["scheduler-definition"] = scheduler_definition_url
+        scheduler_plugin["scheduler-definition-url"] = scheduler_definition_url
 
     return scheduler_plugin
 
