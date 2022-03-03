@@ -721,20 +721,9 @@ class ClusterCdkStack(Stack):
 
         # [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,
         # throughput_mode,exists_valid_head_node_mt,exists_valid_compute_mt]
-        self.shared_storage_options[shared_efs.shared_storage_type] = ",".join(
-            str(item)
-            for item in [
-                shared_efs.mount_dir,
-                efs_id,
-                shared_efs.performance_mode or "NONE",
-                shared_efs.kms_key_id or "NONE",
-                shared_efs.provisioned_throughput or "NONE",
-                shared_efs.encrypted if shared_efs.encrypted is not None else "NONE",
-                shared_efs.throughput_mode or "NONE",
-                "NONE",  # Useless
-                "NONE",  # Useless
-            ]
-        )
+        if self.shared_storage_options[shared_efs.shared_storage_type] != "":
+            self.shared_storage_options[shared_efs.shared_storage_type] += ","
+        self.shared_storage_options[shared_efs.shared_storage_type] += shared_efs.mount_dir
         return efs_id
 
     def _add_efs_mount_target(
@@ -926,8 +915,8 @@ class ClusterCdkStack(Stack):
                     if post_install_action and post_install_action.args
                     else "NONE",
                     "region": self.region,
-                    "efs_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
-                    "efs_shared_dir": get_shared_storage_options_by_type(
+                    "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
+                    "efs_shared_dirs": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EFS
                     ),  # FIXME
                     "fsx_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.FSX),
@@ -1479,10 +1468,10 @@ class ComputeFleetConstruct(Construct):
                                 "PostInstallArgs": join_shell_args(queue_post_install_action.args)
                                 if queue_post_install_action and queue_post_install_action.args
                                 else "NONE",
-                                "EFSId": get_shared_storage_ids_by_type(
+                                "EFSIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_mappings, SharedStorageType.EFS
                                 ),
-                                "EFSOptions": get_shared_storage_options_by_type(
+                                "EFSSharedDirs": get_shared_storage_options_by_type(
                                     self._shared_storage_options, SharedStorageType.EFS
                                 ),
                                 "FSXId": get_shared_storage_ids_by_type(

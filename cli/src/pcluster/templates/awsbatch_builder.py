@@ -434,11 +434,11 @@ class AwsBatchConstruct(Construct):
                     value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EBS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_EFS_SHARED_DIR",
+                    name="PCLUSTER_EFS_SHARED_DIRS",
                     value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EFS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_EFS_FS_ID",
+                    name="PCLUSTER_EFS_FS_IDS",
                     value=get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
