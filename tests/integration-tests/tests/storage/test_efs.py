@@ -66,7 +66,7 @@ def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_existing_efs(
     region,
-    efs_stack,
+    efs_stack_factory,
     pcluster_config_reader,
     clusters_factory,
     vpc_stack,
@@ -80,49 +80,72 @@ def test_existing_efs(
 
     To verify the efs is the existing efs, the test expects a file with random ran inside the efs mounted
     """
-    file_name = _write_file_into_efs(region, vpc_stack, efs_stack, request, key_name, cfn_stacks_factory)
+    existing_efss = []
+    existing_efs_filenames = []
+    existing_efs_mount_dirs = []
+    num_existing_efs = 2
+    for i in range(num_existing_efs):
+        efs_id = efs_stack_factory().cfn_resources["FileSystemResource"]
+        existing_efss.append(efs_id)
+        existing_efs_filenames.append(
+            _write_file_into_efs(region, vpc_stack, efs_id, request, key_name, cfn_stacks_factory)
+        )
+        existing_efs_mount_dirs.append(f"/existing_efs_mount_dir_{i}")
+
+    new_efs_mount_dirs = []
+    num_new_efs = 3
+    for i in range(num_new_efs):
+        new_efs_mount_dirs.append(f"/new_efs_mount_dir_{i}")
 
     _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
-    mount_dir = "/efs_mount_dir"
     cluster_config = pcluster_config_reader(
-        mount_dir=mount_dir, efs_fs_id=efs_stack.cfn_resources["FileSystemResource"]
+        existing_efs_mount_dirs=existing_efs_mount_dirs,
+        existing_efss=existing_efss,
+        new_efs_mount_dirs=new_efs_mount_dirs,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    # test file in efs exist
-    logging.info("Testing efs {0} is correctly mounted".format(mount_dir))
-    result = remote_command_executor.run_remote_command("df | grep '{0}'".format(mount_dir))
-    assert_that(result.stdout).contains(mount_dir)
+    all_mount_dirs = existing_efs_mount_dirs + new_efs_mount_dirs
+    for mount_dir in all_mount_dirs:
+        logging.info("Testing efs {0} is correctly mounted".format(mount_dir))
+        result = remote_command_executor.run_remote_command("df | grep '{0}'".format(mount_dir))
+        assert_that(result.stdout).contains(mount_dir)
 
-    remote_command_executor.run_remote_command(f"cat {mount_dir}/{file_name}")
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    _test_efs_correctly_mounted(remote_command_executor, mount_dir)
-    _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-    remote_command_executor.run_remote_command(f"cat {mount_dir}/{file_name}")
+        scheduler_commands = scheduler_commands_factory(remote_command_executor)
+        _test_efs_correctly_mounted(remote_command_executor, mount_dir)
+        _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+    for i in range(num_existing_efs):
+        remote_command_executor.run_remote_command(f"cat {existing_efs_mount_dirs[i]}/{existing_efs_filenames[i]}")
 
 
 @pytest.fixture(scope="class")
-def efs_stack(cfn_stacks_factory, request, region):
+def efs_stack_factory(cfn_stacks_factory, request, region):
     """EFS stack contains a single efs resource."""
-    efs_template = Template()
-    efs_template.set_version("2010-09-09")
-    efs_template.set_description("EFS stack created for testing existing EFS")
-    efs_template.add_resource(FileSystem("FileSystemResource"))
-    stack = CfnStack(
-        name=generate_stack_name("integ-tests-efs", request.config.getoption("stackname_suffix")),
-        region=region,
-        template=efs_template.to_json(),
-    )
-    cfn_stacks_factory.create_stack(stack)
+    created_stacks = []
 
-    yield stack
+    def create_efs():
+        efs_template = Template()
+        efs_template.set_version("2010-09-09")
+        efs_template.set_description("EFS stack created for testing existing EFS")
+        efs_template.add_resource(FileSystem("FileSystemResource"))
+        stack = CfnStack(
+            name=generate_stack_name("integ-tests-efs", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=efs_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(stack)
+        created_stacks.append(stack)
+        return stack
+
+    yield create_efs
 
     if not request.config.getoption("no_delete"):
-        cfn_stacks_factory.delete_stack(stack.name, region)
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
 
 
-def _write_file_into_efs(region, vpc_stack, efs_stack, request, key_name, cfn_stacks_factory):
+def _write_file_into_efs(region, vpc_stack, efs_id, request, key_name, cfn_stacks_factory):
     """Write file stack contains a mount target and a instance to write a empty file with random name into the efs."""
     write_file_template = Template()
     write_file_template.set_version("2010-09-09")
@@ -131,7 +154,7 @@ def _write_file_into_efs(region, vpc_stack, efs_stack, request, key_name, cfn_st
     write_file_template.add_resource(
         MountTarget(
             "MountTargetResource",
-            FileSystemId=efs_stack.cfn_resources["FileSystemResource"],
+            FileSystemId=efs_id,
             SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
             SecurityGroups=[default_security_group_id],
         )
@@ -145,7 +168,7 @@ def _write_file_into_efs(region, vpc_stack, efs_stack, request, key_name, cfn_st
         runcmd:
         - yum install -y nfs-utils
         - file_system_id_1="""
-        + efs_stack.cfn_resources["FileSystemResource"]
+        + efs_id
         + """
         - efs_mount_point_1=/mnt/efs/fs1
         - mkdir -p "${!efs_mount_point_1}"
