@@ -70,7 +70,7 @@ test-suites:
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   storage:
-    test_efs.py::test_efs_compute_az:
+    test_efs.py::test_existing_efs:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
