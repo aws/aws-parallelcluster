@@ -1360,9 +1360,10 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         )
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
-        for storage in self.shared_storage:
-            if isinstance(storage, SharedFsx):
-                self._register_validator(AwsBatchFsxValidator)
+        if self.shared_storage:
+            for storage in self.shared_storage:
+                if isinstance(storage, SharedFsx):
+                    self._register_validator(AwsBatchFsxValidator)
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
