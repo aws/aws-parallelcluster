@@ -85,6 +85,7 @@ class RemoteCommandExecutor:
         hide=False,
         log_output=False,
         timeout=None,
+        pty=True,
     ):
         """
         Execute remote command on the cluster head node.
@@ -97,6 +98,7 @@ class RemoteCommandExecutor:
         :param hide: do not print command output to the local stdout
         :param log_output: log the command output.
         :param timeout: interrupt connection after N seconds, default of None = no timeout
+        :param pty: if True, uses pty to execute commands; default is True.
         :return: result of the execution.
         """
         if isinstance(command, list):
@@ -106,7 +108,7 @@ class RemoteCommandExecutor:
         if login_shell:
             command = "/bin/bash --login -c {0}".format(shlex.quote(command))
 
-        result = self._run_command(command, warn=True, pty=True, hide=hide, timeout=timeout)
+        result = self._run_command(command, warn=True, pty=pty, hide=hide, timeout=timeout)
         result.stdout = "\n".join(result.stdout.splitlines())
         result.stderr = "\n".join(result.stderr.splitlines())
         if log_output:

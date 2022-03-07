@@ -1,0 +1,55 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ head_node_instance_type }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+      - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess # Required to add performance testing widgets to the cluster dashboard
+    S3Access:
+      - BucketName: {{ bucket_bootstrap_scripts }}
+        KeyName: {{ bucket_bootstrap_scripts_prefix }}/*
+        EnableWriteAccess: false
+  CustomActions:
+    OnNodeConfigured:
+      Script: s3://{{ bucket_bootstrap_scripts }}/{{ bucket_bootstrap_scripts_prefix }}/post.head.sh
+      Args:
+        - s3://{{ bucket_bootstrap_scripts }}/{{ bucket_bootstrap_scripts_prefix }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: compute
+      ComputeResources:
+        - Name: res-1
+          InstanceType: {{ compute_instance_type }}
+          MinCount: 0
+          MaxCount: {{ num_compute_nodes }}
+          DisableSimultaneousMultithreading: {{ multithreading_disabled }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+        S3Access:
+          - BucketName: {{ bucket_bootstrap_scripts }}
+            KeyName: {{ bucket_bootstrap_scripts_prefix }}/*
+            EnableWriteAccess: false
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket_bootstrap_scripts }}/{{ bucket_bootstrap_scripts_prefix }}/pre.compute.sh
+        OnNodeConfigured:
+          Script: s3://{{ bucket_bootstrap_scripts }}/{{ bucket_bootstrap_scripts_prefix }}/post.compute.sh
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14
+SharedStorage:
+  - MountDir: /shared
+    Name: shared-ebs
+    StorageType: Ebs
