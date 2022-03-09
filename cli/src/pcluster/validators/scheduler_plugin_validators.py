@@ -154,17 +154,13 @@ class PluginInterfaceVersionValidator(Validator):
     """Check if PluginInterfaceVersion is supported."""
 
     def _validate(self, plugin_version, support_version):
-        major_plugin_version, minor_plugin_version = self._get_major_minor_version(plugin_version)
-        major_support_version, minor_support_version = self._get_major_minor_version(support_version)
-        if not (major_plugin_version == major_support_version and minor_plugin_version <= minor_support_version):
+        low_limit, high_limit = packaging.version.parse(
+            str(packaging.version.parse(support_version).major) + ".0"
+        ), packaging.version.parse(support_version)
+        if not low_limit <= packaging.version.parse(plugin_version) <= high_limit:
             error_message = f"The PluginInterfaceVersion '{plugin_version}' is not supported."
-            if minor_support_version == 0:
+            if low_limit == high_limit:
                 error_message += f" Supported version is '{support_version}'."
             else:
-                error_message += f" Supported versions are '>={major_support_version}.0, <= {support_version}'."
-
+                error_message += f" Supported versions are '>={low_limit.base_version}, <= {support_version}'."
             self._add_failure(error_message, FailureLevel.ERROR)
-
-    def _get_major_minor_version(self, version_string):
-        version = version_string.split(".")
-        return int(version[0]), int(version[1])
