@@ -334,7 +334,7 @@ def _is_url(value):
     scheme = urllib.request.urlparse(value).scheme
     if scheme in ["https", "s3", "file"]:
         try:
-            if scheme == "s3":
+            if scheme == "s3":  # If S3 URI is provided
                 match = re.match(r"s3://(.*?)/(.*)", value)
                 if not match or len(match.groups()) < 2:
                     raise argparse.ArgumentTypeError(f"'{value}' is not a valid S3url")
@@ -342,7 +342,12 @@ def _is_url(value):
                     bucket_name, object_name = match.group(1), match.group(2)
                     boto3.client("s3").head_object(Bucket=bucket_name, Key=object_name)
             else:
-                urllib.request.urlopen(value)
+                match = re.match(r"https://(.*?)\.s3\.(.*?)amazonaws\.com(.*?)/(.*)", value)
+                if match and len(match.groups()) == 4:  # If S3 URL is provided.
+                    bucket_name, object_name = match.group(1), match.group(4)
+                    boto3.client("s3").head_object(Bucket=bucket_name, Key=object_name)
+                else:
+                    urllib.request.urlopen(value)
             return value
         except Exception as e:
             raise argparse.ArgumentTypeError(f"'{value}' is not a valid url:{e}")
