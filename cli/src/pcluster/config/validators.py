@@ -714,7 +714,12 @@ def url_validator(param_key, param_value, pcluster_config):
 
     else:
         try:
-            urllib.request.urlopen(param_value)  # nosec nosemgrep
+            match = re.match(r"https://(.*?)\.s3\.(.*?)amazonaws\.com(.*?)/(.*)", param_value)
+            if match and len(match.groups()) == 4:  # If S3 URL is provided.
+                bucket_name, object_name = match.group(1), match.group(4)
+                boto3.client("s3").head_object(Bucket=bucket_name, Key=object_name)
+            else:
+                urllib.request.urlopen(param_value)  # nosec nosemgrep
         except urllib.error.HTTPError as e:
             warnings.append("{0} {1} {2}".format(param_value, e.code, e.reason))
         except urllib.error.URLError as e:

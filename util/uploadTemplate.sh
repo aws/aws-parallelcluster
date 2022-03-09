@@ -108,8 +108,8 @@ main() {
     sed -i "s#.*aws-parallelcluster.*/templates/master-server-substack-\${version}.cfn.yaml.*#\"https://${_s3_folder_url}/master-server-substack.cfn.yaml\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
 
     # upload templates
-    aws ${_profile} --region "${_region}" s3 cp --acl public-read ${_temp_dir}/aws-parallelcluster.cfn.json s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push cloudformation template to S3'
-    aws ${_profile} --region "${_region}" s3 cp --acl public-read --recursive --exclude "*" --include "*substack.cfn.json" --include "*substack.cfn.yaml" ${_srcdir}/cloudformation/ s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push substack cfn templates to S3'
+    aws ${_profile} --region "${_region}" s3 cp ${_temp_dir}/aws-parallelcluster.cfn.json s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push cloudformation template to S3'
+    aws ${_profile} --region "${_region}" s3 cp --recursive --exclude "*" --include "*substack.cfn.json" --include "*substack.cfn.yaml" ${_srcdir}/cloudformation/ s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push substack cfn templates to S3'
 
     echo ""
     echo "Done. Add the following variables to the pcluster config file, under the [cluster ...] section"

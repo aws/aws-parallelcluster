@@ -38,10 +38,13 @@ def get_template_extension(templates_dir, template_name):
     return ".cfn." + extension
 
 
-def put_object_to_s3(s3_client, bucket, key, region, data, template_name):
+def put_object_to_s3(s3_client, bucket, key, region, data, template_name, private):
     try:
         object = s3_client.Object(bucket, key)
-        response = object.put(Body=data, ACL="public-read")
+        put_object_args = {"Body": data}
+        if not private:
+            put_object_args["ACL"] = "public-read"
+        response = object.put(**put_object_args)
         if response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
             print("Successfully uploaded %s to s3://%s/%s" % (template_name, bucket, key))
     except ClientError as e:
@@ -54,7 +57,8 @@ def put_object_to_s3(s3_client, bucket, key, region, data, template_name):
             s3_client.BucketVersioning(bucket).enable()
             print("Created %s bucket. Bucket versioning is enabled, " "please enable bucket logging manually." % bucket)
             b = s3_client.Bucket(bucket)
-            res = b.put_object(Body=data, ACL="public-read", Key=key)
+            put_object_args["Key"] = key
+            res = b.put_object(**put_object_args)
             print(res)
         else:
             print("Couldn't upload %s to bucket s3://%s/%s" % (template_name, bucket, key))
@@ -112,7 +116,7 @@ def upload_to_s3(args, region, aws_credentials=None):
                 pass
 
             if (exist and args.override and not args.dryrun) or (not exist and not args.dryrun):
-                put_object_to_s3(s3_client, bucket, key, region, data, template_name)
+                put_object_to_s3(s3_client, bucket, key, region, data, template_name, args.private)
             else:
                 print(
                     "Not uploading %s to bucket %s, object exists %s, override is %s, dryrun is %s"
@@ -184,6 +188,9 @@ if __name__ == "__main__":
         help="If override is false, the file will not be pushed if it already exists in the bucket",
         default=False,
         required=False,
+    )
+    parser.add_argument(
+        "--private", action="store_true", help="Doesn't make object public readable", default=False, required=False
     )
     parser.add_argument(
         "--createifnobucket",
