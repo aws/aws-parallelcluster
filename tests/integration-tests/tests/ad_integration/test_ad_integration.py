@@ -26,6 +26,7 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from OpenSSL import crypto
 from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
+from paramiko import RSAKey
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
@@ -467,7 +468,7 @@ def _check_files_permissions(users):
         _check_failed_result_for_permission_denied(result)
         previous_user = users[index - 1]
         for path in [
-            f"/home/{user.alias}/my_file",
+            f"{user.home_dir}/my_file",
             f"/shared/{user.alias}_file",
             f"/ebs/{user.alias}_file",
             f"/efs/{user.alias}_file",
@@ -486,28 +487,145 @@ def _check_failed_result_for_permission_denied(result):
     assert_that(result.stdout).matches("Permission denied")
 
 
-def _check_ssh_key_generation(user, scheduler_commands, generate_ssh_keys_for_user):
+def _check_ssh_key_generation(user, remote_command_executor, scheduler_commands, generate_ssh_keys_for_user):
+    # SSH login
+    logging.info(
+        "Checking SSH key generation for user %s on SSH login (expected generation: %s)",
+        user.alias,
+        generate_ssh_keys_for_user,
+    )
     # Remove user's home directory to ensure public SSH key doesn't exist
     user.cleanup()
-    # Run remote command as user via password so that the feature has a chance to generate
-    # SSH keys if their ~/.ssh directory doesn't exist (and the cluster is configured to do so).
-    user.validate_password_auth_and_automatic_homedir_creation()
-    # Copy user's SSH key to the head node to facilitate the validation to follow. Note that this
-    # must be done after the above validation of home directory creation. If it's done before,
-    # then the user's ~/.ssh directory will have already been created and thus a keypair won't be
-    # generated regardless of the value of the GenerateSshKeysForUsers parameter in the cluster config.
-    user.copy_public_ssh_key_to_authorized_keys()
-    result = user.run_remote_command("cat ~/.ssh/id_rsa", raise_on_error=generate_ssh_keys_for_user)
-    if not generate_ssh_keys_for_user:
-        assert_that(result.failed).is_true()
-    else:
+    user.ssh_connect()
+    _check_home_directory(user, remote_command_executor)
+    _check_ssh_key(user, generate_ssh_keys_for_user, remote_command_executor, scheduler_commands)
+    logging.info(
+        "Verified SSH key generation for user %s on SSH login (expected generation: %s)",
+        user.alias,
+        generate_ssh_keys_for_user,
+    )
+
+    ssh_key_path = f"{user.home_dir}/.ssh/id_rsa"
+
+    # Switch User - Interactive
+    switch_user_commands = [
+        f"sudo su {user.alias} --command='ls {ssh_key_path}'",
+        f"sudo su - {user.alias} --command='ls {ssh_key_path}'",
+        # TODO: Checks for below commands are failing, even if a manual check on the same cluster succeeds.
+        # We need to double check these failures, but we can consider them as not blocking.
+        # f"sudo -u {user.alias} ls {ssh_key_path}",
+        # f"sudo -i -u {user.alias} ls {ssh_key_path}",
+    ]
+
+    for command in switch_user_commands:
+        logging.info(
+            "Checking SSH key generation for user %s on switch user (%s) (expected generation: %s)",
+            user.alias,
+            command,
+            generate_ssh_keys_for_user,
+        )
+        user.cleanup()
+        result = remote_command_executor.run_remote_command(command, raise_on_error=generate_ssh_keys_for_user)
+        assert_that(result.failed).is_equal_to(not generate_ssh_keys_for_user)
+        _check_home_directory(user, remote_command_executor)
+        _check_ssh_key(user, generate_ssh_keys_for_user, remote_command_executor, scheduler_commands)
+        logging.info(
+            "Verified SSH key generation for user %s on switch user (%s) (expected generation: %s)",
+            user.alias,
+            command,
+            generate_ssh_keys_for_user,
+        )
+
+
+def _check_home_directory(user, remote_command_executor):
+    """
+    This check verifies that:
+    1. The user home directory exists;
+    2. The user home directory has the right permissions.
+    """
+    logging.info("Checking home directory for user %s", user.alias)
+
+    check_existence = f"sudo ls {user.home_dir}"
+    result = remote_command_executor.run_remote_command(check_existence)
+    assert_that(result.failed).is_false()
+
+    check_ownership = f"sudo stat -c '%U' {user.home_dir}"
+    result = remote_command_executor.run_remote_command(check_ownership)
+    assert_that(result.failed).is_false()
+    assert_that(result.stdout.strip()).is_equal_to(user.alias)
+    logging.info("Verified home directory for user %s", user.alias)
+
+
+def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, scheduler_commands):
+    """
+    This check verifies that:
+    1. The SSH key exists [does not exist] for the user, if SSH key generation is enabled [disabled];
+    2. The SSH key has the right permission, if it exists;
+    3. The SSH key can be used to log in to the head node;
+    4. The SSH key can be used to log in to a compute node.
+    """
+    logging.info("Checking SSH key for user %s (expected to exist: %s)", user.alias, ssh_generation_enabled)
+
+    ssh_key_path = f"{user.home_dir}/.ssh/id_rsa"
+
+    # Check existence
+    check_existence = f"sudo ls {ssh_key_path}"
+    result = remote_command_executor.run_remote_command(check_existence, raise_on_error=ssh_generation_enabled)
+    assert_that(result.failed).is_equal_to(not ssh_generation_enabled)
+
+    logging.info(
+        "Verified existence of SSH key for user %s (expected to exist: %s)",
+        user.alias,
+        ssh_generation_enabled,
+    )
+
+    if ssh_generation_enabled:
+        # Check permissions
+        logging.info(
+            "Checking SSH key permissions for user %s (expected to exist: %s)",
+            user.alias,
+            ssh_generation_enabled,
+        )
+        check_permissions = f"sudo stat -c '%U %a' {ssh_key_path}"
+        result = remote_command_executor.run_remote_command(check_permissions)
+        assert_that(result.failed).is_false()
+        assert_that(result.stdout.strip()).is_equal_to(f"{user.alias} 600")
+        logging.info(
+            "Verified SSH key permissions for user %s (expected to exist: %s)",
+            user.alias,
+            ssh_generation_enabled,
+        )
+
+        # Check SSH login with SSH key to head node and to a static compute nodes
+        logging.info(
+            "Checking SSH key usable for SSH login for user %s (expected to exist: %s)",
+            user.alias,
+            ssh_generation_enabled,
+        )
+        read_ssh_key = f"sudo cat {ssh_key_path}"
+        result = remote_command_executor.run_remote_command(read_ssh_key)
+        assert_that(result.failed).is_false()
+        key_content = result.stdout
+        assert_that(key_content).is_not_empty()
+
+        user_command_executor = user.ssh_connect(pkey=RSAKey.from_private_key(io.StringIO(key_content)))
+        logging.info(
+            "Verified SSH key usable for SSH login to the head node for user %s (expected to exist: %s)",
+            user.alias,
+            ssh_generation_enabled,
+        )
         compute_nodes = scheduler_commands.get_compute_nodes()
         static_compute_node = None
         for node in compute_nodes:
             if "-st" in node:
                 static_compute_node = node
                 break
-        user.run_remote_command(f"ssh {static_compute_node} hostname")
+        user_command_executor.exec_command(f"ssh {static_compute_node} hostname")
+        logging.info(
+            "Verified SSH key usable for SSH login to the compute node for user %s (expected to exist: %s)",
+            user.alias,
+            ssh_generation_enabled,
+        )
 
 
 # Some tests have been disabled to save time and reduce costs.
@@ -532,7 +650,6 @@ def test_ad_integration(
     directory_protocol,
     directory_certificate_verification,
     test_datadir,
-    s3_bucket_factory,
     directory_factory,
     request,
     store_secret_in_secret_manager,
@@ -540,7 +657,17 @@ def test_ad_integration(
     run_benchmarks,
     benchmarks,
 ):
-    """Verify AD integration works as expected."""
+    """
+    Verify AD integration works as expected.
+    In particular, it verifies that :
+    1. AD users can access to the head node, both with password and SSH key (if created);
+    2. SSH key for AD users is [not] created when the property GenerateSshKeysForUsers is true [false];
+    3. SSH key for AD users is created when the property GenerateSshKeysForUsers is true;
+    4. AD users can submit workloads;
+    5. AD users filter out by LdapAccessFilter cannot access to the head node.
+
+    Optionally, it executes performance tests using OSU benchmarks.
+    """
     head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
     compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
     config_params = {
@@ -604,7 +731,7 @@ def test_ad_integration(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
     users = []
-    for user_num in range(1, NUM_USERS_TO_TEST + 1):
+    for user_num in range(NUM_USERS_TO_TEST):
         users.append(
             ClusterUser(
                 user_num,
@@ -618,7 +745,7 @@ def test_ad_integration(
         )
     _run_user_workloads(users, test_datadir, remote_command_executor)
     logging.info("Testing pcluster update and generate ssh keys for user")
-    _check_ssh_key_generation(users[0], scheduler_commands, False)
+    _check_ssh_key_generation(users[0], remote_command_executor, scheduler_commands, False)
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml", benchmarks=benchmarks, **config_params
     )
@@ -628,10 +755,10 @@ def test_ad_integration(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     for user in users:
         user.reset_stateful_connection_objects(remote_command_executor, scheduler_commands_factory)
-    _check_ssh_key_generation(users[1], scheduler_commands, True)
+    _check_ssh_key_generation(users[1], remote_command_executor, scheduler_commands, True)
     for user in users:
         logging.info(f"Checking SSH access for user {user.alias}")
-        _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser3")
+        _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser2")
     run_benchmarks(users[0].remote_command_executor(), users[0].scheduler_commands(), diretory_type=directory_type)
 
 

@@ -25,6 +25,7 @@ class ClusterUser:
         self.scheduler = scheduler
         self.user_num = user_num  # TODO: don't need to keep this?
         self.alias = f"PclusterUser{user_num}"
+        self.home_dir = f"/home/{self.alias}"
         self.ssh_keypair_path_prefix = str(test_datadir / self.alias)
         self.ssh_private_key_path = self.ssh_keypair_path_prefix
         self.ssh_public_key_path = f"{self.ssh_private_key_path}.pub"
@@ -57,8 +58,7 @@ class ClusterUser:
 
     def copy_public_ssh_key_to_authorized_keys(self):
         """Copy user's public SSH key to authorized keys file on cluster's head node."""
-        user_home_dir = f"/home/{self.alias}"
-        user_ssh_dir = f"{user_home_dir}/.ssh"
+        user_ssh_dir = f"{self.home_dir}/.ssh"
         public_key_basename = os.path.basename(self.ssh_public_key_path)
         authorized_keys_path = f"{user_ssh_dir}/authorized_keys"
         cmd = " && ".join(
@@ -67,7 +67,7 @@ class ClusterUser:
                 f"sudo chmod 700 {user_ssh_dir}",
                 f"cat {public_key_basename} | sudo tee -a {authorized_keys_path}",
                 f"sudo chmod 644 {authorized_keys_path}",
-                f"sudo chown -R {self.alias} {user_home_dir}",
+                f"sudo chown -R {self.alias} {self.home_dir}",
             ]
         )
         self._default_user_remote_command_executor.run_remote_command(cmd, additional_files=[self.ssh_public_key_path])
@@ -98,27 +98,30 @@ class ClusterUser:
 
     def cleanup(self):
         """Cleanup resources associated with this user."""
-        user_home_dir = f"/home/{self.alias}"
-        logging.info("Removing home directory for user %s (%s)", self.alias, user_home_dir)
-        self._default_user_remote_command_executor.run_remote_command(f"sudo rm -rf {user_home_dir}")
+        logging.info("Removing home directory for user %s (%s)", self.alias, self.home_dir)
+        self._default_user_remote_command_executor.run_remote_command(f"sudo rm -rf {self.home_dir}")
 
-    def ssh_connect(self, port=22):
+    def ssh_connect(self, port=22, pkey=None):
         """Establish a SSH connection to the cluster head node with the current user."""
         ssh = SSHClient()
         ssh.set_missing_host_key_policy(AutoAddPolicy())
-        ssh.connect(self.cluster.head_node_ip, port, self.alias, self.password, allow_agent=False, look_for_keys=False)
+        if pkey is not None:
+            ssh.connect(self.cluster.head_node_ip, port, self.alias, pkey=pkey, allow_agent=False)
+        else:
+            ssh.connect(
+                self.cluster.head_node_ip, port, self.alias, self.password, allow_agent=False, look_for_keys=False
+            )
         return ssh
 
     def validate_password_auth_and_automatic_homedir_creation(self, port=22):
         """Ensure password can be used to login to cluster and that user's home directory is created."""
         ssh = self.ssh_connect()
 
-        homedir = f"/home/{self.alias}"
-        command = f"[ -d {homedir} ] || echo failure"
+        command = f"[ -d {self.home_dir} ] || echo failure"
         logging.info(
             "Verifying home directory for user %s is automatically created at %s before running command: %s",
             self.alias,
-            homedir,
+            self.home_dir,
             command,
         )
         _, stdout, stderr = ssh.exec_command(command)
