@@ -4,6 +4,9 @@ CHANGELOG
 3.1.3
 ------
 
+**ENHANCEMENTS**
+- Add support to deploy API infrastructure in environments without a default VPC.
+
 **CHANGES**
 - Add validator to verify that `DirectoryService.DomainName` is a FQDN or a LDAP Distinguished Name.
 
