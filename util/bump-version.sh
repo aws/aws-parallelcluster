@@ -31,7 +31,7 @@ main() {
             --plugin-interface-version)           _plugin_interface_version="$2"; shift;;
             --plugin-interface-version=*)         _plugin_interface_version="${1#*=}";;
             -h|--help|help)                       _help; exit 0;;
-            *)                                    _help; echo "[error] Unrecognized option '$1'"; exit 1;;
+            *)                                    _help; _error_exit "[error] Unrecognized option '$1'";;
         esac
         shift
     done
@@ -43,24 +43,24 @@ main() {
     else
         NEW_VERSION=$_version
         NEW_VERSION_SHORT=$(echo ${NEW_VERSION} | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+")
-        CURRENT_VERSION=$(gsed -ne "s/^VERSION = \"\(.*\)\"/\1/p" cli/setup.py)
+        CURRENT_VERSION=$(sed -ne "s/^VERSION = \"\(.*\)\"/\1/p" cli/setup.py)
         CURRENT_VERSION_SHORT=$(echo ${CURRENT_VERSION} | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+")
-        gsed -i "s/VERSION = \"$CURRENT_VERSION\"/VERSION = \"$NEW_VERSION\"/g" cli/setup.py
+        sed -i "s/VERSION = \"$CURRENT_VERSION\"/VERSION = \"$NEW_VERSION\"/g" cli/setup.py
 
-        gsed -i "s/\"parallelcluster\": \"$CURRENT_VERSION\"/\"parallelcluster\": \"$NEW_VERSION\"/g" cli/src/pcluster/constants.py
-        gsed -i "s/aws-parallelcluster-cookbook-$CURRENT_VERSION/aws-parallelcluster-cookbook-$NEW_VERSION/g" cli/src/pcluster/constants.py
+        sed -i "s/\"parallelcluster\": \"$CURRENT_VERSION\"/\"parallelcluster\": \"$NEW_VERSION\"/g" cli/src/pcluster/constants.py
+        sed -i "s/aws-parallelcluster-cookbook-$CURRENT_VERSION/aws-parallelcluster-cookbook-$NEW_VERSION/g" cli/src/pcluster/constants.py
 
-        gsed -i "s|pcluster-api:$CURRENT_VERSION|pcluster-api:$NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
-        gsed -i "s|parallelcluster/$CURRENT_VERSION|parallelcluster/$NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
-        gsed -i "s| Version: $CURRENT_VERSION| Version: $NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
-        gsed -i "s| ShortVersion: $CURRENT_VERSION_SHORT| ShortVersion: $NEW_VERSION_SHORT|g" api/infrastructure/parallelcluster-api.yaml
+        sed -i "s|pcluster-api:$CURRENT_VERSION|pcluster-api:$NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
+        sed -i "s|parallelcluster/$CURRENT_VERSION|parallelcluster/$NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
+        sed -i "s| Version: $CURRENT_VERSION| Version: $NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
+        sed -i "s| ShortVersion: $CURRENT_VERSION_SHORT| ShortVersion: $NEW_VERSION_SHORT|g" api/infrastructure/parallelcluster-api.yaml
     fi
 
     if [ "${_plugin_interface_version}" ]; then
         NEW_VERSION=$_plugin_interface_version
-        CURRENT_VERSION=$(gsed -ne "s/^PLUGIN_INTERFACE_VERSION = \"\(.*\)\"/\1/p" cli/src/pcluster/constants.py)
-        gsed -i "s/PLUGIN_INTERFACE_VERSION = \"$CURRENT_VERSION\"/PLUGIN_INTERFACE_VERSION = \"$NEW_VERSION\"/g" cli/src/pcluster/constants.py
-        gsed -i "s/PLUGIN_INTERFACE_VERSION = \"$CURRENT_VERSION\"/PLUGIN_INTERFACE_VERSION = \"$NEW_VERSION\"/g" tests/integration-tests/constants.py
+        CURRENT_VERSION=$(sed -ne "s/^SCHEDULER_PLUGIN_INTERFACE_VERSION = \"\(.*\)\"/\1/p" tests/integration-tests/constants.py)
+        sed -i "s/SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version(\"$CURRENT_VERSION\")/SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version(\"$NEW_VERSION\")/g" cli/src/pcluster/constants.py
+        sed -i "s/SCHEDULER_PLUGIN_INTERFACE_VERSION = \"$CURRENT_VERSION\"/SCHEDULER_PLUGIN_INTERFACE_VERSION = \"$NEW_VERSION\"/g" tests/integration-tests/constants.py
     fi
 }
 

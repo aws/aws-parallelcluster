@@ -36,7 +36,8 @@ from pcluster.constants import (
     MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
     NODE_BOOTSTRAP_TIMEOUT,
-    PLUGIN_INTERFACE_VERSION,
+    SCHEDULER_PLUGIN_INTERFACE_VERSION,
+    SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
     SUPPORTED_OSES,
 )
 from pcluster.utils import (
@@ -1894,7 +1895,9 @@ class SchedulerPluginDefinition(Resource):
         self._register_validator(
             PluginInterfaceVersionValidator,
             plugin_version=self.plugin_interface_version,
-            support_version=PLUGIN_INTERFACE_VERSION,
+            support_version=SCHEDULER_PLUGIN_INTERFACE_VERSION,
+            support_version_low_range=SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
+            support_version_high_range=SCHEDULER_PLUGIN_INTERFACE_VERSION,
         )
 
 
