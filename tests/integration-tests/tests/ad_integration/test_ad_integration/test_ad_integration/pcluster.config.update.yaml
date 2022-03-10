@@ -45,7 +45,7 @@ DirectoryService:
   LdapTlsCaCert: {{ ldap_tls_ca_cert }}
   LdapTlsReqCert: {{ ldap_tls_req_cert }}
   GenerateSshKeysForUsers: true
-  LdapAccessFilter: "!(CN=PclusterUser3)"
+  LdapAccessFilter: "!(CN=PclusterUser2)"
   AdditionalSssdConfigs:
     debug_level: "0x1ff"
     {% if directory_protocol == "ldap" %}
