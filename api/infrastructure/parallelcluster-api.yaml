@@ -74,6 +74,14 @@ Parameters:
       - true
       - false
 
+  ImageBuilderVpcId:
+    Description: Optional. Provide a specific vpc id to use for building the container images. Use this if you don't have a default vpc available.
+    Type: String
+
+  ImageBuilderSubnetId:
+    Description: Optional. Provide a specific subnet id to use for building the container images. Use this if you don't have a default vpc available.
+    Type: String
+
 Mappings:
   ParallelCluster:
     Constants:
@@ -141,7 +149,10 @@ Conditions:
     - !Not [!Condition UsePrivateVpcEndpoint]
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
   CreateApiUserRoleCondition: !Equals [!Ref CreateApiUserRole, true]
-
+  NonDefaultVpc:
+    Fn::And:
+      - !Not [!Equals [!Ref ImageBuilderVpcId, ""]]
+      - !Not [!Equals [!Ref ImageBuilderSubnetId, ""]]
 
 Resources:
 
@@ -964,16 +975,33 @@ Resources:
       Roles:
         - !Ref ImageBuilderInstanceRole
 
+  InfrastructureConfigurationSecurityGroup:
+    Condition: NonDefaultVpc
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref ImageBuilderVpcId
+      GroupDescription: Parallel cluster image builder security group
+
   InfrastructureConfiguration:
     Condition: DoNotUseCustomEcrImageUri
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
-      Name: !Sub
+      Name: !Sub 
         - ParallelClusterImageBuilderInfrastructureConfiguration-${Version}-${StackIdSuffix}
         - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref EcrImageBuilderSNSTopic
+      SubnetId: 
+        Fn::If:
+          - NonDefaultVpc
+          - !Ref ImageBuilderSubnetId
+          - !Ref AWS::NoValue
+      SecurityGroupIds:
+        Fn::If:
+          - NonDefaultVpc
+          - [!Ref InfrastructureConfigurationSecurityGroup]
+          - !Ref AWS::NoValue
 
   PrivateEcrRepository:
     Condition: DoNotUseCustomEcrImageUri
