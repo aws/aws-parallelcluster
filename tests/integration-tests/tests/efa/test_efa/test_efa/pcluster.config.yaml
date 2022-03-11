@@ -15,7 +15,7 @@ Scheduling:
     - Name: efa-enabled
       Networking:
         PlacementGroup:
-          Enabled: {{ 'true' if instance != "p4d.24xlarge" else 'false' }}
+          Enabled: {% if instance != "p4d.24xlarge" %}true{% else %}false{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:

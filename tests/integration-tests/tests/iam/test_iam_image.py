@@ -22,7 +22,7 @@ from utils import generate_stack_name
 from tests.common.utils import retrieve_latest_ami
 
 
-@pytest.mark.usefixtures("instance", "scheduler")
+@pytest.mark.usefixtures("instance")
 def test_iam_roles(
     region,
     os,

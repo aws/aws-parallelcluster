@@ -1255,9 +1255,13 @@ def _retrieve_slurm_root_path(remote_command_executor):
 
 
 def _retrieve_clustermgtd_conf_path(remote_command_executor):
-    return remote_command_executor.run_remote_command(
+    clustermgtd_conf_path = "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    clustermgtd_conf_path_override = remote_command_executor.run_remote_command(
         "sudo strings /proc/$(pgrep -f bin/clustermgtd$)/environ | grep CONFIG_FILE= | cut -d '=' -f2"
     ).stdout
+    if clustermgtd_conf_path_override:
+        clustermgtd_conf_path = clustermgtd_conf_path_override
+    return clustermgtd_conf_path
 
 
 def _retrieve_clustermgtd_heartbeat_file(remote_command_executor, clustermgtd_conf_path):

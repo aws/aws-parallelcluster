@@ -143,7 +143,7 @@ class UserNameValidator(Validator):
         if not match:
             self._add_failure(
                 (
-                    f"Invalid SystemUser name '{user_name}'. SystemUser name must match the following pattern: "
+                    f"Invalid SystemUsers name '{user_name}'. SystemUsers name must match the following pattern: "
                     f"{USER_NAME_REGEX}"
                 ),
                 FailureLevel.ERROR,

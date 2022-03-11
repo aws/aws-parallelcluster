@@ -50,6 +50,7 @@ from pcluster.utils import (
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
+    AwsBatchFsxValidator,
     AwsBatchInstancesArchitectureCompatibilityValidator,
     AwsBatchRegionValidator,
 )
@@ -1361,6 +1362,11 @@ class AwsBatchClusterConfig(BaseClusterConfig):
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
         )
         # TODO add InstanceTypesBaseAMICompatibleValidator
+
+        if self.shared_storage:
+            for storage in self.shared_storage:
+                if isinstance(storage, SharedFsx):
+                    self._register_validator(AwsBatchFsxValidator)
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:

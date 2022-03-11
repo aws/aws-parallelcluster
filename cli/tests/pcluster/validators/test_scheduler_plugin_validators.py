@@ -225,13 +225,13 @@ def test_supported_versions_validator(installed_version, supported_versions, exp
     "user_name, expected_message",
     [
         ("user1", None),
-        ("test1\ntest2", "Invalid SystemUser name"),
+        ("test1\ntest2", "Invalid SystemUsers name"),
         (
             """ |
              test1
              test2
              """,
-            "Invalid SystemUser name",
+            "Invalid SystemUsers name",
         ),
     ],
 )

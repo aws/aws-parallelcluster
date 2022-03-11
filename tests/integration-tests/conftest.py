@@ -653,7 +653,7 @@ def configure_scheduler_plugin(scheduler_plugin_configuration, config_content):
     ):
         dict_add_nested_key(
             config_content,
-            scheduler_plugin_configuration["scheduler-definition"],
+            scheduler_plugin_configuration["scheduler-definition-url"],
             ("Scheduling", "SchedulerSettings", "SchedulerDefinition"),
         )
         dict_add_nested_key(
@@ -852,38 +852,40 @@ def get_availability_zones(region, credential):
 def initialize_cli_creds(request):
     if request.config.getoption("use_default_iam_credentials"):
         logging.info("Using default IAM credentials to run pcluster commands")
-        return
-
-    stack_factory = CfnStacksFactory(request.config.getoption("credential"))
-
-    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-    stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
-    with open(stack_template_path, encoding="utf-8") as stack_template_file:
-        stack_template_data = stack_template_file.read()
-    cli_creds = {}
-    for region in regions:
-        if request.config.getoption("iam_user_role_stack_name"):
-            stack_name = request.config.getoption("iam_user_role_stack_name")
-            logging.info(f"Using stack {stack_name} in region {region}")
-            stack = CfnStack(
-                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-            )
-        else:
-            logging.info("Creating IAM roles for pcluster CLI")
-            stack_name = generate_stack_name("integ-tests-iam-user-role", request.config.getoption("stackname_suffix"))
-            stack = CfnStack(
-                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-            )
-
-            stack_factory.create_stack(stack)
-        cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
-
-    yield cli_creds
-
-    if not request.config.getoption("no_delete"):
-        stack_factory.delete_all_stacks()
+        yield None
     else:
-        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+        stack_factory = CfnStacksFactory(request.config.getoption("credential"))
+
+        regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+        stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
+        with open(stack_template_path, encoding="utf-8") as stack_template_file:
+            stack_template_data = stack_template_file.read()
+        cli_creds = {}
+        for region in regions:
+            if request.config.getoption("iam_user_role_stack_name"):
+                stack_name = request.config.getoption("iam_user_role_stack_name")
+                logging.info(f"Using stack {stack_name} in region {region}")
+                stack = CfnStack(
+                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                )
+            else:
+                logging.info("Creating IAM roles for pcluster CLI")
+                stack_name = generate_stack_name(
+                    "integ-tests-iam-user-role", request.config.getoption("stackname_suffix")
+                )
+                stack = CfnStack(
+                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                )
+
+                stack_factory.create_stack(stack)
+            cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
+
+        yield cli_creds
+
+        if not request.config.getoption("no_delete"):
+            stack_factory.delete_all_stacks()
+        else:
+            logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -1120,7 +1122,7 @@ def s3_bucket_key_prefix():
 
 
 @xdist_session_fixture(autouse=True)
-def upload_scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> dict:
+def scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> dict:
     scheduler_definition_dict = {}
     tests_config = request.config.getoption("tests_config", default={})
     if tests_config:
@@ -1134,14 +1136,18 @@ def upload_scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> di
                 )
                 scheduler_definition_dict[plugin_name] = {}
                 for region, s3_bucket in s3_bucket_factory_shared.items():
-                    scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
-                        scheduler_definition, s3_bucket, plugin_name, region
-                    )
+                    with aws_credential_provider(region, request.config.getoption("credential")):
+                        scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
+                            scheduler_definition, s3_bucket, plugin_name, region
+                        )
                     scheduler_definition_dict[plugin_name].update({region: scheduler_plugin_definition_url})
             else:
                 logging.info(
                     "Found scheduler definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
                 )
+                scheduler_definition_dict[plugin_name] = {}
+                for region in s3_bucket_factory_shared.keys():
+                    scheduler_definition_dict[plugin_name].update({region: scheduler_definition})
 
     return scheduler_definition_dict
 
@@ -1380,16 +1386,20 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 
 @pytest.fixture()
-def scheduler_plugin_configuration(request, scheduler, region, upload_scheduler_plugin_definitions):
+def scheduler_plugin_configuration(request, region, scheduler_plugin_definitions):
+    try:
+        scheduler = request.getfixturevalue("scheduler")
+    except pytest.FixtureLookupError:
+        scheduler = None
     scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
-    scheduler_definition_url = upload_scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
+    scheduler_definition_url = scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
     if scheduler_definition_url:
         logging.info(
-            "Overriding scheduler plugin (%s) scheduler-definition to be (%s)",
+            "Adding scheduler plugin (%s) scheduler-definition-url to be (%s)",
             scheduler,
             scheduler_definition_url,
         )
-        scheduler_plugin["scheduler-definition"] = scheduler_definition_url
+        scheduler_plugin["scheduler-definition-url"] = scheduler_definition_url
 
     return scheduler_plugin
 

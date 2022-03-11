@@ -38,7 +38,9 @@ from tests.storage.test_fsx_lustre import (
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_cluster_in_private_subnet(region, scheduler, pcluster_config_reader, clusters_factory, bastion_instance):
+def test_cluster_in_private_subnet(
+    region, pcluster_config_reader, clusters_factory, bastion_instance, scheduler_commands_factory
+):
     # This test just creates a cluster in the private subnet and just checks that no failures occur
     fsx_mount_dir = "/fsx_mount"
     cluster_config = pcluster_config_reader(fsx_mount_dir=fsx_mount_dir)
@@ -46,7 +48,11 @@ def test_cluster_in_private_subnet(region, scheduler, pcluster_config_reader, cl
     assert_that(cluster).is_not_none()
 
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(1)
-    _test_fsx_in_private_subnet(cluster, region, scheduler, fsx_mount_dir, bastion_instance)
+    remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion_instance)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    _test_fsx_in_private_subnet(
+        cluster, region, fsx_mount_dir, bastion_instance, remote_command_executor, scheduler_commands
+    )
 
 
 @pytest.fixture(scope="class")
@@ -84,13 +90,13 @@ def test_existing_eip(existing_eip, pcluster_config_reader, clusters_factory):
     connection.run("cat /var/log/cfn-init.log", timeout=60)
 
 
-def _test_fsx_in_private_subnet(cluster, region, fsx_mount_dir, bastion_instance, scheduler_commands_factory):
+def _test_fsx_in_private_subnet(
+    cluster, region, fsx_mount_dir, bastion_instance, remote_command_executor, scheduler_commands
+):
     """Test FSx can be mounted in private subnet."""
     logging.info("Sleeping for 60 sec to wait for bastion ssh to become ready.")
     time.sleep(60)
     logging.info(f"Bastion: {bastion_instance}")
-    remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion_instance)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
     assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, region, fsx_fs_id)
     assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
