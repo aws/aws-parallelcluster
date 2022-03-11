@@ -986,7 +986,7 @@ Resources:
     Condition: DoNotUseCustomEcrImageUri
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
-      Name: !Sub 
+      Name: !Sub
         - ParallelClusterImageBuilderInfrastructureConfiguration-${Version}-${StackIdSuffix}
         - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
