@@ -982,7 +982,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       VpcId: !Ref ImageBuilderVpcId
-      GroupDescription: Parallel cluster image builder security group
+      GroupDescription: ParallelCluster image builder security group
 
   InfrastructureConfiguration:
     Condition: DoNotUseCustomEcrImageUri
