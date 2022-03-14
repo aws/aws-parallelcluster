@@ -4,6 +4,9 @@ CHANGELOG
 3.1.3
 ------
 
+**CHANGES**
+- Add validator to verify that `DirectoryService.DomainName` is a FQDN or a LDAP Distinguished Name.
+
 **BUG FIXES**
 - Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
 
