@@ -197,7 +197,10 @@ class RaidSchema(BaseSchema):
     """Represent the schema of the parameters specific to Raid. It is a child of EBS schema."""
 
     raid_type = fields.Int(
-        data_key="Type", validate=validate.OneOf([0, 1]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True,
+        data_key="Type",
+        validate=validate.OneOf([0, 1]),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     number_of_volumes = fields.Int(
         validate=validate.Range(min=2, max=5), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}

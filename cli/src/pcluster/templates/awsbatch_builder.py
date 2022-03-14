@@ -35,9 +35,9 @@ from pcluster.templates.cdk_builder_utils import (
     get_default_instance_tags,
     get_lambda_log_group_prefix,
     get_log_group_deletion_policy,
-    get_mount_dirs_by_type,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
+    to_comma_separated_string,
 )
 
 
@@ -53,8 +53,8 @@ class AwsBatchConstruct(Construct):
         bucket: S3Bucket,
         create_lambda_roles: bool,
         compute_security_group: CfnSecurityGroup,
-        shared_storage_mappings: dict,
-        shared_storage_options: dict,
+        shared_storage_infos: dict,
+        shared_storage_mount_dirs: dict,
         head_node_instance: ec2.CfnInstance,
         managed_head_node_instance_role: iam.CfnRole,
     ):
@@ -65,8 +65,8 @@ class AwsBatchConstruct(Construct):
         self.bucket = bucket
         self.create_lambda_roles = create_lambda_roles
         self.compute_security_group = compute_security_group
-        self.shared_storage_mappings = shared_storage_mappings
-        self.shared_storage_options = shared_storage_options
+        self.shared_storage_infos = shared_storage_infos
+        self.shared_storage_mount_dirs = shared_storage_mount_dirs
         self.head_node_instance = head_node_instance
         self.head_node_instance_role = managed_head_node_instance_role
 
@@ -175,7 +175,7 @@ class AwsBatchConstruct(Construct):
                         self.config,
                         self.compute_resource,
                         "Compute",
-                        self.shared_storage_mappings,
+                        self.shared_storage_infos,
                         raw_dict=True,
                     ),
                     **get_custom_tags(self.config, raw_dict=True),
@@ -431,19 +431,19 @@ class AwsBatchConstruct(Construct):
                 batch.CfnJobDefinition.EnvironmentProperty(name="PCLUSTER_STACK_NAME", value=self.stack_name),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_SHARED_DIRS",
-                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EBS),
+                    value=to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EBS]),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_EFS_SHARED_DIRS",
-                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EFS),
+                    value=to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_EFS_FS_IDS",
-                    value=get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
+                    value=get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_RAID_SHARED_DIR",
-                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.RAID),
+                    value=to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.RAID]),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_HEAD_NODE_IP", value=self.head_node_instance.attr_private_ip

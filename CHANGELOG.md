@@ -7,6 +7,7 @@ x.x.x
 **ENHANCEMENTS**
 - Add support to deploy API infrastructure in environments without a default VPC.
 - Add support for multiple Elastic File Systems.
+- Add support for multiple FSx File Systems.
 
 **CHANGES**
 - Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.

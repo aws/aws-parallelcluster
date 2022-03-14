@@ -254,7 +254,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         [
             call(storage_type="EBS", max_number=5, storage_count=1),
             call(storage_type="EFS", max_number=10, storage_count=1),
-            call(storage_type="FSX", max_number=1, storage_count=1),
+            call(storage_type="FSX", max_number=10, storage_count=1),
         ]
     )
     # No assertion on the argument for minor validators

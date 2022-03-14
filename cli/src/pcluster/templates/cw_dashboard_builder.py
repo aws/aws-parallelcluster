@@ -49,7 +49,7 @@ class CWDashboardConstruct(Construct):
         id: str,
         cluster_config: BaseClusterConfig,
         head_node_instance: ec2.CfnInstance,
-        shared_storage_mappings: dict,
+        shared_storage_infos: dict,
         cw_log_group_name: str,
     ):
         super().__init__(scope, id)
@@ -57,7 +57,7 @@ class CWDashboardConstruct(Construct):
         self.stack_name = stack_name
         self.config = cluster_config
         self.head_node_instance = head_node_instance
-        self.shared_storage_mappings = shared_storage_mappings
+        self.shared_storage_infos = shared_storage_infos
         self.cw_log_group_name = cw_log_group_name
 
         self.dashboard_name = self.stack_name + "-" + self._stack_region
@@ -121,15 +121,15 @@ class CWDashboardConstruct(Construct):
             (SharedStorageType.EBS, "## EBS Metrics"),
             (SharedStorageType.RAID, "## RAID Metrics"),
         ]:
-            if len(self.shared_storage_mappings[storage_type]) > 0:
+            if len(self.shared_storage_infos[storage_type]) > 0:
                 self._add_volume_metrics_graphs(title, storage_type, ebs_metrics, conditional_ebs_metrics)
 
         # Add EFS metrics graphs
-        if len(self.shared_storage_mappings[SharedStorageType.EFS]) > 0:
+        if len(self.shared_storage_infos[SharedStorageType.EFS]) > 0:
             self._add_efs_metrics_graphs()
 
         # Add FSx metrics graphs
-        if len(self.shared_storage_mappings[SharedStorageType.FSX]) > 0:
+        if len(self.shared_storage_infos[SharedStorageType.FSX]) > 0:
             self._add_fsx_metrics_graphs()
 
         # Head Node logs, if CW Logs are enabled
@@ -257,7 +257,7 @@ class CWDashboardConstruct(Construct):
         self._add_text_widget(title)
 
         # Get a list of volumes
-        volumes_list = self.shared_storage_mappings[storage_type]
+        volumes_list = self.shared_storage_infos[storage_type]
 
         # Unconditional EBS metrics
         widgets_list = self._add_storage_widgets(
@@ -279,7 +279,7 @@ class CWDashboardConstruct(Construct):
 
     def _add_efs_metrics_graphs(self):
         self._add_text_widget("## EFS Metrics")
-        efs_volumes_list = self.shared_storage_mappings[SharedStorageType.EFS]
+        efs_volumes_list = self.shared_storage_infos[SharedStorageType.EFS]
 
         # Unconditional EFS metrics
         efs_metrics = [
@@ -313,7 +313,7 @@ class CWDashboardConstruct(Construct):
 
     def _add_fsx_metrics_graphs(self):
         self._add_text_widget("## FSx Metrics")
-        fsx_volumes_list = self.shared_storage_mappings[SharedStorageType.FSX]
+        fsx_volumes_list = self.shared_storage_infos[SharedStorageType.FSX]
 
         # Unconditional FSX metrics
         fsx_metrics = [
