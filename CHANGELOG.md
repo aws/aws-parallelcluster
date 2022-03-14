@@ -11,6 +11,7 @@ x.x.x
 **CHANGES**
 - Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
 - Add validator to detect when using FSx for Lustre with AWS Batch as a scheduler, this combination is not supported yet.
+- Add validator to verify that `DirectoryService.DomainName` is a FQDN or a LDAP Distinguished Name.
 
 **ENHANCEMENTS**
 - Add support to deploy API infrastructure in environments without a default VPC.

@@ -86,7 +86,11 @@ from pcluster.validators.cluster_validators import (
     SchedulerOsValidator,
     SharedStorageNameValidator,
 )
-from pcluster.validators.directory_service_validators import DomainAddrValidator, LdapTlsReqCertValidator
+from pcluster.validators.directory_service_validators import (
+    DomainAddrValidator,
+    DomainNameValidator,
+    LdapTlsReqCertValidator,
+)
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EbsVolumeSizeSnapshotValidator,
@@ -704,6 +708,8 @@ class DirectoryService(Resource):
         self.additional_sssd_configs = Resource.init_param(additional_sssd_configs, default={})
 
     def _register_validators(self):
+        if self.domain_name:
+            self._register_validator(DomainNameValidator, domain_name=self.domain_name)
         if self.domain_addr:
             self._register_validator(
                 DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
