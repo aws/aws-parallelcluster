@@ -1457,7 +1457,9 @@ class SchedulerPluginDefinitionSchema(BaseSchema):
     """Represent the schema of the Scheduler Plugin SchedulerDefinition."""
 
     plugin_interface_version = fields.Str(
-        required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["1.0"])
+        required=True,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.Regexp(r"^[0-9]+\.[0-9]+$"),
     )
     metadata = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, required=True)
     requirements = fields.Nested(

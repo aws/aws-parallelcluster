@@ -9,6 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pkg_resources import packaging
+
 PCLUSTER_NAME_MAX_LENGTH = 60
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
@@ -159,3 +161,6 @@ NODEJS_MIN_VERSION = "10.13.0"
 NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
 
 NODE_BOOTSTRAP_TIMEOUT = 1800
+
+SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version("1.0")
+SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
