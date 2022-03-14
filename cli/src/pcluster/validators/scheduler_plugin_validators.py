@@ -148,3 +148,18 @@ class UserNameValidator(Validator):
                 ),
                 FailureLevel.ERROR,
             )
+
+
+class PluginInterfaceVersionValidator(Validator):
+    """Check if PluginInterfaceVersion is supported."""
+
+    def _validate(self, plugin_version, support_version_low_range, support_version_high_range):
+        if not support_version_low_range <= packaging.version.parse(plugin_version) <= support_version_high_range:
+            error_message = f"The PluginInterfaceVersion '{plugin_version}' is not supported."
+            if support_version_low_range == support_version_high_range:
+                error_message += f" Supported version is '{support_version_high_range}'."
+            else:
+                error_message += (
+                    f" Supported versions are '>={support_version_low_range}, <= {support_version_high_range}'."
+                )
+            self._add_failure(error_message, FailureLevel.ERROR)
