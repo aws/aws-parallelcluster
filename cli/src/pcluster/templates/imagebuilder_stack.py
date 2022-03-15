@@ -295,7 +295,7 @@ class ImageBuilderCdkStack(Stack):
         if not self.custom_cleanup_lambda_role:
             self._add_resource_delete_policy(
                 lambda_cleanup_policy_statements,
-                ["imagebuilder:DeleteImage"],
+                ["imagebuilder:DeleteImage", "imagebuilder:GetImage", "imagebuilder:CancelImageCreation"],
                 [
                     self.format_arn(
                         service="imagebuilder",
