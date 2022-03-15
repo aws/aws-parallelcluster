@@ -1323,7 +1323,11 @@ def test_imagebuilder_instance_role(
                                         },
                                     },
                                     {
-                                        "Action": "imagebuilder:DeleteImage",
+                                        "Action": [
+                                            "imagebuilder:DeleteImage",
+                                            "imagebuilder:GetImage",
+                                            "imagebuilder:CancelImageCreation",
+                                        ],
                                         "Effect": "Allow",
                                         "Resource": {
                                             "Fn::Join": [

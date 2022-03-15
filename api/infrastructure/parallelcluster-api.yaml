@@ -805,6 +805,8 @@ Resources:
             Effect: Allow
             Action:
               - imagebuilder:DeleteImage
+              - imagebuilder:GetImage
+              - imagebuilder:CancelImageCreation
               - imagebuilder:DeleteComponent
               - imagebuilder:DeleteImageRecipe
               - imagebuilder:DeleteInfrastructureConfiguration
