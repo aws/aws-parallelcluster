@@ -4,6 +4,9 @@ CHANGELOG
 3.1.3
 ------
 
+**BUG FIXES**
+- Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
+
 3.1.2
 ------
 
