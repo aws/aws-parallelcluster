@@ -819,6 +819,8 @@ Resources:
             Effect: Allow
             Action:
               - imagebuilder:DeleteImage
+              - imagebuilder:GetImage
+              - imagebuilder:CancelImageCreation
               - imagebuilder:DeleteComponent
               - imagebuilder:DeleteImageRecipe
               - imagebuilder:DeleteInfrastructureConfiguration
@@ -994,7 +996,7 @@ Resources:
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref EcrImageBuilderSNSTopic
-      SubnetId: 
+      SubnetId:
         Fn::If:
           - NonDefaultVpc
           - !Ref ImageBuilderSubnetId

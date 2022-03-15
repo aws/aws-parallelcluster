@@ -46,7 +46,10 @@ Resources:
               - Action: imagebuilder:DeleteDistributionConfiguration
                 Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
                 Effect: Allow
-              - Action: imagebuilder:DeleteImage
+              - Action:
+                  - imagebuilder:DeleteImage
+                  - imagebuilder:GetImage
+                  - imagebuilder:CancelImageCreation
                 Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/parallelclusterimage-*/*'
                 Effect: Allow
               - Action: cloudformation:DeleteStack

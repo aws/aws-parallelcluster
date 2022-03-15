@@ -6,6 +6,7 @@ x.x.x
 
 **BUG FIXES**
 - Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
+- Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
 
 **CHANGES**
 - Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
