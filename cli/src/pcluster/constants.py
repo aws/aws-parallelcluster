@@ -65,8 +65,8 @@ MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1, "raid": 1}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.1.2",
-    "cookbook": "aws-parallelcluster-cookbook-3.1.2",
+    "parallelcluster": "3.1.3",
+    "cookbook": "aws-parallelcluster-cookbook-3.1.3",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",
