@@ -17,7 +17,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.assertions import assert_no_errors_in_logs
-from tests.common.utils import fetch_instance_slots
+from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
 @pytest.mark.usefixtures("os")
@@ -31,6 +31,7 @@ def test_hit_disable_hyperthreading(
     run_benchmarks,
     benchmarks,
     scheduler_commands_factory,
+    request,
 ):
     """Test Disable Hyperthreading for HIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -59,6 +60,7 @@ def test_hit_disable_hyperthreading(
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
     run_benchmarks(remote_command_executor, scheduler_commands)
+    run_system_analyzer(cluster, scheduler_commands_factory, request)
 
 
 def _test_disable_hyperthreading_settings(

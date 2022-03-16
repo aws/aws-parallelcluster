@@ -19,7 +19,7 @@ from utils import get_compute_nodes_instance_ids
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.osu_common import run_individual_osu_benchmark
-from tests.common.utils import fetch_instance_slots
+from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
 def test_efa(
@@ -34,6 +34,7 @@ def test_efa(
     network_interfaces_count,
     mpi_variants,
     scheduler_commands_factory,
+    request,
 ):
     """
     Test all EFA Features.
@@ -106,6 +107,7 @@ def test_efa(
     if instance == "p4d.24xlarge" and os != "centos7":
         _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
 
+    run_system_analyzer(cluster, scheduler_commands_factory, request, partition="efa-enabled")
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
