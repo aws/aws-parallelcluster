@@ -149,3 +149,22 @@ class RemoteCommandExecutor:
     def _copy_additional_files(self, files):
         for file in files or []:
             self.__connection.put(file, os.path.basename(file))
+
+    def get_remote_files(self, *args, **kwargs):
+        """
+        Get a remote file to the local filesystem or file-like object.
+
+        Simply a wrapper for `.Connection.get`. Please see its documentation for
+        all details.
+
+        :param str remote:
+            Remote file to download.
+            May be absolute, or relative to the remote working directory.
+        :param local:
+            Local path to store downloaded file in, or a file-like object.
+        :param bool preserve_mode:
+            Whether to `os.chmod` the local file so it matches the remote
+            file's mode (default: ``True``).
+        :returns: A `.Result` object.
+        """
+        return self.__connection.get(*args, **kwargs)
