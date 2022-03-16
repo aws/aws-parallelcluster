@@ -23,7 +23,7 @@ from utils import get_compute_nodes_instance_ids
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
-from tests.common.utils import fetch_instance_slots
+from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
 @pytest.mark.regions(["us-east-1", "us-gov-west-1"])
@@ -99,6 +99,7 @@ def test_hit_efa(
     test_datadir,
     architecture,
     network_interfaces_count,
+    request,
 ):
     """
     Test all EFA Features.
@@ -131,6 +132,8 @@ def test_hit_efa(
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
+
+    run_system_analyzer(cluster, get_scheduler_commands, request, partition="efa-enabled")
 
     if instance in osu_benchmarks_instances:
         benchmark_failures = []
