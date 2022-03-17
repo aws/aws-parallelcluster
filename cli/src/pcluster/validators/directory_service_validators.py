@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import re
 from urllib.parse import urlparse
 
 from pcluster.validators.common import FailureLevel, Validator
@@ -46,6 +46,25 @@ class DomainAddrValidator(Validator):
                     "'ldap_auth_disable_tls_never_use_in_production: true'."
                 )
             self._add_failure(warning_message, FailureLevel.WARNING)
+
+
+class DomainNameValidator(Validator):
+    """Domain name validator."""
+
+    FQDN_PATTERN = "^([a-zA-Z0-9_-]+)(\\.[a-zA-Z0-9_-]+)*$"
+    LDAP_DN_PATTERN = "^((DC|dc)=[a-zA-Z0-9_-]+)(,(DC|dc)=[a-zA-Z0-9_-]+)*$"
+
+    def _validate(self, domain_name):
+        """Validate that domain address is a Fully Qualified Domain Name (FQDN) or a LDAP Distinguished Name (DN)."""
+        match = re.match(DomainNameValidator.FQDN_PATTERN, domain_name) or re.match(
+            DomainNameValidator.LDAP_DN_PATTERN, domain_name
+        )
+        if not match:
+            self._add_failure(
+                "Unsupported domain address format. "
+                "Supported formats are FQDN (corp.example.com) or LDAP Distinguished Name (DC=corp,DC=example,DC=com).",
+                FailureLevel.ERROR,
+            )
 
 
 class LdapTlsReqCertValidator(Validator):
