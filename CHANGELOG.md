@@ -4,27 +4,28 @@ CHANGELOG
 x.x.x
 ------
 
-**BUG FIXES**
-- Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
-- Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
+**ENHANCEMENTS**
+- Add support to deploy API infrastructure in environments without a default VPC.
 
 **CHANGES**
 - Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
 - Add validator to detect when using FSx for Lustre with AWS Batch as a scheduler, this combination is not supported yet.
 - Add validator to verify that `DirectoryService.DomainName` is a FQDN or a LDAP Distinguished Name.
+- Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
 
-**ENHANCEMENTS**
-- Add support to deploy API infrastructure in environments without a default VPC.
+**BUG FIXES**
+- Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
+- Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
 
 3.1.2
 ------
 
+**CHANGES**
+- Upgrade Slurm to version 21.08.6.
+
 **BUG FIXES**
 - Fix the update of `/etc/hosts` file on computes nodes when a cluster is deployed in subnets without internet access.
 - Fix compute nodes bootstrap by waiting for ephemeral drives initialization before joining the cluster.
-
-**CHANGES**
-- Upgrade Slurm to version 21.08.6.
 
 3.1.1
 ------
