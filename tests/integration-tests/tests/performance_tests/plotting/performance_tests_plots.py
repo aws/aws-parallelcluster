@@ -26,7 +26,7 @@ def generate_plots(datadir, outdir, configurations, nodes):
             with open(samples_file) as f:
                 samples[configuration][str(n)] = json.load(f)
 
-    for metric in [metric["name"] for metric in METRICS]:
+    for metric in [_metric["name"] for _metric in METRICS]:
         data = {}
 
         # Create Dataset
