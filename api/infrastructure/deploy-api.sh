@@ -1,4 +1,5 @@
-#!/bin/bash -ex
+#!/bin/bash
+set -ex
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
@@ -13,6 +14,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 S3_BUCKET=
 ECR_REPO=
+IMAGE_BUILDER_VPC_ID=
+IMAGE_BUILDER_SUBNET_ID=
 STACK_NAME="ParallelClusterApi"
 ENABLE_IAM_ADMIN="true"
 CREATE_API_USER="false"
@@ -55,6 +58,16 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+    --image-builder-vpc-id)
+    export IMAGE_BUILDER_VPC_ID=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --image-builder-subnet-id)
+    export IMAGE_BUILDER_SUBNET_ID=$2
+    shift # past argument
+    shift # past value
+    ;;
     *)    # unknown option
     echo "$usage" >&2
     exit 1
@@ -88,6 +101,8 @@ aws cloudformation deploy \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
                           EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
+                          ImageBuilderVpcId="${IMAGE_BUILDER_VPC_ID}" \
+                          ImageBuilderSubnetId="${IMAGE_BUILDER_SUBNET_ID}" \
     --capabilities CAPABILITY_NAMED_IAM
 
 echo "Updating API Lambda since updates are not fully automated yet"
