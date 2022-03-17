@@ -142,7 +142,7 @@ class HeadNodeRootVolumeSchema(BaseSchema):
             )
         },
     )
-    iops = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    iops = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     size = fields.Int(
         metadata={
             "update_policy": UpdatePolicy(
@@ -152,7 +152,7 @@ class HeadNodeRootVolumeSchema(BaseSchema):
             )
         }
     )
-    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
@@ -542,15 +542,6 @@ class QueueProxySchema(BaseSchema):
 class BaseNetworkingSchema(BaseSchema):
     """Represent the schema of common networking parameters used by head and compute nodes."""
 
-    additional_security_groups = fields.List(
-        fields.Str(validate=get_field_validator("security_group_id")),
-        metadata={"update_policy": UpdatePolicy.SUPPORTED},
-    )
-    security_groups = fields.List(
-        fields.Str(validate=get_field_validator("security_group_id")),
-        metadata={"update_policy": UpdatePolicy.SUPPORTED},
-    )
-
     @validates_schema
     def no_coexist_security_groups(self, data, **kwargs):
         """Validate that security_groups and additional_security_groups do not co-exist."""
@@ -566,6 +557,14 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
     )
     elastic_ip = fields.Raw(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     proxy = fields.Nested(HeadNodeProxySchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    additional_security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+    )
+    security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -594,7 +593,15 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
         validate=validate.Length(equal=1),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
-    assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    additional_security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
+    security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
 
 
 class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
