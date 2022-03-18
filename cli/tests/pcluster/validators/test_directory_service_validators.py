@@ -10,8 +10,37 @@
 # limitations under the License.
 import pytest
 
-from pcluster.validators.directory_service_validators import DomainAddrValidator, LdapTlsReqCertValidator
+from pcluster.validators.directory_service_validators import (
+    DomainAddrValidator,
+    DomainNameValidator,
+    LdapTlsReqCertValidator,
+)
 from tests.pcluster.validators.utils import assert_failure_messages
+
+DOMAIN_NAME_ERROR_MESSAGE = (
+    "Unsupported domain address format. "
+    "Supported formats are FQDN (corp.example.com) or LDAP Distinguished Name (DC=corp,DC=example,DC=com)."
+)
+
+
+@pytest.mark.parametrize(
+    "domain_name, expected_message",
+    [
+        ("corp.example.com", None),
+        ("DC=corp,DC=example,DC=com", None),
+        ("dc=corp,dc=example,dc=com", None),
+        ("dc=corp,DC=example,dc=com", None),
+        ("", DOMAIN_NAME_ERROR_MESSAGE),
+        ("   ", DOMAIN_NAME_ERROR_MESSAGE),
+        ("corp.", DOMAIN_NAME_ERROR_MESSAGE),
+        ("DC=corp,", DOMAIN_NAME_ERROR_MESSAGE),
+        ("corp.examp/e.com", DOMAIN_NAME_ERROR_MESSAGE),
+        ("DC=corp,DC=examp/e,DC=com", DOMAIN_NAME_ERROR_MESSAGE),
+    ],
+)
+def test_domain_name(domain_name, expected_message):
+    actual_failures = DomainNameValidator().execute(domain_name=domain_name)
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

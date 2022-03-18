@@ -175,7 +175,7 @@ Resources:
                     echo 1>&2 "NUM_USERS_TO_CREATE must be passed as second arg"
                     exit 1
                 fi
-                for i in \$(seq 1 "\${NUM_USERS_TO_CREATE}"); do
+                for i in \$(seq 0 "\$((NUM_USERS_TO_CREATE - 1))"); do
                     NEW_USER_ALIASES="\${NEW_USER_ALIASES} PclusterUser\${i}"
                 done
 
