@@ -255,7 +255,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_existing_fsx(
+def test_multiple_fsx(
     region,
     fsx_factory,
     vpc_stack,

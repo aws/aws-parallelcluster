@@ -70,13 +70,13 @@ test-suites:
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   storage:
-    test_efs.py::test_existing_efs:
+    test_efs.py::test_multiple_efs:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
-    test_fsx_lustre.py::test_existing_fsx:
+    test_fsx_lustre.py::test_multiple_fsx:
       dimensions:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
