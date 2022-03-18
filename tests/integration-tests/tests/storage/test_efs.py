@@ -64,7 +64,7 @@ def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_existing_efs(
+def test_multiple_efs(
     region,
     efs_stack_factory,
     pcluster_config_reader,
