@@ -10,7 +10,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-import collections
+import collections.abc
 import json
 import logging
 import os
@@ -74,7 +74,7 @@ def _assert_document_is_included(doc_to_be_included, doc):
     for k, v in doc_to_be_included.items():
         if k not in doc:
             raise Exception(f"Key {k} not found in new doc")
-        if isinstance(v, collections.Mapping):
+        if isinstance(v, collections.abc.Mapping):
             _assert_document_is_included(v, doc[k])
         elif isinstance(v, list):
             if not all(elem in doc[k] for elem in v):
