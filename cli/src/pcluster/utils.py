@@ -1076,7 +1076,25 @@ def read_remote_file(url):
         if urlparse(url).scheme == "s3":
             match = re.match(r"s3://(.*?)/(.*)", url)
             bucket, key = match.group(1), match.group(2)
-            file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
+            try:
+                if get_partition() == "aws":
+                    s3_resource = boto3.resource("s3", region_name="us-east-1")
+                else:
+                    s3_resource = boto3.resource("s3")
+                file_contents = s3_resource.Object(bucket, key).get()["Body"].read().decode("utf-8")
+            except ClientError as e:
+                error = e.response["Error"]
+                if error["Code"] == "IllegalLocationConstraintException":
+                    # When S3 GetObject call is made in a different Region from where the bucket exists
+                    # (e.g. bucket in an optin region while this code is in us-east-1),
+                    # make the call again by using the region from the error message, that is in the form:
+                    # "The af-south-1 location constraint is incompatible
+                    # for the Region specific endpoint this request was sent to.".
+                    match = re.match(r"The (.*) location constraint", error["Message"])
+                    s3_resource = boto3.resource("s3", region_name=match.group(1))
+                    file_contents = s3_resource.Object(bucket, key).get()["Body"].read().decode("utf-8")
+                else:
+                    raise e
         else:
             with urllib.request.urlopen(url) as f:  # nosec nosemgrep
                 file_contents = f.read().decode("utf-8")
