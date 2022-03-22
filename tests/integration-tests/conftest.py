@@ -78,7 +78,7 @@ def pytest_addoption(parser):
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
     parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
     parser.addoption(
-        "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
+        "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the build-image command"
     )
     parser.addoption("--pcluster-git-ref", help="Git ref of the custom cli package used to build the AMI.")
     parser.addoption("--cookbook-git-ref", help="Git ref of the custom cookbook package used to build the AMI.")
@@ -87,7 +87,7 @@ def pytest_addoption(parser):
         "--ami-owner",
         help="Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon.",
     )
-    parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
+    parser.addoption("--createami-custom-node-package", help="url to a custom node package for the build-image command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--cw-dashboard-template-url", help="url to a custom Dashboard cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
