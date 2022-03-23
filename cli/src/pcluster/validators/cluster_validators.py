@@ -345,16 +345,16 @@ class EfaSecurityGroupValidator(Validator):
 # --------------- Storage validators --------------- #
 
 
-def _check_in_out_access(security_groups_ids, port):
+def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
     """
     Verify given list of security groups to check if they allow in and out access on the given port.
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
+    :param is_cidr_optional: if it is True, don't enforce check on CIDR.
     :return: True if both in and out access are allowed
     :raise: ClientError if a given security group doesn't exist
     """
-    in_out_access = False
     in_access = False
     out_access = False
 
@@ -363,20 +363,21 @@ def _check_in_out_access(security_groups_ids, port):
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
             if _check_sg_rules_for_port(rule, port):
-                in_access = True
-                break
+                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
+                    in_access = True
+                    break
 
         # Check all outbound rules
         for rule in sec_group.get("IpPermissionsEgress"):
             if _check_sg_rules_for_port(rule, port):
-                out_access = True
-                break
+                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
+                    out_access = True
+                    break
 
         if in_access and out_access:
-            in_out_access = True
-            break
+            return True
 
-    return in_out_access
+    return False
 
 
 def _check_sg_rules_for_port(rule, port_to_check):
@@ -409,7 +410,7 @@ class FsxNetworkingValidator(Validator):
     Validate file system mount point according to the head node subnet.
     """
 
-    def _validate(self, file_system_id, head_node_subnet_id):
+    def _validate(self, file_system_id, head_node_subnet_id, are_all_security_groups_customized):
         try:
 
             # Check to see if there is any existing mt on the fs
@@ -441,7 +442,7 @@ class FsxNetworkingValidator(Validator):
                 for network_interface in network_interfaces:
                     # Get list of security group IDs
                     sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                    if _check_in_out_access(sg_ids, port=988):
+                    if _check_in_out_access(sg_ids, port=988, is_cidr_optional=are_all_security_groups_customized):
                         fs_access = True
                         break
                 if not fs_access:
@@ -566,21 +567,21 @@ class EfsIdValidator(Validator):  # TODO add tests
     Validate if there are existing mount target in the head node availability zone
     """
 
-    def _validate(self, efs_id, head_node_avail_zone: str):
+    def _validate(self, efs_id, head_node_avail_zone: str, are_all_security_groups_customized):
         # Get head node availability zone
         head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, head_node_avail_zone)
         # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
         if head_node_target_id:
             # Get list of security group IDs of the mount target
             sg_ids = AWSApi.instance().efs.get_efs_mount_target_security_groups(head_node_target_id)
-            if not _check_in_out_access(sg_ids, port=2049):
+            if not _check_in_out_access(sg_ids, port=2049, is_cidr_optional=are_all_security_groups_customized):
                 self._add_failure(
                     "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
                     "but it does not have a security group that allows inbound and outbound rules to support NFS. "
                     "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
                         head_node_target_id, head_node_avail_zone, efs_id
                     ),
-                    FailureLevel.WARNING,
+                    FailureLevel.ERROR,
                 )
 
 

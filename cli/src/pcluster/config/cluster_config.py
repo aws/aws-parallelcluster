@@ -999,6 +999,7 @@ class BaseClusterConfig(Resource):
         cluster_name: str,
         image: Image,
         head_node: HeadNode,
+        scheduling=None,
         shared_storage: List[Resource] = None,
         monitoring: Monitoring = None,
         additional_packages: AdditionalPackages = None,
@@ -1021,6 +1022,7 @@ class BaseClusterConfig(Resource):
         self.cluster_name = cluster_name
         self.image = image
         self.head_node = head_node
+        self.scheduling = scheduling
         self.shared_storage = shared_storage
         self.monitoring = monitoring or Monitoring(implied=True)
         self.additional_packages = additional_packages
@@ -1110,6 +1112,7 @@ class BaseClusterConfig(Resource):
                             FsxNetworkingValidator,
                             file_system_id=storage.file_system_id,
                             head_node_subnet_id=self.head_node.networking.subnet_id,
+                            are_all_security_groups_customized=self.are_all_security_groups_customized,
                         )
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
@@ -1126,6 +1129,7 @@ class BaseClusterConfig(Resource):
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
                             head_node_avail_zone=self.head_node.networking.availability_zone,
+                            are_all_security_groups_customized=self.are_all_security_groups_customized,
                         )
 
             for storage_type in ["ebs", "efs", "fsx", "raid"]:
@@ -1259,6 +1263,19 @@ class BaseClusterConfig(Resource):
     def is_dcv_enabled(self):
         """Return True if DCV is enabled."""
         return self.head_node.dcv and self.head_node.dcv.enabled
+
+    @property
+    def are_all_security_groups_customized(self):
+        """Return True if all head node and queues have (additional) security groups specified."""
+        head_node_networking = self.head_node.networking
+        if not (head_node_networking.security_groups or head_node_networking.additional_security_groups):
+            return False
+        for queue in self.scheduling.queues:
+            queue_networking = queue.networking
+            if isinstance(queue_networking, _QueueNetworking):
+                if not (queue_networking.security_groups or queue_networking.additional_security_groups):
+                    return False
+        return True
 
     @property
     def extra_chef_attributes(self):

@@ -484,29 +484,56 @@ def test_queue_name_validator(name, expected_message):
 
 
 @pytest.mark.parametrize(
-    "fsx_vpc, ip_permissions, network_interfaces, expected_message",
+    "fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, expected_message",
     [
         (  # working case, right vpc and sg, multiple network interfaces
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             ["eni-09b9460295ddd4e5f", "eni-001b3cef7c78b45c4"],
             None,
         ),
         (  # working case, right vpc and sg, single network interface
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             ["eni-09b9460295ddd4e5f"],
             None,
+        ),
+        (  # working case, CIDR specified in the security group through ip ranges
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # working case, CIDR specified in the security group through prefix list
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "PrefixListIds": [{"PrefixListId": "pl-12345"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # not working case, wrong security group.
+            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            "The file system must be associated to a security group that "
+            "allows inbound and outbound TCP traffic through port 988.",
         ),
         (  # not working case --> no network interfaces
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             [],
             "doesn't have Elastic Network Interfaces attached",
         ),
         (  # not working case --> wrong vpc
             "vpc-06e4ab6c6ccWRONG",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             ["eni-09b9460295ddd4e5f"],
             "only support using FSx file system that is in the same VPC as the cluster",
         ),
@@ -522,6 +549,7 @@ def test_queue_name_validator(name, expected_message):
                     "UserIdGroupPairs": [],
                 }
             ],
+            True,
             ["eni-09b9460295ddd4e5f"],
             [
                 "only support using FSx file system that is in the same VPC as the cluster",
@@ -530,7 +558,9 @@ def test_queue_name_validator(name, expected_message):
         ),
     ],
 )
-def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_interfaces, expected_message):
+def test_fsx_network_validator(
+    boto3_stubber, fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, expected_message
+):
     describe_file_systems_response = {
         "FileSystems": [
             {
@@ -671,7 +701,9 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 
     boto3_stubber("ec2", ec2_mocked_requests)
 
-    actual_failures = FsxNetworkingValidator().execute("fs-0ff8da96d57f3b4e3", "subnet-12345678")
+    actual_failures = FsxNetworkingValidator().execute(
+        "fs-0ff8da96d57f3b4e3", "subnet-12345678", are_all_security_groups_customized
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
