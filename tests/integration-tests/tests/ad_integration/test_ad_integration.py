@@ -486,7 +486,8 @@ def _check_files_permissions(users):
             f"{user.home_dir}/my_file",
             f"/shared/{user.alias}_file",
             f"/ebs/{user.alias}_file",
-            f"/efs/{user.alias}_file",
+            # TODO EFS mounted on /shared as replacement for FSx which is currently casuing issues.
+            # f"/efs/{user.alias}_file",
         ]:
             user.run_remote_command(f"touch {path}")
             # Specify that only owner of file should have read/write access.
