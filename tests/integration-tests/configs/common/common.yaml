@@ -447,14 +447,26 @@ spot:
         oss: ["centos7"]
         schedulers: ["slurm"]
 storage:
-  # Commercial regions that cant test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
+  # Commercial regions that can't test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
   test_fsx_lustre.py::test_fsx_lustre:
+    dimensions:
+      - regions: ["eu-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["centos7"]
+        schedulers: ["slurm"]
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  # The checks performed in test_multiple_fsx is the same as test_fsx_lustre. 
+  # We should consider this when assigning dimensions to each test.
+  test_fsx_lustre.py::test_multiple_fsx:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      - regions: ["eu-north-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
@@ -482,12 +494,6 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
-  test_fsx_lustre.py::test_existing_fsx:
-    dimensions:
-      - regions: ["us-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["slurm"]
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
     dimensions:
@@ -499,25 +505,23 @@ storage:
     dimensions:
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: ["centos7"]
         schedulers: ["slurm"]
-      - regions: ["cn-north-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_CHINA_X86 }}
-        schedulers: ["slurm"]
-      - regions: ["ap-northeast-1", "cn-north-1"]
+  # The checks performed in test_efs_same_az is similar to test_multiple_efs.
+  # We should consider this when assigning dimensions to each test.
+  test_efs.py::test_multiple_efs:
+    dimensions:
+      - regions: ["ap-northeast-2", "cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_BATCH }}
         schedulers: ["awsbatch"]
-  test_efs.py::test_existing_efs:
-    dimensions:
-      - regions: ["ap-northeast-2"]
+      - regions: [ "ap-northeast-2" ]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: [ "slurm" ]
+      - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["awsbatch"]
-      - regions: ["ap-northeast-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
+        oss: {{ common.OSS_GOVCLOUD_X86 }}
         schedulers: ["slurm"]
   test_raid.py::test_raid_fault_tolerance_mode:
     dimensions:

@@ -29,8 +29,22 @@ Scheduling:
 # This compute subnet would be in a different AZ than head node for regions defined in AVAILABILITY_ZONE_OVERRIDES
 # See conftest for details
 SharedStorage:
-  - MountDir: {{ mount_dir }}
-    Name: efs
+  - MountDir: {{ existing_efs_mount_dirs[0] }}
+    Name: efs1
     StorageType: Efs
     EfsSettings:
-      FileSystemId: {{ efs_fs_id }}
+      FileSystemId: {{ existing_efss[0] }}
+  - MountDir: {{ new_efs_mount_dirs[0] }}
+    Name: efs2
+    StorageType: Efs
+  - MountDir: {{ existing_efs_mount_dirs[1] }}
+    Name: efs3
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: {{ existing_efss[1] }}
+  - MountDir: {{ new_efs_mount_dirs[1] }}
+    Name: efs4
+    StorageType: Efs
+  - MountDir: {{ new_efs_mount_dirs[2] }}
+    Name: efs5
+    StorageType: Efs

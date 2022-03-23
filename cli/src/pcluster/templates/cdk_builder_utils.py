@@ -146,40 +146,13 @@ def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> d
     )
 
 
-def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
+def to_comma_separated_string(list):
+    return ",".join(str(item) for item in list)
+
+
+def get_shared_storage_ids_by_type(shared_storage_infos: dict, storage_type: SharedStorageType):
     """Return shared storage ids from the given list for the given type."""
-    return (
-        ",".join(storage_mapping.id for storage_mapping in shared_storage_ids[storage_type])
-        if shared_storage_ids[storage_type]
-        else "NONE"
-    )
-
-
-def get_shared_storage_options_by_type(shared_storage_options: dict, storage_type: SharedStorageType):
-    """Return shared storage options from the given list for the given type."""
-    default_storage_options = {
-        SharedStorageType.EBS: "NONE,NONE,NONE,NONE,NONE",
-        SharedStorageType.RAID: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-        SharedStorageType.EFS: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-        SharedStorageType.FSX: ("NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"),
-    }
-    return (
-        shared_storage_options[storage_type]
-        if shared_storage_options[storage_type]
-        else default_storage_options[storage_type]
-    )
-
-
-def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedStorageType):
-    """Return mount dirs retrieved from shared storage, formatted as comma separated list."""
-    storage_options = shared_storage_options.get(storage_type)
-    if not storage_options:
-        return "NONE"
-    if storage_type == SharedStorageType.EBS:
-        # The whole options for EBS represent the mount dirs.
-        return storage_options
-    option_list = storage_options.split(",")
-    return option_list[0]
+    return ",".join(storage_mapping.id for storage_mapping in shared_storage_infos[storage_type])
 
 
 def dict_to_cfn_tags(tags: dict):
@@ -205,7 +178,7 @@ def get_default_instance_tags(
     config: BaseClusterConfig,
     node: Union[HeadNode, BaseComputeResource],
     node_type: str,
-    shared_storage_ids: dict,
+    shared_storage_infos: dict,
     raw_dict: bool = False,
 ):
     """Return a list of default tags to be used for instances."""
@@ -223,10 +196,10 @@ def get_default_instance_tags(
             "true" if hasattr(node, "efa") and node.efa and node.efa.enabled else "NONE"
         ),
         "parallelcluster:filesystem": "efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
-            efs=len(shared_storage_ids[SharedStorageType.EFS]),
-            multiebs=len(shared_storage_ids[SharedStorageType.EBS]),
-            raid=len(shared_storage_ids[SharedStorageType.RAID]),
-            fsx=len(shared_storage_ids[SharedStorageType.FSX]),
+            efs=len(shared_storage_infos[SharedStorageType.EFS]),
+            multiebs=len(shared_storage_infos[SharedStorageType.EBS]),
+            raid=len(shared_storage_infos[SharedStorageType.RAID]),
+            fsx=len(shared_storage_infos[SharedStorageType.FSX]),
         ),
     }
     if config.is_intel_hpc_platform_enabled:
