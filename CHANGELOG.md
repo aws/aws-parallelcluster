@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+2.11.6
+-----
+
+**CHANGES**
+- OS package updates and security fixes.
+
 2.11.5
 -----
 
