@@ -28,9 +28,11 @@ ebs_arr=($ebs_shared_dirs)
 first_ebs_shared_dir=${ebs_arr[0]}
 
 # mount EFS via nfs
-if [[ "${PCLUSTER_EFS_FS_ID}" != "NONE" ]] && [[ ! -z "${PCLUSTER_AWS_REGION}" ]] && [[ "${PCLUSTER_EFS_SHARED_DIR}" != "NONE" ]]; then
-  /parallelcluster/bin/mount_efs.sh "${PCLUSTER_EFS_FS_ID}" "${PCLUSTER_AWS_REGION}" "${PCLUSTER_EFS_SHARED_DIR}"
-fi
+IFS=',' read -r -a efs_ids <<< "${PCLUSTER_EFS_FS_IDS}"
+IFS=',' read -r -a efs_shared_dirs <<< "${PCLUSTER_EFS_SHARED_DIRS}"
+for i in "${!efs_ids[@]}"; do
+  /parallelcluster/bin/mount_efs.sh "${efs_ids[i]}" "${PCLUSTER_AWS_REGION}" "${efs_shared_dirs[i]}"
+done
 
 # mount RAID via nfs
 if [[ ${PCLUSTER_RAID_SHARED_DIR} != "NONE" ]]; then
