@@ -2264,12 +2264,12 @@ def run_architecture_validator_test(
         constrained_param_name
     )
     assert_that(len(warnings)).is_equal_to(len(expected_warnings))
-    for warnings, expected_warnings in zip(warnings, expected_warnings):
-        assert_that(warnings).matches(re.escape(expected_warnings))
+    for _warnings, _expected_warnings in zip(warnings, expected_warnings):
+        assert_that(_warnings).matches(re.escape(_expected_warnings))
 
     assert_that(len(errors)).is_equal_to(len(expected_errors))
-    for errors, expected_errors in zip(errors, expected_errors):
-        assert_that(errors).matches(re.escape(expected_errors))
+    for _errors, _expected_errors in zip(errors, expected_errors):
+        assert_that(_errors).matches(re.escape(_expected_errors))
 
 
 @pytest.mark.parametrize(
