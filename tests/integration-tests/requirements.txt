@@ -24,5 +24,3 @@ requests
 retrying
 troposphere
 untangle
-# Temporarily pinning Paramiko due to a bug that causes test processes to hang on terminated socket
-paramiko==2.10.2
