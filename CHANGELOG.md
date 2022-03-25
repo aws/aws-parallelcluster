@@ -5,19 +5,27 @@ x.x.x
 ------
 
 **ENHANCEMENTS**
-- Add support to deploy API infrastructure in environments without a default VPC.
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
 
+3.1.3
+------
+
+**ENHANCEMENTS**
+- Execute SSH key creation alongside with the creation of HOME directory, i.e.
+  during SSH login, when switching to another user and when executing a command as another user.
+- Add support for both FQDN and LDAP Distinguished Names in the configuration parameter `DirectoryService/DomainName`. The new validator now checks both the syntax.
+- New `update_directory_service_password.sh` script deployed on the head node supports the manual update of the Active Directory password in the SSSD configuration.
+  The password is retrieved by the AWS Secrets Manager as from the cluster configuration.
+- Add support to deploy API infrastructure in environments without a default VPC.
+
 **CHANGES**
-- Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
-- Add validator to detect when using FSx for Lustre with AWS Batch as a scheduler, this combination is not supported yet.
-- Add validator to verify that `DirectoryService.DomainName` is a FQDN or a LDAP Distinguished Name.
 - Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
+- OS package updates and security fixes.
 
 **BUG FIXES**
-- Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
 - Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
+- Fix the configuration parameter `DirectoryService/DomainAddr` conversion to `ldap_uri` SSSD property when it contains multiples domain addresses.
 
 3.1.2
 ------
