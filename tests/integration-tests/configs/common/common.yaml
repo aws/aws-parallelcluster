@@ -291,12 +291,12 @@ intel_hpc:
         oss: ["centos7"]
         schedulers: ["slurm"]
 networking:
-  test_cluster_networking.py::test_cluster_in_private_subnet:
-    dimensions:
-      - regions: ["me-south-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "centos7"]
-        schedulers: ["slurm"]
+#  test_cluster_networking.py::test_cluster_in_private_subnet:
+#    dimensions:
+#      - regions: ["me-south-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: ["alinux2", "centos7"]
+#        schedulers: ["slurm"]
   test_cluster_networking.py::test_existing_eip:
     dimensions:
       - regions: ["me-south-1"]
@@ -309,26 +309,26 @@ networking:
   test_networking.py::test_public_private_network_topology:
     dimensions:
       - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
-  test_cluster_networking.py::test_cluster_in_no_internet_subnet:
-    dimensions:
-        # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
-        # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
-      - regions: ["us-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm"]
-      - regions: ["us-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["slurm"]
-      - regions: ["cn-north-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["slurm"]
-      - regions: ["us-gov-west-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004"]
-        schedulers: ["slurm"]
+#  test_cluster_networking.py::test_cluster_in_no_internet_subnet:
+#    dimensions:
+#        # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
+#        # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
+#      - regions: ["us-east-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: {{ common.OSS_COMMERCIAL_X86 }}
+#        schedulers: ["slurm"]
+#      - regions: ["us-east-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+#        oss: {{ common.OSS_COMMERCIAL_ARM }}
+#        schedulers: ["slurm"]
+#      - regions: ["cn-north-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: ["alinux2"]
+#        schedulers: ["slurm"]
+#      - regions: ["us-gov-west-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: ["ubuntu2004"]
+#        schedulers: ["slurm"]
   test_multi_cidr.py::test_multi_cidr:
     dimensions:
       - regions: ["ap-northeast-2"]
@@ -345,16 +345,16 @@ networking:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-  test_security_groups.py::test_overwrite_sg:
-    dimensions:
-      - regions: ["eu-north-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["slurm"]
-      - regions: ["eu-north-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["awsbatch"]
+#  test_security_groups.py::test_overwrite_sg:
+#    dimensions:
+#      - regions: ["eu-north-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: ["centos7"]
+#        schedulers: ["slurm"]
+#      - regions: ["eu-north-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: ["alinux2"]
+#        schedulers: ["awsbatch"]
   test_placement_group.py::test_placement_group:
     dimensions:
       - regions: ["eu-central-1"]
@@ -603,11 +603,11 @@ update:
       - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-  test_update.py::test_update_slurm:
-    dimensions:
-      - regions: ["eu-west-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+#  test_update.py::test_update_slurm:
+#    dimensions:
+#      - regions: ["eu-west-1"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: {{ common.OSS_COMMERCIAL_X86 }}
   test_update.py::test_update_compute_ami:
     dimensions:
       - regions: ["eu-west-1"]

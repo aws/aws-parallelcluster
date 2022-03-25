@@ -33,12 +33,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-  update:
-    test_update.py::test_update_slurm:
-      dimensions:
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+#  update:
+#    test_update.py::test_update_slurm:
+#      dimensions:
+#        - regions: ["eu-west-1"]
+#          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#          oss: {{ common.OSS_COMMERCIAL_X86 }}
   scheduler_plugin:
     test_scheduler_plugin.py::test_scheduler_plugin_integration:
       dimensions:
