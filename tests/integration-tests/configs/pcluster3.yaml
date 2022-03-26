@@ -76,12 +76,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
-    test_fsx_lustre.py::test_multiple_fsx:
-      dimensions:
-        - regions: ["us-west-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
+#    test_fsx_lustre.py::test_multiple_fsx:
+#      dimensions:
+#        - regions: ["us-west-2"]
+#          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#          oss: ["centos7"]
+#          schedulers: ["slurm"]
     test_ebs.py::test_ebs_single:
       dimensions:
         - regions: ["eu-west-3"]
