@@ -2,7 +2,8 @@ argparse
 assertpy
 aws-parallelcluster
 boto3
-fabric
+#https://github.com/fabric/fabric/issues/2204
+fabric==2.6.0
 filelock
 jinja2
 junitparser
