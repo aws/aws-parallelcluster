@@ -1,3 +1,5 @@
+../../api/client/src
+PyYAML
 argparse
 assertpy
 boto3
@@ -7,6 +9,7 @@ filelock
 jinja2
 junitparser
 pexpect
+pyOpenSSL
 pykwalify
 pytest
 pytest-datadir
@@ -14,11 +17,7 @@ pytest-html
 pytest-rerunfailures
 pytest-sugar
 pytest-xdist
-PyYAML
 requests
 retrying
 troposphere
 untangle
-requests
-pyOpenSSL
-../../api/client/src
