@@ -4,7 +4,8 @@ argparse
 assertpy
 boto3
 cfn_flip
-fabric
+#https://github.com/fabric/fabric/issues/2204
+fabric==2.6.0
 filelock
 jinja2
 junitparser
@@ -17,7 +18,6 @@ pytest-html
 pytest-rerunfailures
 pytest-sugar
 pytest-xdist
-requests
 requests
 retrying
 troposphere
