@@ -4,7 +4,8 @@ assertpy
 boto3
 cfn_flip
 click
-fabric
+#https://github.com/fabric/fabric/issues/2204
+fabric==2.6.0
 filelock
 jinja2
 junitparser
