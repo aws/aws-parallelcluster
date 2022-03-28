@@ -173,4 +173,5 @@ class RemoteCommandExecutor:
             # Assume files is a dict mapping local paths to remote paths
             local_remote_paths = [{"local": local, "remote": remote} for local, remote in files.items()]
         for local_remote_path in local_remote_paths or []:
+            logging.info("Copying file to remote location: %s", local_remote_path)
             self.__connection.put(**local_remote_path)
