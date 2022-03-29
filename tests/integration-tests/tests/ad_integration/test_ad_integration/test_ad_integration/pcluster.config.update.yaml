@@ -26,16 +26,15 @@ Monitoring:
       Enabled: true
       RetentionInDays: 14
 SharedStorage:
-#TODO Temporarily removed due to FSx issues
-#  - MountDir: /shared
-#    Name: fsx
-#    StorageType: FsxLustre
-#    FsxLustreSettings:
-#      StorageCapacity: 2400
+  - MountDir: /shared
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 2400
   - MountDir: /ebs
     Name: ebs
     StorageType: Ebs
-  - MountDir: /shared
+  - MountDir: /efs
     Name: efs
     StorageType: Efs
 DirectoryService:
