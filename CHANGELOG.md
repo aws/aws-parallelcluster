@@ -8,6 +8,9 @@ x.x.x
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
 
+**CHANGES**
+- Remove support for Python 3.6.
+
 3.1.3
 ------
 
