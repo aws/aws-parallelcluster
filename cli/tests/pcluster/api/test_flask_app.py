@@ -185,9 +185,9 @@ class TestParallelClusterFlaskApp:
             body={"message": "Unsupported Media Type: Invalid Content-type (text/plain), expected JSON data"},
             code=415,
         )
-        self._assert_log_message(
-            caplog,
-            logging.INFO,
-            "Handling exception (status code 415): {'message': 'Unsupported Media Type: Invalid Content-type "
-            "(text/plain), expected JSON data'}",
+        assert_that(caplog.records[2].levelno).is_equal_to(logging.INFO)
+        assert_that(caplog.records[2].message).contains(
+            "Handling exception (status code 415): {'message': 'Unsupported Media Type: "
+            "Invalid Content-type (text/plain), expected JSON data'}"
         )
+        assert_that(caplog.records[2].exc_info).is_false()
