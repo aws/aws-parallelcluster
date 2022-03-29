@@ -21,6 +21,6 @@ aws-cdk.aws-ssm~=1.137
 aws-cdk.aws-sqs~=1.137
 aws-cdk.aws-cloudformation~=1.137
 werkzeug~=2.0
-connexion==2.10.0
+connexion~=2.13.0
 flask~=2.0
 jmespath~=0.10
