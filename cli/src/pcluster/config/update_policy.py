@@ -26,12 +26,14 @@ class UpdatePolicy:
     def __init__(
         self,
         base_policy=None,
+        name=None,
         level=None,
         fail_reason=None,
         action_needed=None,
         condition_checker=None,
         print_succeeded=True,
     ):
+        self.name = None
         self.fail_reason = None
         self.action_needed = None
         self.condition_checker = None
@@ -39,11 +41,14 @@ class UpdatePolicy:
         self.level = 0
 
         if base_policy:
+            self.name = base_policy.name
             self.fail_reason = base_policy.fail_reason
             self.action_needed = base_policy.action_needed
             self.condition_checker = base_policy.condition_checker
             self.level = base_policy.level
 
+        if name:
+            self.name = name
         if level:
             self.level = level
         if fail_reason:
@@ -122,6 +127,7 @@ UpdatePolicy.ACTIONS_NEEDED = {
 
 # Update is ignored
 UpdatePolicy.IGNORED = UpdatePolicy(
+    name="IGNORED",
     level=-10,
     fail_reason="-",
     condition_checker=(lambda change, patch: True),
@@ -130,10 +136,13 @@ UpdatePolicy.IGNORED = UpdatePolicy(
 )
 
 # Update supported
-UpdatePolicy.SUPPORTED = UpdatePolicy(level=0, fail_reason="-", condition_checker=(lambda change, patch: True))
+UpdatePolicy.SUPPORTED = UpdatePolicy(
+    name="SUPPORTED", level=0, fail_reason="-", condition_checker=(lambda change, patch: True)
+)
 
 # Checks resize of max_vcpus in Batch Compute Environment
 UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
+    name="AWSBATCH_CE_MAX_RESIZE",
     level=1,
     fail_reason=lambda change, patch: "Max vCPUs can not be lower than the current Desired vCPUs ({0})".format(
         patch.cluster.get_running_capacity()
@@ -145,6 +154,7 @@ UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
 
 # Checks resize of max_count
 UpdatePolicy.MAX_COUNT = UpdatePolicy(
+    name="MAX_COUNT",
     level=1,
     fail_reason=lambda change, patch: "Shrinking a queue requires the compute fleet to be stopped first",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
@@ -155,6 +165,7 @@ UpdatePolicy.MAX_COUNT = UpdatePolicy(
 
 # Update supported only with all compute nodes down
 UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
+    name="COMPUTE_FLEET_STOP",
     level=10,
     fail_reason="All compute nodes must be stopped",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
@@ -163,6 +174,7 @@ UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
 
 # Update supported only with head node down
 UpdatePolicy.HEAD_NODE_STOP = UpdatePolicy(
+    name="HEAD_NODE_STOP",
     level=20,
     fail_reason="To perform this update action, the head node must be in a stopped state",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
@@ -173,6 +185,7 @@ UpdatePolicy.HEAD_NODE_STOP = UpdatePolicy(
 # No bucket specified when create, no bucket specified when update: Display no diff, proceed with update
 # For all other cases: Display diff and block, value will not be updated even if forced
 UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
+    name="READ_ONLY_RESOURCE_BUCKET",
     level=30,
     fail_reason=lambda change, patch: (
         "'{0}' parameter is a read only parameter that cannot be updated. "
@@ -189,6 +202,7 @@ UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
 # update policy instead of UNKNOWN to pass unit tests.
 #
 UpdatePolicy.UNKNOWN = UpdatePolicy(
+    name="UNKNOWN",
     level=100,
     fail_reason="Update currently not supported",
     action_needed="Restore the previous parameter value for the unsupported changes.",
@@ -196,6 +210,7 @@ UpdatePolicy.UNKNOWN = UpdatePolicy(
 
 # Update not supported
 UpdatePolicy.UNSUPPORTED = UpdatePolicy(
+    name="UNSUPPORTED",
     level=1000,
     fail_reason=lambda change, patch: (f"Update actions are not currently supported for the '{change.key}' parameter"),
     action_needed=lambda change, patch: (

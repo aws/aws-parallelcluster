@@ -314,6 +314,7 @@ def _test_less_target_sections(base_conf, target_conf):
                 None,
                 UpdatePolicy(
                     UpdatePolicy.UNSUPPORTED,
+                    name="UNSUPPORTED",
                     fail_reason=(
                         "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation"
                     ),
