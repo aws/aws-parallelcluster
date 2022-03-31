@@ -1192,7 +1192,7 @@ class SlurmSettingsSchema(BaseSchema):
     """Represent the schema of the Scheduling Settings."""
 
     scaledown_idletime = fields.Int(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    dns = fields.Nested(DnsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    dns = fields.Nested(DnsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
 
     @post_load
     def make_resource(self, data, **kwargs):
