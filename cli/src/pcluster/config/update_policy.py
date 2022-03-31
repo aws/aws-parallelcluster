@@ -10,6 +10,7 @@
 # limitations under the License.
 from enum import Enum
 
+from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.constants import DEFAULT_MAX_COUNT
 
 
@@ -114,13 +115,23 @@ UpdatePolicy.FAIL_REASONS = {
     ),
 }
 
+
+def actions_needed_compute_fleet_stop(change, _):
+    actions = "Stop the compute fleet with the pcluster update-compute-fleet command"
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if any(path.startswith("SlurmQueues[") for path in change.path):
+        actions += " or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation"
+
+    return actions
+
+
 # Common action_needed messages
 UpdatePolicy.ACTIONS_NEEDED = {
     "ebs_volume_update": "Follow the instructions at {0}#{1} to modify your volume from AWS Console.".format(
         "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html",
         "modify-ebs-volume",
     ),
-    "pcluster_stop": lambda change, patch: "Stop the compute fleet with the pcluster update-compute-fleet command",
+    "pcluster_stop": actions_needed_compute_fleet_stop,
 }
 
 # Base policies
@@ -163,13 +174,36 @@ UpdatePolicy.MAX_COUNT = UpdatePolicy(
     >= (change.old_value if change.old_value is not None else DEFAULT_MAX_COUNT),
 )
 
-# Update supported only with all compute nodes down
+
+def fail_reason_compute_fleet_stop(change, _):
+    reason = "All compute nodes must be stopped"
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if any(path.startswith("SlurmQueues[") for path in change.path):
+        reason += " or queue update strategy must be set"
+
+    return reason
+
+
+def condition_checker_compute_fleet_stop(change, patch):
+    result = not patch.cluster.has_running_capacity()
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if any(path.startswith("SlurmQueues[") for path in change.path):
+        result = result or (
+            patch.target_config.get("Scheduling").get("SlurmSettings", {}).get("QueueUpdateStrategy") is not None
+            and patch.target_config.get("Scheduling").get("SlurmSettings", {}).get("QueueUpdateStrategy")
+            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+        )
+
+    return result
+
+
+# Update supported only with all compute nodes down or with replacement policy set different from COMPUTE_FLEET_STOP
 UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
     name="COMPUTE_FLEET_STOP",
     level=10,
-    fail_reason="All compute nodes must be stopped",
+    fail_reason=fail_reason_compute_fleet_stop,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: not patch.cluster.has_running_capacity(),
+    condition_checker=condition_checker_compute_fleet_stop,
 )
 
 # Update supported only with head node down

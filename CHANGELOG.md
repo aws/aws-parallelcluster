@@ -5,6 +5,8 @@ x.x.x
 ------
 
 **ENHANCEMENTS**
+- Add new configuration parameter QueueUpdateStrategy to override the "compute fleet stop" update policy 
+  for parameters under the SlurmQueues section.
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
 

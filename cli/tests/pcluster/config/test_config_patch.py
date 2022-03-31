@@ -14,6 +14,7 @@ import shutil
 import pytest
 from assertpy import assert_that
 
+from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -288,6 +289,7 @@ def _test_less_target_sections(base_conf, target_conf):
 
     # add new section + param in the base conf so that it appears as removed in the target conf
     base_conf["Scheduling"].update({"SlurmSettings": {"ScaledownIdletime": 30}})
+    base_conf["Scheduling"]["SlurmSettings"].update({"QueueUpdateStrategy": QueueUpdateStrategy.DRAIN.value})
 
     # add new param in the base conf so that it appears as removed in the target conf
     base_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
@@ -326,9 +328,38 @@ def _test_less_target_sections(base_conf, target_conf):
                 UpdatePolicy.UNSUPPORTED,
                 is_list=False,
             ),
-            Change(["Scheduling"], "SlurmSettings", {"ScaledownIdletime": 30}, "-", UpdatePolicy.IGNORED, is_list=False),
-            Change(["Scheduling", "SlurmSettings"], "ScaledownIdletime", 30, None, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
-            Change(["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"], "MinCount", 1, None, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
+            Change(
+                ["Scheduling"],
+                "SlurmSettings",
+                {"ScaledownIdletime": 30, "QueueUpdateStrategy": QueueUpdateStrategy.DRAIN.value},
+                "-",
+                UpdatePolicy.IGNORED,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "ScaledownIdletime",
+                30,
+                None,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
+                "MinCount",
+                1,
+                None,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "QueueUpdateStrategy",
+                QueueUpdateStrategy.DRAIN.value,
+                None,
+                UpdatePolicy.IGNORED,
+                is_list=False,
+            ),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -359,6 +390,9 @@ def _test_more_target_sections(base_conf, target_conf):
 
     # add new section + param in the target conf
     target_conf["Scheduling"].update({"SlurmSettings": {"ScaledownIdletime": 30}})
+    target_conf["Scheduling"]["SlurmSettings"].update(
+        {"QueueUpdateStrategy": QueueUpdateStrategy.COMPUTE_FLEET_STOP.value}
+    )
 
     # add new param in the target conf
     target_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
@@ -391,9 +425,38 @@ def _test_more_target_sections(base_conf, target_conf):
                 UpdatePolicy.UNSUPPORTED,
                 is_list=False,
             ),
-            Change(["Scheduling"], "SlurmSettings", "-", {"ScaledownIdletime": 30}, UpdatePolicy.IGNORED, is_list=False),
-            Change(["Scheduling", "SlurmSettings"], "ScaledownIdletime", None, 30, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
-            Change(["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"], "MinCount", None, 1, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
+            Change(
+                ["Scheduling"],
+                "SlurmSettings",
+                "-",
+                {"ScaledownIdletime": 30, "QueueUpdateStrategy": QueueUpdateStrategy.COMPUTE_FLEET_STOP.value},
+                UpdatePolicy.IGNORED,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "ScaledownIdletime",
+                None,
+                30,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
+                "MinCount",
+                None,
+                1,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "QueueUpdateStrategy",
+                None,
+                QueueUpdateStrategy.COMPUTE_FLEET_STOP.value,
+                UpdatePolicy.IGNORED,
+                is_list=False,
+            ),
         ],
         UpdatePolicy.UNSUPPORTED,
     )

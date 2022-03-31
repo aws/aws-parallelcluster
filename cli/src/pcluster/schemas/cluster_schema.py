@@ -62,6 +62,7 @@ from pcluster.config.cluster_config import (
     PlacementGroup,
     Proxy,
     QueueImage,
+    QueueUpdateStrategy,
     Raid,
     Roles,
     RootVolume,
@@ -1193,6 +1194,10 @@ class SlurmSettingsSchema(BaseSchema):
 
     scaledown_idletime = fields.Int(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     dns = fields.Nested(DnsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
+    queue_update_strategy = fields.Str(
+        validate=validate.OneOf([strategy.value for strategy in QueueUpdateStrategy]),
+        metadata={"update_policy": UpdatePolicy.IGNORED},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
