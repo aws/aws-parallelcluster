@@ -55,22 +55,11 @@ def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):
 
 def _compare_changes(changes, expected_changes):
     def _compare_change(source, target):
-        is_old_value_equal = (
-            source.old_value["Name"] == target.old_value["Name"]
-            if isinstance(source.old_value, dict)
-            else source.old_value == target.old_value
-        )
-        is_new_value_equal = (
-            source.new_value["Name"] == target.new_value["Name"]
-            if isinstance(source.new_value, dict)
-            else source.new_value == target.new_value
-        )
-
         return (
             source.path == target.path
             and source.key == target.key
-            and is_old_value_equal
-            and is_new_value_equal
+            and source.old_value == target.old_value
+            and source.new_value == target.new_value
             and source.update_policy.level == target.update_policy.level
             and source.update_policy.fail_reason == target.update_policy.fail_reason
             and source.is_list == target.is_list
@@ -297,6 +286,12 @@ def _test_less_target_sections(base_conf, target_conf):
     _remove_storage_by_name(target_conf, "ebs1")
     assert_that(_get_storage_by_name(target_conf, "ebs1")).is_none()
 
+    # add new section + param in the base conf so that it appears as removed in the target conf
+    base_conf["Scheduling"].update({"SlurmSettings": {"ScaledownIdletime": 30}})
+
+    # add new param in the base conf so that it appears as removed in the target conf
+    base_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
+
     # update some values in the target config for the remaining ebs
     target_conf["SharedStorage"][0]["MountDir"] = "vol1"
     target_conf["SharedStorage"][0]["EbsSettings"]["Iops"] = 20
@@ -331,6 +326,9 @@ def _test_less_target_sections(base_conf, target_conf):
                 UpdatePolicy.UNSUPPORTED,
                 is_list=False,
             ),
+            Change(["Scheduling"], "SlurmSettings", {"ScaledownIdletime": 30}, "-", UpdatePolicy.IGNORED, is_list=False),
+            Change(["Scheduling", "SlurmSettings"], "ScaledownIdletime", 30, None, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
+            Change(["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"], "MinCount", 1, None, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -358,6 +356,12 @@ def _test_more_target_sections(base_conf, target_conf):
     target_storage["MountDir"] = "vol1"
     target_storage["EbsSettings"]["Iops"] = 20
     target_storage["EbsSettings"]["VolumeType"] = "gp2"
+
+    # add new section + param in the target conf
+    target_conf["Scheduling"].update({"SlurmSettings": {"ScaledownIdletime": 30}})
+
+    # add new param in the target conf
+    target_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
 
     # The patch must show multiple differences: changes for EBS settings and one for missing ebs section in base conf
     _check_patch(
@@ -387,6 +391,9 @@ def _test_more_target_sections(base_conf, target_conf):
                 UpdatePolicy.UNSUPPORTED,
                 is_list=False,
             ),
+            Change(["Scheduling"], "SlurmSettings", "-", {"ScaledownIdletime": 30}, UpdatePolicy.IGNORED, is_list=False),
+            Change(["Scheduling", "SlurmSettings"], "ScaledownIdletime", None, 30, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
+            Change(["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"], "MinCount", None, 1, UpdatePolicy.COMPUTE_FLEET_STOP, is_list=False),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
