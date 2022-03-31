@@ -759,8 +759,8 @@ def test_ad_integration(
     for user in users:
         logging.info(f"Checking SSH access for user {user.alias}")
         _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser2")
-    run_benchmarks(users[0].remote_command_executor(), users[0].scheduler_commands(), diretory_type=directory_type)
     run_system_analyzer(cluster, scheduler_commands_factory, request)
+    run_benchmarks(users[0].remote_command_executor(), users[0].scheduler_commands(), diretory_type=directory_type)
 
 
 def _check_ssh_auth(user, expect_success=True):

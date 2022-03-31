@@ -32,6 +32,14 @@ function body() {
   "${@}"
 }
 
+function _copy_if_exists() {
+  if [ -e "${1}" ]; then
+    cp -r "${1}" "${2}"
+  else
+    log "${1} do not exists" "WARNING"
+  fi
+}
+
 function signal_handler() {
   # arg 1: return code
   # arg 2: line number of the error
@@ -68,17 +76,14 @@ function _save_scheduled_commands() {
   mkdir "${OUT_DIR}"/spool_cron
 
 
-  cp -r /etc/cron* "${OUT_DIR}"/etc_cron
-  cp -r /var/spool/cron "${OUT_DIR}"/spool_cron
+  _copy_if_exists /etc/cron* "${OUT_DIR}"/etc_cron
+  _copy_if_exists /var/spool/cron "${OUT_DIR}"/spool_cron
 
-  if [ "${OS}" != "ubuntu" ] || [ "${OS_VERSION}" != "18.04" ]; then
-    cp /etc/anacrontab "${OUT_DIR}"/etc_cron
-    cp -r /var/spool/anacron "${OUT_DIR}"/spool_cron
-  fi
+  _copy_if_exists /etc/anacrontab "${OUT_DIR}"/etc_cron
+  _copy_if_exists /var/spool/anacron "${OUT_DIR}"/spool_cron
 
-  if [ "${OS}" != "ubuntu" ]; then
-    cp -r /var/spool/at "${OUT_DIR}"/spool_cron
-  fi
+  _copy_if_exists /var/spool/at "${OUT_DIR}"/spool_cron
+
 }
 
 function _network_info() {
