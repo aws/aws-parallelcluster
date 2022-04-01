@@ -82,6 +82,7 @@ class NetworkTemplateBuilder:
         self.__availability_zone = self.__get_availability_zone(availability_zone)
         self.__vpc_config = vpc_configuration
         self.__vpc, self.__additional_vpc_cidr_blocks = self.__get_vpc(existing_vpc)
+        self.__existing_vpc = existing_vpc
         self.__vpc_subnets = vpc_configuration.subnets
         self.__gateway_id = self.__get_gateway_id()
         self.__create_ig = self.__template.add_condition("CreateInternetGateway", Equals(self.__gateway_id, ""))
@@ -209,7 +210,13 @@ class NetworkTemplateBuilder:
         return subnet
 
     def __build_nat_gateway(self, subnet_config: SubnetConfig, subnet_ref: Subnet):
-        nat_eip = self.__template.add_resource(EIP("NatEIP" + subnet_config.name, Domain="vpc"))
+        # The following depends_on ensures that EIP is not left over if VPC or InternetGateway creation fails.
+        depends_on = []
+        if self.__create_ig:
+            depends_on.append("InternetGateway")
+        if not self.__existing_vpc:
+            depends_on.append(self.__vpc_config.name)
+        nat_eip = self.__template.add_resource(EIP("NatEIP" + subnet_config.name, Domain="vpc", DependsOn=depends_on))
         return self.__template.add_resource(
             NatGateway(
                 "NatGateway" + subnet_config.name,
