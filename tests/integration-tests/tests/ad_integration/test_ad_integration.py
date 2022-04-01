@@ -34,7 +34,7 @@ from utils import generate_stack_name, render_jinja_template
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu
-from tests.common.utils import get_sts_endpoint, retrieve_latest_ami
+from tests.common.utils import get_sts_endpoint, retrieve_latest_ami, run_system_analyzer
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
@@ -471,8 +471,7 @@ def _check_files_permissions(users):
             f"{user.home_dir}/my_file",
             f"/shared/{user.alias}_file",
             f"/ebs/{user.alias}_file",
-            # TODO EFS mounted on /shared as replacement for FSx which is currently casuing issues.
-            # f"/efs/{user.alias}_file",
+            f"/efs/{user.alias}_file",
         ]:
             user.run_remote_command(f"touch {path}")
             # Specify that only owner of file should have read/write access.
@@ -760,6 +759,7 @@ def test_ad_integration(
     for user in users:
         logging.info(f"Checking SSH access for user {user.alias}")
         _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser2")
+    run_system_analyzer(cluster, scheduler_commands_factory, request)
     run_benchmarks(users[0].remote_command_executor(), users[0].scheduler_commands(), diretory_type=directory_type)
 
 
