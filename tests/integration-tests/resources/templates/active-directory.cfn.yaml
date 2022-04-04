@@ -1,0 +1,421 @@
+Parameters:
+  Vpc:
+    Description: VPC ID.
+    Type: String
+  PrivateSubnetOne:
+    Description: Subnet ID of the first subnet.
+    Type: String
+  PrivateSubnetTwo:
+    Description: Subnet ID of the second subnet. This subnet should be in another availability zone
+    Type: String
+  PublicSubnetOne:
+    Description: Subnet ID of the public subnet.
+    Type: String
+  DirectoryType:
+    Description: The type of directory
+    Type: String
+    AllowedValues: ["MicrosoftAD", "SimpleAD"]
+  DomainName:
+    Description: The domain name
+    Type: String
+  DomainShortName:
+    Description: The domain short name
+    Type: String
+  AdminPassword:
+    Description: The admin password
+    Type: String
+  UserPassword:
+    Description: The user password
+    Type: String
+  AdminNodeAmiId:
+    Description: AMI for the Admin Node
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  AdminNodeKeyName:
+    Description: Key name for the Admin Node
+    Type: String
+  LDAPSCertificateARN:
+    Description: ARN of SSL Certificate
+    AllowedPattern: "arn:aws:acm:.*"
+    Type: String
+  CertificateSecretArn:
+    Description: The Arn of the secret storing the certificate
+    Type: String
+
+  # To Remove
+#  DirectoryId:
+#    Type: String
+#    Default: d-9367797832
+#  DirectoryDnsIpAddresses1:
+#    Type: String
+#    Default: "192.168.230.115"
+#  DirectoryDnsIpAddresses2:
+#    Type: String
+#    Default: "192.168.117.232"
+
+Mappings:
+  DirectoryMap:
+    MicrosoftAD:
+      AdminUserName: "Admin"
+      UsersBaseSearch: {{ users_base_search }}
+    SimpleAD:
+      AdminUserName: "Administrator"
+      UsersBaseSearch: {{ users_base_search }}
+
+Conditions:
+  InUsEast1: !Equals [!Ref AWS::Region, "us-east-1"]
+
+Resources:
+  AdDomainAdminNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: -1
+          IpProtocol: "-1"
+          ToPort: -1
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+      VpcId:
+        Ref: Vpc
+
+  Directory:
+    Type: AWS::DirectoryService::{{ directory_type }}
+    Properties:
+      Name: !Ref DomainName
+      ShortName: !Ref DomainShortName
+      Password: !Ref AdminPassword
+      VpcSettings:
+        SubnetIds:
+          - Ref: PrivateSubnetOne
+          - Ref: PrivateSubnetTwo
+        VpcId:
+          Ref: Vpc
+      {% if directory_type == "SimpleAD" %}
+      Size: Small
+      {% endif %}
+      {% if directory_type == "MicrosoftAD" %}
+      Edition: Standard
+      {% endif %}
+
+  AdDomainAdminNodeWaitConditionHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  AdDomainAdminNodeWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Count: 1
+      Handle:
+        Ref: AdDomainAdminNodeWaitConditionHandle
+      Timeout: "1800"
+    DependsOn:
+      - Directory
+
+  JoinRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+      Policies:
+        - PolicyName: ResetUserPassword
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - ds:ResetUserPassword
+                Effect: Allow
+                Resource: !Sub "arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${Directory}"
+    DependsOn:
+      - Directory
+
+  JoinProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - Ref: JoinRole
+    DependsOn:
+      - JoinRole
+
+  AdDomainAdminNode:
+    Type: AWS::EC2::Instance
+    Properties:
+      IamInstanceProfile:
+        Ref: JoinProfile
+      ImageId: !Ref AdminNodeAmiId
+      InstanceType: t2.micro
+      KeyName: !Ref AdminNodeKeyName
+      SecurityGroupIds:
+        - Ref: AdDomainAdminNodeSecurityGroup
+      SubnetId:
+        Ref: PublicSubnetOne
+      UserData:
+        Fn::Base64:
+          !Sub
+          - |
+            #!/bin/bash
+            set -ex
+
+            DNS_IP_ONE=${DnsIp1}
+            DNS_IP_TWO=${DnsIp2}
+            AD_ADMIN_PASSWORD='${AdAdminPassword}'
+            AD_USER_PASSWORD='${AdUserPassword}'
+            AD_DOMAIN='${DirectoryDomain}'
+            AD_ADMIN_USER='${AdAdminName}'
+            AD_USERS_BASE_SEARCH='${AdUsersBaseSearch}'
+            REGION=${Region}
+            DEFAULT_EC2_DOMAIN=${Ec2Domain}
+
+            cat << EOF > /etc/resolv.conf
+            domain           $AD_DOMAIN $DEFAULT_EC2_DOMAIN
+            nameserver       $DNS_IP_ONE
+            nameserver       $DNS_IP_TWO
+            EOF
+
+            SSSD_CONFIG_PATH=/etc/sssd/sssd.conf
+            SSHD_CONFIG_PATH=/etc/ssh/sshd_config
+
+            # Install dependencies
+            yum -y install sssd realmd samba-common samba-common-tools openldap-clients krb5-workstation adcli
+
+            # Join realm
+            echo "$AD_ADMIN_PASSWORD" | realm join -U "$AD_ADMIN_USER@$AD_DOMAIN" "$AD_DOMAIN"
+
+            # Configure SSSD
+            # SSSD: don't use full hostnames for the AD domain
+            sed -i 's/use_fully_qualified_names = True/use_fully_qualified_names = False/g' $SSSD_CONFIG_PATH
+            grep use_fully_qualified_names "$SSSD_CONFIG_PATH"
+            # SSSD: modify default home directory path
+            sed -ri 's/fallback_homedir =.*$/fallback_homedir = \/home\/%u/g' "$SSSD_CONFIG_PATH"
+            grep fallback_homedir "$SSSD_CONFIG_PATH"
+            systemctl restart sssd
+
+            # Configure SSHD
+            # SSHD: enable password auth
+            sed -ri 's/\s*PasswordAuthentication\s+no$/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+            grep -E '\s*PasswordAuthentication\s+yes' "$SSHD_CONFIG_PATH"
+            systemctl restart sshd
+
+            # Script to add a number of users
+            cat << EOF > /usr/local/bin/add_a_number_of_users.sh
+            #!/bin/bash
+            DIRECTORY_ID=\$1
+            NUM_USERS_TO_CREATE=\$2
+            if [ -z "\$DIRECTORY_ID" ]; then
+                echo 1>&2 "DIRECTORY_ID must be passed as first arg"
+                exit 1
+            fi
+            if [ -z "\$NUM_USERS_TO_CREATE" ]; then
+                echo 1>&2 "NUM_USERS_TO_CREATE must be passed as second arg"
+                exit 1
+            fi
+            for i in \$(seq 0 "\$((NUM_USERS_TO_CREATE - 1))"); do
+                NEW_USER_ALIASES="\$NEW_USER_ALIASES PclusterUser\$i"
+            done
+
+            # Create LDIF file to create users
+            LDIF_FILE="adusers.ldif"
+            rm -rf \$LDIF_FILE
+            for NEW_USER_ALIAS in \$NEW_USER_ALIASES; do
+              echo "dn: CN=\$NEW_USER_ALIAS,$AD_USERS_BASE_SEARCH" >> \$LDIF_FILE
+              echo "objectClass: top" >> \$LDIF_FILE
+              echo "objectClass: person" >> \$LDIF_FILE
+              echo "objectClass: organizationalPerson" >> \$LDIF_FILE
+              echo "objectClass: user" >> \$LDIF_FILE
+              echo "userAccountControl: 514" >> \$LDIF_FILE
+              echo "accountExpires: 0" >> \$LDIF_FILE
+              echo "sAMAccountName: \$NEW_USER_ALIAS" >> \$LDIF_FILE
+              echo "" >> \$LDIF_FILE
+            done
+            echo "Wrote LDIF file: \$LDIF_FILE"
+            cat \$LDIF_FILE
+
+            # Create users in directory
+            # TODO: add ability to trigger this via lambda
+            MAX_ATTEMPTS=5
+            for ATTEMPT in \$(seq 1 \$MAX_ATTEMPTS); do
+              echo "Creating users from LDIF file \$LDIF_FILE (attempt \$ATTEMPT/\$MAX_ATTEMPTS)"
+              ldapadd -f "\$LDIF_FILE" -x -h "$DNS_IP_ONE" -D "CN=$AD_ADMIN_USER,$AD_USERS_BASE_SEARCH" -w "$AD_ADMIN_PASSWORD" && break
+              if [ \$ATTEMPT -ge \$MAX_ATTEMPTS ]; then
+                echo "ERROR: Cannot create users"
+                exit 1
+              else
+                SLEEP_TIME=\$ATTEMPT
+                echo "WARNING: Cannot create users. Will retry in \$SLEEP_TIME seconds"
+                sleep \$SLEEP_TIME
+              fi
+            done
+
+            # Change user passwords
+            # TODO: put this in a lambda that can be triggered by users
+            for NEW_USER_ALIAS in \$NEW_USER_ALIASES; do
+                MAX_ATTEMPTS=5
+                for ATTEMPT in \$(seq 1 \$MAX_ATTEMPTS); do
+                  echo "Setting password for user \$NEW_USER_ALIAS (attempt \$ATTEMPT/\$MAX_ATTEMPTS)"
+                  aws ds reset-user-password \
+                      --region $REGION \
+                      --directory-id "\$DIRECTORY_ID" \
+                      --user-name "\$NEW_USER_ALIAS" \
+                      --new-password "$AD_USER_PASSWORD" && break
+                  if [ \$ATTEMPT -ge \$MAX_ATTEMPTS ]; then
+                    echo "ERROR: Cannot set password for user \$NEW_USER_ALIAS"
+                    exit 1
+                  else
+                    SLEEP_TIME=\$ATTEMPT
+                    echo "WARNING: Cannot set password for user \$NEW_USER_ALIAS. Will retry in \$SLEEP_TIME seconds"
+                    sleep \$SLEEP_TIME
+                  fi
+                done
+            done
+            EOF
+            chmod +x /usr/local/bin/add_a_number_of_users.sh
+
+            # Signal success
+            # TODO: don't assumed this is installed (in case non-AL2 AMI used)
+            /opt/aws/bin/cfn-signal --exit-code=0 --reason="admin node setup complete" '${WaitconditionHandle}'
+          - { Region: !Ref AWS::Region,
+              DirectoryDomain: !Ref DomainName,
+              AdAdminName: !FindInMap [DirectoryMap, !Ref DirectoryType, AdminUserName],
+              AdAdminPassword: !Ref AdminPassword,
+              AdUserPassword: !Ref UserPassword,
+              DnsIp1: !Select [ 0, !GetAtt Directory.DnsIpAddresses ],
+              DnsIp2: !Select [ 1, !GetAtt Directory.DnsIpAddresses ],
+              AdUsersBaseSearch: !FindInMap [DirectoryMap, !Ref DirectoryType, UsersBaseSearch],
+              Ec2Domain: !If [InUsEast1, "ec2.internal", !Sub "${AWS::Region}.compute.internal"],
+              WaitconditionHandle: !Ref AdDomainAdminNodeWaitConditionHandle}
+    DependsOn:
+      - Directory
+      - JoinProfile
+
+  UserAddingDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      Content:
+        schemaVersion: "2.2"
+        description: Add user to AD domain
+        parameters:
+          DirectoryId:
+            type: String
+            description: ID of the direc
+          NumUsersToCreate:
+            type: String
+            description: Number of users to be created
+        mainSteps:
+          - action: aws:runShellScript
+            name: addAdUser
+            inputs:
+              runCommand:
+                - "sudo /usr/local/bin/add_a_number_of_users.sh {% raw %}{{ DirectoryId }} {{ NumUsersToCreate }}{% endraw %} "
+      DocumentType: Command
+      TargetType: /AWS::EC2::Instance
+
+  ReadOnlyUserPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      SecretString: !Ref AdminPassword
+
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetOne
+        - !Ref PrivateSubnetTwo
+      Type: network
+
+  NetworkLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 389
+      Protocol: TCP
+      VpcId: !Ref Vpc
+      HealthCheckEnabled: True
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPort: 389
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
+      Targets:
+        - Id: !Select [ 0, !GetAtt Directory.DnsIpAddresses ]
+          Port: 389
+        - Id: !Select [ 1, !GetAtt Directory.DnsIpAddresses ]
+          Port: 389
+      TargetType: ip
+    DependsOn:
+      - Directory
+
+  NetworkLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NetworkLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref NetworkLoadBalancer
+      Port: '636'
+      Protocol: TLS
+      SslPolicy: ELBSecurityPolicy-TLS-1-2-2017-01
+      Certificates:
+        - CertificateArn: !Ref LDAPSCertificateARN
+
+  DNS:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Ref DomainName
+      VPCs:
+        - VPCId: !Ref Vpc
+          VPCRegion: !Ref AWS::Region
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Name: !Ref DomainName
+      AliasTarget:
+        DNSName: !GetAtt NetworkLoadBalancer.DNSName
+        HostedZoneId: !GetAtt NetworkLoadBalancer.CanonicalHostedZoneID
+      Type: A
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+  PrivateSubnetIds:
+    Value: !Join [",", [!Ref PrivateSubnetOne, !Ref PrivateSubnetTwo]]
+  DomainName:
+    Value: !Ref DomainName
+  DomainShortName:
+    Value: !Ref DomainShortName
+  DirectoryDnsIpAddresses:
+    Value: !Join [",", !GetAtt Directory.DnsIpAddresses]
+  DomainDistinguishedName:
+    Value: {{ domain_distinguished_name }}
+  AdminName:
+    Value: !FindInMap [ DirectoryMap, !Ref DirectoryType, AdminUserName ]
+  AdminPassword:
+    Value: !Ref AdminPassword
+  UserPassword:
+    Value: !Ref UserPassword
+  ReadOnlyUserName:
+    Value: !FindInMap [DirectoryMap, !Ref DirectoryType, AdminUserName]
+  ReadOnlyUserDistinguishedName:
+    Value: !Sub
+      - "cn=${User},${UsersBaseSearch}"
+      - { User: !FindInMap [DirectoryMap, !Ref DirectoryType, AdminUserName],
+          UsersBaseSearch: !FindInMap [DirectoryMap, !Ref DirectoryType, UsersBaseSearch]}
+  ReadOnlyUserPasswordSecretArn:
+    Value: !Ref ReadOnlyUserPasswordSecret
+  LDAPSURL:
+    Value: !GetAtt NetworkLoadBalancer.DNSName
+  CertificateSecretArn:
+    Value: !Ref CertificateSecretArn
