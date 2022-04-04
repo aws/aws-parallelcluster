@@ -773,3 +773,59 @@ The only differences are the following:
 
 * `IdentityFile` option in `ssh/config` will trigger a `str has no attribute extend` bug in the `fabric` package. 
 Please remove `IdentityFile` option from `ssh/config` before running the testing framework
+
+## Collect system analysis
+
+In case of performance degradation detected in tests, to speed up the root cause analysis it is useful to have a
+report of all the services, cron settings and information about the tested cluster. The function `run_system_analyzer` creates a subfolder
+in `out_dir` called `system_analyzer`. Every run the function creates 2 files, one for the head node and one
+for a compute node of the fleet. The generated file is a `tar.gz` archive containing a directory structure
+which is comparable with `diff`. Moreover, the function also collects some network statistics which can be inspected to
+get information about dropped packages and other meaningful network metrics.
+
+The information collected are:
+* System id: ubuntu, amzn or centos
+* System version
+* uname with kernel version
+* Installed packages
+* Services and timers active on the system
+* Scheduled commands like cron, at, anacron
+* The available MPI modules
+* The configured network and the statistics associated to those network
+* ami-id, instance-type and user data queried from the instance metadata service (IMDSv2)
+
+### How to add system analysis to a test
+
+In order to add the system analysis to a test do the following:
+1. Import the function from utils.py (e.g. `from tests.common.utils import run_system_analyzer`)
+2. Call the function after the cluster creation; can be useful to run it as the last step of the test.
+If needed, it is possible to specify the partition from which to collect compute node info.
+```python
+def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=None):
+...
+```
+### How to compare system analysis
+
+The nodeJS `diff2html` generates a html file from a diff which helps to compare the differences.
+Compare result from different node type (head, compute) can create misleading results: it is suggested to compare the
+same node type (e.g. head with head) 
+Below an example on how compare system analysis results :
+```bash
+npm install -g diff2html
+
+# Get the archives
+ls .
+headnode-current-run.tar.gz
+headnode-previous-run.tar.gz
+
+# Extract the archives in 2 separated directory
+mkdir current-run
+mkdir previous-run
+tar xzvf headnode-current-run.tar.gz -C current-run/
+tar xzvf headnode-previous-run.tar.gz -C previous-run/
+
+# Compare and generate the diff.html file
+diff --exclude=network/ -u *-run/system-information | diff2html -s side -i stdin -o stdout > diff.html ;
+```
+
+Once generated the file it can be inspected in the browser.
