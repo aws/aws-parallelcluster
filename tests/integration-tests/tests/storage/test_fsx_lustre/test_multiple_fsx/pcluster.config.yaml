@@ -28,6 +28,7 @@ Scheduling:
           {% else %}
           InstanceType: {{ instance }}
           MinCount: 1
+          MaxCount: 30
           {% endif %}
       Networking:
         SubnetIds:
@@ -40,42 +41,12 @@ SharedStorage:
       StorageCapacity: 1200
       ImportPath: s3://{{ bucket_name }}
       ExportPath: s3://{{ bucket_name }}/export_dir
-      # SCRATCH_1 not available in China/GovCloud regions
-      {% if region.startswith(("cn-", "us-gov-")) %}
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 200
-      {% endif %}
-  - MountDir: {{ mount_dirs[1] }}
-    Name: fsx2
+  {% for fsx_fs_id in existing_fsx_fs_ids %}
+  - MountDir: {{ mount_dirs[loop.index] }} # the index of mount dirs starts from the second item. Because the first is used for the new FSx.
+    Name: existingfsx{{ loop.index-1 }}
     StorageType: FsxLustre
     FsxLustreSettings:
-      FileSystemId: {{ existing_fsx_fs_ids[0] }}
-  - MountDir: {{ mount_dirs[2] }}
-    Name: fsx3
-    StorageType: FsxLustre
-    FsxLustreSettings:
-      StorageCapacity: 1200
-      ImportPath: s3://{{ bucket_name }}
-      ExportPath: s3://{{ bucket_name }}/export_dir
-      # SCRATCH_1 not available in China/GovCloud regions
-      {% if region.startswith(("cn-", "us-gov-")) %}
-      DeploymentType: PERSISTENT_1
-      PerUnitStorageThroughput: 200
-      {% endif %}
-  - MountDir: {{ mount_dirs[3] }}
-    Name: fsx4
-    StorageType: FsxLustre
-    FsxLustreSettings:
-      FileSystemId: {{ existing_fsx_fs_ids[1] }}
-  - MountDir: {{ mount_dirs[4] }}
-    Name: fsx5
-    StorageType: FsxLustre
-    FsxLustreSettings:
-      StorageCapacity: 1200
-      ImportPath: s3://{{ bucket_name }}
-      ExportPath: s3://{{ bucket_name }}/export_dir
-      # SCRATCH_1 not available in China/GovCloud regions
-      {% if region.startswith(("cn-", "us-gov-")) %}
-      DeploymentType: PERSISTENT_1
-      PerUnitStorageThroughput: 200
-      {% endif %}
+      FileSystemId: {{ fsx_fs_id }}
+  {% endfor %}
