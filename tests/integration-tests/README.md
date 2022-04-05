@@ -801,9 +801,10 @@ In order to add the system analysis to a test do the following:
 2. Call the function after the cluster creation; can be useful to run it as the last step of the test.
 If needed, it is possible to specify the partition from which to collect compute node info.
 ```python
-def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=None):
+def run_system_analyzer(cluster, scheduler, request, partition=None):
 ...
 ```
+The function assumes the existence of a shared folder between compute and head node called `/shared`.
 ### How to compare system analysis
 
 The nodeJS `diff2html` generates a html file from a diff which helps to compare the differences.
@@ -811,7 +812,7 @@ Compare result from different node type (head, compute) can create misleading re
 same node type (e.g. head with head) 
 Below an example on how compare system analysis results :
 ```bash
-npm install -g diff2html
+npm install -g diff2html-cli
 
 # Get the archives
 ls .

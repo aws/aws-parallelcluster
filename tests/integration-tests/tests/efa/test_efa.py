@@ -133,7 +133,7 @@ def test_hit_efa(
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
-    run_system_analyzer(cluster, get_scheduler_commands, request, partition="efa-enabled")
+    run_system_analyzer(cluster, scheduler, request, partition="efa-enabled")
 
     if instance in osu_benchmarks_instances:
         benchmark_failures = []

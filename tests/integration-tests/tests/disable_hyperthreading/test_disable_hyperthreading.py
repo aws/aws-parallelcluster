@@ -87,7 +87,7 @@ def test_hit_disable_hyperthreading(
     )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
-    run_system_analyzer(cluster, get_scheduler_commands, request, partition="ht-disabled")
+    run_system_analyzer(cluster, scheduler, request, partition="ht-disabled")
 
 
 def _test_disable_hyperthreading_settings(
