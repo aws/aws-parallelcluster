@@ -21,6 +21,8 @@ from retrying import retry
 from time_utils import seconds
 from utils import get_instance_info
 
+from tests.common.schedulers_common import get_scheduler_commands
+
 LOGGER = logging.getLogger(__name__)
 
 SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
@@ -153,16 +155,16 @@ def get_sts_endpoint(region):
     return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
 
 
-def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=None):
+def run_system_analyzer(cluster, scheduler, request, partition=None):
     """Run script to collect system information on head and a compute node of a cluster."""
     out_dir = request.config.getoption("output_dir")
     local_result_dir = f"{out_dir}/system_analyzer"
-    compute_node_shared_dir = "/opt/parallelcluster/shared"
+    compute_node_shared_dir = "/shared"
     head_node_dir = "/tmp"
 
     logging.info("Creating remote_command_executor and scheduler_commands")
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     logging.info(f"Retrieve head node system information for test: {request.node.name}")
     result = remote_command_executor.run_remote_script(SYSTEM_ANALYZER_SCRIPT, args=[head_node_dir])
