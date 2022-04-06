@@ -69,7 +69,7 @@ jobs:
             toxdir: cli
             toxenv: py38-cov
           - name: Code Checks
-            python: 3.8
+            python: 3.9
             toxdir: cli
             toxenv: code-linters
           - name: CLI CloudFormation Templates Checks
@@ -130,7 +130,7 @@ jobs:
             toxdir: awsbatch-cli
             toxenv: py38-cov
           - name: Code Checks AWS Batch CLI
-            python: 3.6
+            python: 3.9
             toxdir: awsbatch-cli
             toxenv: code-linters
     steps:
