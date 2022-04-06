@@ -57,7 +57,7 @@ jobs:
             toxdir: cli
             toxenv: py38-cov
           - name: Code Checks
-            python: 3.6
+            python: 3.7
             toxdir: cli
             toxenv: code-linters
           - name: CloudFormation Templates Checks
