@@ -678,7 +678,16 @@ class TestCluster:
                 "Update failure: The scheduler plugin used for this cluster does not support updating the scheduling "
                 "configuration.",
                 [
-                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        "param_path",
+                        "parameter",
+                        "old value",
+                        "new value",
+                        "check",
+                        "reason",
+                        "action_needed",
+                        "update_policy",
+                    ],
                     [
                         ["Scheduling", "SchedulerQueues[queue1]", "ComputeResources[compute-resource1]"],
                         "InstanceType",
@@ -687,6 +696,7 @@ class TestCluster:
                         "SUCCEEDED",
                         "-",
                         None,
+                        "COMPUTE_FLEET_STOP",
                     ],
                 ],
             ),

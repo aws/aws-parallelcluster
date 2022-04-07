@@ -219,7 +219,9 @@ class ConfigPatch:
 
         :return: A tuple containing the patch applicability and the report rows.
         """
-        rows = [["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]]
+        rows = [
+            ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed", "update_policy"]
+        ]
 
         patch_allowed = True
 
@@ -239,6 +241,7 @@ class ConfigPatch:
                         check_result.value,
                         reason,
                         action_needed,
+                        change.update_policy.name,
                     ]
                 )
 

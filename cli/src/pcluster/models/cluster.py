@@ -441,7 +441,7 @@ class Cluster:
                 # Set additional instance types data in AWSApi. Schema load will use the information.
                 AWSApi.instance().ec2.additional_instance_types_data = json.loads(instance_types_data)
 
-    def _upload_config(self):
+    def _upload_config(self, changes=None):
         """Upload source config and save config version."""
         self._check_bucket_existence()
         try:
@@ -464,6 +464,30 @@ class Cluster:
                 # original config version will be stored in CloudFormation Parameters
                 self.config.original_config_version = result.get("VersionId")
 
+            if changes:
+                # Upload change set
+                change_indexes = {key: index for index, key in enumerate(changes[0])}
+                changes_list = []
+                for change in changes[1:]:
+                    parameter = self._get_yaml_path(
+                        change[change_indexes["param_path"]], change[change_indexes["parameter"]]
+                    )
+                    new_value = change[change_indexes["new value"]]
+                    old_value = change[change_indexes["old value"]]
+                    update_policy = change[change_indexes["update_policy"]]
+                    changes_list.append(
+                        {
+                            "parameter": parameter,
+                            "requestedValue": new_value,
+                            "currentValue": old_value,
+                            "updatePolicy": update_policy,
+                        }
+                    )
+                self.bucket.upload_config(
+                    {"changeSet": changes_list},
+                    PCLUSTER_S3_ARTIFACTS_DICT.get("change_set_name"),
+                    format=S3FileFormat.JSON,
+                )
         except Exception as e:
             raise _cluster_error_mapper(
                 e, f"Unable to upload cluster config to the S3 bucket {self.bucket.name} due to exception: {e}"
@@ -510,6 +534,14 @@ class Cluster:
             message = f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
             LOGGER.error(message)
             raise _cluster_error_mapper(e, message)
+
+    def _get_yaml_path(self, path, parameter):
+        yaml_path = []
+        if path:
+            yaml_path.extend(path)
+        if parameter:
+            yaml_path.append(parameter)
+        return ".".join(yaml_path)
 
     def _render_and_upload_scheduler_plugin_template(self, dry_run=False):
         scheduler_plugin_template = get_attr(
@@ -856,7 +888,7 @@ class Cluster:
             self.__source_config_text = target_source_config
 
             self._add_version_tag()
-            self._upload_config()
+            self._upload_config(changes)
 
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
