@@ -154,45 +154,51 @@ class ConfigPatch:
 
         # Compare items in the list by searching the right item to compare through update_key value
         # First, compare all sections from target vs base config and mark visited base sections.
-        for target_nested_section in target_section.get(data_key, []):
-            update_key_value = target_nested_section.get(update_key)
-            base_nested_section = next(
-                (
-                    nested_section
-                    for nested_section in base_section.get(data_key, [])
-                    if nested_section.get(update_key) == update_key_value
-                ),
-                None,
-            )
-            if base_nested_section:
-                nested_path = copy.deepcopy(param_path)
-                nested_path.append(f"{data_key}[{update_key_value}]")
-                self._compare_section(base_nested_section, target_nested_section, field_obj.schema, nested_path)
-                base_nested_section["visited"] = True
-            else:
-                self.changes.append(
-                    Change(
-                        param_path,
-                        data_key,
+        if target_section:
+            for target_nested_section in target_section.get(data_key, []):
+                update_key_value = target_nested_section.get(update_key)
+                base_nested_section = (
+                    next(
+                        (
+                            nested_section
+                            for nested_section in base_section.get(data_key, [])
+                            if nested_section.get(update_key) == update_key_value
+                        ),
                         None,
-                        target_nested_section,
-                        change_update_policy,
-                        is_list=True,
                     )
+                    if base_section
+                    else None
                 )
+                if base_nested_section:
+                    nested_path = copy.deepcopy(param_path)
+                    nested_path.append(f"{data_key}[{update_key_value}]")
+                    self._compare_section(base_nested_section, target_nested_section, field_obj.schema, nested_path)
+                    base_nested_section["visited"] = True
+                else:
+                    self.changes.append(
+                        Change(
+                            param_path,
+                            data_key,
+                            None,
+                            target_nested_section,
+                            change_update_policy,
+                            is_list=True,
+                        )
+                    )
         # Then, compare all non visited base sections vs target config.
-        for base_nested_section in base_section.get(data_key, []):
-            if not base_nested_section.get("visited", False):
-                self.changes.append(
-                    Change(
-                        param_path,
-                        data_key,
-                        base_nested_section,
-                        None,
-                        change_update_policy,
-                        is_list=True,
+        if base_section:
+            for base_nested_section in base_section.get(data_key, []):
+                if not base_nested_section.get("visited", False):
+                    self.changes.append(
+                        Change(
+                            param_path,
+                            data_key,
+                            base_nested_section,
+                            None,
+                            change_update_policy,
+                            is_list=True,
+                        )
                     )
-                )
 
     @property
     def update_policy_level(self):
