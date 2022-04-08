@@ -4,6 +4,9 @@ CHANGELOG
 2.11.6
 -----
 
+**ENHANCEMENTS**
+- Improve exception management in case of missing networking.
+
 **CHANGES**
 - OS package updates and security fixes.
 

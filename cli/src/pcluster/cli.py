@@ -18,7 +18,7 @@ import textwrap
 from logging.handlers import RotatingFileHandler
 
 import argparse
-from botocore.exceptions import NoCredentialsError
+from botocore.exceptions import EndpointConnectionError, NoCredentialsError
 
 import pcluster.cli_commands.delete as pcluster_delete
 import pcluster.cli_commands.start as pcluster_start
@@ -469,6 +469,9 @@ def main():
         sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
+        sys.exit(1)
+    except EndpointConnectionError as e:
+        LOGGER.error("Error: Network connection is required to execute pcluster CLI commands. %s", e)
         sys.exit(1)
     except Exception as e:
         LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
