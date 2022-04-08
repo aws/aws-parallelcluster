@@ -22,6 +22,7 @@ Scheduling:
           {% else %}
           InstanceType: {{ instance }}
           MinCount: 1
+          MaxCount: 30
           {% endif %}
       Networking:
         SubnetIds:
@@ -29,22 +30,18 @@ Scheduling:
 # This compute subnet would be in a different AZ than head node for regions defined in AVAILABILITY_ZONE_OVERRIDES
 # See conftest for details
 SharedStorage:
-  - MountDir: {{ existing_efs_mount_dirs[0] }}
+  - MountDir: {{ new_efs_mount_dirs[0] }}
     Name: efs1
     StorageType: Efs
+    EfsSettings: # Customize EFS settings to have better coverage outside other EFS tests.
+      Encrypted: true
+      PerformanceMode: maxIO
+      ThroughputMode: provisioned
+      ProvisionedThroughput: 200
+  {% for efs_fs_id in existing_efs_ids %}
+  - MountDir: {{ existing_efs_mount_dirs[loop.index-1] }}
+    Name: existing_efs{{ loop.index-1 }}
+    StorageType: Efs
     EfsSettings:
-      FileSystemId: {{ existing_efss[0] }}
-  - MountDir: {{ new_efs_mount_dirs[0] }}
-    Name: efs2
-    StorageType: Efs
-  - MountDir: {{ existing_efs_mount_dirs[1] }}
-    Name: efs3
-    StorageType: Efs
-    EfsSettings:
-      FileSystemId: {{ existing_efss[1] }}
-  - MountDir: {{ new_efs_mount_dirs[1] }}
-    Name: efs4
-    StorageType: Efs
-  - MountDir: {{ new_efs_mount_dirs[2] }}
-    Name: efs5
-    StorageType: Efs
+      FileSystemId: {{ efs_fs_id }}
+  {% endfor %}
