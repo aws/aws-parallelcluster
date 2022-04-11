@@ -71,9 +71,13 @@ def test_fsx_lustre_configuration_options(
     imported_file_chunk_size,
 ):
     mount_dir = "/fsx_mount_dir"
-    bucket_name = s3_bucket_factory()
-    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    bucket_name = None
+    if deployment_type != "PERSISTENT_2":
+        # Association to S3 is currently not supported with Persistent 2 because it is not supported by CloudFormation.
+        # FSx is working on supporting it through CloudFormation
+        bucket_name = s3_bucket_factory()
+        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+        bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     weekly_maintenance_start_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=60)).strftime("%u:%H:%M")
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
@@ -126,10 +130,11 @@ def _test_fsx_lustre_configuration_options(
 
     _test_storage_type(storage_type, fsx)
     _test_deployment_type(deployment_type, fsx)
-    _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
+    if bucket_name:
+        _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
+        _test_imported_file_chunch_size(imported_file_chunk_size, fsx)
     _test_storage_capacity(remote_command_executor, mount_dir, storage_capacity)
     _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx)
-    _test_imported_file_chunch_size(imported_file_chunk_size, fsx)
     _test_data_compression_type(data_compression_type, fsx)
 
 
@@ -181,10 +186,11 @@ def _test_fsx_lustre(
     for mount_dir, fsx_fs_id in zip(mount_dirs, fsx_fs_ids):
         logging.info("Checking %s on %s", fsx_fs_id, mount_dir)
         assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
-        _test_import_path(remote_command_executor, mount_dir)
         assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
-        _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
-        _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
+        if bucket_name:
+            _test_import_path(remote_command_executor, mount_dir)
+            _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
+            _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
