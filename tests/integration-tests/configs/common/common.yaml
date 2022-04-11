@@ -466,6 +466,12 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
+        benchmarks:
+          - mpi_variants: ["openmpi", "intelmpi"]
+            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+            slots_per_instance: 2
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
@@ -519,6 +525,12 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: [ "slurm" ]
+        benchmarks:
+          - mpi_variants: ["openmpi", "intelmpi"]
+            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+            slots_per_instance: 2
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_GOVCLOUD_X86 }}

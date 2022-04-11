@@ -76,12 +76,24 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
+          benchmarks:
+            - mpi_variants: ["openmpi", "intelmpi"]
+              num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: ["osu_allreduce", "osu_alltoall"]
     test_fsx_lustre.py::test_multiple_fsx:
       dimensions:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: ["openmpi", "intelmpi"]
+              num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: ["osu_allreduce", "osu_alltoall"]
     test_ebs.py::test_ebs_single:
       dimensions:
         - regions: ["eu-west-3"]
