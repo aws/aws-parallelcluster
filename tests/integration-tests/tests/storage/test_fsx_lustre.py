@@ -48,9 +48,9 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024, None),
         ("SCRATCH_1", None, "NEW", None, None, 1200, 1024, "LZ4"),
         ("SCRATCH_2", None, "NEW_CHANGED_DELETED", None, None, 1200, 1024, "LZ4"),
-        ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048, "LZ4"),
         ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512, "LZ4"),
         ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
+        ("PERSISTENT_2", 250, None, "SSD", None, 1200, 2048, "LZ4"),
     ],
 )
 @pytest.mark.usefixtures("os", "instance", "scheduler")
