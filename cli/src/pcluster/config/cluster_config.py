@@ -90,6 +90,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageNameValidator,
 )
 from pcluster.validators.directory_service_validators import (
+    AdditionalSssdConfigsValidator,
     DomainAddrValidator,
     DomainNameValidator,
     LdapTlsReqCertValidator,
@@ -719,6 +720,12 @@ class DirectoryService(Resource):
             )
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
+        if self.additional_sssd_configs:
+            self._register_validator(
+                AdditionalSssdConfigsValidator,
+                additional_sssd_configs=self.additional_sssd_configs,
+                ldap_access_filter=self.ldap_access_filter,
+            )
 
 
 class ClusterIam(Resource):
