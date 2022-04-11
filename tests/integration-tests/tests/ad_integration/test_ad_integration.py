@@ -811,6 +811,8 @@ def test_ad_integration(
     _run_user_workloads(users, test_datadir, remote_command_executor)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], remote_command_executor, scheduler_commands, False)
+
+    # Verify access control with ldap access provider.
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", **config_params)
     cluster.update(str(updated_config_file), force_update="true")
     # Reset stateful connection variables after the cluster update
@@ -822,6 +824,20 @@ def test_ad_integration(
     for user in users:
         logging.info(f"Checking SSH access for user {user.alias}")
         _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser2")
+
+    # Verify access control with simple access provider.
+    # With this test we also verify that AdditionalSssdConfigs is working properly.
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update2.yaml", **config_params)
+    cluster.update(str(updated_config_file), force_update="true")
+    # Reset stateful connection variables after the cluster update
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    for user in users:
+        user.reset_stateful_connection_objects(remote_command_executor)
+    _check_ssh_key_generation(users[1], remote_command_executor, scheduler_commands, True)
+    for user in users:
+        logging.info(f"Checking SSH access for user {user.alias}")
+        _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser0")
 
 
 def _check_ssh_auth(user, expect_success=True):

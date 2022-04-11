@@ -8,9 +8,10 @@ CHANGELOG
 - Execute SSH key creation alongside with the creation of HOME directory, i.e.
   during SSH login, when switching to another user and when executing a command as another user.
 - Add support for both FQDN and LDAP Distinguished Names in the configuration parameter `DirectoryService/DomainName`. The new validator now checks both the syntaxes.
-- New `update_directory_service_password.sh` script deployed on the head node supports the manual update of the Active Directory password in the SSSD configuration. 
+- New `update_directory_service_password.sh` script deployed on the head node supports the manual update of the Active Directory password in the SSSD configuration.
   The password is retrieved by the AWS Secrets Manager as from the cluster configuration.
 - Add support to deploy API infrastructure in environments without a default VPC.
+- Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
 
 **CHANGES**
 - Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
