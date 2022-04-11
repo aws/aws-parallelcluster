@@ -446,8 +446,6 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"PerUnitStorageThroughput": 50}, None),
         ({"PerUnitStorageThroughput": 100}, None),
         ({"PerUnitStorageThroughput": 200}, None),
-        ({"PerUnitStorageThroughput": 101}, "Must be one of"),
-        ({"PerUnitStorageThroughput": 1000}, "Must be one of"),
         ({"DailyAutomaticBackupStartTime": ""}, "does not match expected pattern"),
         ({"DailyAutomaticBackupStartTime": "01:00"}, None),
         ({"DailyAutomaticBackupStartTime": "23:00"}, None),

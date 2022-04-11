@@ -48,7 +48,8 @@ IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_
 # i.e. aws-parallelcluster-awsbatch-cli>=2.0.0,aws-parallelcluster-awsbatch-cli<3.0.0
 AWSBATCH_CLI_REQUIREMENTS = "aws-parallelcluster-awsbatch-cli<2.0.0"
 
-FSX_SSD_THROUGHPUT = [50, 100, 200]
+
+FSX_SSD_THROUGHPUT = {"PERSISTENT_1": [50, 100, 200], "PERSISTENT_2": [125, 250, 500, 1000]}
 FSX_HDD_THROUGHPUT = [12, 40]
 
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {

@@ -8,6 +8,7 @@ x.x.x
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
 - Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
+- Add support for FSx Lustre Persistent_2 deployment type.
 
 **CHANGES**
 - Remove support for Python 3.6.

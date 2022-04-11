@@ -221,7 +221,7 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 3600
-      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | PERSISTENT_2 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 1024
       DataCompressionType: LZ4
       ExportPath: s3://bucket/folder
