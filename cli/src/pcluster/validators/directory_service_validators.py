@@ -12,6 +12,7 @@
 import re
 from urllib.parse import urlparse
 
+from pcluster.constants import DIRECTORY_SERVICE_RESERVED_SETTINGS
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -78,3 +79,32 @@ class LdapTlsReqCertValidator(Validator):
                 f"For security reasons it's recommended to use {' or '.join(values_requiring_cert_validation)}",
                 FailureLevel.WARNING,
             )
+
+
+class AdditionalSssdConfigsValidator(Validator):
+    """AdditionalSssdConfigs validator."""
+
+    def _validate(self, additional_sssd_configs, ldap_access_filter):
+        """Validate that AdditionalSssdConfigs does not introduce unacceptable values."""
+        for config_key, accepted_value in DIRECTORY_SERVICE_RESERVED_SETTINGS.items():
+            if config_key in additional_sssd_configs:
+                actual_value = additional_sssd_configs[config_key]
+                if actual_value != accepted_value:
+                    self._add_failure(
+                        f"Cannot override the SSSD property '{config_key}' "
+                        f"with value '{actual_value}'. "
+                        f"Allowed value is: '{accepted_value}'. "
+                        "Please refer to ParallelCluster official documentation for more information.",
+                        FailureLevel.ERROR,
+                    )
+
+        if "access_provider" in additional_sssd_configs:
+            actual_access_provider = additional_sssd_configs["access_provider"]
+            if ldap_access_filter is not None and actual_access_provider != "ldap":
+                self._add_failure(
+                    "Cannot override the SSSD property 'access_provider' "
+                    f"with value '{actual_access_provider}' when LdapAccessFilter is specified. "
+                    "Allowed value is: 'ldap'. "
+                    "Please refer to ParallelCluster official documentation for more information.",
+                    FailureLevel.ERROR,
+                )

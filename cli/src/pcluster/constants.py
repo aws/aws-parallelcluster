@@ -156,3 +156,6 @@ SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS = 10
 # see https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html
 NODEJS_MIN_VERSION = "10.13.0"
 NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
+
+# DirectoryService
+DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
