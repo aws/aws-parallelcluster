@@ -166,3 +166,6 @@ NODE_BOOTSTRAP_TIMEOUT = 1800
 
 SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version("1.0")
 SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
+
+# DirectoryService
+DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}

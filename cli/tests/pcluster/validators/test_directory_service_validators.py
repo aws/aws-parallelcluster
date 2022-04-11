@@ -11,6 +11,7 @@
 import pytest
 
 from pcluster.validators.directory_service_validators import (
+    AdditionalSssdConfigsValidator,
     DomainAddrValidator,
     DomainNameValidator,
     LdapTlsReqCertValidator,
@@ -107,4 +108,45 @@ def test_domain_addr_protocol(domain_addr, additional_sssd_configs, expected_mes
 )
 def test_ldap_tls_reqcert_validator(ldap_tls_reqcert, expected_message):
     actual_failures = LdapTlsReqCertValidator().execute(ldap_tls_reqcert=ldap_tls_reqcert)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "additional_sssd_configs, ldap_access_filter, expected_message",
+    [
+        ("WHATEVER", "WHATEVER", None),
+        (
+            {"id_provider": "ldap", "whatever_property": "WHATEVER"},
+            "WHATEVER",
+            None,
+        ),
+        (
+            {"access_provider": "ldap", "whatever_property": "WHATEVER"},
+            "WHATEVER",
+            None,
+        ),
+        (
+            {"access_provider": "NOT_ldap", "whatever_property": "WHATEVER"},
+            None,
+            None,
+        ),
+        (
+            {"id_provider": "NOT_ldap", "whatever_property": "WHATEVER"},
+            "WHATEVER",
+            "Cannot override the SSSD property 'id_provider' with value 'NOT_ldap'. Allowed value is: 'ldap'. "
+            "Please refer to ParallelCluster official documentation for more information.",
+        ),
+        (
+            {"access_provider": "NOT_ldap", "whatever_property": "WHATEVER"},
+            "WHATEVER",
+            "Cannot override the SSSD property 'access_provider' with value 'NOT_ldap' "
+            "when LdapAccessFilter is specified. Allowed value is: 'ldap'. "
+            "Please refer to ParallelCluster official documentation for more information.",
+        ),
+    ],
+)
+def test_additional_sssd_configs(additional_sssd_configs, ldap_access_filter, expected_message):
+    actual_failures = AdditionalSssdConfigsValidator().execute(
+        additional_sssd_configs=additional_sssd_configs, ldap_access_filter=ldap_access_filter
+    )
     assert_failure_messages(actual_failures, expected_message)
