@@ -15,6 +15,7 @@ CHANGELOG
 **CHANGES**
 - Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
 - OS package updates and security fixes.
+- Change Amazon Linux 2 base images to use AMIs with Kernel 5.10.
 
 **BUG FIXES**
 - Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
