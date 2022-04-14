@@ -209,7 +209,7 @@ dns:
 efa:
   test_efa.py::test_hit_efa:
     dimensions:
-      - regions: ["me-south-1"]
+      - regions: ["eu-central-1"]
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -227,7 +227,7 @@ efa:
         schedulers: ["slurm"]
   test_efa.py::test_sit_efa:
     dimensions:
-      - regions: ["me-south-1"]
+      - regions: ["eu-central-1"]
         instances: ["c5n.18xlarge"]
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         # Slurm test is to verify EFA works correctly when using the SIT model in the config file
