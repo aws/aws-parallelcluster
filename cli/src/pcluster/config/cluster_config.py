@@ -325,7 +325,7 @@ class SharedFsx(Resource):
         self.shared_storage_type = SharedStorageType.FSX
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
-        self.deployment_type = Resource.init_param(deployment_type)
+        self.deployment_type = Resource.init_param(deployment_type, default="SCRATCH_2")
         self.data_compression_type = Resource.init_param(data_compression_type)
         self.export_path = Resource.init_param(export_path)
         self.import_path = Resource.init_param(import_path)

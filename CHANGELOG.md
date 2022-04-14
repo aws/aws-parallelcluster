@@ -17,6 +17,9 @@ x.x.x
 - Remove support for Python 3.6.
 - Upgrade Slurm to version 21.08.7.
 - Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+- Changes to FSx for Lustre file systems created by ParallelCluster:
+  - Change the default deployment type to `Scrach_2`.
+  - Change the lustre server version to `2.12`.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
