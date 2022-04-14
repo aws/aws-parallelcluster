@@ -7,6 +7,7 @@ x.x.x
 **ENHANCEMENTS**
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
+- Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
 
 **CHANGES**
 - Remove support for Python 3.6.
