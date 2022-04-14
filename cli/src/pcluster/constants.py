@@ -64,8 +64,9 @@ DEFAULT_MIN_COUNT = 0
 MAX_NUMBER_OF_QUEUES = 10
 MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 
-# Considering the limited size of CloudFormation template and API throttling, we decided to support at most 10 EFS.
-MAX_STORAGE_COUNT = {"ebs": 5, "efs": 10, "fsx": 10, "raid": 1}
+MAX_EBS_COUNT = 5
+MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
+MAX_EXISTING_STORAGE_COUNT = {"efs": 50, "fsx": 50, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
     "parallelcluster": "3.2.0",
@@ -165,3 +166,6 @@ NODE_BOOTSTRAP_TIMEOUT = 1800
 
 SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version("1.0")
 SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
+
+# DirectoryService
+DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}

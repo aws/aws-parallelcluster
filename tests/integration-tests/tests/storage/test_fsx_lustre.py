@@ -254,8 +254,9 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
     _test_delete_manual_backup(manual_backup, region)
 
 
-@pytest.mark.usefixtures("os", "instance", "scheduler")
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_multiple_fsx(
+    os,
     region,
     fsx_factory,
     vpc_stack,
@@ -264,6 +265,8 @@ def test_multiple_fsx(
     clusters_factory,
     scheduler_commands_factory,
     test_datadir,
+    request,
+    run_benchmarks,
 ):
     """
     Test existing Fsx file system
@@ -276,23 +279,28 @@ def test_multiple_fsx(
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     import_path = "s3://{0}".format(bucket_name)
     export_path = "s3://{0}/export_dir".format(bucket_name)
-    num_all_fsx = 5
-    mount_dirs = []
-    for i in range(num_all_fsx):
+    num_new_fsx = 1
+    if request.config.getoption("benchmarks") and os == "alinux2":
+        # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
+        num_existing_fsx = 50
+    else:
+        num_existing_fsx = 2
+    mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
+    for i in range(num_new_fsx + num_existing_fsx - 1):
         mount_dirs.append(f"/fsx_mount_dir{i}")
-    num_existing_fsx = 2
-    existing_fsx_fs_ids = []
-    for _ in range(num_existing_fsx):
-        existing_fsx_fs_ids.append(
-            fsx_factory(
-                title="existingfsx",
-                FileSystemType="LUSTRE",
-                StorageCapacity=1200,
-                LustreConfiguration=LustreConfiguration(
-                    title="lustreConfiguration", ImportPath=import_path, ExportPath=export_path
-                ),
-            )
-        )
+    existing_fsx_fs_ids = fsx_factory(
+        num=num_existing_fsx,
+        FileSystemType="LUSTRE",
+        StorageCapacity=1200,
+        LustreConfiguration=LustreConfiguration(
+            title="lustreConfiguration",
+            ImportPath=import_path,
+            ExportPath=export_path,
+            DeploymentType="PERSISTENT_1",
+            PerUnitStorageThroughput=200,
+        ),
+    )
+
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         mount_dirs=mount_dirs,
@@ -301,6 +309,10 @@ def test_multiple_fsx(
     cluster = clusters_factory(cluster_config)
 
     _test_fsx_lustre(cluster, region, scheduler_commands_factory, mount_dirs, bucket_name)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    run_benchmarks(remote_command_executor, scheduler_commands)
 
 
 @pytest.fixture(scope="class")
@@ -312,7 +324,7 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
     """
     created_stacks = []
 
-    def _fsx_factory(**kwargs):
+    def _fsx_factory(num=1, **kwargs):
         # FSx stack
         fsx_template = Template()
         fsx_template.set_version()
@@ -333,12 +345,21 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
             ],
             VpcId=vpc_stack.cfn_outputs["VpcId"],
         )
-
-        fsx_filesystem = FileSystem(
-            SecurityGroupIds=[Ref(fsx_sg)], SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]], **kwargs
-        )
         fsx_template.add_resource(fsx_sg)
-        fsx_template.add_resource(fsx_filesystem)
+        file_system_resource_name = "FileSystemResource"
+        max_concurrency = 15
+        for i in range(num):
+            depends_on_arg = {}
+            if i >= max_concurrency:
+                depends_on_arg = {"DependsOn": [f"{file_system_resource_name}{i - max_concurrency}"]}
+            fsx_filesystem = FileSystem(
+                title=f"{file_system_resource_name}{i}",
+                SecurityGroupIds=[Ref(fsx_sg)],
+                SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]],
+                **kwargs,
+                **depends_on_arg,
+            )
+            fsx_template.add_resource(fsx_filesystem)
         fsx_stack = CfnStack(
             name=utils.generate_stack_name("integ-tests-fsx", request.config.getoption("stackname_suffix")),
             region=region,
@@ -346,8 +367,7 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
         )
         cfn_stacks_factory.create_stack(fsx_stack)
         created_stacks.append(fsx_stack)
-
-        return fsx_stack.cfn_resources[kwargs.get("title")]
+        return [fsx_stack.cfn_resources[f"{file_system_resource_name}{i}"] for i in range(num)]
 
     yield _fsx_factory
 

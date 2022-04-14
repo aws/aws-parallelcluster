@@ -13,6 +13,7 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 import logging
+from collections import defaultdict
 from enum import Enum
 from typing import Dict, List, Union
 
@@ -32,9 +33,11 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    MAX_EBS_COUNT,
+    MAX_EXISTING_STORAGE_COUNT,
+    MAX_NEW_STORAGE_COUNT,
     MAX_NUMBER_OF_COMPUTE_RESOURCES,
     MAX_NUMBER_OF_QUEUES,
-    MAX_STORAGE_COUNT,
     NODE_BOOTSTRAP_TIMEOUT,
     SCHEDULER_PLUGIN_INTERFACE_VERSION,
     SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
@@ -87,6 +90,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageNameValidator,
 )
 from pcluster.validators.directory_service_validators import (
+    AdditionalSssdConfigsValidator,
     DomainAddrValidator,
     DomainNameValidator,
     LdapTlsReqCertValidator,
@@ -716,6 +720,12 @@ class DirectoryService(Resource):
             )
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
+        if self.additional_sssd_configs:
+            self._register_validator(
+                AdditionalSssdConfigsValidator,
+                additional_sssd_configs=self.additional_sssd_configs,
+                ldap_access_filter=self.ldap_access_filter,
+            )
 
 
 class ClusterIam(Resource):
@@ -1091,7 +1101,9 @@ class BaseClusterConfig(Resource):
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
 
     def _register_storage_validators(self):
-        storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}
+        ebs_count = 0
+        new_storage_count = defaultdict(int)
+        existing_storage_count = defaultdict(int)
         if self.shared_storage:
             self._register_validator(
                 DuplicateNameValidator,
@@ -1106,39 +1118,55 @@ class BaseClusterConfig(Resource):
             for storage in self.shared_storage:
                 self._register_validator(SharedStorageNameValidator, name=storage.name)
                 if isinstance(storage, SharedFsx):
-                    storage_count["fsx"] += 1
                     if storage.file_system_id:
+                        existing_storage_count["fsx"] += 1
                         self._register_validator(
                             FsxNetworkingValidator,
                             file_system_id=storage.file_system_id,
                             head_node_subnet_id=self.head_node.networking.subnet_id,
                             are_all_security_groups_customized=self.are_all_security_groups_customized,
                         )
+                    else:
+                        new_storage_count["fsx"] += 1
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
                 if isinstance(storage, SharedEbs):
                     if storage.raid:
-                        storage_count["raid"] += 1
+                        new_storage_count["raid"] += 1
                     else:
-                        storage_count["ebs"] += 1
+                        ebs_count += 1
                 if isinstance(storage, SharedEfs):
-                    storage_count["efs"] += 1
                     if storage.file_system_id:
+                        existing_storage_count["efs"] += 1
                         self._register_validator(
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
                             head_node_avail_zone=self.head_node.networking.availability_zone,
                             are_all_security_groups_customized=self.are_all_security_groups_customized,
                         )
+                    else:
+                        new_storage_count["efs"] += 1
 
-            for storage_type in ["ebs", "efs", "fsx", "raid"]:
+            for storage_type in ["efs", "fsx", "raid"]:
                 self._register_validator(
                     NumberOfStorageValidator,
-                    storage_type=storage_type.upper(),
-                    max_number=MAX_STORAGE_COUNT.get(storage_type),
-                    storage_count=storage_count[storage_type],
+                    storage_type=f"new {storage_type.upper()}",
+                    max_number=MAX_NEW_STORAGE_COUNT.get(storage_type),
+                    storage_count=new_storage_count[storage_type],
                 )
+                self._register_validator(
+                    NumberOfStorageValidator,
+                    storage_type=f"existing {storage_type.upper()}",
+                    max_number=MAX_EXISTING_STORAGE_COUNT.get(storage_type),
+                    storage_count=existing_storage_count[storage_type],
+                )
+            self._register_validator(
+                NumberOfStorageValidator,
+                storage_type="EBS",
+                max_number=MAX_EBS_COUNT,
+                storage_count=ebs_count,
+            )
 
         self._register_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
         self._register_validator(OverlappingMountDirValidator, mount_dir_list=self.mount_dir_list)

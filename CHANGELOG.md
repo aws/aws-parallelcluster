@@ -7,9 +7,13 @@ x.x.x
 **ENHANCEMENTS**
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
+- Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
 
 **CHANGES**
 - Remove support for Python 3.6.
+
+**BUG FIXES**
+- Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
 
 3.1.3
 ------
@@ -25,6 +29,7 @@ x.x.x
 **CHANGES**
 - Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
 - OS package updates and security fixes.
+- Change Amazon Linux 2 base images to use AMIs with Kernel 5.10.
 
 **BUG FIXES**
 - Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
