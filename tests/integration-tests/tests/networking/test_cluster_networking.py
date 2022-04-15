@@ -33,7 +33,7 @@ from tests.common.utils import get_default_vpc_security_group, get_route_tables,
 from tests.storage.test_fsx_lustre import (
     assert_fsx_lustre_correctly_mounted,
     assert_fsx_lustre_correctly_shared,
-    get_fsx_fs_id,
+    get_fsx_fs_ids,
 )
 
 
@@ -97,7 +97,7 @@ def _test_fsx_in_private_subnet(
     logging.info("Sleeping for 60 sec to wait for bastion ssh to become ready.")
     time.sleep(60)
     logging.info(f"Bastion: {bastion_instance}")
-    fsx_fs_id = get_fsx_fs_id(cluster, region)
+    fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
     assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, region, fsx_fs_id)
     assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
 

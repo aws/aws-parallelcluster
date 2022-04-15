@@ -20,7 +20,7 @@ Quick Start
 **IMPORTANT**: you will need an **Amazon EC2 Key Pair** to be able to complete the following steps.
 Please see the [Official AWS Guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html).
 
-First, prepare a Python Virtual Environment for ParallelCluster, note ParallelCluster >= 3.0.0 requires Python >= 3.6.
+First, prepare a Python Virtual Environment for ParallelCluster, note ParallelCluster >= 3.0.0 requires Python >= 3.7.
 ```
 python3 -m pip install --upgrade pip
 python3 -m pip install --user --upgrade virtualenv

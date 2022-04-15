@@ -4,27 +4,47 @@ CHANGELOG
 x.x.x
 ------
 
-**BUG FIXES**
-- Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
-- Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
+**ENHANCEMENTS**
+- Add support for multiple Elastic File Systems.
+- Add support for multiple FSx File Systems.
+- Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
+- Add support for FSx Lustre Persistent_2 deployment type.
 
 **CHANGES**
-- Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
-- Add validator to detect when using FSx for Lustre with AWS Batch as a scheduler, this combination is not supported yet.
-- Add validator to verify that `DirectoryService.DomainName` is a FQDN or a LDAP Distinguished Name.
+- Remove support for Python 3.6.
+
+**BUG FIXES**
+- Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
+
+3.1.3
+------
 
 **ENHANCEMENTS**
+- Execute SSH key creation alongside with the creation of HOME directory, i.e.
+  during SSH login, when switching to another user and when executing a command as another user.
+- Add support for both FQDN and LDAP Distinguished Names in the configuration parameter `DirectoryService/DomainName`. The new validator now checks both the syntaxes.
+- New `update_directory_service_password.sh` script deployed on the head node supports the manual update of the Active Directory password in the SSSD configuration.
+  The password is retrieved by the AWS Secrets Manager as from the cluster configuration.
 - Add support to deploy API infrastructure in environments without a default VPC.
+
+**CHANGES**
+- Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
+- OS package updates and security fixes.
+- Change Amazon Linux 2 base images to use AMIs with Kernel 5.10.
+
+**BUG FIXES**
+- Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
+- Fix the configuration parameter `DirectoryService/DomainAddr` conversion to `ldap_uri` SSSD property when it contains multiples domain addresses.
 
 3.1.2
 ------
 
+**CHANGES**
+- Upgrade Slurm to version 21.08.6.
+
 **BUG FIXES**
 - Fix the update of `/etc/hosts` file on computes nodes when a cluster is deployed in subnets without internet access.
 - Fix compute nodes bootstrap by waiting for ephemeral drives initialization before joining the cluster.
-
-**CHANGES**
-- Upgrade Slurm to version 21.08.6.
 
 3.1.1
 ------

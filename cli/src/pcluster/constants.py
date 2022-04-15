@@ -48,7 +48,8 @@ IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_
 # i.e. aws-parallelcluster-awsbatch-cli>=2.0.0,aws-parallelcluster-awsbatch-cli<3.0.0
 AWSBATCH_CLI_REQUIREMENTS = "aws-parallelcluster-awsbatch-cli<2.0.0"
 
-FSX_SSD_THROUGHPUT = [50, 100, 200]
+
+FSX_SSD_THROUGHPUT = {"PERSISTENT_1": [50, 100, 200], "PERSISTENT_2": [125, 250, 500, 1000]}
 FSX_HDD_THROUGHPUT = [12, 40]
 
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
@@ -64,7 +65,9 @@ DEFAULT_MIN_COUNT = 0
 MAX_NUMBER_OF_QUEUES = 10
 MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 
-MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1, "raid": 1}
+MAX_EBS_COUNT = 5
+MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
+MAX_EXISTING_STORAGE_COUNT = {"efs": 50, "fsx": 50, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
     "parallelcluster": "3.2.0",
@@ -164,3 +167,6 @@ NODE_BOOTSTRAP_TIMEOUT = 1800
 
 SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version("1.0")
 SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
+
+# DirectoryService
+DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}

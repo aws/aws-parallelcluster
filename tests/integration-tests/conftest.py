@@ -23,10 +23,12 @@ from itertools import product
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
+from typing import Any, Optional, Tuple
 
 import boto3
 import pytest
 import yaml
+from _pytest.fixtures import FixtureDef, SubRequest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -88,7 +90,7 @@ def pytest_addoption(parser):
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
     parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
     parser.addoption(
-        "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
+        "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the build-image command"
     )
     parser.addoption("--pcluster-git-ref", help="Git ref of the custom cli package used to build the AMI.")
     parser.addoption("--cookbook-git-ref", help="Git ref of the custom cookbook package used to build the AMI.")
@@ -97,7 +99,7 @@ def pytest_addoption(parser):
         "--ami-owner",
         help="Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon.",
     )
-    parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
+    parser.addoption("--createami-custom-node-package", help="url to a custom node package for the build-image command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--cw-dashboard-template-url", help="url to a custom Dashboard cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
@@ -204,16 +206,31 @@ def pytest_sessionstart(session):
     os.environ["AWS_MAX_ATTEMPTS"] = "10"
 
 
-def pytest_runtest_call(item):
+def pytest_runtest_logstart(nodeid: str, location: Tuple[str, Optional[int], str]):
     """Called to execute the test item."""
+    test_name = location[2]
     set_logger_formatter(
-        logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - %(process)d - {item.name} - %(module)s - %(message)s")
+        logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - %(process)d - {test_name} - %(module)s - %(message)s")
     )
-    logging.info("Running test " + item.name)
+    logging.info("Running test %s", test_name)
 
 
-def pytest_runtest_logfinish(nodeid, location):
+def pytest_runtest_logfinish(nodeid: str, location: Tuple[str, Optional[int], str]):
+    logging.info("Completed test %s", location[2])
     set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(process)d - %(module)s - %(message)s"))
+
+
+def pytest_runtest_setup(item):
+    logging.info("Starting setup for test %s", item.name)
+
+
+def pytest_runtest_teardown(item, nextitem):
+    logging.info("Starting teardown for test %s", item.name)
+
+
+def pytest_fixture_setup(fixturedef: FixtureDef[Any], request: SubRequest) -> Optional[object]:
+    logging.info("Setting up fixture %s", fixturedef)
+    return None
 
 
 def pytest_collection_modifyitems(session, config, items):

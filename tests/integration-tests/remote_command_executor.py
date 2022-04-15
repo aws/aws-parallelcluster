@@ -173,4 +173,24 @@ class RemoteCommandExecutor:
             # Assume files is a dict mapping local paths to remote paths
             local_remote_paths = [{"local": local, "remote": remote} for local, remote in files.items()]
         for local_remote_path in local_remote_paths or []:
+            logging.info("Copying file to remote location: %s", local_remote_path)
             self.__connection.put(**local_remote_path)
+
+    def get_remote_files(self, *args, **kwargs):
+        """
+        Get a remote file to the local filesystem or file-like object.
+
+        Simply a wrapper for `.Connection.get`. Please see its documentation for
+        all details.
+
+        :param str remote:
+            Remote file to download.
+            May be absolute, or relative to the remote working directory.
+        :param local:
+            Local path to store downloaded file in, or a file-like object.
+        :param bool preserve_mode:
+            Whether to `os.chmod` the local file so it matches the remote
+            file's mode (default: ``True``).
+        :returns: A `.Result` object.
+        """
+        return self.__connection.get(*args, **kwargs)

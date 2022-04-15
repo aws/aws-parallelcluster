@@ -106,8 +106,6 @@ from pcluster.constants import (
     DELETION_POLICIES,
     DELETION_POLICIES_WITH_SNAPSHOT,
     EBS_VOLUME_SIZE_DEFAULT,
-    FSX_HDD_THROUGHPUT,
-    FSX_SSD_THROUGHPUT,
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
     SUPPORTED_OSES,
 )
@@ -197,7 +195,10 @@ class RaidSchema(BaseSchema):
     """Represent the schema of the parameters specific to Raid. It is a child of EBS schema."""
 
     raid_type = fields.Int(
-        data_key="Type", validate=validate.OneOf([0, 1]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True,
+        data_key="Type",
+        validate=validate.OneOf([0, 1]),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     number_of_volumes = fields.Int(
         validate=validate.Range(min=2, max=5), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
@@ -347,7 +348,7 @@ class FsxLustreSettingsSchema(BaseSchema):
 
     storage_capacity = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     deployment_type = fields.Str(
-        validate=validate.OneOf(["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"]),
+        validate=validate.OneOf(["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1", "PERSISTENT_2"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     imported_file_chunk_size = fields.Int(
@@ -367,10 +368,7 @@ class FsxLustreSettingsSchema(BaseSchema):
     daily_automatic_backup_start_time = fields.Str(
         validate=validate.Regexp(r"^([01]\d|2[0-3]):([0-5]\d)$"), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
-    per_unit_storage_throughput = fields.Int(
-        validate=validate.OneOf(FSX_SSD_THROUGHPUT + FSX_HDD_THROUGHPUT),
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-    )
+    per_unit_storage_throughput = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     backup_id = fields.Str(
         validate=validate.Regexp("^(backup-[0-9a-f]{8,})$"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )

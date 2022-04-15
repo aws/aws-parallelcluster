@@ -47,7 +47,7 @@ REQUIRES = [
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
     "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
     "werkzeug~=2.0",
-    "connexion==2.10.0",
+    "connexion~=2.13.0",
     "flask~=2.0",
     "jmespath~=0.10",
 ]
@@ -66,7 +66,7 @@ setup(
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=REQUIRES,
     extras_require={
         "awslambda": LAMBDA_REQUIRES,
@@ -85,7 +85,6 @@ setup(
         "Environment :: Console",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
