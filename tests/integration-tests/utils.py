@@ -339,7 +339,10 @@ def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_ext
 
     sts = boto3.client("sts", region_name=endpoint_region, endpoint_url=credential_endpoint)
     assumed_role_object = sts.assume_role(
-        RoleArn=credential_arn, ExternalId=credential_external_id, RoleSessionName=region + "_integration_tests_session"
+        RoleArn=credential_arn,
+        ExternalId=credential_external_id,
+        RoleSessionName=region + "_integration_tests_session",
+        DurationSeconds=14400,
     )
     aws_credentials = assumed_role_object["Credentials"]
 
