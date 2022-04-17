@@ -1,0 +1,25 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand1-i1
+          InstanceType: c5.large
+          MinCount: 1
+        - Name: ondemand1-i2
+          InstanceType: {{ instance }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

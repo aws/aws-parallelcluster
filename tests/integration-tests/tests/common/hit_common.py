@@ -27,13 +27,7 @@ def assert_initial_conditions(scheduler_commands, num_static_nodes, num_dynamic_
         scheduler_commands, num_static_nodes + num_dynamic_nodes, filter_by_partition=partition
     )
     nodes_in_scheduler = scheduler_commands.get_compute_nodes(partition)
-    static_nodes = []
-    dynamic_nodes = []
-    for node in nodes_in_scheduler:
-        if "-st-" in node:
-            static_nodes.append(node)
-        if "-dy-" in node:
-            dynamic_nodes.append(node)
+    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
     assert_that(len(static_nodes)).is_equal_to(num_static_nodes)
     assert_that(len(dynamic_nodes)).is_equal_to(num_dynamic_nodes)
     assert_compute_node_states(scheduler_commands, nodes_in_scheduler, expected_states=["idle", "mixed", "allocated"])
@@ -67,6 +61,12 @@ def assert_compute_node_states(scheduler_commands, compute_nodes, expected_state
         assert_that(expected_states).contains(node_states.get(node))
 
 
+def assert_compute_node_reasons(scheduler_commands, compute_nodes, expected_reason):
+    for node in compute_nodes:
+        node_info = scheduler_commands.get_nodes_info(node)
+        assert_that(node_info).contains(f"Reason={expected_reason}")
+
+
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def wait_for_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition=None):
     assert_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition)
@@ -77,3 +77,15 @@ def assert_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partiti
         assert_that(len(scheduler_commands.get_compute_nodes(filter_by_partition))).is_equal_to(desired)
     else:
         assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)
+
+
+def get_partition_nodes(nodes_in_scheduler):
+    """Get static nodes and dynamic nodes."""
+    static_nodes = []
+    dynamic_nodes = []
+    for node in nodes_in_scheduler:
+        if "-st-" in node:
+            static_nodes.append(node)
+        if "-dy-" in node:
+            dynamic_nodes.append(node)
+    return static_nodes, dynamic_nodes
