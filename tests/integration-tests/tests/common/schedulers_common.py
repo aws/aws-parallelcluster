@@ -194,7 +194,13 @@ class SlurmCommands(SchedulerCommands):
             retry_on_result=lambda result: "JobState" not in result
             or any(
                 value in result
-                for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]
+                for value in [
+                    "EndTime=Unknown",
+                    "JobState=RUNNING",
+                    "JobState=COMPLETING",
+                    "JobState=CONFIGURING",
+                    "JobState=PENDING",
+                ]
             ),
             wait_fixed=seconds(10),
             stop_max_delay=minutes(timeout),
@@ -220,6 +226,11 @@ class SlurmCommands(SchedulerCommands):
     def get_job_submit_time(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         match = re.search(r"SubmitTime=(.+?) ", result.stdout)
+        return match.group(1)
+
+    def get_job_eligible_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"EligibleTime=(.+?) ", result.stdout)
         return match.group(1)
 
     def assert_job_submitted(self, sbatch_output):  # noqa: D102
@@ -357,11 +368,14 @@ class SlurmCommands(SchedulerCommands):
             logging.error("Unable to retrieve job output.")
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
+        self.assert_job_state(job_id, "COMPLETED")
+
+    def assert_job_state(self, job_id, expected_state):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         try:
-            assert_that(result.stdout).contains("JobState=COMPLETED")
+            assert_that(result.stdout).contains(f"JobState={expected_state}")
         except AssertionError:
-            logging.error("JobState of jobid %s not in COMPLETED:\n%s", job_id, result.stdout)
+            logging.error("JobState of jobid %s not in %s:\n%s", job_id, expected_state, result.stdout)
             self._dump_job_output(result.stdout)
             raise
 
@@ -450,6 +464,10 @@ class SlurmCommands(SchedulerCommands):
         """Wait till job starts running."""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         assert_that(result.stdout).contains("JobState=RUNNING")
+
+    def get_node_info(self, nodename):
+        """Get node info."""
+        return self._remote_command_executor.run_remote_command("scontrol show nodes {0}".format(nodename))
 
 
 class TorqueCommands(SchedulerCommands):
