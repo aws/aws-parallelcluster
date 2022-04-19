@@ -62,6 +62,7 @@ from pcluster.config.cluster_config import (
     PlacementGroup,
     Proxy,
     QueueImage,
+    QueueUpdateStrategy,
     Raid,
     Roles,
     RootVolume,
@@ -171,11 +172,11 @@ class HeadNodeRootVolumeSchema(BaseSchema):
 class QueueRootVolumeSchema(BaseSchema):
     """Represent the RootVolume schema for the queue."""
 
-    size = fields.Int(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    volume_type = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    iops = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    size = fields.Int(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    volume_type = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    iops = fields.Int(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -265,7 +266,7 @@ class QueueEphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
     mount_dir = fields.Str(
-        validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+        validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @post_load
@@ -291,9 +292,9 @@ class HeadNodeStorageSchema(BaseSchema):
 class QueueStorageSchema(BaseSchema):
     """Represent the schema of storage attached to a node."""
 
-    root_volume = fields.Nested(QueueRootVolumeSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    root_volume = fields.Nested(QueueRootVolumeSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
     ephemeral_volume = fields.Nested(
-        QueueEphemeralVolumeSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+        QueueEphemeralVolumeSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @post_load
@@ -529,7 +530,7 @@ class HeadNodeProxySchema(BaseSchema):
 class QueueProxySchema(BaseSchema):
     """Represent the schema of proxy for a queue."""
 
-    http_proxy_address = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    http_proxy_address = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -574,8 +575,8 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
 class PlacementGroupSchema(BaseSchema):
     """Represent the schema of placement group."""
 
-    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    id = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    id = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -590,7 +591,7 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
         validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
     assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
@@ -598,8 +599,10 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
 class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of slurm Queue."""
 
-    placement_group = fields.Nested(PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    proxy = fields.Nested(QueueProxySchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    placement_group = fields.Nested(
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+    proxy = fields.Nested(QueueProxySchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -653,8 +656,8 @@ class DcvSchema(BaseSchema):
 class EfaSchema(BaseSchema):
     """Represent the schema of EFA for a Compute Resource."""
 
-    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    gdr_support = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    gdr_support = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -821,7 +824,8 @@ class QueueIamSchema(IamSchema):
     """Represent the schema of IAM for Queue."""
 
     instance_profile = fields.Str(
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        validate=validate.Regexp("^arn:.*:instance-profile/"),
     )
 
 
@@ -941,7 +945,7 @@ class QueueImageSchema(BaseSchema):
 
     custom_ami = fields.Str(
         validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
 
     @post_load
@@ -977,8 +981,8 @@ class HeadNodeCustomActionsSchema(BaseSchema):
 class QueueCustomActionSchema(BaseSchema):
     """Represent the schema of the custom action."""
 
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -989,9 +993,11 @@ class QueueCustomActionSchema(BaseSchema):
 class QueueCustomActionsSchema(BaseSchema):
     """Represent the schema for all available custom actions."""
 
-    on_node_start = fields.Nested(QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    on_node_start = fields.Nested(
+        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
     on_node_configured = fields.Nested(
-        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @post_load
@@ -1034,8 +1040,10 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     instance_type = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     max_count = fields.Int(validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.MAX_COUNT})
     min_count = fields.Int(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    spot_price = fields.Float(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    efa = fields.Nested(EfaSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    spot_price = fields.Float(
+        validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+    efa = fields.Nested(EfaSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
     disable_simultaneous_multithreading = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
@@ -1085,7 +1093,7 @@ class SchedulerPluginComputeResourceSchema(SlurmComputeResourceSchema):
 class ComputeSettingsSchema(BaseSchema):
     """Represent the schema of the compute_settings schedulers queues."""
 
-    local_storage = fields.Nested(QueueStorageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    local_storage = fields.Nested(QueueStorageSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -1099,19 +1107,21 @@ class BaseQueueSchema(BaseSchema):
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     capacity_type = fields.Str(
         validate=validate.OneOf([event.value for event in CapacityType]),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
 
 
 class _CommonQueueSchema(BaseQueueSchema):
     """Represent the schema of common part between Slurm and Scheduler Plugin Queue."""
 
-    compute_settings = fields.Nested(ComputeSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    compute_settings = fields.Nested(
+        ComputeSettingsSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
     custom_actions = fields.Nested(
-        QueueCustomActionsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+        QueueCustomActionsSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
     iam = fields.Nested(QueueIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
 
 class SlurmQueueSchema(_CommonQueueSchema):
@@ -1120,10 +1130,10 @@ class SlurmQueueSchema(_CommonQueueSchema):
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "Name"},
     )
     networking = fields.Nested(
-        SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+        SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @post_load
@@ -1188,6 +1198,10 @@ class SlurmSettingsSchema(BaseSchema):
 
     scaledown_idletime = fields.Int(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     dns = fields.Nested(DnsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    queue_update_strategy = fields.Str(
+        validate=validate.OneOf([strategy.value for strategy in QueueUpdateStrategy]),
+        metadata={"update_policy": UpdatePolicy.IGNORED},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1629,7 +1643,7 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "Name"},
     )
     # Awsbatch schema:
     aws_batch_queues = fields.Nested(

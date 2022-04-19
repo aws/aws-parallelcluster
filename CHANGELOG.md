@@ -5,6 +5,8 @@ x.x.x
 ------
 
 **ENHANCEMENTS**
+- Add new configuration parameter `Scheduling/SlurmSettings/QueueUpdateStrategy` to allow cluster update when
+  `SlurmQueues` configuration changes don't impact Slurm scheduler configuration.
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.

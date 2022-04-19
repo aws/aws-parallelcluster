@@ -1682,10 +1682,20 @@ class Dns(Resource):
 class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
-    def __init__(self, scaledown_idletime: int = None, dns: Dns = None, **kwargs):
+    def __init__(self, scaledown_idletime: int = None, dns: Dns = None, queue_update_strategy: str = None, **kwargs):
         super().__init__()
         self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
         self.dns = dns or Dns(implied=True)
+        self.queue_update_strategy = Resource.init_param(
+            queue_update_strategy, default=QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+        )
+
+
+class QueueUpdateStrategy(Enum):
+    """Enum to identify the update strategy supported by the queue."""
+
+    DRAIN = "DRAIN"
+    COMPUTE_FLEET_STOP = "COMPUTE_FLEET_STOP"
 
 
 class SlurmScheduling(Resource):
