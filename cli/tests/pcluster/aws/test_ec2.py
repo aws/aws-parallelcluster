@@ -13,6 +13,7 @@ import os as os_lib
 import pytest
 from assertpy import assert_that, soft_assertions
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
@@ -331,3 +332,77 @@ def test_run_instances_dryrun(boto3_stubber, error_code, raise_exception):
             assert_that(clienterror.value.code).is_not_equal_to(0)
     else:
         Ec2Client().run_instances(**kwargs)
+
+
+def get_describe_subnets_mocked_request(subnets, state):
+    return MockedBoto3Request(
+        method="describe_subnets",
+        response={"Subnets": [{"SubnetId": subnet, "State": state} for subnet in subnets]},
+        expected_params={"SubnetIds": subnets},
+    )
+
+
+def test_describe_subnets_cache(boto3_stubber):
+    # First boto3 call. Nothing has been cached
+    subnet = "subnet-123"
+    additional_subnet = "subnet-234"
+    # The first mocked request and the third are about the same subnet. However, the state of the subnet changes
+    # from pending to available. The second mocked request is about another subnet
+    mocked_requests = [
+        get_describe_subnets_mocked_request([subnet], "pending"),
+        get_describe_subnets_mocked_request([additional_subnet], "pending"),
+        get_describe_subnets_mocked_request([subnet], "available"),
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    assert_that(AWSApi.instance().ec2.describe_subnets([subnet])[0]["State"]).is_equal_to("pending")
+
+    # Second boto3 call with more subnets. The subnet already cached should not be included in the boto3 call.
+    response = AWSApi.instance().ec2.describe_subnets([subnet, additional_subnet])
+    assert_that(response).is_length(2)
+
+    # Third boto3 call. The result should be from cache even if the state of the subnet is different
+    assert_that(AWSApi.instance().ec2.describe_subnets([subnet])[0]["State"]).is_equal_to("pending")
+
+    # Fourth boto3 call after resetting the AWSApi instance. The latest subnet state should be retrieved from boto3
+    AWSApi.reset()
+    assert_that(AWSApi.instance().ec2.describe_subnets([subnet])[0]["State"]).is_equal_to("available")
+
+
+def get_describe_security_groups_mocked_request(security_groups, ip_permissions):
+    return MockedBoto3Request(
+        method="describe_security_groups",
+        response={
+            "SecurityGroups": [
+                {"GroupId": security_group, "IpPermissions": ip_permissions} for security_group in security_groups
+            ]
+        },
+        expected_params={"GroupIds": security_groups},
+    )
+
+
+def test_describe_security_groups_cache(boto3_stubber):
+    # First boto3 call. Nothing has been cached
+    security_group = "sg-123"
+    additional_security_group = "sg-234"
+    # The first mocked request and the third are about the same security group. However, the ip permission of
+    # the security group changes from empty to {}. The second mocked request is about another security group
+    mocked_requests = [
+        get_describe_security_groups_mocked_request([security_group], []),
+        get_describe_security_groups_mocked_request([additional_security_group], []),
+        get_describe_security_groups_mocked_request([security_group], [{}]),
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    assert_that(AWSApi.instance().ec2.describe_security_groups([security_group])[0]["IpPermissions"]).is_empty()
+
+    # Second boto3 call with more security group.
+    # The security group already cached should not be included in the boto3 call.
+    response = AWSApi.instance().ec2.describe_security_groups([security_group, additional_security_group])
+    assert_that(response).is_length(2)
+
+    # Third boto3 call. The result should be from cache even if the ip permission of the security group is different
+    assert_that(AWSApi.instance().ec2.describe_security_groups([security_group])[0]["IpPermissions"]).is_empty()
+
+    # Fourth boto3 call after resetting the AWSApi instance.
+    # The latest security group ip permission should be retrieved from boto3
+    AWSApi.reset()
+    assert_that(AWSApi.instance().ec2.describe_security_groups([security_group])[0]["IpPermissions"]).is_not_empty()
