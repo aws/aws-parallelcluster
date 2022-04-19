@@ -72,8 +72,8 @@ from pcluster.validators.cluster_validators import (
     EfaSecurityGroupValidator,
     EfaValidator,
     EfsIdValidator,
+    ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    FsxNetworkingValidator,
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     HostedZoneValidator,
@@ -399,7 +399,7 @@ class SharedFsx(Resource):
     def file_system_data(self):
         """Return filesystem information if using existing FSx."""
         if not self.__file_system_data and self.file_system_id:
-            self.__file_system_data = AWSApi.instance().fsx.get_filesystem_info(self.file_system_id)
+            self.__file_system_data = AWSApi.instance().fsx.get_file_systems_info([self.file_system_id])[0]
         return self.__file_system_data
 
     @property
@@ -1115,17 +1115,13 @@ class BaseClusterConfig(Resource):
                 name_list=self.existing_fs_id_list,
                 resource_name="Shared Storage IDs",
             )
+            existing_fsx = []
             for storage in self.shared_storage:
                 self._register_validator(SharedStorageNameValidator, name=storage.name)
                 if isinstance(storage, SharedFsx):
                     if storage.file_system_id:
                         existing_storage_count["fsx"] += 1
-                        self._register_validator(
-                            FsxNetworkingValidator,
-                            file_system_id=storage.file_system_id,
-                            head_node_subnet_id=self.head_node.networking.subnet_id,
-                            are_all_security_groups_customized=self.are_all_security_groups_customized,
-                        )
+                        existing_fsx.append(storage.file_system_id)
                     else:
                         new_storage_count["fsx"] += 1
                     self._register_validator(
@@ -1142,11 +1138,17 @@ class BaseClusterConfig(Resource):
                         self._register_validator(
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
-                            head_node_avail_zone=self.head_node.networking.availability_zone,
+                            avail_zones=self.availability_zones,
                             are_all_security_groups_customized=self.are_all_security_groups_customized,
                         )
                     else:
                         new_storage_count["efs"] += 1
+            self._register_validator(
+                ExistingFsxNetworkingValidator,
+                file_system_ids=existing_fsx,
+                head_node_subnet_id=self.head_node.networking.subnet_id,
+                are_all_security_groups_customized=self.are_all_security_groups_customized,
+            )
 
             for storage_type in ["efs", "fsx", "raid"]:
                 self._register_validator(
@@ -1227,6 +1229,14 @@ class BaseClusterConfig(Resource):
                 if queue.networking.subnet_ids
             }
         )
+
+    @property
+    def availability_zones(self):
+        """Return the list of all availability zones in the cluster."""
+        result = set(self.head_node.networking.availability_zone)
+        for subnet_id in self.compute_subnet_ids:
+            result.add(AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id))
+        return result
 
     @property
     def compute_security_groups(self):

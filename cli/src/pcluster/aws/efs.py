@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.aws.common import AWSExceptionHandler, Boto3Client
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client, Cache
 from pcluster.aws.ec2 import Ec2Client
 
 
@@ -30,7 +30,7 @@ class EfsClient(Boto3Client):
         """
         mount_target_id = None
         if efs_fs_id:
-            mount_targets = self._client.describe_mount_targets(FileSystemId=efs_fs_id)
+            mount_targets = self.describe_mount_targets(efs_fs_id)
 
             for mount_target in mount_targets.get("MountTargets"):
                 # Check to see if there is an existing mt in the az of the stack
@@ -39,6 +39,17 @@ class EfsClient(Boto3Client):
                     mount_target_id = mount_target.get("MountTargetId")
 
         return mount_target_id
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def describe_mount_targets(self, efs_fs_id):
+        """
+        Search for Mount Targets information for the given EFS file system id.
+
+        :param efs_fs_id: EFS file system Id
+        :return: the mount_target_ids
+        """
+        return self._client.describe_mount_targets(FileSystemId=efs_fs_id)
 
     @AWSExceptionHandler.handle_client_exception
     def get_efs_mount_target_security_groups(self, target_id):

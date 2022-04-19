@@ -23,6 +23,7 @@ from pcluster.api.errors import (
     exception_message,
 )
 from pcluster.api.util import assert_valid_node_js
+from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, Cache
 
 LOGGER = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class ParallelClusterFlaskApp:
         def _clear_cache():
             # Cache is meant to be reused only within a single request
             Cache.clear_all()
+            AWSApi.reset()
 
         @self.flask_app.before_request
         def _log_request():  # pylint: disable=unused-variable

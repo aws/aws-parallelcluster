@@ -257,6 +257,21 @@ class FsxFileSystemInfo:
         """Return DNSName of the filesystem."""
         return self.file_system_data.get("DNSName")
 
+    @property
+    def file_system_id(self):
+        """Return id of the file system."""
+        return self.file_system_data.get("FileSystemId")
+
+    @property
+    def vpc_id(self):
+        """Return VPC id of the file system."""
+        return self.file_system_data.get("VpcId")
+
+    @property
+    def network_interface_ids(self):
+        """Return network interface ids of the file system."""
+        return self.file_system_data.get("NetworkInterfaceIds")
+
 
 class ImageInfo:
     """Object to store Ec2 Image information, initialized with the describe_image or describe_images in ec2 client."""

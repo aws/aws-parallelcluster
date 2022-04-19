@@ -160,3 +160,8 @@ class AWSApi:
         if not AWSApi._instance or AWSApi._instance.aws_region != os.environ.get("AWS_DEFAULT_REGION"):
             AWSApi._instance = AWSApi()
         return AWSApi._instance
+
+    @staticmethod
+    def reset():
+        """Reset the instance to clear all caches."""
+        AWSApi._instance = None
