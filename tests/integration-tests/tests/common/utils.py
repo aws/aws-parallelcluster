@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
-    "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
+    "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"]},
     "ubuntu1804": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-*",
