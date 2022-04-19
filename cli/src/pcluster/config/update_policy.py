@@ -10,6 +10,7 @@
 # limitations under the License.
 from enum import Enum
 
+from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.constants import DEFAULT_MAX_COUNT
 
 
@@ -102,6 +103,52 @@ class UpdatePolicy:
         return self.fail_reason == other.fail_reason and self.level == other.level
 
 
+def actions_needed_queue_update_strategy(change, _):
+    actions = "Stop the compute fleet with the pcluster update-compute-fleet command"
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if is_slurm_queues_change(change):
+        actions += ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation"
+
+    return actions
+
+
+def condition_checker_compute_fleet_stop_on_remove(change, patch):
+    result = not patch.cluster.has_running_capacity()
+    # SlurmQueue or ComputeResource can be added but removal require compute fleet stop
+    if change.is_list and (is_slurm_queues_change(change) or change.key == "SlurmQueues"):
+        result = result or (change.old_value is None and change.new_value is not None)
+
+    return result
+
+
+def is_slurm_queues_change(change):
+    return any(path.startswith("SlurmQueues[") for path in change.path)
+
+
+def fail_reason_queue_update_strategy(change, _):
+    reason = "All compute nodes must be stopped"
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if is_slurm_queues_change(change):
+        reason += " or QueueUpdateStrategy must be set"
+
+    return reason
+
+
+def condition_checker_queue_update_strategy(change, patch):
+    result = not patch.cluster.has_running_capacity()
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if is_slurm_queues_change(change):
+        result = (
+            result
+            or patch.target_config.get("Scheduling")
+            .get("SlurmSettings", {})
+            .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
+            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+        )
+
+    return result
+
+
 # Common fail_reason messages
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
@@ -121,6 +168,7 @@ UpdatePolicy.ACTIONS_NEEDED = {
         "modify-ebs-volume",
     ),
     "pcluster_stop": lambda change, patch: "Stop the compute fleet with the pcluster update-compute-fleet command",
+    "pcluster_stop_conditional": actions_needed_queue_update_strategy,
 }
 
 # Base policies
@@ -161,6 +209,24 @@ UpdatePolicy.MAX_COUNT = UpdatePolicy(
     condition_checker=lambda change, patch: not patch.cluster.has_running_capacity()
     or (change.new_value if change.new_value is not None else DEFAULT_MAX_COUNT)
     >= (change.old_value if change.old_value is not None else DEFAULT_MAX_COUNT),
+)
+
+# Update supported only with all compute nodes down or with replacement policy set different from COMPUTE_FLEET_STOP
+UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
+    name="QUEUE_UPDATE_STRATEGY",
+    level=5,
+    fail_reason=fail_reason_queue_update_strategy,
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop_conditional"],
+    condition_checker=condition_checker_queue_update_strategy,
+)
+
+# Update supported on new addition or on removal only with all compute nodes down
+UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE = UpdatePolicy(
+    name="COMPUTE_FLEET_STOP_ON_REMOVE",
+    level=7,
+    fail_reason="All compute nodes must be stopped",
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
+    condition_checker=condition_checker_compute_fleet_stop_on_remove,
 )
 
 # Update supported only with all compute nodes down
