@@ -113,36 +113,44 @@ class ConfigPatch:
                     )
                 else:
                     # Single nested section
-                    target_value = target_section.get(data_key, None)
-                    base_value = base_section.get(data_key, None)
+                    target_value = target_section.get(data_key, None) if target_section else None
+                    base_value = base_section.get(data_key, None) if base_section else None
 
                     if target_value and base_value:
-                        # Compare nested sections and params
-                        nested_path = copy.deepcopy(param_path)
-                        nested_path.append(data_key)
-                        self._compare_section(base_value, target_value, field_obj.schema, nested_path)
+                        self._compare_nested_section(param_path, data_key, base_value, target_value, field_obj)
                     elif target_value or base_value:
-                        # One section has been added or removed, add section change information
-                        self.changes.append(
-                            Change(
-                                param_path,
-                                data_key,
-                                base_value if base_value else "-",
-                                target_value if target_value else "-",
-                                change_update_policy,
-                                is_list=False,
+                        # One section has been added or removed
+                        if change_update_policy is UpdatePolicy.IGNORED:
+                            # Traverse config if UpdatePolicy is IGNORED
+                            self._compare_nested_section(param_path, data_key, base_value, target_value, field_obj)
+                        else:
+                            # Add section change information
+                            self.changes.append(
+                                Change(
+                                    param_path,
+                                    data_key,
+                                    base_value if base_value else "-",
+                                    target_value if target_value else "-",
+                                    change_update_policy,
+                                    is_list=False,
+                                )
                             )
-                        )
             else:
                 # Simple param
-                target_value = target_section.get(data_key, None)
-                base_value = base_section.get(data_key, None)
+                target_value = target_section.get(data_key, None) if target_section else None
+                base_value = base_section.get(data_key, None) if base_section else None
 
                 if target_value != base_value:
                     # Add param change information
                     self.changes.append(
                         Change(param_path, data_key, base_value, target_value, change_update_policy, is_list=False)
                     )
+
+    def _compare_nested_section(self, param_path, data_key, base_value, target_value, field_obj):
+        # Compare nested sections and params
+        nested_path = copy.deepcopy(param_path)
+        nested_path.append(data_key)
+        self._compare_section(base_value, target_value, field_obj.schema, nested_path)
 
     def _compare_list(self, base_section, target_section, param_path, data_key, field_obj, change_update_policy):
         """
