@@ -227,7 +227,9 @@ class ConfigPatch:
 
         :return: A tuple containing the patch applicability and the report rows.
         """
-        rows = [["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]]
+        rows = [
+            ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed", "update_policy"]
+        ]
 
         patch_allowed = True
 
@@ -247,7 +249,47 @@ class ConfigPatch:
                         check_result.value,
                         reason,
                         action_needed,
+                        change.update_policy.name,
                     ]
                 )
 
         return patch_allowed, rows
+
+    @staticmethod
+    def build_config_param_path(path, parameter):
+        """Compose the parameter path following the YAML Path standard.
+
+        Standard: https://github.com/wwkimball/yamlpath/wiki/Segments-of-a-YAML-Path#yaml-path-standard
+        """
+        yaml_path = []
+        if path:
+            yaml_path.extend(path)
+        if parameter:
+            yaml_path.append(parameter)
+        return ".".join(yaml_path)
+
+    @staticmethod
+    def generate_json_change_set(changes):
+        """Generate JSON change set.
+
+        Generate JSON change set from changes
+        """
+        change_attributes = {key: index for index, key in enumerate(changes[0])}
+        changes_list = []
+        for change in changes[1:]:
+            parameter = ConfigPatch.build_config_param_path(
+                change[change_attributes["param_path"]], change[change_attributes["parameter"]]
+            )
+            new_value = change[change_attributes["new value"]]
+            old_value = change[change_attributes["old value"]]
+            update_policy = change[change_attributes["update_policy"]]
+            changes_list.append(
+                {
+                    "parameter": parameter,
+                    "requestedValue": new_value,
+                    "currentValue": old_value,
+                    "updatePolicy": update_policy,
+                }
+            )
+
+        return {"changeSet": changes_list}

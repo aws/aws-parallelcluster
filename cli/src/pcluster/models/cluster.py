@@ -463,11 +463,27 @@ class Cluster:
 
                 # original config version will be stored in CloudFormation Parameters
                 self.config.original_config_version = result.get("VersionId")
-
         except Exception as e:
             raise _cluster_error_mapper(
                 e, f"Unable to upload cluster config to the S3 bucket {self.bucket.name} due to exception: {e}"
             )
+
+    def _upload_change_set(self, changes=None):
+        """Upload change set."""
+        if changes:
+            self._check_bucket_existence()
+            try:
+                self.bucket.upload_config(
+                    config=ConfigPatch.generate_json_change_set(changes),
+                    config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("change_set_name"),
+                    format=S3FileFormat.JSON,
+                )
+            except Exception as e:
+                message = (
+                    f"Unable to upload cluster change set to the S3 bucket {self.bucket.name} due to exception: {e}"
+                )
+                LOGGER.error(message)
+                raise _cluster_error_mapper(e, message)
 
     def _upload_artifacts(self):
         """
@@ -857,6 +873,7 @@ class Cluster:
 
             self._add_version_tag()
             self._upload_config()
+            self._upload_change_set(changes)
 
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):

@@ -10,6 +10,7 @@
 # limitations under the License.
 import datetime
 import json
+from copy import deepcopy
 from io import BytesIO
 from unittest.mock import PropertyMock
 
@@ -23,11 +24,13 @@ from pcluster.api.models import ClusterStatus
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
+from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_S3_ARTIFACTS_DICT, PCLUSTER_VERSION_TAG
 from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
+from pcluster.schemas.cluster_schema import ClusterSchema
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
@@ -678,7 +681,16 @@ class TestCluster:
                 "Update failure: The scheduler plugin used for this cluster does not support updating the scheduling "
                 "configuration.",
                 [
-                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        "param_path",
+                        "parameter",
+                        "old value",
+                        "new value",
+                        "check",
+                        "reason",
+                        "action_needed",
+                        "update_policy",
+                    ],
                     [
                         ["Scheduling", "SchedulerQueues[queue1]", "ComputeResources[compute-resource1]"],
                         "InstanceType",
@@ -687,6 +699,7 @@ class TestCluster:
                         "SUCCEEDED",
                         "-",
                         None,
+                        "COMPUTE_FLEET_STOP",
                     ],
                 ],
             ),
@@ -803,6 +816,84 @@ Scheduling:
         except ClusterActionError as e:
             assert_that(e.args[0]).is_equal_to(match)
             assert_that(e.update_changes).is_equal_to(update_changes)
+
+    def test_upload_config(self, mocker, cluster):
+        mock_aws_api(mocker)
+        mock_bucket(mocker)
+        mock_bucket_utils(mocker)
+        bucket_object_utils_dict = mock_bucket_object_utils(mocker)
+        cluster.config = dummy_slurm_cluster_config(mocker)
+        cluster._upload_config()
+
+        bucket_object_utils_dict.get("upload_config").assert_any_call(
+            config=ClusterSchema(cluster_name=cluster.name).dump(deepcopy(cluster.config)),
+            config_name="cluster-config-with-implied-values.yaml",
+        )
+        bucket_object_utils_dict.get("upload_config").assert_any_call(
+            config={"Image": "image"},  # fake config set in mock_bucket_object_utils
+            config_name="cluster-config.yaml",
+            format=S3FileFormat.TEXT,
+        )
+
+        assert_that(bucket_object_utils_dict.get("upload_config").call_count).is_equal_to(2)
+
+    @pytest.mark.parametrize(
+        "changes, change_set",
+        [
+            (None, None),
+            (
+                [
+                    [
+                        "param_path",
+                        "parameter",
+                        "old value",
+                        "new value",
+                        "check",
+                        "reason",
+                        "action_needed",
+                        "update_policy",
+                    ],
+                    [
+                        ["Scheduling", "SlurmQueues[queue1]", "Image"],
+                        "CustomAmi",
+                        "ami-123456789",
+                        "ami-0987654321",
+                        True,
+                        "-",
+                        None,
+                        UpdatePolicy.QUEUE_UPDATE_STRATEGY.name,
+                    ],
+                ],
+                {
+                    "changeSet": [
+                        {
+                            "currentValue": "ami-123456789",
+                            "parameter": "Scheduling.SlurmQueues[queue1].Image.CustomAmi",
+                            "requestedValue": "ami-0987654321",
+                            "updatePolicy": "QUEUE_UPDATE_STRATEGY",
+                        }
+                    ]
+                },
+            ),
+        ],
+    )
+    def test_upload_change_set(self, mocker, cluster, changes, change_set):
+        mock_aws_api(mocker)
+        mock_bucket(mocker)
+        mock_bucket_utils(mocker)
+        bucket_object_utils_dict = mock_bucket_object_utils(mocker)
+        cluster.config = dummy_slurm_cluster_config(mocker)
+        cluster._upload_change_set(changes)
+
+        if changes:
+            bucket_object_utils_dict.get("upload_config").assert_any_call(
+                config=change_set,
+                config_name="change-set.json",
+                format=S3FileFormat.JSON,
+            )
+            assert_that(bucket_object_utils_dict.get("upload_config").call_count).is_equal_to(1)
+        else:
+            assert_that(bucket_object_utils_dict.get("upload_config").call_count).is_equal_to(0)
 
 
 OLD_CONFIGURATION = """

@@ -3,6 +3,7 @@
     "base_os": "alinux2",
     "cluster_config_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/cluster-config-with-implied-values.yaml",
     "cluster_config_version": "",
+    "change_set_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/change-set.json",
     "cluster_s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
     "cluster_user": "ec2-user",
     "custom_awsbatchcli_package": "",

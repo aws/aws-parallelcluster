@@ -691,7 +691,7 @@ def test_patch_check_cluster_resource_bucket(
 ):
     mock_aws_api(mocker)
     expected_message_rows = [
-        ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+        ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed", "update_policy"],
         # ec2_iam_role is to make sure other parameters are not affected by cluster_resource_bucket custom logic
         [
             ["HeadNode", "Iam"],
@@ -701,6 +701,7 @@ def test_patch_check_cluster_resource_bucket(
             "SUCCEEDED",
             "-",
             None,
+            UpdatePolicy.SUPPORTED.name,
         ],
     ]
     if expected_error_row:
@@ -717,6 +718,7 @@ def test_patch_check_cluster_resource_bucket(
                 )
             ),
             f"Restore the value of parameter 'CustomS3Bucket' to '{old_bucket_name}'",
+            UpdatePolicy.READ_ONLY_RESOURCE_BUCKET.name,
         ]
         expected_message_rows.append(error_message_row)
     src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "arn:aws:iam::aws:role/some_old_role"}
