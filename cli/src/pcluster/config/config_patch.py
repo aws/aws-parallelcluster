@@ -191,7 +191,6 @@ class ConfigPatch:
         # Then, compare all non visited base sections vs target config.
         for base_nested_section in base_section.get(data_key, []):
             if not base_nested_section.get("visited", False):
-                update_key_value = base_nested_section.get(update_key)
                 self.changes.append(
                     Change(
                         param_path,
