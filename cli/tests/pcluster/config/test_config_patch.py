@@ -400,6 +400,9 @@ def _test_less_target_sections(base_conf, target_conf):
     # add new section + param in the base conf so that it appears as removed in the target conf
     base_conf["Scheduling"].update({"SlurmSettings": {"ScaledownIdletime": 30}})
     base_conf["Scheduling"]["SlurmSettings"].update({"QueueUpdateStrategy": QueueUpdateStrategy.DRAIN.value})
+    base_conf["Scheduling"]["SlurmQueues"][0].update(
+        {"Iam": {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]}}
+    )
 
     # add new param in the base conf so that it appears as removed in the target conf
     base_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
@@ -439,11 +442,19 @@ def _test_less_target_sections(base_conf, target_conf):
                 is_list=False,
             ),
             Change(
-                ["Scheduling"],
-                "SlurmSettings",
-                {"ScaledownIdletime": 30, "QueueUpdateStrategy": QueueUpdateStrategy.DRAIN.value},
-                "-",
-                UpdatePolicy.SUPPORTED,
+                ["Scheduling", "SlurmSettings"],
+                "QueueUpdateStrategy",
+                QueueUpdateStrategy.DRAIN.value,
+                None,
+                UpdatePolicy.IGNORED,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "ScaledownIdletime",
+                30,
+                None,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
                 is_list=False,
             ),
             Change(
@@ -452,6 +463,14 @@ def _test_less_target_sections(base_conf, target_conf):
                 1,
                 None,
                 UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]"],
+                "Iam",
+                {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]},
+                "-",
+                UpdatePolicy.SUPPORTED,
                 is_list=False,
             ),
         ],
@@ -487,6 +506,9 @@ def _test_more_target_sections(base_conf, target_conf):
     target_conf["Scheduling"]["SlurmSettings"].update(
         {"QueueUpdateStrategy": QueueUpdateStrategy.COMPUTE_FLEET_STOP.value}
     )
+    target_conf["Scheduling"]["SlurmQueues"][0].update(
+        {"Iam": {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]}}
+    )
 
     # add new param in the target conf
     target_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
@@ -520,11 +542,19 @@ def _test_more_target_sections(base_conf, target_conf):
                 is_list=False,
             ),
             Change(
-                ["Scheduling"],
-                "SlurmSettings",
-                "-",
-                {"ScaledownIdletime": 30, "QueueUpdateStrategy": QueueUpdateStrategy.COMPUTE_FLEET_STOP.value},
-                UpdatePolicy.SUPPORTED,
+                ["Scheduling", "SlurmSettings"],
+                "ScaledownIdletime",
+                None,
+                30,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "QueueUpdateStrategy",
+                None,
+                QueueUpdateStrategy.COMPUTE_FLEET_STOP.value,
+                UpdatePolicy.IGNORED,
                 is_list=False,
             ),
             Change(
@@ -533,6 +563,14 @@ def _test_more_target_sections(base_conf, target_conf):
                 None,
                 1,
                 UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]"],
+                "Iam",
+                "-",
+                {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]},
+                UpdatePolicy.SUPPORTED,
                 is_list=False,
             ),
         ],
