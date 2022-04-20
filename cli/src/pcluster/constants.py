@@ -67,7 +67,7 @@ MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 
 MAX_EBS_COUNT = 5
 MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
-MAX_EXISTING_STORAGE_COUNT = {"efs": 50, "fsx": 50, "raid": 0}
+MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
     "parallelcluster": "3.2.0",
