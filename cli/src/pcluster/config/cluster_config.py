@@ -28,6 +28,7 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
     EBS_VOLUME_SIZE_DEFAULT,
@@ -87,6 +88,7 @@ from pcluster.validators.cluster_validators import (
     OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
+    SharedStorageMountDirValidator,
     SharedStorageNameValidator,
 )
 from pcluster.validators.directory_service_validators import (
@@ -204,7 +206,7 @@ class EphemeralVolume(Resource):
 
     def __init__(self, mount_dir: str = None):
         super().__init__()
-        self.mount_dir = Resource.init_param(mount_dir, default="/scratch")
+        self.mount_dir = Resource.init_param(mount_dir, default=DEFAULT_EPHEMERAL_DIR)
 
 
 class LocalStorage(Resource):
@@ -1118,6 +1120,7 @@ class BaseClusterConfig(Resource):
             existing_fsx = []
             for storage in self.shared_storage:
                 self._register_validator(SharedStorageNameValidator, name=storage.name)
+                self._register_validator(SharedStorageMountDirValidator, mount_dir=storage.mount_dir)
                 if isinstance(storage, SharedFsx):
                     if storage.file_system_id:
                         existing_storage_count["fsx"] += 1
@@ -1170,8 +1173,15 @@ class BaseClusterConfig(Resource):
                 storage_count=ebs_count,
             )
 
-        self._register_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
-        self._register_validator(OverlappingMountDirValidator, mount_dir_list=self.mount_dir_list)
+        self._register_validator(
+            DuplicateMountDirValidator,
+            mount_dir_list=self.shared_mount_dir_list + list(self.local_mount_dir_set),
+        )
+        self._register_validator(
+            OverlappingMountDirValidator,
+            shared_mount_dir_list=self.shared_mount_dir_list,
+            local_mount_dir_list=list(self.local_mount_dir_set),
+        )
 
     @property
     def region(self):
@@ -1190,8 +1200,8 @@ class BaseClusterConfig(Resource):
         return get_partition()
 
     @property
-    def mount_dir_list(self):
-        """Retrieve the list of mount dirs for the shared storage and head node ephemeral volume."""
+    def shared_mount_dir_list(self):
+        """Retrieve the list of shared mount dirs."""
         mount_dir_list = []
         if self.shared_storage:
             for storage in self.shared_storage:
@@ -1201,6 +1211,25 @@ class BaseClusterConfig(Resource):
             mount_dir_list.append(self.head_node.local_storage.ephemeral_volume.mount_dir)
 
         return mount_dir_list
+
+    @property
+    def local_mount_dir_set(self):
+        """Retrieve the list of local mount dirs of head compute nodes ephemeral volume."""
+        mount_dir_set = {
+            self.head_node.local_storage.ephemeral_volume.mount_dir
+            if self.head_node.local_storage.ephemeral_volume
+            else DEFAULT_EPHEMERAL_DIR
+        }
+        scheduling = self.scheduling
+        if isinstance(scheduling, (SchedulerPluginScheduling, SlurmScheduling)):
+            for queue in scheduling.queues:
+                mount_dir_set.add(
+                    queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                    if queue.compute_settings.local_storage.ephemeral_volume
+                    else DEFAULT_EPHEMERAL_DIR
+                )
+
+        return mount_dir_set
 
     @property
     def existing_fs_id_list(self):

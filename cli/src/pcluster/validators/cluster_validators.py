@@ -11,12 +11,14 @@
 import re
 from abc import ABC
 from enum import Enum
+from itertools import combinations, product
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    DEFAULT_EPHEMERAL_DIR,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
@@ -514,13 +516,15 @@ def _find_duplicate_params(param_list):
     return duplicated_params
 
 
-def _find_overlapping_paths(paths_list):
+def _find_overlapping_paths(shared_paths_list, local_paths_list):
     overlapping_paths = []
-    if paths_list:
-        for path in paths_list:
-            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path + "/"))
+    if shared_paths_list:
+        for path1, path2 in list(combinations(shared_paths_list, 2)) + list(
+            product(shared_paths_list, local_paths_list)
+        ):  # Check all pairs in shared paths list and all pairs between shared paths list and local paths list
+            is_overlapping = path1.startswith(path2 + "/") or path2.startswith(path1 + "/")
             if is_overlapping:
-                overlapping_paths.append(path)
+                overlapping_paths.extend([path1, path2])
 
     return overlapping_paths
 
@@ -548,16 +552,18 @@ class OverlappingMountDirValidator(Validator):
     """
     Mount dir validator.
 
-    Verify if there are overlapping mount dirs between shared storage and ephemeral volumes.
+    Verify if there are overlap mount dirs.
+    1. Shared storage directories can not overlap with each other.
+    2. Shared storage directories can not overlap with ephemeral storage directories.
+    3. Ephemeral storage directories can overlap with each other, because they are local to compute nodes.
     Two mount dirs are overlapped if one is contained into the other.
     """
 
-    def _validate(self, mount_dir_list):
-        overlapping_mount_dirs = _find_overlapping_paths(mount_dir_list)
+    def _validate(self, shared_mount_dir_list, local_mount_dir_list):
+        overlapping_mount_dirs = _find_overlapping_paths(shared_mount_dir_list, local_mount_dir_list)
         if overlapping_mount_dirs:
             self._add_failure(
-                "Mount {0} {1} cannot contain other mount directories".format(
-                    "directories" if len(overlapping_mount_dirs) > 1 else "directory",
+                "Mount directories {0} cannot overlap".format(
                     ", ".join(mount_dir for mount_dir in overlapping_mount_dirs),
                 ),
                 FailureLevel.ERROR,
@@ -632,6 +638,45 @@ class SharedStorageNameValidator(Validator):
 
         if re.match("^default$", name):
             self._add_failure(f"It is forbidden to use '{name}' as a name.", FailureLevel.ERROR)
+
+
+class SharedStorageMountDirValidator(Validator):
+    """
+    Shared storage mount directory validator.
+
+    Make sure the mount directory is not the same as any reserved directory.
+    """
+
+    def _validate(self, mount_dir: str):
+        reserved_directories = [
+            "/bin",
+            "/boot",
+            "/dev",
+            "/etc",
+            "/home",
+            "/lib",
+            "/lib64",
+            "/media",
+            "/mnt",
+            "/opt",
+            "/proc",
+            "/root",
+            "/run",
+            "/sbin",
+            "/srv",
+            "/sys",
+            "/tmp",  # nosec nosemgrep
+            "/usr",
+            "/var",
+        ]
+        default_directories = [DEFAULT_EPHEMERAL_DIR]
+        if not mount_dir.startswith("/"):
+            mount_dir = "/" + mount_dir
+        if mount_dir in reserved_directories + default_directories:
+            self._add_failure(
+                f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
+                FailureLevel.ERROR,
+            )
 
 
 # --------------- Third party software validators --------------- #
