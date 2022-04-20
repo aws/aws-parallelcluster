@@ -42,6 +42,7 @@ from pcluster.validators.cluster_validators import (
     OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
+    SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     _LaunchTemplateValidator,
 )
@@ -764,36 +765,47 @@ def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
 
 
 @pytest.mark.parametrize(
-    "mount_dir_list, expected_message",
+    "shared_mount_dir_list, local_mount_dir_list, expected_message",
     [
         (
             ["dir1"],
+            [],
             None,
         ),
         (
             ["dir1", "dir2"],
+            ["/scratch"],
             None,
         ),
         (
             ["dir1", "dir2", "dir3"],
+            ["/scratch", "/scratch/compute"],  # local mount dirs on different nodes can overlap.
             None,
         ),
         (
             ["dir1", "dir1/subdir", "dir2"],
-            "Mount directory dir1 cannot contain other mount directories",
+            [],
+            "Mount directories dir1, dir1/subdir cannot overlap",
         ),
         (
             ["dir1", "dir1/subdir", "dir2", "dir2/subdir", "dir3"],
-            "Mount directories dir1, dir2 cannot contain other mount directories",
+            [],
+            "Mount directories dir1, dir1/subdir, dir2, dir2/subdir cannot overlap",
+        ),
+        (
+            ["dir1", "dir2", "dir3"],
+            ["dir1/subdir", "dir2/subdir"],
+            "Mount directories dir1, dir1/subdir, dir2, dir2/subdir cannot overlap",
         ),
         (
             ["dir", "dir1"],
+            [],
             None,
         ),
     ],
 )
-def test_overlapping_mount_dir_validator(mount_dir_list, expected_message):
-    actual_failures = OverlappingMountDirValidator().execute(mount_dir_list)
+def test_overlapping_mount_dir_validator(shared_mount_dir_list, local_mount_dir_list, expected_message):
+    actual_failures = OverlappingMountDirValidator().execute(shared_mount_dir_list, local_mount_dir_list)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -824,6 +836,22 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
 )
 def test_shared_storage_name_validator(name, expected_message):
     actual_failures = SharedStorageNameValidator().execute(name)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "mount_dir, expected_message",
+    [
+        ("default", None),
+        ("shared_ebs_1", None),
+        ("shared", None),
+        ("/shared", None),
+        ("home", "mount directory .* is reserved"),
+        ("/scratch", "mount directory .* is reserved"),
+    ],
+)
+def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
+    actual_failures = SharedStorageMountDirValidator().execute(mount_dir)
     assert_failure_messages(actual_failures, expected_message)
 
 

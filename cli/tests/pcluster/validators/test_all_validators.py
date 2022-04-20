@@ -248,7 +248,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     )
     fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2")])
     duplicate_mount_dir_validator.assert_has_calls(
-        [call(mount_dir_list=["/my/mount/point1", "/my/mount/point2", "/my/mount/point3"])]
+        [call(mount_dir_list=["/my/mount/point1", "/my/mount/point2", "/my/mount/point3", "/scratch"])]
     )
     number_of_storage_validator.assert_has_calls(
         [

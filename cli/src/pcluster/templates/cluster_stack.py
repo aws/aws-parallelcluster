@@ -45,15 +45,18 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     CapacityType,
+    SchedulerPluginQueue,
     SharedEbs,
     SharedEfs,
     SharedFsx,
     SharedStorageType,
     SlurmClusterConfig,
+    SlurmQueue,
 )
 from pcluster.constants import (
     CW_LOG_GROUP_NAME_PREFIX,
     CW_LOGS_CFN_PARAM_NAME,
+    DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
@@ -877,8 +880,8 @@ class ClusterCdkStack(Stack):
                     "volume": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EBS),
                     "scheduler": self.config.scheduling.scheduler,
                     "ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
-                    if head_node.local_storage and head_node.local_storage.ephemeral_volume
-                    else "/scratch",
+                    if head_node.local_storage.ephemeral_volume
+                    else DEFAULT_EPHEMERAL_DIR,
                     "ebs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EBS]),
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "node_type": "HeadNode",
@@ -1438,10 +1441,9 @@ class ComputeFleetConstruct(Construct):
                                 ),
                                 "Scheduler": self._config.scheduling.scheduler,
                                 "EphemeralDir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                                if queue.compute_settings
-                                and queue.compute_settings.local_storage
+                                if isinstance(queue, (SlurmQueue, SchedulerPluginQueue))
                                 and queue.compute_settings.local_storage.ephemeral_volume
-                                else "/scratch",
+                                else DEFAULT_EPHEMERAL_DIR,
                                 "EbsSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.EBS]
                                 ),
