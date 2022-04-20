@@ -257,8 +257,8 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     number_of_storage_validator.assert_has_calls(
         [
             call(storage_type="EBS", max_number=5, storage_count=1),
-            call(storage_type="existing EFS", max_number=50, storage_count=0),
-            call(storage_type="existing FSX", max_number=50, storage_count=0),
+            call(storage_type="existing EFS", max_number=20, storage_count=0),
+            call(storage_type="existing FSX", max_number=20, storage_count=0),
             call(storage_type="new EFS", max_number=1, storage_count=1),
             call(storage_type="new FSX", max_number=1, storage_count=1),
             call(storage_type="new RAID", max_number=1, storage_count=0),
