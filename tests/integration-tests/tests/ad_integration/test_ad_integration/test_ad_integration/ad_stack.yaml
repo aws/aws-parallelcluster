@@ -259,7 +259,7 @@ Resources:
             name: addAdUser
             inputs:
               runCommand:
-                - "su - {{ ad_admin_user }} /usr/local/bin/add_a_number_of_users.sh {% raw %}{{ DirectoryId }} {{ NumUsersToCreate }}{% endraw %} "
+                - "bash /usr/local/bin/add_a_number_of_users.sh {% raw %}{{ DirectoryId }} {{ NumUsersToCreate }}{% endraw %} "
       DocumentType: Command
       TargetType: /AWS::EC2::Instance
 Outputs:
