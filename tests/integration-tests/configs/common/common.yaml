@@ -143,6 +143,12 @@ createami:
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
+  test_createami.py::test_kernel4_build_image_run_cluster:
+    dimensions:
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["awsbatch", "slurm"]
+        oss: ["alinux2"]
   test_createami.py::test_build_image_custom_components:
     dimensions:
       - regions: ["ap-southeast-2"]
