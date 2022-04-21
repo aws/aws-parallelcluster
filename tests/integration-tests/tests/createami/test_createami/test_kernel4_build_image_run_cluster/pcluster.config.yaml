@@ -1,0 +1,26 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ custom_ami }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: False
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  - Name: queue1
+    Networking:
+      SubnetIds:
+        - {{ private_subnet_id }}
+    ComputeResources:
+      - Name: compute-resource1
+        {% if scheduler == "awsbatch" %}
+        InstanceTypes:
+          - {{ instance }}
+        {% else %}
+        InstanceType: {{ instance }}
+        {% endif %}

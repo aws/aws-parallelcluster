@@ -49,6 +49,10 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "ubuntu2004": {"name": "Deep Learning AMI GPU CUDA * (Ubuntu 20.04)*", "owners": ["amazon"]},
 }
 
+OS_TO_KERNEL4_AMI_NAME_OWNER_MAP = {
+    "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
+}
+
 # Get official pcluster AMIs or get from dev account
 PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
@@ -63,6 +67,7 @@ AMI_TYPE_DICT = {
     "official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP,
     "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP,
     "pcluster": OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP,
+    "kernel4": OS_TO_KERNEL4_AMI_NAME_OWNER_MAP,
 }
 
 

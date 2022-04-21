@@ -22,9 +22,11 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
+from remote_command_executor import RemoteCommandExecutor
 from troposphere import Template, iam
 from utils import generate_stack_name, get_arn_partition
 
+from tests.common.assertions import assert_head_node_is_running, assert_no_msg_in_logs
 from tests.common.utils import (
     generate_random_string,
     get_installed_parallelcluster_base_version,
@@ -123,6 +125,52 @@ def test_build_image(
     _test_get_image_log_events(image)
     _test_list_images(image)
     _test_export_logs(s3_bucket_factory, image, region)
+
+
+@pytest.mark.usefixtures("instance")
+def test_kernel4_build_image_run_cluster(
+    region,
+    os,
+    pcluster_config_reader,
+    architecture,
+    images_factory,
+    request,
+    scheduler_commands_factory,
+    clusters_factory,
+    scheduler,
+):
+    """Test build image for given region and os and run a job in a new cluster created from the new images"""
+
+    # Get base AMI from kernel4
+    base_ami = retrieve_latest_ami(region, os, ami_type="kernel4", architecture=architecture)
+
+    image_config = pcluster_config_reader(
+        config_file="image.config.yaml",
+        parent_image=base_ami,
+        region=region,
+    )
+
+    image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
+    image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
+    _test_build_image_success(image)
+    _test_list_images(image)
+
+    cluster_config = pcluster_config_reader(custom_ami=image.ec2_image_id)
+    cluster = clusters_factory(cluster_config, raise_on_error=True)
+
+    assert_head_node_is_running(region, cluster)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    node_number = 2
+    result = scheduler_commands.submit_command(command="uptime", nodes=node_number)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+
+    scheduler_commands.assert_job_succeeded(job_id, children_number=node_number)
+    if scheduler == "slurm":
+        assert_no_msg_in_logs(remote_command_executor, ["/var/log/slurmctld.log"], ["launch failure"])
 
 
 def _test_list_images(image):
