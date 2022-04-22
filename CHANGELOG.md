@@ -13,6 +13,7 @@ x.x.x
 **CHANGES**
 - Remove support for Python 3.6.
 - Upgrade Slurm to version 21.08.7.
+- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
