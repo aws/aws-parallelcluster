@@ -1329,10 +1329,10 @@ class ComputeFleetConstruct(Construct):
             queue_lt_security_groups = get_queue_security_groups_full(self._compute_security_group, queue)
 
             queue_placement_group = None
-            if queue.networking.placement_group and queue.networking.placement_group.enabled:
+            if queue.networking.placement_group:
                 if queue.networking.placement_group.id:
                     queue_placement_group = queue.networking.placement_group.id
-                else:
+                elif queue.networking.placement_group.enabled:
                     queue_placement_group = managed_placement_groups[queue.name].ref
 
             queue_pre_install_action, queue_post_install_action = (None, None)

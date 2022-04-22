@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.1.4
+------
+
+**CHANGES**
+- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+
 3.1.3
 ------
 
