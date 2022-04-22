@@ -96,6 +96,7 @@ from pcluster.validators.directory_service_validators import (
     DomainAddrValidator,
     DomainNameValidator,
     LdapTlsReqCertValidator,
+    PasswordSecretArnValidator,
 )
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
@@ -720,6 +721,8 @@ class DirectoryService(Resource):
             self._register_validator(
                 DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
             )
+        if self.password_secret_arn:
+            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
         if self.additional_sssd_configs:
