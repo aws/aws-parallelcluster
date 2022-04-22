@@ -10,13 +10,16 @@
 # limitations under the License.
 import pytest
 
+from pcluster.aws.common import AWSClientError
+from pcluster.validators.common import FailureLevel
 from pcluster.validators.directory_service_validators import (
     AdditionalSssdConfigsValidator,
     DomainAddrValidator,
     DomainNameValidator,
     LdapTlsReqCertValidator,
+    PasswordSecretArnValidator,
 )
-from tests.pcluster.validators.utils import assert_failure_messages
+from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 
 DOMAIN_NAME_ERROR_MESSAGE = (
     "Unsupported domain address format. "
@@ -109,6 +112,49 @@ def test_domain_addr_protocol(domain_addr, additional_sssd_configs, expected_mes
 def test_ldap_tls_reqcert_validator(ldap_tls_reqcert, expected_message):
     actual_failures = LdapTlsReqCertValidator().execute(ldap_tls_reqcert=ldap_tls_reqcert)
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "password_secret_arn, error_from_secrets_manager, expected_message, expected_failure_level",
+    [
+        (
+            "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET",
+            "ResourceNotFoundExceptionSecrets",
+            "The secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET does not exist.",
+            FailureLevel.ERROR,
+        ),
+        (
+            "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:ANY_SECRET",
+            "AccessDeniedException",
+            "Cannot validate secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:ANY_SECRET "
+            "due to lack of permissions. Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+        ),
+        (
+            "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET",
+            "ANOTHER_ERROR",
+            "Cannot validate secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET. "
+            "Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+        ),
+        (
+            "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:ACCESSIBLE_SECRET",
+            None,
+            None,
+            None,
+        ),
+    ],
+)
+def test_password_secret_arn_validator(
+    password_secret_arn, error_from_secrets_manager, expected_message, expected_failure_level, aws_api_mock
+):
+    if error_from_secrets_manager:
+        aws_api_mock.secretsmanager.describe_secret.side_effect = AWSClientError(
+            function_name="A_FUNCTION_NAME", error_code=error_from_secrets_manager, message="AN_ERROR_MESSAGE"
+        )
+    actual_failures = PasswordSecretArnValidator().execute(password_secret_arn=password_secret_arn)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, expected_failure_level)
 
 
 @pytest.mark.parametrize(
