@@ -12,6 +12,8 @@
 import re
 from urllib.parse import urlparse
 
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.constants import DIRECTORY_SERVICE_RESERVED_SETTINGS
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -66,6 +68,31 @@ class DomainNameValidator(Validator):
                 "Supported formats are FQDN (corp.example.com) or LDAP Distinguished Name (DC=corp,DC=example,DC=com).",
                 FailureLevel.ERROR,
             )
+
+
+class PasswordSecretArnValidator(Validator):
+    """PasswordSecretArn validator."""
+
+    def _validate(self, password_secret_arn):
+        """Validate that PasswordSecretArn contains an ARN of a readable secret in AWS Secrets Manager."""
+        try:
+            # We only require the secret to exist; we do not validate its content.
+            AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
+        except AWSClientError as e:
+            if e.error_code == "ResourceNotFoundExceptionSecrets":
+                self._add_failure(f"The secret {password_secret_arn} does not exist.", FailureLevel.ERROR)
+            elif e.error_code == "AccessDeniedException":
+                self._add_failure(
+                    f"Cannot validate secret {password_secret_arn} due to lack of permissions. "
+                    "Please refer to ParallelCluster official documentation for more information.",
+                    FailureLevel.WARNING,
+                )
+            else:
+                self._add_failure(
+                    f"Cannot validate secret {password_secret_arn}. "
+                    "Please refer to ParallelCluster official documentation for more information.",
+                    FailureLevel.WARNING,
+                )
 
 
 class LdapTlsReqCertValidator(Validator):
