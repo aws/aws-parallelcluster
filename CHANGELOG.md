@@ -4,6 +4,9 @@ CHANGELOG
 3.1.4
 ------
 
+**ENHANCEMENTS**
+- Add validation for `DirectoryService/PasswordSecretArn` to fail in case the secret does not exist.
+
 **CHANGES**
 - Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
 

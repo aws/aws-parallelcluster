@@ -23,6 +23,7 @@ from pcluster.aws.logs import LogsClient
 from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
+from pcluster.aws.secretsmanager import SecretsManagerClient
 from pcluster.aws.sts import StsClient
 
 
@@ -55,6 +56,7 @@ class AWSApi:
         self._ddb_resource = None
         self._logs = None
         self._route53 = None
+        self._secretsmanager = None
 
     @property
     def cfn(self):
@@ -153,6 +155,13 @@ class AWSApi:
         if not self._route53:
             self._route53 = Route53Client()
         return self._route53
+
+    @property
+    def secretsmanager(self):
+        """Secrets Manager client."""
+        if not self._secretsmanager:
+            self._secretsmanager = SecretsManagerClient()
+        return self._secretsmanager
 
     @staticmethod
     def instance():
