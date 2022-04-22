@@ -55,4 +55,9 @@ phases:
           commands:
             - |
               set -v
-              {{ build.TempScript.outputs.stdout }} || (echo 'Script execution failure.' && exit {{ build.Fail.outputs.stdout }})
+              if {{ build.TempScript.outputs.stdout }} ; then
+                echo 'Script executed successfully' 
+              else
+                echo 'ERROR - Script execution failure. Exit code != 0'
+                exit {{ build.Fail.outputs.stdout }}
+              fi
