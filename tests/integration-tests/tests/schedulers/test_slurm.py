@@ -32,9 +32,11 @@ from tests.common.assertions import (
     wait_for_num_instances_in_cluster,
 )
 from tests.common.hit_common import (
+    assert_compute_node_reasons,
     assert_compute_node_states,
     assert_initial_conditions,
     assert_num_nodes_in_scheduler,
+    get_partition_nodes,
     submit_initial_job,
     wait_for_num_nodes_in_scheduler,
 )
@@ -282,6 +284,60 @@ def test_slurm_protected_mode(
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
     _test_job_run_in_working_queue(scheduler_commands)
     _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.fast_capacity_failover
+def test_fast_capacity_failover(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    # after the cluster is launched, apply the override patch to launch ice nodes
+    remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
+    nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1")
+    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
+    ice_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
+    static_nodes_in_ice_compute_resource = [node for node in static_nodes if "ice-compute-resource" in node]
+    # test disable ice logic
+    _test_disable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        static_nodes_in_ice_compute_resource,
+        ice_dynamic_nodes,
+    )
+    # test enable fast instance capacity failover
+    _test_enable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        static_nodes_in_ice_compute_resource,
+        ice_dynamic_nodes,
+    )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_config_update
+def test_slurm_config_update(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    # test update without queue param change, clustermgtd and slurmctld not restart
+    _test_update_without_update_queue_params(pcluster_config_reader, cluster, remote_command_executor)
+    # test update with queue param change, clustermgtd and slurmctld restart
+    _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor)
 
 
 def _assert_cluster_initial_conditions(
@@ -909,7 +965,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 21.08.6")
+    assert_that(version).is_equal_to("slurm 21.08.7")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -1268,3 +1324,160 @@ def _retrieve_clustermgtd_heartbeat_file(remote_command_executor, clustermgtd_co
     return remote_command_executor.run_remote_command(
         f"cat {clustermgtd_conf_path} | grep heartbeat_file_path | cut -d '=' -f2 | xargs"
     ).stdout
+
+
+def _set_insufficient_capacity_timeout(remote_command_executor, insufficient_capacity_timeout, clustermgtd_conf_path):
+    """Set insufficient_capacity_timeout in clustermgtd conf."""
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/'insufficient_capacity_timeout'/d' {clustermgtd_conf_path}"
+    )
+    remote_command_executor.run_remote_command(
+        f"echo 'insufficient_capacity_timeout = {insufficient_capacity_timeout}' | sudo tee -a "
+        f"{clustermgtd_conf_path}"
+    )
+
+
+def _enable_fast_capacity_failover(remote_command_executor, clustermgtd_conf_path):
+    """Enable protected mode by removing lines related to protected mode in the config, so it will be set to default."""
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/'insufficient_capacity_timeout'/d' {clustermgtd_conf_path}"
+    )
+
+
+def _test_disable_fast_capacity_failover(
+    scheduler_commands,
+    remote_command_executor,
+    clustermgtd_conf_path,
+    static_nodes_in_ice_compute_resource,
+    ice_dynamic_nodes,
+):
+    """Test fast capacity failover has no effect on cluster when it is disabled."""
+    # set insufficient_capacity_timeout to 0 to disable fast instance capacity failover logic
+    _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
+    # submit a job to trigger insufficient capacity
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 30", "nodes": 2, "other_options": "--no-requeue"}
+    )
+    # wait till the node failed to launch
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/slurm_resume.log"],
+        [
+            "InsufficientInstanceCapacity",
+        ],
+    )
+    # assert that ice node is detected as unhealthy node
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Found the following unhealthy dynamic nodes",
+        ],
+    )
+    # Assert that clustermgtd log doesn't contains insufficient capacity compute resources
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["The following compute resources are in down state due to insufficient capacity"],
+    )
+
+    # wait until job failed
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_state(job_id, "NODE_FAIL")
+    # wait for nodes reset
+    _wait_for_compute_nodes_states(scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle"])
+    _wait_for_compute_nodes_states(scheduler_commands, ice_dynamic_nodes, expected_states=["idle~"])
+
+
+def assert_job_requeue_in_time(scheduler_commands, job_id):
+    """Test that job will requeue to a different compute resource after AuthInfo=cred_expire=70 timeout."""
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+    submit_time = datetime.strptime(scheduler_commands.get_job_submit_time(job_id), "%Y-%m-%dT%H:%M:%S")
+    eligible_time = datetime.strptime(scheduler_commands.get_job_eligible_time(job_id), "%Y-%m-%dT%H:%M:%S")
+    wait_seconds = (eligible_time - submit_time).total_seconds()
+    # Test it takes less than 2 minutes a job is re-queued to a different compute resource."""
+    assert_that(wait_seconds).is_less_than_or_equal_to(120)
+
+
+def _test_enable_fast_capacity_failover(
+    scheduler_commands,
+    remote_command_executor,
+    clustermgtd_conf_path,
+    static_nodes_in_ice_compute_resource,
+    ice_dynamic_nodes,
+):
+    # set insufficient_capacity_timeout to 180 seconds to quicker reset compute resources
+    _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
+    # trigger insufficient capacity
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 30", "nodes": 2}
+    )
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "The following compute resources are in down state due to insufficient capacity",
+        ],
+    )
+    # test static nodes in ice compute resource are up
+    assert_compute_node_states(
+        scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle", "mixed", "allocated"]
+    )
+    # test dynamic nodes in ice compute resource are down
+    assert_compute_node_states(scheduler_commands, ice_dynamic_nodes, expected_states=["down#", "down~"])
+    assert_compute_node_reasons(scheduler_commands, ice_dynamic_nodes, "(Code:InsufficientInstanceCapacity)")
+    # test job takes less than 2 minutes to requeue
+    scheduler_commands.wait_job_completed(job_id)
+    assert_job_requeue_in_time(scheduler_commands, job_id)
+
+    # check insufficient timeout expired
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Reset the following compute resources because insufficient capacity timeout expired",
+        ],
+    )
+    # check dynamic nodes in ice compute resource are reset after insufficient_capacity_timeout expired
+    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=ice_dynamic_nodes)
+    # test insufficient capacity does not trigger protected mode
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Node bootstrap error"],
+    )
+
+
+def _test_update_without_update_queue_params(pcluster_config_reader, cluster, remote_command_executor):
+    """Test update without queue param change, clustermgtd and slurmctld not restart."""
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
+    _update_and_start_cluster(cluster, updated_config_file)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        [
+            "Recipe: aws-parallelcluster-slurm::update_head_node",
+            "Processing execute\\[stop clustermgtd\\]",
+            "Processing service\\[slurmctld\\] action restart",
+        ],
+    )
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        ["INFO: execute\\[stop clustermgtd\\] ran successfully", "INFO: service\\[slurmctld\\] restarted"],
+    )
+
+
+def _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor):
+    """Test update queue param change, clustermgtd and slurmctld restart."""
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update_scheduling.yaml")
+    _update_and_start_cluster(cluster, updated_config_file)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        [
+            "INFO: execute\\[stop clustermgtd\\] ran successfully",
+            "INFO: service\\[slurmctld\\] restarted",
+        ],
+    )
