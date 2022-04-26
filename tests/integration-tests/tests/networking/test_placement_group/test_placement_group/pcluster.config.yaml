@@ -27,7 +27,6 @@ Scheduling:
           InstanceType: {{ instance }}
       Networking:
         PlacementGroup:
-          Enabled: true
           Id: {{ placement_group }}
         SubnetIds:
           - {{ private_subnet_id }}
