@@ -28,8 +28,8 @@ from pcluster.validators.cluster_validators import (
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
     EfaValidator,
+    ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    FsxNetworkingValidator,
     HeadNodeImdsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
@@ -701,8 +701,8 @@ def test_fsx_network_validator(
 
     boto3_stubber("ec2", ec2_mocked_requests)
 
-    actual_failures = FsxNetworkingValidator().execute(
-        "fs-0ff8da96d57f3b4e3", "subnet-12345678", are_all_security_groups_customized
+    actual_failures = ExistingFsxNetworkingValidator().execute(
+        ["fs-0ff8da96d57f3b4e3"], "subnet-12345678", are_all_security_groups_customized
     )
     assert_failure_messages(actual_failures, expected_message)
 
