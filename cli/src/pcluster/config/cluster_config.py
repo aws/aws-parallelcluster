@@ -1206,10 +1206,6 @@ class BaseClusterConfig(Resource):
         if self.shared_storage:
             for storage in self.shared_storage:
                 mount_dir_list.append(storage.mount_dir)
-
-        if self.head_node.local_storage.ephemeral_volume:
-            mount_dir_list.append(self.head_node.local_storage.ephemeral_volume.mount_dir)
-
         return mount_dir_list
 
     @property

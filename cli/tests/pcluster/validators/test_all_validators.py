@@ -247,8 +247,12 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         [call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab", encrypted=True)]
     )
     fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2")])
-    duplicate_mount_dir_validator.assert_has_calls(
-        [call(mount_dir_list=["/my/mount/point1", "/my/mount/point2", "/my/mount/point3", "/scratch"])]
+    # Scratch mount directories are retrieved from a set. So the order of them is not guaranteed.
+    # The first item in call_args is regular args, the second item is keyword args.
+    mount_dir_list = duplicate_mount_dir_validator.call_args[1]["mount_dir_list"]
+    mount_dir_list.sort()
+    assert_that(mount_dir_list).is_equal_to(
+        ["/my/mount/point1", "/my/mount/point2", "/my/mount/point3", "/scratch", "/scratch_head"]
     )
     number_of_storage_validator.assert_has_calls(
         [
