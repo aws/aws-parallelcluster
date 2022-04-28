@@ -305,16 +305,19 @@ def test_fast_capacity_failover(
     static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
     ice_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
     static_nodes_in_ice_compute_resource = [node for node in static_nodes if "ice-compute-resource" in node]
-    # test disable ice logic
-    _test_disable_fast_capacity_failover(
+    # test enable fast instance capacity failover
+    _test_enable_fast_capacity_failover(
         scheduler_commands,
         remote_command_executor,
         clustermgtd_conf_path,
         static_nodes_in_ice_compute_resource,
         ice_dynamic_nodes,
     )
-    # test enable fast instance capacity failover
-    _test_enable_fast_capacity_failover(
+    # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    # test disable ice logic
+    _test_disable_fast_capacity_failover(
         scheduler_commands,
         remote_command_executor,
         clustermgtd_conf_path,
@@ -1356,7 +1359,12 @@ def _test_disable_fast_capacity_failover(
     _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
     # submit a job to trigger insufficient capacity
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 30", "nodes": 2, "other_options": "--no-requeue"}
+        submit_command_args={
+            "command": "sleep 30",
+            "nodes": 2,
+            "other_options": "--no-requeue",
+            "constraint": "c5.large",
+        }
     )
     # wait till the node failed to launch
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
