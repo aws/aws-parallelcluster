@@ -7,7 +7,6 @@ x.x.x
 **ENHANCEMENTS**
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
-- Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
 - Add support for FSx Lustre Persistent_2 deployment type.
 
 **CHANGES**
@@ -28,6 +27,8 @@ x.x.x
 - New `update_directory_service_password.sh` script deployed on the head node supports the manual update of the Active Directory password in the SSSD configuration.
   The password is retrieved by the AWS Secrets Manager as from the cluster configuration.
 - Add support to deploy API infrastructure in environments without a default VPC.
+- Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
+- Make `DirectoryService/AdditionalSssdConfigs` be merged into final SSSD configuration rather than be appended.
 
 **CHANGES**
 - Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
@@ -37,6 +38,7 @@ x.x.x
 **BUG FIXES**
 - Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
 - Fix the configuration parameter `DirectoryService/DomainAddr` conversion to `ldap_uri` SSSD property when it contains multiples domain addresses.
+- Fix DCV not loading user profile at session start. The user's PATH was not correctly set at DCV session connection.
 
 3.1.2
 ------
