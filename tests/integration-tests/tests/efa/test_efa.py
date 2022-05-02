@@ -20,7 +20,6 @@ from jinja2 import Environment, FileSystemLoader
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
-from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots, run_system_analyzer
@@ -81,8 +80,6 @@ def test_sit_efa(
         _test_osu_benchmarks_multiple_bandwidth(
             remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
         )
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 @pytest.mark.regions(["us-east-1"])
@@ -175,8 +172,6 @@ def test_hit_efa(
 
     if instance == "p4d.24xlarge" and os != "centos7":
         _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 def _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition=None):
