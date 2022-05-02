@@ -7,6 +7,9 @@ HeadNode:
     SubnetId: subnet-12345678
   Ssh:
     KeyName: ec2-key-name
+  LocalStorage:
+    EphemeralVolume:
+      MountDir: /scratch_head
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
