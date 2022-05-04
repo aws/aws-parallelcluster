@@ -18,6 +18,7 @@ x.x.x
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
+- Fix the ability to export cluster's logs when using `export-cluster-logs` command with the `--filters` option.
 
 3.1.3
 ------
