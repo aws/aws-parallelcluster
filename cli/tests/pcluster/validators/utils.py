@@ -12,6 +12,8 @@ import re
 
 from assertpy import assert_that
 
+from pcluster.validators.common import FailureLevel
+
 
 def assert_failure_messages(actual_failures, expected_messages):
     """Check failure messages."""
@@ -27,4 +29,17 @@ def assert_failure_messages(actual_failures, expected_messages):
             assert_that(res).is_true()
     else:
         print(actual_failures)
+        assert_that(actual_failures).is_empty()
+
+
+def assert_failure_level(actual_failures, expected_failure_level):
+    """Check failure level."""
+    if expected_failure_level == FailureLevel.ERROR:
+        at_least_one_error = any(actual_failure.level == FailureLevel.ERROR for actual_failure in actual_failures)
+        assert_that(at_least_one_error).is_true()
+    elif expected_failure_level == FailureLevel.WARNING:
+        no_errors = all(actual_failure.level != FailureLevel.ERROR for actual_failure in actual_failures)
+        at_least_one_warning = any(actual_failure.level == FailureLevel.WARNING for actual_failure in actual_failures)
+        assert_that(no_errors and at_least_one_warning).is_true()
+    else:
         assert_that(actual_failures).is_empty()
