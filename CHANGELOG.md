@@ -11,6 +11,9 @@ CHANGELOG
 - Upgrade Slurm to version 21.08.8.
 - Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
 
+**BUG FIXES**
+- Fix the ability to export cluster's logs when using `export-cluster-logs` command with the `--filters` option.
+
 3.1.3
 ------
 

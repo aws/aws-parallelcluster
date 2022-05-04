@@ -76,7 +76,7 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,
             end_time=args.end_time,
-            filters=" ".join(args.filters) if args.filters else None,
+            filters=args.filters,
             output_file=output_file,
         )
         LOGGER.debug("Cluster's logs exported correctly to %s", url)

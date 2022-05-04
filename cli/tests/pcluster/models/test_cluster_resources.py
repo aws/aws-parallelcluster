@@ -39,6 +39,11 @@ class TestClusterLogsFiltersParser:
                 ["Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11"],
                 "Filter .* doesn't accept comma separated strings as value",
             ),
+            (
+                "Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11",
+                "Invalid filters Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11. "
+                "They must be in the form Name=...,Values=",
+            ),
         ],
     )
     def test_initialization_error(self, mock_head_node, filters, expected_error):

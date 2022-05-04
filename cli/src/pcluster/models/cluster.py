@@ -906,7 +906,7 @@ class Cluster:
         keep_s3_objects: bool = False,
         start_time: datetime = None,
         end_time: datetime = None,
-        filters: str = None,
+        filters: List[str] = None,
         output_file: str = None,
     ):
         """
@@ -919,7 +919,7 @@ class Cluster:
         :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
         :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
         :param end_time: End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
-        :param filters: Filters in the format Name=name,Values=value1,value2
+        :param filters: Filters in the format ["Name=name,Values=value1,value2"]
                Accepted filters are: private_dns_name, node_type==HeadNode
         """
         # check stack
