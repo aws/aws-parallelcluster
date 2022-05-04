@@ -274,9 +274,30 @@ def _test_pcluster_compute_fleet(cluster, expected_num_nodes):
     check_status(cluster, "CREATE_COMPLETE", "running", "RUNNING")
 
 
+def _test_export_log_files_are_expected(cluster, bucket_name, instance_ids, bucket_prefix, filters=None):
+    # test with a prefix and an output file
+    with tempfile.TemporaryDirectory() as tempdir:
+        output_file = f"{tempdir}/testfile.tar.gz"
+        ret = cluster.export_logs(
+            bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix, filters=filters
+        )
+        assert_that(ret["path"]).is_equal_to(output_file)
+
+        with tarfile.open(output_file) as archive:
+            filenames = {logfile.name for logfile in archive}
+
+            # check there are the logs of all the instances and cfn logs
+            for file_expected in set(instance_ids) | {f"{cluster.name}-cfn-events"}:
+                if len(set(instance_ids)) == 1:  # be sure to have only the logs of the specified instance
+                    instance_logs = [filename for filename in filenames if ".i-" in filename]
+                    assert_that(all(instance_ids[0] in instance_log for instance_log in instance_logs)).is_true()
+                assert_that(any(file_expected in filename for filename in filenames)).is_true()
+
+
 def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
     """Test pcluster export-cluster-logs functionality."""
     instance_ids = cluster.get_cluster_instance_ids()
+    headnode_instance_id = cluster.get_cluster_instance_ids(node_type="HeadNode")
 
     logging.info("Testing that pcluster export-cluster-logs is working as expected")
     bucket_name = s3_bucket_factory()
@@ -302,20 +323,14 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
         ],
     }
     boto3.client("s3").put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
-
     # test with a prefix and an output file
-    with tempfile.TemporaryDirectory() as tempdir:
-        output_file = f"{tempdir}/testfile.tar.gz"
-        bucket_prefix = "test_prefix"
-        ret = cluster.export_logs(bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix)
-        assert_that(ret["path"]).is_equal_to(output_file)
+    bucket_prefix = "test_prefix"
+    _test_export_log_files_are_expected(cluster, bucket_name, instance_ids, bucket_prefix)
 
-        with tarfile.open(output_file) as archive:
-            filenames = {logfile.name for logfile in archive}
-
-            # check there are the logs of all the instances and cfn logs
-            for file_expected in set(instance_ids) | {f"{cluster.name}-cfn-events"}:
-                assert_that(any(file_expected in filename for filename in filenames)).is_true()
+    # test export-cluster-logs with filter option
+    _test_export_log_files_are_expected(
+        cluster, bucket_name, headnode_instance_id, bucket_prefix, filters="Name=node-type,Values=HeadNode"
+    )
 
     # check bucket_prefix folder has been removed from S3
     bucket_cleaned_up = False
