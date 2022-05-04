@@ -11,6 +11,7 @@ x.x.x
 - Add support for multiple FSx File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
 - Add validation for `DirectoryService/PasswordSecretArn` to fail in case the secret does not exist.
+- Show `requested_value` and `current_value` values in the change set when adding or removing a section.
 
 **CHANGES**
 - Remove support for Python 3.6.
