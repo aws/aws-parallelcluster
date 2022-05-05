@@ -177,10 +177,10 @@ def xdist_session_fixture(**pytest_fixture_args):
     """
 
     def _xdist_session_fixture_decorator(func):
-        @pytest.fixture(scope="session", **pytest_fixture_args)
         @functools.wraps(func)
+        @pytest.fixture(scope="session", **pytest_fixture_args)
         def _xdist_session_fixture(request, *args, **kwargs):
-            base_dir = f"{request.config.getoption('output_dir')}/tmp/shared_fixtures"
+            base_dir = f"{request.config.getoption('output_dir', '')}/tmp/shared_fixtures"
             os.makedirs(base_dir, exist_ok=True)
             if "request" in getfullargspec(func).args:
                 kwargs["request"] = request
@@ -188,7 +188,7 @@ def xdist_session_fixture(**pytest_fixture_args):
             pid = os.getpid()
             shared_fixture = SharedFixture(
                 name=func.__name__,
-                shared_save_location=Path(f"{request.config.getoption('output_dir')}/tmp/shared_fixtures"),
+                shared_save_location=Path(base_dir),
                 fixture_func=func,
                 fixture_func_args=args,
                 fixture_func_kwargs=kwargs,
