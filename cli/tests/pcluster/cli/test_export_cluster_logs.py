@@ -110,7 +110,6 @@ class TestExportClusterLogsCommand:
             "filters": None,
             "start_time": None,
             "end_time": None,
-            "filters": None,
         }
         expected_params.update(args)
         expected_params.update(
