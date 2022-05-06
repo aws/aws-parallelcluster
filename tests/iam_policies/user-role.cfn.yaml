@@ -354,6 +354,7 @@ Resources:
                   - s3.data-source.lustre.fsx.amazonaws.com
           - Action:
               - lambda:CreateFunction
+              - lambda:TagResource
               - lambda:DeleteFunction
               - lambda:GetFunctionConfiguration
               - lambda:GetFunction
@@ -477,6 +478,7 @@ Resources:
             Effect: Allow
             Action:
               - lambda:CreateFunction
+              - lambda:TagResource
               - lambda:GetFunction
               - lambda:AddPermission
             Resource:
