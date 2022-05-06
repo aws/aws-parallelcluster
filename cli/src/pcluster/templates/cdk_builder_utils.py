@@ -98,7 +98,9 @@ def get_user_data_content(user_data_path: str):
     return user_data_content
 
 
-def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClusterConfig) -> dict:
+def get_common_user_data_env(
+    node: Union[HeadNode, SlurmQueue], config: BaseClusterConfig, head_node_role_name: str = None
+) -> dict:
     """Return a dict containing the common env variables to be replaced in user data."""
     return {
         "YumProxy": node.networking.proxy.http_proxy_address if node.networking.proxy else "_none_",
@@ -110,6 +112,7 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClus
         "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
         "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
+        "HeadNodeInstanceRole": head_node_role_name or "NONE",
     }
 
 
@@ -670,7 +673,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         # If there are any queues where a custom instance role was specified,
         # enable the head node to pass permissions to those roles.
         custom_queue_role_arns = {
-            arn for queue in self._config.scheduling.queues for arn in queue.iam.instance_role_arns
+            queue.iam.instance_role_arn for queue in self._config.scheduling.queues if queue.iam.instance_role_arn
         }
         if custom_queue_role_arns:
             pass_role_resources = custom_queue_role_arns
@@ -678,7 +681,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             # Include the default IAM role path for the queues that
             # aren't using a custom instance role.
             queues_without_custom_roles = [
-                queue for queue in self._config.scheduling.queues if not queue.iam.instance_role_arns
+                queue for queue in self._config.scheduling.queues if not queue.iam.instance_role_arn
             ]
             if any(queues_without_custom_roles):
                 pass_role_resources.add(default_pass_role_resource)
