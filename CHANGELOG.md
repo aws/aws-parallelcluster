@@ -8,6 +8,7 @@ CHANGELOG
 - Add validation for `DirectoryService/PasswordSecretArn` to fail in case the secret does not exist.
 
 **CHANGES**
+- Upgrade Slurm to version 21.08.8.
 - Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
 
 3.1.3
