@@ -13,6 +13,13 @@ eval $(ssh-agent -s) && ssh-add ${SSHDIR}/id_rsa
 echo "Mounting /home..."
 /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_HEAD_NODE_IP}" "/home"
 
+# create if not exists hidden pcluster folder
+PCLUSTER_HIDDEN_FOLDER="/home/.pcluster/"
+if [ ! -d "${PCLUSTER_HIDDEN_FOLDER}" ]; then
+  echo "Creating ${PCLUSTER_HIDDEN_FOLDER}"
+  mkdir "${PCLUSTER_HIDDEN_FOLDER}"
+fi
+
 echo "Mounting shared file system..."
 ebs_shared_dirs=$(echo "${PCLUSTER_SHARED_DIRS}" | tr "," " ")
 
@@ -25,7 +32,6 @@ do
 done
 
 ebs_arr=($ebs_shared_dirs)
-first_ebs_shared_dir=${ebs_arr[0]}
 
 # mount EFS via nfs
 if [[ "${PCLUSTER_EFS_FS_ID}" != "NONE" ]] && [[ ! -z "${PCLUSTER_AWS_REGION}" ]] && [[ "${PCLUSTER_EFS_SHARED_DIR}" != "NONE" ]]; then
@@ -39,7 +45,7 @@ fi
 
 # create hostfile if mnp job
 if [ -n "${AWS_BATCH_JOB_NUM_NODES}" ]; then
-  /parallelcluster/bin/generate_hostfile.sh "${first_ebs_shared_dir}" "${HOME}"
+  /parallelcluster/bin/generate_hostfile.sh "${PCLUSTER_HIDDEN_FOLDER}" "${HOME}"
 fi
 
 # run the user's script
