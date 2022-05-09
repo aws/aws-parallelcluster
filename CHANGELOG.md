@@ -13,6 +13,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix the ability to export cluster's logs when using `export-cluster-logs` command with the `--filters` option.
+- Fix AWS Batch Docker entrypoint to use `/home` shared directory to coordinate Multi-node-Parallel job execution.
 
 3.1.3
 ------
