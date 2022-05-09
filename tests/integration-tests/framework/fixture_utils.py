@@ -177,8 +177,10 @@ def xdist_session_fixture(**pytest_fixture_args):
     """
 
     def _xdist_session_fixture_decorator(func):
-        @functools.wraps(func)
         @pytest.fixture(scope="session", **pytest_fixture_args)
+        # FIXME: if wraps is after fixture then request is not automatically injected.
+        # If fixture is after wraps inter fixture dependencies are not resolved
+        @functools.wraps(func)
         def _xdist_session_fixture(request, *args, **kwargs):
             base_dir = f"{request.config.getoption('output_dir', '')}/tmp/shared_fixtures"
             os.makedirs(base_dir, exist_ok=True)
