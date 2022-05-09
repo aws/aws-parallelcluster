@@ -22,26 +22,39 @@ from tests.common.schedulers_common import AWSBatchCommands
 @pytest.mark.batch_dockerfile_deps
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog, region):
-    """
-    Test all AWS Batch related features.
+    """Test all AWS Batch related features with shared storage."""
+    _test_awsbatch_common(pcluster_config_reader, clusters_factory, test_datadir, caplog, region, vcpus_check=True)
 
-    Grouped all tests in a single function so that cluster can be reused for all of them.
-    """
+
+@pytest.mark.batch_dockerfile_deps
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_awsbatch_defaults(pcluster_config_reader, clusters_factory, test_datadir, caplog, region):
+    """Test all AWS Batch related features with default parameters."""
+    _test_awsbatch_common(
+        pcluster_config_reader, clusters_factory, test_datadir, caplog, region, script="test_simple_job.sh"
+    )
+
+
+def _test_awsbatch_common(
+    pcluster_config_reader, clusters_factory, test_datadir, caplog, region, script="test_mpi_job.sh", vcpus_check=False
+):
+    """Grouped all tests in a single function so that cluster can be reused for all of them."""
     caplog.set_level(logging.DEBUG)  # Needed for checks in _assert_compute_instance_type_validation_successful
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     _assert_compute_instance_type_validation_successful(caplog)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    min_vcpus = cluster.config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MinvCpus"]
-    max_vcpus = cluster.config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"]
-    assert_that(get_batch_ce_min_size(cluster.cfn_name, region)).is_equal_to(int(min_vcpus))
-    assert_that(get_batch_ce_max_size(cluster.cfn_name, region)).is_equal_to(int(max_vcpus))
+    if vcpus_check:
+        min_vcpus = cluster.config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MinvCpus"]
+        max_vcpus = cluster.config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"]
+        assert_that(get_batch_ce_min_size(cluster.cfn_name, region)).is_equal_to(int(min_vcpus))
+        assert_that(get_batch_ce_max_size(cluster.cfn_name, region)).is_equal_to(int(max_vcpus))
 
     timeout = 120 if region.startswith("cn-") else 60  # Longer timeout in china regions due to less reliable networking
     _test_simple_job_submission(remote_command_executor, test_datadir, timeout)
     _test_array_submission(remote_command_executor)
-    _test_mnp_submission(remote_command_executor, test_datadir)
+    _test_mnp_submission(remote_command_executor, test_datadir, script=script)
     _test_job_kill(remote_command_executor, timeout)
 
 
@@ -75,12 +88,12 @@ def _test_array_submission(remote_command_executor):
     _test_job_submission(remote_command_executor, "awsbsub --vcpus 1 --memory 128 -a 4 sleep 1", children_number=4)
 
 
-def _test_mnp_submission(remote_command_executor, test_datadir):
+def _test_mnp_submission(remote_command_executor, test_datadir, script):
     logging.info("Testing MNP submission with MPI job.")
     _test_job_submission(
         remote_command_executor,
-        "awsbsub --vcpus 1 --memory 128 -n 4 -cf test_mpi_job.sh",
-        additional_files=[str(test_datadir / "test_mpi_job.sh")],
+        f"awsbsub --vcpus 1 --memory 128 -n 4 -cf {script}",
+        additional_files=[str(test_datadir / script)],
         children_number=4,
     )
 
