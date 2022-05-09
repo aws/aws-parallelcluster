@@ -385,12 +385,14 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      - regions: ["ap-southeast-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["awsbatch"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+  test_awsbatch.py::test_awsbatch_defaults:
+    dimensions:
+      - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
   test_slurm.py::test_slurm:
