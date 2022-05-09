@@ -24,6 +24,7 @@ x.x.x
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
 - Fix the ability to export cluster's logs when using `export-cluster-logs` command with the `--filters` option.
+- Fix AWS Batch Docker entrypoint to use `/home` shared directory to coordinate Multi-node-Parallel job execution.
 
 3.1.3
 ------
