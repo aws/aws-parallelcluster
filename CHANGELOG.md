@@ -9,6 +9,7 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Slurm to version 21.08.8-2.
+- Build Slurm with JWT support.
 - Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
 - Add `lambda:TagsResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster creation and image creation.
 
