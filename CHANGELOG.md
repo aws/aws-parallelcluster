@@ -10,19 +10,30 @@ x.x.x
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
-- Add validation for `DirectoryService/PasswordSecretArn` to fail in case the secret does not exist.
 - Show `requested_value` and `current_value` values in the change set when adding or removing a section.
 
 **CHANGES**
 - Remove support for Python 3.6.
-- Upgrade Slurm to version 21.08.8.
-- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
 - Changes to FSx for Lustre file systems created by ParallelCluster:
   - Change the default deployment type to `Scratch_2`.
   - Change the Lustre server version to `2.12`.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
+
+3.1.4
+------
+
+**ENHANCEMENTS**
+- Add validation for `DirectoryService/PasswordSecretArn` to fail in case the secret does not exist.
+
+**CHANGES**
+- Upgrade Slurm to version 21.08.8-2.
+- Build Slurm with JWT support.
+- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+- Add `lambda:TagsResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster creation and image creation.
+
+**BUG FIXES**
 - Fix the ability to export cluster's logs when using `export-cluster-logs` command with the `--filters` option.
 - Fix AWS Batch Docker entrypoint to use `/home` shared directory to coordinate Multi-node-Parallel job execution.
 
