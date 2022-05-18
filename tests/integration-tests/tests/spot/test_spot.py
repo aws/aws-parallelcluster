@@ -13,15 +13,13 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
-from tests.common.schedulers_common import get_scheduler_commands
-
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_spot_default(scheduler, pcluster_config_reader, clusters_factory):
+def test_spot_default(scheduler_commands_factory, pcluster_config_reader, clusters_factory):
     """Test that a cluster with spot instances can be created with default spot_price_value."""
     min_count = 1
     cluster_config = pcluster_config_reader(min_count=min_count)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(min_count)

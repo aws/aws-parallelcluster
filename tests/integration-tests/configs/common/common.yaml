@@ -1,3 +1,27 @@
+ad_integration:
+  test_ad_integration.py::test_ad_integration:
+    dimensions:
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["centos7"]
+        schedulers: ["slurm"]
+      - regions: [ "ap-southeast-1" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+        benchmarks:
+          - mpi_variants: ["openmpi"]
+            num_instances: [100]
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
+      - regions: ["ap-southeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu1804"]
+        schedulers: ["slurm"]
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
 arm_pl:
   test_arm_pl.py::test_arm_pl:
     dimensions:
@@ -10,7 +34,11 @@ scheduler_plugin:
     dimensions:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "centos7", "ubuntu2004"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        schedulers: ["plugin"]
+      - regions: ["ap-northeast-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["plugin"]
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
@@ -61,7 +89,7 @@ configure:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
-      - regions: ["ca-central-1"]
+      - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -139,8 +167,8 @@ dcv:
   test_dcv.py::test_dcv_configuration:
     dimensions:
       # DCV on GPU enabled instance
-      - regions: ["ca-central-1"]
-        instances: ["g3.8xlarge"]
+      - regions: ["us-east-1"]
+        instances: ["g4dn.2xlarge"]
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
       # DCV on ARM
@@ -148,9 +176,14 @@ dcv:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2", "ubuntu1804"]
         schedulers: ["slurm"]
+      # DCV on ARM + GPU
+      - regions: ["us-east-1"]
+        instances: ["g5g.2xlarge"]
+        oss: ["alinux2", "ubuntu1804"]
+        schedulers: ["slurm"]
       # DCV on Batch
-      - regions: ["eu-west-1"]
-        instances: ["g3.8xlarge"]
+      - regions: ["us-east-1"]
+        instances: ["g4dn.2xlarge"]
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
       # DCV on Batch + ARM
@@ -187,6 +220,13 @@ disable_hyperthreading:
         instances: ["c5.xlarge"]
         oss: ["ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
+        benchmarks:
+          - mpi_variants: ["openmpi", "intelmpi"]
+            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+            slots_per_instance: 2
+            partition: "ht-disabled"
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
 dns:
   test_dns.py::test_hit_no_cluster_dns_mpi:
     dimensions:
@@ -207,11 +247,10 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      # Temporarily disabling p4d tests
-      # - regions: ["us-west-2"]
-      #   instances: ["p4d.24xlarge"]
-      #   oss: {{ common.OSS_COMMERCIAL_X86 }}
-      #   schedulers: ["slurm"]
+      - regions: ["us-west-2"]
+        instances: ["p4d.24xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
@@ -346,12 +385,14 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      - regions: ["ap-southeast-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["awsbatch"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+  test_awsbatch.py::test_awsbatch_defaults:
+    dimensions:
+      - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
   test_slurm.py::test_slurm:
@@ -360,6 +401,10 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
+      - regions: ["eu-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
+        schedulers: ["slurm_plugin"]
   test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
     dimensions:
       - regions: ["ap-southeast-2"]
@@ -376,6 +421,10 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
+      - regions: ["me-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm_plugin"]
       - regions: [ "us-east-2" ]
         instances: [{{ common.instance("instance_type_1") }}]
         oss: [ "alinux2" ]
@@ -385,10 +434,22 @@ schedulers:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"]
+        schedulers: ["slurm", "slurm_plugin"]
   test_slurm.py::test_slurm_protected_mode:
     dimensions:
       - regions: ["eu-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "slurm_plugin"]
+  test_slurm.py::test_fast_capacity_failover:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+  test_slurm.py::test_slurm_config_update:
+    dimensions:
+      - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -400,14 +461,32 @@ spot:
         oss: ["centos7"]
         schedulers: ["slurm"]
 storage:
-  # Commercial regions that cant test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
+  # Commercial regions that can't test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
   test_fsx_lustre.py::test_fsx_lustre:
+    dimensions:
+      - regions: ["eu-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["centos7"]
+        schedulers: ["slurm"]
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  # The checks performed in test_multiple_fsx is the same as test_fsx_lustre. 
+  # We should consider this when assigning dimensions to each test.
+  test_fsx_lustre.py::test_multiple_fsx:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      - regions: ["eu-north-1"]
+        benchmarks:
+          - mpi_variants: ["openmpi", "intelmpi"]
+            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+            slots_per_instance: 2
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
@@ -435,12 +514,6 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
-  test_fsx_lustre.py::test_existing_fsx:
-    dimensions:
-      - regions: ["us-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["slurm"]
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
     dimensions:
@@ -452,25 +525,29 @@ storage:
     dimensions:
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: ["centos7"]
         schedulers: ["slurm"]
-      - regions: ["cn-north-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_CHINA_X86 }}
-        schedulers: ["slurm"]
-      - regions: ["ap-northeast-1", "cn-north-1"]
+  # The checks performed in test_efs_same_az is similar to test_multiple_efs.
+  # We should consider this when assigning dimensions to each test.
+  test_efs.py::test_multiple_efs:
+    dimensions:
+      - regions: ["ap-northeast-2", "cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_BATCH }}
         schedulers: ["awsbatch"]
-  test_efs.py::test_existing_efs:
-    dimensions:
-      - regions: ["ap-northeast-2"]
+      - regions: [ "ap-northeast-2" ]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: [ "slurm" ]
+        benchmarks:
+          - mpi_variants: ["openmpi", "intelmpi"]
+            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+            slots_per_instance: 2
+            osu_benchmarks:
+              collective: ["osu_allreduce", "osu_alltoall"]
+      - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["awsbatch"]
-      - regions: ["ap-northeast-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
+        oss: {{ common.OSS_GOVCLOUD_X86 }}
         schedulers: ["slurm"]
   test_raid.py::test_raid_fault_tolerance_mode:
     dimensions:

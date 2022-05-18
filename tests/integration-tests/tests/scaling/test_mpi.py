@@ -16,24 +16,25 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.mpi_common import _test_mpi
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.usefixtures("os")
-def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory):
+def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory, scheduler_commands_factory):
     scaledown_idletime = 3
     max_queue_size = 3
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     # This verifies that the job completes correctly
     _test_mpi(
         remote_command_executor,
         slots_per_instance,
         scheduler,
+        scheduler_commands,
         region,
         cluster.cfn_name,
         scaledown_idletime,
@@ -45,6 +46,7 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
         remote_command_executor,
         slots_per_instance,
         scheduler,
+        scheduler_commands,
         region,
         cluster.cfn_name,
         scaledown_idletime,
@@ -52,20 +54,20 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
     )
 
 
-@pytest.mark.usefixtures("region", "instance", "os")
-def test_mpi_ssh(scheduler, pcluster_config_reader, clusters_factory, test_datadir):
+@pytest.mark.usefixtures("region", "instance", "os", "scheduler")
+def test_mpi_ssh(pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    _test_mpi_ssh(remote_command_executor, scheduler, test_datadir)
+    _test_mpi_ssh(remote_command_executor, test_datadir, scheduler_commands_factory)
 
 
-def _test_mpi_ssh(remote_command_executor, scheduler, test_datadir):
+def _test_mpi_ssh(remote_command_executor, test_datadir, scheduler_commands_factory):
     logging.info("Testing mpi SSH")
     mpi_module = "openmpi"
 
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     compute_node = scheduler_commands.get_compute_nodes()
     assert_that(len(compute_node)).is_equal_to(1)
     remote_host = compute_node[0]

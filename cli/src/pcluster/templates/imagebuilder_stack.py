@@ -10,7 +10,7 @@
 # limitations under the License.
 
 #
-# This module contains all the classes required to convert a ImageBuilder into a CFN template by using CDK.
+# This module contains all the classes required to convert an ImageBuilder into a CFN template by using CDK.
 #
 
 # pylint: disable=too-many-lines
@@ -290,11 +290,12 @@ class ImageBuilderCdkStack(Stack):
             image_recipe_arn=Fn.ref("ImageRecipe"),
             infrastructure_configuration_arn=Fn.ref("InfrastructureConfiguration"),
             distribution_configuration_arn=Fn.ref("DistributionConfiguration"),
+            enhanced_image_metadata_enabled=False,
         )
         if not self.custom_cleanup_lambda_role:
             self._add_resource_delete_policy(
                 lambda_cleanup_policy_statements,
-                ["imagebuilder:DeleteImage"],
+                ["imagebuilder:DeleteImage", "imagebuilder:GetImage", "imagebuilder:CancelImageCreation"],
                 [
                     self.format_arn(
                         service="imagebuilder",
@@ -495,8 +496,8 @@ class ImageBuilderCdkStack(Stack):
 
         disable_validate_and_test_component = (
             self.config.dev_settings.disable_validate_and_test
-            if self.config.dev_settings and self.config.dev_settings.disable_validate_and_test
-            else False
+            if self.config.dev_settings and isinstance(self.config.dev_settings.disable_validate_and_test, bool)
+            else True
         )
         if not disable_pcluster_component and not disable_validate_and_test_component:
             validate_component_resource = imagebuilder.CfnComponent(

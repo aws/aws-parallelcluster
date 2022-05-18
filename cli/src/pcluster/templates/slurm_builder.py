@@ -19,13 +19,14 @@ from aws_cdk.core import CfnCustomResource, CfnDeletionPolicy, CfnOutput, CfnPar
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import SlurmClusterConfig
-from pcluster.constants import PCLUSTER_DYNAMODB_PREFIX
+from pcluster.constants import PCLUSTER_SLURM_DYNAMODB_PREFIX
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
     create_hash_suffix,
     get_cloud_watch_logs_policy_statement,
+    get_lambda_log_group_prefix,
 )
 
 CustomDns = namedtuple("CustomDns", ["ref", "name"])
@@ -115,14 +116,16 @@ class SlurmConstruct(Construct):
 
         policy_statements = [
             {
-                "sid": "DynamoDBTableQuery",
+                "sid": "SlurmDynamoDBTableQuery",
                 "effect": iam.Effect.ALLOW,
                 "actions": ["dynamodb:Query"],
                 "resources": [
-                    self._format_arn(service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"),
+                    self._format_arn(
+                        service="dynamodb", resource=f"table/{PCLUSTER_SLURM_DYNAMODB_PREFIX}{self.stack_name}"
+                    ),
                     self._format_arn(
                         service="dynamodb",
-                        resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}/index/*",
+                        resource=f"table/{PCLUSTER_SLURM_DYNAMODB_PREFIX}{self.stack_name}/index/*",
                     ),
                 ],
             },
@@ -143,7 +146,7 @@ class SlurmConstruct(Construct):
 
         policy_statements = [
             {
-                "sid": "DynamoDBTable",
+                "sid": "SlurmDynamoDBTable",
                 "actions": [
                     "dynamodb:PutItem",
                     "dynamodb:BatchWriteItem",
@@ -151,7 +154,9 @@ class SlurmConstruct(Construct):
                 ],
                 "effect": iam.Effect.ALLOW,
                 "resources": [
-                    self._format_arn(service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}")
+                    self._format_arn(
+                        service="dynamodb", resource=f"table/{PCLUSTER_SLURM_DYNAMODB_PREFIX}{self.stack_name}"
+                    )
                 ],
             },
         ]
@@ -170,8 +175,8 @@ class SlurmConstruct(Construct):
     def _add_dynamodb_table(self):
         table = dynamodb.CfnTable(
             self.stack_scope,
-            "DynamoDBTable",
-            table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack_name,
+            "SlurmDynamoDBTable",
+            table_name=PCLUSTER_SLURM_DYNAMODB_PREFIX + self.stack_name,
             attribute_definitions=[
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
@@ -248,7 +253,12 @@ class SlurmConstruct(Construct):
                         sid="Route53DeletePolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource=get_lambda_log_group_prefix("CleanupRoute53-*"),
+                        )
                     ),
                 ],
             )

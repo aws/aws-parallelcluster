@@ -12,6 +12,10 @@ Scheduling:
   SchedulerSettings:
     SchedulerDefinition:
       PluginInterfaceVersion: "1.0"
+      Metadata:
+        Version: 1.0.0
+        Name: my-scheduler
+        Documentation: link
       Events:
         HeadInit:
           ExecuteCommand:

@@ -20,12 +20,13 @@ from troposphere.route53 import HostedZone, HostedZoneVPCs
 from utils import generate_stack_name
 
 from tests.common.mpi_common import _test_mpi
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.usefixtures("os")
-def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
+def test_hit_no_cluster_dns_mpi(
+    scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
     logging.info("Testing HIT cluster with cluster DNS disabled.")
     scaledown_idletime = 3
     max_queue_size = 3
@@ -36,7 +37,7 @@ def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_rea
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     # Assert that compute hostname cannot be pinged directly
     compute_nodes = scheduler_commands.get_compute_nodes()
     result = remote_command_executor.run_remote_command("ping -c 3 {}".format(compute_nodes[0]), raise_on_error=False)
@@ -50,9 +51,10 @@ def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_rea
         remote_command_executor,
         slots_per_instance,
         scheduler,
-        region,
-        cluster.cfn_name,
-        scaledown_idletime,
+        scheduler_commands,
+        region=region,
+        stack_name=cluster.cfn_name,
+        scaledown_idletime=scaledown_idletime,
         verify_scaling=False,
     )
 
@@ -68,6 +70,7 @@ def test_existing_hosted_zone(
     scheduler,
     region,
     instance,
+    scheduler_commands_factory,
 ):
     """Test hosted_zone_id is provided in the config file."""
     num_computes = 2
@@ -75,13 +78,14 @@ def test_existing_hosted_zone(
     cluster_config = pcluster_config_reader(existing_hosted_zone=hosted_zone_id, queue_size=num_computes)
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     # Test run mpi job
     _test_mpi(
         remote_command_executor,
         slots_per_instance=fetch_instance_slots(region, instance),
         scheduler=scheduler,
+        scheduler_commands=scheduler_commands,
         region=region,
         stack_name=cluster.cfn_name,
         scaledown_idletime=3,

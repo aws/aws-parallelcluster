@@ -33,10 +33,11 @@ from pcluster.templates.cdk_builder_utils import (
     get_cloud_watch_logs_retention_days,
     get_custom_tags,
     get_default_instance_tags,
+    get_lambda_log_group_prefix,
     get_log_group_deletion_policy,
-    get_mount_dirs_by_type,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
+    to_comma_separated_string,
 )
 
 
@@ -52,8 +53,8 @@ class AwsBatchConstruct(Construct):
         bucket: S3Bucket,
         create_lambda_roles: bool,
         compute_security_group: CfnSecurityGroup,
-        shared_storage_mappings: dict,
-        shared_storage_options: dict,
+        shared_storage_infos: dict,
+        shared_storage_mount_dirs: dict,
         head_node_instance: ec2.CfnInstance,
         managed_head_node_instance_role: iam.CfnRole,
     ):
@@ -64,8 +65,8 @@ class AwsBatchConstruct(Construct):
         self.bucket = bucket
         self.create_lambda_roles = create_lambda_roles
         self.compute_security_group = compute_security_group
-        self.shared_storage_mappings = shared_storage_mappings
-        self.shared_storage_options = shared_storage_options
+        self.shared_storage_infos = shared_storage_infos
+        self.shared_storage_mount_dirs = shared_storage_mount_dirs
         self.head_node_instance = head_node_instance
         self.head_node_instance_role = managed_head_node_instance_role
 
@@ -115,8 +116,8 @@ class AwsBatchConstruct(Construct):
         if self.head_node_instance_role:
             self._add_batch_head_node_policies_to_role()
 
-        # Iam Roles
-        self._ecs_instance_role, self._iam_instance_profile = self._add_ecs_instance_role_and_profile()
+        # Iam Instance Profile for ComputeEnvironment
+        self._iam_instance_profile = self._add_ecs_instance_profile()
 
         # Spot Iam Role
         self._spot_iam_fleet_role = None
@@ -153,7 +154,7 @@ class AwsBatchConstruct(Construct):
     def _add_compute_env(self):
         return batch.CfnComputeEnvironment(
             self.stack_scope,
-            "ComputeEnvironment",
+            "PclusterComputeEnvironment",
             type="MANAGED",
             # service_role=self._batch_service_role.ref,
             state="ENABLED",
@@ -174,7 +175,7 @@ class AwsBatchConstruct(Construct):
                         self.config,
                         self.compute_resource,
                         "Compute",
-                        self.shared_storage_mappings,
+                        self.shared_storage_infos,
                         raw_dict=True,
                     ),
                     **get_custom_tags(self.config, raw_dict=True),
@@ -185,7 +186,7 @@ class AwsBatchConstruct(Construct):
     def _add_job_queue(self):
         return batch.CfnJobQueue(
             self.stack_scope,
-            "JobQueue",
+            "PclusterJobQueue",
             priority=1,
             compute_environment_order=[
                 batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
@@ -195,10 +196,10 @@ class AwsBatchConstruct(Construct):
             ],
         )
 
-    def _add_ecs_instance_role_and_profile(self):
+    def _add_ecs_instance_profile(self):
         ecs_instance_role = iam.CfnRole(
             self.stack_scope,
-            "EcsInstanceRole",
+            "PclusterEcsInstanceRole",
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(
@@ -211,19 +212,16 @@ class AwsBatchConstruct(Construct):
             assume_role_policy_document=get_assume_role_policy_document(f"ec2.{self._url_suffix}"),
         )
 
-        iam_instance_profile = iam.CfnInstanceProfile(
+        return iam.CfnInstanceProfile(
             self.stack_scope, "IamInstanceProfile", path=self._cluster_scoped_iam_path(), roles=[ecs_instance_role.ref]
         )
-
-        return ecs_instance_role, iam_instance_profile
 
     def _add_job_role(self):
         return iam.CfnRole(
             self.stack_scope,
-            "JobRole",
+            "PclusterJobRole",
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
-                self._format_arn(service="iam", account="aws", region="", resource="policy/AmazonS3ReadOnlyAccess"),
                 self._format_arn(
                     service="iam",
                     account="aws",
@@ -234,13 +232,16 @@ class AwsBatchConstruct(Construct):
             assume_role_policy_document=get_assume_role_policy_document("ecs-tasks.amazonaws.com"),
             policies=[
                 iam.CfnRole.PolicyProperty(
-                    policy_name="s3PutObject",
+                    policy_name="s3Read",
                     policy_document=iam.PolicyDocument(
                         statements=[
                             iam.PolicyStatement(
-                                actions=["s3:PutObject"],
+                                actions=["s3:GetObject", "s3:ListBucket"],
                                 effect=iam.Effect.ALLOW,
                                 resources=[
+                                    self._format_arn(
+                                        service="s3", resource=f"{self.bucket.name}", region="", account=""
+                                    ),
                                     self._format_arn(
                                         service="s3",
                                         resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
@@ -248,7 +249,7 @@ class AwsBatchConstruct(Construct):
                                         account="",
                                     ),
                                 ],
-                                sid="CloudWatchLogsPolicy",
+                                sid="S3ReadPolicy",
                             ),
                         ],
                     ),
@@ -261,17 +262,9 @@ class AwsBatchConstruct(Construct):
                                 actions=["cloudformation:DescribeStacks"],
                                 effect=iam.Effect.ALLOW,
                                 resources=[
-                                    self._format_arn(
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}/*",
-                                    ),
-                                    self._format_arn(
-                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}-*/*",
-                                    ),
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
                                 ],
-                                sid="CloudWatchLogsPolicy",
+                                sid="CfnDescribeStacksPolicy",
                             ),
                         ],
                     ),
@@ -285,7 +278,7 @@ class AwsBatchConstruct(Construct):
     def _add_job_definition_serial(self):
         return batch.CfnJobDefinition(
             self.stack_scope,
-            "JobDefinitionSerial",
+            "PclusterJobDefinitionSerial",
             type="container",
             container_properties=self._get_container_properties(),
         )
@@ -293,7 +286,7 @@ class AwsBatchConstruct(Construct):
     def _add_job_definition_mnp(self):
         return batch.CfnJobDefinition(
             self.stack_scope,
-            "JobDefinitionMNP",
+            "PclusterJobDefinitionMNP",
             type="multinode",
             node_properties=batch.CfnJobDefinition.NodePropertiesProperty(
                 main_node=0,
@@ -341,8 +334,6 @@ class AwsBatchConstruct(Construct):
                                     self._job_queue.ref,
                                     self._job_role.attr_arn,
                                     self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
-                                    # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}-*/*"),
                                     self._format_arn(
                                         service="s3",
                                         resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
@@ -351,7 +342,7 @@ class AwsBatchConstruct(Construct):
                                     ),
                                     self._format_arn(
                                         service="ecs",
-                                        resource=f"cluster/{self._get_compute_env_prefix()}_Batch_*",
+                                        resource=f"cluster/AWSBatch-{self._get_compute_env_prefix()}*",
                                         region=self._stack_region,
                                         account=self._stack_account,
                                     ),
@@ -376,18 +367,13 @@ class AwsBatchConstruct(Construct):
                                     self._format_arn(service="s3", resource=self.bucket.name, region="", account=""),
                                 ],
                             ),
+                            self._get_awsbatch_cli_read_policy(),
+                            self._get_awsbatch_cli_write_policy(),
                             iam.PolicyStatement(
+                                # additional policies to interact with AWS Batch resources created within the cluster
+                                sid="BatchResourcesReadPermissions",
                                 effect=iam.Effect.ALLOW,
-                                actions=[
-                                    "batch:DescribeJobQueues",
-                                    "batch:TerminateJob",
-                                    "batch:DescribeJobs",
-                                    "batch:CancelJob",
-                                    "batch:DescribeJobDefinitions",
-                                    "batch:ListJobs",
-                                    "batch:DescribeComputeEnvironments",
-                                    "ec2:DescribeInstances",
-                                ],
+                                actions=["batch:CancelJob", "batch:DescribeJobDefinitions"],
                                 resources=["*"],
                             ),
                         ],
@@ -401,17 +387,9 @@ class AwsBatchConstruct(Construct):
                                 actions=["cloudformation:DescribeStacks"],
                                 effect=iam.Effect.ALLOW,
                                 resources=[
-                                    self._format_arn(
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}/*",
-                                    ),
-                                    self._format_arn(
-                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}-*/*",
-                                    ),
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
                                 ],
-                                sid="CloudWatchLogsPolicy",
+                                sid="CfnDescribeStacksPolicy",
                             ),
                         ],
                     ),
@@ -422,7 +400,7 @@ class AwsBatchConstruct(Construct):
     def _add_spot_fleet_iam_role(self):
         return iam.CfnRole(
             self.stack_scope,
-            "BatchSpotRole",
+            "PclusterBatchSpotRole",
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(
@@ -453,19 +431,19 @@ class AwsBatchConstruct(Construct):
                 batch.CfnJobDefinition.EnvironmentProperty(name="PCLUSTER_STACK_NAME", value=self.stack_name),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_SHARED_DIRS",
-                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EBS),
+                    value=to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EBS]),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_EFS_SHARED_DIR",
-                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EFS),
+                    name="PCLUSTER_EFS_SHARED_DIRS",
+                    value=to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_EFS_FS_ID",
-                    value=get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
+                    name="PCLUSTER_EFS_FS_IDS",
+                    value=get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_RAID_SHARED_DIR",
-                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.RAID),
+                    value=to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.RAID]),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_HEAD_NODE_IP", value=self.head_node_instance.attr_private_ip
@@ -476,7 +454,7 @@ class AwsBatchConstruct(Construct):
     def _add_code_build_role(self):
         return iam.CfnRole(
             self.stack_scope,
-            "CodeBuildRole",
+            "PclusterCodeBuildRole",
             path=self._cluster_scoped_iam_path(),
             assume_role_policy_document=get_assume_role_policy_document("codebuild.amazonaws.com"),
         )
@@ -484,7 +462,7 @@ class AwsBatchConstruct(Construct):
     def _add_code_build_policy(self):
         return iam.CfnPolicy(
             self.stack_scope,
-            "CodeBuildPolicy",
+            "PclusterCodeBuildPolicy",
             policy_name="CodeBuildPolicy",
             policy_document=iam.PolicyDocument(
                 statements=[
@@ -504,7 +482,12 @@ class AwsBatchConstruct(Construct):
                         sid="ECRPolicy", effect=iam.Effect.ALLOW, actions=["ecr:GetAuthorizationToken"], resources=["*"]
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource="log-group:/aws/parallelcluster/codebuild/*",
+                        )
                     ),
                     iam.PolicyStatement(
                         sid="S3GetObjectPolicy",
@@ -532,7 +515,7 @@ class AwsBatchConstruct(Construct):
 
         log_group = logs.CfnLogGroup(
             self.stack_scope,
-            "CodeBuildLogGroup",
+            "PclusterCodeBuildLogGroup",
             log_group_name=log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
@@ -540,7 +523,7 @@ class AwsBatchConstruct(Construct):
 
         return codebuild.CfnProject(
             self.stack_scope,
-            "CodeBuildDockerImageBuilderProj",
+            "PclusterCodeBuildDockerImageBuilderProj",
             artifacts=codebuild.CfnProject.ArtifactsProperty(type="NO_ARTIFACTS"),
             environment=codebuild.CfnProject.EnvironmentProperty(
                 compute_type="BUILD_GENERAL1_LARGE"
@@ -609,7 +592,12 @@ class AwsBatchConstruct(Construct):
                         sid="CodeBuildPolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource=get_lambda_log_group_prefix("ManageDockerImages-*"),
+                        )
                     ),
                 ],
             )
@@ -667,7 +655,12 @@ class AwsBatchConstruct(Construct):
                 function_id="BuildNotification",
                 statements=[
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource=get_lambda_log_group_prefix("BuildNotification-*"),
+                        )
                     )
                 ],
             )
@@ -727,9 +720,86 @@ class AwsBatchConstruct(Construct):
                             )
                         ],
                     ),
+                    self._get_awsbatch_cli_read_policy(),
+                    self._get_awsbatch_cli_write_policy(),
                 ]
             ),
             roles=[self.head_node_instance_role.ref],
+        )
+
+    @staticmethod
+    def _get_awsbatch_cli_read_policy():
+        """Return list of READ policies required by ParallelCluster AWS Batch CLI."""
+        return iam.PolicyStatement(
+            sid="BatchCliReadPermissions",
+            actions=[
+                "batch:DescribeJobQueues",  # required by awsbqueues command
+                "batch:DescribeJobs",  # required by awsbstat, awsbkill and awsbout
+                "batch:ListJobs",  # required by awsbstat
+                "batch:DescribeComputeEnvironments",  # required by awsbhosts
+                "ec2:DescribeInstances",  # required by awsbhosts
+            ],
+            effect=iam.Effect.ALLOW,
+            resources=["*"],
+        )
+
+    def _get_awsbatch_cli_write_policy(self):
+        """Return list of WRITE policies required by ParallelCluster AWS Batch CLI."""
+        return iam.PolicyStatement(
+            sid="BatchCliWritePermissions",
+            actions=[
+                "batch:SubmitJob",  # required by awsbsub command
+                "batch:TerminateJob",  # required by awsbkill
+                "logs:GetLogEvents",  # required by awsbout
+                "ecs:ListContainerInstances",  # required by awsbhosts
+                "ecs:DescribeContainerInstances",  # required by awsbhosts
+                "s3:PutObject",  # required by awsbsub
+            ],
+            effect=iam.Effect.ALLOW,
+            resources=[
+                self._format_arn(
+                    service="logs",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="log-group:/aws/batch/job:log-stream:PclusterJobDefinition*",
+                ),
+                self._format_arn(
+                    service="ecs",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="container-instance/AWSBatch-PclusterComputeEnviron*",
+                ),
+                self._format_arn(
+                    service="ecs",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="cluster/AWSBatch-Pcluster*",
+                ),
+                self._format_arn(
+                    service="batch",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="job-queue/PclusterJobQueue*",
+                ),
+                self._format_arn(
+                    service="batch",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="job-definition/PclusterJobDefinition*:*",
+                ),
+                self._format_arn(
+                    service="batch",
+                    account=self._stack_account,
+                    region=self._stack_region,
+                    resource="job/*",
+                ),
+                self._format_arn(
+                    service="s3",
+                    account="",
+                    region="",
+                    resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
+                ),
+            ],
         )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #

@@ -42,10 +42,6 @@ Resources:
           - Action: ec2:DescibeInstanceTypes
             Effect: Allow
             Resource: '*'
-          # TODO to be removed once policies for artifacts are added automatically
-          - Action: s3:GetObject
-            Effect: Allow
-            Resource: '*'
         Version: '2012-10-17'
       PolicyName: scheduler-plugin-policy
   ComputeNodeAdditionalIamPolicies:

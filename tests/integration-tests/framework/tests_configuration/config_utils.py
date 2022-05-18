@@ -39,9 +39,8 @@ def get_all_regions(config):
     regions = set()
     for feature in config.get("test-suites").values():
         for test in feature.values():
-            for dimensions_config in test.values():
-                for dimensions_group in dimensions_config:
-                    regions.update(dimensions_group.get("regions", []))
+            for dimensions_group in test.get("dimensions"):
+                regions.update(dimensions_group.get("regions", []))
     return regions
 
 

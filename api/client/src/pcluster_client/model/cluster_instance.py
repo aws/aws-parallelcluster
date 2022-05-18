@@ -79,14 +79,14 @@ class ClusterInstance(ModelNormal):
         """
         lazy_import()
         return {
-            'launch_time': (datetime,),  # noqa: E501
             'instance_id': (str,),  # noqa: E501
             'instance_type': (str,),  # noqa: E501
+            'launch_time': (datetime,),  # noqa: E501
+            'private_ip_address': (str,),  # noqa: E501
             'state': (InstanceState,),  # noqa: E501
             'node_type': (NodeType,),  # noqa: E501
-            'private_ip_address': (str,),  # noqa: E501
-            'queue_name': (str,),  # noqa: E501
             'public_ip_address': (str,),  # noqa: E501
+            'queue_name': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -95,14 +95,14 @@ class ClusterInstance(ModelNormal):
 
 
     attribute_map = {
-        'launch_time': 'launchTime',  # noqa: E501
         'instance_id': 'instanceId',  # noqa: E501
         'instance_type': 'instanceType',  # noqa: E501
+        'launch_time': 'launchTime',  # noqa: E501
+        'private_ip_address': 'privateIpAddress',  # noqa: E501
         'state': 'state',  # noqa: E501
         'node_type': 'nodeType',  # noqa: E501
-        'private_ip_address': 'privateIpAddress',  # noqa: E501
-        'queue_name': 'queueName',  # noqa: E501
         'public_ip_address': 'publicIpAddress',  # noqa: E501
+        'queue_name': 'queueName',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -117,16 +117,16 @@ class ClusterInstance(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, launch_time, instance_id, instance_type, state, node_type, private_ip_address, *args, **kwargs):  # noqa: E501
+    def __init__(self, instance_id, instance_type, launch_time, private_ip_address, state, node_type, *args, **kwargs):  # noqa: E501
         """ClusterInstance - a model defined in OpenAPI
 
         Args:
-            launch_time (datetime):
             instance_id (str):
             instance_type (str):
+            launch_time (datetime):
+            private_ip_address (str):
             state (InstanceState):
             node_type (NodeType):
-            private_ip_address (str):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -159,8 +159,8 @@ class ClusterInstance(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            queue_name (str): [optional]  # noqa: E501
             public_ip_address (str): [optional]  # noqa: E501
+            queue_name (str): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -186,12 +186,12 @@ class ClusterInstance(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.launch_time = launch_time
         self.instance_id = instance_id
         self.instance_type = instance_type
+        self.launch_time = launch_time
+        self.private_ip_address = private_ip_address
         self.state = state
         self.node_type = node_type
-        self.private_ip_address = private_ip_address
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

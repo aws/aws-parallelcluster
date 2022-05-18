@@ -10,9 +10,14 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  SlurmSettings:
+  {{ scheduler_prefix }}Settings:
+    {% if scheduler == "plugin" %}
+    CustomSettings:
+      ScaledownIdletime: {{ scaledown_idletime }}
+    {% else %}
     ScaledownIdletime: {{ scaledown_idletime }}
-  SlurmQueues:
+    {% endif %}
+  {{ scheduler_prefix }}Queues:
     - Name: ondemand1
       Networking:
         SubnetIds:

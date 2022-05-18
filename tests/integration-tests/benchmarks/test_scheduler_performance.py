@@ -22,12 +22,13 @@ from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
 
 from tests.common.assertions import assert_no_errors_in_logs
-from tests.common.schedulers_common import get_scheduler_commands
 
 
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.benchmarks
-def test_scheduler_performance(region, scheduler, os, instance, pcluster_config_reader, clusters_factory, request):
+def test_scheduler_performance(
+    region, scheduler, os, instance, pcluster_config_reader, clusters_factory, request, scheduler_commands_factory
+):
     """The test runs a stress test to verify scheduler behaviour with many submitted jobs."""
     benchmarks_max_time = request.config.getoption("benchmarks_max_time")
     instance_slots = get_instance_vcpus(region, instance)
@@ -48,11 +49,11 @@ def test_scheduler_performance(region, scheduler, os, instance, pcluster_config_
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     logging.info("Starting benchmark with following parameters: %s", benchmark_params)
     start_time = datetime.datetime.utcnow()
-    _submit_jobs(benchmark_params, scheduler_commands, instance_slots, cluster)
+    _submit_jobs(benchmark_params, scheduler_commands, cluster, scheduler_commands_factory)
     compute_nodes_time_series, timestamps, end_time = publish_compute_nodes_metric(
         scheduler_commands,
         max_monitoring_time=minutes(benchmarks_max_time),
@@ -77,7 +78,7 @@ def test_scheduler_performance(region, scheduler, os, instance, pcluster_config_
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-def _submit_jobs(benchmark_params, scheduler_commands, instance_slots, cluster):
+def _submit_jobs(benchmark_params, scheduler_commands, cluster, scheduler_commands_factory):
     """
     Submit 1 job to make the cluster scale to scaling_target and then a series of very small jobs
     to test scheduler performance.
@@ -92,9 +93,7 @@ def _submit_jobs(benchmark_params, scheduler_commands, instance_slots, cluster):
 
         def _submit_one_slot_job():
             if not hasattr(local_data, "scheduler_commands"):
-                local_data.scheduler_commands = get_scheduler_commands(
-                    benchmark_params["scheduler"], RemoteCommandExecutor(cluster)
-                )
+                local_data.scheduler_commands = scheduler_commands_factory(RemoteCommandExecutor(cluster))
             local_data.scheduler_commands.submit_command(
                 "sleep {0}; mkdir -p /shared/job-results; mktemp /shared/job-results/job.XXXXXXXX".format(
                     benchmark_params["job_duration"]

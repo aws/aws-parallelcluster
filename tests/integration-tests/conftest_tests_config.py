@@ -40,6 +40,10 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
                    ('region2', 'inst1', 'os2', 's'), ('region3', 'inst2', 'os1', 's'), ('region3', 'inst3', 'os1', 's')]
     """
     argnames = list(DIMENSIONS_MARKER_ARGS)
+    # Add and only add benchmarks parametrization when necessary.
+    has_benchmarks = _has_benchmarks(configured_dimensions_items)
+    if has_benchmarks:
+        argnames.append("benchmarks")
     argvalues = []
     for item in configured_dimensions_items:
         dimensions_values = []
@@ -49,9 +53,19 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
                 dimensions_values.append(values)
             elif dim in argnames:
                 argnames.remove(dim)
+        if has_benchmarks:
+            benchmarks_value = [item.get("benchmarks")]  # the benchmarks list is treated as a single item in a list
+            dimensions_values.append(benchmarks_value)
         argvalues.extend(list(product(*dimensions_values)))
 
     return argnames, argvalues
+
+
+def _has_benchmarks(configured_dimensions_items):
+    for item in configured_dimensions_items:
+        if item.get("benchmarks"):
+            return True
+    return False
 
 
 def remove_disabled_tests(session, config, items):

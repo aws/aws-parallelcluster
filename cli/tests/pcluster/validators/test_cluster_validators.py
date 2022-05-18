@@ -10,6 +10,7 @@
 # limitations under the License.
 import pytest
 from assertpy import assert_that
+from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config.cluster_config import Tag
@@ -27,19 +28,21 @@ from pcluster.validators.cluster_validators import (
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
     EfaValidator,
+    ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    FsxNetworkingValidator,
     HeadNodeImdsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
+    MixedSecurityGroupOverwriteValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
+    SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     _LaunchTemplateValidator,
 )
@@ -124,12 +127,19 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
     "resource_name, resources_length, max_length, expected_message",
     [
         ("SlurmQueues", 5, 10, None),
+        ("SchedulerQueues", 10, 10, None),
         ("ComputeResources", 4, 5, None),
         (
             "SlurmQueues",
             11,
             10,
             "Invalid number of SlurmQueues (11) specified. Currently only supports up to 10 SlurmQueues.",
+        ),
+        (
+            "SchedulerQueues",
+            12,
+            10,
+            "Invalid number of SchedulerQueues (12) specified. Currently only supports up to 10 SchedulerQueues.",
         ),
         (
             "ComputeResources",
@@ -233,6 +243,31 @@ def test_efa_placement_group_validator(
             [],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            None,
+        ),
+        # right sg. Test when UserIdGroupPairs contains more entries
+        (
+            True,
+            ["sg-12345678"],
+            [],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [
+                        {"UserId": "123456789012", "GroupId": "sg-23456789"},
+                        {"UserId": "123456789012", "GroupId": "sg-12345678"},
+                    ],
+                }
+            ],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [
+                        {"UserId": "123456789012", "GroupId": "sg-23456789"},
+                        {"UserId": "123456789012", "GroupId": "sg-12345678"},
+                    ],
+                }
+            ],
             None,
         ),
         # Multiple sec groups, one right
@@ -450,29 +485,56 @@ def test_queue_name_validator(name, expected_message):
 
 
 @pytest.mark.parametrize(
-    "fsx_vpc, ip_permissions, network_interfaces, expected_message",
+    "fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, expected_message",
     [
         (  # working case, right vpc and sg, multiple network interfaces
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             ["eni-09b9460295ddd4e5f", "eni-001b3cef7c78b45c4"],
             None,
         ),
         (  # working case, right vpc and sg, single network interface
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             ["eni-09b9460295ddd4e5f"],
             None,
+        ),
+        (  # working case, CIDR specified in the security group through ip ranges
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # working case, CIDR specified in the security group through prefix list
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "PrefixListIds": [{"PrefixListId": "pl-12345"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # not working case, wrong security group.
+            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            "The file system must be associated to a security group that "
+            "allows inbound and outbound TCP traffic through port 988.",
         ),
         (  # not working case --> no network interfaces
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             [],
             "doesn't have Elastic Network Interfaces attached",
         ),
         (  # not working case --> wrong vpc
             "vpc-06e4ab6c6ccWRONG",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            True,
             ["eni-09b9460295ddd4e5f"],
             "only support using FSx file system that is in the same VPC as the cluster",
         ),
@@ -488,6 +550,7 @@ def test_queue_name_validator(name, expected_message):
                     "UserIdGroupPairs": [],
                 }
             ],
+            True,
             ["eni-09b9460295ddd4e5f"],
             [
                 "only support using FSx file system that is in the same VPC as the cluster",
@@ -496,7 +559,9 @@ def test_queue_name_validator(name, expected_message):
         ),
     ],
 )
-def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_interfaces, expected_message):
+def test_fsx_network_validator(
+    boto3_stubber, fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, expected_message
+):
     describe_file_systems_response = {
         "FileSystems": [
             {
@@ -637,7 +702,9 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 
     boto3_stubber("ec2", ec2_mocked_requests)
 
-    actual_failures = FsxNetworkingValidator().execute("fs-0ff8da96d57f3b4e3", "subnet-12345678")
+    actual_failures = ExistingFsxNetworkingValidator().execute(
+        ["fs-0ff8da96d57f3b4e3"], "subnet-12345678", are_all_security_groups_customized
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -698,32 +765,47 @@ def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
 
 
 @pytest.mark.parametrize(
-    "mount_dir_list, expected_message",
+    "shared_mount_dir_list, local_mount_dir_list, expected_message",
     [
         (
             ["dir1"],
+            [],
             None,
         ),
         (
             ["dir1", "dir2"],
+            ["/scratch"],
             None,
         ),
         (
             ["dir1", "dir2", "dir3"],
+            ["/scratch", "/scratch/compute"],  # local mount dirs on different nodes can overlap.
             None,
         ),
         (
             ["dir1", "dir1/subdir", "dir2"],
-            "Mount directory dir1 cannot contain other mount directories",
+            [],
+            "Mount directories dir1, dir1/subdir cannot overlap",
         ),
         (
             ["dir1", "dir1/subdir", "dir2", "dir2/subdir", "dir3"],
-            "Mount directories dir1, dir2 cannot contain other mount directories",
+            [],
+            "Mount directories dir1, dir1/subdir, dir2, dir2/subdir cannot overlap",
+        ),
+        (
+            ["dir1", "dir2", "dir3"],
+            ["dir1/subdir", "dir2/subdir"],
+            "Mount directories dir1, dir1/subdir, dir2, dir2/subdir cannot overlap",
+        ),
+        (
+            ["dir", "dir1"],
+            [],
+            None,
         ),
     ],
 )
-def test_overlapping_mount_dir_validator(mount_dir_list, expected_message):
-    actual_failures = OverlappingMountDirValidator().execute(mount_dir_list)
+def test_overlapping_mount_dir_validator(shared_mount_dir_list, local_mount_dir_list, expected_message):
+    actual_failures = OverlappingMountDirValidator().execute(shared_mount_dir_list, local_mount_dir_list)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -754,6 +836,22 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
 )
 def test_shared_storage_name_validator(name, expected_message):
     actual_failures = SharedStorageNameValidator().execute(name)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "mount_dir, expected_message",
+    [
+        ("default", None),
+        ("shared_ebs_1", None),
+        ("shared", None),
+        ("/shared", None),
+        ("home", "mount directory .* is reserved"),
+        ("/scratch", "mount directory .* is reserved"),
+    ],
+)
+def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
+    actual_failures = SharedStorageMountDirValidator().execute(mount_dir)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -914,3 +1012,37 @@ def test_generate_tag_specifications(input_tags):
     else:
         expected_output_tags = []
     assert_that(_LaunchTemplateValidator._generate_tag_specifications(input_tags)).is_equal_to(expected_output_tags)
+
+
+@pytest.mark.parametrize(
+    "head_node_security_groups, queues, expect_warning",
+    [
+        [None, [{"networking": {"security_groups": None}}, {"networking": {"security_groups": None}}], False],
+        [None, [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": None}}], True],
+        [
+            None,
+            [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": "sg-123456"}}],
+            True,
+        ],
+        ["sg-123456", [{"networking": {"security_groups": None}}, {"networking": {"security_groups": None}}], True],
+        [
+            "sg-123456",
+            [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": None}}],
+            True,
+        ],
+        [
+            "sg-123456",
+            [{"networking": {"security_groups": "sg-123456"}}, {"networking": {"security_groups": "sg-123456"}}],
+            False,
+        ],
+    ],
+)
+def test_mixed_security_group_overwrite_validator(head_node_security_groups, queues, expect_warning):
+    """Verify validator for mixed security group."""
+    queues = DefaultMunch.fromDict(queues)
+    actual_failures = MixedSecurityGroupOverwriteValidator().execute(
+        head_node_security_groups=head_node_security_groups,
+        queues=queues,
+    )
+    expected_message = "make sure.*cluster nodes are reachable" if expect_warning else None
+    assert_failure_messages(actual_failures, expected_message)

@@ -8,16 +8,18 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
+from datetime import datetime
 
 import pytest
 import yaml
 from assertpy import assert_that
+from aws_cdk.core import App
 from freezegun import freeze_time
 
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.templates.cluster_stack import ClusterCdkStack
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
@@ -35,7 +37,7 @@ from tests.pcluster.utils import load_cluster_model_from_yaml
         "scheduler_plugin.full.yaml",
     ],
 )
-def test_cluster_builder_from_configuration_file(mocker, config_file_name):
+def test_cluster_builder_from_configuration_file(mocker, capsys, config_file_name):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -43,7 +45,9 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
-    print(yaml.dump(generated_template))
+    _, err = capsys.readouterr()
+    assert_that(err).is_empty()  # Assertion failure may become an update of dependency warning deprecations.
+    yaml.dump(generated_template)
 
 
 @pytest.mark.parametrize(
@@ -204,9 +208,72 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     assert_that(generated_head_node_dna_json).is_equal_to(expected_head_node_dna_json)
 
 
+@freeze_time("2021-01-01T01:01:01")
+@pytest.mark.parametrize(
+    "config_file_name, expected_head_node_bootstrap_timeout",
+    [
+        ("slurm.required.yaml", "1800"),
+        ("slurm.full.yaml", "1201"),
+        ("awsbatch.simple.yaml", "1800"),
+        ("awsbatch.full.yaml", "1000"),
+        ("scheduler_plugin.required.yaml", "1800"),
+        ("scheduler_plugin.full.yaml", "1201"),
+    ],
+)
+def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_node_bootstrap_timeout):
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    assert_that(
+        generated_template["Resources"]
+        .get("HeadNodeWaitCondition" + datetime.utcnow().strftime("%Y%m%d%H%M%S"))
+        .get("Properties")
+        .get("Timeout")
+    ).is_equal_to(expected_head_node_bootstrap_timeout)
+
+
 def _get_cfn_init_file_content(template, resource, file):
     cfn_init = template["Resources"][resource]["Metadata"]["AWS::CloudFormation::Init"]
     content_join = cfn_init["deployConfigFiles"]["files"][file]["content"]["Fn::Join"]
     content_separator = content_join[0]
     content_elements = content_join[1]
     return content_separator.join(str(elem) for elem in content_elements)
+
+
+@pytest.mark.parametrize(
+    "custom_iam, expected_role_name, managed",
+    [
+        ({"InstanceProfile": "arn:aws:iam::1234567890:instance-profile/MyCustomProfile"}, "MyCustomProfile", False),
+        ({"InstanceRole": "arn:aws:iam::1234567890:role/MyCustomRole"}, "MyCustomRole", False),
+        (None, "${Token[TOKEN.", True),
+    ],
+)
+def test_get_head_node_role_name(mocker, test_datadir, custom_iam, expected_role_name, managed):
+    mock_aws_api(mocker)
+    get_instance_profile_mock = mocker.patch(
+        "pcluster.aws.iam.IamClient.get_instance_profile",
+        return_value={"InstanceProfile": {"Roles": [{"Arn": f"arn:aws:iam::1234567890:role/{expected_role_name}"}]}},
+    )
+    input_yaml = load_yaml_dict(test_datadir / "config.yaml")
+    if custom_iam:
+        input_yaml["HeadNode"]["Iam"] = custom_iam
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    head_node = cluster_config.head_node
+
+    cluster_stack = ClusterCdkStack(App(), "fake-output-file", "stack-name", cluster_config, dummy_cluster_bucket())
+    head_node_role = cluster_stack._get_head_node_role_name(head_node)
+
+    if managed:
+        assert_that(head_node_role).starts_with(expected_role_name)
+    else:
+        assert_that(head_node_role).is_equal_to(expected_role_name)
+
+    if "Profile" in expected_role_name:
+        assert_that(get_instance_profile_mock.call_count).is_equal_to(2)
+    else:
+        get_instance_profile_mock.assert_not_called()

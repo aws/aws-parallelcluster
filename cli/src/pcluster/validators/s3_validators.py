@@ -17,13 +17,24 @@ class UrlValidator(Validator):
     Validate given url with s3 or https prefix.
     """
 
-    def _validate(self, url, retries=3, fail_on_https_error: bool = False, fail_on_s3_error: bool = False):
+    def _validate(
+        self,
+        url,
+        retries=3,
+        fail_on_https_error: bool = False,
+        fail_on_s3_error: bool = False,
+        expected_bucket_owner: str = None,
+    ):
         scheme = get_url_scheme(url)
         if scheme in ["https", "s3"]:
             try:
                 if scheme == "s3":
-                    self._validate_s3_uri(url, fail_on_error=fail_on_s3_error)
+                    self._validate_s3_uri(
+                        url, fail_on_error=fail_on_s3_error, expected_bucket_owner=expected_bucket_owner
+                    )
                 else:
+                    if expected_bucket_owner:
+                        self._add_failure("S3BucketOwner can only be specified with S3 URL", FailureLevel.ERROR)
                     self._validate_https_uri(url, fail_on_error=fail_on_https_error)
             except ConnectionError as e:
                 if retries > 0:
@@ -38,20 +49,21 @@ class UrlValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-    def _validate_s3_uri(self, url: str, fail_on_error: bool):
+    def _validate_s3_uri(self, url: str, fail_on_error: bool, expected_bucket_owner: str):
         try:
             match = re.match(r"s3://(.*?)/(.*)", url)
             if not match or len(match.groups()) < 2:
                 self._add_failure(f"s3 url '{url}' is invalid.", FailureLevel.ERROR)
             else:
                 bucket_name, object_name = match.group(1), match.group(2)
-                AWSApi.instance().s3.head_object(bucket_name=bucket_name, object_name=object_name)
+                AWSApi.instance().s3.head_object(
+                    bucket_name=bucket_name, object_name=object_name, expected_bucket_owner=expected_bucket_owner
+                )
 
-        except AWSClientError:
+        except AWSClientError as e:
             # Todo: Check that bucket is in s3_read_resource or s3_read_write_resource.
             self._add_failure(
-                f"The S3 object '{url}' does not exist or you do not have access to it.",
-                FailureLevel.ERROR if fail_on_error else FailureLevel.WARNING,
+                str(e), FailureLevel.ERROR if expected_bucket_owner or fail_on_error else FailureLevel.WARNING
             )
 
     def _validate_https_uri(self, url: str, fail_on_error: bool):
@@ -86,7 +98,14 @@ class S3BucketUriValidator(Validator):
                 bucket = get_bucket_name_from_s3_url(url)
                 AWSApi.instance().s3.head_bucket(bucket_name=bucket)
             except AWSClientError as e:
-                self._add_failure(str(e), FailureLevel.ERROR)
+                if e.error_code == "403":
+                    self._add_failure(
+                        f"{str(e)}. Please attach a policy that allows the s3:ListBucket action for the resource "
+                        f"<ARN of bucket {bucket}> to the role or instance profile performing this operation.",
+                        FailureLevel.ERROR,
+                    )
+                else:
+                    self._add_failure(str(e), FailureLevel.ERROR)
         else:
             self._add_failure(f"The value '{url}' is not a valid S3 URI.", FailureLevel.ERROR)
 

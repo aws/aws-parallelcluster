@@ -25,12 +25,17 @@ from dateutil.parser import parse as date_parse
 from troposphere import Template, iam
 from utils import generate_stack_name, get_arn_partition
 
-from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
+from tests.common.utils import (
+    generate_random_string,
+    get_installed_parallelcluster_base_version,
+    get_installed_parallelcluster_version,
+    retrieve_latest_ami,
+)
 
 
+@pytest.mark.usefixtures("instance")
 def test_invalid_config(
     region,
-    instance,
     os,
     pcluster_config_reader,
     architecture,
@@ -78,9 +83,9 @@ def test_invalid_config(
     assert_that(suppressed.message).contains("Request would have succeeded")
 
 
+@pytest.mark.usefixtures("instance")
 def test_build_image(
     region,
-    instance,
     os,
     pcluster_config_reader,
     architecture,
@@ -152,15 +157,14 @@ def _test_list_image_log_streams(image):
     streams = list_streams_result["logStreams"]
 
     stream_names = {stream["logStreamName"] for stream in streams}
-    expected_log_stream = f"{get_installed_parallelcluster_version()}/1"
+    expected_log_stream = f"{get_installed_parallelcluster_base_version()}/1"
     assert_that(stream_names).contains(expected_log_stream)
 
 
 def _test_get_image_log_events(image):
     """Test pcluster get-image-log-events functionality."""
     logging.info("Testing that pcluster get-image-log-events is working as expected")
-    log_stream_name = f"{get_installed_parallelcluster_version()}/1"
-    cloud_init_debug_msg = "Document arn:aws.*:imagebuilder:.*parallelclusterimage.*"
+    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
 
     # Get the first event to establish time boundary for testing
     initial_events = image.get_log_events(log_stream_name, limit=1, start_from_head=True)
@@ -189,10 +193,10 @@ def _test_get_image_log_events(image):
             assert_that(events).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).matches(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).matches(first_event["message"])
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_match(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).does_not_match(first_event["message"])
 
 
 def _test_export_logs(s3_bucket_factory, image, region):
@@ -226,7 +230,7 @@ def _test_export_logs(s3_bucket_factory, image, region):
         ret = image.export_logs(bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix)
         assert_that(ret["path"]).is_equal_to(output_file)
 
-        rexp = rf"{image.image_id}-logs.*/cloudwatch-logs/{get_installed_parallelcluster_version()}-1"
+        rexp = rf"{image.image_id}-logs.*/cloudwatch-logs/{get_installed_parallelcluster_base_version()}-1"
         with tarfile.open(output_file) as archive:
             match = any(re.match(rexp, logfile.name) for logfile in archive)
         assert_that(match).is_true()
@@ -372,7 +376,7 @@ def _test_build_image_success(image):
     pcluster_describe_image_result = image.describe()
     logging.info(pcluster_describe_image_result)
 
-    while image.image_status == "BUILD_IN_PROGRESS":
+    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
         time.sleep(600)
         pcluster_describe_image_result = image.describe()
         logging.info(pcluster_describe_image_result)
@@ -381,9 +385,9 @@ def _test_build_image_success(image):
     assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
 
 
+@pytest.mark.usefixtures("os")
 def test_build_image_wrong_pcluster_version(
     region,
-    os,
     instance,
     pcluster_config_reader,
     architecture,
@@ -410,9 +414,9 @@ def test_build_image_wrong_pcluster_version(
     image = images_factory(image_id, image_config, region)
 
     _test_build_image_failed(image)
-    log_stream_name = f"{get_installed_parallelcluster_version()}/1"
+    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
-    assert_that(log_data).matches(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
+    assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
 def _test_build_image_failed(image):
@@ -421,7 +425,7 @@ def _test_build_image_failed(image):
     pcluster_describe_image_result = image.describe()
     logging.info(pcluster_describe_image_result)
 
-    while image.image_status == "BUILD_IN_PROGRESS":
+    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
         time.sleep(600)
         pcluster_describe_image_result = image.describe()
         logging.info(pcluster_describe_image_result)

@@ -1,0 +1,15 @@
+---
+name: profile
+title: InSpec
+maintainer: Sous Chefs
+copyright: Sous Chefs
+copyright_email: help@sous-chefs.org
+license: Apache-2.0
+summary: Extends the file matcher
+version: 1.0.0
+supports:
+  - os-family: unix
+  - os-family: windows
+depends:
+  - name: line_resources
+    path: test/integration/line_resources

@@ -36,11 +36,12 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def wait_job_completed(self, job_id):
+    def wait_job_completed(self, job_id, timeout=None):
         """
         Wait for job completion.
 
         :param job_id: id of the job to wait for.
+        :param timeout: max minutes to wait for job to complete
         :return: status of the job.
         """
         pass
@@ -122,14 +123,20 @@ class AWSBatchCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(
-        retry_on_result=lambda result: "FAILED" not in result and any(status != "SUCCEEDED" for status in result),
-        wait_fixed=seconds(7),
-        stop_max_delay=minutes(15),
-    )
-    def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id), log_output=True)
-        return re.findall(r"status\s+: (.+)", result.stdout)
+    def wait_job_completed(self, job_id, timeout=None):  # noqa: D102
+        if not timeout:
+            timeout = 15
+
+        @retry(
+            retry_on_result=lambda result: "FAILED" not in result and any(status != "SUCCEEDED" for status in result),
+            wait_fixed=seconds(7),
+            stop_max_delay=minutes(timeout),
+        )
+        def _job_status_retryer():
+            result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id), log_output=True)
+            return re.findall(r"status\s+: (.+)", result.stdout)
+
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         return self.wait_job_completed(job_id)
@@ -179,24 +186,51 @@ class SlurmCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(
-        retry_on_result=lambda result: "JobState" not in result
-        or any(
-            value in result
-            for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]
-        ),
-        wait_fixed=seconds(10),
-        stop_max_delay=minutes(12),
-    )
-    def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command(
-            "scontrol show jobs -o {0}".format(job_id), raise_on_error=False
+    def wait_job_completed(self, job_id, timeout=None):  # noqa: D102
+        if not timeout:
+            timeout = 12
+
+        @retry(
+            retry_on_result=lambda result: "JobState" not in result
+            or any(
+                value in result
+                for value in [
+                    "EndTime=Unknown",
+                    "JobState=RUNNING",
+                    "JobState=COMPLETING",
+                    "JobState=CONFIGURING",
+                    "JobState=PENDING",
+                ]
+            ),
+            wait_fixed=seconds(10),
+            stop_max_delay=minutes(timeout),
         )
-        return result.stdout
+        def _job_status_retryer():
+            result = self._remote_command_executor.run_remote_command(
+                "scontrol show jobs -o {0}".format(job_id), raise_on_error=False
+            )
+            return result.stdout
+
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         match = re.search(r"ExitCode=(.+?) ", result.stdout)
+        return match.group(1)
+
+    def get_job_start_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"StartTime=(.+?) ", result.stdout)
+        return match.group(1)
+
+    def get_job_submit_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"SubmitTime=(.+?) ", result.stdout)
+        return match.group(1)
+
+    def get_job_eligible_time(self, job_id):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"EligibleTime=(.+?) ", result.stdout)
         return match.group(1)
 
     def assert_job_submitted(self, sbatch_output):  # noqa: D102
@@ -334,10 +368,14 @@ class SlurmCommands(SchedulerCommands):
             logging.error("Unable to retrieve job output.")
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
+        self.assert_job_state(job_id, "COMPLETED")
+
+    def assert_job_state(self, job_id, expected_state):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         try:
-            assert_that(result.stdout).contains("JobState=COMPLETED")
+            assert_that(result.stdout).contains(f"JobState={expected_state}")
         except AssertionError:
+            logging.error("JobState of jobid %s not in %s:\n%s", job_id, expected_state, result.stdout)
             self._dump_job_output(result.stdout)
             raise
 
@@ -356,11 +394,11 @@ class SlurmCommands(SchedulerCommands):
 
     @retry(retry_on_result=lambda result: "drain" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(5))
     def wait_for_locked_node(self):  # noqa: D102
-        return self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -h -o '%t'").stdout
+        return self._remote_command_executor.run_remote_command("sinfo -h -o '%t'").stdout
 
     def get_node_cores(self, partition=None):
         """Return number of slots from the scheduler."""
-        check_core_cmd = "/opt/slurm/bin/sinfo -o '%c' -h"
+        check_core_cmd = "sinfo -o '%c' -h"
         if partition:
             check_core_cmd += " -p {}".format(partition)
         result = self._remote_command_executor.run_remote_command(check_core_cmd)
@@ -377,21 +415,19 @@ class SlurmCommands(SchedulerCommands):
     def set_nodes_state(self, compute_nodes, state):
         """Put nodes into a state."""
         self._remote_command_executor.run_remote_command(
-            "sudo /opt/slurm/bin/scontrol update NodeName={} state={} reason=testing".format(
-                ",".join(compute_nodes), state
-            )
+            "sudo -i scontrol update NodeName={} state={} reason=testing".format(",".join(compute_nodes), state)
         )
 
     def set_partition_state(self, partition, state):
         """Put partition into a state."""
         self._remote_command_executor.run_remote_command(
-            "sudo /opt/slurm/bin/scontrol update partition={} state={}".format(partition, state)
+            "sudo -i scontrol update partition={} state={}".format(partition, state)
         )
 
     def get_nodes_status(self, filter_by_nodes=None):
         """Retrieve node state/status from scheduler"""
         result = self._remote_command_executor.run_remote_command(
-            "/opt/slurm/bin/sinfo -N --long -h | awk '{print$1, $4}'"
+            "sinfo -N --long -h | awk '{print$1, $4}'"
         ).stdout.splitlines()
         current_node_states = {}
         for entry in result:
@@ -409,7 +445,7 @@ class SlurmCommands(SchedulerCommands):
         # q1-dy-c5xlarge-2 172.31.4.136 q1-dy-c5xlarge-2
         # q1-dy-c5xlarge-3 q1-dy-c5xlarge-3 q1-dy-c5xlarge-3
         return self._remote_command_executor.run_remote_command(
-            "/opt/slurm/bin/sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
+            "sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
         ).stdout.splitlines()
 
     def submit_command_and_assert_job_accepted(self, submit_command_args):
@@ -420,14 +456,18 @@ class SlurmCommands(SchedulerCommands):
     def get_partition_state(self, partition):
         """Get the state of the partition."""
         return self._remote_command_executor.run_remote_command(
-            f'/opt/slurm/bin/scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
+            f'scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
         ).stdout
 
-    @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(13))
     def wait_job_running(self, job_id):
         """Wait till job starts running."""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         assert_that(result.stdout).contains("JobState=RUNNING")
+
+    def get_node_info(self, nodename):
+        """Get node info."""
+        return self._remote_command_executor.run_remote_command("scontrol show nodes {0}".format(nodename))
 
 
 class TorqueCommands(SchedulerCommands):
@@ -436,12 +476,20 @@ class TorqueCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(
-        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(12)
-    )
-    def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
-        return result.stdout
+    def wait_job_completed(self, job_id, timeout=None):  # noqa: D102
+        if not timeout:
+            timeout = 12
+
+        @retry(
+            retry_on_result=lambda result: "job_state = C" not in result,
+            wait_fixed=seconds(3),
+            stop_max_delay=minutes(timeout),
+        )
+        def _job_status_retryer():
+            result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
+            return result.stdout
+
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
@@ -511,7 +559,7 @@ class TorqueCommands(SchedulerCommands):
         raise NotImplementedError
 
 
-def get_scheduler_commands(scheduler, remote_command_executor):
+def get_scheduler_commands(remote_command_executor, scheduler):
     scheduler_commands = {
         "awsbatch": AWSBatchCommands,
         "slurm": SlurmCommands,

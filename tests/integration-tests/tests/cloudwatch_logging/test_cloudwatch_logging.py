@@ -18,6 +18,7 @@ from os import environ
 from pathlib import Path
 
 import boto3
+import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -97,7 +98,9 @@ class CloudWatchLoggingClusterState:
         self.feature_key = feature_key
         self.shared_dir = self._get_shared_dir(shared_dir)
         self.remote_command_executor = RemoteCommandExecutor(self.cluster)
-        self.scheduler_commands = get_scheduler_commands(self.scheduler, self.remote_command_executor)
+        self.scheduler_commands = get_scheduler_commands(
+            scheduler=self.scheduler, remote_command_executor=self.remote_command_executor
+        )
         self._relevant_logs = {HEAD_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: []}
         self._cluster_log_state = {HEAD_NODE_ROLE_NAME: {}, COMPUTE_NODE_ROLE_NAME: {}}
         self._set_cluster_log_state()
@@ -354,8 +357,10 @@ class CloudWatchLoggingClusterState:
         critical_head_node_logs = (
             [
                 "/var/log/parallelcluster/clustermgtd",
+                "/var/log/parallelcluster/clusterstatusmgtd",
                 "/var/log/parallelcluster/slurm_resume.log",
                 "/var/log/parallelcluster/slurm_suspend.log",
+                "/var/log/parallelcluster/slurm_fleet_status_manager.log",
             ]
             if self.scheduler == "slurm"
             else []
@@ -630,7 +635,10 @@ def get_config_param_vals():
     return {"enable": "true", "retention_days": retention_days, "queue_size": queue_size}
 
 
-def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_reader, test_datadir, clusters_factory):
+@pytest.mark.usefixtures("instance")
+def test_cloudwatch_logging(
+    region, scheduler, os, pcluster_config_reader, test_datadir, clusters_factory, scheduler_commands_factory
+):
     """
     Test all CloudWatch logging features.
 

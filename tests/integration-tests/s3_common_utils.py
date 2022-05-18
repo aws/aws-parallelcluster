@@ -37,7 +37,8 @@ def check_role_inline_policy(region, cluster, enable_write_access, s3_policy_res
                 resource = [resource]
             assert_that(resource).is_length(len(s3_policy_resources))
             for expected_resource in s3_policy_resources:
-                # actual_resource contains arn:aws:s3 prefix while expected_resource does not necessary have the prefix.
+                # actual_resource contains arn:aws:s3 prefix,
+                # while expected_resource does not necessarily have the prefix.
                 # therefore we use endswith() to make the tests more flexible.
                 assert_that(any([actual_resource.endswith(expected_resource) for actual_resource in resource]))
 

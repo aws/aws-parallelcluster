@@ -15,7 +15,7 @@ Scheduling:
     - Name: efa-enabled
       Networking:
         PlacementGroup:
-          Enabled: true
+          Enabled: {% if instance != "p4d.24xlarge" %}true{% else %}false{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
@@ -23,6 +23,7 @@ Scheduling:
           InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ max_queue_size }}
+          DisableSimultaneousMultithreading: {{ multithreading_disabled }}
           Efa:
             Enabled: true
             {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}

@@ -9,6 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pkg_resources import packaging
+
 PCLUSTER_NAME_MAX_LENGTH = 60
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
@@ -46,7 +48,8 @@ IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_
 # i.e. aws-parallelcluster-awsbatch-cli>=2.0.0,aws-parallelcluster-awsbatch-cli<3.0.0
 AWSBATCH_CLI_REQUIREMENTS = "aws-parallelcluster-awsbatch-cli<2.0.0"
 
-FSX_SSD_THROUGHPUT = [50, 100, 200]
+
+FSX_SSD_THROUGHPUT = {"PERSISTENT_1": [50, 100, 200], "PERSISTENT_2": [125, 250, 500, 1000]}
 FSX_HDD_THROUGHPUT = [12, 40]
 
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
@@ -62,11 +65,13 @@ DEFAULT_MIN_COUNT = 0
 MAX_NUMBER_OF_QUEUES = 10
 MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 
-MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1, "raid": 1}
+MAX_EBS_COUNT = 5
+MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
+MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.1.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.1.0",
+    "parallelcluster": "3.2.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.2.0",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",
@@ -83,6 +88,7 @@ STACK_EVENTS_LOG_STREAM_NAME_FORMAT = "{}-cfn-events"
 PCLUSTER_IMAGE_NAME_REGEX = r"^[-_A-Za-z0-9{][-_A-Za-z0-9\s:{}\.]+[-_A-Za-z0-9}]$"
 PCLUSTER_IMAGE_ID_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,127})$"
 
+PCLUSTER_SLURM_DYNAMODB_PREFIX = "parallelcluster-slurm-"
 PCLUSTER_DYNAMODB_PREFIX = "parallelcluster-"
 PCLUSTER_PREFIX = "parallelcluster:"
 PCLUSTER_IMAGE_NAME_TAG = f"{PCLUSTER_PREFIX}image_name"
@@ -101,6 +107,7 @@ PCLUSTER_CLUSTER_NAME_TAG = f"{PCLUSTER_PREFIX}cluster-name"
 # PCLUSTER_NODE_TYPE_TAG needs to be the same as the hard coded strings in node package
 PCLUSTER_NODE_TYPE_TAG = f"{PCLUSTER_PREFIX}node-type"
 PCLUSTER_QUEUE_NAME_TAG = f"{PCLUSTER_PREFIX}queue-name"
+PCLUSTER_COMPUTE_RESOURCE_NAME_TAG = f"{PCLUSTER_PREFIX}compute-resource-name"
 IMAGEBUILDER_ARN_TAG = "Ec2ImageBuilderArn"
 PCLUSTER_S3_ARTIFACTS_DICT = {
     "root_directory": "parallelcluster",
@@ -113,6 +120,7 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "instance_types_data_name": "instance-types-data.json",
     "custom_artifacts_name": "artifacts.zip",
     "scheduler_resources_name": "scheduler_resources.zip",
+    "change_set_name": "change-set.json",
 }
 
 PCLUSTER_TAG_VALUE_REGEX = r"^([\w\+\-\=\.\_\:\@/]{0,256})$"
@@ -150,6 +158,18 @@ SUPPORTED_REGIONS = [
     "us-west-2",
 ]
 
-SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT = 1
-SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT = 1
 SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS = 10
+
+# see https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html
+NODEJS_MIN_VERSION = "10.13.0"
+NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
+
+NODE_BOOTSTRAP_TIMEOUT = 1800
+
+SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version("1.0")
+SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
+
+# DirectoryService
+DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
+
+DEFAULT_EPHEMERAL_DIR = "/scratch"

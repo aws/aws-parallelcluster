@@ -56,21 +56,23 @@ class FsxPersistentOptionsValidator(Validator):
     """
 
     def _validate(self, deployment_type, kms_key_id, per_unit_storage_throughput):
-        if deployment_type == "PERSISTENT_1":
+        persistent_deployment_types = ["PERSISTENT_1", "PERSISTENT_2"]
+        if deployment_type in persistent_deployment_types:
             if not per_unit_storage_throughput:
                 self._add_failure(
-                    "Per unit storage throughput must be specified when deployment type is `PERSISTENT_1'.",
+                    f"Per unit storage throughput must be specified when deployment type is {deployment_type}.",
                     FailureLevel.ERROR,
                 )
         else:
             if kms_key_id:
                 self._add_failure(
-                    "KMS key id can only be used when deployment type is `PERSISTENT_1'.",
+                    f"KMS key id can only be used when deployment type is one of {persistent_deployment_types}.",
                     FailureLevel.ERROR,
                 )
             if per_unit_storage_throughput:
                 self._add_failure(
-                    "Per unit storage throughput can only be used when deployment type is `PERSISTENT_1'.",
+                    "Per unit storage throughput can only be used when deployment type is one of"
+                    f" {persistent_deployment_types}.",
                     FailureLevel.ERROR,
                 )
 
@@ -100,9 +102,10 @@ class FsxBackupOptionsValidator(Validator):
                 "When specifying copy tags to backups, the automatic backup retention days option must be specified.",
                 FailureLevel.ERROR,
             )
-        if deployment_type != "PERSISTENT_1" and automatic_backup_retention_days:
+        persistent_deployment_types = ["PERSISTENT_1", "PERSISTENT_2"]
+        if deployment_type not in persistent_deployment_types and automatic_backup_retention_days:
             self._add_failure(
-                "FSx automatic backup features can be used only with 'PERSISTENT_1' file systems.",
+                f"FSx automatic backup features can be used only with {persistent_deployment_types} file systems.",
                 FailureLevel.ERROR,
             )
         if (
@@ -127,27 +130,25 @@ class FsxStorageTypeOptionsValidator(Validator):
         if fsx_storage_type == "HDD":
             if deployment_type != "PERSISTENT_1":
                 self._add_failure(
-                    "For HDD filesystems, deployment type must be 'PERSISTENT_1'.",
+                    "For HDD file systems, deployment type must be PERSISTENT_1.",
                     FailureLevel.ERROR,
                 )
             if per_unit_storage_throughput not in FSX_HDD_THROUGHPUT:
                 self._add_failure(
-                    "For HDD filesystems, per unit storage throughput can only have the following values: {0}.".format(
-                        FSX_HDD_THROUGHPUT
-                    ),
+                    "For HDD file systems, per unit storage throughput can only have "
+                    f"the following values: {FSX_HDD_THROUGHPUT}.",
                     FailureLevel.ERROR,
                 )
         else:  # SSD or None
             if drive_cache_type:
                 self._add_failure(
-                    "Drive cache type features can be used only with HDD filesystems.",
+                    "Drive cache type features can be used only with HDD file systems.",
                     FailureLevel.ERROR,
                 )
-            if per_unit_storage_throughput and per_unit_storage_throughput not in FSX_SSD_THROUGHPUT:
+            if per_unit_storage_throughput and per_unit_storage_throughput not in FSX_SSD_THROUGHPUT[deployment_type]:
                 self._add_failure(
-                    "For SSD filesystems, per unit storage throughput can only have the following values: {0}.".format(
-                        FSX_SSD_THROUGHPUT
-                    ),
+                    f"For {deployment_type} SSD file systems, per unit storage throughput can only have "
+                    f"the following values: {FSX_SSD_THROUGHPUT[deployment_type]}.",
                     FailureLevel.ERROR,
                 )
 
@@ -177,7 +178,7 @@ class FsxStorageCapacityValidator(Validator):
         elif deployment_type == "SCRATCH_1":
             if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
                 self._add_failure(
-                    "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB.",
+                    "Capacity for FSx SCRATCH_1 file systems is 1,200 GB, 2,400 GB or increments of 3,600 GB.",
                     FailureLevel.ERROR,
                 )
         elif deployment_type == "PERSISTENT_1" and fsx_storage_type == "HDD":
@@ -191,10 +192,10 @@ class FsxStorageCapacityValidator(Validator):
                     "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB.",
                     FailureLevel.ERROR,
                 )
-        elif deployment_type in ["SCRATCH_2", "PERSISTENT_1"]:
+        elif deployment_type in ["SCRATCH_2", "PERSISTENT_1", "PERSISTENT_2"]:
             if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
                 self._add_failure(
-                    "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB.",
+                    f"Capacity for FSx {deployment_type} file systems is 1,200 GB or increments of 2,400 GB.",
                     FailureLevel.ERROR,
                 )
 

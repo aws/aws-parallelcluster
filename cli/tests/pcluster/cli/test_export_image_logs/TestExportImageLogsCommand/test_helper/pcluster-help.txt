@@ -1,10 +1,10 @@
-usage: pcluster export-image-logs [-h] [--debug] [--region REGION]
+usage: pcluster export-image-logs [-h] [--debug] [-r REGION]
                                   [--output-file OUTPUT_FILE]
                                   [--bucket-prefix BUCKET_PREFIX]
                                   [--keep-s3-objects KEEP_S3_OBJECTS]
                                   [--start-time START_TIME]
-                                  [--end-time END_TIME] --image-id IMAGE_ID
-                                  --bucket BUCKET
+                                  [--end-time END_TIME] -i IMAGE_ID --bucket
+                                  BUCKET
 
 Export the logs of the image builder stack to a local tar.gz archive by
 passing through an Amazon S3 Bucket.
@@ -12,7 +12,8 @@ passing through an Amazon S3 Bucket.
 optional arguments:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
-  --region REGION       AWS Region this operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region this operation corresponds to.
   --output-file OUTPUT_FILE
                         File path to save log archive to. If this is provided
                         the logs are saved locally. Otherwise they are
@@ -33,6 +34,7 @@ optional arguments:
                         8601 format: YYYY-MM-DDThh:mm:ssZ (e.g.
                         1984-09-15T19:20:30Z), time elements might be omitted.
                         Defaults to current time
-  --image-id IMAGE_ID   Export the logs related to the image id provided here.
+  -i IMAGE_ID, --image-id IMAGE_ID
+                        Export the logs related to the image id provided here.
   --bucket BUCKET       S3 bucket to export image builder logs data to. It
                         must be in the same region of the image

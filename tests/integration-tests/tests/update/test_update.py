@@ -239,12 +239,12 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
     for queue, queue_config in queues_config.items():
         for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
             running_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{compute_resource_name}-\d+ (idle|mixed|alloc)\n").findall(
+                re.compile(rf"{queue}-(dy|st)-{compute_resource_name}-\d+ (idle|mixed|alloc)\n").findall(
                     slurm_nodes_str
                 )
             )
             power_saved_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{compute_resource_name}-\d+ idle~\n").findall(slurm_nodes_str)
+                re.compile(rf"{queue}-(dy|st)-{compute_resource_name}-\d+ idle~\n").findall(slurm_nodes_str)
             )
             assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
@@ -310,7 +310,7 @@ def _check_script(command_executor, slurm_commands, host, script_name, script_ar
     time.sleep(5)  # wait a bit to be sure to have the file
 
     result = command_executor.run_remote_command(f"cat {output_file_path}")
-    assert_that(result.stdout).matches(fr"{script_name}-{script_arg}")
+    assert_that(result.stdout).matches(rf"{script_name}-{script_arg}")
 
 
 def _add_compute_nodes(slurm_commands, partition, constraint, number_of_nodes=1):
@@ -319,7 +319,7 @@ def _add_compute_nodes(slurm_commands, partition, constraint, number_of_nodes=1)
     It is required because some changes will be available only on new compute nodes.
     :param cluster: the cluster
     :param number_of_nodes: number of nodes to add
-    :return an array containing the new compute nodes only
+    :return: an array containing the new compute nodes only
     """
     logging.info(f"launch a new {constraint} compute node in partition {partition}")
     initial_compute_nodes = slurm_commands.get_compute_nodes()

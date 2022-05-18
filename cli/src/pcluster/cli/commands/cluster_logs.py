@@ -33,7 +33,9 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("--cluster-name", help="Export the logs of the cluster name provided here.", required=True)
+        parser.add_argument(
+            "-n", "--cluster-name", help="Export the logs of the cluster name provided here.", required=True
+        )
         # Export options
         parser.add_argument(
             "--bucket",
@@ -74,7 +76,7 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,
             end_time=args.end_time,
-            filters=" ".join(args.filters) if args.filters else None,
+            filters=args.filters,
             output_file=output_file,
         )
         LOGGER.debug("Cluster's logs exported correctly to %s", url)
@@ -86,7 +88,7 @@ class _FiltersArg:
 
     def __init__(self, accepted_filters: list):
         filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
-        self._pattern = re.compile(fr"^({filter_regex})(\s+{filter_regex})*$")
+        self._pattern = re.compile(rf"^({filter_regex})(\s+{filter_regex})*$")
 
     def __call__(self, value):
         if not self._pattern.match(value):

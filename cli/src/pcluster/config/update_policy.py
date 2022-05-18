@@ -10,6 +10,7 @@
 # limitations under the License.
 from enum import Enum
 
+from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.constants import DEFAULT_MAX_COUNT
 
 
@@ -26,12 +27,14 @@ class UpdatePolicy:
     def __init__(
         self,
         base_policy=None,
+        name=None,
         level=None,
         fail_reason=None,
         action_needed=None,
         condition_checker=None,
         print_succeeded=True,
     ):
+        self.name = None
         self.fail_reason = None
         self.action_needed = None
         self.condition_checker = None
@@ -39,11 +42,14 @@ class UpdatePolicy:
         self.level = 0
 
         if base_policy:
+            self.name = base_policy.name
             self.fail_reason = base_policy.fail_reason
             self.action_needed = base_policy.action_needed
             self.condition_checker = base_policy.condition_checker
             self.level = base_policy.level
 
+        if name:
+            self.name = name
         if level:
             self.level = level
         if fail_reason:
@@ -97,6 +103,52 @@ class UpdatePolicy:
         return self.fail_reason == other.fail_reason and self.level == other.level
 
 
+def actions_needed_queue_update_strategy(change, _):
+    actions = "Stop the compute fleet with the pcluster update-compute-fleet command"
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if is_slurm_queues_change(change):
+        actions += ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation"
+
+    return actions
+
+
+def condition_checker_compute_fleet_stop_on_remove(change, patch):
+    result = not patch.cluster.has_running_capacity()
+    # SlurmQueue or ComputeResource can be added but removal require compute fleet stop
+    if change.is_list and (is_slurm_queues_change(change) or change.key == "SlurmQueues"):
+        result = result or (change.old_value is None and change.new_value is not None)
+
+    return result
+
+
+def is_slurm_queues_change(change):
+    return any(path.startswith("SlurmQueues[") for path in change.path)
+
+
+def fail_reason_queue_update_strategy(change, _):
+    reason = "All compute nodes must be stopped"
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if is_slurm_queues_change(change):
+        reason += " or QueueUpdateStrategy must be set"
+
+    return reason
+
+
+def condition_checker_queue_update_strategy(change, patch):
+    result = not patch.cluster.has_running_capacity()
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if is_slurm_queues_change(change):
+        result = (
+            result
+            or patch.target_config.get("Scheduling")
+            .get("SlurmSettings", {})
+            .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
+            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+        )
+
+    return result
+
+
 # Common fail_reason messages
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
@@ -116,12 +168,14 @@ UpdatePolicy.ACTIONS_NEEDED = {
         "modify-ebs-volume",
     ),
     "pcluster_stop": lambda change, patch: "Stop the compute fleet with the pcluster update-compute-fleet command",
+    "pcluster_stop_conditional": actions_needed_queue_update_strategy,
 }
 
 # Base policies
 
 # Update is ignored
 UpdatePolicy.IGNORED = UpdatePolicy(
+    name="IGNORED",
     level=-10,
     fail_reason="-",
     condition_checker=(lambda change, patch: True),
@@ -130,10 +184,13 @@ UpdatePolicy.IGNORED = UpdatePolicy(
 )
 
 # Update supported
-UpdatePolicy.SUPPORTED = UpdatePolicy(level=0, fail_reason="-", condition_checker=(lambda change, patch: True))
+UpdatePolicy.SUPPORTED = UpdatePolicy(
+    name="SUPPORTED", level=0, fail_reason="-", condition_checker=(lambda change, patch: True)
+)
 
 # Checks resize of max_vcpus in Batch Compute Environment
 UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
+    name="AWSBATCH_CE_MAX_RESIZE",
     level=1,
     fail_reason=lambda change, patch: "Max vCPUs can not be lower than the current Desired vCPUs ({0})".format(
         patch.cluster.get_running_capacity()
@@ -145,6 +202,7 @@ UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
 
 # Checks resize of max_count
 UpdatePolicy.MAX_COUNT = UpdatePolicy(
+    name="MAX_COUNT",
     level=1,
     fail_reason=lambda change, patch: "Shrinking a queue requires the compute fleet to be stopped first",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
@@ -153,8 +211,27 @@ UpdatePolicy.MAX_COUNT = UpdatePolicy(
     >= (change.old_value if change.old_value is not None else DEFAULT_MAX_COUNT),
 )
 
+# Update supported only with all compute nodes down or with replacement policy set different from COMPUTE_FLEET_STOP
+UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
+    name="QUEUE_UPDATE_STRATEGY",
+    level=5,
+    fail_reason=fail_reason_queue_update_strategy,
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop_conditional"],
+    condition_checker=condition_checker_queue_update_strategy,
+)
+
+# Update supported on new addition or on removal only with all compute nodes down
+UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE = UpdatePolicy(
+    name="COMPUTE_FLEET_STOP_ON_REMOVE",
+    level=7,
+    fail_reason="All compute nodes must be stopped",
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
+    condition_checker=condition_checker_compute_fleet_stop_on_remove,
+)
+
 # Update supported only with all compute nodes down
 UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
+    name="COMPUTE_FLEET_STOP",
     level=10,
     fail_reason="All compute nodes must be stopped",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
@@ -163,6 +240,7 @@ UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
 
 # Update supported only with head node down
 UpdatePolicy.HEAD_NODE_STOP = UpdatePolicy(
+    name="HEAD_NODE_STOP",
     level=20,
     fail_reason="To perform this update action, the head node must be in a stopped state",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
@@ -173,6 +251,7 @@ UpdatePolicy.HEAD_NODE_STOP = UpdatePolicy(
 # No bucket specified when create, no bucket specified when update: Display no diff, proceed with update
 # For all other cases: Display diff and block, value will not be updated even if forced
 UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
+    name="READ_ONLY_RESOURCE_BUCKET",
     level=30,
     fail_reason=lambda change, patch: (
         "'{0}' parameter is a read only parameter that cannot be updated. "
@@ -189,6 +268,7 @@ UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
 # update policy instead of UNKNOWN to pass unit tests.
 #
 UpdatePolicy.UNKNOWN = UpdatePolicy(
+    name="UNKNOWN",
     level=100,
     fail_reason="Update currently not supported",
     action_needed="Restore the previous parameter value for the unsupported changes.",
@@ -196,6 +276,7 @@ UpdatePolicy.UNKNOWN = UpdatePolicy(
 
 # Update not supported
 UpdatePolicy.UNSUPPORTED = UpdatePolicy(
+    name="UNSUPPORTED",
     level=1000,
     fail_reason=lambda change, patch: (f"Update actions are not currently supported for the '{change.key}' parameter"),
     action_needed=lambda change, patch: (

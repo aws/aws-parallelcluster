@@ -21,6 +21,11 @@ from utils import get_compute_nodes_count, get_compute_nodes_instance_ids
 from tests.common.scaling_common import get_compute_nodes_allocation
 
 
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def wait_instance_replaced_or_terminating(instance_id, region):
+    assert_instance_replaced_or_terminating(instance_id, region)
+
+
 def assert_instance_replaced_or_terminating(instance_id, region):
     """Assert that a given instance got replaced or is marked as Unhealthy."""
     ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
@@ -32,8 +37,14 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
     if scheduler == "slurm":
         log_files = [
             "/var/log/parallelcluster/clustermgtd",
+            "/var/log/parallelcluster/clusterstatusmgtd",
             "/var/log/parallelcluster/slurm_resume.log",
             "/var/log/parallelcluster/slurm_suspend.log",
+            "/var/log/parallelcluster/slurm_fleet_status_manager.log",
+        ]
+    elif scheduler == "plugin":
+        log_files = [
+            "/var/log/parallelcluster/clusterstatusmgtd",
         ]
     else:
         log_files = []
@@ -113,11 +124,13 @@ def assert_scaling_worked(
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def wait_for_num_instances_in_cluster(cluster_name, region, desired):
-    assert_num_instances_in_cluster(cluster_name, region, desired)
+    return assert_num_instances_in_cluster(cluster_name, region, desired)
 
 
 def assert_num_instances_in_cluster(cluster_name, region, desired):
-    assert_that(len(get_compute_nodes_instance_ids(cluster_name, region))).is_equal_to(desired)
+    instances = get_compute_nodes_instance_ids(cluster_name, region)
+    assert_that(instances).is_length(desired)
+    return instances
 
 
 def assert_num_instances_constant(cluster_name, region, desired, timeout=5):

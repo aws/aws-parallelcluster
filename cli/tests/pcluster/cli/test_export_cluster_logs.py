@@ -27,7 +27,7 @@ class TestExportClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({"output_file": "path"}, "the following arguments are required: --cluster-name, --bucket")],
+        [({"output_file": "path"}, "the following arguments are required: -n/--cluster-name, --bucket")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -41,6 +41,7 @@ class TestExportClusterLogsCommand:
         [
             ({"filters": ["Name=wrong,Value=test"]}, "filters parameter must be in the form"),
             ({"filters": ["private-dns-name=test"]}, "filters parameter must be in the form"),
+            ({"filters": "private-dns-name=test"}, "filters parameter must be in the form"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -55,6 +56,7 @@ class TestExportClusterLogsCommand:
         [
             {},
             {"output_file": "output-path"},
+            {"bucket": "bucket-name", "keep_s3_objects": True},
             {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
             {"filters": "Name=private-dns-name,Values=ip-10-10-10-10"},
             {
@@ -115,6 +117,7 @@ class TestExportClusterLogsCommand:
                 "output_file": args.get("output_file") and os.path.realpath(args.get("output_file")),
                 "start_time": args.get("start_time") and to_utc_datetime(args["start_time"]),
                 "end_time": args.get("end_time") and to_utc_datetime(args["end_time"]),
+                "filters": [args.get("filters")] if args.get("filters") else None,
             }
         )
         export_logs_mock.assert_called_with(**expected_params)

@@ -22,6 +22,7 @@ from pykwalify.core import Core
 
 package_directory = os.path.dirname(os.path.abspath(__file__))
 CONFIG_SCHEMA = f"{package_directory}/config_schema.yaml"
+PCLUSTER_SCHEDULERS = {"slurm", "awsbatch", "plugin"}
 
 
 def assert_valid_config(config, tests_root_dir):
@@ -36,19 +37,29 @@ def assert_valid_config(config, tests_root_dir):
     """
     _validate_against_schema(config)
     _check_declared_tests_exist(config, tests_root_dir)
-    _check_no_empty_dimension_lists(config)
+    _validate_dimensions(config)
 
 
-def _check_no_empty_dimension_lists(config):
+def _validate_dimensions(config):
     """Verify that at least one dimension is not an empty list"""
     logging.info("Checking provided dimensions are valid")
     for feature in config.get("test-suites").values():
         for test_name, test in feature.items():
-            for dimensions_config in test.values():
-                for dimensions_group in dimensions_config:
-                    if [] in dimensions_group.values():
-                        logging.error("Values assigned to dimensions in test %s cannot be empty", test_name)
-                        raise AssertionError
+            for dimensions_config in test["dimensions"]:
+                _validate_schedulers(config, dimensions_config.get("schedulers", []))
+                if [] in dimensions_config.values():
+                    logging.error("Values assigned to dimensions in test %s cannot be empty", test_name)
+                    raise AssertionError
+
+
+def _validate_schedulers(config, schedulers):
+    """Verify that the scheduler entries are valid."""
+    for scheduler in schedulers:
+        if scheduler not in PCLUSTER_SCHEDULERS:
+            if scheduler not in config.get("scheduler-plugins", {}).keys():
+                error = f"Invalid scheduler ({scheduler}) found in config or missing the scheduler plugin definition."
+                logging.error(error)
+                raise AssertionError(error)
 
 
 def _validate_against_schema(config):

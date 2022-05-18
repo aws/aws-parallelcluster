@@ -127,7 +127,7 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 3600
-      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | PERSISTENT_2 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 1024
       ExportPath: String  # s3://bucket/folder
       ImportPath: String  # s3://bucket
@@ -139,7 +139,7 @@ SharedStorage:
       # BackupId: backup-fedcba98 # BackupId cannot coexist with some of the fields
       KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
       # FileSystemId: fs-12345678123456789 # FileSystemId cannot coexist with some of the fields
-      AutoImportPolicy: NEW  # NEW | NEW_CHANGED
+      AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
 Iam:

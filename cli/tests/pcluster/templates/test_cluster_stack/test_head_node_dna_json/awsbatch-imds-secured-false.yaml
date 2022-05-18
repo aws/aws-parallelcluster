@@ -20,3 +20,8 @@ Scheduling:
           InstanceTypes:
             - c5.xlarge
           MaxvCpus: 10
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1201
+    ComputeNodeBootstrapTimeout: 1201
+

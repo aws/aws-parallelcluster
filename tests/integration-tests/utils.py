@@ -22,6 +22,7 @@ import subprocess
 import boto3
 from assertpy import assert_that
 from constants import OS_TO_ROOT_VOLUME_DEVICE
+from jinja2 import Environment, FileSystemLoader
 from retrying import retry
 
 
@@ -453,15 +454,16 @@ def get_arn_partition(region):
         return "aws"
 
 
-def check_pcluster_list_cluster_log_streams(cluster, os):
+def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):
     """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
     logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
 
     stream_names = cluster.get_all_log_stream_names()
-    expected_log_streams = {
-        "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
-        "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
-    }
+    if not expected_log_streams:
+        expected_log_streams = {
+            "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
+            "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
+        }
 
     # check there are the logs of all the instances
     cluster_info = cluster.describe_cluster()
@@ -475,3 +477,24 @@ def instance_stream_name(instance, stream_name):
     """Return a stream name given an instance."""
     ip_str = instance["privateIpAddress"].replace(".", "-")
     return "ip-{}.{}.{}".format(ip_str, instance["instanceId"], stream_name)
+
+
+def render_jinja_template(template_file_path, **kwargs):
+    file_loader = FileSystemLoader(str(os.path.dirname(template_file_path)))
+    env = Environment(loader=file_loader)
+    rendered_template = env.get_template(os.path.basename(template_file_path)).render(**kwargs)
+    logging.info("Writing the following to %s\n%s", template_file_path, rendered_template)
+    with open(template_file_path, "w", encoding="utf-8") as f:
+        f.write(rendered_template)
+    return template_file_path
+
+
+def scheduler_plugin_definition_uploader(upload_script_path, bucket, key_prefix, region):
+    command = f"{upload_script_path} --bucket {bucket} --key-prefix {key_prefix} --region {region}"
+    logging.info("Calling scheduler plugin upload script with command (%s)", command)
+    try:
+        run_command(command)
+        return f"s3://{bucket}/{key_prefix}/plugin_definition.yaml"
+    except Exception as e:
+        logging.error("Failed when uploading scheduler plugin artifacts", e)
+        raise

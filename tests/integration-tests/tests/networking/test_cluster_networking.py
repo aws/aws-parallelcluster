@@ -24,21 +24,23 @@ from fabric import Connection
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import GetAtt, Output, Ref, Template, ec2
 from troposphere.ec2 import EIP, VPCEndpoint
-from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os
+from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os, render_jinja_template
 
-from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
-from tests.common.osu_common import compile_osu, render_jinja_template
-from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
+from tests.common.assertions import assert_no_errors_in_logs, assert_no_msg_in_logs, wait_for_num_instances_in_cluster
+from tests.common.osu_common import compile_osu
+from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
 from tests.storage.test_fsx_lustre import (
     assert_fsx_lustre_correctly_mounted,
     assert_fsx_lustre_correctly_shared,
-    get_fsx_fs_id,
+    get_fsx_fs_ids,
 )
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_cluster_in_private_subnet(region, os, scheduler, pcluster_config_reader, clusters_factory, bastion_instance):
+def test_cluster_in_private_subnet(
+    region, pcluster_config_reader, clusters_factory, bastion_instance, scheduler_commands_factory
+):
     # This test just creates a cluster in the private subnet and just checks that no failures occur
     fsx_mount_dir = "/fsx_mount"
     cluster_config = pcluster_config_reader(fsx_mount_dir=fsx_mount_dir)
@@ -46,7 +48,11 @@ def test_cluster_in_private_subnet(region, os, scheduler, pcluster_config_reader
     assert_that(cluster).is_not_none()
 
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(1)
-    _test_fsx_in_private_subnet(cluster, os, region, scheduler, fsx_mount_dir, bastion_instance)
+    remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion_instance)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    _test_fsx_in_private_subnet(
+        cluster, region, fsx_mount_dir, bastion_instance, remote_command_executor, scheduler_commands
+    )
 
 
 @pytest.fixture(scope="class")
@@ -84,15 +90,15 @@ def test_existing_eip(existing_eip, pcluster_config_reader, clusters_factory):
     connection.run("cat /var/log/cfn-init.log", timeout=60)
 
 
-def _test_fsx_in_private_subnet(cluster, os, region, scheduler, fsx_mount_dir, bastion_instance):
+def _test_fsx_in_private_subnet(
+    cluster, region, fsx_mount_dir, bastion_instance, remote_command_executor, scheduler_commands
+):
     """Test FSx can be mounted in private subnet."""
     logging.info("Sleeping for 60 sec to wait for bastion ssh to become ready.")
     time.sleep(60)
     logging.info(f"Bastion: {bastion_instance}")
-    remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion_instance)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    fsx_fs_id = get_fsx_fs_id(cluster, region)
-    assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, os, region, fsx_fs_id)
+    fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
+    assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, region, fsx_fs_id)
     assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
 
 
@@ -111,7 +117,10 @@ def test_cluster_in_no_internet_subnet(
     mpi_variants,
     bastion_instance,
 ):
-    """This test creates a cluster in a subnet with no internet, run osu latency and checks that no failures occur."""
+    """
+    This test creates a cluster in a subnet with no internet, run simple integration test to check prolog and epilog
+    script failure, then run osu latency and checks that no failures occur.
+    """
     bucket_name = s3_bucket_factory()
     _upload_pre_install_script(bucket_name, test_datadir)
 
@@ -129,8 +138,18 @@ def test_cluster_in_no_internet_subnet(
 
     _check_no_internet_access(remote_command_executor)
     _check_hostname(remote_command_executor)
+    _run_prolog_epilog_jobs(remote_command_executor, slurm_commands)
     _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region)
-    utils.check_pcluster_list_cluster_log_streams(cluster, os)
+    expected_log_streams = {
+        "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
+        "Compute": {
+            "syslog" if os.startswith("ubuntu") else "system-messages",
+            "computemgtd",
+            "supervisord",
+            "slurm_prolog_epilog",
+        },
+    }
+    utils.check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
     logging.info("Checking compute node is scaled down after scaledown idle time")
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)
@@ -153,6 +172,31 @@ def _check_hostname(remote_command_executor):
     assert_that(hostname).matches(r"^ip-\d+-\d+-\d+-\d+$")
 
 
+def _run_prolog_epilog_jobs(remote_command_executor, slurm_commands):
+    logging.info("Running simple test to verify prolog and epilog")
+    logging.info("Test one job on 2 nodes")
+    job_id = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "uptime", "nodes": 2}
+    )
+    slurm_commands.wait_job_completed(job_id)
+    assert_no_msg_in_logs(remote_command_executor, ["/var/log/slurmctld.log"], ["launch failure"])
+    logging.info("Test 2 jobs simultaneously run on 2 nodes")
+    # 720 to have enough to run another job even node creation
+    job_id = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 720", "nodes": 2}
+    )
+    slurm_commands.wait_job_running(job_id)
+    # --no-requeue to make the job fail in case of prolog or epilog error
+    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "uptime", "nodes": 2, "other_options": "--no-requeue"}
+    )
+    slurm_commands.wait_job_completed(job_id_1)
+    # Check if the prolog and epilog run correctly
+    slurm_commands.assert_job_succeeded(job_id_1)
+    assert_no_msg_in_logs(remote_command_executor, ["/var/log/slurmctld.log"], ["launch failure"])
+    slurm_commands.cancel_job(job_id)
+
+
 def _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region):
     for mpi_variant in mpi_variants:
         logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION} for {mpi_variant}")
@@ -163,7 +207,7 @@ def _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_com
         )
         result = slurm_commands.submit_script(str(submission_script))
         job_id = slurm_commands.assert_job_submitted(result.stdout)
-        slurm_commands.wait_job_completed(job_id)
+        slurm_commands.wait_job_completed(job_id, timeout=15)
         slurm_commands.assert_job_succeeded(job_id)
     logging.info("Checking cluster has two nodes after running MPI jobs")  # 1 static node + 1 dynamic node
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(2)
@@ -196,7 +240,7 @@ def get_arn_partition(region):
         return "aws"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def enable_vpc_endpoints(vpc_stack, region, cfn_stacks_factory, request):
     prefix = "cn." if region.startswith("cn-") else ""
     # Note that the endpoints service name in China is irregular.
@@ -216,6 +260,12 @@ def enable_vpc_endpoints(vpc_stack, region, cfn_stacks_factory, request):
         VPCEndpointConfig(
             name="EC2Endpoint",
             service_name=prefix + f"com.amazonaws.{region}.ec2",
+            type=VPCEndpointConfig.EndpointType.INTERFACE,
+            enable_private_dns=True,
+        ),
+        VPCEndpointConfig(
+            name="SecretsManager",
+            service_name=prefix + f"com.amazonaws.{region}.secretsmanager",
             type=VPCEndpointConfig.EndpointType.INTERFACE,
             enable_private_dns=True,
         ),

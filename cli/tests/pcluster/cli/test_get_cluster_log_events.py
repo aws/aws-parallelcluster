@@ -29,8 +29,7 @@ class TestGetClusterLogEventsCommand:
         assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
-        "args, error_message",
-        [({}, "the following arguments are required: --cluster-name, --log-stream-name")],
+        "args, error_message", [({}, "the following arguments are required: -n/--cluster-name, --log-stream-name")]
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -47,10 +46,7 @@ class TestGetClusterLogEventsCommand:
             ({"start_from_head": "wrong"}, "expected 'boolean' for parameter 'start-from-head'"),
             ({"limit": "wrong"}, "expected 'int' for parameter 'limit'"),
             (
-                {
-                    "start_time": "2021-06-02",
-                    "end_time": "2021-06-02",
-                },
+                {"start_time": "2021-06-02", "end_time": "2021-06-02"},
                 "start_time filter must be earlier than end_time filter.",
             ),
         ],

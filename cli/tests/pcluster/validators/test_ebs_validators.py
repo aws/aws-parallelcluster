@@ -77,6 +77,10 @@ def test_ebs_volume_throughput_iops_validator(volume_type, volume_iops, volume_t
         ("gp3", 20, 2900, "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes."),
         ("gp3", 20, 16001, "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes."),
         ("gp3", 20, 10001, "IOPS to volume size ratio of .* is too high"),
+        ("gp2", 20, 120, "The parameter IOPS is not supported for gp2 volumes"),
+        ("sc1", 20, 120, "The parameter IOPS is not supported for sc1 volumes"),
+        ("st1", 20, 120, "The parameter IOPS is not supported for st1 volumes"),
+        ("standard", 20, 100, "The parameter IOPS is not supported for standard volumes"),
     ],
 )
 def test_ebs_volume_iops_validators(volume_type, volume_size, volume_iops, expected_message):

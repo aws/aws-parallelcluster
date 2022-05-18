@@ -44,6 +44,7 @@ from pcluster.api.models import (
     EC2Instance,
     InstanceState,
     ListClustersResponseContent,
+    Scheduler,
     Tag,
     UpdateClusterBadRequestExceptionResponseContent,
     UpdateClusterRequestContent,
@@ -51,9 +52,10 @@ from pcluster.api.models import (
     UpdateError,
     ValidationLevel,
 )
-from pcluster.api.util import assert_node_executable
+from pcluster.api.util import assert_valid_node_js
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import StackNotFoundError
+from pcluster.config.config_patch import ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.models.cluster import (
     Cluster,
@@ -97,7 +99,7 @@ def create_cluster(
     (Defaults to &#39;true&#39;.)
     :type rollback_on_failure: bool
     """
-    assert_node_executable()
+    assert_valid_node_js()
     # Set defaults
     configure_aws_region_from_config(region, create_cluster_request_content["clusterConfiguration"])
     rollback_on_failure = rollback_on_failure in {True, None}
@@ -116,7 +118,7 @@ def create_cluster(
 
         if dryrun:
             ignored_validation_failures = cluster.validate_create_request(
-                get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level]
+                get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level], dry_run=dryrun
             )
             validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)
             raise DryrunOperationException(validation_messages=validation_messages or None)
@@ -135,6 +137,7 @@ def create_cluster(
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=get_installed_version(),
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.CREATE_IN_PROGRESS),
+                scheduler=Scheduler(type=cluster.config.scheduling.scheduler),
             ),
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
@@ -180,6 +183,7 @@ def delete_cluster(cluster_name, region=None):
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=cluster.stack.version,
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.DELETE_IN_PROGRESS),
+                scheduler=Scheduler(type=cluster.stack.scheduler),
             )
         )
     except StackNotFoundError:
@@ -228,6 +232,7 @@ def describe_cluster(cluster_name, region=None):
         last_updated_time=to_utc_datetime(cfn_stack.last_updated_time),
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cloud_formation_status_to_cluster_status(cfn_stack.status),
+        scheduler=Scheduler(type=cluster.stack.scheduler, metadata=cluster.get_plugin_metadata()),
     )
 
     try:
@@ -276,6 +281,7 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=stack.version,
                 cluster_status=current_cluster_status,
+                scheduler=Scheduler(type=stack.scheduler),
             )
             clusters.append(cluster_info)
 
@@ -316,7 +322,7 @@ def update_cluster(
 
     :rtype: UpdateClusterResponseContent
     """
-    assert_node_executable()
+    assert_valid_node_js()
     # Set defaults
     configure_aws_region_from_config(region, update_cluster_request_content["clusterConfiguration"])
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
@@ -343,6 +349,7 @@ def update_cluster(
                 force=force_update,
                 validator_suppressors=get_validator_suppressors(suppress_validators),
                 validation_failure_level=FailureLevel[validation_failure_level],
+                dry_run=dryrun,
             )
             change_set, _ = _analyze_changes(changes)
             validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)
@@ -364,6 +371,7 @@ def update_cluster(
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=cluster.stack.version,
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.UPDATE_IN_PROGRESS),
+                scheduler=Scheduler(type=cluster.stack.scheduler),
             ),
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
             change_set=change_set,
@@ -413,9 +421,9 @@ def _analyze_changes(changes):
     key_indexes = {key: index for index, key in enumerate(changes[0])}
 
     for row in changes[1:]:
-        parameter = _get_yaml_path(row[key_indexes["param_path"]], row[key_indexes["parameter"]])
-        new_value = row[key_indexes["new value"]]
-        old_value = row[key_indexes["old value"]]
+        parameter = ConfigPatch.build_config_param_path(row[key_indexes["param_path"]], row[key_indexes["parameter"]])
+        new_value = row[key_indexes["new value"]] if not row[key_indexes["new value"]] is None else "-"
+        old_value = row[key_indexes["old value"]] if not row[key_indexes["old value"]] is None else "-"
         check_result = row[key_indexes["check"]]
         message = _create_message(row[key_indexes["reason"]], row[key_indexes["action_needed"]])
         if not _cluster_update_change_succeded(check_result):
@@ -433,16 +441,3 @@ def _create_message(failure_reason, action_needed):
     if action_needed:
         message = f"{message}. {action_needed}" if message else action_needed
     return message or "Error during update"
-
-
-def _get_yaml_path(path, parameter):
-    """Compose the parameter path following the YAML Path standard.
-
-    Standard: https://github.com/wwkimball/yamlpath/wiki/Segments-of-a-YAML-Path#yaml-path-standard
-    """
-    yaml_path = []
-    if path:
-        yaml_path.extend(path)
-    if parameter:
-        yaml_path.append(parameter)
-    return ".".join(yaml_path)

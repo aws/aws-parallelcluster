@@ -1594,15 +1594,15 @@ components:
     AmiInfo:
       type: object
       properties:
-        amiId:
+        architecture:
           type: string
-        os:
+        amiId:
           type: string
         name:
           type: string
-        version:
+        os:
           type: string
-        architecture:
+        version:
           type: string
       required:
         - amiId
@@ -1620,12 +1620,12 @@ components:
       type: object
       description: This exception is thrown when a client calls the BuildImage API with an invalid request. This includes an error due to invalid image configuration.
       properties:
+        message:
+          type: string
         configurationValidationErrors:
           type: array
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
-        message:
-          type: string
     BuildImageRequestContent:
       type: object
       properties:
@@ -1656,9 +1656,9 @@ components:
       properties:
         parameter:
           type: string
-        requestedValue:
-          type: string
         currentValue:
+          type: string
+        requestedValue:
           type: string
     CloudFormationResourceStatus:
       type: string
@@ -1711,45 +1711,48 @@ components:
           type: string
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
           description: Name of the cluster.
-        cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStackStatus'
-        cloudformationStackArn:
-          type: string
-          description: ARN of the main CloudFormation stack.
         region:
           type: string
           description: AWS region where the cluster is created.
         version:
           type: string
           description: ParallelCluster version used to create the cluster.
+        cloudformationStackArn:
+          type: string
+          description: ARN of the main CloudFormation stack.
+        cloudformationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
+        scheduler:
+          $ref: '#/components/schemas/Scheduler'
       required:
         - cloudformationStackArn
         - cloudformationStackStatus
         - clusterName
         - clusterStatus
         - region
+        - scheduler
         - version
     ClusterInstance:
       type: object
       properties:
+        instanceId:
+          type: string
+        instanceType:
+          type: string
         launchTime:
           type: string
           format: date-time
-        instanceId:
-          type: string
-        queueName:
+        privateIpAddress:
           type: string
         publicIpAddress:
-          type: string
-        instanceType:
           type: string
         state:
           $ref: '#/components/schemas/InstanceState'
         nodeType:
           $ref: '#/components/schemas/NodeType'
-        privateIpAddress:
+        queueName:
           type: string
       required:
         - instanceId
@@ -1797,14 +1800,14 @@ components:
     ConfigValidationMessage:
       type: object
       properties:
-        level:
-          $ref: '#/components/schemas/ValidationLevel'
         id:
           type: string
           description: Id of the validator.
         type:
           type: string
           description: Type of the validator.
+        level:
+          $ref: '#/components/schemas/ValidationLevel'
         message:
           type: string
           description: Validation message
@@ -1818,12 +1821,12 @@ components:
       type: object
       description: This exception is thrown when a client calls the CreateCluster API with an invalid request. This includes an error due to invalid cluster configuration.
       properties:
+        message:
+          type: string
         configurationValidationErrors:
           type: array
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
-        message:
-          type: string
     CreateClusterRequestContent:
       type: object
       properties:
@@ -1866,57 +1869,59 @@ components:
     DescribeClusterInstancesResponseContent:
       type: object
       properties:
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
         instances:
           type: array
           items:
             $ref: '#/components/schemas/ClusterInstance'
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
       required:
         - instances
     DescribeClusterResponseContent:
       type: object
       properties:
+        clusterName:
+          type: string
+          pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
+          description: Name of the cluster.
+        region:
+          type: string
+          description: AWS region where the cluster is created.
+        version:
+          type: string
+          description: ParallelCluster version used to create the cluster.
+        cloudFormationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
+        clusterStatus:
+          $ref: '#/components/schemas/ClusterStatus'
+        scheduler:
+          $ref: '#/components/schemas/Scheduler'
+        cloudformationStackArn:
+          type: string
+          description: ARN of the main CloudFormation stack.
         creationTime:
           type: string
           description: Timestamp representing the cluster creation time.
           format: date-time
-        version:
+        lastUpdatedTime:
           type: string
-          description: ParallelCluster version used to create the cluster.
+          description: Timestamp representing the last cluster update time.
+          format: date-time
         clusterConfiguration:
           $ref: '#/components/schemas/ClusterConfigurationStructure'
+        computeFleetStatus:
+          $ref: '#/components/schemas/ComputeFleetStatus'
         tags:
           type: array
           items:
             $ref: '#/components/schemas/Tag'
           description: Tags associated with the cluster.
-        cloudFormationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStackStatus'
-        clusterName:
-          type: string
-          pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Name of the cluster.
-        computeFleetStatus:
-          $ref: '#/components/schemas/ComputeFleetStatus'
+        headNode:
+          $ref: '#/components/schemas/EC2Instance'
         failureReason:
           type: string
           description: Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.
-        cloudformationStackArn:
-          type: string
-          description: ARN of the main CloudFormation stack.
-        lastUpdatedTime:
-          type: string
-          description: Timestamp representing the last cluster update time.
-          format: date-time
-        region:
-          type: string
-          description: AWS region where the cluster is created.
-        clusterStatus:
-          $ref: '#/components/schemas/ClusterStatus'
-        headNode:
-          $ref: '#/components/schemas/EC2Instance'
       required:
         - cloudFormationStackStatus
         - cloudformationStackArn
@@ -1927,6 +1932,7 @@ components:
         - creationTime
         - lastUpdatedTime
         - region
+        - scheduler
         - tags
         - version
     DescribeComputeFleetResponseContent:
@@ -1943,48 +1949,48 @@ components:
     DescribeImageResponseContent:
       type: object
       properties:
-        cloudformationStackStatusReason:
-          type: string
-          description: Reason for the CloudFormation stack status.
-        imagebuilderImageStatusReason:
-          type: string
-          description: Reason for the ImageBuilder Image status.
         imageId:
           type: string
           description: Id of the Image to retrieve detailed information for.
+        region:
+          type: string
+          description: AWS region where the image is created.
+        version:
+          type: string
+          description: ParallelCluster version used to build the image.
+        imageBuildStatus:
+          $ref: '#/components/schemas/ImageBuildStatus'
+        imageBuildLogsArn:
+          type: string
+          description: ARN of the logs for the image build process.
+        cloudformationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
+        cloudformationStackStatusReason:
+          type: string
+          description: Reason for the CloudFormation stack status.
+        cloudformationStackArn:
+          type: string
+          description: ARN of the main CloudFormation stack.
+        creationTime:
+          type: string
+          description: Timestamp representing the image creation time.
+          format: date-time
+        cloudformationStackCreationTime:
+          type: string
+          description: Timestamp representing the CloudFormation stack creation time.
+          format: date-time
         cloudformationStackTags:
           type: array
           items:
             $ref: '#/components/schemas/Tag'
           description: Tags for the CloudFormation stack.
-        imagebuilderImageStatus:
-          $ref: '#/components/schemas/ImageBuilderImageStatus'
-        creationTime:
-          type: string
-          description: Timestamp representing the image creation time.
-          format: date-time
-        version:
-          type: string
-          description: ParallelCluster version used to build the image.
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
-        imageBuildStatus:
-          $ref: '#/components/schemas/ImageBuildStatus'
-        cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStackStatus'
-        imageBuildLogsArn:
+        imagebuilderImageStatus:
+          $ref: '#/components/schemas/ImageBuilderImageStatus'
+        imagebuilderImageStatusReason:
           type: string
-          description: ARN of the logs for the image build process.
-        cloudformationStackArn:
-          type: string
-          description: ARN of the main CloudFormation stack.
-        region:
-          type: string
-          description: AWS region where the image is created.
-        cloudformationStackCreationTime:
-          type: string
-          description: Timestamp representing the CloudFormation stack creation time.
-          format: date-time
+          description: Reason for the ImageBuilder Image status.
         ec2AmiInfo:
           $ref: '#/components/schemas/Ec2AmiInfo'
       required:
@@ -1997,11 +2003,6 @@ components:
       type: object
       description: Communicates that the operation would have succeeded without the dryrun flag.
       properties:
-        validationMessages:
-          type: array
-          items:
-            $ref: '#/components/schemas/ConfigValidationMessage'
-          description: List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.
         message:
           type: string
         changeSet:
@@ -2009,22 +2010,27 @@ components:
           items:
             $ref: '#/components/schemas/Change'
           description: List of configuration changes requested by the operation.
+        validationMessages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigValidationMessage'
+          description: List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.
     EC2Instance:
       type: object
       properties:
-        launchTime:
-          type: string
-          format: date-time
         instanceId:
-          type: string
-        publicIpAddress:
           type: string
         instanceType:
           type: string
-        state:
-          $ref: '#/components/schemas/InstanceState'
+        launchTime:
+          type: string
+          format: date-time
         privateIpAddress:
           type: string
+        publicIpAddress:
+          type: string
+        state:
+          $ref: '#/components/schemas/InstanceState'
       required:
         - instanceId
         - instanceType
@@ -2034,25 +2040,25 @@ components:
     Ec2AmiInfo:
       type: object
       properties:
-        amiName:
-          type: string
-          description: EC2 AMI name
         amiId:
           type: string
           description: EC2 AMI id
-        description:
-          type: string
-          description: EC2 AMI description
-        state:
-          $ref: '#/components/schemas/Ec2AmiState'
         tags:
           type: array
           items:
             $ref: '#/components/schemas/Tag'
           description: EC2 AMI Tags
+        amiName:
+          type: string
+          description: EC2 AMI name
         architecture:
           type: string
           description: EC2 AMI architecture
+        state:
+          $ref: '#/components/schemas/Ec2AmiState'
+        description:
+          type: string
+          description: EC2 AMI description
       required:
         - amiId
     Ec2AmiInfoSummary:
@@ -2155,13 +2161,6 @@ components:
           type: string
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
           description: Id of the image.
-        imageBuildStatus:
-          $ref: '#/components/schemas/ImageBuildStatus'
-        cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStackStatus'
-        cloudformationStackArn:
-          type: string
-          description: ARN of the main CloudFormation stack.
         ec2AmiInfo:
           $ref: '#/components/schemas/Ec2AmiInfoSummary'
         region:
@@ -2170,6 +2169,13 @@ components:
         version:
           type: string
           description: ParallelCluster version used to build the image.
+        cloudformationStackArn:
+          type: string
+          description: ARN of the main CloudFormation stack.
+        imageBuildStatus:
+          $ref: '#/components/schemas/ImageBuildStatus'
+        cloudformationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
       required:
         - imageBuildStatus
         - imageId
@@ -2205,13 +2211,13 @@ components:
     ListClusterLogStreamsResponseContent:
       type: object
       properties:
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
         logStreams:
           type: array
           items:
             $ref: '#/components/schemas/LogStream'
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
       required:
         - logStreams
     ListClustersResponseContent:
@@ -2229,25 +2235,25 @@ components:
     ListImageLogStreamsResponseContent:
       type: object
       properties:
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
         logStreams:
           type: array
           items:
             $ref: '#/components/schemas/LogStream'
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
       required:
         - logStreams
     ListImagesResponseContent:
       type: object
       properties:
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
         images:
           type: array
           items:
             $ref: '#/components/schemas/ImageInfoSummary'
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
       required:
         - images
     ListOfficialImagesResponseContent:
@@ -2262,27 +2268,24 @@ components:
     LogEvent:
       type: object
       properties:
-        message:
-          type: string
         timestamp:
           type: string
           format: date-time
+        message:
+          type: string
       required:
         - message
         - timestamp
     LogStream:
       type: object
       properties:
-        logStreamArn:
+        logStreamName:
           type: string
-          description: The Amazon Resource Name (ARN) of the log stream.
+          description: Name of the log stream.
         creationTime:
           type: string
           description: The creation time of the stream.
           format: date-time
-        logStreamName:
-          type: string
-          description: Name of the log stream.
         firstEventTimestamp:
           type: string
           description: The time of the first event of the stream.
@@ -2298,6 +2301,9 @@ components:
         uploadSequenceToken:
           type: string
           description: The sequence token.
+        logStreamArn:
+          type: string
+          description: The Amazon Resource Name (ARN) of the log stream.
       required:
         - creationTime
         - firstEventTimestamp
@@ -2306,6 +2312,13 @@ components:
         - logStreamArn
         - logStreamName
         - uploadSequenceToken
+    Metadata:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
     NodeType:
       type: string
       enum:
@@ -2324,35 +2337,33 @@ components:
         - STOP_REQUESTED
         - ENABLED
         - DISABLED
+    Scheduler:
+      type: object
+      properties:
+        type:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+      required:
+        - type
     StackEvent:
       type: object
       properties:
-        eventId:
-          type: string
-          description: The unique ID of this event.
-        physicalResourceId:
-          type: string
-          description: The name or unique identifier associated with the physical instance of the resource.
-        resourceStatus:
-          $ref: '#/components/schemas/CloudFormationResourceStatus'
-        resourceStatusReason:
-          type: string
-          description: Success/failure message associated with the resource.
-        clientRequestToken:
-          type: string
-          description: The token passed to the operation that generated this event.
-        resourceProperties:
-          type: string
-          description: BLOB of the properties used to create the resource.
         stackId:
           type: string
           description: The unique ID name of the instance of the stack.
+        eventId:
+          type: string
+          description: The unique ID of this event.
         stackName:
           type: string
           description: The name associated with a stack.
         logicalResourceId:
           type: string
           description: The logical name of the resource specified in the template.
+        physicalResourceId:
+          type: string
+          description: The name or unique identifier associated with the physical instance of the resource.
         resourceType:
           type: string
           description: Type of resource.
@@ -2360,6 +2371,17 @@ components:
           type: string
           description: Time the status was updated.
           format: date-time
+        resourceStatus:
+          $ref: '#/components/schemas/CloudFormationResourceStatus'
+        resourceStatusReason:
+          type: string
+          description: Success/failure message associated with the resource.
+        resourceProperties:
+          type: string
+          description: BLOB of the properties used to create the resource.
+        clientRequestToken:
+          type: string
+          description: The token passed to the operation that generated this event.
       required:
         - eventId
         - logicalResourceId
@@ -2372,12 +2394,12 @@ components:
     Tag:
       type: object
       properties:
-        value:
-          type: string
-          description: Tag value
         key:
           type: string
           description: Tag name
+        value:
+          type: string
+          description: Tag value
     UnauthorizedClientErrorResponseContent:
       type: object
       description: This exception is thrown when the client is not authorized to perform an action.
@@ -2388,12 +2410,12 @@ components:
       type: object
       description: This exception is thrown when a client calls the UpdateCluster API with an invalid request. This includes an error due to invalid cluster configuration and unsupported update.
       properties:
+        message:
+          type: string
         configurationValidationErrors:
           type: array
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
-        message:
-          type: string
         updateValidationErrors:
           type: array
           items:
@@ -2451,11 +2473,11 @@ components:
       properties:
         parameter:
           type: string
+        currentValue:
+          type: string
         requestedValue:
           type: string
         message:
-          type: string
-        currentValue:
           type: string
     ValidationLevel:
       type: string

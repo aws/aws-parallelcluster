@@ -1,0 +1,53 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ head_node_instance_type }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: compute
+      ComputeResources:
+        - Name: cit
+          InstanceType: {{ compute_instance_type }}
+          MinCount: 2
+          MaxCount: 150
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14
+SharedStorage:
+  - MountDir: /shared
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 2400
+  - MountDir: /ebs
+    Name: ebs
+    StorageType: Ebs
+  - MountDir: /efs
+    Name: efs
+    StorageType: Efs
+DirectoryService:
+  DomainName: {{ ldap_search_base }}
+  DomainAddr: {{ ldap_uri }}
+  PasswordSecretArn: {{ password_secret_arn }}
+  DomainReadOnlyUser: {{ ldap_default_bind_dn }}
+  LdapTlsCaCert: {{ ldap_tls_ca_cert }}
+  LdapTlsReqCert: {{ ldap_tls_req_cert }}
+  GenerateSshKeysForUsers: true
+  LdapAccessFilter: "!(CN=PclusterUser2)"
+  AdditionalSssdConfigs:
+    debug_level: "0x1ff"
+    {% if directory_protocol == "ldap" %}
+    ldap_auth_disable_tls_never_use_in_production: True
+    {% endif %}

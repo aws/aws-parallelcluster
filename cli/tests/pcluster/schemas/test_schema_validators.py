@@ -19,6 +19,7 @@ from pcluster.schemas.cluster_schema import (
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
+    DirectoryServiceSchema,
     EbsSettingsSchema,
     EfsSettingsSchema,
     FsxLustreSettingsSchema,
@@ -445,8 +446,6 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"PerUnitStorageThroughput": 50}, None),
         ({"PerUnitStorageThroughput": 100}, None),
         ({"PerUnitStorageThroughput": 200}, None),
-        ({"PerUnitStorageThroughput": 101}, "Must be one of"),
-        ({"PerUnitStorageThroughput": 1000}, "Must be one of"),
         ({"DailyAutomaticBackupStartTime": ""}, "does not match expected pattern"),
         ({"DailyAutomaticBackupStartTime": "01:00"}, None),
         ({"DailyAutomaticBackupStartTime": "23:00"}, None),
@@ -466,6 +465,7 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"BackupId": "backup-0a1b2c3d4e5f6a7b8"}, None),
         ({"AutoImportPolicy": "NEW"}, None),
         ({"AutoImportPolicy": "NEW_CHANGED"}, None),
+        ({"AutoImportPolicy": "NEW_CHANGED_DELETED"}, None),
         ({"StorageType": "SSD"}, None),
         ({"StorageType": "HDD"}, None),
         ({"StorageType": "INVALID_VALUE"}, "Must be one of"),
@@ -591,3 +591,14 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
 def test_instance_role_validator(instance_role, expected_message):
     """Verify that instance role behaves as expected when parsed in a config file."""
     _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "password_secret_arn, expected_message",
+    [
+        ("arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx", None),
+        ("wrong_value", "String does not match expected pattern"),
+    ],
+)
+def test_password_secret_arn_validator(password_secret_arn, expected_message):
+    _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)

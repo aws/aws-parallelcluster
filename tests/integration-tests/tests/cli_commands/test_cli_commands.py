@@ -34,7 +34,7 @@ from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_insta
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
-@pytest.mark.usefixtures("region", "instance")
+@pytest.mark.usefixtures("instance")
 def test_slurm_cli_commands(
     request, scheduler, region, os, pcluster_config_reader, clusters_factory, s3_bucket_factory
 ):
@@ -82,6 +82,7 @@ def _test_create_cluster(clusters_factory, cluster_config, request):
         "region": cluster.region,
         "version": get_installed_parallelcluster_version(),
         "clusterStatus": "CREATE_IN_PROGRESS",
+        "scheduler": {"type": "slurm"},
     }
     assert_that(cluster.creation_response.get("cluster")).is_equal_to(expected_creation_response)
     _test_list_cluster(cluster.name, "CREATE_IN_PROGRESS")
@@ -200,6 +201,7 @@ def _test_describe_cluster(cluster):
     assert_that(cluster_info).contains("cloudformationStackArn")
     assert_that(cluster_info).contains("creationTime")
     assert_that(cluster_info).contains("clusterConfiguration")
+    assert_that(cluster_info).contains("scheduler")
 
 
 def _test_list_cluster(cluster_name, expected_status):
@@ -217,6 +219,7 @@ def _test_list_cluster(cluster_name, expected_status):
     found_cluster = _find_cluster_with_pagination(cmd_args, cluster_name)
     assert_that(found_cluster).is_not_none()
     assert_that(found_cluster["cloudformationStackStatus"]).is_equal_to(expected_status)
+    assert_that(found_cluster["scheduler"]).is_equal_to({"type": "slurm"})
 
 
 def _find_cluster_with_pagination(cmd_args, cluster_name):
@@ -274,9 +277,27 @@ def _test_pcluster_compute_fleet(cluster, expected_num_nodes):
     check_status(cluster, "CREATE_COMPLETE", "running", "RUNNING")
 
 
+def _test_export_log_files_are_expected(cluster, bucket_name, instance_ids, bucket_prefix, filters=None):
+    # test with a prefix and an output file
+    with tempfile.TemporaryDirectory() as tempdir:
+        output_file = f"{tempdir}/testfile.tar.gz"
+        ret = cluster.export_logs(
+            bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix, filters=filters
+        )
+        assert_that(ret["path"]).is_equal_to(output_file)
+
+        with tarfile.open(output_file) as archive:
+            filenames = {logfile.name for logfile in archive}
+
+            # check there are the logs of all the instances and cfn logs
+            for file_expected in set(instance_ids) | {f"{cluster.name}-cfn-events"}:
+                assert_that(any(file_expected in filename for filename in filenames)).is_true()
+
+
 def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
     """Test pcluster export-cluster-logs functionality."""
     instance_ids = cluster.get_cluster_instance_ids()
+    headnode_instance_id = cluster.get_cluster_instance_ids(node_type="HeadNode")
 
     logging.info("Testing that pcluster export-cluster-logs is working as expected")
     bucket_name = s3_bucket_factory()
@@ -302,19 +323,14 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
         ],
     }
     boto3.client("s3").put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
+    # test with a prefix and an output file
+    bucket_prefix = "test_prefix"
+    _test_export_log_files_are_expected(cluster, bucket_name, instance_ids, bucket_prefix)
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        output_file = f"{tempdir}/testfile.tar.gz"
-        bucket_prefix = "test_prefix"
-        ret = cluster.export_logs(bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix)
-        assert_that(ret["path"]).is_equal_to(output_file)
-
-        with tarfile.open(output_file) as archive:
-            filenames = {logfile.name for logfile in archive}
-
-            # check there are the logs of all the instances and cfn logs
-            for file_expected in set(instance_ids) | {f"{cluster.name}-cfn-events"}:
-                assert_that(any(file_expected in filename for filename in filenames)).is_true()
+    # test export-cluster-logs with filter option
+    _test_export_log_files_are_expected(
+        cluster, bucket_name, headnode_instance_id, bucket_prefix, filters="Name=node-type,Values=HeadNode"
+    )
 
     # check bucket_prefix folder has been removed from S3
     bucket_cleaned_up = False
@@ -325,13 +341,24 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
             bucket_cleaned_up = True
     assert_that(bucket_cleaned_up).is_true()
 
+    # test without a prefix or output file
+    ret = cluster.export_logs(bucket=bucket_name)
+    assert_that(ret).contains_key("url")
+    filename = ret["url"].split(".tar.gz")[0].split("/")[-1] + ".tar.gz"
+    archive_found = True
+    try:
+        boto3.resource("s3").Object(bucket_name, filename).load()
+    except botocore.exceptions.ClientError as exc:
+        if exc.response["Error"]["Code"] == "404":
+            archive_found = False
+    assert_that(archive_found).is_true()
+
 
 def _test_pcluster_get_cluster_log_events(cluster):
     """Test pcluster get-cluster-log-events functionality."""
     logging.info("Testing that pcluster get-cluster-log-events is working as expected")
     cluster_info = cluster.describe_cluster()
     cfn_init_log_stream = instance_stream_name(cluster_info["headNode"], "cfn-init")
-    cloud_init_debug_msg = "[DEBUG] CloudFormation client initialized with endpoint"
 
     # Get the first event to establish time boundary for testing
     initial_events = cluster.get_log_events(cfn_init_log_stream, limit=1, start_from_head=True)
@@ -360,10 +387,10 @@ def _test_pcluster_get_cluster_log_events(cluster):
             assert_that(events).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).contains(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).is_equal_to(first_event["message"])
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_contain(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).is_not_equal_to(first_event["message"])
 
 
 def _test_pcluster_get_cluster_stack_events(cluster):

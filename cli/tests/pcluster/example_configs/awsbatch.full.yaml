@@ -87,27 +87,6 @@ SharedStorage:
       ThroughputMode: provisioned  # bursting | provisioned
       ProvisionedThroughput: 1024
       FileSystemId: fs-12345678
-  - MountDir: /my/mount/point3
-    StorageType: FsxLustre
-    Name: name3
-    FsxLustreSettings:
-      StorageCapacity: 3600  # 3600
-      DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
-      DataCompressionType: LZ4
-      ImportedFileChunkSize: 1024
-      ExportPath: s3://bucket/folder
-      ImportPath: s3://bucket
-      WeeklyMaintenanceStartTime: "1:00:00"
-      AutomaticBackupRetentionDays: 1
-      CopyTagsToBackups: true
-      DailyAutomaticBackupStartTime: 01:03
-      PerUnitStorageThroughput: 50
-      #BackupId: backup-12345678  # BackupId cannot coexist with some of the fields
-      KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      #FileSystemId: fs-12345678123456789  # FileSystemId cannot coexist with other fields
-      AutoImportPolicy: NEW_CHANGED  # NEW | NEW_CHANGED
-      DriveCacheType: READ  # READ
-      StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
     LambdaFunctionsRole: arn:aws:iam::aws:role/CustomResourcesLambdaRole
@@ -135,3 +114,5 @@ DevSettings:
     ExtraChefAttributes: '{ "cluster" : { "custom_node_package" : "https://s3.eu-west-1.amazonaws.com/cfncluster-fdm-build-artifacts-eu-west-1/node/aws-parallelcluster-node-2.8.1.tgz", "skip_install_recipes": "no" } }'
   AwsBatchCliPackage: https://batchcli.url
   NodePackage: https://nodepackage.url
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1000  # Default 1800 (seconds)

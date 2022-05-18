@@ -1,0 +1,41 @@
+{
+  "widgets": [
+    {
+      "type": "text",
+      "width": 24,
+      "height": 1,
+      "x": 0,
+      "y": 80,
+      "properties": {
+        "markdown": "\n## Performance Test\n"
+      }
+    },
+    {
+      "type": "metric",
+      "width": 24,
+      "height": 8,
+      "x": 0,
+      "y": 81,
+      "properties":   {
+        "metrics": [
+          [ "ParallelCluster/PerformanceTests", "JobsQueuedCount", "ClusterName", "INSERT_CLUSTER_NAME_HERE", { "color": "#9467bd", "visible": true } ],
+          [ ".", "JobsPendingCount", ".", ".", { "color": "#ff7f0e", "visible": true } ],
+          [ ".", "JobsFailedCount", ".", ".", { "color": "#d62728", "visible": true } ],
+          [ ".", "JobsRunningCount", ".", ".", { "color": "#2ca02c", "visible": true } ],
+          [ ".", "ComputeNodeCount", ".", ".", { "color": "#1f77b4", "visible": true } ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "INSERT_AWS_REGION_HERE",
+        "stat": "Maximum",
+        "period": 10,
+        "title": "Queue Status",
+        "yAxis": {
+          "left": {
+            "label": ""
+          }
+        }
+      }
+    }
+  ]
+}

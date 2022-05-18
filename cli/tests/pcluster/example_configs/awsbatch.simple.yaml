@@ -27,6 +27,3 @@ SharedStorage:
   - MountDir: /shared3
     Name: efs
     StorageType: Efs
-  - MountDir: /shared4
-    Name: efs
-    StorageType: FsxLustre

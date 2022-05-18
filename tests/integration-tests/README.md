@@ -17,15 +17,15 @@ config generation.
 
 To run the integration tests you have to use Python >= 3.7.
 
-Before executing integration tests it is required to install all the python dependencies required by the framework.
-In order to do that simply run the following command:
+Before executing integration tests it is required to install all the Python dependencies required by the framework.
+In order to do that simply run the following commands:
 ```bash
+cd tests/integration-tests
 pip install -r tests/integration-tests/requirements.txt
 ```
 
 After that you can run the CLI by simply executing the following
 ```
-cd tests/integration-tests
 python -m test_runner --help
 ```
 
@@ -36,14 +36,14 @@ that lists all the available options:
 
 ```
 python -m test_runner --help
-usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
+usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--use-default-iam-credentials] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
                       [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
-                      [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
-                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL]
-                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
-                      [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks]
-                      [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
-                      [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
+                      [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR] [--custom-node-url CUSTOM_NODE_URL]
+                      [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL]
+                      [--pre-install PRE_INSTALL] [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF]
+                      [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
+                      [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--public-ecr-image-uri PUBLIC_ECR_IMAGE_URI] [--api-uri API_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER]
+                      [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME]
 
 Run integration tests suite.
 
@@ -55,18 +55,19 @@ optional arguments:
                         Tests parallelism for every region. (default: None)
   --sequential          Run tests in a single process. When not specified tests will spawn a process for each region under test. (default: False)
   --credential CREDENTIAL
-                        STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times.
-                        <region> represents the region credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role
-                        to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-
-                        assume,externalId) (default: None)
+                        STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times. <region> represents the region
+                        credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role to assume is defined, <externalId> is the id to use when
+                        assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId) (default: None)
+  --use-default-iam-credentials
+                        Use the default IAM creds to run pcluster CLI commands. Skips the creation of pcluster CLI IAM role. (default: False)
   --retry-on-failures   Retry once more the failed tests after a delay of 60 seconds. (default: False)
   --tests-root-dir TESTS_ROOT_DIR
                         Root dir where integration tests are defined (default: ./tests)
 
 Test dimensions:
   -c TESTS_CONFIG, --tests-config TESTS_CONFIG
-                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss,
-                        schedulers. Refer to the docs for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
+                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. Refer to the docs
+                        for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
   -i [INSTANCES [INSTANCES ...]], --instances [INSTANCES [INSTANCES ...]]
                         AWS instances under test. Ignored when tests-config is used. (default: [])
   -o [OSS [OSS ...]], --oss [OSS [OSS ...]]
@@ -81,8 +82,8 @@ Test dimensions:
 Test reports:
   --show-output         Do not redirect tests stdout to file. Not recommended when running in multiple regions. (default: None)
   --reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]
-                        create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes
-                        tests metrics into CloudWatch (default: [])
+                        create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into
+                        CloudWatch (default: [])
   --cw-region CW_REGION
                         Region where to publish CloudWatch metrics (default: us-east-1)
   --cw-namespace CW_NAMESPACE
@@ -107,6 +108,8 @@ Custom packages and templates:
                         URL to a pre install script (default: None)
   --post-install POST_INSTALL
                         URL to a post install script (default: None)
+  --instance-types-data INSTANCE_TYPES_DATA
+                        Additional information about instance types used in the tests. The format is a JSON map instance_type -> data, where data must respect the same structure returned by ec2 describe-instance-types (default: None)
 
 AMI selection parameters:
   --custom-ami CUSTOM_AMI
@@ -121,22 +124,38 @@ AMI selection parameters:
                         Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon. (default: None)
 
 Benchmarks:
-  --benchmarks          run benchmarks tests. This disables the execution of all tests defined under the tests directory. (default: False)
-  --benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY
-                        set the target capacity for benchmarks tests (default: 200)
-  --benchmarks-max-time BENCHMARKS_MAX_TIME
-                        set the max waiting time in minutes for benchmarks tests (default: 30)
+  --benchmarks          Run benchmarks tests. Benchmarks tests will be run together with functionality tests. (default: False)
+
+API options:
+  --api-definition-s3-uri API_DEFINITION_S3_URI
+                        URI of the Docker image for the Lambda of the ParallelCluster API (default: None)
+  --api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI
+                        URI of the CloudFormation template for the ParallelCluster API (default: None)
+  --public-ecr-image-uri PUBLIC_ECR_IMAGE_URI
+                        S3 URI of the ParallelCluster API spec (default: None)
+  --api-uri API_URI     URI of an existing ParallelCluster API (default: None)
 
 Debugging/Development options:
   --vpc-stack VPC_STACK
                         Name of an existing vpc stack. (default: None)
   --cluster CLUSTER     Use an existing cluster instead of creating one. (default: None)
+  --iam-user-role-stack-name
+                        Name of an existing IAM user role stack. (default: None)
+  --directory-stack-name
+                        Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
+  --ldaps-nlb-stack-name
+                        Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
+
   --no-delete           Don't delete stacks after tests are complete. (default: False)
   --delete-logs-on-success
-                        delete CloudWatch logs when a test success (default: True)
+                        delete CloudWatch logs when a test succeeds (default: False)
   --stackname-suffix STACKNAME_SUFFIX
                         set a suffix in the integration tests stack names (default: )
   --dry-run             Only show the list of tests that would run with specified options. (default: False)
+  --directory-stack-name DIRECTORY_STACK_NAME
+                        Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
+  --ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME
+                        Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
 ```
 
 Here is an example of tests submission:
@@ -161,8 +180,8 @@ Executing the command will run an integration testing suite with the following f
 ### Parametrize and select the tests to run
 
 Each test contained in the suite can be parametrized, at submission time, across four different dimensions: regions,
-instances, operative systems and schedulers. These dimensions allow to dynamically customize the combination of cluster
-parameters the need to be validated by the scheduler. Some tests, due to the specific feature they are validating,
+instances, operating systems and schedulers. These dimensions allow to dynamically customize the combination of cluster
+parameters that need to be validated by the scheduler. Some tests, due to the specific feature they are validating,
 might not be compatible with the entire set of available dimensions. 
 
 In order to specify what tests to execute and the dimensions to select there are two different possibilities:
@@ -245,7 +264,7 @@ Some tox commands are offered in order to simplify the generation and validation
   with the additional arguments: `--tests-configs-dir` and `--tests-config-file`
   (e.g. tox -e validate-test-configs -- --tests-config-file configs/develop.yaml)
 * `tox -e generate-test-config my-config-file` can be used to automatically generate a configuration file pre-filled
-  with the list of all available file. The config file is generated in the `tests/integration-tests/configs` directory.
+  with the list of all available files. The config file is generated in the `tests/integration-tests/configs` directory.
 
 #### Using CLI options
  
@@ -258,7 +277,7 @@ The following options can be used to control the parametrization of test cases:
 Note that each test case can specify a subset of dimensions it is allowed to run against (for example
 a test case written specifically for the awsbatch scheduler should only be executed against the awsbatch scheduler).
 This means that the final parametrization of the tests is given by an intersection of the input dimensions and
-the tests specific dimensions so that all constraints are verified.
+the test-specific dimensions so that all constraints are verified.
 
 The `-f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]` option allows to limit the number of test
 cases to execute by only running those that are meant to verify a specific feature or subset of features.
@@ -297,12 +316,12 @@ tests_outputs
     │         ├── results.html: html report for the given region
     │         ├── results.xml: junitxml report for the given region
     │         ├── collected_tests.txt: the list of collected parametrized tests that are executed in the specific region
-    │         └── tests_config.yaml: the configuration file used to defined the tests to run (if present)
+    │         └── tests_config.yaml: the configuration file used to define the tests to run (if present)
     ├── test_report.json: global json report
     └── test_report.xml: global junitxml report
 ```
 
-If tests are ran sequentially by adding the `--sequential` option the result is the following:
+If tests are run sequentially by adding the `--sequential` option the result is the following:
 ```
 tests_outputs
 ├── $timestamp..logs
@@ -317,7 +336,7 @@ tests_outputs
     ├── test_report.json: global json report
     ├── test_report.xml: global junitxml report
     ├── collected_tests.txt: the list of collected parametrized tests
-    └── tests_config.yaml: the configuration file used to defined the tests to run (if present)
+    └── tests_config.yaml: the configuration file used to define the tests to run (if present)
 ```
 
 By specifying the option `--reports cw`, the results of the tests run will be published as a series of CloudWatch
@@ -380,25 +399,6 @@ python -m test_runner \
 Keep in mind, the cluster you pass can have different `scheduler`, `os` or other features 
 than what is specified in the test. This can break the tests in unexpected ways. Be mindful.
 
-### Benchmark and performance tests
-
-Performance tests are disabled by default due to the high resource utilization involved with their execution.
-In order to run performance tests you can use the following options:
-* `--benchmarks`: run benchmarks tests. This disables the execution of all tests defined under the tests directory.
-* `--benchmarks-target-capacity`: set the target capacity for benchmarks tests (default: 200).
-* `--benchmarks-max-time`: set the max waiting time in minutes for benchmarks tests (default: 30).
-
-The same filters by dimensions and features can be applied to this kind of tests.
-
-The output produced by the performance tests is stored under the following directory tree:
-```
-tests_outputs
-└── $timestamp..out
-    └── benchmarks: directory storing all cluster configs used by test
-                  ├── test_scaling_speed.py-test_scaling_speed[c5.xlarge-eu-west-1-centos7-slurm].png
-            └── ...
-```
-
 ## Cross Account Integration Tests
 If you want to distribute integration tests across multiple accounts you can make use of the `--credential` flag. 
 This is useful to overcome restrictions related to account limits and be compliant with a multi-region, multi-account 
@@ -417,7 +417,7 @@ account).
  * `ARN` is the ARN of the delegation role in the optin region account to be assumed by the main account
  * `external_id` is the external ID of the delegation role  
 
-By default, the delegation role lifetime last for one hour. Mind that if you are planning to launch tests that last 
+By default, the delegation role lifetime is one hour. Mind that if you are planning to launch tests that last 
 more than one hour.
 
 ## Write Integration Tests
@@ -636,6 +636,8 @@ The idea is to create a single VPC per region and have multiple subnets that all
 At the moment three subnets are generated with the following configuration:
 
 ```python
+# Subnets visual representation:
+# http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
 public_subnet = SubnetConfig(
     name="Public",
     cidr="192.168.32.0/19",  # 8190 IPs
@@ -660,10 +662,18 @@ private_subnet_different_cidr = SubnetConfig(
     availability_zone=availability_zones[1],
     default_gateway=Gateways.NAT_GATEWAY,
 )
+no_internet_subnet = SubnetConfig(
+    name="NoInternet",
+    cidr="192.168.16.0/20",  # 4094 IPs
+    map_public_ip_on_launch=False,
+    has_nat_gateway=False,
+    availability_zone=availability_zones[0],
+    default_gateway=Gateways.NONE,
+)
 vpc_config = VPCConfig(
     cidr="192.168.0.0/17",
     additional_cidr_blocks=["192.168.128.0/17"],
-    subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
+    subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
 )
 ```
 
@@ -771,15 +781,253 @@ def vpc(cfn_stacks_factory):
     return stack
 ```
 
-### Benchmark and performance tests
+## Run Performance Tests with Integration Tests
 
-Benchmark and performance tests follow the same rules described above for a normal integration test.
-The only differences are the following:
-- the tests are defined under the `benchmarks/` directory
-- they are not executed by default with the rest of the integration tests
-- they write their output to a specific benchmarks directory created in the output dir
+Performance tests can run together with functionality tests, reusing clusters created by functionality test.
+
+To run performance test for a specific integration test, the following changes are required:
+1. Add `run_benchmarks` and `benchmarks` fixtures to the test:
+```python
+def test_feature(..., run_benchmarks, benchmarks):
+    ...
+```
+2. Add `benchmarks` parameter to `pcluster_config_reader`. This addition lets the `pcluster_config_reader` know benchmarks are used, therefore add placement groups and set larger max count in the configuration file.
+```python
+def test_feature(..., run_benchmarks, benchmarks):
+    ...
+    cluster_config = pcluster_config_reader(benchmarks=benchmarks)
+    ...
+```
+3. Decide the exact location in the test where the `run_benchmarks` should be called. The location is arbitrary. It can be the last line  of the test. Or if the test deletes/updates the cluster in the middle, you may want to call `run_benchmarks` before the deletes/updates.
+```python
+def test_feature(..., run_benchmarks, benchmarks):
+    ...
+    cluster_config = pcluster_config_reader(benchmarks=benchmarks)
+    ...
+    run_benchmarks(remote_command_executor, scheduler_commands)
+    ...
+```
+3. You may add more keyword arguments to the `run_benchmarks` calls. The keyword arguments will be added to the dimensions of CloudWatch metrics.
+```python
+def test_feature(..., run_benchmarks):
+    ...
+    cluster_config = pcluster_config_reader(benchmarks=benchmarks)
+    ...
+    run_benchmarks(remote_command_executor, scheduler_commands, diretory_type="MicrosoftAD")
+    ...
+```
+4. Decide if a larger head node instance type is needed and change the cluster configuration accordingly.
+5. Specify what benchmarks to run in the tests suite definition file
+```yaml
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  feature:
+    test_feature.py::test_feature:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: ["openmpi"]
+              num_instances: [100]
+              osu_benchmarks:
+                # Available collective benchmarks "osu_allgather", "osu_allreduce", "osu_alltoall", "osu_barrier", "osu_bcast", "osu_gather", "osu_reduce", "osu_reduce_scatter", "osu_scatter"
+                collective: ["osu_allreduce", "osu_alltoall"]
+                pt2pt: []
+```
+The definition above means the `osu_allreduce` and `osu_alltoall` will run in `eu-west-1`. You can extend the list under `benchmarks` or each parameters to get various combinations
+
+6. Use `--benchmarks` option to run performance tests. Performance tests are disabled by default due to the high resource utilization involved with their execution. 
+
+In conclusion, the performance test will run for a test only if:
+1. The test calls the `run_benchmark` fixture
+2. Tests suite definition file contains benchmarks specification
+3. `--benchmarks` option is used
+
+
+## Expand Performance Tests
+The current performance tests only support running OSU benchmarks. This section discusses how the current code is structured and how it facilitates adding more other performance test suites.
+1. The `benchmarks` in the tests suite definition file is a list of arbitrary structure, which means other benchmarks definition can be added without any change to the code.
+```yaml
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  feature:
+    test_feature.py::test_feature:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: ["openmpi"]
+              num_instances: [100]
+              other_benchmarks:
+                other_benchmarks_group: ["other_allreduce", "other_alltoall"]
+```
+2. The `run_benchmarks` fixture runs benchmarks for different `mpi_variants`, `num_instances` and pushes the result to CloudWatch with the correct namespace. The detailed execution of the OSU benchmarks is in `osu_common.py`, decoupled from the `run_benchmarks` fixture. So in the future, the `run_benchmarks` fixture will look like:
+```python
+@pytest.fixture()
+def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, benchmarks):
+  def _run_benchmarks(remote_command_executor, scheduler_commands, **kwargs):
+    ...
+    for mpi_variant, num_instances in product(benchmark.get("mpi_variants"), benchmark.get("num_instances")):
+        metric_namespace = f"ParallelCluster/{function_name}"
+        ...
+        osu_benchmarks = benchmark.get("osu_benchmarks", [])
+        if osu_benchmarks:
+            metric_data_list = run_osu_benchmarks(...)
+            for metric_data in metric_data_list:
+                cloudwatch_client.put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
+
+        other_benchmarks = benchmark.get("other_benchmarks", [])
+        if other_benchmarks:
+            metric_data_list = run_other_benchmarks(...)
+            for metric_data in metric_data_list:
+                cloudwatch_client.put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
+```
 
 ### Troubleshooting and fixes
 
 * `IdentityFile` option in `ssh/config` will trigger a `str has no attribute extend` bug in the `fabric` package. 
 Please remove `IdentityFile` option from `ssh/config` before running the testing framework
+
+
+## Testing a scheduler plugin
+
+In order to run tests for a scheduler plugin you need to make sure the plugin is defined in the tests configuration
+file. This is done by including the following object:
+
+```yaml
+scheduler-plugins:
+  plugin_name:
+    scheduler-definition: https://url|s3://url|<path to upload_artifacts.sh script>
+    scheduler-commands: "path.to.module.SchedulerCommandsClass"
+    requires-sudo: true|false
+```
+
+`scheduler-plugin` defines an entry for each scheduler plugin you intend to enable in tests.
+For each scheduler plugin you can specify the following fields:
+* `scheduler-definition`: this can be a S3 or HTTPs URL pointing to the scheduler plugin definition. Alternatively, 
+  it can be the path (relative or absolute) to the upload_artifacts.sh script. If the path is relative, it's relative to
+  integration tests suite root folder. The upload_artifacts.sh script is in charge to upload the scheduler-definition
+  into a given bucket, that will be created and passed by the test suite. 
+* `scheduler-commands`: this is the path to a Python class implementing the scheduler commands interface
+  defined in `tests.common.schedulers_common.SchedulerCommands`.
+* `requires-sudo`: this needs to be set to true in case the scheduler plugin requires sudo privileges.
+
+Once this is done you can use the specified `plugin_name` as the value for the schedulers dimension.
+For example:
+
+```yaml
+test-suites:
+  scaling:
+    test_scaling.py::test_multiple_jobs_submission:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: ["c5.xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm_plugin"]
+scheduler-plugins:
+  slurm_plugin:
+    scheduler-definition: s3://my-bucket/scheduler_plugins/slurm/plugin_definition.yaml
+    scheduler-commands: "tests.common.schedulers_common.SlurmCommands"
+    requires-sudo: true
+```
+
+In order to implement a test that is compatible with a scheduler plugin do the following:
+* Use the `scheduler_commands_factory` fixture to retrieve a scheduler_commands object to interact with the scheduler
+```python
+@pytest.mark.usefixtures("region", "os", "instance")
+def test_multiple_jobs_submission(
+    scheduler, region, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
+    scaledown_idletime = 4
+    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    ...
+```
+* Use `scheduler_prefix` jinja variable to define a generic cluster configuration
+```yaml
+...
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {{ scheduler_prefix }}Settings:
+    {% if scheduler == "plugin" %}
+    CustomSettings:
+      ScaledownIdletime: {{ scaledown_idletime }}
+    {% else %}
+    ScaledownIdletime: {{ scaledown_idletime }}
+    {% endif %}
+  {{ scheduler_prefix }}Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+```
+## Collect system analysis
+
+In case of performance degradation detected in tests, to speed up the root cause analysis it is useful to have a
+report of all the services, cron settings and information about the tested cluster. The function `run_system_analyzer` creates a subfolder
+in `out_dir` called `system_analyzer`. Every run the function creates 2 files, one for the head node and one
+for a compute node of the fleet. The generated file is a `tar.gz` archive containing a directory structure
+which is comparable with `diff`. Moreover, the function also collects some network statistics which can be inspected to
+get information about dropped packages and other meaningful network metrics.
+
+The information collected are:
+* System id: ubuntu, amzn or centos
+* System version
+* uname with kernel version
+* Installed packages
+* Services and timers active on the system
+* Scheduled commands like cron, at, anacron
+* The available MPI modules
+* The configured network and the statistics associated to those network
+* ami-id, instance-type and user data queried from the instance metadata service (IMDSv2)
+
+### How to add system analysis to a test
+
+In order to add the system analysis to a test do the following:
+1. Import the function from utils.py (e.g. `from tests.common.utils import run_system_analyzer`)
+2. Call the function after the cluster creation; can be useful to run it as the last step of the test.
+If needed, it is possible to specify the partition from which to collect compute node info.
+```python
+def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=None):
+...
+```
+### How to compare system analysis
+
+The nodeJS `diff2html` generates a html file from a diff which helps to compare the differences.
+Compare result from different node type (head, compute) can create misleading results: it is suggested to compare the
+same node type (e.g. head with head) 
+Below an example on how compare system analysis results :
+```bash
+npm install -g diff2html
+
+# Get the archives
+ls .
+headnode-current-run.tar.gz
+headnode-previous-run.tar.gz
+
+# Extract the archives in 2 separated directory
+mkdir current-run
+mkdir previous-run
+tar xzvf headnode-current-run.tar.gz -C current-run/
+tar xzvf headnode-previous-run.tar.gz -C previous-run/
+
+# Compare and generate the diff.html file
+diff --exclude=network/ -u *-run/system-information | diff2html -s side -i stdin -o stdout > diff.html ;
+```
+
+Once generated the file it can be inspected in the browser.

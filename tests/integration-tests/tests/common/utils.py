@@ -9,6 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
+import pathlib
 import random
 import string
 import time
@@ -23,6 +25,8 @@ from time_utils import seconds
 from utils import get_instance_info
 
 LOGGER = logging.getLogger(__name__)
+
+SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
@@ -138,8 +142,15 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=5000)
-def fetch_instance_slots(region, instance_type):
-    return get_instance_info(instance_type, region).get("VCpuInfo").get("DefaultVCpus")
+def fetch_instance_slots(region, instance_type, multithreading_disabled=False):
+    vcpu_info = get_instance_info(instance_type, region).get("VCpuInfo", {})
+    vcpus = vcpu_info.get("DefaultVCpus")
+    default_threads_per_core = vcpu_info.get("DefaultThreadsPerCore")
+    if not vcpus:
+        raise Exception("'DefaultVCpus' cannot be found in DescribeInstanceTypes API response.")
+    if not default_threads_per_core:
+        raise Exception("'DefaultThreadsPerCore' cannot be found in DescribeInstanceTypes API response.")
+    return int(vcpus / default_threads_per_core) if multithreading_disabled else vcpus
 
 
 @retry(stop_max_attempt_number=10, wait_fixed=seconds(50))
@@ -152,6 +163,10 @@ def _assert_ami_is_available(region, ami_id):
 def get_installed_parallelcluster_version():
     """Get the version of the installed aws-parallelcluster package."""
     return pkg_resources.get_distribution("aws-parallelcluster").version
+
+
+def get_installed_parallelcluster_base_version():
+    return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
 
 
 def get_sts_endpoint(region):
@@ -220,3 +235,50 @@ def get_route_tables(subnet_id, region):
         Filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}]
     )
     return [table["RouteTableId"] for table in response["RouteTables"]]
+
+
+def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=None):
+    """Run script to collect system information on head and a compute node of a cluster."""
+
+    out_dir = request.config.getoption("output_dir")
+    local_result_dir = f"{out_dir}/system_analyzer"
+    compute_node_shared_dir = "/opt/parallelcluster/shared"
+    head_node_dir = "/tmp"
+
+    logging.info("Creating remote_command_executor and scheduler_commands")
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    logging.info(f"Retrieve head node system information for test: {request.node.name}")
+    result = remote_command_executor.run_remote_script(SYSTEM_ANALYZER_SCRIPT, args=[head_node_dir])
+    logging.debug(f"result.failed={result.failed}")
+    logging.debug(f"result.stdout={result.stdout}")
+    logging.info(
+        "Copy results from remote cluster into: "
+        f"{local_result_dir}/system_information_head_node_{request.node.name}.tar.gz"
+    )
+    os.makedirs(f"{local_result_dir}", exist_ok=True)
+    remote_command_executor.get_remote_files(
+        f"{head_node_dir}/system-information.tar.gz",
+        f"{local_result_dir}/system_information_head_node_{request.node.name}.tar.gz",
+        preserve_mode=False,
+    )
+    logging.info("Head node system information correctly retrieved.")
+
+    logging.info(f"Retrieve compute node system information for test: {request.node.name}")
+    result = scheduler_commands.submit_script(
+        SYSTEM_ANALYZER_SCRIPT, script_args=[compute_node_shared_dir], partition=partition
+    )
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+    logging.info(
+        "Copy results from remote cluster into: "
+        f"{local_result_dir}/system_information_compute_node_{request.node.name}.tar.gz"
+    )
+    remote_command_executor.get_remote_files(
+        f"{compute_node_shared_dir}/system-information.tar.gz",
+        f"{local_result_dir}/system_information_compute_node_{request.node.name}.tar.gz",
+        preserve_mode=False,
+    )
+    logging.info("Compute node system information correctly retrieved.")

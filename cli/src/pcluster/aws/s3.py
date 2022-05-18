@@ -24,14 +24,18 @@ class S3Client(Boto3Client):
         """Download generic file from S3."""
         self._client.download_file(bucket_name, object_name, file_name)
 
-    def head_object(self, bucket_name, object_name):
+    def head_object(self, bucket_name, object_name, expected_bucket_owner=None):
         """Retrieve metadata from an object without returning the object itself."""
         try:
-            return self._client.head_object(Bucket=bucket_name, Key=object_name)
+            return (
+                self._client.head_object(Bucket=bucket_name, Key=object_name, ExpectedBucketOwner=expected_bucket_owner)
+                if expected_bucket_owner
+                else self._client.head_object(Bucket=bucket_name, Key=object_name)
+            )
         except ClientError as client_error:
             raise AWSClientError(
                 function_name="head_object",
-                message=_process_s3_bucket_error(client_error, bucket_name),
+                message=_process_s3_bucket_error(client_error, bucket_name, expected_bucket_owner, object_name),
                 error_code=client_error.response["Error"]["Code"],
             )
 
@@ -52,11 +56,14 @@ class S3Client(Boto3Client):
         return self._client.put_object(Bucket=bucket_name, Body=body, Key=key)
 
     @AWSExceptionHandler.handle_client_exception
-    def get_object(self, bucket_name, key, version_id=None):
+    def get_object(self, bucket_name, key, version_id=None, expected_bucket_owner=None):
         """Get object content from s3."""
+        kwargs = {"Bucket": bucket_name, "Key": key}
         if version_id:
-            return self._client.get_object(Bucket=bucket_name, Key=key, VersionId=version_id)
-        return self._client.get_object(Bucket=bucket_name, Key=key)
+            kwargs["VersionId"] = version_id
+        if expected_bucket_owner:
+            kwargs["ExpectedBucketOwner"] = expected_bucket_owner
+        return self._client.get_object(**kwargs)
 
     @AWSExceptionHandler.handle_client_exception
     def get_bucket_versioning_status(self, bucket_name):
@@ -130,14 +137,24 @@ class S3Client(Boto3Client):
         )
 
 
-def _process_s3_bucket_error(client_error, bucket_name):
+def _process_s3_bucket_error(client_error, bucket_name, expected_bucket_owner=None, object_name=None):
     error_message = client_error.response.get("Error").get("Message")
     error_code = client_error.response["Error"]["Code"]
 
     if error_code == "NoSuchBucket":
         message = f"The S3 bucket '{bucket_name}' does not appear to exist: '{error_message}'"
     elif error_code == "AccessDenied":
-        return f"You do not have access to the S3 bucket '{bucket_name}': '{error_message}'"
+        message = f"You do not have access to the S3 bucket '{bucket_name}': '{error_message}'"
+    elif expected_bucket_owner and error_code == "403" and error_message == "Forbidden" and object_name:
+        message = (
+            f"Failed when accessing object '{object_name}' from bucket '{bucket_name}'. This can be due to "
+            f"bucket owner not matching the expected one '{expected_bucket_owner}'"
+        )
+    elif object_name and error_code == "404" and error_message == "Not Found":
+        message = (
+            f"Failed when accessing object '{object_name}' from bucket '{bucket_name}'. This can be due to "
+            f"'{object_name}' not found in '{bucket_name}'"
+        )
     else:
-        message = f"Unexpected error when calling get_bucket_location on S3 bucket '{bucket_name}': '{error_message}'"
+        message = f"Unexpected error when getting S3 bucket '{bucket_name}': '{error_message}'"
     return message

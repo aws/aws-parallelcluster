@@ -19,12 +19,19 @@ from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.scaling_common import get_compute_nodes_allocation
-from tests.common.schedulers_common import get_scheduler_commands
 from tests.schedulers.test_slurm import _assert_job_state
 
 
-@pytest.mark.usefixtures("region", "os", "instance")
-def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
+@pytest.mark.usefixtures("os", "instance")
+def test_multiple_jobs_submission(
+    scheduler,
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+    test_custom_config,
+):
     scaledown_idletime = 4
     # Test jobs should take at most 9 minutes to be executed.
     # These guarantees that the jobs are executed in parallel.
@@ -33,7 +40,8 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    scheduler = "slurm" if scheduler == "slurm_plugin" else scheduler
 
     logging.info("Executing sleep job to start a dynamic node")
     result = scheduler_commands.submit_command("sleep 1")

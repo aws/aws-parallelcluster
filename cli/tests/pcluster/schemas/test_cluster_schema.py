@@ -10,16 +10,22 @@
 # limitations under the License.
 
 import json
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
 import yaml
 from assertpy import assert_that
+from botocore.response import StreamingBody
 from marshmallow.validate import ValidationError
+from yaml.parser import ParserError
 
-from pcluster.constants import SUPPORTED_OSES
+from pcluster.aws.common import AWSClientError
+from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
     HeadNodeIamSchema,
+    HeadNodeRootVolumeSchema,
     ImageSchema,
     QueueIamSchema,
     SchedulerPluginCloudFormationClusterInfrastructureSchema,
@@ -28,10 +34,12 @@ from pcluster.schemas.cluster_schema import (
     SchedulerPluginFileSchema,
     SchedulerPluginLogsSchema,
     SchedulerPluginResourcesSchema,
+    SchedulerPluginSettingsSchema,
     SchedulerPluginSupportedDistrosSchema,
     SchedulerPluginUserSchema,
     SchedulingSchema,
     SharedStorageSchema,
+    TimeoutsSchema,
 )
 from pcluster.utils import replace_url_parameters
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -165,6 +173,35 @@ def test_iam_schema(instance_role, instance_profile, additional_iam_policies, s3
         iam = QueueIamSchema().load(iam_dict)
         assert_that(iam.instance_role).is_equal_to(instance_role)
         assert_that(iam.instance_profile).is_equal_to(instance_profile)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # failures
+        ({"KmsKeyId": "test"}, "Unknown field"),
+        # success
+        (
+            {
+                "VolumeType": "gp3",
+                "Iops": 100,
+                "Size": 50,
+                "Throughput": 300,
+                "Encrypted": True,
+                "DeleteOnTermination": True,
+            },
+            None,
+        ),
+    ],
+)
+def test_head_node_root_volume_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            HeadNodeRootVolumeSchema().load(config_dict)
+    else:
+        HeadNodeRootVolumeSchema().load(config_dict)
 
 
 DUMMY_AWSBATCH_QUEUE = {
@@ -453,20 +490,18 @@ def test_scheduler_plugin_cluster_shared_artifact_schema(mocker, source, failure
         (None, "Missing data for required field."),
     ],
 )
-def test_scheduler_plugin_plugin_resources_schema(mocker, artifacts, failure_message):
-    scheduler_plugin_plugin_resources_schema = {}
+def test_scheduler_plugin_resources_schema(mocker, artifacts, failure_message):
+    scheduler_plugin_resources_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
     if artifacts:
-        scheduler_plugin_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
+        scheduler_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SchedulerPluginResourcesSchema().load(scheduler_plugin_plugin_resources_schema)
+            SchedulerPluginResourcesSchema().load(scheduler_plugin_resources_schema)
     else:
-        scheduler_plugin_plugin_resources = SchedulerPluginResourcesSchema().load(
-            scheduler_plugin_plugin_resources_schema
-        )
-        for artifact, source in zip(scheduler_plugin_plugin_resources.cluster_shared_artifacts, artifacts):
+        scheduler_plugin_resources = SchedulerPluginResourcesSchema().load(scheduler_plugin_resources_schema)
+        for artifact, source in zip(scheduler_plugin_resources.cluster_shared_artifacts, artifacts):
             assert_that(artifact.source).is_equal_to(source)
 
 
@@ -486,7 +521,7 @@ def test_scheduler_plugin_user_schema(name, enable_imds, failure_message):
         scheduler_plugin_user_schema["EnableImds"] = enable_imds
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SchedulerPluginResourcesSchema().load(scheduler_plugin_user_schema)
+            SchedulerPluginUserSchema().load(scheduler_plugin_user_schema)
     else:
         scheduler_plugin_user = SchedulerPluginUserSchema().load(scheduler_plugin_user_schema)
         assert_that(scheduler_plugin_user.name).is_equal_to(name)
@@ -497,23 +532,32 @@ def test_scheduler_plugin_user_schema(name, enable_imds, failure_message):
 
 
 @pytest.mark.parametrize(
-    "file_path, timestamp_format, failure_message",
+    "file_path, timestamp_format, log_stream_name, failure_message",
     [
-        ("/var/log/slurmctld.log", None, None),
-        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", None),
+        ("/var/log/slurmctld.log", None, "slurmctld.log", None),
+        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", "slurmctld.log", None),
         (
             None,
             "%Y-%m-%d %H:%M:%S,%f",
+            "slurmctld.log",
+            "Missing data for required field.",
+        ),
+        (
+            "/var/log/slurmctld.log",
+            "%Y-%m-%d %H:%M:%S,%f",
+            None,
             "Missing data for required field.",
         ),
     ],
 )
-def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message):
+def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message, log_stream_name):
     scheduler_plugin_file_schema = {}
     if file_path:
         scheduler_plugin_file_schema["FilePath"] = file_path
     if timestamp_format:
         scheduler_plugin_file_schema["TimestampFormat"] = timestamp_format
+    if log_stream_name:
+        scheduler_plugin_file_schema["LogStreamName"] = log_stream_name
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
             SchedulerPluginFileSchema().load(scheduler_plugin_file_schema)
@@ -529,11 +573,18 @@ def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_messa
 @pytest.mark.parametrize(
     "files, failure_message",
     [
-        ([{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"}], None),
+        (
+            [{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f", "LogStreamName": "log"}],
+            None,
+        ),
         (
             [
-                {"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"},
-                {"FilePath": "/var/log/scaling.log", "TimestampFormat": ""},
+                {
+                    "FilePath": "/var/log/slurmctld.log",
+                    "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f",
+                    "LogStreamName": "log1",
+                },
+                {"FilePath": "/var/log/scaling.log", "TimestampFormat": "", "LogStreamName": "log2"},
             ],
             None,
         ),
@@ -560,10 +611,14 @@ def test_scheduler_plugin_logs_schema(files, failure_message):
         ("1.0", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, None),
         (None, {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "Missing data for required field."),
         ("1.0", None, "Missing data for required field."),
+        ("1.2.0", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "String does not match expected pattern."),
+        ("1", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "String does not match expected pattern."),
+        ("1.", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "String does not match expected pattern."),
+        (".1", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "String does not match expected pattern."),
     ],
 )
 def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, events, failure_message):
-    scheduler_plugin_definition_schema = {}
+    scheduler_plugin_definition_schema = {"Metadata": {"Name": "name", "Version": "1.0"}}
     if plugin_interface_version:
         scheduler_plugin_definition_schema["PluginInterfaceVersion"] = plugin_interface_version
     if events:
@@ -576,4 +631,233 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
         assert_that(scheduler_plugin_definition.plugin_interface_version).is_equal_to(plugin_interface_version)
         assert_that(scheduler_plugin_definition.events.head_init.execute_command.command).is_equal_to(
             events["HeadInit"]["ExecuteCommand"]["Command"]
+        )
+
+
+@pytest.mark.parametrize(
+    "scheduler_definition, grant_sudo_privileges, scheduler_definition_s3_bucket_owner, scheduler_definition_checksum, "
+    "s3_error, https_error, yaml_load_error, failure_message",
+    [
+        ("s3://bucket/scheduler_definition.yaml", True, None, None, None, None, None, None),
+        (
+            "s3://bucket/scheduler_definition_fake.yaml",
+            True,
+            None,
+            None,
+            AWSClientError(function_name="get_object", message="The specified key does not exist."),
+            None,
+            None,
+            "Error while downloading scheduler definition from "
+            "s3://bucket/scheduler_definition_fake.yaml: The specified key does not exist.",
+        ),
+        (
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition.yaml",
+            False,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+            None,
+            None,
+            None,
+            None,
+            HTTPError(
+                url="https://test-slurm.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+                code=403,
+                msg="Forbidden",
+                hdrs="dummy",
+                fp="dummy",
+            ),
+            None,
+            "Error while downloading scheduler definition from "
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml: "
+            "The provided URL is invalid or unavailable.",
+        ),
+        (
+            {
+                "PluginInterfaceVersion": "1.0",
+                "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}},
+                "Metadata": {"Name": "name", "Version": "1.0"},
+            },
+            True,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "ftp://bucket/scheduler_definition_fake.yaml",
+            True,
+            None,
+            None,
+            None,
+            None,
+            None,
+            r"Error while downloading scheduler definition from ftp://bucket/scheduler_definition_fake.yaml: "
+            r"The provided value for SchedulerDefinition is invalid. "
+            r"You can specify this as an S3 URL, HTTPS URL or as an inline YAML object.",
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            None,
+            None,
+            None,
+            None,
+            ParserError("parse error"),
+            r"The retrieved SchedulerDefinition \(s3://bucket/scheduler_definition.yaml\) is not a valid YAML.",
+        ),
+        (
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+            True,
+            "01234567890",
+            "123467",
+            None,
+            None,
+            None,
+            r"SchedulerDefinitionS3BucketOwner can only be specified when SchedulerDefinition is S3 URL",
+        ),
+        (
+            {
+                "PluginInterfaceVersion": "1.0",
+                "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}},
+                "Metadata": {"Name": "name", "Version": "1.0"},
+            },
+            True,
+            "01234567890",
+            "123467",
+            None,
+            None,
+            None,
+            r"SchedulerDefinitionS3BucketOwner or SchedulerDefinitionChecksum can only specified when "
+            "SchedulerDefinition is a URL.",
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            "012345678910",
+            "aaf9ef48183302fd893d6f6004859289fd9eef095980ef208c1725054ff466da",
+            # this checksum can be generated by hashlib.sha256(file_content.encode()).hexdigest()
+            # For example, in the test, the file content of scheduler definition is:
+            # '{"PluginInterfaceVersion": "1.0", "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}},
+            # "Metadata": {"Name": "name", "Version": "1.0"}}'
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            "01234567890",
+            None,
+            AWSClientError(function_name="get_object", message="Access Denied", error_code="AccessDenied"),
+            None,
+            None,
+            r"Error while downloading scheduler definition from s3://bucket/scheduler_definition.yaml: Access Denied. "
+            "This can be due to bucket owner not matching the expected one '01234567890'",
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            "012345678910",
+            "7f48cf28d516b51efa5deb9af3c338c29444199811751ddcfbe71366847c1ab1",
+            None,
+            None,
+            None,
+            r"Error when validating SchedulerDefinition",
+        ),
+    ],
+)
+def test_scheduler_plugin_settings_schema(
+    mocker,
+    scheduler_definition,
+    grant_sudo_privileges,
+    scheduler_definition_s3_bucket_owner,
+    scheduler_definition_checksum,
+    s3_error,
+    https_error,
+    yaml_load_error,
+    failure_message,
+):
+    scheduler_plugin_settings_schema = {}
+    body_encoded = json.dumps(
+        {
+            "PluginInterfaceVersion": "1.0",
+            "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}},
+            "Metadata": {"Name": "name", "Version": "1.0"},
+        }
+    ).encode("utf8")
+    if isinstance(scheduler_definition, str):
+        if scheduler_definition.startswith("s3"):
+            mocker.patch(
+                "pcluster.aws.s3.S3Client.get_object",
+                return_value={"Body": StreamingBody(BytesIO(body_encoded), len(body_encoded))},
+                side_effect=s3_error,
+            )
+        else:
+            file_mock = mocker.MagicMock()
+            file_mock.read.return_value.decode.return_value = body_encoded
+            mocker.patch(
+                "pcluster.schemas.cluster_schema.urlopen", side_effect=https_error
+            ).return_value.__enter__.return_value = file_mock
+    if yaml_load_error:
+        mocker.patch("pcluster.schemas.cluster_schema.yaml.safe_load", side_effect=yaml_load_error)
+    if scheduler_definition:
+        scheduler_plugin_settings_schema["SchedulerDefinition"] = scheduler_definition
+    if grant_sudo_privileges:
+        scheduler_plugin_settings_schema["GrantSudoPrivileges"] = grant_sudo_privileges
+    if scheduler_definition_s3_bucket_owner:
+        scheduler_plugin_settings_schema["SchedulerDefinitionS3BucketOwner"] = scheduler_definition_s3_bucket_owner
+    if scheduler_definition_checksum:
+        scheduler_plugin_settings_schema["SchedulerDefinitionChecksum"] = scheduler_definition_checksum
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginSettingsSchema().load(scheduler_plugin_settings_schema)
+    else:
+        scheduler_plugin_settings = SchedulerPluginSettingsSchema().load(scheduler_plugin_settings_schema)
+        assert_that(scheduler_plugin_settings.scheduler_definition.plugin_interface_version).is_equal_to("1.0")
+        assert_that(
+            scheduler_plugin_settings.scheduler_definition.events.head_init.execute_command.command
+        ).is_equal_to("env")
+        if grant_sudo_privileges:
+            assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(grant_sudo_privileges)
+        else:
+            assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(False)
+
+
+@pytest.mark.parametrize(
+    "head_node_bootstrap_timeout, compute_node_bootstrap_timeout, failure_message",
+    [
+        (1800, None, None),
+        (1200, 1000, None),
+        (-1, None, "Must be greater than or equal to 1."),
+        (None, -1, "Must be greater than or equal to 1."),
+        (None, None, None),
+    ],
+)
+def test_timeouts_schema(head_node_bootstrap_timeout, compute_node_bootstrap_timeout, failure_message):
+    timeouts_schema = {}
+    if head_node_bootstrap_timeout:
+        timeouts_schema["HeadNodeBootstrapTimeout"] = head_node_bootstrap_timeout
+    if compute_node_bootstrap_timeout:
+        timeouts_schema["ComputeNodeBootstrapTimeout"] = compute_node_bootstrap_timeout
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            TimeoutsSchema().load(timeouts_schema)
+    else:
+        timeouts = TimeoutsSchema().load(timeouts_schema)
+        assert_that(timeouts.head_node_bootstrap_timeout).is_equal_to(
+            head_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
+        )
+        assert_that(timeouts.compute_node_bootstrap_timeout).is_equal_to(
+            compute_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
         )

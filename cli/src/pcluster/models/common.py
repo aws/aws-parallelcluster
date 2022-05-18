@@ -185,7 +185,7 @@ class CloudWatchLogsExporter:
     def _export_logs_to_s3(
         self, log_stream_prefix=None, start_time: datetime.datetime = None, end_time: datetime.datetime = None
     ):
-        """Export the contents of a image's CloudWatch log group to an s3 bucket."""
+        """Export the contents of an image's CloudWatch log group to an s3 bucket."""
         try:
             LOGGER.debug("Starting export of logs from log group %s to s3 bucket %s", self.log_group_name, self.bucket)
             task_id = AWSApi.instance().logs.create_export_task(
@@ -273,8 +273,9 @@ def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
     archive_filename = os.path.basename(archive_path)
     with open(archive_path, "rb") as archive_file:
         archive_data = archive_file.read()
-    AWSApi.instance().s3.put_object(bucket, archive_data, f"{bucket_prefix}/{archive_filename}")
-    return f"s3://{bucket}/{bucket_prefix}/{archive_filename}"
+    bucket_path = f"{bucket_prefix}/{archive_filename}" if bucket_prefix else archive_filename
+    AWSApi.instance().s3.put_object(bucket, archive_data, bucket_path)
+    return f"s3://{bucket}/{bucket_path}"
 
 
 class LogStreams:

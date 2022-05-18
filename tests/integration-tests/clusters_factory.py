@@ -145,10 +145,10 @@ class Cluster:
         """Run pcluster start and return the result."""
         cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
-        if scheduler == "slurm":
-            cmd_args.append("START_REQUESTED")
-        elif scheduler == "awsbatch":
+        if scheduler == "awsbatch":
             cmd_args.append("ENABLED")
+        else:  # slurm and scheduler plugin case
+            cmd_args.append("START_REQUESTED")
         try:
             result = run_pcluster_command(cmd_args, log_error=False)
             logging.info("Cluster {0} started successfully".format(self.name))
@@ -161,10 +161,10 @@ class Cluster:
         """Run pcluster stop and return the result."""
         cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
-        if scheduler == "slurm":
-            cmd_args.append("STOP_REQUESTED")
-        elif scheduler == "awsbatch":
+        if scheduler == "awsbatch":
             cmd_args.append("DISABLED")
+        else:  # slurm and scheduler plugin case
+            cmd_args.append("STOP_REQUESTED")
         try:
             result = run_pcluster_command(cmd_args, log_error=False)
             logging.info("Cluster {0} stopped successfully".format(self.name))
@@ -226,20 +226,15 @@ class Cluster:
         instances = self.describe_cluster_instances(node_type=node_type, queue_name=queue_name)
         return [instance["instanceId"] for instance in instances]
 
-    def export_logs(self, bucket, output_file, bucket_prefix=None):
+    def export_logs(self, bucket, output_file=None, bucket_prefix=None, filters=None):
         """Run pcluster export-cluster-logs and return the result."""
-        cmd_args = [
-            "pcluster",
-            "export-cluster-logs",
-            "--cluster-name",
-            self.name,
-            "--bucket",
-            bucket,
-            "--output-file",
-            output_file,
-        ]
+        cmd_args = ["pcluster", "export-cluster-logs", "--cluster-name", self.name, "--bucket", bucket]
+        if output_file:
+            cmd_args += ["--output-file", output_file]
         if bucket_prefix:
             cmd_args += ["--bucket-prefix", bucket_prefix]
+        if filters:
+            cmd_args += ["--filters", filters]
         try:
             result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
@@ -322,6 +317,11 @@ class Cluster:
         ]
         instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
         return instance.get("PublicIpAddress") if instance.get("PublicIpAddress") else instance.get("PrivateIpAddress")
+
+    @property
+    def head_node_instance_id(self):
+        """Return the given cluster's head node's instance ID."""
+        return self.cfn_resources.get("HeadNode")
 
     @property
     def os(self):

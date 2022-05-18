@@ -1,5 +1,4 @@
-usage: pcluster list-cluster-log-streams [-h] --cluster-name CLUSTER_NAME
-                                         [--region REGION]
+usage: pcluster list-cluster-log-streams [-h] -n CLUSTER_NAME [-r REGION]
                                          [--filters FILTERS [FILTERS ...]]
                                          [--next-token NEXT_TOKEN] [--debug]
                                          [--query QUERY]
@@ -8,9 +7,10 @@ Retrieve the list of log streams associated with a cluster.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
-  --region REGION       Region that the given cluster belongs to.
+  -r REGION, --region REGION
+                        Region that the given cluster belongs to.
   --filters FILTERS [FILTERS ...]
                         Filter the log streams. Format: 'Name=a,Values=1
                         Name=b,Values=2,3'. Accepted filters are: private-dns-

@@ -27,9 +27,9 @@ class TestCreateClusterCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({}, "error: the following arguments are required: --cluster-name, --cluster-configuration"),
-            ({"--cluster-configuration": None}, "error: argument --cluster-configuration: expected one argument"),
-            ({"--cluster-name": None}, "error: argument --cluster-name: expected one argument"),
+            ({}, "error: the following arguments are required: -n/--cluster-name, -c/--cluster-configuration"),
+            ({"--cluster-configuration": None}, "error: argument -c/--cluster-configuration: expected one argument"),
+            ({"--cluster-name": None}, "error: argument -n/--cluster-name: expected one argument"),
             (
                 {"--cluster-configuration": "file", "--cluster-name": "cluster", "--invalid": None},
                 "Invalid arguments ['--invalid']",
@@ -104,16 +104,7 @@ class TestCreateClusterCommand:
         mock_aws_api(mocker)
 
         path = str(test_datadir / "config.yaml")
-        command = [
-            "create-cluster",
-            "--cluster-name",
-            "cluster",
-            "--cluster-configuration",
-            path,
-            "--region",
-            "eu-west-1",
-            "--wait",
-        ]
+        command = ["create-cluster", "-n", "cluster", "-c", path, "-r", "eu-west-1", "--wait"]
         out = run(command)
 
         expected = wire_translate(response)
@@ -131,7 +122,8 @@ class TestCreateClusterCommand:
         assert_that(cf_waiter_mock.call_args[1]).is_equal_to({"StackName": "cluster"})
         describe_cluster_mock.assert_called_with(cluster_name="cluster")
 
-    def test_execute(self, mocker, test_datadir):
+    @pytest.mark.parametrize("cluster_name_arg, region_arg", [("--cluster-name", "--region"), ("-n", "-r")])
+    def test_execute(self, cluster_name_arg, region_arg, mocker, test_datadir):
         response_dict = {
             "cluster": {
                 "clusterName": "cluster",
@@ -152,7 +144,7 @@ class TestCreateClusterCommand:
 
         path = str(test_datadir / "config.yaml")
         out = run(
-            ["create-cluster", "--cluster-name", "cluster", "--cluster-configuration", path, "--region", "eu-west-1"]
+            ["create-cluster", cluster_name_arg, "cluster", "--cluster-configuration", path, region_arg, "eu-west-1"]
         )
         assert_that(out).is_equal_to(response_dict)
         assert_that(create_cluster_mock.call_args).is_length(2)
@@ -188,22 +180,33 @@ class TestCreateClusterCommand:
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])
 
+    @staticmethod
+    def run_create_cluster(test_datadir):
+        run(
+            [
+                "create-cluster",
+                "--region",
+                "eu-west-1",
+                "--cluster-configuration",
+                str(test_datadir / "config.yaml"),
+                "--cluster-name",
+                "cluster",
+            ]
+        )
+
     def test_no_nodejs_error(self, mocker, test_datadir):
         """Test expected message is printed out if nodejs is not installed."""
         mocker.patch("pcluster.api.util.shutil.which", return_value=None)
         with pytest.raises(APIOperationException) as exc_info:
-            run(
-                [
-                    "create-cluster",
-                    "--region",
-                    "eu-west-1",
-                    "--cluster-configuration",
-                    str(test_datadir / "config.yaml"),
-                    "--cluster-name",
-                    "cluster",
-                ]
-            )
+            self.run_create_cluster(test_datadir)
         assert_that(exc_info.value.data.get("message")).matches("Node.js is required")
+
+    def test_nodejs_wrong_version_error(self, mocker, test_datadir):
+        """Test expected message is printed out if nodejs is wrong version."""
+        mocker.patch("pcluster.api.util.subprocess.check_output", return_value="0.0.0")
+        with pytest.raises(APIOperationException) as exc_info:
+            self.run_create_cluster(test_datadir)
+        assert_that(exc_info.value.data.get("message")).matches("requires Node.js version >=")
 
     def _build_args(self, args):
         args = [[k, v] if v is not None else [k] for k, v in args.items()]

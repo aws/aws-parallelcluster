@@ -29,6 +29,7 @@ from pcluster.config.cluster_config import (
     LocalStorage,
     RootVolume,
     SharedStorageType,
+    SlurmClusterConfig,
     SlurmQueue,
 )
 from pcluster.constants import (
@@ -37,10 +38,19 @@ from pcluster.constants import (
     IAM_ROLE_PATH,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
+    PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
 )
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
-from pcluster.utils import get_installed_version, get_resource_name_from_resource_arn, policy_name_to_arn
+from pcluster.utils import (
+    get_attr,
+    get_installed_version,
+    get_resource_name_from_resource_arn,
+    get_url_scheme,
+    policy_name_to_arn,
+)
+
+PCLUSTER_LAMBDA_PREFIX = "pcluster-"
 
 
 def get_block_device_mappings(local_storage: LocalStorage, os: str):
@@ -88,7 +98,9 @@ def get_user_data_content(user_data_path: str):
     return user_data_content
 
 
-def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClusterConfig) -> dict:
+def get_common_user_data_env(
+    node: Union[HeadNode, SlurmQueue], config: BaseClusterConfig, head_node_role_name: str = None
+) -> dict:
     """Return a dict containing the common env variables to be replaced in user data."""
     return {
         "YumProxy": node.networking.proxy.http_proxy_address if node.networking.proxy else "_none_",
@@ -100,52 +112,68 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClus
         "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
         "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
+        "HeadNodeInstanceRole": head_node_role_name or "NONE",
     }
 
 
-def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
+def get_slurm_specific_dna_json_for_head_node(config: SlurmClusterConfig, scheduler_resources) -> dict:
+    """Return a dict containing slurm specific settings to be written to dna.json of head node."""
+    return {
+        "dns_domain": scheduler_resources.cluster_hosted_zone.name if scheduler_resources.cluster_hosted_zone else "",
+        "hosted_zone": scheduler_resources.cluster_hosted_zone.ref if scheduler_resources.cluster_hosted_zone else "",
+        "slurm_ddb_table": scheduler_resources.dynamodb_table.ref,
+        "use_private_hostname": str(config.scheduling.settings.dns.use_ec2_hostnames).lower(),
+    }
+
+
+def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> dict:
+    """Return a dict containing directory service settings to be written to dna.json of head node."""
+    directory_service = config.directory_service
+    return (
+        {
+            "directory_service": {
+                "enabled": "true",
+                "domain_name": directory_service.domain_name,
+                "domain_addr": directory_service.domain_addr,
+                "password_secret_arn": directory_service.password_secret_arn,
+                "domain_read_only_user": directory_service.domain_read_only_user,
+                "ldap_tls_ca_cert": directory_service.ldap_tls_ca_cert or "NONE",
+                "ldap_tls_req_cert": directory_service.ldap_tls_req_cert or "NONE",
+                "ldap_access_filter": directory_service.ldap_access_filter or "NONE",
+                "generate_ssh_keys_for_users": str(directory_service.generate_ssh_keys_for_users).lower(),
+                "additional_sssd_configs": directory_service.additional_sssd_configs,
+            }
+        }
+        if directory_service
+        else {}
+    )
+
+
+def to_comma_separated_string(list):
+    return ",".join(str(item) for item in list)
+
+
+def get_shared_storage_ids_by_type(shared_storage_infos: dict, storage_type: SharedStorageType):
     """Return shared storage ids from the given list for the given type."""
-    return (
-        ",".join(storage_mapping.id for storage_mapping in shared_storage_ids[storage_type])
-        if shared_storage_ids[storage_type]
-        else "NONE"
-    )
+    return ",".join(storage_mapping.id for storage_mapping in shared_storage_infos[storage_type])
 
 
-def get_shared_storage_options_by_type(shared_storage_options: dict, storage_type: SharedStorageType):
-    """Return shared storage options from the given list for the given type."""
-    default_storage_options = {
-        SharedStorageType.EBS: "NONE,NONE,NONE,NONE,NONE",
-        SharedStorageType.RAID: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-        SharedStorageType.EFS: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-        SharedStorageType.FSX: ("NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"),
-    }
-    return (
-        shared_storage_options[storage_type]
-        if shared_storage_options[storage_type]
-        else default_storage_options[storage_type]
-    )
+def dict_to_cfn_tags(tags: dict):
+    """Convert a dictionary to a list of CfnTag."""
+    return [CfnTag(key=key, value=value) for key, value in tags.items()] if tags else []
 
 
-def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedStorageType):
-    """Return mount dirs retrieved from shared storage, formatted as comma separated list."""
-    storage_options = shared_storage_options.get(storage_type)
-    if not storage_options:
-        return "NONE"
-    if storage_type == SharedStorageType.EBS:
-        # The whole options for EBS represent the mount dirs.
-        return storage_options
-    option_list = storage_options.split(",")
-    return option_list[0]
+def get_cluster_tags(stack_name: str, raw_dict: bool = False):
+    """Return a list of cluster tags to be used for all the resources."""
+    tags = {PCLUSTER_CLUSTER_NAME_TAG: stack_name}
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     """Return a list of tags set by the user."""
-    if raw_dict:
-        custom_tags = {tag.key: tag.value for tag in config.tags} if config.tags else {}
-    else:
-        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in config.tags] if config.tags else []
-    return custom_tags
+    cluster_tags = config.get_cluster_tags()
+    tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_default_instance_tags(
@@ -153,13 +181,13 @@ def get_default_instance_tags(
     config: BaseClusterConfig,
     node: Union[HeadNode, BaseComputeResource],
     node_type: str,
-    shared_storage_ids: dict,
+    shared_storage_infos: dict,
     raw_dict: bool = False,
 ):
     """Return a list of default tags to be used for instances."""
     tags = {
+        **get_cluster_tags(stack_name, raw_dict=True),
         "Name": node_type,
-        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
         "parallelcluster:attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
             BaseOS=config.image.os,
@@ -171,24 +199,24 @@ def get_default_instance_tags(
             "true" if hasattr(node, "efa") and node.efa and node.efa.enabled else "NONE"
         ),
         "parallelcluster:filesystem": "efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
-            efs=len(shared_storage_ids[SharedStorageType.EFS]),
-            multiebs=len(shared_storage_ids[SharedStorageType.EBS]),
-            raid=len(shared_storage_ids[SharedStorageType.RAID]),
-            fsx=len(shared_storage_ids[SharedStorageType.FSX]),
+            efs=len(shared_storage_infos[SharedStorageType.EFS]),
+            multiebs=len(shared_storage_infos[SharedStorageType.EBS]),
+            raid=len(shared_storage_infos[SharedStorageType.RAID]),
+            fsx=len(shared_storage_infos[SharedStorageType.FSX]),
         ),
     }
     if config.is_intel_hpc_platform_enabled:
         tags["parallelcluster:intel-hpc"] = "enable_intel_hpc_platform=true"
-    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = False):
     """Return a list of default tags to be used for volumes."""
     tags = {
-        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
+        **get_cluster_tags(stack_name, raw_dict=True),
         PCLUSTER_NODE_TYPE_TAG: node_type,
     }
-    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_assume_role_policy_document(service: str):
@@ -333,8 +361,6 @@ class NodeIamResourcesBase(Construct):
         additional_iam_policies = set(node.iam.additional_iam_policy_arns)
         if self._config.monitoring.logs.cloud_watch.enabled:
             additional_iam_policies.add(policy_name_to_arn("CloudWatchAgentServerPolicy"))
-        if self._config.scheduling.scheduler == "awsbatch":
-            additional_iam_policies.add(policy_name_to_arn("AWSBatchFullAccess"))
         return iam.CfnRole(
             Stack.of(self),
             name,
@@ -462,12 +488,29 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     "ec2:DescribeInstanceAttribute",
                     "ec2:DescribeInstances",
                     "ec2:DescribeInstanceStatus",
-                    "ec2:CreateTags",
                     "ec2:DescribeVolumes",
-                    "ec2:AttachVolume",
                 ],
                 effect=iam.Effect.ALLOW,
                 resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="Ec2TagsAndVolumes",
+                actions=["ec2:AttachVolume", "ec2:CreateTags"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="ec2",
+                        resource="instance/*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    ),
+                    self._format_arn(
+                        service="ec2",
+                        resource="volume/*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    ),
+                ],
             ),
             iam.PolicyStatement(
                 sid="S3GetObj",
@@ -485,7 +528,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             iam.PolicyStatement(
                 sid="ResourcesS3Bucket",
                 effect=iam.Effect.ALLOW,
-                actions=["s3:*"],
+                actions=["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketLocation", "s3:ListBucket"],
                 resources=[
                     self._format_arn(service="s3", resource=self._cluster_bucket.name, region="", account=""),
                     self._format_arn(
@@ -566,7 +609,55 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         effect=iam.Effect.ALLOW,
                         resources=self._generate_head_node_pass_role_resources(),
                     ),
+                    iam.PolicyStatement(
+                        sid="DynamoDBTable",
+                        actions=["dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:GetItem"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="dynamodb",
+                                resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{Stack.of(self).stack_name}",
+                            )
+                        ],
+                    ),
                 ]
+            )
+
+        if self._config.scheduling.scheduler == "plugin":
+            cluster_shared_artifacts = get_attr(
+                self._config, "scheduling.settings.scheduler_definition.plugin_resources.cluster_shared_artifacts"
+            )
+            if cluster_shared_artifacts:
+                for artifacts in cluster_shared_artifacts:
+                    if get_url_scheme(artifacts.source) == "s3":
+                        bucket_info = parse_bucket_url(artifacts.source)
+                        bucket_name = bucket_info.get("bucket_name")
+                        object_key = bucket_info.get("object_key")
+                        policy.extend(
+                            [
+                                iam.PolicyStatement(
+                                    actions=["s3:GetObject"],
+                                    effect=iam.Effect.ALLOW,
+                                    resources=[
+                                        self._format_arn(
+                                            region="",
+                                            service="s3",
+                                            account="",
+                                            resource=bucket_name,
+                                            resource_name=object_key,
+                                        )
+                                    ],
+                                ),
+                            ]
+                        )
+
+        if self._config.directory_service:
+            policy.append(
+                iam.PolicyStatement(
+                    actions=["secretsmanager:GetSecretValue"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._config.directory_service.password_secret_arn],
+                )
             )
 
         return policy
@@ -582,7 +673,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         # If there are any queues where a custom instance role was specified,
         # enable the head node to pass permissions to those roles.
         custom_queue_role_arns = {
-            arn for queue in self._config.scheduling.queues for arn in queue.iam.instance_role_arns
+            queue.iam.instance_role_arn for queue in self._config.scheduling.queues if queue.iam.instance_role_arn
         }
         if custom_queue_role_arns:
             pass_role_resources = custom_queue_role_arns
@@ -590,7 +681,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             # Include the default IAM role path for the queues that
             # aren't using a custom instance role.
             queues_without_custom_roles = [
-                queue for queue in self._config.scheduling.queues if not queue.iam.instance_role_arns
+                queue for queue in self._config.scheduling.queues if not queue.iam.instance_role_arn
             ]
             if any(queues_without_custom_roles):
                 pass_role_resources.add(default_pass_role_resource)
@@ -633,6 +724,11 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         ]
 
 
+def get_lambda_log_group_prefix(function_id: str):
+    """Return the prefix of the log group associated to Lambda functions created using PclusterLambdaConstruct."""
+    return f"log-group:/aws/lambda/{PCLUSTER_LAMBDA_PREFIX}{function_id}"
+
+
 class PclusterLambdaConstruct(Construct):
     """Create a Lambda function with some pre-filled fields."""
 
@@ -649,7 +745,7 @@ class PclusterLambdaConstruct(Construct):
     ):
         super().__init__(scope, id)
 
-        function_name = f"pcluster-{function_id}-{self._stack_unique_id()}"
+        function_name = f"{PCLUSTER_LAMBDA_PREFIX}{function_id}-{self._stack_unique_id()}"
 
         self.log_group = logs.CfnLogGroup(
             scope,

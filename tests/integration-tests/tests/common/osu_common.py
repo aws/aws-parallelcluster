@@ -9,13 +9,17 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-import os as os_lib
+import logging
 import pathlib
+import re
+from datetime import datetime
+from shutil import copyfile
 
 from constants import OSU_BENCHMARK_VERSION
-from jinja2 import Environment, FileSystemLoader
+from utils import render_jinja_template
 
 OSU_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/osu/"
+SUPPORTED_MPIS = ["openmpi", "intelmpi"]
 
 
 def compile_osu(mpi_variant, remote_command_executor):
@@ -34,10 +38,132 @@ def compile_osu(mpi_variant, remote_command_executor):
     )
 
 
-def render_jinja_template(template_file_path, **kwargs):
-    file_loader = FileSystemLoader(str(os_lib.path.dirname(template_file_path)))
-    env = Environment(loader=file_loader)
-    rendered_template = env.get_template(os_lib.path.basename(template_file_path)).render(**kwargs)
-    with open(template_file_path, "w", encoding="utf-8") as f:
-        f.write(rendered_template)
-    return template_file_path
+def run_individual_osu_benchmark(
+    mpi_version,
+    benchmark_group,
+    benchmark_name,
+    partition,
+    remote_command_executor,
+    scheduler_commands,
+    num_instances,
+    slots_per_instance,
+    test_datadir,
+    submission_script_template_path=None,
+    rendered_template_path=None,
+    timeout=None,
+):
+    """
+    Run the given OSU benchmark.
+
+    :param mpi_version: string, should be one of SUPPORTED_MPIS
+    :param benchmark_group: string, which of the MPI benchmarks to run. As of 5.7.1 this includes collective, one-sided,
+                            pt2pt, and startup
+    :param benchmark_name: string, name of the benchmark to run from the given group
+    :param partition: string, partition on which to benchmark job (assumes the use of Slurm scheduler)
+    :param remote_command_executor: RemoteCommandExecutor instance, used to submit jobs
+    :param scheduler_commands: SchedulerlurmCommands instance, used to submit jobs
+    :param num_instances: int, number of instances to run benchmark across
+    :param slots_per_instance: int, number of processes to run on each node
+    :param test_datadir: Path, used to construct default output path when rendering submission script template
+    :param submission_script_template_path: string, override default path for source submission script template
+    :param rendered_template_path: string, override destination path when rendering submission script template
+    :param timeout: int, maximum number of minutes to wait for job to complete
+    :return: string, stdout of the benchmark job
+    """
+    logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
+
+    if mpi_version not in SUPPORTED_MPIS:
+        raise Exception(f"Unsupported MPI: '{mpi_version}'. Must be one of {' '.join(SUPPORTED_MPIS)}")
+
+    compile_osu(mpi_version, remote_command_executor)
+
+    # Prepare submission script and pass to the scheduler for the job submission
+    if not submission_script_template_path:
+        submission_script_template_path = OSU_COMMON_DATADIR / f"osu_{benchmark_group}_submit_{mpi_version}.sh"
+    if not rendered_template_path:
+        rendered_template_path = test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh"
+    copyfile(submission_script_template_path, rendered_template_path)
+    slots = num_instances * slots_per_instance
+    submission_script = render_jinja_template(
+        template_file_path=rendered_template_path,
+        benchmark_name=benchmark_name,
+        osu_benchmark_version=OSU_BENCHMARK_VERSION,
+        num_of_processes=slots,
+    )
+    if partition:
+        result = scheduler_commands.submit_script(
+            str(submission_script), slots=slots, partition=partition, nodes=num_instances
+        )
+    else:
+        result = scheduler_commands.submit_script(str(submission_script), slots=slots, nodes=num_instances)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id, timeout=timeout)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+    output = remote_command_executor.run_remote_command(f"cat /shared/{benchmark_name}.out").stdout
+    return job_id, output
+
+
+def run_osu_benchmarks(
+    osu_benchmarks,
+    mpi_variant,
+    partition,
+    remote_command_executor,
+    scheduler_commands,
+    num_instances,
+    slots_per_instance,
+    region,
+    instance,
+    test_datadir,
+    dimensions,
+):
+    for osu_benchmark_group, osu_benchmark_names in osu_benchmarks.items():
+        for osu_benchmark_name in osu_benchmark_names:
+            dimensions_copy = dimensions.copy()
+            logging.info("Running benchmark %s", osu_benchmark_name)
+            job_id, output = run_individual_osu_benchmark(
+                mpi_version=mpi_variant,
+                benchmark_group=osu_benchmark_group,
+                benchmark_name=osu_benchmark_name,
+                partition=partition,
+                remote_command_executor=remote_command_executor,
+                scheduler_commands=scheduler_commands,
+                num_instances=num_instances,
+                slots_per_instance=slots_per_instance,
+                test_datadir=test_datadir,
+                timeout=40,
+            )
+            logging.info("Preparing benchmarks %s metrics", osu_benchmark_name)
+            metric_data = []
+            submit_time = datetime.strptime(scheduler_commands.get_job_submit_time(job_id), "%Y-%m-%dT%H:%M:%S")
+            start_time = datetime.strptime(scheduler_commands.get_job_start_time(job_id), "%Y-%m-%dT%H:%M:%S")
+            wait_seconds = (start_time - submit_time).total_seconds()
+            if wait_seconds >= 15:
+                # After submission, if job waited more than 15 seconds before running, the job was probably
+                # waiting for compute nodes to be launched. Therefore, the wait time is pushed to CloudWatch
+                # as an indicator of how fast the compute nodes were launched.
+                metric_data.append(
+                    {
+                        "MetricName": "JobWaitTime",
+                        "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions_copy.items()],
+                        "Value": wait_seconds,
+                        "Unit": "Seconds",
+                    }
+                )
+            for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
+                dimensions_copy.update(
+                    {
+                        "OsuBenchmarkGroup": osu_benchmark_group,
+                        "OsuBenchmarkName": osu_benchmark_name,
+                        "PacketSize": packet_size,
+                    }
+                )
+                metric_data.append(
+                    {
+                        "MetricName": "Latency",
+                        "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions_copy.items()],
+                        "Value": int(latency),
+                        "Unit": "Microseconds",
+                    }
+                )
+            yield metric_data

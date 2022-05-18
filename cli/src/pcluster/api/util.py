@@ -11,10 +11,13 @@
 import datetime
 import logging
 import shutil
+import subprocess
 
 import six
+from pkg_resources import packaging
 
 from pcluster.api import typing_utils
+from pcluster.constants import NODEJS_INCOMPATIBLE_VERSION_RANGE, NODEJS_MIN_VERSION
 
 LOGGER = logging.getLogger(__name__)
 
@@ -154,13 +157,54 @@ def _deserialize_dict(data, boxed_type):
     return {k: _deserialize(v, boxed_type) for k, v in six.iteritems(data)}
 
 
-def assert_node_executable():
+def assert_valid_node_js():
+    _assert_node_executable()
+    _assert_node_version()
+
+
+def _assert_node_executable():
     node_exe = shutil.which("node")
-    LOGGER.debug("Found nodejs executable in %s", node_exe)
+    LOGGER.debug("Found Node.js executable in %s", node_exe)
     if not node_exe:
         message = (
             "Unable to find node executable. Node.js is required by the AWS CDK library used by ParallelCluster, "
             "see installation instructions here: https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3.html"
+        )
+        LOGGER.critical(message)
+        raise Exception(message)
+
+
+def _assert_node_version():
+    try:
+        # A nosec comment is appended to the following line in order to disable the B607 and B603 checks.
+        # [B607:start_process_with_partial_path] Is suppressed because location of executable is retrieved from env PATH
+        # [B603:subprocess_without_shell_equals_true] Is suppressed because input of check_output is not coming from
+        #   untrusted source
+        node_version = subprocess.check_output(  # nosec
+            ["node", "--version"], stderr=subprocess.STDOUT, shell=False, encoding="utf-8"
+        )
+        LOGGER.debug("Found Node.js version (%s)", node_version)
+    except Exception:
+        message = "Unable to check Node.js version"
+        LOGGER.critical(message)
+        raise Exception(message)
+
+    if packaging.version.parse(node_version) < packaging.version.parse(NODEJS_MIN_VERSION):
+        message = (
+            f"AWS CDK library used by ParallelCluster requires Node.js version >= {NODEJS_MIN_VERSION},"
+            " see installation instructions here: https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3.html"
+        )
+        LOGGER.critical(message)
+        raise Exception(message)
+    if (
+        packaging.version.parse(NODEJS_INCOMPATIBLE_VERSION_RANGE[0])
+        <= packaging.version.parse(node_version)
+        <= packaging.version.parse(NODEJS_INCOMPATIBLE_VERSION_RANGE[1])
+    ):
+        message = (
+            f"AWS CDK library used by ParallelCluster requires Node.js to not be in the range"
+            f" {NODEJS_INCOMPATIBLE_VERSION_RANGE}, but installed Node.js version {node_version} is within this range,"
+            f" see https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html"
         )
         LOGGER.critical(message)
         raise Exception(message)

@@ -99,6 +99,7 @@ Scheduling:
         AssignPublicIp: true
         SecurityGroups:
           - sg-12345678
+          - sg-12345679
         PlacementGroup:
           Enabled: true
           Id: String
@@ -144,7 +145,7 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 3600
-      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | PERSISTENT_2 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 1024
       DataCompressionType: LZ4
       ExportPath: s3://bucket/folder
@@ -157,7 +158,7 @@ SharedStorage:
       # BackupId: backup-fedcba98 # BackupId cannot coexist with some of the fields
       KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
       # FileSystemId: fs-12345678123456789 # FileSystemId cannot coexist with other fields
-      AutoImportPolicy: NEW  # NEW | NEW_CHANGED
+      AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
 Iam:
@@ -183,6 +184,18 @@ Tags:
     Value: two22
 CustomS3Bucket: String
 AdditionalResources: https://template.url
+DirectoryService:
+  DomainName: string  # required
+  DomainAddr: string  # required
+  PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx  # required
+  DomainReadOnlyUser: string  # required
+  LdapTlsCaCert: string  # optional, default is dictated by LDAP client
+  LdapTlsReqCert: never
+  LdapAccessFilter: string  # optional
+  GenerateSshKeysForUsers: false
+  AdditionalSssdConfigs:
+    parameter_1: value_1
+    parameter_2: value_2
 DevSettings:
   ClusterTemplate: https://tests/aws-parallelcluster-template-3.0.tgz
   Cookbook:
@@ -198,3 +211,6 @@ DevSettings:
     - Key: tag2
       Value: value2
     Owner: self
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1201  # Default 1800 (seconds)
+    ComputeNodeBootstrapTimeout: 1001  # Default 1800 (seconds)

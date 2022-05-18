@@ -1,4 +1,4 @@
-usage: pcluster list-official-images [-h] [--region REGION] [--os OS]
+usage: pcluster list-official-images [-h] [-r REGION] [--os OS]
                                      [--architecture ARCHITECTURE] [--debug]
                                      [--query QUERY]
 
@@ -6,7 +6,8 @@ List Official ParallelCluster AMIs.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --region REGION       AWS Region that the operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
   --os OS               Filter by OS distribution (Default is to not filter.)
   --architecture ARCHITECTURE
                         Filter by architecture (Default is to not filter.)

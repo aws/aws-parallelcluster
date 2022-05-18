@@ -11,18 +11,15 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
-from shutil import copyfile
 
 from assertpy import assert_that
-from constants import OSU_BENCHMARK_VERSION
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
-from tests.common.osu_common import compile_osu, render_jinja_template
-from tests.common.schedulers_common import get_scheduler_commands
-from tests.common.utils import fetch_instance_slots
+from tests.common.osu_common import run_individual_osu_benchmark
+from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
 def test_efa(
@@ -36,6 +33,8 @@ def test_efa(
     architecture,
     network_interfaces_count,
     mpi_variants,
+    scheduler_commands_factory,
+    request,
 ):
     """
     Test all EFA Features.
@@ -45,19 +44,31 @@ def test_efa(
     # We collected OSU benchmarks results for c5n.18xlarge only.
     osu_benchmarks_instances = ["c5n.18xlarge"]
 
-    # 4 instances are required to see performance differences in collective OSU benchmarks.
-    # 2 instances are enough for other EFA tests.
-    max_queue_size = 4 if instance in osu_benchmarks_instances else 2
-    slots_per_instance = fetch_instance_slots(region, instance)
-    head_node_instance = "c5n.18xlarge" if architecture == "x86_64" else "c6gn.16xlarge"
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
+    # 32 instances are required to see performance differences in collective OSU benchmarks.
+    max_queue_size = 32 if instance in osu_benchmarks_instances else 2
+
+    if architecture == "x86_64":
+        head_node_instance = "c5.18xlarge"
+        multithreading_disabled = True
+    else:
+        head_node_instance = "c6g.16xlarge"
+        multithreading_disabled = False
+
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=multithreading_disabled)
+    cluster_config = pcluster_config_reader(
+        max_queue_size=max_queue_size,
+        head_node_instance=head_node_instance,
+        multithreading_disabled=multithreading_disabled,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
+    _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
+
+    run_system_analyzer(cluster, scheduler_commands_factory, request, partition="efa-enabled")
 
     if instance in osu_benchmarks_instances:
         benchmark_failures = []
@@ -82,7 +93,7 @@ def test_efa(
                     scheduler_commands,
                     test_datadir,
                     instance,
-                    num_of_instances=max_queue_size,
+                    num_instances=max_queue_size,
                     slots_per_instance=slots_per_instance,
                     partition="efa-enabled",
                 )
@@ -131,20 +142,20 @@ def _test_osu_benchmarks_pt2pt(
 ):
     # OSU pt2pt benchmarks cannot be executed with more than 2 MPI ranks.
     # Run them in 2 instances with 1 proc per instance, defined by map-by parameter.
-    num_of_instances = 2
+    num_instances = 2
     # Accept a max number of 4 failures on a total of 23-24 packet size tests.
     accepted_number_of_failures = 4
 
     failed_benchmarks = []
     for benchmark_name in ["osu_latency", "osu_bibw"]:
-        output = run_osu_benchmarks(
+        _, output = run_individual_osu_benchmark(
             mpi_version,
             "pt2pt",
             benchmark_name,
             partition,
             remote_command_executor,
             scheduler_commands,
-            num_of_instances,
+            num_instances,
             slots_per_instance,
             test_datadir,
         )
@@ -161,28 +172,26 @@ def _test_osu_benchmarks_collective(
     scheduler_commands,
     test_datadir,
     instance,
-    num_of_instances,
+    num_instances,
     slots_per_instance,
     partition=None,
 ):
-    # OSU collective benchmarks can be executed with any number of instances,
-    # 4 instances are enough to see performance differences with c5n.18xlarge.
-
     # Accept a max number of 3 failures on a total of 19-21 packet size tests.
     accepted_number_of_failures = 3
 
     failed_benchmarks = []
     for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
-        output = run_osu_benchmarks(
+        _, output = run_individual_osu_benchmark(
             mpi_version,
             "collective",
             benchmark_name,
             partition,
             remote_command_executor,
             scheduler_commands,
-            num_of_instances,
+            num_instances,
             slots_per_instance,
             test_datadir,
+            timeout=24,
         )
         failures = _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output)
         if failures > accepted_number_of_failures:
@@ -194,15 +203,15 @@ def _test_osu_benchmarks_collective(
 def _test_osu_benchmarks_multiple_bandwidth(
     remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
 ):
-    num_of_instances = 2
-    run_osu_benchmarks(
+    num_instances = 2
+    run_individual_osu_benchmark(
         "openmpi",
         "mbw_mr",
         "osu_mbw_mr",
         partition,
         remote_command_executor,
         scheduler_commands,
-        num_of_instances,
+        num_instances,
         slots_per_instance,
         test_datadir,
     )
@@ -218,45 +227,6 @@ def _test_osu_benchmarks_multiple_bandwidth(
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 
-def run_osu_benchmarks(
-    mpi_version,
-    benchmark_group,
-    benchmark_name,
-    partition,
-    remote_command_executor,
-    scheduler_commands,
-    num_of_instances,
-    slots_per_instance,
-    test_datadir,
-):
-    logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
-
-    compile_osu(mpi_version, remote_command_executor)
-
-    # Prepare submission script and pass to the scheduler for the job submission
-    copyfile(
-        test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}.sh",
-        test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
-    )
-    slots = num_of_instances * slots_per_instance
-    submission_script = render_jinja_template(
-        template_file_path=test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
-        benchmark_name=benchmark_name,
-        osu_benchmark_version=OSU_BENCHMARK_VERSION,
-        num_of_processes=slots,
-    )
-    if partition:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots, partition=partition)
-    else:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    output = remote_command_executor.run_remote_command(f"cat /shared/{benchmark_name}.out").stdout
-    return output
-
-
 def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output):
     logging.info(output)
     # Check avg latency for all packet sizes
@@ -267,8 +237,13 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
         ) as result:
             previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
 
-            # Use a tolerance of 10us for 2 digits values and 20% tolerance for 3+ digits values
-            accepted_tolerance = 10 if len(previous_result) <= 2 else float(previous_result) * 0.2
+            # Use a tolerance of 10us for 2 digits values.
+            # For 3+ digits values use a 20% tolerance, except for the higher-variance latency benchmark.
+            if len(previous_result) <= 2:
+                accepted_tolerance = 10
+            else:
+                multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
+                accepted_tolerance = float(previous_result) * multiplier
             tolerated_latency = float(previous_result) + accepted_tolerance
 
             message = (

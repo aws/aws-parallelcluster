@@ -20,14 +20,14 @@ def readme():
         return f.read()
 
 
-VERSION = "3.1.0"
-CDK_VERSION = "1.116"
+VERSION = "3.2.0"
+CDK_VERSION = "1.137,!=1.153.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
     "tabulate~=0.8",
-    "PyYAML>=5.3.1",
-    "jinja2~=3.0.2",
+    "PyYAML~=5.3",
+    "jinja2~=3.0",
     "marshmallow~=3.10",
     "aws-cdk.core~=" + CDK_VERSION,
     "aws-cdk.aws-batch~=" + CDK_VERSION,
@@ -47,17 +47,7 @@ REQUIRES = [
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
     "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
     "werkzeug~=2.0",
-    # pin connexion to 2.7.0 since 2.8.0,2.9.0 have introduced stricter requirements for werkzeug and flask.
-    # This does not impact any functionality. Also next connexion release will lift this limitation
-    # and we will be able to upgrade.
-    "connexion==2.7.0",
-    # Pin to connexion transitive dependencies.
-    # These can be removed after the next connexion release (assuming they pin these dependencies as expected).
-    "clickclick>=1.2,<21",
-    "jsonschema>=2.5.1,<4",
-    "requests>=2.9.1,<3",
-    "inflection>=0.3.1,<0.6",
-    "openapi-spec-validator>=0.2.4,<0.4",
+    "connexion~=2.13.0",
     "flask~=2.0",
     "jmespath~=0.10",
 ]
@@ -76,7 +66,7 @@ setup(
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=REQUIRES,
     extras_require={
         "awslambda": LAMBDA_REQUIRES,
@@ -95,7 +85,6 @@ setup(
         "Environment :: Console",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

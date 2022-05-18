@@ -1,0 +1,41 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          MinvCpus: 1
+          {% else %}
+          InstanceType: {{ instance }}
+          MinCount: 2
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_additional_cidr_subnet_id }}
+        SecurityGroups:
+          - {{ vpc_security_group_id }}
+          # Compute nodes use custom sg while the head node is using managed id
+          # to test the managed sg allow access from the custom sg
+SharedStorage:
+  - MountDir: efs
+    Name: efs
+    StorageType: Efs
+  - MountDir: fsx
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      DeploymentType: SCRATCH_2

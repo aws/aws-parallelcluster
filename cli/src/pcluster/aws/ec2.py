@@ -34,6 +34,8 @@ class Ec2Client(Boto3Client):
     def __init__(self):
         super().__init__("ec2")
         self.additional_instance_types_data = {}
+        self.security_groups_cache = {}
+        self.subnets_cache = {}
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
@@ -67,7 +69,20 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def describe_subnets(self, subnet_ids):
         """Return a list of subnets."""
-        return list(self._paginate_results(self._client.describe_subnets, SubnetIds=subnet_ids))
+        result = []
+        missed_subnets = []
+        for subnet_id in subnet_ids:
+            cached_data = self.subnets_cache.get(subnet_id)
+            if cached_data:
+                result.append(cached_data)
+            else:
+                missed_subnets.append(subnet_id)
+        if missed_subnets:
+            response = list(self._paginate_results(self._client.describe_subnets, SubnetIds=missed_subnets))
+            for subnet in response:
+                self.subnets_cache[subnet.get("SubnetId")] = subnet
+                result.append(subnet)
+        return result
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
@@ -312,8 +327,8 @@ class Ec2Client(Boto3Client):
         """
         Return a tuple of availability zones that have the instance_type.
 
-        This function build above _get_supported_az_for_instance_types,
-        but simplify the input to 1 instance type and result to a list
+        This function builds on get_supported_az_for_instance_types,
+        but simplifies the input to 1 instance type and returns a tuple
 
         :param instance_type: the instance type for which the supporting AZs.
         :return: a tuple of the supporting AZs
@@ -361,7 +376,7 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def get_ebs_snapshot_info(self, ebs_snapshot_id):
         """
-        Return a dict described the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
+        Return a dict describing the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
 
         Example of output:
         {
@@ -381,18 +396,33 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def describe_security_group(self, security_group_id):
         """Describe a single security group."""
-        return self.describe_security_groups([security_group_id]).get("SecurityGroups")[0]
+        return self.describe_security_groups([security_group_id])[0]
 
     @AWSExceptionHandler.handle_client_exception
     def describe_security_groups(self, security_group_ids):
-        """Describe a single security group."""
-        return self._client.describe_security_groups(GroupIds=security_group_ids)
+        """Describe security groups."""
+        result = []
+        missed_security_group_ids = []
+        for security_group_id in security_group_ids:
+            cached_data = self.security_groups_cache.get(security_group_id)
+            if cached_data:
+                result.append(cached_data)
+            else:
+                missed_security_group_ids.append(security_group_id)
+        if missed_security_group_ids:
+            response = list(
+                self._paginate_results(self._client.describe_security_groups, GroupIds=missed_security_group_ids)
+            )
+            for security_group in response:
+                self.security_groups_cache[security_group.get("GroupId")] = security_group
+                result.append(security_group)
+        return result
 
     @AWSExceptionHandler.handle_client_exception
     def describe_network_interfaces(self, network_interface_ids):
         """Describe network interfaces."""
-        return self._client.describe_network_interfaces(NetworkInterfaceIds=network_interface_ids).get(
-            "NetworkInterfaces"
+        return list(
+            self._paginate_results(self._client.describe_network_interfaces, NetworkInterfaceIds=network_interface_ids)
         )
 
     @AWSExceptionHandler.handle_client_exception

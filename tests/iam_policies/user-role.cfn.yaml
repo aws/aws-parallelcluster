@@ -264,6 +264,7 @@ Resources:
               - dynamodb:DeleteTable
               - dynamodb:GetItem
               - dynamodb:PutItem
+              - dynamodb:UpdateItem
               - dynamodb:Query
               - dynamodb:TagResource
             Resource: !Sub arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*
@@ -353,6 +354,7 @@ Resources:
                   - s3.data-source.lustre.fsx.amazonaws.com
           - Action:
               - lambda:CreateFunction
+              - lambda:TagResource
               - lambda:DeleteFunction
               - lambda:GetFunctionConfiguration
               - lambda:GetFunction
@@ -360,6 +362,8 @@ Resources:
               - lambda:AddPermission
               - lambda:RemovePermission
               - lambda:UpdateFunctionConfiguration
+              - lambda:ListTags
+              - lambda:UntagResource
             Resource:
               - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:parallelcluster-*
               - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:pcluster-*
@@ -476,6 +480,7 @@ Resources:
             Effect: Allow
             Action:
               - lambda:CreateFunction
+              - lambda:TagResource
               - lambda:GetFunction
               - lambda:AddPermission
             Resource:
@@ -524,6 +529,15 @@ Resources:
               - s3:GetObject
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
+          - Action:
+              - iam:CreateServiceLinkedRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/imagebuilder.amazonaws.com/AWSServiceRoleForImageBuilder
+            Effect: Allow
+            Condition:
+              StringLike:
+                iam:AWSServiceName:
+                  - imagebuilder.amazonaws.com
 
   ParallelClusterDeleteImageManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -551,6 +565,8 @@ Resources:
             Effect: Allow
             Action:
               - imagebuilder:DeleteImage
+              - imagebuilder:GetImage
+              - imagebuilder:CancelImageCreation
               - imagebuilder:DeleteComponent
               - imagebuilder:DeleteImageRecipe
               - imagebuilder:DeleteInfrastructureConfiguration
@@ -730,12 +746,13 @@ Resources:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Effect: Allow
-            Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
           - Action:
               - dynamodb:DescribeTable
               - dynamodb:Query
               - dynamodb:GetItem
               - dynamodb:PutItem
+              - dynamodb:UpdateItem
               - dynamodb:BatchWriteItem
             Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
             Effect: Allow
@@ -831,7 +848,10 @@ Resources:
           - Action: imagebuilder:DeleteDistributionConfiguration
             Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
             Effect: Allow
-          - Action: imagebuilder:DeleteImage
+          - Action:
+              - imagebuilder:DeleteImage
+              - imagebuilder:GetImage
+              - imagebuilder:CancelImageCreation
             Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/parallelclusterimage-*/*'
             Effect: Allow
           - Action: cloudformation:DeleteStack

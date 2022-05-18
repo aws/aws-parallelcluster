@@ -1,0 +1,76 @@
+- CapacityType: ONDEMAND
+  ComputeResources:
+    - CustomSettings: null
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: c1
+      SpotPrice: null
+    - CustomSettings: null
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: c2
+      SpotPrice: null
+  ComputeSettings:
+    LocalStorage:
+      EphemeralVolume: null
+      RootVolume: null
+  CustomActions: null
+  CustomSettings: null
+  Iam:
+    AdditionalIamPolicies: []
+    InstanceProfile: null
+    InstanceRole: null
+    S3Access: null
+  Image: null
+  Name: q1
+  Networking:
+    AdditionalSecurityGroups: null
+    AssignPublicIp: null
+    PlacementGroup: null
+    Proxy: null
+    SecurityGroups: null
+    SubnetIds:
+      - subnet-123
+- CapacityType: ONDEMAND
+  ComputeResources:
+    - CustomSettings: null
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      InstanceType: c5.large
+      MaxCount: 10
+      MinCount: 0
+      Name: c1
+      SpotPrice: null
+  ComputeSettings:
+    LocalStorage:
+      EphemeralVolume: null
+      RootVolume: null
+  CustomActions: null
+  CustomSettings: null
+  Iam:
+    AdditionalIamPolicies: []
+    InstanceProfile: null
+    InstanceRole: null
+    S3Access: null
+  Image: null
+  Name: q2
+  Networking:
+    AdditionalSecurityGroups: null
+    AssignPublicIp: null
+    PlacementGroup: null
+    Proxy: null
+    SecurityGroups: null
+    SubnetIds:
+      - subnet-123

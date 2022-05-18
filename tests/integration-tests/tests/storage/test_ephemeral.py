@@ -18,8 +18,8 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.utils import reboot_head_node, restart_head_node
 
 
-@pytest.mark.usefixtures("instance")
-def test_head_node_stop(scheduler, pcluster_config_reader, clusters_factory, region, os):
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_head_node_stop(pcluster_config_reader, clusters_factory):
     head_ephemeral_mount = "/scratch_head"
     compute_ephemeral_mount = "/scratch_compute"
     folder = "myFolder"

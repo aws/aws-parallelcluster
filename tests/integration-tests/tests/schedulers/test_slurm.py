@@ -32,18 +32,22 @@ from tests.common.assertions import (
     wait_for_num_instances_in_cluster,
 )
 from tests.common.hit_common import (
+    assert_compute_node_reasons,
     assert_compute_node_states,
     assert_initial_conditions,
     assert_num_nodes_in_scheduler,
+    get_partition_nodes,
     submit_initial_job,
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
-from tests.common.schedulers_common import SlurmCommands, TorqueCommands, get_scheduler_commands
+from tests.common.schedulers_common import TorqueCommands
 
 
-@pytest.mark.usefixtures("instance", "scheduler", "os")
-def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+@pytest.mark.usefixtures("instance", "os")
+def test_slurm(
+    region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory
+):
     """
     Test all AWS Slurm related features.
 
@@ -55,14 +59,21 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
     supports_impi = architecture == "x86_64"
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, gpu_instance_type=gpu_instance_type)
+    compute_node_bootstrap_timeout = 1600
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        gpu_instance_type=gpu_instance_type,
+        compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
+    )
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    slurm_commands = SlurmCommands(remote_command_executor)
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
     _test_slurm_version(remote_command_executor)
 
     if supports_impi:
-        _test_mpi_job_termination(remote_command_executor, test_datadir)
+        _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_commands, region, cluster)
 
     _assert_no_node_in_cluster(region, cluster.cfn_name, slurm_commands)
     _test_job_dependencies(slurm_commands, region, cluster.cfn_name, scaledown_idletime)
@@ -92,9 +103,21 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
     assert_no_errors_in_logs(remote_command_executor, "slurm")
+    # Test compute node bootstrap timeout
+    if scheduler == "slurm":  # TODO enable this once bootstrap_timeout feature is implemented in slurm plugin
+        _test_compute_node_bootstrap_timeout(
+            cluster,
+            pcluster_config_reader,
+            remote_command_executor,
+            compute_node_bootstrap_timeout,
+            scaledown_idletime,
+            gpu_instance_type,
+            clustermgtd_conf_path,
+            slurm_root_path,
+        )
 
 
-@pytest.mark.usefixtures("os", "instance", "scheduler")
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_slurm_pmix(pcluster_config_reader, clusters_factory):
     """Test interactive job submission using PMIx."""
     num_computes = 2
@@ -126,12 +149,14 @@ def test_slurm_pmix(pcluster_config_reader, clusters_factory):
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_scaling
-def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
+def test_slurm_scaling(
+    scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
     """Test that slurm-specific scaling logic is behaving as expected for normal actions and failures."""
     cluster_config = pcluster_config_reader(scaledown_idletime=3)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _assert_cluster_initial_conditions(scheduler_commands, 20, 20, 4)
     _test_online_node_configured_correctly(
@@ -185,12 +210,15 @@ def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clus
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_error_handling
-def test_error_handling(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
+def test_error_handling(
+    scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
     """Test that slurm-specific scaling logic can handle rare failures."""
     cluster_config = pcluster_config_reader(scaledown_idletime=3)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _assert_cluster_initial_conditions(scheduler_commands, 10, 20, 1)
     _test_cloud_node_health_check(
@@ -209,6 +237,7 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
         scheduler_commands,
         cluster.cfn_name,
         region,
+        slurm_root_path,
         partition="ondemand1",
         num_static_nodes=1,
     )
@@ -227,6 +256,7 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
         cluster.cfn_name,
         region,
         test_datadir,
+        slurm_root_path,
         partition="ondemand1",
         num_static_nodes=1,
         num_dynamic_nodes=1,
@@ -237,7 +267,12 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_protected_mode
 def test_slurm_protected_mode(
-    scheduler, region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    scheduler_commands_factory,
 ):
     """Test that slurm protected mode logic can handle bootstrap failure nodes."""
     # Create S3 bucket for pre-install scripts
@@ -247,12 +282,72 @@ def test_slurm_protected_mode(
     cluster_config = pcluster_config_reader(bucket=bucket_name)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_disable_protected_mode(remote_command_executor, cluster, bucket_name, pcluster_config_reader)
-    pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor)
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    _test_disable_protected_mode(
+        remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path
+    )
+    pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path)
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
     _test_job_run_in_working_queue(scheduler_commands)
     _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.fast_capacity_failover
+def test_fast_capacity_failover(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    # after the cluster is launched, apply the override patch to launch ice nodes
+    remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
+    nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1")
+    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
+    ice_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
+    static_nodes_in_ice_compute_resource = [node for node in static_nodes if "ice-compute-resource" in node]
+    # test enable fast instance capacity failover
+    _test_enable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        static_nodes_in_ice_compute_resource,
+        ice_dynamic_nodes,
+    )
+    # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    # test disable ice logic
+    _test_disable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        static_nodes_in_ice_compute_resource,
+        ice_dynamic_nodes,
+    )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_config_update
+def test_slurm_config_update(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    # test update without queue param change, clustermgtd and slurmctld not restart
+    _test_update_without_update_queue_params(pcluster_config_reader, cluster, remote_command_executor)
+    # test update with queue param change, clustermgtd and slurmctld restart
+    _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor)
 
 
 def _assert_cluster_initial_conditions(
@@ -501,6 +596,7 @@ def _test_ec2_status_check_replacement(
     scheduler_commands,
     cluster_name,
     region,
+    slurm_root_path,
     partition,
     num_static_nodes,
 ):
@@ -509,7 +605,7 @@ def _test_ec2_status_check_replacement(
     static_nodes, _ = assert_initial_conditions(scheduler_commands, num_static_nodes, 0, partition)
     # Can take up to 15 mins for ec2_status_check to show
     # Need to increase SlurmdTimeout to avoid slurm health check and trigger ec2_status_check code path
-    _set_slurmd_timeout(remote_command_executor, timeout=10000)
+    _set_slurmd_timeout(remote_command_executor, slurm_root_path, timeout=10000)
     kill_job_id = _submit_kill_networking_job(
         remote_command_executor, scheduler_commands, partition, node_type="static", num_nodes=num_static_nodes
     )
@@ -524,7 +620,7 @@ def _test_ec2_status_check_replacement(
     _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[])
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
     # Reset SlurmdTimeout to 180s
-    _set_slurmd_timeout(remote_command_executor, timeout=180)
+    _set_slurmd_timeout(remote_command_executor, slurm_root_path, timeout=180)
 
 
 def _test_clustermgtd_down_logic(
@@ -533,6 +629,7 @@ def _test_clustermgtd_down_logic(
     cluster_name,
     region,
     test_datadir,
+    slurm_root_path,
     partition,
     num_static_nodes,
     num_dynamic_nodes,
@@ -551,13 +648,16 @@ def _test_clustermgtd_down_logic(
     static_nodes, dynamic_nodes = assert_initial_conditions(
         scheduler_commands, num_static_nodes, num_dynamic_nodes, partition
     )
+    logging.info("Retrieving clustermgtd config path before killing it.")
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    clustermgtd_heartbeat_file = _retrieve_clustermgtd_heartbeat_file(remote_command_executor, clustermgtd_conf_path)
     logging.info("Killing clustermgtd and rewriting timestamp file to trigger timeout.")
     remote_command_executor.run_remote_script(str(test_datadir / "slurm_kill_clustermgtd.sh"), run_as_root=True)
     # Overwrite clusterctld heartbeat to trigger timeout path
     timestamp_format = "%Y-%m-%d %H:%M:%S.%f%z"
     overwrite_time_str = datetime(2020, 1, 1, tzinfo=timezone.utc).strftime(timestamp_format)
     remote_command_executor.run_remote_command(
-        "echo -n '{}' | sudo tee /opt/slurm/etc/pcluster/.slurm_plugin/clustermgtd_heartbeat".format(overwrite_time_str)
+        "echo -n '{0}' | sudo tee {1}".format(overwrite_time_str, clustermgtd_heartbeat_file)
     )
     # Test that computemgtd will terminate compute nodes that are down or in power_save
     # Put first static node and first dynamic node into DOWN
@@ -656,7 +756,7 @@ def _terminate_nodes_manually(instance_ids, region):
     logging.info("Terminated nodes: {}".format(instance_ids))
 
 
-def _test_mpi_job_termination(remote_command_executor, test_datadir):
+def _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_commands, region, cluster):
     """
     Test canceling mpirun job will not leave stray processes.
 
@@ -666,7 +766,6 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     This bug cannot be reproduced using OpenMPI
     """
     logging.info("Testing no stray process left behind after mpirun job is terminated")
-    slurm_commands = SlurmCommands(remote_command_executor)
 
     # Submit mpi_job, which runs Intel MPI benchmarks with intelmpi
     # Leaving 1 vcpu on each node idle so that the process check job can run while mpi_job is running
@@ -674,21 +773,50 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Wait for compute node to start and check that mpi processes are started
+    _wait_computefleet_running(region, cluster, remote_command_executor)
     retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
         slurm_commands, job_id, job_state="RUNNING"
     )
-    _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=False)
+    _check_mpi_process(remote_command_executor, slurm_commands, num_nodes=2, after_completion=False)
     slurm_commands.cancel_job(job_id)
 
     # Make sure mpirun job is cancelled
     _assert_job_state(slurm_commands, job_id, job_state="CANCELLED")
 
     # Check that mpi processes are terminated
-    _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=True)
+    _check_mpi_process(remote_command_executor, slurm_commands, num_nodes=2, after_completion=True)
+
+
+def _wait_computefleet_running(region, cluster, remote_command_executor):
+    """Wait computefleet to finish setup"""
+    ec2_client = boto3.client("ec2", region_name=region)
+    compute_nodes = cluster.describe_cluster_instances(node_type="Compute")
+    for compute in compute_nodes:
+        instance_id = compute.get("instanceId")
+        _wait_instance_running(ec2_client, [instance_id])
+        _wait_compute_cloudinit_done(remote_command_executor, compute)
+
+
+def _wait_instance_running(ec2_client, instance_ids):
+    """Wait EC2 instance to go running"""
+    logging.info(f"Waiting for {instance_ids} to be running")
+    ec2_client.get_waiter("instance_running").wait(
+        InstanceIds=instance_ids, WaiterConfig={"Delay": 60, "MaxAttempts": 5}
+    )
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))
+def _wait_compute_cloudinit_done(remote_command_executor, compute_node):
+    """Wait till cloud-init complete on a given compute node"""
+    compute_node_private_ip = compute_node.get("privateIpAddress")
+    compute_cloudinit_status_output = remote_command_executor.run_remote_command(
+        f"ssh -q {compute_node_private_ip} sudo cloud-init status"
+    ).stdout
+    assert_that(compute_cloudinit_status_output).contains("status: done")
 
 
 @retry(wait_fixed=seconds(10), stop_max_attempt_number=4)
-def _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes, after_completion):
+def _check_mpi_process(remote_command_executor, slurm_commands, num_nodes, after_completion):
     """Submit script and check for MPI processes."""
     # Clean up old datafiles
     remote_command_executor.run_remote_command("rm -f /shared/check_proc.out")
@@ -712,7 +840,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": "--gpus-per-task {0}".format(gpu_per_instance + 1),
+            "other_options": "--gpus-per-task {0} -n 1".format(gpu_per_instance + 1),
             "raise_on_error": False,
         },
     )
@@ -732,7 +860,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": "-G:{0}".format(gpu_per_instance * max_count + 1),
+            "other_options": "-G {0}".format(gpu_per_instance * max_count + 1),
             "raise_on_error": False,
         },
     )
@@ -746,6 +874,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "other_options": "-G 1 --cpus-per-gpu 32 --cpus-per-task 20",
             "raise_on_error": False,
         },
+        reason="sbatch: error: --cpus-per-gpu is mutually exclusive with --cpus-per-task",
     )
 
     # Commands below should be correctly submitted
@@ -806,10 +935,12 @@ def _test_cluster_limits(slurm_commands, partition, instance_type, max_count, cp
     )
 
 
-def _submit_command_and_assert_job_rejected(slurm_commands, submit_command_args):
+def _submit_command_and_assert_job_rejected(
+    slurm_commands, submit_command_args, reason="sbatch: error: Batch job submission failed:"
+):
     """Submit a limit-violating job and assert the job is failed at submission."""
     result = slurm_commands.submit_command(**submit_command_args)
-    assert_that(result.stdout).contains("sbatch: error: Batch job submission failed:")
+    assert_that(result.stdout).contains(reason)
 
 
 def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_info):
@@ -826,7 +957,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains("TresPerJob=gpu:1", f"CpusPerTres=gpu:{cpus_per_gpu}")
+    assert_that(job_info).contains("TresPerJob=gres:gpu:1", f"CpusPerTres=gres:gpu:{cpus_per_gpu}")
 
     gpus_per_instance = _get_num_gpus_on_instance(instance_type_info)
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
@@ -838,13 +969,13 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains(f"TresPerNode=gpu:{gpus_per_instance}", f"CpusPerTres=gpu:{cpus_per_gpu}")
+    assert_that(job_info).contains(f"TresPerNode=gres:gpu:{gpus_per_instance}", f"CpusPerTres=gres:gpu:{cpus_per_gpu}")
 
 
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 20.11.8")
+    assert_that(version).is_equal_to("slurm 21.08.8-2")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -948,12 +1079,12 @@ def _submit_kill_networking_job(remote_command_executor, scheduler_commands, par
     )
 
 
-def _set_slurmd_timeout(remote_command_executor, timeout):
+def _set_slurmd_timeout(remote_command_executor, slurm_root_path, timeout):
     """Set SlurmdTimeout in slurm.conf."""
     remote_command_executor.run_remote_command(
-        "sudo sed -i '/SlurmdTimeout/s/=.*/={0}/' /opt/slurm/etc/slurm.conf".format(timeout)
+        "sudo sed -i '/SlurmdTimeout/s/=.*/={0}/' {1}/etc/slurm.conf".format(timeout, slurm_root_path)
     )
-    remote_command_executor.run_remote_command("sudo /opt/slurm/bin/scontrol reconfigure")
+    remote_command_executor.run_remote_command("sudo -i scontrol reconfigure")
     _assert_slurmd_timeout(remote_command_executor, timeout)
 
 
@@ -1035,7 +1166,14 @@ def _wait_for_partition_state_changed(scheduler_commands, partition, desired_sta
 def _update_and_start_cluster(cluster, config_file):
     cluster.stop()
     _wait_for_computefleet_changed(cluster, "STOPPED")
+    # After cluster stop, add time sleep here to wait longer than SuspendTimeout for nodes turn from
+    # powering down(%) to power save(~) to avoid the problem in slurm 21.08.3 before cluster update
+    time.sleep(150)
     cluster.update(str(config_file), force_update="true")
+    # During cluster update, slurmctld will be restart and clustermgtd restart, nodes will be up during slurmctld
+    # restart,and powered down when clustermgtd start. Add time sleep here to wait longer than SuspendTimeout for
+    # nodes turn from powering down(% to power save(~) to avoid the problem in slurm 21.08.3
+    time.sleep(150)
     cluster.start()
     _wait_for_computefleet_changed(cluster, "RUNNING")
 
@@ -1046,25 +1184,24 @@ def _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader):
     _update_and_start_cluster(cluster, updated_config_file)
 
 
-def _set_protected_failure_count(remote_command_executor, protected_failure_count):
+def _set_protected_failure_count(remote_command_executor, protected_failure_count, clustermgtd_conf_path):
     """Disable protected mode by setting protected_failure_count to -1."""
     remote_command_executor.run_remote_command(
-        f"echo 'protected_failure_count = {protected_failure_count}' | sudo tee -a "
-        "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+        f"echo 'protected_failure_count = {protected_failure_count}' | sudo tee -a " f"{clustermgtd_conf_path}"
     )
 
 
-def _enable_protected_mode(remote_command_executor):
+def _enable_protected_mode(remote_command_executor, clustermgtd_conf_path):
     """Enable protected mode by removing lines related to protected mode in the config, so it will be set to default."""
-    remote_command_executor.run_remote_command(
-        "sudo sed -i '/'protected_failure_count'/d' /etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
-    )
+    remote_command_executor.run_remote_command(f"sudo sed -i '/'protected_failure_count'/d' {clustermgtd_conf_path}")
 
 
-def _test_disable_protected_mode(remote_command_executor, cluster, bucket_name, pcluster_config_reader):
+def _test_disable_protected_mode(
+    remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path
+):
     """Test Bootstrap failures have no affect on cluster when protected mode is disabled."""
     # Disable protected_mode by setting protected_failure_count to -1
-    _set_protected_failure_count(remote_command_executor, -1)
+    _set_protected_failure_count(remote_command_executor, -1, clustermgtd_conf_path)
     _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader)
     # wait till the node failed
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
@@ -1082,7 +1219,7 @@ def _test_disable_protected_mode(remote_command_executor, cluster, bucket_name, 
     )
 
 
-def _test_active_job_running(scheduler_commands, remote_command_executor):
+def _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path):
     """Test cluster is not placed into protected mode when there is an active job running even reach threshold."""
     # Submit a job to the queue contains broken nodes and normal node, submit the job to the normal node to test
     # the queue will not be disabled if there's active job running.
@@ -1093,9 +1230,9 @@ def _test_active_job_running(scheduler_commands, remote_command_executor):
     scheduler_commands.wait_job_running(cancel_job_id)
 
     # Re-enable protected mode
-    _enable_protected_mode(remote_command_executor)
+    _enable_protected_mode(remote_command_executor, clustermgtd_conf_path)
     # Decrease protected failure count for quicker enter protected mode.
-    _set_protected_failure_count(remote_command_executor, 2)
+    _set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
 
     # Submit a job to the problematic compute resource, so the protected_failure count will increase
     job_id_pending = scheduler_commands.submit_command_and_assert_job_accepted(
@@ -1174,3 +1311,220 @@ def _test_recover_from_protected_mode(
     # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
     # not enter protected mode
     check_status(cluster, compute_fleet_status="RUNNING")
+
+
+def _test_compute_node_bootstrap_timeout(
+    cluster,
+    pcluster_config_reader,
+    remote_command_executor,
+    compute_node_bootstrap_timeout,
+    scaledown_idletime,
+    gpu_instance_type,
+    clustermgtd_conf_path,
+    slurm_root_path,
+):
+    """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
+    slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
+        "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
+    ).stdout
+    assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={compute_node_bootstrap_timeout}")
+    clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
+    assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
+    # Update cluster
+    update_compute_node_bootstrap_timeout = 1200
+    updated_config_file = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        gpu_instance_type=gpu_instance_type,
+        compute_node_bootstrap_timeout=update_compute_node_bootstrap_timeout,
+        config_file="pcluster.update.config.yaml",
+    )
+    _update_and_start_cluster(cluster, updated_config_file)
+    slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
+        "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
+    ).stdout
+    assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={update_compute_node_bootstrap_timeout}")
+    clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
+    assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
+    assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
+
+
+def _retrieve_slurm_root_path(remote_command_executor):
+    return remote_command_executor.run_remote_command("dirname $(dirname $(which scontrol))").stdout
+
+
+def _retrieve_clustermgtd_conf_path(remote_command_executor):
+    clustermgtd_conf_path = "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    clustermgtd_conf_path_override = remote_command_executor.run_remote_command(
+        "sudo strings /proc/$(pgrep -f bin/clustermgtd$)/environ | grep CONFIG_FILE= | cut -d '=' -f2"
+    ).stdout
+    if clustermgtd_conf_path_override:
+        clustermgtd_conf_path = clustermgtd_conf_path_override
+    return clustermgtd_conf_path
+
+
+def _retrieve_clustermgtd_heartbeat_file(remote_command_executor, clustermgtd_conf_path):
+    return remote_command_executor.run_remote_command(
+        f"cat {clustermgtd_conf_path} | grep heartbeat_file_path | cut -d '=' -f2 | xargs"
+    ).stdout
+
+
+def _set_insufficient_capacity_timeout(remote_command_executor, insufficient_capacity_timeout, clustermgtd_conf_path):
+    """Set insufficient_capacity_timeout in clustermgtd conf."""
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/'insufficient_capacity_timeout'/d' {clustermgtd_conf_path}"
+    )
+    remote_command_executor.run_remote_command(
+        f"echo 'insufficient_capacity_timeout = {insufficient_capacity_timeout}' | sudo tee -a "
+        f"{clustermgtd_conf_path}"
+    )
+
+
+def _enable_fast_capacity_failover(remote_command_executor, clustermgtd_conf_path):
+    """Enable protected mode by removing lines related to protected mode in the config, so it will be set to default."""
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/'insufficient_capacity_timeout'/d' {clustermgtd_conf_path}"
+    )
+
+
+def _test_disable_fast_capacity_failover(
+    scheduler_commands,
+    remote_command_executor,
+    clustermgtd_conf_path,
+    static_nodes_in_ice_compute_resource,
+    ice_dynamic_nodes,
+):
+    """Test fast capacity failover has no effect on cluster when it is disabled."""
+    # set insufficient_capacity_timeout to 0 to disable fast instance capacity failover logic
+    _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
+    # submit a job to trigger insufficient capacity
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 30",
+            "nodes": 2,
+            "other_options": "--no-requeue",
+            "constraint": "c5.large",
+        }
+    )
+    # wait till the node failed to launch
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/slurm_resume.log"],
+        [
+            "InsufficientInstanceCapacity",
+        ],
+    )
+    # assert that ice node is detected as unhealthy node
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Found the following unhealthy dynamic nodes",
+        ],
+    )
+    # Assert that clustermgtd log doesn't contains insufficient capacity compute resources
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["The following compute resources are in down state due to insufficient capacity"],
+    )
+
+    # wait until job failed
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_state(job_id, "NODE_FAIL")
+    # wait for nodes reset
+    _wait_for_compute_nodes_states(scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle"])
+    _wait_for_compute_nodes_states(scheduler_commands, ice_dynamic_nodes, expected_states=["idle~"])
+
+
+def assert_job_requeue_in_time(scheduler_commands, job_id):
+    """Test that job will requeue to a different compute resource after AuthInfo=cred_expire=70 timeout."""
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+    submit_time = datetime.strptime(scheduler_commands.get_job_submit_time(job_id), "%Y-%m-%dT%H:%M:%S")
+    eligible_time = datetime.strptime(scheduler_commands.get_job_eligible_time(job_id), "%Y-%m-%dT%H:%M:%S")
+    wait_seconds = (eligible_time - submit_time).total_seconds()
+    # Test it takes less than 2 minutes a job is re-queued to a different compute resource."""
+    assert_that(wait_seconds).is_less_than_or_equal_to(120)
+
+
+def _test_enable_fast_capacity_failover(
+    scheduler_commands,
+    remote_command_executor,
+    clustermgtd_conf_path,
+    static_nodes_in_ice_compute_resource,
+    ice_dynamic_nodes,
+):
+    # set insufficient_capacity_timeout to 180 seconds to quicker reset compute resources
+    _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
+    # trigger insufficient capacity
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 30", "nodes": 2}
+    )
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "The following compute resources are in down state due to insufficient capacity",
+        ],
+    )
+    # test static nodes in ice compute resource are up
+    assert_compute_node_states(
+        scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle", "mixed", "allocated"]
+    )
+    # test dynamic nodes in ice compute resource are down
+    assert_compute_node_states(scheduler_commands, ice_dynamic_nodes, expected_states=["down#", "down~"])
+    assert_compute_node_reasons(scheduler_commands, ice_dynamic_nodes, "(Code:InsufficientInstanceCapacity)")
+    # test job takes less than 2 minutes to requeue
+    scheduler_commands.wait_job_completed(job_id)
+    assert_job_requeue_in_time(scheduler_commands, job_id)
+
+    # check insufficient timeout expired
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Reset the following compute resources because insufficient capacity timeout expired",
+        ],
+    )
+    # check dynamic nodes in ice compute resource are reset after insufficient_capacity_timeout expired
+    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=ice_dynamic_nodes)
+    # test insufficient capacity does not trigger protected mode
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Node bootstrap error"],
+    )
+
+
+def _test_update_without_update_queue_params(pcluster_config_reader, cluster, remote_command_executor):
+    """Test update without queue param change, clustermgtd and slurmctld not restart."""
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
+    _update_and_start_cluster(cluster, updated_config_file)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        [
+            "Recipe: aws-parallelcluster-slurm::update_head_node",
+            "Processing execute\\[stop clustermgtd\\]",
+            "Processing service\\[slurmctld\\] action restart",
+        ],
+    )
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        ["INFO: execute\\[stop clustermgtd\\] ran successfully", "INFO: service\\[slurmctld\\] restarted"],
+    )
+
+
+def _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor):
+    """Test update queue param change, clustermgtd and slurmctld restart."""
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update_scheduling.yaml")
+    _update_and_start_cluster(cluster, updated_config_file)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        [
+            "INFO: execute\\[stop clustermgtd\\] ran successfully",
+            "INFO: service\\[slurmctld\\] restarted",
+        ],
+    )

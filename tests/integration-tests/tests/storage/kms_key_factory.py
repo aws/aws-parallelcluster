@@ -8,6 +8,8 @@ import boto3
 import pkg_resources
 from jinja2 import Environment, FileSystemLoader
 
+from tests.common.utils import get_sts_endpoint
+
 
 class KMSKeyFactory:
     """Manage creation for kms key."""
@@ -31,7 +33,7 @@ class KMSKeyFactory:
         """
         self.region = region
         self.account_id = (
-            boto3.client("sts", endpoint_url=_get_sts_endpoint(region), region_name=region)
+            boto3.client("sts", endpoint_url=get_sts_endpoint(region), region_name=region)
             .get_caller_identity()
             .get("Account")
         )
@@ -83,7 +85,7 @@ class KMSKeyFactory:
             Description="Role for create custom KMS key",
             Path="/parallelcluster/",
         )["Role"]["Arn"]
-        # Having time.sleep here because because it take a while for the the IAM role to become valid for use in the
+        # Having time.sleep here because it takes a while for the IAM role to become valid for use in the
         # put_key_policy step for creating KMS key, read the following link for reference :
         # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
         time.sleep(15)
@@ -134,14 +136,14 @@ class KMSKeyFactory:
         random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
         key_alias = "alias/Integ_test_KMS_{0}_{1}".format(self.region, random_string)
 
-        # If the key already existed, use the existing key
+        # If the key already exists, use the existing key
         for alias in self.kms_client.list_aliases().get("Aliases"):
             if alias.get("AliasName") == key_alias:
                 kms_key_id = alias.get("TargetKeyId")
                 logging.info("Use existing KMS key {0}".format(kms_key_id))
                 return kms_key_id
 
-        # if the key doesn't existed in the account, create a new key
+        # if the key doesn't exist in the account, create a new key
         logging.info("Creating KMS key...")
         response = self.kms_client.create_key(
             Description="create kms key",
@@ -190,9 +192,9 @@ class KMSKeyFactory:
             # delete the awsbatch policy
             self.iam_client.delete_policy(PolicyArn=self.iam_policy_arn_batch)
             logging.info("Deleting iam policy for traditional scheduler %s" % self.iam_policy_arn_traditional)
-            # detach iam policy for traditional schedluer from iam role
+            # detach iam policy for traditional scheduler from iam role
             self.iam_client.detach_role_policy(RoleName=self.iam_role_name, PolicyArn=self.iam_policy_arn_traditional)
-            # delete the traditional schedluer policy
+            # delete the traditional scheduler policy
             self.iam_client.delete_policy(PolicyArn=self.iam_policy_arn_traditional)
 
     def _release_iam_role(self):
@@ -209,8 +211,3 @@ class KMSKeyFactory:
             # The waiting period is at least 7 days.
             PendingWindowInDays=7,
         )
-
-
-def _get_sts_endpoint(region):
-    """Get regionalized STS endpoint."""
-    return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")

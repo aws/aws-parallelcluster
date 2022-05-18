@@ -7,10 +7,15 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: slurm
-  SlurmSettings:
+  Scheduler: {{ scheduler }}
+  {{ scheduler_prefix }}Settings:
+    {% if scheduler == "plugin" %}
+    CustomSettings:
+      ScaledownIdletime: {{ scaledown_idletime }}
+    {% else %}
     ScaledownIdletime: {{ scaledown_idletime }}
-  SlurmQueues:
+    {% endif %}
+  {{ scheduler_prefix }}Queues:
     - Name: ondemand
       Networking:
         SubnetIds:
@@ -34,3 +39,7 @@ SharedStorage:
   - MountDir: /shared  # Test comment
     Name: name1
     StorageType: Ebs
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1700
+    ComputeNodeBootstrapTimeout: {{compute_node_bootstrap_timeout}}
