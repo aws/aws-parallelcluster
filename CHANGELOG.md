@@ -9,6 +9,7 @@ x.x.x
   `SlurmQueues` configuration changes don't impact Slurm scheduler configuration.
 - Add support for multiple Elastic File Systems.
 - Add support for multiple FSx File Systems.
+- Add support for attaching existing FSx for Ontap and FSx for OpenZFS File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
 - Show `requested_value` and `current_value` values in the change set when adding or removing a section.
 

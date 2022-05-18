@@ -69,6 +69,8 @@ write_files:
           "fsx_fs_ids": "${FSXIds}",
           "fsx_mount_names": "${FSXMountNames}",
           "fsx_dns_names": "${FSXDNSNames}",
+          "fsx_volume_junction_paths": "${FSXVolumeJunctionPaths}",
+          "fsx_fs_types": "${FSXFileSystemTypes}",
           "fsx_shared_dirs": "${FSXSharedDirs}",
           "scheduler": "${Scheduler}",
           "disable_hyperthreading_manually": "${DisableHyperThreadingManually}",

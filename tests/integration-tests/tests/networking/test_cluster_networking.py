@@ -31,8 +31,10 @@ from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
 from tests.storage.test_fsx_lustre import (
+    assert_fsx_correctly_shared,
     assert_fsx_lustre_correctly_mounted,
-    assert_fsx_lustre_correctly_shared,
+    create_fsx_ontap,
+    create_fsx_open_zfs,
     get_fsx_fs_ids,
 )
 
@@ -99,7 +101,7 @@ def _test_fsx_in_private_subnet(
     logging.info(f"Bastion: {bastion_instance}")
     fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
     assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, region, fsx_fs_id)
-    assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
+    assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
 
 
 @pytest.mark.usefixtures("enable_vpc_endpoints")
@@ -116,6 +118,7 @@ def test_cluster_in_no_internet_subnet(
     os,
     mpi_variants,
     bastion_instance,
+    fsx_factory,
 ):
     """
     This test creates a cluster in a subnet with no internet, run simple integration test to check prolog and epilog
@@ -125,8 +128,14 @@ def test_cluster_in_no_internet_subnet(
     _upload_pre_install_script(bucket_name, test_datadir)
 
     vpc_default_security_group_id = get_default_vpc_security_group(vpc_stack.cfn_outputs["VpcId"], region)
+    fsx_ontap_id = create_fsx_ontap(fsx_factory, num=1)
+    fsx_open_zfs_id = create_fsx_open_zfs(fsx_factory, num=1)
     cluster_config = pcluster_config_reader(
-        vpc_default_security_group_id=vpc_default_security_group_id, bucket_name=bucket_name, architecture=architecture
+        vpc_default_security_group_id=vpc_default_security_group_id,
+        bucket_name=bucket_name,
+        architecture=architecture,
+        fsx_ontap_id=fsx_ontap_id,
+        fsx_open_zfs_id=fsx_open_zfs_id,
     )
     cluster = clusters_factory(cluster_config)
 

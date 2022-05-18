@@ -11,6 +11,8 @@
 import logging
 
 from pcluster.constants import (
+    LUSTRE,
+    OPENZFS,
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_TAG,
@@ -248,14 +250,25 @@ class FsxFileSystemInfo:
         self.file_system_data = file_system_data
 
     @property
+    def file_system_type(self):
+        """Return the type of FSx file system (LUSTRE, WINDOWS, ONTAP, or OPENZFS). WINDOWS is not supported."""
+        return self.file_system_data.get("FileSystemType")
+
+    @property
     def mount_name(self):
-        """Return MountName of the filesystem."""
-        return self.file_system_data.get("LustreConfiguration").get("MountName")
+        """Return MountName of the FSx Lustre file system."""
+        return (
+            self.file_system_data.get("LustreConfiguration").get("MountName") if self.file_system_type == LUSTRE else ""
+        )
 
     @property
     def dns_name(self):
-        """Return DNSName of the filesystem."""
-        return self.file_system_data.get("DNSName")
+        """
+        Return DNSName of the file system.
+
+        Lustre, OpenZFS have DNS name on file systems. Ontap has DNS name on storage virtual machines.
+        """
+        return self.file_system_data.get("DNSName") if self.file_system_type in [LUSTRE, OPENZFS] else ""
 
     @property
     def file_system_id(self):
