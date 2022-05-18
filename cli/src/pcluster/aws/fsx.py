@@ -18,6 +18,8 @@ class FSxClient(Boto3Client):
     def __init__(self):
         super().__init__("fsx")
         self.cache = {}
+        self.svm_cache = {}
+        self.volume_cache = {}
 
     @AWSExceptionHandler.handle_client_exception
     def get_file_systems_info(self, fsx_fs_ids):
@@ -41,6 +43,44 @@ class FSxClient(Boto3Client):
                 file_system_info = FsxFileSystemInfo(file_system)
                 self.cache[file_system_info.file_system_id] = file_system_info
                 result.append(file_system_info)
+        return result
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_storage_virtual_machines(self, storage_virtual_machine_ids):
+        """Describe storage virtual machines."""
+        result = []
+        missed_storage_virtual_machine_ids = []
+        for storage_virtual_machine_id in storage_virtual_machine_ids:
+            cached_data = self.svm_cache.get(storage_virtual_machine_id)
+            if cached_data:
+                result.append(cached_data)
+            else:
+                missed_storage_virtual_machine_ids.append(storage_virtual_machine_id)
+        if missed_storage_virtual_machine_ids:
+            response = self._client.describe_storage_virtual_machines(
+                StorageVirtualMachineIds=missed_storage_virtual_machine_ids
+            )["StorageVirtualMachines"]
+            for storage_virtual_machine in response:
+                self.svm_cache[storage_virtual_machine.get("StorageVirtualMachineId")] = storage_virtual_machine
+                result.append(storage_virtual_machine)
+        return result
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_volumes(self, volume_ids):
+        """Describe FSx volumes."""
+        result = []
+        missed_volume_ids = []
+        for volume_id in volume_ids:
+            cached_data = self.volume_cache.get(volume_id)
+            if cached_data:
+                result.append(cached_data)
+            else:
+                missed_volume_ids.append(volume_id)
+        if missed_volume_ids:
+            response = self._client.describe_volumes(VolumeIds=missed_volume_ids)["Volumes"]
+            for volume in response:
+                self.volume_cache[volume.get("VolumeId")] = volume
+                result.append(volume)
         return result
 
     @AWSExceptionHandler.handle_client_exception

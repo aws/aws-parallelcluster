@@ -34,7 +34,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
 SharedStorage:
-  - MountDir: {{ mount_dirs[0] }}
+  - MountDir: {{ fsx_lustre_mount_dirs[0] }}
     Name: fsx1
     StorageType: FsxLustre
     FsxLustreSettings:
@@ -43,10 +43,24 @@ SharedStorage:
       ExportPath: s3://{{ bucket_name }}/export_dir
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 200
-  {% for fsx_fs_id in existing_fsx_fs_ids %}
-  - MountDir: {{ mount_dirs[loop.index] }} # the index of mount dirs starts from the second item. Because the first is used for the new FSx.
+  {% for fsx_fs_id in existing_fsx_lustre_fs_ids %}
+  - MountDir: {{ fsx_lustre_mount_dirs[loop.index] }} # the index of mount dirs starts from the second item. Because the first is used for the new FSx.
     Name: existingfsx{{ loop.index-1 }}
     StorageType: FsxLustre
     FsxLustreSettings:
       FileSystemId: {{ fsx_fs_id }}
+  {% endfor %}
+  {% for fsx_open_zfs_volume_id in fsx_open_zfs_volume_ids %}
+  - MountDir: {{ fsx_open_zfs_mount_dirs[loop.index-1] }}
+    Name: existingopenzfs{{ loop.index-1 }}
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: {{ fsx_open_zfs_volume_id }}
+  {% endfor %}
+  {% for fsx_ontap_volume_id in fsx_ontap_volume_ids %}
+  - MountDir: {{ fsx_ontap_mount_dirs[loop.index-1] }}
+    Name: existingontap{{ loop.index-1 }}
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: {{ fsx_ontap_volume_id }}
   {% endfor %}

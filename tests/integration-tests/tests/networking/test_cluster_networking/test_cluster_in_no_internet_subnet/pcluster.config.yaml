@@ -60,12 +60,24 @@ SharedStorage:
     StorageType: Ebs
     EbsSettings:
       Size: 35
-  - MountDir: fsx
+  - MountDir: fsx1
     Name: myfsx
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 1200
       DeploymentType: SCRATCH_2
+  - MountDir: fsx2
+    Name: existingopenzfs
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      FileSystemId: {{ fsx_open_zfs_fs_id }}
+  - MountDir: fsx3
+    Name: existingontap
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      FileSystemId: {{ fsx_ontap_fs_id }}
+      StorageVirtualMachineId: {{ fsx_ontap_svm_id }}
+      VolumeJunctionPath: /vol1
 {% if os == "centos7" and architechture=="x86_64"%}
 AdditionalPackages:
   IntelSoftware:

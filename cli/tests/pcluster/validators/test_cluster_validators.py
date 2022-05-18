@@ -485,9 +485,11 @@ def test_queue_name_validator(name, expected_message):
 
 
 @pytest.mark.parametrize(
-    "fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, expected_message",
+    "fsx_file_system_type, fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, "
+    "expected_message",
     [
         (  # working case, right vpc and sg, multiple network interfaces
+            "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             True,
@@ -495,13 +497,31 @@ def test_queue_name_validator(name, expected_message):
             None,
         ),
         (  # working case, right vpc and sg, single network interface
+            "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             True,
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
-        (  # working case, CIDR specified in the security group through ip ranges
+        (  # working case (LUSTRE) CIDR specified in the security group through ip ranges
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # working case (OPENZFS), CIDR specified in the security group through ip ranges
+            "OPENZFS",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # working case (ONTAP), CIDR specified in the security group through ip ranges
+            "ONTAP",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
             False,
@@ -509,22 +529,48 @@ def test_queue_name_validator(name, expected_message):
             None,
         ),
         (  # working case, CIDR specified in the security group through prefix list
+            "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "PrefixListIds": [{"PrefixListId": "pl-12345"}]}],
             False,
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
-        (  # not working case, wrong security group.
+        (  # not working case, wrong security group. Lustre
             # Security group without CIDR cannot work with clusters containing pcluster created security group.
+            "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             False,
             ["eni-09b9460295ddd4e5f"],
+            "The current security group settings on file system .* does not satisfy mounting requirement. "
             "The file system must be associated to a security group that "
-            "allows inbound and outbound TCP traffic through port 988.",
+            r"allows inbound and outbound TCP traffic through ports \[988\].",
+        ),
+        (  # not working case, wrong security group. OpenZFS
+            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+            "OPENZFS",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            "The current security group settings on file system .* does not satisfy mounting requirement. "
+            "The file system must be associated to a security group that "
+            r"allows inbound and outbound TCP traffic through ports \[111, 2049, 20001, 20002, 20003\].",
+        ),
+        (  # not working case, wrong security group. Ontap
+            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+            "ONTAP",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            "The current security group settings on file system .* does not satisfy mounting requirement. "
+            "The file system must be associated to a security group that "
+            r"allows inbound and outbound TCP traffic through ports \[111, 635, 2049, 4046\].",
         ),
         (  # not working case --> no network interfaces
+            "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             True,
@@ -532,6 +578,7 @@ def test_queue_name_validator(name, expected_message):
             "doesn't have Elastic Network Interfaces attached",
         ),
         (  # not working case --> wrong vpc
+            "LUSTRE",
             "vpc-06e4ab6c6ccWRONG",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             True,
@@ -539,6 +586,7 @@ def test_queue_name_validator(name, expected_message):
             "only support using FSx file system that is in the same VPC as the cluster",
         ),
         (  # not working case --> wrong ip permissions in security group
+            "LUSTRE",
             "vpc-06e4ab6c6cWRONG",
             [
                 {
@@ -560,7 +608,13 @@ def test_queue_name_validator(name, expected_message):
     ],
 )
 def test_fsx_network_validator(
-    boto3_stubber, fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, expected_message
+    boto3_stubber,
+    fsx_file_system_type,
+    fsx_vpc,
+    ip_permissions,
+    are_all_security_groups_customized,
+    network_interfaces,
+    expected_message,
 ):
     describe_file_systems_response = {
         "FileSystems": [
@@ -568,11 +622,10 @@ def test_fsx_network_validator(
                 "VpcId": fsx_vpc,
                 "NetworkInterfaceIds": network_interfaces,
                 "SubnetIds": ["subnet-12345678"],
-                "FileSystemType": "LUSTRE",
+                "FileSystemType": fsx_file_system_type,
                 "CreationTime": 1567636453.038,
                 "ResourceARN": "arn:aws:fsx:us-west-2:111122223333:file-system/fs-0ff8da96d57f3b4e3",
                 "StorageCapacity": 3600,
-                "LustreConfiguration": {"WeeklyMaintenanceStartTime": "4:07:00"},
                 "FileSystemId": "fs-0ff8da96d57f3b4e3",
                 "DNSName": "fs-0ff8da96d57f3b4e3.fsx.us-west-2.amazonaws.com",
                 "OwnerId": "059623208481",

@@ -24,6 +24,8 @@
     "fsx_fs_ids": "",
     "fsx_mount_names": "",
     "fsx_shared_dirs": "",
+    "fsx_fs_types": "",
+    "fsx_volume_junction_paths": "",
     "head_node_imds_secured": "true",
     "hosted_zone": "{'Ref': 'Route53HostedZone'}",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",

@@ -52,6 +52,26 @@ AWSBATCH_CLI_REQUIREMENTS = "aws-parallelcluster-awsbatch-cli<2.0.0"
 FSX_SSD_THROUGHPUT = {"PERSISTENT_1": [50, 100, 200], "PERSISTENT_2": [125, 250, 500, 1000]}
 FSX_HDD_THROUGHPUT = [12, 40]
 
+LUSTRE = "LUSTRE"
+OPENZFS = "OPENZFS"
+ONTAP = "ONTAP"
+
+FSX_LUSTRE = "FsxLustre"
+FSX_OPENZFS = "FsxOpenZfs"
+FSX_ONTAP = "FsxOntap"
+
+# https://docs.aws.amazon.com/fsx/latest/APIReference/API_DescribeVolumes.html#FSx-DescribeVolumes-request-VolumeIds.
+FSX_VOLUME_ID_REGEX = r"^fsvol-[0-9a-f]{17}$"
+
+FSX_PORTS = {
+    # Lustre Security group: https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html
+    LUSTRE: [988],
+    # OpenZFS Security group: https://docs.aws.amazon.com/fsx/latest/OpenZFSGuide/limit-access-security-groups.html
+    OPENZFS: [111, 2049, 20001, 20002, 20003],
+    # Ontap Security group: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/limit-access-security-groups.html
+    ONTAP: [111, 635, 2049, 4046],
+}
+
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
     "io1": 100,
     "io2": 100,

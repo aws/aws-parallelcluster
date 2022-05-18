@@ -39,7 +39,7 @@ from pcluster.config.cluster_config import (
     SchedulerPluginSettings,
     SharedEbs,
     SharedEfs,
-    SharedFsx,
+    SharedFsxLustre,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
@@ -262,7 +262,7 @@ def dummy_scheduler_plugin_cluster_config(mocker):
 
 def dummy_fsx(file_system_id=None, mount_dir="/shared", name="name"):
     """Generate dummy fsx."""
-    return SharedFsx(
+    return SharedFsxLustre(
         mount_dir=mount_dir,
         name=name,
         file_system_id=file_system_id,

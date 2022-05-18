@@ -11,7 +11,7 @@
 import os
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_resources import FsxFileSystemInfo, InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
@@ -155,6 +155,41 @@ class _DummyFSxClient(FSxClient):
                 "MountName": "dummy-fsx-mount-name",
             },
         }
+
+    def describe_volumes(self, volume_ids):
+        """Describe FSx volumes."""
+        result = []
+        for volume_id in volume_ids:
+            result.append(
+                {
+                    "FileSystemId": "fs-12345678123456789",
+                    "VolumeId": volume_id,
+                    "OntapConfiguration": {"StorageVirtualMachineId": "svm-123", "JunctionPath": "/vol1"},
+                    "OpenZFSConfiguration": {"VolumePath": "/fsx"},
+                }
+            )
+        return result
+
+    def get_file_systems_info(self, fsx_fs_ids):
+        result = []
+        for file_system_id in fsx_fs_ids:
+            result.append(
+                FsxFileSystemInfo(
+                    {
+                        "FileSystemType": "LUSTRE",
+                        "LustreConfiguration": {"MountName": "abcdef"},
+                        "FileSystemId": file_system_id,
+                    }
+                )
+            )
+        return result
+
+    def describe_storage_virtual_machines(self, storage_virtual_machine_ids):
+        """Describe storage virtual machines."""
+        result = []
+        for _ in storage_virtual_machine_ids:
+            result.append({"Endpoints": {"Nfs": {"DNSName": "abcd"}}})
+        return result
 
 
 class _DummyS3Client(S3Client):

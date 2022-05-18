@@ -18,12 +18,17 @@ import pytest
 import utils
 from assertpy import assert_that
 from botocore.exceptions import ClientError
-from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from troposphere import Ref, Template, ec2
-from troposphere.fsx import FileSystem, LustreConfiguration
+from troposphere.fsx import (
+    ClientConfigurations,
+    LustreConfiguration,
+    NfsExports,
+    OntapConfiguration,
+    OpenZFSConfiguration,
+    RootVolumeConfiguration,
+)
 
 BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING", "PENDING"}
 # Maximum number of minutes to wait past when an file system's automatic backup is scheduled to start creating.
@@ -123,7 +128,7 @@ def _test_fsx_lustre_configuration_options(
     imported_file_chunk_size,
     storage_capacity,
 ):
-    _test_fsx_lustre(cluster, region, scheduler_commands_factory, [mount_dir], bucket_name)
+    check_fsx(cluster, region, scheduler_commands_factory, [mount_dir], bucket_name)
     remote_command_executor = RemoteCommandExecutor(cluster)
     fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
     fsx = boto3.client("fsx", region_name=region).describe_file_systems(FileSystemIds=[fsx_fs_id])
@@ -162,7 +167,7 @@ def test_fsx_lustre(
         storage_capacity=1200,
     )
     cluster = clusters_factory(cluster_config)
-    _test_fsx_lustre(
+    check_fsx(
         cluster,
         region,
         scheduler_commands_factory,
@@ -171,7 +176,7 @@ def test_fsx_lustre(
     )
 
 
-def _test_fsx_lustre(
+def check_fsx(
     cluster,
     region,
     scheduler_commands_factory,
@@ -185,12 +190,18 @@ def _test_fsx_lustre(
     assert_that(len(mount_dirs)).is_equal_to(len(fsx_fs_ids))
     for mount_dir, fsx_fs_id in zip(mount_dirs, fsx_fs_ids):
         logging.info("Checking %s on %s", fsx_fs_id, mount_dir)
-        assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
-        assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
-        if bucket_name:
-            _test_import_path(remote_command_executor, mount_dir)
-            _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
-            _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
+        file_system_type = get_file_system_type(fsx_fs_id, region)
+        if file_system_type == "LUSTRE":
+            assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
+            if bucket_name:
+                _test_import_path(remote_command_executor, mount_dir)
+                _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
+                _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
+        elif file_system_type == "OPENZFS":
+            assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id)
+        elif file_system_type == "ONTAP":
+            assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id)
+        assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -260,11 +271,48 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
     _test_delete_manual_backup(manual_backup, region)
 
 
+def create_fsx_ontap(fsx_factory, num):
+    return fsx_factory(
+        ports=[111, 635, 2049, 4046],
+        ip_protocols=["tcp", "udp"],
+        num=num,
+        file_system_type="ONTAP",
+        StorageCapacity=1024,
+        OntapConfiguration=OntapConfiguration(DeploymentType="SINGLE_AZ_1", ThroughputCapacity=128),
+    )
+
+
+def create_fsx_open_zfs(fsx_factory, num):
+    if num == 0:
+        return []
+    file_system_ids = fsx_factory(
+        ports=[111, 2049, 20001, 20002, 20003],
+        ip_protocols=["tcp", "udp"],
+        num=num,
+        file_system_type="OPENZFS",
+        StorageCapacity=64,
+        OpenZFSConfiguration=OpenZFSConfiguration(
+            DeploymentType="SINGLE_AZ_1",
+            ThroughputCapacity=64,
+            RootVolumeConfiguration=RootVolumeConfiguration(
+                NfsExports=[
+                    NfsExports(ClientConfigurations=[ClientConfigurations(Clients="*", Options=["rw", "crossmnt"])])
+                ]
+            ),
+        ),
+    )
+    volume_list = boto3.client("fsx").describe_volumes(Filters=[{"Name": "file-system-id", "Values": file_system_ids}])[
+        "Volumes"
+    ]
+    return [(volume["FileSystemId"], volume["VolumeId"]) for volume in volume_list]
+
+
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_multiple_fsx(
     os,
     region,
     fsx_factory,
+    svm_factory,
     vpc_stack,
     pcluster_config_reader,
     s3_bucket_factory,
@@ -285,18 +333,24 @@ def test_multiple_fsx(
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     import_path = "s3://{0}".format(bucket_name)
     export_path = "s3://{0}/export_dir".format(bucket_name)
-    num_new_fsx = 1
+    num_new_fsx_lustre = 1
+    num_existing_fsx_ontap = 1
+    num_existing_fsx_open_zfs = 1
     if request.config.getoption("benchmarks") and os == "alinux2":
-        # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
+        # Only create more FSx when benchmarks are specified. Limiting OS to reduce cost of too many file systems
         num_existing_fsx = 50
     else:
-        num_existing_fsx = 2
+        # Minimal total existing FSx is the number of Ontap and OpenZFS plus one existing FSx Lustre
+        num_existing_fsx = num_existing_fsx_ontap + num_existing_fsx_open_zfs + 1
+    num_existing_fsx_lustre = num_existing_fsx - num_existing_fsx_ontap - num_existing_fsx_open_zfs
     mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
-    for i in range(num_new_fsx + num_existing_fsx - 1):
+    for i in range(num_new_fsx_lustre + num_existing_fsx - 1):
         mount_dirs.append(f"/fsx_mount_dir{i}")
-    existing_fsx_fs_ids = fsx_factory(
-        num=num_existing_fsx,
-        FileSystemType="LUSTRE",
+    existing_fsx_lustre_fs_ids = fsx_factory(
+        ports=[988],
+        ip_protocols=["tcp"],
+        num=num_existing_fsx_lustre,
+        file_system_type="LUSTRE",
         StorageCapacity=1200,
         LustreConfiguration=LustreConfiguration(
             title="lustreConfiguration",
@@ -306,84 +360,34 @@ def test_multiple_fsx(
             PerUnitStorageThroughput=200,
         ),
     )
+    fsx_ontap_fs_ids = create_fsx_ontap(fsx_factory, num=num_existing_fsx_ontap)
+    fsx_ontap_volume_ids = (volume_id for _, volume_id in svm_factory(fsx_ontap_fs_ids))
+    fsx_open_zfs_volume_ids = (
+        volume_id for _, volume_id in create_fsx_open_zfs(fsx_factory, num=num_existing_fsx_open_zfs)
+    )
 
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
-        mount_dirs=mount_dirs,
-        existing_fsx_fs_ids=existing_fsx_fs_ids,
+        fsx_lustre_mount_dirs=mount_dirs[0 : -(num_existing_fsx_ontap + num_existing_fsx_open_zfs)],  # noqa E203
+        existing_fsx_lustre_fs_ids=existing_fsx_lustre_fs_ids,
+        fsx_open_zfs_volume_ids=fsx_open_zfs_volume_ids,
+        fsx_open_zfs_mount_dirs=mount_dirs[
+            -(num_existing_fsx_ontap + num_existing_fsx_open_zfs) : -num_existing_fsx_ontap  # noqa E203
+        ],
+        fsx_ontap_volume_ids=fsx_ontap_volume_ids,
+        fsx_ontap_mount_dirs=mount_dirs[-num_existing_fsx_ontap:],
     )
     cluster = clusters_factory(cluster_config)
 
-    _test_fsx_lustre(cluster, region, scheduler_commands_factory, mount_dirs, bucket_name)
+    check_fsx(cluster, region, scheduler_commands_factory, mount_dirs, bucket_name)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     run_benchmarks(remote_command_executor, scheduler_commands)
 
 
-@pytest.fixture(scope="class")
-def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
-    """
-    Define a fixture to manage the creation and destruction of fsx.
-
-    return fsx_id
-    """
-    created_stacks = []
-
-    def _fsx_factory(num=1, **kwargs):
-        # FSx stack
-        fsx_template = Template()
-        fsx_template.set_version()
-        fsx_template.set_description("Create FSx stack")
-
-        # Create security group. If using an existing file system
-        # It must be associated to a security group that allows inbound TCP traffic to port 988
-        fsx_sg = ec2.SecurityGroup(
-            "FSxSecurityGroup",
-            GroupDescription="SecurityGroup for testing existing FSx",
-            SecurityGroupIngress=[
-                ec2.SecurityGroupRule(
-                    IpProtocol="tcp",
-                    FromPort="988",
-                    ToPort="988",
-                    CidrIp="0.0.0.0/0",
-                ),
-            ],
-            VpcId=vpc_stack.cfn_outputs["VpcId"],
-        )
-        fsx_template.add_resource(fsx_sg)
-        file_system_resource_name = "FileSystemResource"
-        max_concurrency = 15
-        for i in range(num):
-            depends_on_arg = {}
-            if i >= max_concurrency:
-                depends_on_arg = {"DependsOn": [f"{file_system_resource_name}{i - max_concurrency}"]}
-            fsx_filesystem = FileSystem(
-                title=f"{file_system_resource_name}{i}",
-                SecurityGroupIds=[Ref(fsx_sg)],
-                SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]],
-                **kwargs,
-                **depends_on_arg,
-            )
-            fsx_template.add_resource(fsx_filesystem)
-        fsx_stack = CfnStack(
-            name=utils.generate_stack_name("integ-tests-fsx", request.config.getoption("stackname_suffix")),
-            region=region,
-            template=fsx_template.to_json(),
-        )
-        cfn_stacks_factory.create_stack(fsx_stack)
-        created_stacks.append(fsx_stack)
-        return [fsx_stack.cfn_resources[f"{file_system_resource_name}{i}"] for i in range(num)]
-
-    yield _fsx_factory
-
-    if not request.config.getoption("no_delete"):
-        for stack in created_stacks:
-            cfn_stacks_factory.delete_stack(stack.name, region)
-
-
 def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id):
-    logging.info("Testing fsx lustre is correctly mounted")
+    logging.info("Testing fsx lustre is correctly mounted on the head node")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
     mount_name = get_mount_name(fsx_fs_id, region)
     assert_that(result.stdout).matches(
@@ -391,15 +395,42 @@ def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, regi
     )
     # example output: "192.168.46.168@tcp:/cg7k7bmv 1.7T /fsx_mount_dir"
 
-    result = remote_command_executor.run_remote_command("cat /etc/fstab")
     mount_options = "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount"
 
-    assert_that(result.stdout).matches(
+    check_fstab_file(
+        remote_command_executor,
         r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/{mount_name}"
         r" {mount_dir} lustre {mount_options} 0 0".format(
             mount_name=mount_name, mount_dir=mount_dir, mount_options=mount_options
-        )
+        ),
     )
+
+
+def assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id):
+    logging.info("Testing fsx OpenZFS is correctly mounted on the head node")
+    result = remote_command_executor.run_remote_command("df -h -t nfs4")
+    dns_name = boto3.client("fsx").describe_file_systems(FileSystemIds=[fsx_fs_id])["FileSystems"][0]["DNSName"]
+    remote_path = f"{dns_name}:/fsx"
+    assert_that(result.stdout).matches(rf"{remote_path} .* {mount_dir}")
+    # example output: "fs-123456.fsx.us-west-2.amazonaws.com:/fsx 64G 256K 64G 1% /fsx_mount_dir0"""
+    check_fstab_file(remote_command_executor, f"{remote_path} {mount_dir} nfs nfsvers=4.2 0 0")
+
+
+def assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id):
+    logging.info("Testing fsx Ontap is correctly mounted on the head node")
+    result = remote_command_executor.run_remote_command("df -h -t nfs4")
+    dns_name = boto3.client("fsx").describe_storage_virtual_machines(
+        Filters=[{"Name": "file-system-id", "Values": [fsx_fs_id]}]
+    )["StorageVirtualMachines"][0]["Endpoints"]["Nfs"]["DNSName"]
+    remote_path = f"{dns_name}:/vol1"
+    assert_that(result.stdout).matches(rf"{remote_path} .* {mount_dir}")
+    # example output: "svm-123456.fs-123456.fsx.us-west-2.amazonaws.com:/vol1 9.5G 448K 9.5G 1% /fsx_mount_dir1"""
+    check_fstab_file(remote_command_executor, f"{remote_path} {mount_dir} nfs defaults 0 0")
+
+
+def check_fstab_file(remote_command_executor, expected_entry):
+    result = remote_command_executor.run_remote_command("cat /etc/fstab")
+    assert_that(result.stdout).matches(expected_entry)
 
 
 def get_mount_name(fsx_fs_id, region):
@@ -411,6 +442,12 @@ def get_mount_name(fsx_fs_id, region):
         .get("LustreConfiguration")
         .get("MountName")
     )
+
+
+def get_file_system_type(fsx_fs_id, region):
+    logging.info("Getting file system type from DescribeFilesystem API.")
+    fsx = boto3.client("fsx", region_name=region)
+    return fsx.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0].get("FileSystemType")
 
 
 def get_fsx_fs_ids(cluster, region):
@@ -446,8 +483,8 @@ def _test_import_path(remote_command_executor, mount_dir):
     assert_that(result.stdout).is_equal_to("Downloaded by FSx Lustre")
 
 
-def assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
-    logging.info("Testing fsx lustre correctly mounted on compute nodes")
+def assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
+    logging.info("Testing fsx correctly mounted on compute nodes")
     remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
     job_command = "cat {mount_dir}/test_file && touch {mount_dir}/compute_output".format(mount_dir=mount_dir)
     result = scheduler_commands.submit_command(job_command)
