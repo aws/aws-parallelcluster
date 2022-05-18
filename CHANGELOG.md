@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.1.5
+------
+
+**CHANGES**
+- Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
+
 3.1.4
 ------
 
