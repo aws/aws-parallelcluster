@@ -122,7 +122,7 @@ class ClusterInfoSummary(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, cluster_name, region, version, cloudformation_stack_arn, cloudformation_stack_status, cluster_status, scheduler, *args, **kwargs):  # noqa: E501
+    def __init__(self, cluster_name, region, version, cloudformation_stack_arn, cloudformation_stack_status, cluster_status, *args, **kwargs):  # noqa: E501
         """ClusterInfoSummary - a model defined in OpenAPI
 
         Args:
@@ -132,7 +132,6 @@ class ClusterInfoSummary(ModelNormal):
             cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
             cloudformation_stack_status (CloudFormationStackStatus):
             cluster_status (ClusterStatus):
-            scheduler (Scheduler):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -165,6 +164,7 @@ class ClusterInfoSummary(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            scheduler (Scheduler): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -196,7 +196,6 @@ class ClusterInfoSummary(ModelNormal):
         self.cloudformation_stack_arn = cloudformation_stack_arn
         self.cloudformation_stack_status = cloudformation_stack_status
         self.cluster_status = cluster_status
-        self.scheduler = scheduler
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \
