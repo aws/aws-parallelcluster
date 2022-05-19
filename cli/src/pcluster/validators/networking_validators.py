@@ -47,6 +47,15 @@ class SubnetsValidator(Validator):
                         FailureLevel.ERROR,
                     )
 
+            # warn if subnets are not in the same AZ
+            azs = {subnet.get("AvailabilityZone") for subnet in subnets}
+            if len(azs) > 1:
+                self._add_failure(
+                    f"Subnets in multiple Availibility Zones {azs} may result in data transfer charges. "
+                    + "Please review the EC2 docs: https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer",
+                    FailureLevel.WARNING,
+                )
+
             # Check for DNS support in the VPC
             if not AWSApi.instance().ec2.is_enable_dns_support(vpc_id):
                 self._add_failure(f"DNS Support is not enabled in the VPC {vpc_id}.", FailureLevel.ERROR)

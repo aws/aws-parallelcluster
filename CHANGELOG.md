@@ -11,6 +11,7 @@ x.x.x
 - Add support for multiple FSx File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
 - Show `requested_value` and `current_value` values in the change set when adding or removing a section.
+- Support for different availibility zones per Slurm partition.
 
 **CHANGES**
 - Remove support for Python 3.6.
