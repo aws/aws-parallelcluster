@@ -99,13 +99,13 @@ class DescribeClusterResponseContent(ModelNormal):
             'version': (str,),  # noqa: E501
             'cloud_formation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cluster_status': (ClusterStatus,),  # noqa: E501
-            'scheduler': (Scheduler,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
             'creation_time': (datetime,),  # noqa: E501
             'last_updated_time': (datetime,),  # noqa: E501
             'cluster_configuration': (ClusterConfigurationStructure,),  # noqa: E501
             'compute_fleet_status': (ComputeFleetStatus,),  # noqa: E501
             'tags': ([Tag],),  # noqa: E501
+            'scheduler': (Scheduler,),  # noqa: E501
             'head_node': (EC2Instance,),  # noqa: E501
             'failure_reason': (str,),  # noqa: E501
         }
@@ -121,13 +121,13 @@ class DescribeClusterResponseContent(ModelNormal):
         'version': 'version',  # noqa: E501
         'cloud_formation_stack_status': 'cloudFormationStackStatus',  # noqa: E501
         'cluster_status': 'clusterStatus',  # noqa: E501
-        'scheduler': 'scheduler',  # noqa: E501
         'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
         'creation_time': 'creationTime',  # noqa: E501
         'last_updated_time': 'lastUpdatedTime',  # noqa: E501
         'cluster_configuration': 'clusterConfiguration',  # noqa: E501
         'compute_fleet_status': 'computeFleetStatus',  # noqa: E501
         'tags': 'tags',  # noqa: E501
+        'scheduler': 'scheduler',  # noqa: E501
         'head_node': 'headNode',  # noqa: E501
         'failure_reason': 'failureReason',  # noqa: E501
     }
@@ -144,7 +144,7 @@ class DescribeClusterResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, cluster_name, region, version, cloud_formation_stack_status, cluster_status, scheduler, cloudformation_stack_arn, creation_time, last_updated_time, cluster_configuration, compute_fleet_status, tags, *args, **kwargs):  # noqa: E501
+    def __init__(self, cluster_name, region, version, cloud_formation_stack_status, cluster_status, cloudformation_stack_arn, creation_time, last_updated_time, cluster_configuration, compute_fleet_status, tags, *args, **kwargs):  # noqa: E501
         """DescribeClusterResponseContent - a model defined in OpenAPI
 
         Args:
@@ -153,7 +153,6 @@ class DescribeClusterResponseContent(ModelNormal):
             version (str): ParallelCluster version used to create the cluster.
             cloud_formation_stack_status (CloudFormationStackStatus):
             cluster_status (ClusterStatus):
-            scheduler (Scheduler):
             cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
             creation_time (datetime): Timestamp representing the cluster creation time.
             last_updated_time (datetime): Timestamp representing the last cluster update time.
@@ -192,6 +191,7 @@ class DescribeClusterResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            scheduler (Scheduler): [optional]  # noqa: E501
             head_node (EC2Instance): [optional]  # noqa: E501
             failure_reason (str): Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.. [optional]  # noqa: E501
         """
@@ -224,7 +224,6 @@ class DescribeClusterResponseContent(ModelNormal):
         self.version = version
         self.cloud_formation_stack_status = cloud_formation_stack_status
         self.cluster_status = cluster_status
-        self.scheduler = scheduler
         self.cloudformation_stack_arn = cloudformation_stack_arn
         self.creation_time = creation_time
         self.last_updated_time = last_updated_time

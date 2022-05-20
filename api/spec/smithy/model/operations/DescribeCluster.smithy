@@ -40,7 +40,6 @@ structure DescribeClusterResponse {
     @required
     @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,
-    @required
     @documentation("Scheduler of the cluster.")
     scheduler: Scheduler,
     @required
