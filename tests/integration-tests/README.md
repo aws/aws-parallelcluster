@@ -43,7 +43,7 @@ usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELI
                       [--pre-install PRE_INSTALL] [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF]
                       [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
                       [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--public-ecr-image-uri PUBLIC_ECR_IMAGE_URI] [--api-uri API_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER]
-                      [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME]
+                      [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME]
 
 Run integration tests suite.
 
@@ -143,8 +143,6 @@ Debugging/Development options:
                         Name of an existing IAM user role stack. (default: None)
   --directory-stack-name
                         Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
-  --ldaps-nlb-stack-name
-                        Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
 
   --no-delete           Don't delete stacks after tests are complete. (default: False)
   --delete-logs-on-success

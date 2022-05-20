@@ -489,6 +489,13 @@ def render_jinja_template(template_file_path, **kwargs):
     return template_file_path
 
 
+def render_jinja_template_in_memory(template_file_path, **kwargs):
+    file_loader = FileSystemLoader(str(os.path.dirname(template_file_path)))
+    env = Environment(loader=file_loader, autoescape=True)
+    rendered_template = env.get_template(os.path.basename(template_file_path)).render(**kwargs)
+    return rendered_template
+
+
 def scheduler_plugin_definition_uploader(upload_script_path, bucket, key_prefix, region):
     command = f"{upload_script_path} --bucket {bucket} --key-prefix {key_prefix} --region {region}"
     logging.info("Calling scheduler plugin upload script with command (%s)", command)

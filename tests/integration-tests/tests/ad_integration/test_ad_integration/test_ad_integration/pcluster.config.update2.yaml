@@ -42,7 +42,9 @@ DirectoryService:
   DomainAddr: {{ ldap_uri }}
   PasswordSecretArn: {{ password_secret_arn }}
   DomainReadOnlyUser: {{ ldap_default_bind_dn }}
+  {% if directory_certificate_verification == True %}
   LdapTlsCaCert: {{ ldap_tls_ca_cert }}
+  {% endif %}
   LdapTlsReqCert: {{ ldap_tls_req_cert }}
   GenerateSshKeysForUsers: true
   AdditionalSssdConfigs:
@@ -52,3 +54,6 @@ DirectoryService:
     {% endif %}
     access_provider: simple
     simple_deny_users: PclusterUser0
+DevSettings:
+  AmiSearchFilters:
+    Owner: "447714826191"

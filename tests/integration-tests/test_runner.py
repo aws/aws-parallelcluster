@@ -82,7 +82,6 @@ TEST_DEFAULTS = {
     "use_default_iam_credentials": False,
     "iam_user_role_stack_name": None,
     "directory_stack_name": None,
-    "ldaps_nlb_stack_name": None,
 }
 
 
@@ -363,12 +362,6 @@ def _init_argparser():
         help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
         default=TEST_DEFAULTS.get("directory_stack_name"),
     )
-    debug_group.add_argument(
-        "--ldaps-nlb-stack-name",
-        help="Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD "
-        "integration feature.",
-        default=TEST_DEFAULTS.get("ldaps_nlb_stack_name"),
-    )
 
     return parser
 
@@ -555,9 +548,6 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.directory_stack_name:
         pytest_args.extend(["--directory-stack-name", args.directory_stack_name])
-
-    if args.ldaps_nlb_stack_name:
-        pytest_args.extend(["--ldaps-nlb-stack-name", args.ldaps_nlb_stack_name])
 
 
 def _set_api_args(args, pytest_args):

@@ -142,11 +142,6 @@ def pytest_addoption(parser):
         "--directory-stack-name",
         help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
     )
-    parser.addoption(
-        "--ldaps-nlb-stack-name",
-        help="Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD "
-        "integration feature.",
-    )
 
 
 def pytest_generate_tests(metafunc):
@@ -912,7 +907,7 @@ def register_cli_credentials(initialize_cli_creds):
             register_cli_credentials_for_region(region, creds)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@xdist_session_fixture(autouse=True)
 def vpc_stacks(cfn_stacks_factory, request):
     """Create VPC used by integ tests in all configured regions."""
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
