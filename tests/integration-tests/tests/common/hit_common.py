@@ -61,6 +61,11 @@ def assert_compute_node_states(scheduler_commands, compute_nodes, expected_state
         assert_that(expected_states).contains(node_states.get(node))
 
 
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def wait_for_compute_nodes_states(scheduler_commands, compute_nodes, expected_states):
+    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states)
+
+
 def assert_compute_node_reasons(scheduler_commands, compute_nodes, expected_reason):
     for node in compute_nodes:
         node_info = scheduler_commands.get_nodes_info(node)

@@ -1,0 +1,36 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ global_custom_ami }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  SlurmSettings:
+    QueueUpdateStrategy: DRAIN
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      ComputeResources:
+        - Name: queue1-i1
+          InstanceType: c5.xlarge
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeSettings:
+          LocalStorage:
+            RootVolume:
+              Size: {{ updated_compute_root_volume_size }}
+    - Name: queue2
+      ComputeResources:
+        - Name: queue2-i1
+          InstanceType: c5.xlarge
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

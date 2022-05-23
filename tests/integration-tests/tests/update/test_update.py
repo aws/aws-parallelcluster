@@ -15,12 +15,14 @@ import time
 
 import boto3
 import pytest
+import utils
 import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 
-from tests.common.hit_common import assert_initial_conditions
+from tests.common.assertions import assert_errors_in_logs, assert_no_msg_in_logs
+from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import generate_random_string, retrieve_latest_ami
@@ -439,3 +441,184 @@ def get_batch_spot_bid_percentage(stack_name, region):
         .get("computeResources")
         .get("bidPercentage")
     )
+
+
+@pytest.mark.usefixtures("instance")
+def test_queue_parameters_update(
+    region, os, pcluster_config_reader, ami_copy, clusters_factory, scheduler_commands_factory, request
+):
+    """Test update cluster with drain strategy."""
+    # Create cluster with initial configuration
+    initial_compute_root_volume_size = 35
+    updated_compute_root_volume_size = 40
+    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster", request=request)
+    pcluster_copy_ami_id = ami_copy(
+        pcluster_ami_id, "-".join(["test", "update", "computenode", generate_random_string()])
+    )
+
+    init_config_file = pcluster_config_reader(
+        global_custom_ami=pcluster_ami_id, initial_compute_root_volume_size=initial_compute_root_volume_size
+    )
+
+    cluster = clusters_factory(init_config_file)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    _test_update_queue_strategy_without_running_job(
+        pcluster_config_reader,
+        pcluster_ami_id,
+        cluster,
+        region,
+        os,
+        remote_command_executor,
+        scheduler_commands,
+        updated_compute_root_volume_size,
+    )
+
+    # test update without setting queue strategy, update will fail
+    _test_update_without_queue_strategy(
+        pcluster_config_reader, pcluster_ami_id, pcluster_copy_ami_id, cluster, updated_compute_root_volume_size
+    )
+
+    _test_update_queue_strategy_with_running_job(
+        scheduler_commands,
+        pcluster_config_reader,
+        pcluster_ami_id,
+        pcluster_copy_ami_id,
+        updated_compute_root_volume_size,
+        cluster,
+        remote_command_executor,
+        region,
+    )
+
+    # assert queue drain strategy doesn't trigger protected mode
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Node bootstrap error"],
+    )
+
+
+def _test_update_without_queue_strategy(
+    pcluster_config_reader, pcluster_ami_id, pcluster_copy_ami_id, cluster, updated_compute_root_volume_size
+):
+    """Test update without setting queue strategy, update will fail."""
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        global_custom_ami=pcluster_ami_id,
+        custom_ami=pcluster_copy_ami_id,
+        updated_compute_root_volume_size=updated_compute_root_volume_size,
+    )
+    response = cluster.update(str(updated_config_file), raise_on_error=False)
+    assert_that(response["message"]).is_equal_to("Update failure")
+    assert_that(response.get("updateValidationErrors")[0].get("message")).contains(
+        "All compute nodes must be stopped or QueueUpdateStrategy must be set"
+    )
+
+
+def _check_queue_ami(cluster, ec2, ami, queue_name):
+    """Check if the ami of the queue instances are expected"""
+    instances = cluster.get_cluster_instance_ids(node_type="Compute", queue_name=queue_name)
+    _check_instance_ami_id(ec2, instances, ami)
+
+
+def _test_update_queue_strategy_without_running_job(
+    pcluster_config_reader,
+    pcluster_ami_id,
+    cluster,
+    region,
+    os,
+    remote_command_executor,
+    scheduler_commands,
+    updated_compute_root_volume_size,
+):
+    """Test queue parameter update with drain stragegy without running job in the queue."""
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.update_drain_without_running_job.yaml",
+        global_custom_ami=pcluster_ami_id,
+        updated_compute_root_volume_size=updated_compute_root_volume_size,
+    )
+    cluster.update(str(updated_config_file))
+    # check chef client log contains expected log
+    assert_errors_in_logs(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        ["Queue update strategy is \\(DRAIN\\)", "Adding queue \\(queue1\\) to list of queue to be updated"],
+    )
+    queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
+    wait_for_compute_nodes_states(scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"])
+    # test volume size are expected after update
+    instances = cluster.get_cluster_instance_ids(node_type="Compute", queue_name="queue1")
+    for instance in instances:
+        root_volume_id = utils.get_root_volume_id(instance, region, os)
+        volume_size = (
+            boto3.client("ec2", region_name=region)
+            .describe_volumes(VolumeIds=[root_volume_id])
+            .get("Volumes")[0]
+            .get("Size")
+        )
+        assert_that(volume_size).is_equal_to(updated_compute_root_volume_size)
+
+
+def _test_update_queue_strategy_with_running_job(
+    scheduler_commands,
+    pcluster_config_reader,
+    pcluster_ami_id,
+    pcluster_copy_ami_id,
+    updated_compute_root_volume_size,
+    cluster,
+    remote_command_executor,
+    region,
+):
+    queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 3000",
+            "nodes": -1,
+            "partition": "queue1",
+            "other_options": "-a 1-5",  # instance type has 4 cpus per node, which requre 2 nodes to run the job
+        }
+    )
+
+    queue2_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 3000", "nodes": -1, "partition": "queue2", "other_options": "-a 1-5"}
+    )
+    # Wait for the job to run
+    scheduler_commands.wait_job_running(queue1_job_id)
+    scheduler_commands.wait_job_running(queue2_job_id)
+
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update_drain.yaml",
+        global_custom_ami=pcluster_ami_id,
+        custom_ami=pcluster_copy_ami_id,
+        updated_compute_root_volume_size=updated_compute_root_volume_size,
+    )
+    cluster.update(str(updated_config_file))
+    # check chef client log contains expected log
+    assert_errors_in_logs(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        ["Queue update strategy is \\(DRAIN\\)", "Adding queue \\(queue2\\) to list of queue to be updated"],
+    )
+
+    # after cluster update, check if jobs are still in running state
+    scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
+    scheduler_commands.assert_job_state(queue2_job_id, "RUNNING")
+    # assert queue1 node state are in working state
+    queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
+    assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=["mixed", "allocated"])
+    # assert queue2 node state are in draining status
+    queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
+    assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["draining", "draining!"])
+    # retrieve queue2 instance again, check ami, they are not replaced
+    ec2 = boto3.client("ec2", region)
+    _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
+    _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue2")
+    # requeue job in queue2 to launch new instances for nodes
+    remote_command_executor.run_remote_command(f"scontrol requeue {queue2_job_id}")
+    scheduler_commands.wait_job_running(queue2_job_id)
+    # cancel job in queue1
+    scheduler_commands.cancel_job(queue1_job_id)
+    # check the new launching instances are using new amis
+    _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
+    _check_queue_ami(cluster, ec2, pcluster_copy_ami_id, "queue2")
+    assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
