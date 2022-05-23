@@ -38,6 +38,7 @@ from tests.common.hit_common import (
     assert_num_nodes_in_scheduler,
     get_partition_nodes,
     submit_initial_job,
+    wait_for_compute_nodes_states,
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
@@ -689,15 +690,15 @@ def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
     if static_nodes:
         logging.info("Assert static nodes are placed in DOWN during replacement")
         # DRAIN+DOWN = drained
-        _wait_for_compute_nodes_states(
+        wait_for_compute_nodes_states(
             scheduler_commands, static_nodes, expected_states=["down", "down*", "drained", "drained*"]
         )
         logging.info("Assert static nodes are replaced")
-        _wait_for_compute_nodes_states(scheduler_commands, static_nodes, expected_states=["idle"])
+        wait_for_compute_nodes_states(scheduler_commands, static_nodes, expected_states=["idle"])
     # dynamic nodes are power saved after SuspendTimeout. static_nodes must be checked first
     if dynamic_nodes:
         logging.info("Assert dynamic nodes are power saved")
-        _wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
+        wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
         node_addr_host = scheduler_commands.get_node_addr_host()
         _assert_node_addr_host_reset(node_addr_host, dynamic_nodes)
 
@@ -733,11 +734,6 @@ def _set_nodes_to_power_down_manually(scheduler_commands, compute_nodes):
     time.sleep(5)
     scheduler_commands.set_nodes_state(compute_nodes, state="resume")
     assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["idle~"])
-
-
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
-def _wait_for_compute_nodes_states(scheduler_commands, compute_nodes, expected_states):
-    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states)
 
 
 def _terminate_nodes_manually(instance_ids, region):
@@ -1393,8 +1389,8 @@ def _test_disable_fast_capacity_failover(
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_state(job_id, "NODE_FAIL")
     # wait for nodes reset
-    _wait_for_compute_nodes_states(scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle"])
-    _wait_for_compute_nodes_states(scheduler_commands, ice_dynamic_nodes, expected_states=["idle~"])
+    wait_for_compute_nodes_states(scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle"])
+    wait_for_compute_nodes_states(scheduler_commands, ice_dynamic_nodes, expected_states=["idle~"])
 
 
 def assert_job_requeue_in_time(scheduler_commands, job_id):
