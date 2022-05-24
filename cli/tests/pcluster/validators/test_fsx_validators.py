@@ -93,19 +93,20 @@ def test_fsx_s3_validator(import_path, imported_file_chunk_size, export_path, au
             "SCRATCH_2",
             "9e8a129be-0e46-459d-865b-3a5bf974a22k",
             None,
-            "KMS key id can only be used when deployment type is `PERSISTENT_1'",
+            "KMS key id can only be used when deployment type is one of ['PERSISTENT_1', 'PERSISTENT_2'].",
         ),
         (
             "SCRATCH_1",
             None,
             200,
-            "Per unit storage throughput can only be used when deployment type is `PERSISTENT_1'",
+            "Per unit storage throughput can only be used when deployment type is one of "
+            "['PERSISTENT_1', 'PERSISTENT_2'].",
         ),
         (
             "PERSISTENT_1",
             None,
             None,
-            "Per unit storage throughput must be specified when deployment type is `PERSISTENT_1'",
+            "Per unit storage throughput must be specified when deployment type is PERSISTENT_1",
         ),
     ],
 )
@@ -127,7 +128,7 @@ def test_fsx_persistent_options_validator(deployment_type, kms_key_id, per_unit_
             None,
             None,
             None,
-            "FSx automatic backup features can be used only with 'PERSISTENT_1' file systems",
+            "FSx automatic backup features can be used only with ['PERSISTENT_1', 'PERSISTENT_2'] file systems.",
         ),
         (
             None,
@@ -231,21 +232,22 @@ def test_fsx_backup_options_validator(
             "SCRATCH_1",
             12,
             "READ",
-            "For HDD filesystems, deployment type must be 'PERSISTENT_1'",
+            "For HDD file systems, deployment type must be PERSISTENT_1.",
         ),
         (
             "HDD",
             "PERSISTENT_1",
             50,
             "READ",
-            r"For HDD filesystems, per unit storage throughput can only have the following values: \[12, 40\]",
+            r"For HDD file systems, per unit storage throughput can only have the following values: \[12, 40\]",
         ),
         (
             "SSD",
             "PERSISTENT_1",
             12,
             None,
-            r"For SSD filesystems, per unit storage throughput can only have the following values: \[50, 100, 200\]",
+            "For PERSISTENT_1 SSD file systems, per unit storage throughput can only have the following values:"
+            r" \[50, 100, 200\].",
         ),
         (
             "SSD",
@@ -259,7 +261,7 @@ def test_fsx_backup_options_validator(
             "PERSISTENT_1",
             50,
             "READ",
-            "Drive cache type features can be used only with HDD filesystems",
+            "Drive cache type features can be used only with HDD file systems",
         ),
     ],
 )
@@ -286,7 +288,7 @@ def test_fsx_storage_type_options_validator(
             None,
             None,
             None,
-            "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB",
+            "Capacity for FSx SCRATCH_1 file systems is 1,200 GB, 2,400 GB or increments of 3,600 GB",
         ),
         (
             3600,
@@ -295,7 +297,7 @@ def test_fsx_storage_type_options_validator(
             None,
             None,
             None,
-            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+            "Capacity for FSx SCRATCH_2 file systems is 1,200 GB or increments of 2,400 GB",
         ),
         (
             3600,
@@ -304,7 +306,7 @@ def test_fsx_storage_type_options_validator(
             50,
             None,
             None,
-            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+            "Capacity for FSx PERSISTENT_1 file systems is 1,200 GB or increments of 2,400 GB",
         ),
         (
             3601,
@@ -313,7 +315,7 @@ def test_fsx_storage_type_options_validator(
             50,
             None,
             None,
-            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+            "Capacity for FSx PERSISTENT_1 file systems is 1,200 GB or increments of 2,400 GB",
         ),
         (
             None,

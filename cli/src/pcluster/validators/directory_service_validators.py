@@ -12,6 +12,9 @@
 import re
 from urllib.parse import urlparse
 
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
+from pcluster.constants import DIRECTORY_SERVICE_RESERVED_SETTINGS
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -67,6 +70,31 @@ class DomainNameValidator(Validator):
             )
 
 
+class PasswordSecretArnValidator(Validator):
+    """PasswordSecretArn validator."""
+
+    def _validate(self, password_secret_arn):
+        """Validate that PasswordSecretArn contains an ARN of a readable secret in AWS Secrets Manager."""
+        try:
+            # We only require the secret to exist; we do not validate its content.
+            AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
+        except AWSClientError as e:
+            if e.error_code == "ResourceNotFoundExceptionSecrets":
+                self._add_failure(f"The secret {password_secret_arn} does not exist.", FailureLevel.ERROR)
+            elif e.error_code == "AccessDeniedException":
+                self._add_failure(
+                    f"Cannot validate secret {password_secret_arn} due to lack of permissions. "
+                    "Please refer to ParallelCluster official documentation for more information.",
+                    FailureLevel.WARNING,
+                )
+            else:
+                self._add_failure(
+                    f"Cannot validate secret {password_secret_arn}. "
+                    "Please refer to ParallelCluster official documentation for more information.",
+                    FailureLevel.WARNING,
+                )
+
+
 class LdapTlsReqCertValidator(Validator):
     """LDAP TLS require certificate parameter validator."""
 
@@ -78,3 +106,32 @@ class LdapTlsReqCertValidator(Validator):
                 f"For security reasons it's recommended to use {' or '.join(values_requiring_cert_validation)}",
                 FailureLevel.WARNING,
             )
+
+
+class AdditionalSssdConfigsValidator(Validator):
+    """AdditionalSssdConfigs validator."""
+
+    def _validate(self, additional_sssd_configs, ldap_access_filter):
+        """Validate that AdditionalSssdConfigs does not introduce unacceptable values."""
+        for config_key, accepted_value in DIRECTORY_SERVICE_RESERVED_SETTINGS.items():
+            if config_key in additional_sssd_configs:
+                actual_value = additional_sssd_configs[config_key]
+                if actual_value != accepted_value:
+                    self._add_failure(
+                        f"Cannot override the SSSD property '{config_key}' "
+                        f"with value '{actual_value}'. "
+                        f"Allowed value is: '{accepted_value}'. "
+                        "Please refer to ParallelCluster official documentation for more information.",
+                        FailureLevel.ERROR,
+                    )
+
+        if "access_provider" in additional_sssd_configs:
+            actual_access_provider = additional_sssd_configs["access_provider"]
+            if ldap_access_filter is not None and actual_access_provider != "ldap":
+                self._add_failure(
+                    "Cannot override the SSSD property 'access_provider' "
+                    f"with value '{actual_access_provider}' when LdapAccessFilter is specified. "
+                    "Allowed value is: 'ldap'. "
+                    "Please refer to ParallelCluster official documentation for more information.",
+                    FailureLevel.ERROR,
+                )

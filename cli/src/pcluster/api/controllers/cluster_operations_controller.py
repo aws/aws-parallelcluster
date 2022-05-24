@@ -55,6 +55,7 @@ from pcluster.api.models import (
 from pcluster.api.util import assert_valid_node_js
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import StackNotFoundError
+from pcluster.config.config_patch import ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.models.cluster import (
     Cluster,
@@ -420,9 +421,9 @@ def _analyze_changes(changes):
     key_indexes = {key: index for index, key in enumerate(changes[0])}
 
     for row in changes[1:]:
-        parameter = _get_yaml_path(row[key_indexes["param_path"]], row[key_indexes["parameter"]])
-        new_value = row[key_indexes["new value"]]
-        old_value = row[key_indexes["old value"]]
+        parameter = ConfigPatch.build_config_param_path(row[key_indexes["param_path"]], row[key_indexes["parameter"]])
+        new_value = row[key_indexes["new value"]] if not row[key_indexes["new value"]] is None else "-"
+        old_value = row[key_indexes["old value"]] if not row[key_indexes["old value"]] is None else "-"
         check_result = row[key_indexes["check"]]
         message = _create_message(row[key_indexes["reason"]], row[key_indexes["action_needed"]])
         if not _cluster_update_change_succeded(check_result):
@@ -440,16 +441,3 @@ def _create_message(failure_reason, action_needed):
     if action_needed:
         message = f"{message}. {action_needed}" if message else action_needed
     return message or "Error during update"
-
-
-def _get_yaml_path(path, parameter):
-    """Compose the parameter path following the YAML Path standard.
-
-    Standard: https://github.com/wwkimball/yamlpath/wiki/Segments-of-a-YAML-Path#yaml-path-standard
-    """
-    yaml_path = []
-    if path:
-        yaml_path.extend(path)
-    if parameter:
-        yaml_path.append(parameter)
-    return ".".join(yaml_path)

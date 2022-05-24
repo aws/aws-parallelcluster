@@ -167,7 +167,7 @@ class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser):
         log_group_name: str,
         start_time: datetime.datetime = None,
         end_time: datetime.datetime = None,
-        filters: str = None,
+        filters: List[str] = None,
     ):
         super().__init__(head_node, filters)
         self.time_parser = LogGroupTimeFiltersParser(log_group_name, start_time, end_time)

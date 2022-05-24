@@ -1732,7 +1732,6 @@ components:
         - clusterName
         - clusterStatus
         - region
-        - scheduler
         - version
     ClusterInstance:
       type: object
@@ -1932,7 +1931,6 @@ components:
         - creationTime
         - lastUpdatedTime
         - region
-        - scheduler
         - tags
         - version
     DescribeComputeFleetResponseContent:

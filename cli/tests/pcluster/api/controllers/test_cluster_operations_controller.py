@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 from marshmallow.exceptions import ValidationError
 
-from pcluster.api.controllers.cluster_operations_controller import _cluster_update_change_succeded
+from pcluster.api.controllers.cluster_operations_controller import _analyze_changes, _cluster_update_change_succeded
 from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
@@ -1738,3 +1738,78 @@ def test_cluster_update_change_succeded(check_result):
     """Verify we can compare string literals against update status enum, rather than its value attribute."""
     successful_result = "SUCCEEDED"
     assert_that(_cluster_update_change_succeded(check_result)).is_equal_to(check_result == successful_result)
+
+
+@pytest.mark.parametrize(
+    "changes, expected_current_value, expected_requested_value",
+    [
+        (
+            [
+                [
+                    "param_path",
+                    "parameter",
+                    "old value",
+                    "new value",
+                    "check",
+                    "reason",
+                    "action_needed",
+                    "update_policy",
+                ],
+                [
+                    ["Scheduling"],
+                    "SlurmQueues",
+                    None,
+                    {
+                        "Name": "queue2",
+                        "ComputeResources": [{"Name": "compute2", "InstanceType": "c5.9xlarge", "MinCount": 0}],
+                    },
+                    "SUCCEEDED",
+                    "-",
+                    None,
+                    "COMPUTE_FLEET_STOP_ON_REMOVE",
+                ],
+            ],
+            "-",
+            {
+                "ComputeResources": [{"InstanceType": "c5.9xlarge", "MinCount": 0, "Name": "compute2"}],
+                "Name": "queue2",
+            },
+        ),
+        (
+            [
+                [
+                    "param_path",
+                    "parameter",
+                    "old value",
+                    "new value",
+                    "check",
+                    "reason",
+                    "action_needed",
+                    "update_policy",
+                ],
+                [
+                    ["Scheduling"],
+                    "SlurmQueues",
+                    {
+                        "Name": "queue1",
+                        "ComputeResources": [{"Name": "compute1", "InstanceType": "c5.xlarge", "MinCount": 0}],
+                    },
+                    None,
+                    "ACTION NEEDED",
+                    "All compute nodes must be stopped",
+                    "Stop the compute fleet with the pcluster update-compute-fleet command",
+                    "COMPUTE_FLEET_STOP_ON_REMOVE",
+                ],
+            ],
+            {
+                "ComputeResources": [{"InstanceType": "c5.xlarge", "MinCount": 0, "Name": "compute1"}],
+                "Name": "queue1",
+            },
+            "-",
+        ),
+    ],
+)
+def test_analyze_changes(changes, expected_current_value, expected_requested_value):
+    change_set, errors = _analyze_changes(changes)
+    assert_that(change_set[0].current_value).is_equal_to(expected_current_value)
+    assert_that(change_set[0].requested_value).is_equal_to(expected_requested_value)

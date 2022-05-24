@@ -5,17 +5,63 @@ x.x.x
 ------
 
 **ENHANCEMENTS**
-- Add support to deploy API infrastructure in environments without a default VPC.
+- Add new configuration parameter `Scheduling/SlurmSettings/QueueUpdateStrategy` to allow cluster update when
+  `SlurmQueues` configuration changes don't impact Slurm scheduler configuration.
+- Add support for multiple Elastic File Systems.
+- Add support for multiple FSx File Systems.
+- Add support for FSx Lustre Persistent_2 deployment type.
+- Show `requested_value` and `current_value` values in the change set when adding or removing a section.
 
 **CHANGES**
-- Add scheduler information to `list-clusters`, `describe-cluster`, `delete-cluster`, `update-cluster`, `create-cluster` results.
-- Add validator to detect when using FSx for Lustre with AWS Batch as a scheduler, this combination is not supported yet.
-- Add validator to verify that `DirectoryService.DomainName` is a FQDN or a LDAP Distinguished Name.
-- Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
+- Remove support for Python 3.6.
+- Upgrade Slurm to version 21.08.8-2.
+- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+- Changes to FSx for Lustre file systems created by ParallelCluster:
+  - Change the default deployment type to `Scratch_2`.
+  - Change the Lustre server version to `2.12`.
+- Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
 
 **BUG FIXES**
-- Fix cluster stack in `DELETE_FAILED` when deleting a cluster, due to Route53 hosted zone not empty.
+- Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
+
+3.1.4
+------
+
+**ENHANCEMENTS**
+- Add validation for `DirectoryService/PasswordSecretArn` to fail in case the secret does not exist.
+
+**CHANGES**
+- Upgrade Slurm to version 21.08.8-2.
+- Build Slurm with JWT support.
+- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+- Add `lambda:TagsResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster creation and image creation.
+
+**BUG FIXES**
+- Fix the ability to export cluster's logs when using `export-cluster-logs` command with the `--filters` option.
+- Fix AWS Batch Docker entrypoint to use `/home` shared directory to coordinate Multi-node-Parallel job execution.
+
+3.1.3
+------
+
+**ENHANCEMENTS**
+- Execute SSH key creation alongside with the creation of HOME directory, i.e.
+  during SSH login, when switching to another user and when executing a command as another user.
+- Add support for both FQDN and LDAP Distinguished Names in the configuration parameter `DirectoryService/DomainName`. The new validator now checks both the syntaxes.
+- New `update_directory_service_password.sh` script deployed on the head node supports the manual update of the Active Directory password in the SSSD configuration.
+  The password is retrieved by the AWS Secrets Manager as from the cluster configuration.
+- Add support to deploy API infrastructure in environments without a default VPC.
+- Add validation for `DirectoryService/AdditionalSssdConfigs` to fail in case of invalid overrides.
+- Make `DirectoryService/AdditionalSssdConfigs` be merged into final SSSD configuration rather than be appended.
+
+**CHANGES**
+- Disable deeper C-States in x86_64 official AMIs and AMIs created through `build-image` command, to guarantee high performance and low latency.
+- OS package updates and security fixes.
+- Change Amazon Linux 2 base images to use AMIs with Kernel 5.10.
+
+**BUG FIXES**
 - Fix build-image stack in `DELETE_FAILED` after image built successful, due to new EC2ImageBuilder policies.
+- Fix the configuration parameter `DirectoryService/DomainAddr` conversion to `ldap_uri` SSSD property when it contains multiples domain addresses.
+- Fix DCV not loading user profile at session start. The user's PATH was not correctly set at DCV session connection.
 
 3.1.2
 ------

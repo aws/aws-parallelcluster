@@ -13,6 +13,7 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 import logging
+from collections import defaultdict
 from enum import Enum
 from typing import Dict, List, Union
 
@@ -27,14 +28,17 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    MAX_EBS_COUNT,
+    MAX_EXISTING_STORAGE_COUNT,
+    MAX_NEW_STORAGE_COUNT,
     MAX_NUMBER_OF_COMPUTE_RESOURCES,
     MAX_NUMBER_OF_QUEUES,
-    MAX_STORAGE_COUNT,
     NODE_BOOTSTRAP_TIMEOUT,
     SCHEDULER_PLUGIN_INTERFACE_VERSION,
     SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
@@ -69,8 +73,8 @@ from pcluster.validators.cluster_validators import (
     EfaSecurityGroupValidator,
     EfaValidator,
     EfsIdValidator,
+    ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    FsxNetworkingValidator,
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     HostedZoneValidator,
@@ -84,12 +88,15 @@ from pcluster.validators.cluster_validators import (
     OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
+    SharedStorageMountDirValidator,
     SharedStorageNameValidator,
 )
 from pcluster.validators.directory_service_validators import (
+    AdditionalSssdConfigsValidator,
     DomainAddrValidator,
     DomainNameValidator,
     LdapTlsReqCertValidator,
+    PasswordSecretArnValidator,
 )
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
@@ -200,7 +207,7 @@ class EphemeralVolume(Resource):
 
     def __init__(self, mount_dir: str = None):
         super().__init__()
-        self.mount_dir = Resource.init_param(mount_dir, default="/scratch")
+        self.mount_dir = Resource.init_param(mount_dir, default=DEFAULT_EPHEMERAL_DIR)
 
 
 class LocalStorage(Resource):
@@ -318,7 +325,7 @@ class SharedFsx(Resource):
         self.shared_storage_type = SharedStorageType.FSX
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
-        self.deployment_type = Resource.init_param(deployment_type)
+        self.deployment_type = Resource.init_param(deployment_type, default="SCRATCH_2")
         self.data_compression_type = Resource.init_param(data_compression_type)
         self.export_path = Resource.init_param(export_path)
         self.import_path = Resource.init_param(import_path)
@@ -395,7 +402,7 @@ class SharedFsx(Resource):
     def file_system_data(self):
         """Return filesystem information if using existing FSx."""
         if not self.__file_system_data and self.file_system_id:
-            self.__file_system_data = AWSApi.instance().fsx.get_filesystem_info(self.file_system_id)
+            self.__file_system_data = AWSApi.instance().fsx.get_file_systems_info([self.file_system_id])[0]
         return self.__file_system_data
 
     @property
@@ -638,32 +645,38 @@ class Iam(Resource):
             arns.append(policy.policy)
         return arns
 
-    def _extract_roles_from_instance_profile(self, instance_profile_name) -> List[str]:
-        """Return the ARNs of the IAM roles attached to the given instance profile."""
-        return [
-            role.get("Arn")
-            for role in (
-                AWSApi.instance().iam.get_instance_profile(instance_profile_name).get("InstanceProfile").get("Roles")
-            )
-        ]
+    @staticmethod
+    def _extract_role_from_instance_profile(instance_profile_name) -> str:
+        """Return the ARN of the IAM role attached to the given instance profile.
+
+        An instance profile can contain only one IAM role
+        see https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
+        """
+        return (
+            AWSApi.instance()
+            .iam.get_instance_profile(instance_profile_name)
+            .get("InstanceProfile")
+            .get("Roles")[0]
+            .get("Arn")
+        )
 
     @property
-    def instance_role_arns(self) -> List[str]:
+    def instance_role_arn(self) -> str:
         """
-        Get unique collection of ARNs of IAM roles underlying instance profile.
+        Get IAM role of underlying instance profile.
 
-        self.instance_role is used if it's specified. Otherwise the roles contained within self.instance_profile are
+        self.instance_role is used if it's specified. Otherwise the role contained within self.instance_profile is
         used. It's assumed that self.instance_profile and self.instance_role cannot both be specified.
         """
         if self.instance_role:
-            instance_role_arns = {self.instance_role}
+            instance_role_arn = self.instance_role
         elif self.instance_profile:
-            instance_role_arns = set(
-                self._extract_roles_from_instance_profile(get_resource_name_from_resource_arn(self.instance_profile))
+            instance_role_arn = self._extract_role_from_instance_profile(
+                get_resource_name_from_resource_arn(self.instance_profile)
             )
         else:
-            instance_role_arns = {}
-        return list(instance_role_arns)
+            instance_role_arn = ""
+        return instance_role_arn
 
     def _register_validators(self):
         if self.instance_role:
@@ -714,8 +727,16 @@ class DirectoryService(Resource):
             self._register_validator(
                 DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
             )
+        if self.password_secret_arn:
+            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
+        if self.additional_sssd_configs:
+            self._register_validator(
+                AdditionalSssdConfigsValidator,
+                additional_sssd_configs=self.additional_sssd_configs,
+                ldap_access_filter=self.ldap_access_filter,
+            )
 
 
 class ClusterIam(Resource):
@@ -999,6 +1020,7 @@ class BaseClusterConfig(Resource):
         cluster_name: str,
         image: Image,
         head_node: HeadNode,
+        scheduling=None,
         shared_storage: List[Resource] = None,
         monitoring: Monitoring = None,
         additional_packages: AdditionalPackages = None,
@@ -1021,6 +1043,7 @@ class BaseClusterConfig(Resource):
         self.cluster_name = cluster_name
         self.image = image
         self.head_node = head_node
+        self.scheduling = scheduling
         self.shared_storage = shared_storage
         self.monitoring = monitoring or Monitoring(implied=True)
         self.additional_packages = additional_packages
@@ -1089,50 +1112,85 @@ class BaseClusterConfig(Resource):
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
 
     def _register_storage_validators(self):
-        storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}
+        ebs_count = 0
+        new_storage_count = defaultdict(int)
+        existing_storage_count = defaultdict(int)
         if self.shared_storage:
             self._register_validator(
                 DuplicateNameValidator,
                 name_list=[storage.name for storage in self.shared_storage],
                 resource_name="Shared Storage",
             )
+            self._register_validator(
+                DuplicateNameValidator,
+                name_list=self.existing_fs_id_list,
+                resource_name="Shared Storage IDs",
+            )
+            existing_fsx = []
             for storage in self.shared_storage:
                 self._register_validator(SharedStorageNameValidator, name=storage.name)
+                self._register_validator(SharedStorageMountDirValidator, mount_dir=storage.mount_dir)
                 if isinstance(storage, SharedFsx):
-                    storage_count["fsx"] += 1
                     if storage.file_system_id:
-                        self._register_validator(
-                            FsxNetworkingValidator,
-                            file_system_id=storage.file_system_id,
-                            head_node_subnet_id=self.head_node.networking.subnet_id,
-                        )
+                        existing_storage_count["fsx"] += 1
+                        existing_fsx.append(storage.file_system_id)
+                    else:
+                        new_storage_count["fsx"] += 1
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
                 if isinstance(storage, SharedEbs):
                     if storage.raid:
-                        storage_count["raid"] += 1
+                        new_storage_count["raid"] += 1
                     else:
-                        storage_count["ebs"] += 1
+                        ebs_count += 1
                 if isinstance(storage, SharedEfs):
-                    storage_count["efs"] += 1
                     if storage.file_system_id:
+                        existing_storage_count["efs"] += 1
                         self._register_validator(
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
-                            head_node_avail_zone=self.head_node.networking.availability_zone,
+                            avail_zones=self.availability_zones,
+                            are_all_security_groups_customized=self.are_all_security_groups_customized,
                         )
+                    else:
+                        new_storage_count["efs"] += 1
+            self._register_validator(
+                ExistingFsxNetworkingValidator,
+                file_system_ids=existing_fsx,
+                head_node_subnet_id=self.head_node.networking.subnet_id,
+                are_all_security_groups_customized=self.are_all_security_groups_customized,
+            )
 
-            for storage_type in ["ebs", "efs", "fsx", "raid"]:
+            for storage_type in ["efs", "fsx", "raid"]:
                 self._register_validator(
                     NumberOfStorageValidator,
-                    storage_type=storage_type.upper(),
-                    max_number=MAX_STORAGE_COUNT.get(storage_type),
-                    storage_count=storage_count[storage_type],
+                    storage_type=f"new {storage_type.upper()}",
+                    max_number=MAX_NEW_STORAGE_COUNT.get(storage_type),
+                    storage_count=new_storage_count[storage_type],
                 )
+                self._register_validator(
+                    NumberOfStorageValidator,
+                    storage_type=f"existing {storage_type.upper()}",
+                    max_number=MAX_EXISTING_STORAGE_COUNT.get(storage_type),
+                    storage_count=existing_storage_count[storage_type],
+                )
+            self._register_validator(
+                NumberOfStorageValidator,
+                storage_type="EBS",
+                max_number=MAX_EBS_COUNT,
+                storage_count=ebs_count,
+            )
 
-        self._register_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
-        self._register_validator(OverlappingMountDirValidator, mount_dir_list=self.mount_dir_list)
+        self._register_validator(
+            DuplicateMountDirValidator,
+            mount_dir_list=self.shared_mount_dir_list + list(self.local_mount_dir_set),
+        )
+        self._register_validator(
+            OverlappingMountDirValidator,
+            shared_mount_dir_list=self.shared_mount_dir_list,
+            local_mount_dir_list=list(self.local_mount_dir_set),
+        )
 
     @property
     def region(self):
@@ -1151,17 +1209,47 @@ class BaseClusterConfig(Resource):
         return get_partition()
 
     @property
-    def mount_dir_list(self):
-        """Retrieve the list of mount dirs for the shared storage and head node ephemeral volume."""
+    def shared_mount_dir_list(self):
+        """Retrieve the list of shared mount dirs."""
         mount_dir_list = []
         if self.shared_storage:
             for storage in self.shared_storage:
                 mount_dir_list.append(storage.mount_dir)
-
-        if self.head_node.local_storage.ephemeral_volume:
-            mount_dir_list.append(self.head_node.local_storage.ephemeral_volume.mount_dir)
-
         return mount_dir_list
+
+    @property
+    def local_mount_dir_set(self):
+        """Retrieve the list of local mount dirs of head compute nodes ephemeral volume."""
+        mount_dir_set = {
+            self.head_node.local_storage.ephemeral_volume.mount_dir
+            if self.head_node.local_storage.ephemeral_volume
+            else DEFAULT_EPHEMERAL_DIR
+        }
+        scheduling = self.scheduling
+        if isinstance(scheduling, (SchedulerPluginScheduling, SlurmScheduling)):
+            for queue in scheduling.queues:
+                mount_dir_set.add(
+                    queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                    if queue.compute_settings.local_storage.ephemeral_volume
+                    else DEFAULT_EPHEMERAL_DIR
+                )
+
+        return mount_dir_set
+
+    @property
+    def existing_fs_id_list(self):
+        """Retrieve the list of IDs of EBS, FSx, EFS provided."""
+        fs_id_list = []
+        if self.shared_storage:
+            for storage in self.shared_storage:
+                fs_id = None
+                if isinstance(storage, (SharedEfs, SharedFsx)):
+                    fs_id = storage.file_system_id
+                elif isinstance(storage, SharedEbs):
+                    fs_id = storage.volume_id
+                if fs_id:
+                    fs_id_list.append(fs_id)
+        return fs_id_list
 
     @property
     def compute_subnet_ids(self):
@@ -1175,6 +1263,14 @@ class BaseClusterConfig(Resource):
                 if queue.networking.subnet_ids
             }
         )
+
+    @property
+    def availability_zones(self):
+        """Return the list of all availability zones in the cluster."""
+        result = set(self.head_node.networking.availability_zone)
+        for subnet_id in self.compute_subnet_ids:
+            result.add(AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id))
+        return result
 
     @property
     def compute_security_groups(self):
@@ -1239,6 +1335,19 @@ class BaseClusterConfig(Resource):
     def is_dcv_enabled(self):
         """Return True if DCV is enabled."""
         return self.head_node.dcv and self.head_node.dcv.enabled
+
+    @property
+    def are_all_security_groups_customized(self):
+        """Return True if all head node and queues have (additional) security groups specified."""
+        head_node_networking = self.head_node.networking
+        if not (head_node_networking.security_groups or head_node_networking.additional_security_groups):
+            return False
+        for queue in self.scheduling.queues:
+            queue_networking = queue.networking
+            if isinstance(queue_networking, _QueueNetworking):
+                if not (queue_networking.security_groups or queue_networking.additional_security_groups):
+                    return False
+        return True
 
     @property
     def extra_chef_attributes(self):
@@ -1582,10 +1691,20 @@ class Dns(Resource):
 class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
-    def __init__(self, scaledown_idletime: int = None, dns: Dns = None, **kwargs):
+    def __init__(self, scaledown_idletime: int = None, dns: Dns = None, queue_update_strategy: str = None, **kwargs):
         super().__init__()
         self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
         self.dns = dns or Dns(implied=True)
+        self.queue_update_strategy = Resource.init_param(
+            queue_update_strategy, default=QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+        )
+
+
+class QueueUpdateStrategy(Enum):
+    """Enum to identify the update strategy supported by the queue."""
+
+    DRAIN = "DRAIN"
+    COMPUTE_FLEET_STOP = "COMPUTE_FLEET_STOP"
 
 
 class SlurmScheduling(Resource):
@@ -1901,7 +2020,6 @@ class SchedulerPluginDefinition(Resource):
         self._register_validator(
             PluginInterfaceVersionValidator,
             plugin_version=self.plugin_interface_version,
-            support_version=SCHEDULER_PLUGIN_INTERFACE_VERSION,
             support_version_low_range=SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
             support_version_high_range=SCHEDULER_PLUGIN_INTERFACE_VERSION,
         )

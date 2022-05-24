@@ -192,8 +192,7 @@ Resources:
   PrepLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Description: Lambda function to prepare stack
-      FunctionName: !Sub ${AWS::StackName}-Prep
+      Description: !Sub "${AWS::StackName}: custom resource handler to prepare the stack."
       Handler: index.handler
       MemorySize: 128
       Role: !GetAtt PrepRole.Arn
@@ -317,7 +316,16 @@ Resources:
                   - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
                   # - { DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ] }
                   - { DirectoryId: !Ref Directory }
-          PolicyName: !Sub ${AWS::StackName}resetuserpassword
+          PolicyName: ResetUserPassword
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - secretsmanager:PutSecretValue
+                Effect: Allow
+                Resource:
+                  - !Ref DomainCertificateSecret
+                  - !Ref DomainPrivateKeySecret
+          PolicyName: PutDomainCertificateSecrets
   JoinProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -347,6 +355,7 @@ Resources:
               krb5-workstation: []
               openldap-clients: []
               policycoreutils-python: []
+              openssl: []
     Properties:
       IamInstanceProfile:
         Ref: JoinProfile
@@ -356,6 +365,9 @@ Resources:
       SecurityGroupIds:
         - Ref: AdDomainAdminNodeSecurityGroup
       SubnetId: !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
+      Tags:
+        - Key: "Name"
+          Value: !Sub [ "AdDomainAdminNode-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
       UserData:
         Fn::Base64:
           !Sub
@@ -365,6 +377,8 @@ Resources:
               yum update -y aws-cfn-bootstrap
               /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource AdDomainAdminNode --configsets setup --region ${AWS::Region}
               echo "Domain Name: " ${DirectoryDomain}
+              echo "Domain Certificate Secret: " ${DomainCertificateSecretArn}
+              echo "Domain Private Key Secret: " ${DomainPrivateKeySecretArn}
               cat << EOF > /etc/resolv.conf
               search           ${DirectoryDomain}
               nameserver       ${DnsIp1}
@@ -380,13 +394,31 @@ Resources:
               sleep 0.5
               echo "Registering User..."
               echo $ADMIN_PW | adcli create-user -x -U Admin --domain=${DirectoryDomain} --display-name=${UserName} ${UserName}
+
+              echo "Creating domain certificate..."
+              PRIVATE_KEY="${DirectoryDomain}.key"
+              CERTIFICATE="${DirectoryDomain}.crt"
+              printf ".\n.\n.\n.\n.\n${DirectoryDomain}\n.\n" | openssl req -x509 -sha256 -nodes -newkey rsa:2048 -keyout $PRIVATE_KEY -days 365 -out $CERTIFICATE
+
+              echo "Storing domain private key to Secrets Manager..."
+              aws secretsmanager put-secret-value --secret-id ${DomainPrivateKeySecretArn} --secret-string file://$PRIVATE_KEY --region ${AWS::Region}
+
+              echo "Storing domain certificate to Secrets Manager..."
+              aws secretsmanager put-secret-value --secret-id ${DomainCertificateSecretArn} --secret-string file://$CERTIFICATE --region ${AWS::Region}
+
+              echo "Deleting private key and certificate from local file system..."
+              rm -rf $PRIVATE_KEY $CERTIFICATE
+
               /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AdDomainAdminNode --region ${AWS::Region}
 
             - { DirectoryDomain: !GetAtt Prep.DomainName,
                 AdminPassword: !Ref AdminPassword,
                 UserName: !Ref UserName,
                 DnsIp1: !GetAtt Prep.DnsIpAddress1,
-                DnsIp2: !GetAtt Prep.DnsIpAddress2}
+                DnsIp2: !GetAtt Prep.DnsIpAddress2,
+                DomainCertificateSecretArn: !Ref DomainCertificateSecret,
+                DomainPrivateKeySecretArn: !Ref DomainPrivateKeySecret,
+            }
 
   PostRole:
     Type: AWS::IAM::Role
@@ -410,7 +442,6 @@ Resources:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
                 Effect: Allow
-                # Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-Prep:*
                 Resource: '*'
         - PolicyName: ResetPassword
           PolicyDocument:
@@ -437,8 +468,7 @@ Resources:
   PostLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Description: Lambda function to finish setting up stack after other resources have been created.
-      FunctionName: !Sub ${AWS::StackName}-Post
+      Description: !Sub "${AWS::StackName}: custom resource handler to finish setting up stack after other resources have been created."
       Handler: index.handler
       MemorySize: 128
       Role: !GetAtt PostRole.Arn
@@ -507,22 +537,340 @@ Resources:
     Type: AWS::SecretsManager::Secret
     Properties:
       Description: Password for Microsoft AD
-      Name: !Sub [ "ADSecretPassword-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
+      Name: !Sub [ "PasswordSecret-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
       SecretString: !Ref ReadOnlyPassword
+
+  DomainCertificateSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Domain certificate
+      Name: !Sub [ "DomainCertificateSecret-${StackIdSuffix}", { StackIdSuffix: !Select [ 1, !Split [ '/', !Ref 'AWS::StackId' ] ] } ]
+
+  DomainPrivateKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Domain private key
+      Name: !Sub [ "DomainPrivateKeySecret-${StackIdSuffix}", { StackIdSuffix: !Select [ 1, !Split [ '/', !Ref 'AWS::StackId' ] ] } ]
+
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
+        - !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
+      Type: network
+
+  NetworkLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 389
+      Protocol: TCP
+      VpcId: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
+      HealthCheckEnabled: True
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPort: 389
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
+      Targets:
+        - Id: !Select [0, !GetAtt Prep.DnsIpAddresses]
+          Port: 389
+        - Id: !Select [1, !GetAtt Prep.DnsIpAddresses]
+          Port: 389
+      TargetType: ip
+
+  DNS:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Ref DomainName
+      VPCs:
+        - VPCId: !If [ CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
+          VPCRegion: !Ref AWS::Region
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Name: !Ref DomainName
+      AliasTarget:
+        DNSName: !GetAtt NetworkLoadBalancer.DNSName
+        HostedZoneId: !GetAtt NetworkLoadBalancer.CanonicalHostedZoneID
+      Type: A
+
+  NetworkLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NetworkLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref NetworkLoadBalancer
+      Port: '636'
+      Protocol: TLS
+      SslPolicy: ELBSecurityPolicy-TLS-1-2-2017-01
+      Certificates:
+        - CertificateArn: !GetAtt DomainCertificateSetup.DomainCertificateArn
+
+  DomainCertificateSetupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyName: LogOutput
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: '*'
+        - PolicyName: ManageDomainCertificate
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - acm:ImportCertificate
+                  - acm:AddTagsToCertificate
+                Resource: !Sub arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/*
+                Condition:
+                  StringEquals:
+                    aws:RequestTag/StackId: !Sub ${AWS::StackId}
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref DomainCertificateSecret
+                  - !Ref DomainPrivateKeySecret
+
+  DomainCertificateSetupLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: !Sub "${AWS::StackName}: custom resource handler to import the domain certificate into ACM."
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt DomainCertificateSetupLambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      TracingConfig:
+        Mode: Active
+      Code:
+        ZipFile: |
+          import time
+          import cfnresponse
+          import boto3
+          import logging
+          import random
+          import string
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          acm = boto3.client("acm")
+          sm = boto3.client("secretsmanager")
+
+          def create_physical_resource_id():
+              alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
+              return ''.join(random.choice(alnum) for _ in range(16))
+
+          def import_certificate(certificate_secret_arn, private_key_secret_arn, tags):
+            logger.info('Reading secrets from Secrets Manager...')
+            domain_certificate = sm.get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
+            domain_private_key = sm.get_secret_value(SecretId=private_key_secret_arn)["SecretString"]
+            logger.info('Importing certificate into ACM...')
+            certificate_arn = acm.import_certificate(
+              Certificate=domain_certificate, PrivateKey=domain_private_key, Tags=tags
+            )["CertificateArn"]
+            return certificate_arn
+
+          def handler(event, context):
+              logger.info(f"Context: {context}")
+              logger.info(f"Event: {event}")
+              logger.info(f"Boto version: {boto3.__version__}")
+
+              domain_name = event['ResourceProperties']['DomainName']
+              certificate_secret_arn = event['ResourceProperties']['DomainCertificateSecretArn']
+              private_key_secret_arn = event['ResourceProperties']['DomainPrivateKeySecretArn']
+              tags = [{ 'Key': 'StackId', 'Value': event['StackId']}]
+
+              response_data = {}
+              reason = None
+              response_status = cfnresponse.SUCCESS
+
+              physical_resource_id = event.get("PhysicalResourceId", create_physical_resource_id())
+
+              try:
+                if event['RequestType'] == 'Create':
+                  certificate_arn = import_certificate(certificate_secret_arn, private_key_secret_arn, tags)
+                  response_data['DomainCertificateArn'] = certificate_arn
+                  response_data['Message'] = f"Resource creation successful! ACM certificate imported: {certificate_arn}"
+              except Exception as e:
+                response_status = cfnresponse.FAILED
+                reason = str(e)
+              cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
+
+  DomainCertificateSetup:
+    Type: Custom::DomainCertificateSetupLambda
+    DependsOn:
+      - Post
+    Properties:
+      ServiceToken: !GetAtt DomainCertificateSetupLambda.Arn
+      DomainName: !Ref DomainName
+      DomainCertificateSecretArn: !Ref DomainCertificateSecret
+      DomainPrivateKeySecretArn: !Ref DomainPrivateKeySecret
+
+  CleanupLambdaRole:
+    Type: AWS::IAM::Role
+    DependsOn:
+      - DomainCertificateSetup
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyName: LogOutput
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: '*'
+        - PolicyName: DeleteDomainCertificate
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - acm:DeleteCertificate
+                Resource: !GetAtt DomainCertificateSetup.DomainCertificateArn
+
+  CleanupLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: !Sub "${AWS::StackName}: custom resource handler to cleanup resources."
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt CleanupLambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 900
+      TracingConfig:
+        Mode: Active
+      Code:
+        ZipFile: |
+          import time
+          import cfnresponse
+          import boto3
+          import logging
+          import random
+          import string
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          acm = boto3.client("acm")
+
+          def create_physical_resource_id():
+            alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
+            return ''.join(random.choice(alnum) for _ in range(16))
+
+          def delete_certificate(certificate_arn):
+            logger.info(f"Deleting ACM certificate {certificate_arn}...")
+            max_attempts = 10
+            sleep_time = 60
+            for attempt in range(1, max_attempts+1):
+              try:
+                acm.delete_certificate(CertificateArn=certificate_arn)
+                break
+              except acm.exceptions.ResourceInUseException as e:
+                logger.info(f"(Attempt {attempt}/{max_attempts}) Cannot delete ACM certificate because it is in use. Retrying in {sleep_time} seconds...")
+                if attempt == max_attempts:
+                  raise Exception(f"Cannot delete certificate {certificate_arn}: {e}")
+                else:
+                  time.sleep(sleep_time)
+
+          def handler(event, context):
+            logger.info(f"Context: {context}")
+            logger.info(f"Event: {event}")
+            logger.info(f"Boto version: {boto3.__version__}")
+
+            response_data = {}
+            reason = None
+            response_status = cfnresponse.SUCCESS
+
+            physical_resource_id = event.get("PhysicalResourceId", create_physical_resource_id())
+
+            try:
+              if event['RequestType'] == 'Delete':
+                certificate_arn = event['ResourceProperties']['DomainCertificateArn']
+                delete_certificate(certificate_arn)
+            except Exception as e:
+              response_status = cfnresponse.FAILED
+              reason = str(e)
+            cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
+
+  Cleanup:
+    Type: Custom::CleanupLambda
+    DependsOn:
+      - DomainCertificateSetup
+    Properties:
+      ServiceToken: !GetAtt CleanupLambda.Arn
+      DomainCertificateArn: !GetAtt DomainCertificateSetup.DomainCertificateArn
+
+  DomainCertificateSecretReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn:
+      - DomainCertificateSecret
+    Properties:
+      ManagedPolicyName: !Sub [ "DomainCertificateSecretReadPolicy-${StackIdSuffix}", { StackIdSuffix: !Select [ 1, !Split [ '/', !Ref 'AWS::StackId' ] ] } ]
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource:
+              - !Ref DomainCertificateSecret
+
 Outputs:
   VpcId:
     Value: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
   PrivateSubnetIds:
     Value: !Join [",", [!If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ], !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]]]
   DomainName:
-    Value: !Sub
-      - dc=${dc}
-      - dc: !Join [",dc=", !Split [".", !Ref DomainName ]]
+    Value: !Ref DomainName
   PasswordSecretArn:
     Value: !Ref PasswordSecret
+  DomainCertificateArn:
+    Value: !GetAtt DomainCertificateSetup.DomainCertificateArn
+  DomainCertificateSecretArn:
+    Value: !Ref DomainCertificateSecret
   DomainReadOnlyUser:
     Value: !Sub
       - cn=ReadOnlyUser,ou=Users,ou=${ou},dc=${dc}
       - { dc: !Join [",dc=", !Split [".", !Ref DomainName ]], ou: !GetAtt Prep.DomainShortName }
-  DomainAddr:
-    Value: !Join [",", !GetAtt Prep.DnsIpAddresses]
+  DomainAddrLdap:
+    Value: !Sub
+      - ldap://${address}
+      - address: !Join [",ldap://", !GetAtt Prep.DnsIpAddresses]
+  DomainAddrLdaps:
+    Value: !Sub ldaps://${DomainName}
+  DomainCertificateSecretReadPolicy:
+    Value: !Ref DomainCertificateSecretReadPolicy

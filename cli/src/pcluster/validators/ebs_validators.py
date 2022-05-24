@@ -119,6 +119,11 @@ class EbsVolumeIopsValidator(Validator):
                     ),
                     FailureLevel.ERROR,
                 )
+        elif volume_iops:
+            self._add_failure(
+                f"The parameter IOPS is not supported for {volume_type} volumes.",
+                FailureLevel.ERROR,
+            )
 
 
 class EbsVolumeSizeSnapshotValidator(Validator):

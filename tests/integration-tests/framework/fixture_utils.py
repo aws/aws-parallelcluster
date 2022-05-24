@@ -17,6 +17,7 @@ from typing import Any, Callable, Set
 
 import pytest
 from filelock import FileLock
+from psutil import STATUS_ZOMBIE, NoSuchProcess, Process
 from xdist import get_xdist_worker_id
 
 
@@ -24,10 +25,15 @@ from xdist import get_xdist_worker_id
 class SharedFixtureData:
     """Represent the object holding the data of a shared fixture."""
 
-    owning_xdist_worker_id: str
+    owning_xdist_worker_id_and_pid: str
     counter: int = 0
     fixture_return_value: Any = None
-    currently_using_processes: Set[str] = field(default_factory=set)
+    currently_using_processes: Set[str] = field(default_factory=set)  # e.g "gw2: 736"
+
+    def remove_xdist_worker(self, xdist_worker_id_and_pid: str):
+        """Remove a worker id and pid from SharedFixtureData."""
+        self.counter = self.counter - 1
+        self.currently_using_processes.remove(xdist_worker_id_and_pid)
 
 
 class SharedFixture:
@@ -46,14 +52,14 @@ class SharedFixture:
         fixture_func: Callable,
         fixture_func_args: tuple,
         fixture_func_kwargs: dict,
-        xdist_worker_id: str,
+        xdist_worker_id_and_pid: str,
     ):
         self.name = name
         self.shared_save_location = shared_save_location
         self.fixture_func = fixture_func
         self.fixture_func_args = fixture_func_args
         self.fixture_func_kwargs = fixture_func_kwargs
-        self.xdist_worker_id = xdist_worker_id
+        self.xdist_worker_id_and_pid = xdist_worker_id_and_pid
         self._lock_file = shared_save_location / f"{name}.lock"
         self._fixture_file = shared_save_location / f"{name}.fixture"
         self._generator = None
@@ -68,9 +74,16 @@ class SharedFixture:
         with FileLock(self._lock_file):
             data = self._load_fixture_data()
             data.counter = data.counter + 1
-            data.currently_using_processes.add(self.xdist_worker_id)
+            data.currently_using_processes.add(self.xdist_worker_id_and_pid)
             self._save_fixture_data(data)
             return data
+
+    @staticmethod
+    def _is_valid_process(pid: int) -> bool:
+        try:
+            return Process(pid).status() != STATUS_ZOMBIE
+        except NoSuchProcess:
+            return False
 
     def release(self):
         """
@@ -80,9 +93,8 @@ class SharedFixture:
         """
         with FileLock(self._lock_file):
             data = self._load_fixture_data()
-            if self.xdist_worker_id != data.owning_xdist_worker_id:
-                data.counter = data.counter - 1
-                data.currently_using_processes.remove(self.xdist_worker_id)
+            if self.xdist_worker_id_and_pid != data.owning_xdist_worker_id_and_pid:
+                data.remove_xdist_worker(self.xdist_worker_id_and_pid)
                 logging.info("Releasing shared fixture %s. Currently in use by %d processes", self.name, data.counter)
                 self._save_fixture_data(data)
                 return
@@ -96,6 +108,18 @@ class SharedFixture:
             )
             time.sleep(30)
             with FileLock(self._lock_file):
+                for worker in data.currently_using_processes.copy():
+                    pid = int(worker.split(" ")[1])
+                    if not self._is_valid_process(pid):
+                        data.remove_xdist_worker(worker)
+                        logging.warning(
+                            "Releasing shared fixture %s from process in bad state (%s). Currently in use by %d "
+                            "processes",
+                            self.name,
+                            worker,
+                            data.counter,
+                        )
+                        self._save_fixture_data(data)
                 data = self._load_fixture_data()
 
         self._destroy_fixture()
@@ -119,7 +143,7 @@ class SharedFixture:
                 return fixture_data
         except (EOFError, FileNotFoundError):
             return SharedFixtureData(
-                fixture_return_value=self._invoke_fixture(), owning_xdist_worker_id=self.xdist_worker_id
+                fixture_return_value=self._invoke_fixture(), owning_xdist_worker_id_and_pid=self.xdist_worker_id_and_pid
             )
 
     def _save_fixture_data(self, data: SharedFixtureData):
@@ -154,19 +178,23 @@ def xdist_session_fixture(**pytest_fixture_args):
 
     def _xdist_session_fixture_decorator(func):
         @pytest.fixture(scope="session", **pytest_fixture_args)
+        # FIXME: if wraps is after fixture then request is not automatically injected.
+        # If fixture is after wraps inter fixture dependencies are not resolved
         @functools.wraps(func)
         def _xdist_session_fixture(request, *args, **kwargs):
-            base_dir = f"{request.config.getoption('output_dir')}/tmp/shared_fixtures"
+            base_dir = f"{request.config.getoption('output_dir', '')}/tmp/shared_fixtures"
             os.makedirs(base_dir, exist_ok=True)
             if "request" in getfullargspec(func).args:
                 kwargs["request"] = request
+            xdist_worker_id = get_xdist_worker_id(request)
+            pid = os.getpid()
             shared_fixture = SharedFixture(
                 name=func.__name__,
-                shared_save_location=Path(f"{request.config.getoption('output_dir')}/tmp/shared_fixtures"),
+                shared_save_location=Path(base_dir),
                 fixture_func=func,
                 fixture_func_args=args,
                 fixture_func_kwargs=kwargs,
-                xdist_worker_id=get_xdist_worker_id(request),
+                xdist_worker_id_and_pid=f"{xdist_worker_id}: {pid}",
             )
             yield shared_fixture.acquire().fixture_return_value
             shared_fixture.release()

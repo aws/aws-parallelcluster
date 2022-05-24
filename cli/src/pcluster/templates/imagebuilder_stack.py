@@ -496,8 +496,8 @@ class ImageBuilderCdkStack(Stack):
 
         disable_validate_and_test_component = (
             self.config.dev_settings.disable_validate_and_test
-            if self.config.dev_settings and self.config.dev_settings.disable_validate_and_test
-            else False
+            if self.config.dev_settings and isinstance(self.config.dev_settings.disable_validate_and_test, bool)
+            else True
         )
         if not disable_pcluster_component and not disable_validate_and_test_component:
             validate_component_resource = imagebuilder.CfnComponent(

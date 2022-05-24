@@ -14,6 +14,7 @@ import shutil
 import pytest
 from assertpy import assert_that
 
+from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -57,12 +58,12 @@ def _compare_changes(changes, expected_changes):
     def _compare_change(source, target):
         is_old_value_equal = (
             source.old_value["Name"] == target.old_value["Name"]
-            if isinstance(source.old_value, dict)
+            if isinstance(source.old_value, dict) and "Name" in source.old_value
             else source.old_value == target.old_value
         )
         is_new_value_equal = (
             source.new_value["Name"] == target.new_value["Name"]
-            if isinstance(source.new_value, dict)
+            if isinstance(source.new_value, dict) and "Name" in source.new_value
             else source.new_value == target.new_value
         )
 
@@ -76,8 +77,17 @@ def _compare_changes(changes, expected_changes):
             and source.is_list == target.is_list
         )
 
-    sorted_changes = sorted(changes, key=lambda change: change.key)
-    sorted_expected_changes = sorted(expected_changes, key=lambda change: change.key)
+    def _sorting_func(change):
+        if change.is_list:
+            if isinstance(change.new_value, dict):
+                return change.new_value["Name"]
+            else:
+                return "-"
+        else:
+            return change.key
+
+    sorted_changes = sorted(changes, key=_sorting_func)
+    sorted_expected_changes = sorted(expected_changes, key=_sorting_func)
 
     assert_that(
         all([_compare_change(source, target) for source, target in zip(sorted_changes, sorted_expected_changes)])
@@ -133,7 +143,7 @@ def _compare_changes(changes, expected_changes):
             "CustomAmi",
             "ami-12345678",
             "ami-1234567a",
-            UpdatePolicy.COMPUTE_FLEET_STOP,
+            UpdatePolicy.QUEUE_UPDATE_STRATEGY,
             False,
             id="change queue custom ami",
         ),
@@ -183,9 +193,9 @@ def _compare_changes(changes, expected_changes):
             "InstanceProfile",
             "arn:aws:iam::aws:instance-profile/InstanceProfileone",
             "arn:aws:iam::aws:instance-profile/InstanceProfiletwo",
-            UpdatePolicy.SUPPORTED,
+            UpdatePolicy.COMPUTE_FLEET_STOP,
             False,
-            id="change queue insatnce profile",
+            id="change queue instance profile",
         ),
     ],
 )
@@ -270,7 +280,7 @@ def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
             "SubnetIds",
             ["subnet-12345678"],
             ["subnet-1234567a"],
-            UpdatePolicy.COMPUTE_FLEET_STOP,
+            UpdatePolicy.QUEUE_UPDATE_STRATEGY,
             is_list=False,
         ),
         Change(
@@ -291,11 +301,111 @@ def _test_equal_configs(base_conf, target_conf):
     _check_patch(base_conf, target_conf, [], UpdatePolicy.SUPPORTED)
 
 
+def _test_compute_resources(base_conf, target_conf):
+    # simulate removal of compute resource, by adding new one in the base conf
+    base_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"].append(
+        {"Name": "compute-removed", "InstanceType": "c5.9xlarge", "MaxCount": 20}
+    )
+
+    # add new compute resource
+    target_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"].append(
+        {"Name": "new-compute", "InstanceType": "c5.large", "MinCount": 1}
+    )
+
+    # The patch must show multiple differences
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]"],
+                "ComputeResources",
+                {"Name": "compute-removed", "InstanceType": "c5.9xlarge", "MaxCount": 20},
+                None,
+                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                is_list=True,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]"],
+                "ComputeResources",
+                None,
+                {"Name": "new-compute", "InstanceType": "c5.large", "MinCount": 1},
+                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                is_list=True,
+            ),
+        ],
+        UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+    )
+
+
+def _test_queues(base_conf, target_conf):
+    # simulate removal of queue, by adding new one in the base conf
+    base_conf["Scheduling"]["SlurmQueues"].append(
+        {
+            "Name": "queue-removed",
+            "Networking": {"SubnetIds": "subnet-12345678"},
+            "ComputeResources": {"Name": "compute-removed", "InstanceType": "c5.9xlarge"},
+        }
+    )
+
+    # add new queue
+    target_conf["Scheduling"]["SlurmQueues"].append(
+        {
+            "Name": "new-queue",
+            "Networking": {"SubnetIds": "subnet-987654321"},
+            "ComputeResources": {"Name": "new-compute", "InstanceType": "c5.xlarge"},
+        }
+    )
+
+    # The patch must show multiple differences
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["Scheduling"],
+                "SlurmQueues",
+                {
+                    "Name": "queue-removed",
+                    "Networking": {"SubnetIds": "subnet-12345678"},
+                    "ComputeResources": {"Name": "compute-removed", "InstanceType": "c5.9xlarge"},
+                },
+                None,
+                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                is_list=True,
+            ),
+            Change(
+                ["Scheduling"],
+                "SlurmQueues",
+                None,
+                {
+                    "Name": "new-queue",
+                    "Networking": {"SubnetIds": "subnet-987654321"},
+                    "ComputeResources": {"Name": "new-compute", "InstanceType": "c5.xlarge"},
+                },
+                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                is_list=True,
+            ),
+        ],
+        UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+    )
+
+
 def _test_less_target_sections(base_conf, target_conf):
     # Remove an ebs section in the target conf
     assert_that(_get_storage_by_name(target_conf, "ebs1")).is_not_none()
     _remove_storage_by_name(target_conf, "ebs1")
     assert_that(_get_storage_by_name(target_conf, "ebs1")).is_none()
+
+    # add new section + param in the base conf so that it appears as removed in the target conf
+    base_conf["Scheduling"].update({"SlurmSettings": {"ScaledownIdletime": 30}})
+    base_conf["Scheduling"]["SlurmSettings"].update({"QueueUpdateStrategy": QueueUpdateStrategy.DRAIN.value})
+    base_conf["Scheduling"]["SlurmQueues"][0].update(
+        {"Iam": {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]}}
+    )
+
+    # add new param in the base conf so that it appears as removed in the target conf
+    base_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
 
     # update some values in the target config for the remaining ebs
     target_conf["SharedStorage"][0]["MountDir"] = "vol1"
@@ -314,6 +424,7 @@ def _test_less_target_sections(base_conf, target_conf):
                 None,
                 UpdatePolicy(
                     UpdatePolicy.UNSUPPORTED,
+                    name="UNSUPPORTED",
                     fail_reason=(
                         "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation"
                     ),
@@ -328,6 +439,38 @@ def _test_less_target_sections(base_conf, target_conf):
                 "gp3",
                 "gp2",
                 UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "QueueUpdateStrategy",
+                QueueUpdateStrategy.DRAIN.value,
+                None,
+                UpdatePolicy.IGNORED,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "ScaledownIdletime",
+                30,
+                None,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
+                "MinCount",
+                1,
+                None,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]"],
+                "Iam",
+                {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]},
+                "-",
+                UpdatePolicy.SUPPORTED,
                 is_list=False,
             ),
         ],
@@ -358,6 +501,18 @@ def _test_more_target_sections(base_conf, target_conf):
     target_storage["EbsSettings"]["Iops"] = 20
     target_storage["EbsSettings"]["VolumeType"] = "gp2"
 
+    # add new section + param in the target conf
+    target_conf["Scheduling"].update({"SlurmSettings": {"ScaledownIdletime": 30}})
+    target_conf["Scheduling"]["SlurmSettings"].update(
+        {"QueueUpdateStrategy": QueueUpdateStrategy.COMPUTE_FLEET_STOP.value}
+    )
+    target_conf["Scheduling"]["SlurmQueues"][0].update(
+        {"Iam": {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]}}
+    )
+
+    # add new param in the target conf
+    target_conf["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MinCount"] = 1
+
     # The patch must show multiple differences: changes for EBS settings and one for missing ebs section in base conf
     _check_patch(
         base_conf,
@@ -384,6 +539,38 @@ def _test_more_target_sections(base_conf, target_conf):
                 "gp3",
                 "gp2",
                 UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "ScaledownIdletime",
+                None,
+                30,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmSettings"],
+                "QueueUpdateStrategy",
+                None,
+                QueueUpdateStrategy.COMPUTE_FLEET_STOP.value,
+                UpdatePolicy.IGNORED,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
+                "MinCount",
+                None,
+                1,
+                UpdatePolicy.COMPUTE_FLEET_STOP,
+                is_list=False,
+            ),
+            Change(
+                ["Scheduling", "SlurmQueues[queue1]"],
+                "Iam",
+                "-",
+                {"AdditionalIamPolicies": [{"Policy": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"}]},
+                UpdatePolicy.SUPPORTED,
                 is_list=False,
             ),
         ],
@@ -457,6 +644,8 @@ def _test_different_names(base_conf, target_conf):
         _test_incompatible_ebs_sections,
         _test_equal_configs,
         _test_different_names,
+        _test_compute_resources,
+        _test_queues,
     ],
 )
 def test_adaptation(mocker, test_datadir, pcluster_config_reader, test):
@@ -502,7 +691,7 @@ def test_patch_check_cluster_resource_bucket(
 ):
     mock_aws_api(mocker)
     expected_message_rows = [
-        ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+        ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed", "update_policy"],
         # ec2_iam_role is to make sure other parameters are not affected by cluster_resource_bucket custom logic
         [
             ["HeadNode", "Iam"],
@@ -512,6 +701,7 @@ def test_patch_check_cluster_resource_bucket(
             "SUCCEEDED",
             "-",
             None,
+            UpdatePolicy.SUPPORTED.name,
         ],
     ]
     if expected_error_row:
@@ -528,6 +718,7 @@ def test_patch_check_cluster_resource_bucket(
                 )
             ),
             f"Restore the value of parameter 'CustomS3Bucket' to '{old_bucket_name}'",
+            UpdatePolicy.READ_ONLY_RESOURCE_BUCKET.name,
         ]
         expected_message_rows.append(error_message_row)
     src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "arn:aws:iam::aws:role/some_old_role"}

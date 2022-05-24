@@ -11,12 +11,14 @@
 import re
 from abc import ABC
 from enum import Enum
+from itertools import combinations, product
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    DEFAULT_EPHEMERAL_DIR,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
@@ -345,38 +347,39 @@ class EfaSecurityGroupValidator(Validator):
 # --------------- Storage validators --------------- #
 
 
-def _check_in_out_access(security_groups_ids, port):
+def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
     """
     Verify given list of security groups to check if they allow in and out access on the given port.
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
+    :param is_cidr_optional: if it is True, don't enforce check on CIDR.
     :return: True if both in and out access are allowed
     :raise: ClientError if a given security group doesn't exist
     """
-    in_out_access = False
     in_access = False
     out_access = False
 
-    for sec_group in AWSApi.instance().ec2.describe_security_groups(security_groups_ids).get("SecurityGroups"):
+    for sec_group in AWSApi.instance().ec2.describe_security_groups(security_groups_ids):
 
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
             if _check_sg_rules_for_port(rule, port):
-                in_access = True
-                break
+                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
+                    in_access = True
+                    break
 
         # Check all outbound rules
         for rule in sec_group.get("IpPermissionsEgress"):
             if _check_sg_rules_for_port(rule, port):
-                out_access = True
-                break
+                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
+                    out_access = True
+                    break
 
         if in_access and out_access:
-            in_out_access = True
-            break
+            return True
 
-    return in_out_access
+    return False
 
 
 def _check_sg_rules_for_port(rule, port_to_check):
@@ -402,55 +405,75 @@ def _check_sg_rules_for_port(rule, port_to_check):
     return False
 
 
-class FsxNetworkingValidator(Validator):
+class ExistingFsxNetworkingValidator(Validator):
     """
     FSx networking validator.
 
     Validate file system mount point according to the head node subnet.
     """
 
-    def _validate(self, file_system_id, head_node_subnet_id):
+    def _describe_network_interfaces(self, file_systems):
+        all_network_interfaces = []
+        for file_system in file_systems:
+            all_network_interfaces.extend(file_system.network_interface_ids)
+        if all_network_interfaces:
+            response = AWSApi.instance().ec2.describe_network_interfaces(all_network_interfaces)
+            network_interfaces_data = {}
+            for network_interface in response:
+                network_interfaces_data[network_interface["NetworkInterfaceId"]] = network_interface
+            return network_interfaces_data
+        else:
+            return {}
+
+    def _validate(self, file_system_ids, head_node_subnet_id, are_all_security_groups_customized):
         try:
 
             # Check to see if there is any existing mt on the fs
-            file_system = AWSApi.instance().fsx.get_filesystem_info(file_system_id).file_system_data
+            file_systems = AWSApi.instance().fsx.get_file_systems_info(file_system_ids)
 
             vpc_id = AWSApi.instance().ec2.get_subnet_vpc(head_node_subnet_id)
 
-            # Check to see if fs is in the same VPC as the stack
-            if file_system.get("VpcId") != vpc_id:
-                self._add_failure(
-                    "Currently only support using FSx file system that is in the same VPC as the cluster. "
-                    "The file system provided is in {0}.".format(file_system.get("VpcId")),
-                    FailureLevel.ERROR,
-                )
+            network_interfaces_data = self._describe_network_interfaces(file_systems)
 
-            # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-            network_interface_ids = file_system.get("NetworkInterfaceIds")
-            if not network_interface_ids:
-                self._add_failure(
-                    "Unable to validate FSx security groups. The given FSx file system '{0}' doesn't have "
-                    "Elastic Network Interfaces attached to it.".format(file_system_id),
-                    FailureLevel.ERROR,
-                )
-            else:
-                network_interface_responses = AWSApi.instance().ec2.describe_network_interfaces(network_interface_ids)
-
-                fs_access = False
-                network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
-                for network_interface in network_interfaces:
-                    # Get list of security group IDs
-                    sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                    if _check_in_out_access(sg_ids, port=988):
-                        fs_access = True
-                        break
-                if not fs_access:
+            # Check file systems
+            for file_system in file_systems:
+                # Check to see if fs is in the same VPC as the stack
+                file_system_id = file_system.file_system_id
+                if file_system.vpc_id != vpc_id:
                     self._add_failure(
-                        "The current security group settings on file system '{0}' does not satisfy mounting requirement"
-                        ". The file system must be associated to a security group that allows inbound and outbound "
-                        "TCP traffic through port 988.".format(file_system_id),
+                        "Currently only support using FSx file system that is in the same VPC as the cluster. "
+                        "The file system provided is in {0}.".format(file_system.vpc_id),
                         FailureLevel.ERROR,
                     )
+
+                # If there is an existing mt in the az, check the inbound and outbound rules of the security groups
+                network_interface_ids = file_system.network_interface_ids
+                if not network_interface_ids:
+                    self._add_failure(
+                        f"Unable to validate FSx security groups. The given FSx file system '{file_system_id}'"
+                        " doesn't have Elastic Network Interfaces attached to it.",
+                        FailureLevel.ERROR,
+                    )
+                else:
+                    network_interface_responses = []
+                    for network_interface_id in network_interface_ids:
+                        network_interface_responses.append(network_interfaces_data[network_interface_id])
+
+                    fs_access = False
+                    network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
+                    for network_interface in network_interfaces:
+                        # Get list of security group IDs
+                        sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
+                        if _check_in_out_access(sg_ids, port=988, is_cidr_optional=are_all_security_groups_customized):
+                            fs_access = True
+                            break
+                    if not fs_access:
+                        self._add_failure(
+                            f"The current security group settings on file system '{file_system_id}' does not satisfy "
+                            "mounting requirement. The file system must be associated to a security group that allows "
+                            "inbound and outbound TCP traffic through port 988.",
+                            FailureLevel.ERROR,
+                        )
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
@@ -493,13 +516,15 @@ def _find_duplicate_params(param_list):
     return duplicated_params
 
 
-def _find_overlapping_paths(paths_list):
+def _find_overlapping_paths(shared_paths_list, local_paths_list):
     overlapping_paths = []
-    if paths_list:
-        for path in paths_list:
-            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path + "/"))
+    if shared_paths_list:
+        for path1, path2 in list(combinations(shared_paths_list, 2)) + list(
+            product(shared_paths_list, local_paths_list)
+        ):  # Check all pairs in shared paths list and all pairs between shared paths list and local paths list
+            is_overlapping = path1.startswith(path2 + "/") or path2.startswith(path1 + "/")
             if is_overlapping:
-                overlapping_paths.append(path)
+                overlapping_paths.extend([path1, path2])
 
     return overlapping_paths
 
@@ -527,16 +552,18 @@ class OverlappingMountDirValidator(Validator):
     """
     Mount dir validator.
 
-    Verify if there are overlapping mount dirs between shared storage and ephemeral volumes.
+    Verify if there are overlap mount dirs.
+    1. Shared storage directories can not overlap with each other.
+    2. Shared storage directories can not overlap with ephemeral storage directories.
+    3. Ephemeral storage directories can overlap with each other, because they are local to compute nodes.
     Two mount dirs are overlapped if one is contained into the other.
     """
 
-    def _validate(self, mount_dir_list):
-        overlapping_mount_dirs = _find_overlapping_paths(mount_dir_list)
+    def _validate(self, shared_mount_dir_list, local_mount_dir_list):
+        overlapping_mount_dirs = _find_overlapping_paths(shared_mount_dir_list, local_mount_dir_list)
         if overlapping_mount_dirs:
             self._add_failure(
-                "Mount {0} {1} cannot contain other mount directories".format(
-                    "directories" if len(overlapping_mount_dirs) > 1 else "directory",
+                "Mount directories {0} cannot overlap".format(
                     ", ".join(mount_dir for mount_dir in overlapping_mount_dirs),
                 ),
                 FailureLevel.ERROR,
@@ -566,22 +593,22 @@ class EfsIdValidator(Validator):  # TODO add tests
     Validate if there are existing mount target in the head node availability zone
     """
 
-    def _validate(self, efs_id, head_node_avail_zone: str):
-        # Get head node availability zone
-        head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, head_node_avail_zone)
-        # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-        if head_node_target_id:
-            # Get list of security group IDs of the mount target
-            sg_ids = AWSApi.instance().efs.get_efs_mount_target_security_groups(head_node_target_id)
-            if not _check_in_out_access(sg_ids, port=2049):
-                self._add_failure(
-                    "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
-                    "but it does not have a security group that allows inbound and outbound rules to support NFS. "
-                    "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
-                        head_node_target_id, head_node_avail_zone, efs_id
-                    ),
-                    FailureLevel.WARNING,
-                )
+    def _validate(self, efs_id, avail_zones: set, are_all_security_groups_customized):
+        for avail_zone in avail_zones:
+            head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, avail_zone)
+            # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
+            if head_node_target_id:
+                # Get list of security group IDs of the mount target
+                sg_ids = AWSApi.instance().efs.get_efs_mount_target_security_groups(head_node_target_id)
+                if not _check_in_out_access(sg_ids, port=2049, is_cidr_optional=are_all_security_groups_customized):
+                    self._add_failure(
+                        "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
+                        "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+                        "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
+                            head_node_target_id, avail_zone, efs_id
+                        ),
+                        FailureLevel.ERROR,
+                    )
 
 
 class SharedStorageNameValidator(Validator):
@@ -611,6 +638,45 @@ class SharedStorageNameValidator(Validator):
 
         if re.match("^default$", name):
             self._add_failure(f"It is forbidden to use '{name}' as a name.", FailureLevel.ERROR)
+
+
+class SharedStorageMountDirValidator(Validator):
+    """
+    Shared storage mount directory validator.
+
+    Make sure the mount directory is not the same as any reserved directory.
+    """
+
+    def _validate(self, mount_dir: str):
+        reserved_directories = [
+            "/bin",
+            "/boot",
+            "/dev",
+            "/etc",
+            "/home",
+            "/lib",
+            "/lib64",
+            "/media",
+            "/mnt",
+            "/opt",
+            "/proc",
+            "/root",
+            "/run",
+            "/sbin",
+            "/srv",
+            "/sys",
+            "/tmp",  # nosec nosemgrep
+            "/usr",
+            "/var",
+        ]
+        default_directories = [DEFAULT_EPHEMERAL_DIR]
+        if not mount_dir.startswith("/"):
+            mount_dir = "/" + mount_dir
+        if mount_dir in reserved_directories + default_directories:
+            self._add_failure(
+                f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
+                FailureLevel.ERROR,
+            )
 
 
 # --------------- Third party software validators --------------- #

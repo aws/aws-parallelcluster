@@ -612,6 +612,7 @@ Resources:
                   - s3.data-source.lustre.fsx.amazonaws.com
           - Action:
               - lambda:CreateFunction
+              - lambda:TagResource
               - lambda:DeleteFunction
               - lambda:GetFunctionConfiguration
               - lambda:GetFunction
@@ -619,6 +620,8 @@ Resources:
               - lambda:AddPermission
               - lambda:RemovePermission
               - lambda:UpdateFunctionConfiguration
+              - lambda:ListTags
+              - lambda:UntagResource
             Resource:
               - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:parallelcluster-*
               - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:pcluster-*
@@ -735,6 +738,7 @@ Resources:
             Effect: Allow
             Action:
               - lambda:CreateFunction
+              - lambda:TagResource
               - lambda:GetFunction
               - lambda:AddPermission
             Resource:

@@ -6,10 +6,12 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  {% if bucket_name %}
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
         EnableWriteAccess: False
+  {% endif %}
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -36,9 +38,11 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: {{ storage_capacity }}
+      {% if bucket_name %}
       ImportedFileChunkSize: {{ imported_file_chunk_size }}
       ImportPath: s3://{{ bucket_name }}
       ExportPath: s3://{{ bucket_name }}/export_dir
+      {% endif %}
       WeeklyMaintenanceStartTime: "{{ weekly_maintenance_start_time }}"
       DeploymentType: {{ deployment_type }}
       {% if per_unit_storage_throughput %}

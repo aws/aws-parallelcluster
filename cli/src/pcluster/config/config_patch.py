@@ -113,36 +113,44 @@ class ConfigPatch:
                     )
                 else:
                     # Single nested section
-                    target_value = target_section.get(data_key, None)
-                    base_value = base_section.get(data_key, None)
+                    target_value = target_section.get(data_key, None) if target_section else None
+                    base_value = base_section.get(data_key, None) if base_section else None
 
                     if target_value and base_value:
-                        # Compare nested sections and params
-                        nested_path = copy.deepcopy(param_path)
-                        nested_path.append(data_key)
-                        self._compare_section(base_value, target_value, field_obj.schema, nested_path)
+                        self._compare_nested_section(param_path, data_key, base_value, target_value, field_obj)
                     elif target_value or base_value:
-                        # One section has been added or removed, add section change information
-                        self.changes.append(
-                            Change(
-                                param_path,
-                                data_key,
-                                base_value if base_value else "-",
-                                target_value if target_value else "-",
-                                change_update_policy,
-                                is_list=False,
+                        # One section has been added or removed
+                        if change_update_policy is UpdatePolicy.IGNORED:
+                            # Traverse config if UpdatePolicy is IGNORED
+                            self._compare_nested_section(param_path, data_key, base_value, target_value, field_obj)
+                        else:
+                            # Add section change information
+                            self.changes.append(
+                                Change(
+                                    param_path,
+                                    data_key,
+                                    base_value if base_value else "-",
+                                    target_value if target_value else "-",
+                                    change_update_policy,
+                                    is_list=False,
+                                )
                             )
-                        )
             else:
                 # Simple param
-                target_value = target_section.get(data_key, None)
-                base_value = base_section.get(data_key, None)
+                target_value = target_section.get(data_key, None) if target_section else None
+                base_value = base_section.get(data_key, None) if base_section else None
 
                 if target_value != base_value:
                     # Add param change information
                     self.changes.append(
                         Change(param_path, data_key, base_value, target_value, change_update_policy, is_list=False)
                     )
+
+    def _compare_nested_section(self, param_path, data_key, base_value, target_value, field_obj):
+        # Compare nested sections and params
+        nested_path = copy.deepcopy(param_path)
+        nested_path.append(data_key)
+        self._compare_section(base_value, target_value, field_obj.schema, nested_path)
 
     def _compare_list(self, base_section, target_section, param_path, data_key, field_obj, change_update_policy):
         """
@@ -183,7 +191,6 @@ class ConfigPatch:
         # Then, compare all non visited base sections vs target config.
         for base_nested_section in base_section.get(data_key, []):
             if not base_nested_section.get("visited", False):
-                update_key_value = base_nested_section.get(update_key)
                 self.changes.append(
                     Change(
                         param_path,
@@ -220,7 +227,9 @@ class ConfigPatch:
 
         :return: A tuple containing the patch applicability and the report rows.
         """
-        rows = [["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]]
+        rows = [
+            ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed", "update_policy"]
+        ]
 
         patch_allowed = True
 
@@ -240,7 +249,47 @@ class ConfigPatch:
                         check_result.value,
                         reason,
                         action_needed,
+                        change.update_policy.name,
                     ]
                 )
 
         return patch_allowed, rows
+
+    @staticmethod
+    def build_config_param_path(path, parameter):
+        """Compose the parameter path following the YAML Path standard.
+
+        Standard: https://github.com/wwkimball/yamlpath/wiki/Segments-of-a-YAML-Path#yaml-path-standard
+        """
+        yaml_path = []
+        if path:
+            yaml_path.extend(path)
+        if parameter:
+            yaml_path.append(parameter)
+        return ".".join(yaml_path)
+
+    @staticmethod
+    def generate_json_change_set(changes):
+        """Generate JSON change set.
+
+        Generate JSON change set from changes
+        """
+        change_attributes = {key: index for index, key in enumerate(changes[0])}
+        changes_list = []
+        for change in changes[1:]:
+            parameter = ConfigPatch.build_config_param_path(
+                change[change_attributes["param_path"]], change[change_attributes["parameter"]]
+            )
+            new_value = change[change_attributes["new value"]]
+            old_value = change[change_attributes["old value"]]
+            update_policy = change[change_attributes["update_policy"]]
+            changes_list.append(
+                {
+                    "parameter": parameter,
+                    "requestedValue": new_value,
+                    "currentValue": old_value,
+                    "updatePolicy": update_policy,
+                }
+            )
+
+        return {"changeSet": changes_list}

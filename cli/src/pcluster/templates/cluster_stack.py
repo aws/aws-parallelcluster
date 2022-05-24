@@ -15,7 +15,7 @@
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
 import json
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from datetime import datetime
 from typing import Dict, List, Union
 
@@ -45,15 +45,18 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     CapacityType,
+    SchedulerPluginQueue,
     SharedEbs,
     SharedEfs,
     SharedFsx,
     SharedStorageType,
     SlurmClusterConfig,
+    SlurmQueue,
 )
 from pcluster.constants import (
     CW_LOG_GROUP_NAME_PREFIX,
     CW_LOGS_CFN_PARAM_NAME,
+    DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
@@ -85,13 +88,13 @@ from pcluster.templates.cdk_builder_utils import (
     get_log_group_deletion_policy,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
-    get_shared_storage_options_by_type,
     get_slurm_specific_dna_json_for_head_node,
     get_user_data_content,
+    to_comma_separated_string,
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, join_shell_args
+from pcluster.utils import get_attr, get_resource_name_from_resource_arn, join_shell_args
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -124,9 +127,9 @@ class ClusterCdkStack(Stack):
                 timestamp = f"{datetime.utcnow().strftime('%Y%m%d%H%M')}"
                 self.log_group_name = f"{CW_LOG_GROUP_NAME_PREFIX}{self.stack_name}-{timestamp}"
 
-        self.shared_storage_mappings = {storage_type: [] for storage_type in SharedStorageType}
-        self.shared_storage_options = {storage_type: "" for storage_type in SharedStorageType}
-        self.shared_storage_attributes = {storage_type: {} for storage_type in SharedStorageType}
+        self.shared_storage_infos = {storage_type: [] for storage_type in SharedStorageType}
+        self.shared_storage_mount_dirs = {storage_type: [] for storage_type in SharedStorageType}
+        self.shared_storage_attributes = {storage_type: defaultdict(list) for storage_type in SharedStorageType}
 
         self._add_parameters()
         self._add_resources()
@@ -264,8 +267,8 @@ class ClusterCdkStack(Stack):
                 bucket=self.bucket,
                 create_lambda_roles=self._condition_create_lambda_iam_role(),
                 compute_security_group=self._compute_security_group,
-                shared_storage_mappings=self.shared_storage_mappings,
-                shared_storage_options=self.shared_storage_options,
+                shared_storage_infos=self.shared_storage_infos,
+                shared_storage_mount_dirs=self.shared_storage_mount_dirs,
                 head_node_instance=self.head_node_instance,
                 managed_head_node_instance_role=self._managed_head_node_instance_role,  # None if provided by the user
             )
@@ -278,7 +281,7 @@ class ClusterCdkStack(Stack):
                 stack_name=self.stack_name,
                 cluster_config=self.config,
                 head_node_instance=self.head_node_instance,
-                shared_storage_mappings=self.shared_storage_mappings,
+                shared_storage_infos=self.shared_storage_infos,
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
             )
 
@@ -348,8 +351,8 @@ class ClusterCdkStack(Stack):
                 cleanup_lambda=cleanup_lambda,
                 cleanup_lambda_role=cleanup_lambda_role,
                 compute_security_group=self._compute_security_group,
-                shared_storage_mappings=self.shared_storage_mappings,
-                shared_storage_options=self.shared_storage_options,
+                shared_storage_infos=self.shared_storage_infos,
+                shared_storage_mount_dirs=self.shared_storage_mount_dirs,
                 shared_storage_attributes=self.shared_storage_attributes,
                 compute_node_instance_profiles=self._compute_instance_profiles,
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
@@ -589,25 +592,30 @@ class ClusterCdkStack(Stack):
 
     def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
-        storage_ids_list = self.shared_storage_mappings[storage.shared_storage_type]
-        cfn_resource_id = "{0}{1}".format(storage.shared_storage_type.name, len(storage_ids_list))
+        storage_list = self.shared_storage_infos[storage.shared_storage_type]
+        cfn_resource_id = "{0}{1}".format(storage.shared_storage_type.name, len(storage_list))
         if storage.shared_storage_type == SharedStorageType.FSX:
-            storage_ids_list.append(StorageInfo(self._add_fsx_storage(cfn_resource_id, storage), storage))
+            storage_list.append(StorageInfo(self._add_fsx_storage(cfn_resource_id, storage), storage))
         elif storage.shared_storage_type == SharedStorageType.EBS:
-            storage_ids_list.append(StorageInfo(self._add_ebs_volume(cfn_resource_id, storage), storage))
+            storage_list.append(StorageInfo(self._add_ebs_volume(cfn_resource_id, storage), storage))
         elif storage.shared_storage_type == SharedStorageType.EFS:
-            storage_ids_list.append(StorageInfo(self._add_efs_storage(cfn_resource_id, storage), storage))
+            storage_list.append(StorageInfo(self._add_efs_storage(cfn_resource_id, storage), storage))
         elif storage.shared_storage_type == SharedStorageType.RAID:
-            storage_ids_list.extend(self._add_raid_volume(cfn_resource_id, storage))
+            storage_list.extend(self._add_raid_volume(cfn_resource_id, storage))
+        self.shared_storage_mount_dirs[storage.shared_storage_type].append(storage.mount_dir)
 
     def _add_fsx_storage(self, id: str, shared_fsx: SharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
         fsx_id = shared_fsx.file_system_id
-        # Initialize DNSName and MountName for existing filesystem, if any
-        self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountName"] = shared_fsx.existing_mount_name
-        self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSName"] = shared_fsx.existing_dns_name
-
-        if not fsx_id and shared_fsx.mount_dir:
+        if fsx_id:
+            # Initialize DNSName and MountName for existing filesystem, if any
+            self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountNames"].append(
+                shared_fsx.existing_mount_name
+            )
+            self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSNames"].append(
+                shared_fsx.existing_dns_name
+            )
+        else:
             # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
             drive_cache_type = None
             if shared_fsx.fsx_storage_type == "HDD":
@@ -639,44 +647,16 @@ class ClusterCdkStack(Stack):
                 storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
                 security_group_ids=self._get_compute_security_groups(),
+                file_system_type_version="2.12",
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
             fsx_id = fsx_resource.ref
             # Get MountName for new filesystem
+            self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountNames"].append(
+                fsx_resource.attr_lustre_mount_name
+            )
             # DNSName cannot be retrieved from CFN and will be generated in cookbook
-            self.shared_storage_attributes[shared_fsx.shared_storage_type][
-                "MountName"
-            ] = fsx_resource.attr_lustre_mount_name
-
-        # [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,
-        # export_path,import_path,weekly_maintenance_start_time,deployment_type,
-        # per_unit_storage_throughput,daily_automatic_backup_start_time,
-        # automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,
-        # auto_import_policy,storage_type,drive_cache_type,existing_mount_name,existing_dns_name]",
-        self.shared_storage_options[shared_fsx.shared_storage_type] = ",".join(
-            str(item)
-            for item in [
-                shared_fsx.mount_dir,
-                fsx_id,
-                shared_fsx.storage_capacity or "NONE",
-                shared_fsx.kms_key_id or "NONE",
-                shared_fsx.imported_file_chunk_size or "NONE",
-                shared_fsx.export_path or "NONE",
-                shared_fsx.import_path or "NONE",
-                shared_fsx.weekly_maintenance_start_time or "NONE",
-                shared_fsx.deployment_type or "NONE",
-                shared_fsx.per_unit_storage_throughput or "NONE",
-                shared_fsx.daily_automatic_backup_start_time or "NONE",
-                shared_fsx.automatic_backup_retention_days or "NONE",
-                shared_fsx.copy_tags_to_backups if shared_fsx.copy_tags_to_backups is not None else "NONE",
-                shared_fsx.backup_id or "NONE",
-                shared_fsx.auto_import_policy or "NONE",
-                shared_fsx.fsx_storage_type or "NONE",
-                shared_fsx.drive_cache_type or "NONE",
-                shared_fsx.existing_mount_name,
-                shared_fsx.existing_dns_name,
-            ]
-        )
+            self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSNames"].append("")
 
         return fsx_id
 
@@ -719,22 +699,6 @@ class ClusterCdkStack(Stack):
             new_file_system,
         )
 
-        # [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,
-        # throughput_mode,exists_valid_head_node_mt,exists_valid_compute_mt]
-        self.shared_storage_options[shared_efs.shared_storage_type] = ",".join(
-            str(item)
-            for item in [
-                shared_efs.mount_dir,
-                efs_id,
-                shared_efs.performance_mode or "NONE",
-                shared_efs.kms_key_id or "NONE",
-                shared_efs.provisioned_throughput or "NONE",
-                shared_efs.encrypted if shared_efs.encrypted is not None else "NONE",
-                shared_efs.throughput_mode or "NONE",
-                "NONE",  # Useless
-                "NONE",  # Useless
-            ]
-        )
         return efs_id
 
     def _add_efs_mount_target(
@@ -765,22 +729,7 @@ class ClusterCdkStack(Stack):
         for index in range(shared_ebs.raid.number_of_volumes):
             ebs_ids.append(StorageInfo(self._add_cfn_volume(f"{id_prefix}Volume{index}", shared_ebs), shared_ebs))
 
-        # [shared_dir,raid_type,num_of_raid_volumes,volume_type,volume_size,volume_iops,encrypted,
-        # ebs_kms_key_id,volume_throughput]
-        self.shared_storage_options[shared_ebs.shared_storage_type] = ",".join(
-            str(item)
-            for item in [
-                shared_ebs.mount_dir,
-                shared_ebs.raid.raid_type,
-                shared_ebs.raid.number_of_volumes,
-                shared_ebs.volume_type,
-                shared_ebs.size,
-                shared_ebs.iops,
-                shared_ebs.encrypted if shared_ebs.encrypted is not None else "NONE",
-                shared_ebs.kms_key_id or "NONE",
-                shared_ebs.throughput,
-            ]
-        )
+        self.shared_storage_attributes[shared_ebs.shared_storage_type]["Type"] = str(shared_ebs.raid.raid_type)
 
         return ebs_ids
 
@@ -789,14 +738,6 @@ class ClusterCdkStack(Stack):
         ebs_id = shared_ebs.volume_id
         if not ebs_id and shared_ebs.mount_dir:
             ebs_id = self._add_cfn_volume(id, shared_ebs)
-
-        # Append mount dir to list of shared dirs
-        self.shared_storage_options[shared_ebs.shared_storage_type] += (
-            f",{shared_ebs.mount_dir}"
-            if self.shared_storage_options[shared_ebs.shared_storage_type]
-            else f"{shared_ebs.mount_dir}"
-        )
-
         return ebs_id
 
     def _add_cfn_volume(self, id: str, shared_ebs: SharedEbs):
@@ -852,6 +793,8 @@ class ClusterCdkStack(Stack):
                 )
             )
 
+        head_node_role_name = self._get_head_node_role_name(head_node)
+
         # Head node Launch Template
         head_node_launch_template = ec2.CfnLaunchTemplate(
             self,
@@ -872,14 +815,14 @@ class ClusterCdkStack(Stack):
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
-                        {**get_common_user_data_env(head_node, self.config)},
+                        {**get_common_user_data_env(head_node, self.config, head_node_role_name)},
                     )
                 ),
                 tag_specifications=[
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=get_default_instance_tags(
-                            self._stack_name, self.config, head_node, "HeadNode", self.shared_storage_mappings
+                            self._stack_name, self.config, head_node, "HeadNode", self.shared_storage_infos
                         )
                         + get_custom_tags(self.config),
                     ),
@@ -907,11 +850,12 @@ class ClusterCdkStack(Stack):
                     "scheduler_plugin_substack_arn": self.scheduler_plugin_stack.ref
                     if self.scheduler_plugin_stack
                     else "",
-                    "raid_vol_ids": get_shared_storage_ids_by_type(
-                        self.shared_storage_mappings, SharedStorageType.RAID
+                    "raid_vol_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.RAID),
+                    "raid_shared_dir": to_comma_separated_string(
+                        self.shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),
-                    "raid_parameters": get_shared_storage_options_by_type(
-                        self.shared_storage_options, SharedStorageType.RAID
+                    "raid_type": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.RAID]["Type"]
                     ),
                     "disable_hyperthreading_manually": "true"
                     if head_node.disable_simultaneous_multithreading_manually
@@ -926,24 +870,22 @@ class ClusterCdkStack(Stack):
                     if post_install_action and post_install_action.args
                     else "NONE",
                     "region": self.region,
-                    "efs_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
-                    "efs_shared_dir": get_shared_storage_options_by_type(
-                        self.shared_storage_options, SharedStorageType.EFS
-                    ),  # FIXME
-                    "fsx_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.FSX),
-                    "fsx_mount_name": self.shared_storage_attributes[SharedStorageType.FSX].get("MountName", ""),
-                    "fsx_dns_name": self.shared_storage_attributes[SharedStorageType.FSX].get("DNSName", ""),
-                    "fsx_options": get_shared_storage_options_by_type(
-                        self.shared_storage_options, SharedStorageType.FSX
+                    "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
+                    "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
+                    "fsx_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.FSX),
+                    "fsx_mount_names": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.FSX]["MountNames"]
                     ),
-                    "volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
+                    "fsx_dns_names": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.FSX]["DNSNames"]
+                    ),
+                    "fsx_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.FSX]),
+                    "volume": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EBS),
                     "scheduler": self.config.scheduling.scheduler,
                     "ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
-                    if head_node.local_storage and head_node.local_storage.ephemeral_volume
-                    else "/scratch",
-                    "ebs_shared_dirs": get_shared_storage_options_by_type(
-                        self.shared_storage_options, SharedStorageType.EBS
-                    ),
+                    if head_node.local_storage.ephemeral_volume
+                    else DEFAULT_EPHEMERAL_DIR,
+                    "ebs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EBS]),
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
@@ -960,7 +902,10 @@ class ClusterCdkStack(Stack):
                         self.bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
                     ),
                     "cluster_config_version": self.config.config_version,
-                    "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/instance-types-data.json",
+                    "change_set_s3_key": f"{self.bucket.artifact_directory}/configs/"
+                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('change_set_name')}",
+                    "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/"
+                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('instance_types_data_name')}",
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                     "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
@@ -1040,11 +985,15 @@ class ClusterCdkStack(Stack):
                                 "triggers=post.update\n"
                                 "path=Resources.HeadNodeLaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
                                 "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
-                                "cfn-init -v --stack ${StackName} "
-                                "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
+                                "cfn-init -v --stack ${StackName} --resource HeadNodeLaunchTemplate "
+                                "--configsets update --region ${Region} --role ${HeadNodeInstanceRole}\n"
                                 "runas=root\n"
                             ),
-                            {"StackName": self._stack_name, "Region": self.region},
+                            {
+                                "StackName": self._stack_name,
+                                "Region": self.region,
+                                "HeadNodeInstanceRole": head_node_role_name,
+                            },
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1156,6 +1105,16 @@ class ClusterCdkStack(Stack):
 
         return head_node_instance
 
+    def _get_head_node_role_name(self, head_node) -> str:
+        # Retrieve HeadNode role name
+        custom_instance_role_arn = head_node.iam.instance_role_arn
+        if custom_instance_role_arn:
+            # Case when custom instance profile or role is passed as input
+            return get_resource_name_from_resource_arn(custom_instance_role_arn)
+        else:
+            # Case when managed instance role is created
+            return self._managed_head_node_instance_role.ref
+
     def _get_launch_templates_config(self):
         if not self.compute_fleet_resources:
             return None
@@ -1227,7 +1186,7 @@ class ClusterCdkStack(Stack):
 
     def _add_outputs(self):
         # Storage filesystem Ids
-        for storage_type, storage_list in self.shared_storage_mappings.items():
+        for storage_type, storage_list in self.shared_storage_infos.items():
             CfnOutput(
                 self,
                 "{0}Ids".format(storage_type.name),
@@ -1269,8 +1228,8 @@ class ComputeFleetConstruct(Construct):
         cleanup_lambda: awslambda.CfnFunction,
         cleanup_lambda_role: iam.CfnRole,
         compute_security_group: ec2.CfnSecurityGroup,
-        shared_storage_mappings: Dict,
-        shared_storage_options: Dict,
+        shared_storage_infos: Dict,
+        shared_storage_mount_dirs: Dict,
         shared_storage_attributes: Dict,
         compute_node_instance_profiles: Dict[str, str],
         cluster_hosted_zone,
@@ -1282,9 +1241,9 @@ class ComputeFleetConstruct(Construct):
         self._cleanup_lambda_role = cleanup_lambda_role
         self._compute_security_group = compute_security_group
         self._config = cluster_config
-        self._shared_storage_mappings = shared_storage_mappings
+        self._shared_storage_infos = shared_storage_infos
+        self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
-        self._shared_storage_options = shared_storage_options
         self._log_group = log_group
         self._cluster_hosted_zone = cluster_hosted_zone
         self._dynamodb_table = dynamodb_table
@@ -1362,10 +1321,10 @@ class ComputeFleetConstruct(Construct):
             queue_lt_security_groups = get_queue_security_groups_full(self._compute_security_group, queue)
 
             queue_placement_group = None
-            if queue.networking.placement_group and queue.networking.placement_group.enabled:
+            if queue.networking.placement_group:
                 if queue.networking.placement_group.id:
                     queue_placement_group = queue.networking.placement_group.id
-                else:
+                elif queue.networking.placement_group.enabled:
                     queue_placement_group = managed_placement_groups[queue.name].ref
 
             queue_pre_install_action, queue_post_install_action = (None, None)
@@ -1460,8 +1419,11 @@ class ComputeFleetConstruct(Construct):
                         {
                             **{
                                 "EnableEfa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
-                                "RAIDOptions": get_shared_storage_options_by_type(
-                                    self._shared_storage_options, SharedStorageType.RAID
+                                "RAIDSharedDir": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.RAID]
+                                ),
+                                "RAIDType": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
                                 ),
                                 "DisableHyperThreadingManually": "true"
                                 if compute_resource.disable_simultaneous_multithreading_manually
@@ -1479,30 +1441,31 @@ class ComputeFleetConstruct(Construct):
                                 "PostInstallArgs": join_shell_args(queue_post_install_action.args)
                                 if queue_post_install_action and queue_post_install_action.args
                                 else "NONE",
-                                "EFSId": get_shared_storage_ids_by_type(
-                                    self._shared_storage_mappings, SharedStorageType.EFS
+                                "EFSIds": get_shared_storage_ids_by_type(
+                                    self._shared_storage_infos, SharedStorageType.EFS
                                 ),
-                                "EFSOptions": get_shared_storage_options_by_type(
-                                    self._shared_storage_options, SharedStorageType.EFS
+                                "EFSSharedDirs": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.EFS]
                                 ),
-                                "FSXId": get_shared_storage_ids_by_type(
-                                    self._shared_storage_mappings, SharedStorageType.FSX
+                                "FSXIds": get_shared_storage_ids_by_type(
+                                    self._shared_storage_infos, SharedStorageType.FSX
                                 ),
-                                "FSXMountName": self._shared_storage_attributes[SharedStorageType.FSX].get(
-                                    "MountName", ""
+                                "FSXMountNames": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["MountNames"]
                                 ),
-                                "FSXDNSName": self._shared_storage_attributes[SharedStorageType.FSX].get("DNSName", ""),
-                                "FSXOptions": get_shared_storage_options_by_type(
-                                    self._shared_storage_options, SharedStorageType.FSX
+                                "FSXDNSNames": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["DNSNames"]
+                                ),
+                                "FSXSharedDirs": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.FSX]
                                 ),
                                 "Scheduler": self._config.scheduling.scheduler,
                                 "EphemeralDir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                                if queue.compute_settings
-                                and queue.compute_settings.local_storage
+                                if isinstance(queue, (SlurmQueue, SchedulerPluginQueue))
                                 and queue.compute_settings.local_storage.ephemeral_volume
-                                else "/scratch",
-                                "EbsSharedDirs": get_shared_storage_options_by_type(
-                                    self._shared_storage_options, SharedStorageType.EBS
+                                else DEFAULT_EPHEMERAL_DIR,
+                                "EbsSharedDirs": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.EBS]
                                 ),
                                 "ClusterDNSDomain": str(self._cluster_hosted_zone.name)
                                 if self._cluster_hosted_zone
@@ -1547,7 +1510,7 @@ class ComputeFleetConstruct(Construct):
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=get_default_instance_tags(
-                            self.stack_name, self._config, compute_resource, "Compute", self._shared_storage_mappings
+                            self.stack_name, self._config, compute_resource, "Compute", self._shared_storage_infos
                         )
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]

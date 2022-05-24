@@ -377,8 +377,6 @@ class DescribeClusterResponseContent(Model):
         :param scheduler: The scheduler of this DescribeClusterResponseContent.
         :type scheduler: Scheduler
         """
-        if scheduler is None:
-            raise ValueError("Invalid value for `scheduler`, must not be `None`")  # noqa: E501
 
         self._scheduler = scheduler
 

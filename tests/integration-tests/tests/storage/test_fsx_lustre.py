@@ -48,9 +48,9 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024, None),
         ("SCRATCH_1", None, "NEW", None, None, 1200, 1024, "LZ4"),
         ("SCRATCH_2", None, "NEW_CHANGED_DELETED", None, None, 1200, 1024, "LZ4"),
-        ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048, "LZ4"),
         ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512, "LZ4"),
         ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
+        ("PERSISTENT_2", 250, None, "SSD", None, 1200, 2048, "LZ4"),
     ],
 )
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -71,9 +71,13 @@ def test_fsx_lustre_configuration_options(
     imported_file_chunk_size,
 ):
     mount_dir = "/fsx_mount_dir"
-    bucket_name = s3_bucket_factory()
-    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    bucket_name = None
+    if deployment_type != "PERSISTENT_2":
+        # Association to S3 is currently not supported with Persistent 2 because it is not supported by CloudFormation.
+        # FSx is working on supporting it through CloudFormation
+        bucket_name = s3_bucket_factory()
+        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+        bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     weekly_maintenance_start_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=60)).strftime("%u:%H:%M")
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
@@ -119,17 +123,18 @@ def _test_fsx_lustre_configuration_options(
     imported_file_chunk_size,
     storage_capacity,
 ):
-    _test_fsx_lustre(cluster, region, scheduler_commands_factory, mount_dir, bucket_name)
+    _test_fsx_lustre(cluster, region, scheduler_commands_factory, [mount_dir], bucket_name)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    fsx_fs_id = get_fsx_fs_id(cluster, region)
+    fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
     fsx = boto3.client("fsx", region_name=region).describe_file_systems(FileSystemIds=[fsx_fs_id])
 
     _test_storage_type(storage_type, fsx)
     _test_deployment_type(deployment_type, fsx)
-    _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
+    if bucket_name:
+        _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
+        _test_imported_file_chunch_size(imported_file_chunk_size, fsx)
     _test_storage_capacity(remote_command_executor, mount_dir, storage_capacity)
     _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx)
-    _test_imported_file_chunch_size(imported_file_chunk_size, fsx)
     _test_data_compression_type(data_compression_type, fsx)
 
 
@@ -161,7 +166,7 @@ def test_fsx_lustre(
         cluster,
         region,
         scheduler_commands_factory,
-        mount_dir,
+        [mount_dir],
         bucket_name,
     )
 
@@ -170,18 +175,22 @@ def _test_fsx_lustre(
     cluster,
     region,
     scheduler_commands_factory,
-    mount_dir,
+    mount_dirs,
     bucket_name,
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    fsx_fs_id = get_fsx_fs_id(cluster, region)
-
-    assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
-    _test_import_path(remote_command_executor, mount_dir)
-    assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
-    _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
-    _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
+    fsx_fs_ids = get_fsx_fs_ids(cluster, region)
+    logging.info("Checking the length of mount dirs is the same as the length of FSXIDs")
+    assert_that(len(mount_dirs)).is_equal_to(len(fsx_fs_ids))
+    for mount_dir, fsx_fs_id in zip(mount_dirs, fsx_fs_ids):
+        logging.info("Checking %s on %s", fsx_fs_id, mount_dir)
+        assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
+        assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
+        if bucket_name:
+            _test_import_path(remote_command_executor, mount_dir)
+            _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
+            _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -212,7 +221,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    fsx_fs_id = get_fsx_fs_id(cluster, region)
+    fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
 
     # Mount file system
     assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
@@ -239,7 +248,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
 
     cluster_restore = clusters_factory(cluster_config_restore)
     remote_command_executor_restore = RemoteCommandExecutor(cluster_restore)
-    fsx_fs_id_restore = get_fsx_fs_id(cluster_restore, region)
+    fsx_fs_id_restore = get_fsx_fs_ids(cluster_restore, region)[0]
 
     # Mount the restored file system
     assert_fsx_lustre_correctly_mounted(remote_command_executor_restore, mount_dir, region, fsx_fs_id_restore)
@@ -251,8 +260,9 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
     _test_delete_manual_backup(manual_backup, region)
 
 
-@pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_existing_fsx(
+@pytest.mark.usefixtures("instance", "scheduler")
+def test_multiple_fsx(
+    os,
     region,
     fsx_factory,
     vpc_stack,
@@ -261,6 +271,8 @@ def test_existing_fsx(
     clusters_factory,
     scheduler_commands_factory,
     test_datadir,
+    request,
+    run_benchmarks,
 ):
     """
     Test existing Fsx file system
@@ -273,22 +285,40 @@ def test_existing_fsx(
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     import_path = "s3://{0}".format(bucket_name)
     export_path = "s3://{0}/export_dir".format(bucket_name)
-    mount_dir = "/fsx_mount_dir"
+    num_new_fsx = 1
+    if request.config.getoption("benchmarks") and os == "alinux2":
+        # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
+        num_existing_fsx = 50
+    else:
+        num_existing_fsx = 2
+    mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
+    for i in range(num_new_fsx + num_existing_fsx - 1):
+        mount_dirs.append(f"/fsx_mount_dir{i}")
+    existing_fsx_fs_ids = fsx_factory(
+        num=num_existing_fsx,
+        FileSystemType="LUSTRE",
+        StorageCapacity=1200,
+        LustreConfiguration=LustreConfiguration(
+            title="lustreConfiguration",
+            ImportPath=import_path,
+            ExportPath=export_path,
+            DeploymentType="PERSISTENT_1",
+            PerUnitStorageThroughput=200,
+        ),
+    )
+
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
-        mount_dir=mount_dir,
-        fsx_fs_id=fsx_factory(
-            title="existingfsx",
-            FileSystemType="LUSTRE",
-            StorageCapacity=1200,
-            LustreConfiguration=LustreConfiguration(
-                title="lustreConfiguration", ImportPath=import_path, ExportPath=export_path
-            ),
-        ),
+        mount_dirs=mount_dirs,
+        existing_fsx_fs_ids=existing_fsx_fs_ids,
     )
     cluster = clusters_factory(cluster_config)
 
-    _test_fsx_lustre(cluster, region, scheduler_commands_factory, mount_dir, bucket_name)
+    _test_fsx_lustre(cluster, region, scheduler_commands_factory, mount_dirs, bucket_name)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    run_benchmarks(remote_command_executor, scheduler_commands)
 
 
 @pytest.fixture(scope="class")
@@ -298,9 +328,9 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
 
     return fsx_id
     """
-    fsx_stack_name = utils.generate_stack_name("integ-tests-fsx", request.config.getoption("stackname_suffix"))
+    created_stacks = []
 
-    def _fsx_factory(**kwargs):
+    def _fsx_factory(num=1, **kwargs):
         # FSx stack
         fsx_template = Template()
         fsx_template.set_version()
@@ -321,24 +351,35 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
             ],
             VpcId=vpc_stack.cfn_outputs["VpcId"],
         )
-
-        fsx_filesystem = FileSystem(
-            SecurityGroupIds=[Ref(fsx_sg)], SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]], **kwargs
-        )
         fsx_template.add_resource(fsx_sg)
-        fsx_template.add_resource(fsx_filesystem)
+        file_system_resource_name = "FileSystemResource"
+        max_concurrency = 15
+        for i in range(num):
+            depends_on_arg = {}
+            if i >= max_concurrency:
+                depends_on_arg = {"DependsOn": [f"{file_system_resource_name}{i - max_concurrency}"]}
+            fsx_filesystem = FileSystem(
+                title=f"{file_system_resource_name}{i}",
+                SecurityGroupIds=[Ref(fsx_sg)],
+                SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]],
+                **kwargs,
+                **depends_on_arg,
+            )
+            fsx_template.add_resource(fsx_filesystem)
         fsx_stack = CfnStack(
-            name=fsx_stack_name,
+            name=utils.generate_stack_name("integ-tests-fsx", request.config.getoption("stackname_suffix")),
             region=region,
             template=fsx_template.to_json(),
         )
         cfn_stacks_factory.create_stack(fsx_stack)
-
-        return fsx_stack.cfn_resources[kwargs.get("title")]
+        created_stacks.append(fsx_stack)
+        return [fsx_stack.cfn_resources[f"{file_system_resource_name}{i}"] for i in range(num)]
 
     yield _fsx_factory
+
     if not request.config.getoption("no_delete"):
-        cfn_stacks_factory.delete_stack(fsx_stack_name, region)
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
 
 
 def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id):
@@ -372,8 +413,8 @@ def get_mount_name(fsx_fs_id, region):
     )
 
 
-def get_fsx_fs_id(cluster, region):
-    return utils.retrieve_cfn_outputs(cluster.cfn_name, region).get("FSXIds")
+def get_fsx_fs_ids(cluster, region):
+    return utils.retrieve_cfn_outputs(cluster.cfn_name, region).get("FSXIds").split(",")
 
 
 def _get_storage_type(fsx):

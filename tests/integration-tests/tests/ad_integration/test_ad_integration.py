@@ -30,11 +30,11 @@ from paramiko import RSAKey
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import generate_stack_name, render_jinja_template
+from utils import generate_stack_name, random_alphanumeric, render_jinja_template
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu
-from tests.common.utils import get_sts_endpoint, retrieve_latest_ami
+from tests.common.utils import get_sts_endpoint, retrieve_latest_ami, run_system_analyzer
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
@@ -182,7 +182,7 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_re
     )
     ad_admin_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
     ad_user_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
-    ad_domain_name = f"{directory_type.lower()}.multiuser.pcluster"
+    ad_domain_name = f"{directory_type.lower()}.{random_alphanumeric(size=10)}.multiuser.pcluster"
     ad_domain_short_name = "NET"
     ad_base_search = _get_ldap_base_search(ad_domain_name)
     if directory_type == "SimpleAD":
@@ -379,7 +379,8 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_s
             nlb_stack_name = created_directory_stacks.get(region, {}).get("nlb")
             logging.info("Using NLB stack named %s created by another test", nlb_stack_name)
         else:
-            common_name = f"{directory_type.lower()}.multiuser.pcluster"
+            directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
+            common_name = directory_stack_outputs.get("DomainName")
             certificate_arn, certificate = _generate_certificate(common_name)
             certificate_secret_arn = store_secret_in_secret_manager(region, secret_binary=certificate)
             created_certificates[region] = certificate_arn
@@ -746,6 +747,8 @@ def test_ad_integration(
     _run_user_workloads(users, test_datadir, remote_command_executor)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], remote_command_executor, scheduler_commands, False)
+
+    # Verify access control with ldap access provider.
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml", benchmarks=benchmarks, **config_params
     )
@@ -759,6 +762,24 @@ def test_ad_integration(
     for user in users:
         logging.info(f"Checking SSH access for user {user.alias}")
         _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser2")
+
+    # Verify access control with simple access provider.
+    # With this test we also verify that AdditionalSssdConfigs is working properly.
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update2.yaml", benchmarks=benchmarks, **config_params
+    )
+    cluster.update(str(updated_config_file), force_update="true")
+    # Reset stateful connection variables after the cluster update
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    for user in users:
+        user.reset_stateful_connection_objects(remote_command_executor, scheduler_commands_factory)
+    _check_ssh_key_generation(users[1], remote_command_executor, scheduler_commands, True)
+    for user in users:
+        logging.info(f"Checking SSH access for user {user.alias}")
+        _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser0")
+
+    run_system_analyzer(cluster, scheduler_commands_factory, request)
     run_benchmarks(users[0].remote_command_executor(), users[0].scheduler_commands(), diretory_type=directory_type)
 
 
