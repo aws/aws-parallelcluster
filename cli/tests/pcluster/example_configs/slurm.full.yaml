@@ -54,6 +54,7 @@ Scheduling:
     Dns:
       DisableManagedDns: true
       UseEc2Hostnames: true
+    EnableMemoryBasedScheduling: false
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND
