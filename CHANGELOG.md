@@ -21,6 +21,8 @@ x.x.x
   - Change the default deployment type to `Scratch_2`.
   - Change the Lustre server version to `2.12`.
 - Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
+- Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based
+  scheduling in Slurm.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
