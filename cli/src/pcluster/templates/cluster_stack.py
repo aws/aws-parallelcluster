@@ -94,7 +94,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_resource_name_from_resource_arn, join_shell_args
+from pcluster.utils import get_attr, join_shell_args
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -793,8 +793,6 @@ class ClusterCdkStack(Stack):
                 )
             )
 
-        head_node_role_name = self._get_head_node_role_name(head_node)
-
         # Head node Launch Template
         head_node_launch_template = ec2.CfnLaunchTemplate(
             self,
@@ -815,7 +813,7 @@ class ClusterCdkStack(Stack):
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
-                        {**get_common_user_data_env(head_node, self.config, head_node_role_name)},
+                        {**get_common_user_data_env(head_node, self.config)},
                     )
                 ),
                 tag_specifications=[
@@ -985,15 +983,11 @@ class ClusterCdkStack(Stack):
                                 "triggers=post.update\n"
                                 "path=Resources.HeadNodeLaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
                                 "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
-                                "cfn-init -v --stack ${StackName} --resource HeadNodeLaunchTemplate "
-                                "--configsets update --region ${Region} --role ${HeadNodeInstanceRole}\n"
+                                "cfn-init -v --stack ${StackName} "
+                                "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
                                 "runas=root\n"
                             ),
-                            {
-                                "StackName": self._stack_name,
-                                "Region": self.region,
-                                "HeadNodeInstanceRole": head_node_role_name,
-                            },
+                            {"StackName": self._stack_name, "Region": self.region},
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1104,16 +1098,6 @@ class ClusterCdkStack(Stack):
             head_node_instance.add_depends_on(self.scheduler_plugin_stack)
 
         return head_node_instance
-
-    def _get_head_node_role_name(self, head_node) -> str:
-        # Retrieve HeadNode role name
-        custom_instance_role_arn = head_node.iam.instance_role_arn
-        if custom_instance_role_arn:
-            # Case when custom instance profile or role is passed as input
-            return get_resource_name_from_resource_arn(custom_instance_role_arn)
-        else:
-            # Case when managed instance role is created
-            return self._managed_head_node_instance_role.ref
 
     def _get_launch_templates_config(self):
         if not self.compute_fleet_resources:

@@ -645,38 +645,32 @@ class Iam(Resource):
             arns.append(policy.policy)
         return arns
 
-    @staticmethod
-    def _extract_role_from_instance_profile(instance_profile_name) -> str:
-        """Return the ARN of the IAM role attached to the given instance profile.
-
-        An instance profile can contain only one IAM role
-        see https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
-        """
-        return (
-            AWSApi.instance()
-            .iam.get_instance_profile(instance_profile_name)
-            .get("InstanceProfile")
-            .get("Roles")[0]
-            .get("Arn")
-        )
+    def _extract_roles_from_instance_profile(self, instance_profile_name) -> List[str]:
+        """Return the ARNs of the IAM roles attached to the given instance profile."""
+        return [
+            role.get("Arn")
+            for role in (
+                AWSApi.instance().iam.get_instance_profile(instance_profile_name).get("InstanceProfile").get("Roles")
+            )
+        ]
 
     @property
-    def instance_role_arn(self) -> str:
+    def instance_role_arns(self) -> List[str]:
         """
-        Get IAM role of underlying instance profile.
+        Get unique collection of ARNs of IAM roles underlying instance profile.
 
-        self.instance_role is used if it's specified. Otherwise the role contained within self.instance_profile is
+        self.instance_role is used if it's specified. Otherwise the roles contained within self.instance_profile are
         used. It's assumed that self.instance_profile and self.instance_role cannot both be specified.
         """
         if self.instance_role:
-            instance_role_arn = self.instance_role
+            instance_role_arns = {self.instance_role}
         elif self.instance_profile:
-            instance_role_arn = self._extract_role_from_instance_profile(
-                get_resource_name_from_resource_arn(self.instance_profile)
+            instance_role_arns = set(
+                self._extract_roles_from_instance_profile(get_resource_name_from_resource_arn(self.instance_profile))
             )
         else:
-            instance_role_arn = ""
-        return instance_role_arn
+            instance_role_arns = {}
+        return list(instance_role_arns)
 
     def _register_validators(self):
         if self.instance_role:
