@@ -33,9 +33,11 @@ SharedStorage:
   - MountDir: efs
     Name: efs
     StorageType: Efs
+  {% if scheduler != "awsbatch" %}
   - MountDir: fsx
     Name: fsx
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 1200
       DeploymentType: SCRATCH_2
+  {% endif %}

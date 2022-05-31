@@ -58,18 +58,20 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
     for instance in instances:
         assert_that(instance["SecurityGroups"]).is_length(1)
 
-    logging.info("Collecting security groups of the FSx")
-    fsx_id = cluster.cfn_resources["FSX0"]
-    fsx_client = boto3.client("fsx", region_name=region)
-    network_interface_id = fsx_client.describe_file_systems(FileSystemIds=[fsx_id])["FileSystems"][0][
-        "NetworkInterfaceIds"
-    ][0]
-    fsx_security_groups = ec2_client.describe_network_interfaces(NetworkInterfaceIds=[network_interface_id])[
-        "NetworkInterfaces"
-    ][0]["Groups"]
-    logging.info("Asserting the network interface of FSx has and only has the custom security group")
-    assert_that(fsx_security_groups[0]["GroupId"]).is_equal_to(custom_security_group_id)
-    assert_that(fsx_security_groups).is_length(1)
+    if scheduler != "awsbatch":
+        # FSx is not supported when using AWS Batch as a scheduler
+        logging.info("Collecting security groups of the FSx")
+        fsx_id = cluster.cfn_resources["FSX0"]
+        fsx_client = boto3.client("fsx", region_name=region)
+        network_interface_id = fsx_client.describe_file_systems(FileSystemIds=[fsx_id])["FileSystems"][0][
+            "NetworkInterfaceIds"
+        ][0]
+        fsx_security_groups = ec2_client.describe_network_interfaces(NetworkInterfaceIds=[network_interface_id])[
+            "NetworkInterfaces"
+        ][0]["Groups"]
+        logging.info("Asserting the network interface of FSx has and only has the custom security group")
+        assert_that(fsx_security_groups[0]["GroupId"]).is_equal_to(custom_security_group_id)
+        assert_that(fsx_security_groups).is_length(1)
 
     logging.info("Collecting security groups of the EFS")
     efs_id = cluster.cfn_resources["EFS0"]
