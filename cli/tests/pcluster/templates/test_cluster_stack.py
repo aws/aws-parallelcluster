@@ -14,12 +14,10 @@ from datetime import datetime
 import pytest
 import yaml
 from assertpy import assert_that
-from aws_cdk.core import App
 from freezegun import freeze_time
 
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.templates.cluster_stack import ClusterCdkStack
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
@@ -242,38 +240,3 @@ def _get_cfn_init_file_content(template, resource, file):
     content_separator = content_join[0]
     content_elements = content_join[1]
     return content_separator.join(str(elem) for elem in content_elements)
-
-
-@pytest.mark.parametrize(
-    "custom_iam, expected_role_name, managed",
-    [
-        ({"InstanceProfile": "arn:aws:iam::1234567890:instance-profile/MyCustomProfile"}, "MyCustomProfile", False),
-        ({"InstanceRole": "arn:aws:iam::1234567890:role/MyCustomRole"}, "MyCustomRole", False),
-        (None, "${Token[TOKEN.", True),
-    ],
-)
-def test_get_head_node_role_name(mocker, test_datadir, custom_iam, expected_role_name, managed):
-    mock_aws_api(mocker)
-    get_instance_profile_mock = mocker.patch(
-        "pcluster.aws.iam.IamClient.get_instance_profile",
-        return_value={"InstanceProfile": {"Roles": [{"Arn": f"arn:aws:iam::1234567890:role/{expected_role_name}"}]}},
-    )
-    input_yaml = load_yaml_dict(test_datadir / "config.yaml")
-    if custom_iam:
-        input_yaml["HeadNode"]["Iam"] = custom_iam
-
-    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
-    head_node = cluster_config.head_node
-
-    cluster_stack = ClusterCdkStack(App(), "fake-output-file", "stack-name", cluster_config, dummy_cluster_bucket())
-    head_node_role = cluster_stack._get_head_node_role_name(head_node)
-
-    if managed:
-        assert_that(head_node_role).starts_with(expected_role_name)
-    else:
-        assert_that(head_node_role).is_equal_to(expected_role_name)
-
-    if "Profile" in expected_role_name:
-        assert_that(get_instance_profile_mock.call_count).is_equal_to(2)
-    else:
-        get_instance_profile_mock.assert_not_called()
