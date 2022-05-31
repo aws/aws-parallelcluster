@@ -209,7 +209,7 @@ dns:
 efa:
   test_efa.py::test_hit_efa:
     dimensions:
-      - regions: ["eu-central-1"]
+      - regions: ["us-gov-west-1"]
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
