@@ -645,6 +645,12 @@ update:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
+  test_update.py::test_queue_parameters_update:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
 # Temporarily disabling p4d tests
 # multiple_nics:
 #   test_multiple_nics.py::test_multiple_nics:
