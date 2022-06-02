@@ -31,8 +31,8 @@ from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
 from tests.storage.test_fsx_lustre import (
-    assert_fsx_lustre_correctly_mounted,
     assert_fsx_correctly_shared,
+    assert_fsx_lustre_correctly_mounted,
     get_fsx_fs_ids,
 )
 
@@ -229,15 +229,6 @@ class VPCEndpointConfig(NamedTuple):
     service_name: str = None
     type: EndpointType = EndpointType.INTERFACE
     enable_private_dns: bool = True
-
-
-def get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
 
 
 @pytest.fixture(scope="class")
