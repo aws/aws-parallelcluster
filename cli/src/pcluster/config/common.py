@@ -180,11 +180,11 @@ class Resource(ABC):
 
     def _nested_resources(self):
         nested_resources = []
-        for attr, value in self.__dict__.items():
+        for _, value in self.__dict__.items():
             if isinstance(value, Resource):
                 nested_resources.append(value)
             if isinstance(value, list) and value:
-                nested_resources.extend(item for item in self.__getattribute__(attr) if isinstance(item, Resource))
+                nested_resources.extend(item for item in value if isinstance(item, Resource))
         return nested_resources
 
     def validate(self, suppressors: List[ValidatorSuppressor] = None) -> List[ValidationResult]:
