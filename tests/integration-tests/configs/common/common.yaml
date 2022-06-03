@@ -253,7 +253,7 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-west-2"]
+      - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -655,7 +655,7 @@ update:
 # multiple_nics:
 #   test_multiple_nics.py::test_multiple_nics:
 #     dimensions:
-#       - regions: ["us-west-2"]
+#       - regions: ["us-east-1"]
 #         instances: ["p4d.24xlarge"]
 #         oss: {{ common.OSS_COMMERCIAL_X86 }}
 #         schedulers: ["slurm"]
