@@ -50,6 +50,7 @@ Scheduling:
   Scheduler: slurm
   SlurmSettings:
     ScaledownIdletime: 10
+    QueueUpdateStrategy: TERMINATE
     Dns:
       DisableManagedDns: true
       UseEc2Hostnames: true
