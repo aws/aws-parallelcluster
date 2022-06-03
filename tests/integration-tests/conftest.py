@@ -768,11 +768,11 @@ def parameterized_cfn_stacks_factory(request):
 AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in use1-az3
     # FSx Lustre file system creation is currently not supported for use1-az3
+    # p4d.24xlarge targeted ODCR is only available on use1-az6
     "us-east-1": ["use1-az6"],
     # some instance type is only supported in use2-az2
     "us-east-2": ["use2-az2"],
     # c4.xlarge is not supported in usw2-az4
-    # p4d.24xlarge is only available on uw2-az2
     "us-west-2": ["usw2-az2", "usw2-az1"],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
