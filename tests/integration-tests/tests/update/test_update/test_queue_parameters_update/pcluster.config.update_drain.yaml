@@ -9,7 +9,7 @@ HeadNode:
     KeyName: {{ key_name }}
 Scheduling:
   SlurmSettings:
-    QueueUpdateStrategy: DRAIN
+    QueueUpdateStrategy: {{ queue_update_strategy }}
   Scheduler: slurm
   SlurmQueues:
     - Name: queue1

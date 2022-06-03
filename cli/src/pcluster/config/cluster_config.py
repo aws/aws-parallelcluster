@@ -1786,6 +1786,7 @@ class QueueUpdateStrategy(Enum):
 
     DRAIN = "DRAIN"
     COMPUTE_FLEET_STOP = "COMPUTE_FLEET_STOP"
+    TERMINATE = "TERMINATE"
 
 
 class SlurmScheduling(Resource):
