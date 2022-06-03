@@ -12,6 +12,7 @@
 import logging
 import re
 
+import boto3
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
@@ -34,6 +35,7 @@ def test_efa(
     architecture,
     network_interfaces_count,
     mpi_variants,
+    s3_bucket_factory,
 ):
     """
     Test all EFA Features.
@@ -48,7 +50,17 @@ def test_efa(
     max_queue_size = 4 if instance in osu_benchmarks_instances else 2
     slots_per_instance = fetch_instance_slots(region, instance)
     head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
+
+    # Post-install script to use P4d targeted ODCR
+    bucket_name = ""
+    if instance == "p4d.24xlarge":
+        bucket_name = s3_bucket_factory()
+        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+        bucket.upload_file(str(test_datadir / "run_instance_override.sh"), "run_instance_override.sh")
+
+    cluster_config = pcluster_config_reader(
+        max_queue_size=max_queue_size, head_node_instance=head_node_instance, bucket_name=bucket_name
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
