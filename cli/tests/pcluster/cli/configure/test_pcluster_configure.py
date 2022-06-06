@@ -750,6 +750,12 @@ def test_valid_key(mocker, temp_path_for_config):
         assert_that(general_wrapper_for_prompt_testing(mocker, temp_path_for_config, key=str(i))).is_true()
 
 
+def test_invalid_path(mocker, temp_path_for_config, caplog):
+    with pytest.raises(SystemExit):
+        general_wrapper_for_prompt_testing(mocker, "/dir/config.yaml", key="key1")
+        assert_that("Error: Encountered exception when writing configuration file." in caplog.text).is_true()
+
+
 @pytest.mark.parametrize(
     "vpc_id",
     [
