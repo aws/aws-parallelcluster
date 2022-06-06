@@ -162,7 +162,7 @@ class HeadNodeRootVolumeSchema(BaseSchema):
     )
     throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
