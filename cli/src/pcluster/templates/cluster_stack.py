@@ -654,7 +654,7 @@ class ClusterCdkStack(Stack):
                 storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
                 security_group_ids=self._get_compute_security_groups(),
-                file_system_type_version="2.12",
+                file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
             fsx_id = fsx_resource.ref
