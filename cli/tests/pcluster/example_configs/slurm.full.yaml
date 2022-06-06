@@ -162,6 +162,16 @@ SharedStorage:
       AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
+  - MountDir: /my/mount/point4
+    Name: name4
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: fsvol-12345678901234567
+  - MountDir: /my/mount/point5
+    Name: name5
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: fsvol-12345678901234567
 Iam:
   Roles:
     LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole

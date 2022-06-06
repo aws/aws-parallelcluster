@@ -58,3 +58,69 @@ def test_get_file_systems_info(boto3_stubber):
     assert_that(AWSApi.instance().fsx.get_file_systems_info([fsx])[0].file_system_data["Lifecycle"]).is_equal_to(
         "AVAILABLE"
     )
+
+
+def get_describe_storage_virtual_machines_mocked_request(svms, lifecycle):
+    return MockedBoto3Request(
+        method="describe_storage_virtual_machines",
+        response={"StorageVirtualMachines": [{"StorageVirtualMachineId": svm, "Lifecycle": lifecycle} for svm in svms]},
+        expected_params={"StorageVirtualMachineIds": svms},
+    )
+
+
+def test_describe_storage_virtual_machines(boto3_stubber):
+    svm = "svm-12345678901234567"
+    additional_svm = "svm-23456789012345678"
+    # The first mocked request and the third are about the same SVM. However, the lifecycle of the fsx changes
+    # from CREATING to CREATED. The second mocked request is about another SVM
+    mocked_requests = [
+        get_describe_storage_virtual_machines_mocked_request([svm], "CREATING"),
+        get_describe_storage_virtual_machines_mocked_request([additional_svm], "CREATING"),
+        get_describe_storage_virtual_machines_mocked_request([svm], "CREATED"),
+    ]
+    boto3_stubber("fsx", mocked_requests)
+    assert_that(AWSApi.instance().fsx.describe_storage_virtual_machines([svm])[0]["Lifecycle"]).is_equal_to("CREATING")
+
+    # Second boto3 call with more SVMs. The SVM already cached should not be included in the boto3 call.
+    response = AWSApi.instance().fsx.describe_storage_virtual_machines([svm, additional_svm])
+    assert_that(response).is_length(2)
+
+    # Third boto3 call. The result should be from cache even if the lifecycle of the SVM is different
+    assert_that(AWSApi.instance().fsx.describe_storage_virtual_machines([svm])[0]["Lifecycle"]).is_equal_to("CREATING")
+
+    # Fourth boto3 call after resetting the AWSApi instance. The latest fsx lifecycle should be retrieved from boto3
+    AWSApi.reset()
+    assert_that(AWSApi.instance().fsx.describe_storage_virtual_machines([svm])[0]["Lifecycle"]).is_equal_to("CREATED")
+
+
+def get_describe_volumes_mocked_request(volumes, lifecycle):
+    return MockedBoto3Request(
+        method="describe_volumes",
+        response={"Volumes": [{"VolumeId": volume, "Lifecycle": lifecycle} for volume in volumes]},
+        expected_params={"VolumeIds": volumes},
+    )
+
+
+def test_describe_volumes(boto3_stubber):
+    volume = "fsvol-12345678901234567"
+    additional_volume = "fsvol-23456789012345678"
+    # The first mocked request and the third are about the same volume. However, the lifecycle of the fsx changes
+    # from CREATING to CREATED. The second mocked request is about another volume
+    mocked_requests = [
+        get_describe_volumes_mocked_request([volume], "CREATING"),
+        get_describe_volumes_mocked_request([additional_volume], "CREATING"),
+        get_describe_volumes_mocked_request([volume], "CREATED"),
+    ]
+    boto3_stubber("fsx", mocked_requests)
+    assert_that(AWSApi.instance().fsx.describe_volumes([volume])[0]["Lifecycle"]).is_equal_to("CREATING")
+
+    # Second boto3 call with more volumes. The volume already cached should not be included in the boto3 call.
+    response = AWSApi.instance().fsx.describe_volumes([volume, additional_volume])
+    assert_that(response).is_length(2)
+
+    # Third boto3 call. The result should be from cache even if the lifecycle of the SVM is different
+    assert_that(AWSApi.instance().fsx.describe_volumes([volume])[0]["Lifecycle"]).is_equal_to("CREATING")
+
+    # Fourth boto3 call after resetting the AWSApi instance. The latest fsx lifecycle should be retrieved from boto3
+    AWSApi.reset()
+    assert_that(AWSApi.instance().fsx.describe_volumes([volume])[0]["Lifecycle"]).is_equal_to("CREATED")

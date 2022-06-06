@@ -44,11 +44,14 @@ from aws_cdk.core import (
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
+    BaseSharedFsx,
     CapacityType,
+    ExistingFsxOntap,
+    ExistingFsxOpenZfs,
     SchedulerPluginQueue,
     SharedEbs,
     SharedEfs,
-    SharedFsx,
+    SharedFsxLustre,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmQueue,
@@ -57,6 +60,7 @@ from pcluster.constants import (
     CW_LOG_GROUP_NAME_PREFIX,
     CW_LOGS_CFN_PARAM_NAME,
     DEFAULT_EPHEMERAL_DIR,
+    LUSTRE,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
@@ -604,17 +608,20 @@ class ClusterCdkStack(Stack):
             storage_list.extend(self._add_raid_volume(cfn_resource_id, storage))
         self.shared_storage_mount_dirs[storage.shared_storage_type].append(storage.mount_dir)
 
-    def _add_fsx_storage(self, id: str, shared_fsx: SharedFsx):
+    def _add_fsx_storage(self, id: str, shared_fsx: BaseSharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
         fsx_id = shared_fsx.file_system_id
+        mount_name = ""
+        dns_name = ""
+        volume_junction_path = ""
         if fsx_id:
-            # Initialize DNSName and MountName for existing filesystem, if any
-            self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountNames"].append(
-                shared_fsx.existing_mount_name
-            )
-            self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSNames"].append(
-                shared_fsx.existing_dns_name
-            )
+            dns_name = shared_fsx.existing_dns_name
+            if isinstance(shared_fsx, ExistingFsxOntap):
+                volume_junction_path = shared_fsx.junction_path
+            if isinstance(shared_fsx, ExistingFsxOpenZfs):
+                volume_junction_path = shared_fsx.volume_path
+            if isinstance(shared_fsx, SharedFsxLustre):
+                mount_name = shared_fsx.existing_mount_name
         else:
             # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
             drive_cache_type = None
@@ -643,20 +650,25 @@ class ClusterCdkStack(Stack):
                 ),
                 backup_id=shared_fsx.backup_id,
                 kms_key_id=shared_fsx.kms_key_id,
-                file_system_type="LUSTRE",
+                file_system_type=LUSTRE,
                 storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
                 security_group_ids=self._get_compute_security_groups(),
-                file_system_type_version="2.12",
+                file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
             fsx_id = fsx_resource.ref
-            # Get MountName for new filesystem
-            self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountNames"].append(
-                fsx_resource.attr_lustre_mount_name
-            )
-            # DNSName cannot be retrieved from CFN and will be generated in cookbook
-            self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSNames"].append("")
+            # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
+            mount_name = fsx_resource.attr_lustre_mount_name
+
+        self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSNames"].append(dns_name)
+        self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountNames"].append(mount_name)
+        self.shared_storage_attributes[shared_fsx.shared_storage_type]["VolumeJunctionPaths"].append(
+            volume_junction_path
+        )
+        self.shared_storage_attributes[shared_fsx.shared_storage_type]["FileSystemTypes"].append(
+            shared_fsx.file_system_type
+        )
 
         return fsx_id
 
@@ -876,6 +888,12 @@ class ClusterCdkStack(Stack):
                     ),
                     "fsx_dns_names": to_comma_separated_string(
                         self.shared_storage_attributes[SharedStorageType.FSX]["DNSNames"]
+                    ),
+                    "fsx_volume_junction_paths": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.FSX]["VolumeJunctionPaths"]
+                    ),
+                    "fsx_fs_types": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                     ),
                     "fsx_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.FSX]),
                     "volume": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EBS),
@@ -1439,6 +1457,12 @@ class ComputeFleetConstruct(Construct):
                                 ),
                                 "FSXDNSNames": to_comma_separated_string(
                                     self._shared_storage_attributes[SharedStorageType.FSX]["DNSNames"]
+                                ),
+                                "FSXVolumeJunctionPaths": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["VolumeJunctionPaths"]
+                                ),
+                                "FSXFileSystemTypes": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                                 ),
                                 "FSXSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.FSX]

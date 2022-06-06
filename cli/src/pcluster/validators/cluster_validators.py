@@ -19,6 +19,7 @@ from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     DEFAULT_EPHEMERAL_DIR,
+    FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
@@ -410,6 +411,7 @@ class ExistingFsxNetworkingValidator(Validator):
     FSx networking validator.
 
     Validate file system mount point according to the head node subnet.
+    The reason to have this structure is to make boto3 calls as few as possible.
     """
 
     def _describe_network_interfaces(self, file_systems):
@@ -427,7 +429,6 @@ class ExistingFsxNetworkingValidator(Validator):
 
     def _validate(self, file_system_ids, head_node_subnet_id, are_all_security_groups_customized):
         try:
-
             # Check to see if there is any existing mt on the fs
             file_systems = AWSApi.instance().fsx.get_file_systems_info(file_system_ids)
 
@@ -435,47 +436,51 @@ class ExistingFsxNetworkingValidator(Validator):
 
             network_interfaces_data = self._describe_network_interfaces(file_systems)
 
-            # Check file systems
-            for file_system in file_systems:
-                # Check to see if fs is in the same VPC as the stack
-                file_system_id = file_system.file_system_id
-                if file_system.vpc_id != vpc_id:
-                    self._add_failure(
-                        "Currently only support using FSx file system that is in the same VPC as the cluster. "
-                        "The file system provided is in {0}.".format(file_system.vpc_id),
-                        FailureLevel.ERROR,
-                    )
+            self._check_file_systems(are_all_security_groups_customized, file_systems, network_interfaces_data, vpc_id)
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
 
-                # If there is an existing mt in the az, check the inbound and outbound rules of the security groups
-                network_interface_ids = file_system.network_interface_ids
-                if not network_interface_ids:
-                    self._add_failure(
-                        f"Unable to validate FSx security groups. The given FSx file system '{file_system_id}'"
-                        " doesn't have Elastic Network Interfaces attached to it.",
-                        FailureLevel.ERROR,
-                    )
-                else:
-                    network_interface_responses = []
-                    for network_interface_id in network_interface_ids:
-                        network_interface_responses.append(network_interfaces_data[network_interface_id])
+    def _check_file_systems(self, are_all_security_groups_customized, file_systems, network_interfaces_data, vpc_id):
+        for file_system in file_systems:
+            # Check to see if fs is in the same VPC as the stack
+            file_system_id = file_system.file_system_id
+            if file_system.vpc_id != vpc_id:
+                self._add_failure(
+                    "Currently only support using FSx file system that is in the same VPC as the cluster. "
+                    "The file system provided is in {0}.".format(file_system.vpc_id),
+                    FailureLevel.ERROR,
+                )
 
+            # If there is an existing mt in the az, check the inbound and outbound rules of the security groups
+            network_interface_ids = file_system.network_interface_ids
+            if not network_interface_ids:
+                self._add_failure(
+                    f"Unable to validate FSx security groups. The given FSx file system '{file_system_id}'"
+                    " doesn't have Elastic Network Interfaces attached to it.",
+                    FailureLevel.ERROR,
+                )
+            else:
+                network_interface_responses = []
+                for network_interface_id in network_interface_ids:
+                    network_interface_responses.append(network_interfaces_data[network_interface_id])
+
+                network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
+                ports = FSX_PORTS[file_system.file_system_type]
+                for port in ports:
                     fs_access = False
-                    network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
                     for network_interface in network_interfaces:
                         # Get list of security group IDs
                         sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                        if _check_in_out_access(sg_ids, port=988, is_cidr_optional=are_all_security_groups_customized):
+                        if _check_in_out_access(sg_ids, port=port, is_cidr_optional=are_all_security_groups_customized):
                             fs_access = True
                             break
                     if not fs_access:
                         self._add_failure(
-                            f"The current security group settings on file system '{file_system_id}' does not satisfy "
-                            "mounting requirement. The file system must be associated to a security group that allows "
-                            "inbound and outbound TCP traffic through port 988.",
+                            f"The current security group settings on file system '{file_system_id}' does not"
+                            " satisfy mounting requirement. The file system must be associated to a security group"
+                            f" that allows inbound and outbound TCP traffic through ports {ports}.",
                             FailureLevel.ERROR,
                         )
-        except AWSClientError as e:
-            self._add_failure(str(e), FailureLevel.ERROR)
 
 
 class FsxArchitectureOsValidator(Validator):

@@ -50,6 +50,8 @@ from images_factory import Image, ImagesFactory
 from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
+from troposphere import Ref, Template, ec2
+from troposphere.fsx import FileSystem, StorageVirtualMachine, Volume, VolumeOntapConfiguration
 from utils import (
     InstanceTypesData,
     create_s3_bucket,
@@ -1446,3 +1448,133 @@ def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
             raise
     else:
         return partial(get_scheduler_commands, scheduler=scheduler)
+
+
+@pytest.fixture(scope="class")
+def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+    """
+    Define a fixture to manage the creation and destruction of fsx.
+
+    return fsx_id
+    """
+    created_stacks = []
+
+    def _fsx_factory(ports, ip_protocols, file_system_type, num=1, **kwargs):
+        # FSx stack
+        if num == 0:
+            return []
+        fsx_template = Template()
+        fsx_template.set_version()
+        fsx_template.set_description("Create FSx stack")
+
+        # Create security group. If using an existing file system
+        # It must be associated to a security group that allows inbound TCP/UDP traffic to specific ports
+        fsx_sg = ec2.SecurityGroup(
+            "FSxSecurityGroup",
+            GroupDescription="SecurityGroup for testing existing FSx",
+            SecurityGroupIngress=[
+                ec2.SecurityGroupRule(
+                    IpProtocol=ip_protocol,
+                    FromPort=port,
+                    ToPort=port,
+                    CidrIp="0.0.0.0/0",
+                )
+                for port in ports
+                for ip_protocol in ip_protocols
+            ],
+            VpcId=vpc_stack.cfn_outputs["VpcId"],
+        )
+        fsx_template.add_resource(fsx_sg)
+        file_system_resource_name = "FileSystemResource"
+        max_concurrency = 15
+        for i in range(num):
+            depends_on_arg = {}
+            if i >= max_concurrency:
+                depends_on_arg = {"DependsOn": [f"{file_system_resource_name}{i - max_concurrency}"]}
+            fsx_filesystem = FileSystem(
+                title=f"{file_system_resource_name}{i}",
+                SecurityGroupIds=[Ref(fsx_sg)],
+                SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]],
+                FileSystemType=file_system_type,
+                **kwargs,
+                **depends_on_arg,
+            )
+            fsx_template.add_resource(fsx_filesystem)
+        fsx_stack = CfnStack(
+            name=generate_stack_name("integ-tests-fsx", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=fsx_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(fsx_stack)
+        created_stacks.append(fsx_stack)
+        return [fsx_stack.cfn_resources[f"{file_system_resource_name}{i}"] for i in range(num)]
+
+    yield _fsx_factory
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.fixture(scope="class")
+def svm_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+    """
+    Define a fixture to manage the creation and destruction of storage virtual machine for FSx for Ontap.
+
+    return svm_id
+    """
+    created_stacks = []
+
+    def _svm_factory(file_system_ids):
+        # SVM stack
+        if not file_system_ids:
+            return []
+        fsx_svm_template = Template()
+        fsx_svm_template.set_version()
+        fsx_svm_template.set_description("Create Storage Virtual Machine stack")
+
+        storage_virtual_machine_resource_name = "StorageVirtualMachineFileSystemResource"
+        max_concurrency = 15
+        for index, file_system_id in enumerate(file_system_ids):
+            depends_on_arg = {}
+            if index >= max_concurrency:
+                depends_on_arg = {"DependsOn": [f"{storage_virtual_machine_resource_name}{index - max_concurrency}"]}
+            fsx_svm = StorageVirtualMachine(
+                title=f"{storage_virtual_machine_resource_name}{index}",
+                Name="fsx",
+                FileSystemId=file_system_id,
+                **depends_on_arg,
+            )
+            fsx_svm_template.add_resource(fsx_svm)
+            fsx_svm_volume = Volume(
+                title=f"{storage_virtual_machine_resource_name}Volume{index}",
+                Name="vol1",
+                VolumeType="ONTAP",
+                OntapConfiguration=VolumeOntapConfiguration(
+                    JunctionPath="/vol1",
+                    SizeInMegabytes="10240",
+                    StorageEfficiencyEnabled="true",
+                    StorageVirtualMachineId=Ref(fsx_svm),
+                ),
+            )
+            fsx_svm_template.add_resource(fsx_svm_volume)
+        fsx_stack = CfnStack(
+            name=generate_stack_name("integ-tests-fsx-svm", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=fsx_svm_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(fsx_stack)
+        created_stacks.append(fsx_stack)
+        return [
+            (
+                fsx_stack.cfn_resources[f"{storage_virtual_machine_resource_name}{i}"],
+                fsx_stack.cfn_resources[f"{storage_virtual_machine_resource_name}Volume{i}"],
+            )
+            for i in range(len(file_system_ids))
+        ]
+
+    yield _svm_factory
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
