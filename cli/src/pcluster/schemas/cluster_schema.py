@@ -150,7 +150,7 @@ class HeadNodeRootVolumeSchema(BaseSchema):
             )
         },
     )
-    iops = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    iops = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     size = fields.Int(
         metadata={
             "update_policy": UpdatePolicy(
@@ -160,7 +160,7 @@ class HeadNodeRootVolumeSchema(BaseSchema):
             )
         }
     )
-    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
