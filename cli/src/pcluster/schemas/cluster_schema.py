@@ -162,7 +162,7 @@ class HeadNodeRootVolumeSchema(BaseSchema):
     )
     throughput = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -442,7 +442,9 @@ class FsxOpenZfsSettingsSchema(BaseSchema):
     """Represent the FSX OpenZFS schema."""
 
     volume_id = fields.Str(
-        validate=validate.Regexp(FSX_VOLUME_ID_REGEX), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True,
+        validate=validate.Regexp(FSX_VOLUME_ID_REGEX),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
 
 
@@ -450,7 +452,9 @@ class FsxOntapSettingsSchema(BaseSchema):
     """Represent the FSX Ontap schema."""
 
     volume_id = fields.Str(
-        validate=validate.Regexp(FSX_VOLUME_ID_REGEX), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True,
+        validate=validate.Regexp(FSX_VOLUME_ID_REGEX),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
 
 
