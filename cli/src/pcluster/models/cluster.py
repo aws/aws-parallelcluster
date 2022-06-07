@@ -352,7 +352,7 @@ class Cluster:
                 validator_suppressors, validation_failure_level
             )
 
-            self._add_version_tag()
+            self._add_tags()
             self._generate_artifact_dir()
             artifact_dir_generated = True
             self._upload_config()
@@ -871,7 +871,7 @@ class Cluster:
             self.config = target_config
             self.__source_config_text = target_source_config
 
-            self._add_version_tag()
+            self._add_tags()
             self._upload_config()
             self._upload_change_set(changes)
 
@@ -909,14 +909,19 @@ class Cluster:
             LOGGER.critical(e)
             raise _cluster_error_mapper(e, f"Cluster update failed.\n{e}")
 
-    def _add_version_tag(self):
-        """Add version tag to the stack."""
+    def _add_tags(self):
+        """Add tags PCLUSTER_CLUSTER_NAME_TAG and PCLUSTER_VERSION_TAG to the attribute config.tags."""
         if self.config.tags is None:
             self.config.tags = []
-        # Remove PCLUSTER_VERSION_TAG if already exists
-        self.config.tags = [tag for tag in self.config.tags if tag.key != PCLUSTER_VERSION_TAG]
-        # Add PCLUSTER_VERSION_TAG
-        self.config.tags.append(Tag(key=PCLUSTER_VERSION_TAG, value=get_installed_version()))
+
+        # List of tags to be added to the cluster
+        tags = {PCLUSTER_CLUSTER_NAME_TAG: self.name, PCLUSTER_VERSION_TAG: get_installed_version()}
+
+        # Remove tags if they already exist
+        self.config.tags = [tag for tag in self.config.tags if tag.key not in tags]
+
+        # Add the tags
+        self.config.tags += [Tag(key=tag_key, value=tag_value) for tag_key, tag_value in tags.items()]
 
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
