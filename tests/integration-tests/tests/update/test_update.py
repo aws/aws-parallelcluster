@@ -443,9 +443,23 @@ def get_batch_spot_bid_percentage(stack_name, region):
     )
 
 
+@pytest.mark.parametrize(
+    "queue_update_strategy",
+    [
+        "DRAIN",
+        "TERMINATE",
+    ],
+)
 @pytest.mark.usefixtures("instance")
 def test_queue_parameters_update(
-    region, os, pcluster_config_reader, ami_copy, clusters_factory, scheduler_commands_factory, request
+    region,
+    os,
+    pcluster_config_reader,
+    ami_copy,
+    clusters_factory,
+    scheduler_commands_factory,
+    request,
+    queue_update_strategy,
 ):
     """Test update cluster with drain strategy."""
     # Create cluster with initial configuration
@@ -473,6 +487,7 @@ def test_queue_parameters_update(
         remote_command_executor,
         scheduler_commands,
         updated_compute_root_volume_size,
+        queue_update_strategy,
     )
 
     # test update without setting queue strategy, update will fail
@@ -489,6 +504,7 @@ def test_queue_parameters_update(
         cluster,
         remote_command_executor,
         region,
+        queue_update_strategy,
     )
 
     # assert queue drain strategy doesn't trigger protected mode
@@ -531,19 +547,24 @@ def _test_update_queue_strategy_without_running_job(
     remote_command_executor,
     scheduler_commands,
     updated_compute_root_volume_size,
+    queue_update_strategy,
 ):
     """Test queue parameter update with drain stragegy without running job in the queue."""
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.update_drain_without_running_job.yaml",
         global_custom_ami=pcluster_ami_id,
         updated_compute_root_volume_size=updated_compute_root_volume_size,
+        queue_update_strategy=queue_update_strategy,
     )
     cluster.update(str(updated_config_file))
     # check chef client log contains expected log
     assert_errors_in_logs(
         remote_command_executor,
         ["/var/log/chef-client.log"],
-        ["Queue update strategy is \\(DRAIN\\)", "Adding queue \\(queue1\\) to list of queue to be updated"],
+        [
+            f"Queue update strategy is \\({queue_update_strategy}\\)",
+            "Adding queue \\(queue1\\) to list of queue to be updated",
+        ],
     )
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     wait_for_compute_nodes_states(scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"])
@@ -569,13 +590,14 @@ def _test_update_queue_strategy_with_running_job(
     cluster,
     remote_command_executor,
     region,
+    queue_update_strategy,
 ):
     queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "sleep 3000",
             "nodes": -1,
             "partition": "queue1",
-            "other_options": "-a 1-5",  # instance type has 4 cpus per node, which requre 2 nodes to run the job
+            "other_options": "-a 1-5",  # instance type has 4 cpus per node, which requires 2 nodes to run the job
         }
     )
 
@@ -591,30 +613,39 @@ def _test_update_queue_strategy_with_running_job(
         global_custom_ami=pcluster_ami_id,
         custom_ami=pcluster_copy_ami_id,
         updated_compute_root_volume_size=updated_compute_root_volume_size,
+        queue_update_strategy=queue_update_strategy,
     )
     cluster.update(str(updated_config_file))
     # check chef client log contains expected log
     assert_errors_in_logs(
         remote_command_executor,
         ["/var/log/chef-client.log"],
-        ["Queue update strategy is \\(DRAIN\\)", "Adding queue \\(queue2\\) to list of queue to be updated"],
+        [
+            f"Queue update strategy is \\({queue_update_strategy}\\)",
+            "Adding queue \\(queue2\\) to list of queue to be updated",
+        ],
     )
 
-    # after cluster update, check if jobs are still in running state
+    # after cluster update, check if queue1 node state are in working state
+    ec2 = boto3.client("ec2", region)
     scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
-    scheduler_commands.assert_job_state(queue2_job_id, "RUNNING")
-    # assert queue1 node state are in working state
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=["mixed", "allocated"])
-    # assert queue2 node state are in draining status
-    queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
-    assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["draining", "draining!"])
-    # retrieve queue2 instance again, check ami, they are not replaced
-    ec2 = boto3.client("ec2", region)
+    # check queue1 AMIs are not replaced
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
-    _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue2")
-    # requeue job in queue2 to launch new instances for nodes
-    remote_command_executor.run_remote_command(f"scontrol requeue {queue2_job_id}")
+
+    queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
+    # assert queue2 node state are in expected status corresponding to the queue strategy
+    if queue_update_strategy == "DRAIN":
+        scheduler_commands.assert_job_state(queue2_job_id, "RUNNING")
+        _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue2")
+        assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["draining", "draining!"])
+        # requeue job in queue2 to launch new instances for nodes
+        remote_command_executor.run_remote_command(f"scontrol requeue {queue2_job_id}")
+    elif queue_update_strategy == "TERMINATE":
+        scheduler_commands.assert_job_state(queue2_job_id, "PENDING")
+        assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["idle%", "idle!"])
+
     scheduler_commands.wait_job_running(queue2_job_id)
     # cancel job in queue1
     scheduler_commands.cancel_job(queue1_job_id)

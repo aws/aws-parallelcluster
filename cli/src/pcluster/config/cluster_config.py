@@ -350,7 +350,9 @@ class SharedFsxLustre(BaseSharedFsx):
         super().__init__(**kwargs)
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
-        self.deployment_type = Resource.init_param(deployment_type, default="SCRATCH_2")
+        self.deployment_type = Resource.init_param(
+            deployment_type, default="SCRATCH_2" if backup_id is None and file_system_id is None else None
+        )
         self.data_compression_type = Resource.init_param(data_compression_type)
         self.export_path = Resource.init_param(export_path)
         self.import_path = Resource.init_param(import_path)
@@ -366,6 +368,7 @@ class SharedFsxLustre(BaseSharedFsx):
         self.auto_import_policy = Resource.init_param(auto_import_policy)
         self.drive_cache_type = Resource.init_param(drive_cache_type)
         self.file_system_type = LUSTRE
+        self.file_system_type_version = "2.12" if backup_id is None and file_system_id is None else None
 
     def _register_validators(self):
         super()._register_validators()
@@ -1783,6 +1786,7 @@ class QueueUpdateStrategy(Enum):
 
     DRAIN = "DRAIN"
     COMPUTE_FLEET_STOP = "COMPUTE_FLEET_STOP"
+    TERMINATE = "TERMINATE"
 
 
 class SlurmScheduling(Resource):
