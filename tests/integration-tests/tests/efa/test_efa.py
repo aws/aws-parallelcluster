@@ -14,6 +14,7 @@ import os as os_lib
 import re
 from shutil import copyfile
 
+import boto3
 import pytest
 from assertpy import assert_that
 from jinja2 import Environment, FileSystemLoader
@@ -96,6 +97,7 @@ def test_hit_efa(
     test_datadir,
     architecture,
     network_interfaces_count,
+    s3_bucket_factory,
     request,
 ):
     """
@@ -117,11 +119,21 @@ def test_hit_efa(
         multithreading_disabled = False
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=multithreading_disabled)
+
+    # Post-install script to use P4d targeted ODCR
+    bucket_name = ""
+    if instance == "p4d.24xlarge":
+        bucket_name = s3_bucket_factory()
+        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+        bucket.upload_file(str(test_datadir / "run_instance_override.sh"), "run_instance_override.sh")
+
     cluster_config = pcluster_config_reader(
         max_queue_size=max_queue_size,
         head_node_instance=head_node_instance,
         multithreading_disabled=multithreading_disabled,
+        bucket_name=bucket_name,
     )
+
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
