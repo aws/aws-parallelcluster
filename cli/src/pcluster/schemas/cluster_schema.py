@@ -442,7 +442,9 @@ class FsxOpenZfsSettingsSchema(BaseSchema):
     """Represent the FSX OpenZFS schema."""
 
     volume_id = fields.Str(
-        validate=validate.Regexp(FSX_VOLUME_ID_REGEX), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True,
+        validate=validate.Regexp(FSX_VOLUME_ID_REGEX),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
 
 
@@ -450,7 +452,9 @@ class FsxOntapSettingsSchema(BaseSchema):
     """Represent the FSX Ontap schema."""
 
     volume_id = fields.Str(
-        validate=validate.Regexp(FSX_VOLUME_ID_REGEX), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True,
+        validate=validate.Regexp(FSX_VOLUME_ID_REGEX),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
 
 

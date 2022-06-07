@@ -333,9 +333,10 @@ def test_multiple_fsx(
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     import_path = "s3://{0}".format(bucket_name)
     export_path = "s3://{0}/export_dir".format(bucket_name)
+    partition = utils.get_arn_partition(region)
     num_new_fsx_lustre = 1
-    num_existing_fsx_ontap = 1
-    num_existing_fsx_open_zfs = 1
+    num_existing_fsx_ontap = 1 if partition != "aws-cn" else 0  # China does not have Ontap
+    num_existing_fsx_open_zfs = 1 if partition == "aws" else 0  # China and GovCloud do not have OpenZFS.
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more FSx when benchmarks are specified. Limiting OS to reduce cost of too many file systems
         num_existing_fsx = 50
@@ -343,9 +344,15 @@ def test_multiple_fsx(
         # Minimal total existing FSx is the number of Ontap and OpenZFS plus one existing FSx Lustre
         num_existing_fsx = num_existing_fsx_ontap + num_existing_fsx_open_zfs + 1
     num_existing_fsx_lustre = num_existing_fsx - num_existing_fsx_ontap - num_existing_fsx_open_zfs
-    mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
-    for i in range(num_new_fsx_lustre + num_existing_fsx - 1):
-        mount_dirs.append(f"/fsx_mount_dir{i}")
+    fsx_lustre_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
+    for i in range(num_new_fsx_lustre + num_existing_fsx_lustre - 1):
+        fsx_lustre_mount_dirs.append(f"/fsx_lustre_mount_dir{i}")
+    fsx_ontap_mount_dirs = []
+    for i in range(num_existing_fsx_ontap):
+        fsx_ontap_mount_dirs.append(f"/fsx_ontap_mount_dir{i}")
+    fsx_open_zfs_mount_dirs = []
+    for i in range(num_existing_fsx_open_zfs):
+        fsx_open_zfs_mount_dirs.append(f"/fsx_open_zfs_mount_dir{i}")
     existing_fsx_lustre_fs_ids = fsx_factory(
         ports=[988],
         ip_protocols=["tcp"],
@@ -368,18 +375,22 @@ def test_multiple_fsx(
 
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
-        fsx_lustre_mount_dirs=mount_dirs[0 : -(num_existing_fsx_ontap + num_existing_fsx_open_zfs)],  # noqa E203
+        fsx_lustre_mount_dirs=fsx_lustre_mount_dirs,
         existing_fsx_lustre_fs_ids=existing_fsx_lustre_fs_ids,
         fsx_open_zfs_volume_ids=fsx_open_zfs_volume_ids,
-        fsx_open_zfs_mount_dirs=mount_dirs[
-            -(num_existing_fsx_ontap + num_existing_fsx_open_zfs) : -num_existing_fsx_ontap  # noqa E203
-        ],
+        fsx_open_zfs_mount_dirs=fsx_open_zfs_mount_dirs,
         fsx_ontap_volume_ids=fsx_ontap_volume_ids,
-        fsx_ontap_mount_dirs=mount_dirs[-num_existing_fsx_ontap:],
+        fsx_ontap_mount_dirs=fsx_ontap_mount_dirs,
     )
     cluster = clusters_factory(cluster_config)
 
-    check_fsx(cluster, region, scheduler_commands_factory, mount_dirs, bucket_name)
+    check_fsx(
+        cluster,
+        region,
+        scheduler_commands_factory,
+        fsx_lustre_mount_dirs + fsx_open_zfs_mount_dirs + fsx_ontap_mount_dirs,
+        bucket_name,
+    )
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
