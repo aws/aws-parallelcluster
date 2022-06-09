@@ -27,6 +27,14 @@ test-suites:
         - regions: ["sa-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
+  # Moved here from common to run only on develop branch
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: [ "sa-east-1" ]
+          instances: [ "c5n.18xlarge" ]
+          oss: [ "alinux2" ]
+          schedulers: [ "slurm" ]
   scaling:
     # FixMe: MPI tests configs are duplications of the test in common.yaml.
     # The duplications are necessary because the scaling section here overwrites the scaling section in common.yaml.
