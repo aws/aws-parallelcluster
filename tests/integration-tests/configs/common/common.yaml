@@ -228,7 +228,8 @@ efa:
   test_efa.py::test_efa:
     dimensions:
       - regions: ["sa-east-1"]
-        instances: ["c5n.18xlarge"]
+        # Changed to not trigger Osu benchmark
+        instances: ["c5n.9xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
       - regions: ["us-east-1"]
