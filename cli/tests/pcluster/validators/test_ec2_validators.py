@@ -13,7 +13,7 @@ import pytest
 
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
-from pcluster.config.cluster_config import CapacityType
+from pcluster.config.cluster_config import CapacityType, PlacementGroup
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityTypeValidator,
@@ -21,6 +21,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
+    PlacementGroupIdValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -391,4 +392,68 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
     mock_aws_api(mocker)
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image", return_value=ami_info)
     actual_failures = AmiOsCompatibleValidator().execute(image_id=image_id, os=os)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "placement_group, describe_placement_group_return, side_effect, expected_message",
+    [
+        (
+            PlacementGroup(enabled=True, id="test"),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            None,
+        ),
+        (
+            PlacementGroup(enabled=True),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            None,
+        ),
+        (
+            PlacementGroup(id="test"),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            None,
+        ),
+        (
+            PlacementGroup(id="test"),
+            None,
+            AWSClientError(function_name="describe_placement_group", message="The Placement Group 'test' is unknown"),
+            "The Placement Group 'test' is unknown",
+        ),
+        (
+            PlacementGroup(enabled=False, id="test"),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            "PlacementGroup Id can not be set when setting",
+        ),
+    ],
+)
+def test_placement_group_validator(
+    mocker, placement_group, describe_placement_group_return, side_effect, expected_message
+):
+    mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_placement_group",
+        return_value=describe_placement_group_return,
+        side_effect=side_effect,
+    )
+    actual_failures = PlacementGroupIdValidator().execute(placement_group=placement_group)
     assert_failure_messages(actual_failures, expected_message)

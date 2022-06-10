@@ -102,12 +102,20 @@ class KeyPairValidator(Validator):
 class PlacementGroupIdValidator(Validator):  # TODO: add tests
     """Placement group id validator."""
 
-    def _validate(self, placement_group_id: str):
-        if placement_group_id:
-            try:
-                AWSApi.instance().ec2.describe_placement_group(placement_group_id)
-            except AWSClientError as e:
-                self._add_failure(str(e), FailureLevel.ERROR)
+    def _validate(self, placement_group):
+        if placement_group.id:
+            if not placement_group.is_implied("enabled") and not placement_group.enabled:
+                self._add_failure(
+                    "PlacementGroup Id can not be set when setting 'Enabled: false' in queue's "
+                    "networking section. Please remove PlacementGroup Id if you don't want"
+                    " to use PlacementGroup.",
+                    FailureLevel.ERROR,
+                )
+            else:
+                try:
+                    AWSApi.instance().ec2.describe_placement_group(placement_group.id)
+                except AWSClientError as e:
+                    self._add_failure(str(e), FailureLevel.ERROR)
 
 
 class CapacityTypeValidator(Validator):

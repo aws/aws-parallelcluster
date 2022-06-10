@@ -1324,7 +1324,9 @@ class ComputeFleetConstruct(Construct):
 
             queue_placement_group = None
             if queue.networking.placement_group:
-                if queue.networking.placement_group.id:
+                if queue.networking.placement_group.id and (
+                    queue.networking.placement_group.enabled or queue.networking.placement_group.is_implied("enabled")
+                ):  # Do not use `PlacementGroup/Id` when `PlacementGroup/Enabled` is explicitly set to `false`
                     queue_placement_group = queue.networking.placement_group.id
                 elif queue.networking.placement_group.enabled:
                     queue_placement_group = managed_placement_groups[queue.name].ref
