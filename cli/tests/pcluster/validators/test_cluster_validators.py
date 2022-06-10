@@ -13,7 +13,7 @@ from assertpy import assert_that
 from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.config.cluster_config import Tag
+from pcluster.config.cluster_config import PlacementGroup, Tag
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -195,26 +195,30 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group_enabled, placement_group_config_implicit, expected_message",
+    "efa_enabled, placement_group, expected_message",
     [
         # Efa disabled
-        (False, False, False, None),
-        (False, True, False, None),
-        (False, False, True, None),
-        (False, True, True, None),
+        (False, PlacementGroup(enabled=True, id="test"), None),
+        (False, PlacementGroup(enabled=True), None),
+        (False, PlacementGroup(id="test"), None),
+        (False, PlacementGroup(enabled=False), None),
+        (False, None, None),
         # Efa enabled
-        (True, False, False, "may see better performance using a placement group"),
-        (True, False, True, "placement group for EFA-enabled compute resources must be explicit"),
-        (True, True, True, "placement group for EFA-enabled compute resources must be explicit"),
-        (True, True, False, None),
+        (True, None, "placement group for EFA-enabled compute resources must be explicit"),
+        (True, PlacementGroup(), "placement group for EFA-enabled compute resources must be explicit"),
+        (True, PlacementGroup(enabled=True), None),
+        (True, PlacementGroup(id="test"), None),
+        (True, PlacementGroup(enabled=True, id="test"), None),
+        (True, PlacementGroup(enabled=False), "may see better performance using a placement group for the queue"),
+        (
+            True,
+            PlacementGroup(enabled=False, id="test"),
+            "may see better performance using a placement group for the queue",
+        ),
     ],
 )
-def test_efa_placement_group_validator(
-    efa_enabled, placement_group_enabled, placement_group_config_implicit, expected_message
-):
-    actual_failures = EfaPlacementGroupValidator().execute(
-        efa_enabled, placement_group_enabled, placement_group_config_implicit
-    )
+def test_efa_placement_group_validator(efa_enabled, placement_group, expected_message):
+    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group)
 
     assert_failure_messages(actual_failures, expected_message)
 
