@@ -10,6 +10,12 @@ on:
     # Schedule for five minutes after the hour, every hour
     - cron: '5 * * * *'
 
+# Grant permission to write on "issues"
+# By specifying the access of one of the scopes, all of those that are not
+# specified are set to 'none'.
+permissions:
+  issues: write
+
 jobs:
   noResponse:
     runs-on: ubuntu-latest
