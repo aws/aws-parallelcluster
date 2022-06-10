@@ -67,3 +67,11 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_GOVCLOUD_ARM }}
           schedulers: ["slurm"]
+  # Moved here from common to run only on develop branch
+  efa:
+    test_efa.py::test_hit_efa:
+      dimensions:
+        - regions: ["us-gov-west-1"]
+          instances: ["c5n.9xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
