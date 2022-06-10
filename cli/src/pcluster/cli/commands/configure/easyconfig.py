@@ -283,8 +283,9 @@ def _write_configuration_file(config_file_path, content):
             config_folder = os.path.dirname(config_file_path) or "."
             os.makedirs(config_folder)
         except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise  # can safely ignore EEXISTS for this purpose...
+            if e.errno != errno.EEXIST:  # Can safely ignore EEXISTS for this purpose
+                print(f"Error: Encountered exception when writing configuration file. {e}")
+                sys.exit(1)
 
         # Fix permissions
         with open(config_file_path, "a", encoding="utf-8"):

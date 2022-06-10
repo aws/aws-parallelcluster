@@ -469,6 +469,12 @@ class SlurmCommands(SchedulerCommands):
         """Get node info."""
         return self._remote_command_executor.run_remote_command("scontrol show nodes {0}".format(nodename))
 
+    def get_conf_param(self, param):
+        """Get value of configuration parameter."""
+        result = self._remote_command_executor.run_remote_command("scontrol show config | grep {0}".format(param))
+        match = re.search(r"(\s+)= (.*)$", result.stdout)
+        return match.group(2)
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""

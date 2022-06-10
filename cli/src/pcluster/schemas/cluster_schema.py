@@ -1252,6 +1252,7 @@ class SlurmSettingsSchema(BaseSchema):
         validate=validate.OneOf([strategy.value for strategy in QueueUpdateStrategy]),
         metadata={"update_policy": UpdatePolicy.IGNORED},
     )
+    enable_memory_based_scheduling = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):

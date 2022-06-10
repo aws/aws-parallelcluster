@@ -344,6 +344,39 @@ def test_slurm_config_update(
     _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor)
 
 
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_memory_based_scheduling
+def test_slurm_memory_based_scheduling(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    # test Slurm without memory-based scheduling feature
+    _test_memory_based_scheduling_enabled_false(
+        pcluster_config_reader,
+        cluster,
+        remote_command_executor,
+        slurm_commands,
+    )
+
+    # test update cluster with memory-based scheduling, clustermgtd and slurmctld restart
+    _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor)
+
+    # test Slurm with memory-based scheduling feature
+    _test_memory_based_scheduling_enabled_true(
+        pcluster_config_reader,
+        cluster,
+        remote_command_executor,
+        slurm_commands,
+    )
+
+
 def _assert_cluster_initial_conditions(
     scheduler_commands, expected_num_dummy, expected_num_instance_node, expected_num_static
 ):
@@ -1485,3 +1518,33 @@ def _test_update_with_queue_params(pcluster_config_reader, cluster, remote_comma
             "INFO: service\\[slurmctld\\] restarted",
         ],
     )
+
+
+def _test_memory_based_scheduling_enabled_false(
+    pcluster_config_reader,
+    cluster,
+    remote_command_executor,
+    slurm_commands,
+):
+    """Test Slurm without memory-based scheduling feature enabled"""
+
+    # check that memory-based scheduling is disabled by default
+    assert_that(slurm_commands.get_conf_param("SelectTypeParameters")).is_equal_to("CR_CPU")
+    assert_that(slurm_commands.get_conf_param("ConstrainRAMSpace")).is_equal_to("no")
+
+    # TODO: Add functional tests for memory-based scheduling
+
+
+def _test_memory_based_scheduling_enabled_true(
+    pcluster_config_reader,
+    cluster,
+    remote_command_executor,
+    slurm_commands,
+):
+    """Test Slurm with memory-based scheduling feature enabled"""
+
+    # check that memory-based scheduling is now enabled
+    assert_that(slurm_commands.get_conf_param("SelectTypeParameters")).is_equal_to("CR_CPU_MEMORY")
+    assert_that(slurm_commands.get_conf_param("ConstrainRAMSpace")).is_equal_to("yes")
+
+    # TODO: Add functional tests for memory-based scheduling
