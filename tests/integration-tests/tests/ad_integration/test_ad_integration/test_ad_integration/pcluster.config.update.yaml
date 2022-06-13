@@ -37,6 +37,16 @@ SharedStorage:
   - MountDir: /efs
     Name: efs
     StorageType: Efs
+  - MountDir: /fsxopenzfs
+    Name: existingopenzfs
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: {{ fsx_open_zfs_volume_id }}
+  - MountDir: /fsxontap
+    Name: existingontap
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: {{ fsx_ontap_volume_id }}
 DirectoryService:
   DomainName: {{ ldap_search_base }}
   DomainAddr: {{ ldap_uri }}

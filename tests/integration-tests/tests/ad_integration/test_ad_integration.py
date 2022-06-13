@@ -35,6 +35,7 @@ from utils import generate_stack_name, random_alphanumeric, render_jinja_templat
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu
 from tests.common.utils import get_sts_endpoint, retrieve_latest_ami, run_system_analyzer
+from tests.storage.test_fsx_lustre import create_fsx_ontap, create_fsx_open_zfs
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
@@ -97,6 +98,13 @@ def get_ad_config_param_vals(
         "directory_protocol": directory_protocol,
         "ldap_tls_req_cert": "never" if directory_certificate_verification is False else "hard",
     }
+
+
+def get_fsx_config_param_vals(fsx_factory, svm_factory):
+    fsx_ontap_fs_ids = create_fsx_ontap(fsx_factory, num=1)
+    fsx_ontap_volume_ids = [volume_id for _, volume_id in svm_factory(fsx_ontap_fs_ids)]
+    fsx_open_zfs_volume_ids = [volume_id for _, volume_id in create_fsx_open_zfs(fsx_factory, num=1)]
+    return {"fsx_ontap_volume_id": fsx_ontap_volume_ids[0], "fsx_open_zfs_volume_id": fsx_open_zfs_volume_ids[0]}
 
 
 def _add_file_to_zip(zip_file, path, arcname):
@@ -473,6 +481,8 @@ def _check_files_permissions(users):
             f"/shared/{user.alias}_file",
             f"/ebs/{user.alias}_file",
             f"/efs/{user.alias}_file",
+            f"/fsxopenzfs/{user.alias}_file",
+            f"/fsxontap/{user.alias}_file",
         ]:
             user.run_remote_command(f"touch {path}")
             # Specify that only owner of file should have read/write access.
@@ -652,6 +662,8 @@ def test_ad_integration(
     directory_certificate_verification,
     test_datadir,
     directory_factory,
+    fsx_factory,
+    svm_factory,
     request,
     store_secret_in_secret_manager,
     clusters_factory,
@@ -700,6 +712,7 @@ def test_ad_integration(
             directory_certificate_verification,
         )
     )
+    config_params.update(get_fsx_config_param_vals(fsx_factory, svm_factory))
     cluster_config = pcluster_config_reader(benchmarks=benchmarks, **config_params)
     cluster = clusters_factory(cluster_config)
 
