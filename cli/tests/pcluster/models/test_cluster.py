@@ -87,7 +87,13 @@ class TestCluster:
         assert_that(instances).is_length(expected_instances)
 
     @pytest.mark.parametrize(
-        "existing_tags", [({}), ({"test": "testvalue"}), ({"Version": "OldVersionToBeOverridden"})]
+        "existing_tags",
+        [
+            ({}),
+            ({"test": "testvalue"}),
+            ({PCLUSTER_VERSION_TAG: "OldVersionToBeOverridden"}),
+            ({PCLUSTER_CLUSTER_NAME_TAG: "OldName"}),
+        ],
     )
     def test_tags(self, cluster, mocker, existing_tags):
         """Verify that the function to get the tags list behaves as expected."""
@@ -101,7 +107,9 @@ class TestCluster:
         # Expected tags:
         installed_version = "FakeInstalledVersion"
         tags = existing_tags
-        tags["parallelcluster:version"] = installed_version
+        tags[PCLUSTER_CLUSTER_NAME_TAG] = cluster.name
+        tags[PCLUSTER_VERSION_TAG] = installed_version
+
         expected_tags_list = self._sort_tags(
             [Tag(key=tag_name, value=tag_value) for tag_name, tag_value in tags.items()]
         )
@@ -110,7 +118,7 @@ class TestCluster:
         get_version_patch = mocker.patch(
             "pcluster.models.cluster.get_installed_version", return_value=installed_version
         )
-        cluster._add_version_tag()
+        cluster._add_tags()
         assert_that(get_version_patch.call_count).is_equal_to(1)
         assert_that(len(cluster.config.tags)).is_equal_to(len(expected_tags_list))
         assert_that(
