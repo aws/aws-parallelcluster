@@ -1,7 +1,7 @@
 ad_integration:
   test_ad_integration.py::test_ad_integration:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
