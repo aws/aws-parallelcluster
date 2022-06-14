@@ -113,6 +113,7 @@ from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
+    InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupIdValidator,
@@ -2317,6 +2318,7 @@ class SlurmClusterConfig(BaseClusterConfig):
             )
 
         checked_images = []
+        instance_types_data = self.get_instance_types_data()
 
         for queue in self.scheduling.queues:
             self._register_validator(
@@ -2347,6 +2349,12 @@ class SlurmClusterConfig(BaseClusterConfig):
                     os=self.image.os,
                     architecture=self.head_node.architecture,
                 )
+                if self.scheduling.settings.enable_memory_based_scheduling:
+                    self._register_validator(
+                        InstanceTypeMemoryInfoValidator,
+                        instance_type=compute_resource.instance_type,
+                        instance_type_data=instance_types_data[compute_resource.instance_type],
+                    )
 
     @property
     def image_dict(self):

@@ -12,6 +12,8 @@ x.x.x
 - Add support for attaching existing FSx for Ontap and FSx for OpenZFS File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
 - Show `requested_value` and `current_value` values in the change set when adding or removing a section.
+- Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based
+  scheduling in Slurm.
 
 **CHANGES**
 - Remove support for Python 3.6.
@@ -22,8 +24,6 @@ x.x.x
   - Change the Lustre server version to `2.12`.
 - Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
 - Add `parallelcluster:cluster-name` tag to all resources created by ParallelCluster.
-- Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based
-  scheduling in Slurm.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.

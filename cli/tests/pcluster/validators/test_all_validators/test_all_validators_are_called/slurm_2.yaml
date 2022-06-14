@@ -9,6 +9,8 @@ HeadNode:
     AllowedIps: 1.2.3.4/32
 Scheduling:
   Scheduler: slurm
+  SlurmSettings:
+    EnableMemoryBasedScheduling: true
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND
