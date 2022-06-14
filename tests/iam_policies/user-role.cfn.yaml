@@ -705,7 +705,10 @@ Resources:
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
-            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Resource: 
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              # Needed to enable capacity reservation access without creating a custom policy in tests
+              - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEC2FullAccess
             Effect: Allow
           # Required to use KMS encryption key in tests
           - Action:
