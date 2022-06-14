@@ -38,6 +38,7 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         efa_supported=False,
         ebs_optimized=False,
     ):
+        super().__init__(instance_type_data={})
         self._gpu_count = gpu_count
         self._max_network_interface_count = interfaces_count
         self._default_threads_per_core = default_threads_per_core

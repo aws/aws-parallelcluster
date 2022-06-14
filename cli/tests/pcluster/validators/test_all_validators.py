@@ -80,6 +80,9 @@ def test_all_validators_are_called(test_datadir, mocker):
         "pcluster.config.cluster_config.BaseClusterConfig.head_node_ami",
         new_callable=PropertyMock(return_value="ami-12345678"),
     )
+    mocker.patch(
+        "pcluster.config.cluster_config.SlurmClusterConfig.get_instance_types_data",
+    )
     mock_aws_api(mocker)
 
     # Need to load two configuration files to execute all validators because there are mutually exclusive parameters.

@@ -26,6 +26,22 @@ class InstanceTypeValidator(Validator):
             self._add_failure(f"The instance type '{instance_type}' is not supported.", FailureLevel.ERROR)
 
 
+class InstanceTypeMemoryInfoValidator(Validator):
+    """
+    EC2 Instance Type MemoryInfo validator.
+
+    Verify that EC2 provides the necessary memory information about an instance type.
+    """
+
+    def _validate(self, instance_type: str, instance_type_data: dict):
+        size_in_mib = instance_type_data.get("MemoryInfo", {}).get("SizeInMiB")
+        if size_in_mib is None:
+            self._add_failure(
+                f"EC2 does not provide memory information for instance type '{instance_type}'.",
+                FailureLevel.ERROR,
+            )
+
+
 class InstanceTypeBaseAMICompatibleValidator(Validator):
     """EC2 Instance type and base ami compatibility validator."""
 

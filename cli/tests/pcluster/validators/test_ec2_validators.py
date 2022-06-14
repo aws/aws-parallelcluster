@@ -18,6 +18,7 @@ from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
+    InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
 )
@@ -33,6 +34,183 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
     mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t2.micro", "c4.xlarge"])
 
     actual_failures = InstanceTypeValidator().execute(instance_type)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "instance_type, instance_type_data, expected_message",
+    [
+        (
+            "t2.medium",
+            {
+                "InstanceType": "t2.medium",
+                "CurrentGeneration": True,
+                "FreeTierEligible": False,
+                "SupportedUsageClasses": ["on-demand", "spot"],
+                "SupportedRootDeviceTypes": ["ebs"],
+                "SupportedVirtualizationTypes": ["hvm"],
+                "BareMetal": False,
+                "Hypervisor": "xen",
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["i386", "x86_64"],
+                    "SustainedClockSpeedInGhz": 2.3,
+                },
+                "VCpuInfo": {
+                    "DefaultVCpus": 2,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 1,
+                },
+                "MemoryInfo": {"SizeInMiB": 4096},
+                "InstanceStorageSupported": False,
+                "EbsInfo": {
+                    "EbsOptimizedSupport": "unsupported",
+                    "EncryptionSupport": "supported",
+                    "NvmeSupport": "unsupported",
+                },
+                "NetworkInfo": {
+                    "NetworkPerformance": "Low to Moderate",
+                    "MaximumNetworkInterfaces": 3,
+                    "MaximumNetworkCards": 1,
+                    "DefaultNetworkCardIndex": 0,
+                    "NetworkCards": [
+                        {
+                            "NetworkCardIndex": 0,
+                            "NetworkPerformance": "Low to Moderate",
+                            "MaximumNetworkInterfaces": 3,
+                        },
+                    ],
+                    "Ipv4AddressesPerInterface": 6,
+                    "Ipv6AddressesPerInterface": 6,
+                    "Ipv6Supported": True,
+                    "EnaSupport": "unsupported",
+                    "EfaSupported": False,
+                    "EncryptionInTransitSupported": False,
+                },
+                "PlacementGroupInfo": {"SupportedStrategies": ["partition", "spread"]},
+                "HibernationSupported": True,
+                "BurstablePerformanceSupported": True,
+                "DedicatedHostsSupported": False,
+                "AutoRecoverySupported": True,
+                "SupportedBootModes": ["legacy-bios"],
+            },
+            None,
+        ),
+        (
+            "t2.medium",
+            {
+                "InstanceType": "t2.medium",
+                "CurrentGeneration": True,
+                "FreeTierEligible": False,
+                "SupportedUsageClasses": ["on-demand", "spot"],
+                "SupportedRootDeviceTypes": ["ebs"],
+                "SupportedVirtualizationTypes": ["hvm"],
+                "BareMetal": False,
+                "Hypervisor": "xen",
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["i386", "x86_64"],
+                    "SustainedClockSpeedInGhz": 2.3,
+                },
+                "VCpuInfo": {
+                    "DefaultVCpus": 2,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 1,
+                },
+                "InstanceStorageSupported": False,
+                "EbsInfo": {
+                    "EbsOptimizedSupport": "unsupported",
+                    "EncryptionSupport": "supported",
+                    "NvmeSupport": "unsupported",
+                },
+                "NetworkInfo": {
+                    "NetworkPerformance": "Low to Moderate",
+                    "MaximumNetworkInterfaces": 3,
+                    "MaximumNetworkCards": 1,
+                    "DefaultNetworkCardIndex": 0,
+                    "NetworkCards": [
+                        {
+                            "NetworkCardIndex": 0,
+                            "NetworkPerformance": "Low to Moderate",
+                            "MaximumNetworkInterfaces": 3,
+                        },
+                    ],
+                    "Ipv4AddressesPerInterface": 6,
+                    "Ipv6AddressesPerInterface": 6,
+                    "Ipv6Supported": True,
+                    "EnaSupport": "unsupported",
+                    "EfaSupported": False,
+                    "EncryptionInTransitSupported": False,
+                },
+                "PlacementGroupInfo": {"SupportedStrategies": ["partition", "spread"]},
+                "HibernationSupported": True,
+                "BurstablePerformanceSupported": True,
+                "DedicatedHostsSupported": False,
+                "AutoRecoverySupported": True,
+                "SupportedBootModes": ["legacy-bios"],
+            },
+            "EC2 does not provide memory information for instance type 't2.medium'.",
+        ),
+        (
+            "t2.medium",
+            {
+                "InstanceType": "t2.medium",
+                "CurrentGeneration": True,
+                "FreeTierEligible": False,
+                "SupportedUsageClasses": ["on-demand", "spot"],
+                "SupportedRootDeviceTypes": ["ebs"],
+                "SupportedVirtualizationTypes": ["hvm"],
+                "BareMetal": False,
+                "Hypervisor": "xen",
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["i386", "x86_64"],
+                    "SustainedClockSpeedInGhz": 2.3,
+                },
+                "VCpuInfo": {
+                    "DefaultVCpus": 2,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 1,
+                },
+                "MemoryInfo": {},
+                "InstanceStorageSupported": False,
+                "EbsInfo": {
+                    "EbsOptimizedSupport": "unsupported",
+                    "EncryptionSupport": "supported",
+                    "NvmeSupport": "unsupported",
+                },
+                "NetworkInfo": {
+                    "NetworkPerformance": "Low to Moderate",
+                    "MaximumNetworkInterfaces": 3,
+                    "MaximumNetworkCards": 1,
+                    "DefaultNetworkCardIndex": 0,
+                    "NetworkCards": [
+                        {
+                            "NetworkCardIndex": 0,
+                            "NetworkPerformance": "Low to Moderate",
+                            "MaximumNetworkInterfaces": 3,
+                        },
+                    ],
+                    "Ipv4AddressesPerInterface": 6,
+                    "Ipv6AddressesPerInterface": 6,
+                    "Ipv6Supported": True,
+                    "EnaSupport": "unsupported",
+                    "EfaSupported": False,
+                    "EncryptionInTransitSupported": False,
+                },
+                "PlacementGroupInfo": {"SupportedStrategies": ["partition", "spread"]},
+                "HibernationSupported": True,
+                "BurstablePerformanceSupported": True,
+                "DedicatedHostsSupported": False,
+                "AutoRecoverySupported": True,
+                "SupportedBootModes": ["legacy-bios"],
+            },
+            "EC2 does not provide memory information for instance type 't2.medium'.",
+        ),
+    ],
+)
+def test_instance_type_memory_info_validator(mocker, instance_type, instance_type_data, expected_message):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t2.medium"])
+
+    actual_failures = InstanceTypeMemoryInfoValidator().execute(instance_type, instance_type_data)
     assert_failure_messages(actual_failures, expected_message)
 
 
