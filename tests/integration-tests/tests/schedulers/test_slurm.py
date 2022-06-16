@@ -1532,6 +1532,12 @@ def _test_memory_based_scheduling_enabled_false(
     assert_that(slurm_commands.get_conf_param("SelectTypeParameters")).is_equal_to("CR_CPU")
     assert_that(slurm_commands.get_conf_param("ConstrainRAMSpace")).is_equal_to("no")
 
+    # check default value of node_reg_mem_percent
+    assert_that(slurm_commands.get_conf_param("SlurmctldParameters")).contains("node_reg_mem_percent=75")
+
+    # check values of RealMemory at default settings
+    assert_that(slurm_commands.get_node_attribute("queue1-st-ondemand1-i1-1", "Memory")).is_equal_to("3891")
+
     # TODO: Add functional tests for memory-based scheduling
 
 
