@@ -213,7 +213,7 @@ DevSettings:
   Cookbook:
     ChefCookbook: https://tests/aws-parallelcluster-cookbook-3.0.tgz
     ExtraChefAttributes: |
-      {"cluster": {"scheduler_slots": "cores"}}
+      {"cluster": {"scheduler_slots": "cores", "slurm_node_reg_mem_percent": 75, "realmemory_to_ec2memory_ratio": 0.95}}
   AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
   AmiSearchFilters:

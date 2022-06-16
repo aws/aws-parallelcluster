@@ -475,6 +475,14 @@ class SlurmCommands(SchedulerCommands):
         match = re.search(r"(\s+)= (.*)$", result.stdout)
         return match.group(2)
 
+    def get_node_attribute(self, nodename, attribute):
+        """Get node attribute."""
+        # This method is implemented with `sinfo`, so please refer to the `sinfo` documentation
+        check_attribute_cmd = f"sinfo --noheader --nodes={nodename} -O {attribute}:100"
+        result = self._remote_command_executor.run_remote_command(check_attribute_cmd)
+        match = re.search(r"(\S*)\s*$", result.stdout)
+        return match.group(1)
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
