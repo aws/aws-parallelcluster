@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import math
 import re
 from abc import ABC
 from enum import Enum
@@ -182,6 +183,27 @@ class EfaOsArchitectureValidator(Validator):
             self._add_failure(
                 f"EFA is currently not supported on {os} for {architecture} architecture.", FailureLevel.ERROR
             )
+
+
+class SchedulableMemoryValidator(Validator):
+    """Validate SchedulableMemory parameter passed by user."""
+
+    def _validate(self, schedulable_memory, ec2memory, instance_type):
+        if schedulable_memory != None:
+            if schedulable_memory < 1:
+                self._add_failure(f"SchedulableMemory must be at least 1 MiB.", FailureLevel.ERROR)
+            if schedulable_memory > ec2memory:
+                self._add_failure(
+                    f"SchedulableMemory cannot be larger than EC2 Memory for selected instance type "
+                    f"{instance_type} ({ec2memory} MiB).",
+                    FailureLevel.ERROR,
+                )
+            if schedulable_memory < math.floor(0.95 * ec2memory):
+                self._add_failure(
+                    f"SchedulableMemory was set lower than 95% of EC2 Memory for selected instance type "
+                    f"{instance_type} ({ec2memory} MiB).",
+                    FailureLevel.WARNING,
+                )
 
 
 class ArchitectureOsValidator(Validator):

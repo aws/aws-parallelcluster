@@ -90,6 +90,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    SchedulableMemoryValidator,
     SchedulerOsValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
@@ -1590,6 +1591,7 @@ class SlurmComputeResource(BaseComputeResource):
         spot_price: float = None,
         efa: Efa = None,
         disable_simultaneous_multithreading: bool = None,
+        schedulable_memory: int = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1602,6 +1604,7 @@ class SlurmComputeResource(BaseComputeResource):
         )
         self.__instance_type_info = None
         self.efa = efa or Efa(enabled=False, implied=True)
+        self.schedulable_memory = Resource.init_param(schedulable_memory)
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
@@ -1621,6 +1624,12 @@ class SlurmComputeResource(BaseComputeResource):
             instance_type=self.instance_type,
             efa_enabled=self.efa.enabled,
             gdr_support=self.efa.gdr_support,
+        )
+        self._register_validator(
+            SchedulableMemoryValidator,
+            schedulable_memory=self.schedulable_memory,
+            ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
+            instance_type=self.instance_type,
         )
 
     @property
