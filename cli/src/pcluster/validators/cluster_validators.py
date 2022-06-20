@@ -279,7 +279,9 @@ class EfaValidator(Validator):
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
         if instance_type_supports_efa and not efa_enabled:
             self._add_failure(
-                f"Instance type '{instance_type}' supports EFA, but it is not enabled.", FailureLevel.WARNING
+                f"To get results faster with the instance type '{instance_type}' at no additional charge, enable the "
+                "Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)",
+                FailureLevel.WARNING,
             )
         if gdr_support and not efa_enabled:
             self._add_failure("The EFA GDR Support can be used only if EFA is enabled.", FailureLevel.ERROR)
