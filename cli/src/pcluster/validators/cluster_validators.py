@@ -189,9 +189,9 @@ class SchedulableMemoryValidator(Validator):
     """Validate SchedulableMemory parameter passed by user."""
 
     def _validate(self, schedulable_memory, ec2memory, instance_type):
-        if schedulable_memory != None:
+        if schedulable_memory is not None:
             if schedulable_memory < 1:
-                self._add_failure(f"SchedulableMemory must be at least 1 MiB.", FailureLevel.ERROR)
+                self._add_failure("SchedulableMemory must be at least 1 MiB.", FailureLevel.ERROR)
             if schedulable_memory > ec2memory:
                 self._add_failure(
                     f"SchedulableMemory cannot be larger than EC2 Memory for selected instance type "

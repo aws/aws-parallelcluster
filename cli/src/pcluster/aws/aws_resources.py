@@ -243,7 +243,8 @@ class InstanceTypeInfo:
         return supported_classes
 
     def ec2memory_size_in_mib(self):
-        return self.instance_type_data.get("MemoryInfo").get("SizeInMiB")
+        """Return the amount of memory in MiB."""
+        return self.instance_type_data.get("MemoryInfo", {}).get("SizeInMiB")
 
 
 class FsxFileSystemInfo:
