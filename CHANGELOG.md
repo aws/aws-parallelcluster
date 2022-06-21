@@ -14,6 +14,7 @@ x.x.x
 - Show `requested_value` and `current_value` values in the change set when adding or removing a section.
 - Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based
   scheduling in Slurm.
+- Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
 
 **CHANGES**
 - Remove support for Python 3.6.
