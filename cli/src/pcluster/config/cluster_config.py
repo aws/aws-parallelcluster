@@ -1864,9 +1864,7 @@ class SchedulerPluginQueue(_CommonQueue):
             self._register_validator(
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
-                placement_group_enabled=self.networking.placement_group and self.networking.placement_group.enabled,
-                placement_group_config_implicit=self.networking.placement_group is None
-                or self.networking.placement_group.is_implied("enabled"),
+                placement_group=self.networking.placement_group,
             )
 
     @property
