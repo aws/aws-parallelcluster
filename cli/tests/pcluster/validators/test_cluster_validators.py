@@ -164,6 +164,13 @@ def test_max_count_validator(resource_name, resources_length, max_length, expect
         (0, 3600, "dummy_instance_type", "SchedulableMemory must be at least 1 MiB."),
         (
             3700,
+            None,
+            "dummy_instance_type",
+            "SchedulableMemory was set but EC2 memory is not available for selected "
+            "instance type dummy_instance_type. Defaulting to 1 MiB.",
+        ),
+        (
+            3700,
             3600,
             "dummy_instance_type",
             "SchedulableMemory cannot be larger than EC2 Memory for selected "

@@ -192,18 +192,25 @@ class SchedulableMemoryValidator(Validator):
         if schedulable_memory is not None:
             if schedulable_memory < 1:
                 self._add_failure("SchedulableMemory must be at least 1 MiB.", FailureLevel.ERROR)
-            if schedulable_memory > ec2memory:
+            if ec2memory is None:
                 self._add_failure(
-                    f"SchedulableMemory cannot be larger than EC2 Memory for selected instance type "
-                    f"{instance_type} ({ec2memory} MiB).",
-                    FailureLevel.ERROR,
-                )
-            if schedulable_memory < math.floor(0.95 * ec2memory):
-                self._add_failure(
-                    f"SchedulableMemory was set lower than 95% of EC2 Memory for selected instance type "
-                    f"{instance_type} ({ec2memory} MiB).",
+                    f"SchedulableMemory was set but EC2 memory is not available for selected instance type "
+                    f"{instance_type}. Defaulting to 1 MiB.",
                     FailureLevel.WARNING,
                 )
+            else:
+                if schedulable_memory > ec2memory:
+                    self._add_failure(
+                        f"SchedulableMemory cannot be larger than EC2 Memory for selected instance type "
+                        f"{instance_type} ({ec2memory} MiB).",
+                        FailureLevel.ERROR,
+                    )
+                if schedulable_memory < math.floor(0.95 * ec2memory):
+                    self._add_failure(
+                        f"SchedulableMemory was set lower than 95% of EC2 Memory for selected instance type "
+                        f"{instance_type} ({ec2memory} MiB).",
+                        FailureLevel.INFO,
+                    )
 
 
 class ArchitectureOsValidator(Validator):
