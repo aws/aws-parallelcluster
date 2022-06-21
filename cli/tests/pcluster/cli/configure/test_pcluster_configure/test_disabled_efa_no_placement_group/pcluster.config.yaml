@@ -1,0 +1,23 @@
+Region: eu-west-1
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.nano
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: key1
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: myqueue
+      ComputeResources:
+        - Name: c5n18xlarge
+          InstanceType: c5n.18xlarge
+          MinCount: 0
+          MaxCount: 10
+          Efa:
+            Enabled: false
+      Networking:
+        SubnetIds:
+          - subnet-23456789
