@@ -114,17 +114,6 @@ phases:
 
                echo ${!PLATFORM}
 
-      # Get Cfn Bootstrap Url
-      - name: CfnBootstrapUrl
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              BUCKET="s3.amazonaws.com"
-              [[ ${AWS::Region} =~ ^cn- ]] && BUCKET="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
-              echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"
-
       # Get input base AMI Architecture
       - name: OperatingSystemArchitecture
         action: ExecuteBash
@@ -256,19 +245,6 @@ phases:
               echo "Calling chef-client with /etc/parallelcluster/image_dna.json"
               cat /etc/parallelcluster/image_dna.json
               cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster::default
-
-      - name: InstallCfnBootstrap
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              OS='{{ build.OperatingSystemName.outputs.stdout }}'
-
-              if [[ ${!OS} =~ ^(centos7|ubuntu(18|20)04)$ ]]; then
-                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
-                pip3 install /tmp/aws-cfn-bootstrap-latest.tar.gz
-              fi
 
       - name: CreateBootstrapFile
         action: CreateFile

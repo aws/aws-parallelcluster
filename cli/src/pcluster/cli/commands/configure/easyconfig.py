@@ -31,6 +31,8 @@ from pcluster.cli.commands.configure.utils import (
     get_regions,
     get_resource_tag,
     handle_client_exception,
+    instance_type_supports_efa,
+    placement_group_exists,
     prompt,
     prompt_iterable,
 )
@@ -196,7 +198,10 @@ def configure(args):  # noqa: C901
                 )
             )
         compute_resources = []
+        efa_enabled_in_queue = False
         for compute_resource_index in range(number_of_compute_resources):
+            efa_enabled_in_compute_resource = False
+            efa_supported_by_instance_type = False
             if scheduler != "awsbatch":
                 while True:
                     compute_instance_type = prompt(
@@ -213,6 +218,12 @@ def configure(args):  # noqa: C901
                         "resources in the same queue. Please insert a different instance type."
                     )
                 compute_resource_name = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
+
+                efa_supported_by_instance_type = instance_type_supports_efa(compute_instance_type)
+                if efa_supported_by_instance_type:
+                    efa_enabled_in_compute_resource = _prompt_for_efa()
+                    if efa_enabled_in_compute_resource:
+                        efa_enabled_in_queue = True
             min_cluster_size = DEFAULT_MIN_COUNT
             max_cluster_size = int(
                 prompt(
@@ -232,25 +243,44 @@ def configure(args):  # noqa: C901
                     }
                 )
             else:
-                compute_resources.append(
-                    {
-                        "Name": compute_resource_name,
-                        "InstanceType": compute_instance_type,
-                        "MinCount": min_cluster_size,
-                        "MaxCount": max_cluster_size,
-                    }
-                )
+                compute_resource = {
+                    "Name": compute_resource_name,
+                    "InstanceType": compute_instance_type,
+                    "MinCount": min_cluster_size,
+                    "MaxCount": max_cluster_size,
+                }
+                if efa_supported_by_instance_type:
+                    compute_resource["Efa"] = {"Enabled": efa_enabled_in_compute_resource}
+
+                compute_resources.append(compute_resource)
                 compute_instance_types.append(compute_instance_type)
 
             queue_names.append(queue_name)
             cluster_size += max_cluster_size  # Fixme: is it the right calculation for awsbatch?
-        queues.append({"Name": queue_name, "ComputeResources": compute_resources})
+
+        queue = {
+            "Name": queue_name,
+            "ComputeResources": compute_resources,
+        }
+        if efa_enabled_in_queue:
+            placement_group = {"Enabled": True}
+            placement_group_name = _prompt_for_placement_group()
+            if placement_group_name:
+                placement_group["Id"] = placement_group_name
+
+            networking = queue.get("Networking", {})
+            networking["PlacementGroup"] = placement_group
+            queue["Networking"] = networking
+
+        queues.append(queue)
 
     vpc_parameters = _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_types, cluster_size)
 
     # Here is the end of prompt. Code below assembles config and write to file
     for queue in queues:
-        queue["Networking"] = {"SubnetIds": [vpc_parameters["compute_subnet_id"]]}
+        networking = queue.get("Networking", {})
+        networking["SubnetIds"] = [vpc_parameters["compute_subnet_id"]]
+        queue["Networking"] = networking
 
     head_node_config = {
         "InstanceType": head_node_instance_type,
@@ -401,9 +431,27 @@ def _prompt_for_subnet(all_subnets, qualified_subnets, message, default_subnet=N
     return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
 
 
+def _prompt_for_efa():
+    print(
+        "To get results faster with the instance selected at no additional charge, enable the "
+        "Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)"
+    )
+    enable_efa = prompt(
+        "Enable EFA on compute instances (EFA) (y/n)", validator=lambda x: x in ("y", "n"), default_value="y"
+    )
+    return enable_efa == "y"
+
+
+def _prompt_for_placement_group():
+    print(
+        "Enabling EFA requires compute instances to be placed within a Placement Group, Specify an existing "
+        "Placement Group name or leave blank for ParallelCluster to create one"
+    )
+
+    return prompt("Placement Group name", validator=lambda x: x == "" or placement_group_exists(x), default_value="")
+
+
 # Availability zone utilities
-
-
 def _get_common_supported_az_for_multi_instance_types(instance_types):
     supported_az = AWSApi.instance().ec2.get_supported_az_for_instance_types(instance_types)
     common_az = None

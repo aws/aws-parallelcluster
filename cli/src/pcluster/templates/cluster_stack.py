@@ -1001,6 +1001,7 @@ class ClusterCdkStack(Stack):
                                 "triggers=post.update\n"
                                 "path=Resources.HeadNodeLaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
                                 "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
+                                ". /etc/profile.d/pcluster.sh; "
                                 "cfn-init -v --stack ${StackName} "
                                 "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
                                 "runas=root\n"
@@ -1077,6 +1078,7 @@ class ClusterCdkStack(Stack):
                 "commands": {
                     "chef": {
                         "command": (
+                            ". /etc/profile.d/pcluster.sh; "
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
