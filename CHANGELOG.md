@@ -16,6 +16,7 @@ x.x.x
   scheduling in Slurm.
   - Add new configuration parameter to override default value of schedulable memory on compute nodes.
 - Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
+- Change default EBS volume types from gp2 to gp3 in both the root and additional volumes.
 
 **CHANGES**
 - Remove support for Python 3.6.
