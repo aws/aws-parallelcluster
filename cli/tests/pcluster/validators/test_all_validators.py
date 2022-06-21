@@ -244,7 +244,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         ]
     )
 
-    ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp2", volume_size=35)])
+    ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp3", volume_size=35)])
     kms_key_validator.assert_has_calls([call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab")])
     kms_key_id_encrypted_validator.assert_has_calls(
         [call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab", encrypted=True)]
