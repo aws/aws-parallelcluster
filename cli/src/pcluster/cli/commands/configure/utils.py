@@ -17,6 +17,8 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from tabulate import tabulate
 
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.constants import SUPPORTED_REGIONS
 
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +29,7 @@ def handle_client_exception(func):
     def wrapper(*args, **kwargs):  # pylint: disable=inconsistent-return-statements
         try:
             return func(*args, **kwargs)
-        except (BotoCoreError, ClientError) as e:
+        except (BotoCoreError, ClientError, AWSClientError) as e:
             print(f"Failed with error: {e}")
             if isinstance(e, ClientError) and "credentials" in str(e):
                 print("To set the credentials, run 'aws configure' or set them as environment variables")
@@ -201,6 +203,28 @@ def get_regions():
     regions = [region.get("RegionName") for region in regions if region.get("RegionName") in SUPPORTED_REGIONS]
     regions.sort()
     return regions
+
+
+@handle_client_exception
+def instance_type_supports_efa(instance_type: str) -> bool:
+    """Return whether of not a specified instance type supports EFA.
+
+    It uses the instance type information returned from AWS API.
+    :param instance_type:
+    :return: True if instance type support EFA, False otherwise
+    """
+    return AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
+
+
+@handle_client_exception
+def placement_group_exists(placement_group_name: str) -> bool:
+    """Return whether of not a specified placement group exists based on the placement group name.
+
+    It does so by querying the AWS EC2 API for the placement group by name.
+    :param placement_group_name: Name of the placement group
+    :return: Placement Group if it exists, None if placement group does not exist or unknown in a region
+    """
+    return AWSApi.instance().ec2.describe_placement_group(placement_group_name)
 
 
 def get_resource_tag(resource, tag_name):

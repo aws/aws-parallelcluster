@@ -242,6 +242,10 @@ class InstanceTypeInfo:
             supported_classes.append("ondemand")
         return supported_classes
 
+    def ec2memory_size_in_mib(self):
+        """Return the amount of memory in MiB."""
+        return self.instance_type_data.get("MemoryInfo", {}).get("SizeInMiB")
+
 
 class FsxFileSystemInfo:
     """Data object wrapping the result of a describe_file_systems call."""
