@@ -76,6 +76,9 @@ function vendor_cookbook
 
 # deploy config files
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
+# Load ParallelCluster environment variables
+[ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
+
 cd /tmp
 cfn-init -s ${AWS::StackName} -v -c deployFiles -r HeadNodeLaunchTemplate --region ${AWS::Region}
 wait_condition_handle_presigned_url=$(cat /tmp/wait_condition_handle.txt)
