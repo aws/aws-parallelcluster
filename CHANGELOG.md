@@ -16,6 +16,7 @@ x.x.x
   scheduling in Slurm.
   - Add new configuration parameter to override default value of schedulable memory on compute nodes.
 - Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
+- Change default EBS volume types from gp2 to gp3 in both the root and additional volumes.
 
 **CHANGES**
 - Remove support for Python 3.6.
@@ -27,6 +28,7 @@ x.x.x
 - Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
 - Add `parallelcluster:cluster-name` tag to all resources created by ParallelCluster.
 - Do not allow setting `PlacementGroup/Id` when `PlacementGroup/Enabled` is explicitly set to `false`.
+- Restrict IPv6 access to IMDS to root and cluster admin users only.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.

@@ -9,6 +9,7 @@
       MaxCount: 10
       MinCount: 0
       Name: c1
+      SchedulableMemory: null
       SpotPrice: null
   ComputeSettings:
     LocalStorage:

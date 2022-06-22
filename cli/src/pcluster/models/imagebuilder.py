@@ -438,7 +438,8 @@ class ImageBuilder:
 
         if AWSApi.instance().cfn.stack_exists(self.image_id):
             raise ConflictImageBuilderActionError(
-                f"ParallelCluster build infrastructure for image {self.image_id} already exists"
+                f"ParallelCluster build infrastructure for image {self.image_id} "
+                "or a CloudFormation Stack with the same name already exists."
             )
 
     def create(
