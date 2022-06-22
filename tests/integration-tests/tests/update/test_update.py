@@ -286,8 +286,8 @@ def _check_volume(cluster, config, region):
     if volume_type:
         assert_that(actual_volume_type).is_equal_to(volume_type)
     else:
-        # the default volume type is gp2
-        assert_that("gp2").is_equal_to(volume_type)
+        # the default volume type is gp3
+        assert_that("gp3").is_equal_to(volume_type)
     if volume_type in ["io1", "io2", "gp3"]:
         volume_iops = config["SharedStorage"][0]["EbsSettings"]["Iops"]
         assert_that(actual_volume_iops).is_equal_to(int(volume_iops))

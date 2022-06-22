@@ -3313,7 +3313,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
                     }
                 ],
             },
-            {"Encrypted": False, "VolumeSize": 35, "VolumeType": "gp2"},
+            {"Encrypted": False, "VolumeSize": 35, "VolumeType": "gp3"},
         ),
         (
             {
@@ -3340,7 +3340,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
                     }
                 ],
             },
-            {"Encrypted": False, "VolumeSize": 60, "VolumeType": "gp2"},
+            {"Encrypted": False, "VolumeSize": 60, "VolumeType": "gp3"},
         ),
         (
             {
@@ -3365,7 +3365,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
                     }
                 ],
             },
-            {"Encrypted": True, "VolumeSize": 40, "VolumeType": "gp2"},
+            {"Encrypted": True, "VolumeSize": 40, "VolumeType": "gp3"},
         ),
         (
             {
@@ -3396,7 +3396,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
             {
                 "Encrypted": True,
                 "VolumeSize": 77,
-                "VolumeType": "gp2",
+                "VolumeType": "gp3",
                 "KmsKeyId": "arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab",
             },
         ),

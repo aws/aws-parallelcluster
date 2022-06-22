@@ -15,7 +15,7 @@ import yaml
 from pcluster.aws.aws_api import AWSApi
 from pcluster.utils import get_url_scheme
 
-ROOT_VOLUME_TYPE = "gp2"
+ROOT_VOLUME_TYPE = "gp3"
 PCLUSTER_RESERVED_VOLUME_SIZE = 27
 AMI_NAME_REQUIRED_SUBSTRING = " {{ imagebuilder:buildDate }}"
 
