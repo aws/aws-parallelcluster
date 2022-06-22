@@ -35,6 +35,12 @@ from pcluster.config.cluster_config import (
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
     AwsBatchSettings,
+    Budget,
+    BudgetLimit,
+    BudgetNotification,
+    BudgetNotificationWithSubscribers,
+    Budgets,
+    BudgetSubscriber,
     CapacityType,
     CloudWatchDashboards,
     CloudWatchLogs,
@@ -923,6 +929,95 @@ class TimeoutsSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Timeouts(**data)
+
+
+class BudgetNotificationSchema(BaseSchema):
+    """Represent the schema of each notification under the NotificationsWithSubscribers field of a budget."""
+
+    notification_type = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    comparison_operator = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    threshold = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BudgetNotification(**data)
+
+
+class BudgetSubscriberSchema(BaseSchema):
+    """Represent the schema of an individual subscriber of a budget notification."""
+
+    subscription_type = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    address = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BudgetSubscriber(**data)
+
+
+class BudgetNotificationWithSubscribersSchema(BaseSchema):
+    """Represent the schema of the NotificationsWithSubscriber field of a budget."""
+
+    notification = fields.Nested(BudgetNotificationSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    subscribers = fields.List(
+        fields.Nested(BudgetSubscriberSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BudgetNotificationWithSubscribers(**data)
+
+
+class BudgetLimitSchema(BaseSchema):
+    """Represent the schema of the BudgetLimit field of a budget."""
+
+    amount = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    unit = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BudgetLimit(**data)
+
+
+class BudgetSchema(BaseSchema):
+    """Represent the schema of an aws budget."""
+
+    budget_name = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    budget_category = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    queue_name = fields.List(
+        fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED}),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    # cost_filter / need to figure out how to create the custom filter field
+    budget_limit = fields.Nested(BudgetLimitSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    time_unit = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    notifications_with_subscribers = fields.List(
+        fields.Nested(BudgetNotificationWithSubscribersSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Budget(**data)
+
+
+class BudgetsSchema(BaseSchema):
+    """Represents the schema of the list of Bugets."""
+
+    budgets = fields.List(
+        fields.Nested(BudgetSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Create resource."""
+        return Budgets(**data)
 
 
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):

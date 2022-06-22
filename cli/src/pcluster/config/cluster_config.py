@@ -856,6 +856,80 @@ class Timeouts(Resource):
         )
 
 
+class BudgetNotification(Resource):
+    """Represent the configuration of each notification under the NotificationsWithSubscribers field of a budget."""
+
+    def __init__(
+        self,
+        notification_type: str = "ACTUAL",
+        comparison_operator: str = "GREATER_THAN",
+        threshold: int = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.notification_type = Resource.init_param(notification_type)
+        self.comparison_operator = Resource.init_param(comparison_operator)
+        self.threshold = Resource.init_param(threshold)
+
+
+class BudgetSubscriber(Resource):
+    """Represent the configuration of an individual subscriber of a budget notification."""
+
+    def __init__(self, subscription_type: str = None, address: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.subscription_type = Resource.init_param(subscription_type)
+        self.address = Resource.init_param(address)
+
+
+class BudgetNotificationWithSubscribers(Resource):
+    """Represent the configuration of the NotificationWithSubscribers field of a budget."""
+
+    def __int__(self, notification: BudgetNotification = None, subscribers: List[BudgetSubscriber] = None, **kwargs):
+        super().__init__(**kwargs)
+        self.notification = Resource.init_param(notification)
+        self.subscribers = Resource.init_param(subscribers)
+
+
+class BudgetLimit(Resource):
+    """Represent the configuration of a budget limit."""
+
+    def __init__(self, amount: int = None, unit: str = None, **kwargs):
+        super.__init(**kwargs)
+        self.amount = Resource.init_param(amount)
+        self.unit = Resource.init_param(unit)
+
+
+class Budget(Resource):
+    """Represent the configuration of a Budget."""
+
+    def __init__(
+        self,
+        budget_name: str = None,
+        budget_category: str = None,
+        queue_name: str = None,
+        # cost_filter...
+        budget_limit: BudgetLimit = None,
+        time_unit: str = "MONTHLY",
+        notifications_with_subscribers: List[BudgetNotificationWithSubscribers] = None,
+        **kwargs,
+    ):
+        super.__init__(**kwargs)
+        self.budget_name = Resource.init_param(budget_name)
+        self.budget_category = Resource.init_param(budget_category)
+        self.queue_name = Resource.init_param(queue_name)
+        self.budget_limit = Resource.init_param(budget_limit)
+        self.time_unit = Resource.init_param(time_unit)
+        self.notifications_with_subscribers = Resource.init_param(notifications_with_subscribers)
+
+
+class Budgets(Resource):
+    """Represents the configuration of the list of budgets."""
+
+    def __init__(self, budgets: List[Budget] = None, **kwargs):
+        super.__init__(**kwargs)
+        self.budgets = Resource.init_param(budgets)
+
+
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
