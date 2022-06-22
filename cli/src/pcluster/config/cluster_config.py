@@ -164,8 +164,9 @@ class Ebs(Resource):
         volume_type: str = None,
         iops: int = None,
         throughput: int = None,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.encrypted = Resource.init_param(encrypted, default=True)
         self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
@@ -218,9 +219,9 @@ class EphemeralVolume(Resource):
 class LocalStorage(Resource):
     """Represent the entire node storage configuration."""
 
-    def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None, **kwargs):
+    def __init__(self, root_volume: RootVolume = None, ephemeral_volume: EphemeralVolume = None, **kwargs):
         super().__init__(**kwargs)
-        self.root_volume = root_volume
+        self.root_volume = root_volume or RootVolume(implied=True)
         self.ephemeral_volume = ephemeral_volume
 
 
@@ -1173,6 +1174,10 @@ class BaseClusterConfig(Resource):
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
+        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+        self._register_validator(
+            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
+        )
 
     def _register_storage_validators(self):
         if self.shared_storage:
@@ -1555,10 +1560,6 @@ class AwsBatchClusterConfig(BaseClusterConfig):
     def _register_validators(self):
         super()._register_validators()
         self._register_validator(AwsBatchRegionValidator, region=self.region)
-        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
-        self._register_validator(
-            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
-        )
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
         if self.shared_storage:
@@ -2192,7 +2193,48 @@ class SchedulerPluginScheduling(Resource):
             )
 
 
-class SchedulerPluginClusterConfig(BaseClusterConfig):
+class CommonSchedulerClusterConfig(BaseClusterConfig):
+    """Represent the common Cluster configuration between Slurm Config and Scheduler Plugin Config."""
+
+    def _register_validators(self):
+        super()._register_validators()
+        checked_images = []
+        for queue in self.scheduling.queues:
+            queue_image = self.image_dict[queue.name]
+            self._register_validator(
+                ComputeResourceLaunchTemplateValidator,
+                queue=queue,
+                ami_id=queue_image,
+                tags=self.get_cluster_tags(),
+            )
+            self._register_validator(
+                RootVolumeSizeValidator,
+                root_volume_size=queue.compute_settings.local_storage.root_volume.size,
+                ami_id=queue_image,
+            )
+            if queue_image not in checked_images and queue.queue_ami:
+                checked_images.append(queue_image)
+                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
+            for compute_resource in queue.compute_resources:
+                self._register_validator(
+                    InstanceTypeBaseAMICompatibleValidator,
+                    instance_type=compute_resource.instance_type,
+                    image=queue_image,
+                )
+                self._register_validator(
+                    InstanceArchitectureCompatibilityValidator,
+                    instance_type=compute_resource.instance_type,
+                    architecture=self.head_node.architecture,
+                )
+                self._register_validator(
+                    EfaOsArchitectureValidator,
+                    efa_enabled=compute_resource.efa.enabled,
+                    os=self.image.os,
+                    architecture=self.head_node.architecture,
+                )
+
+
+class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
     """Represent the full Scheduler Plugin Cluster configuration."""
 
     def __init__(self, cluster_name: str, scheduling: SchedulerPluginScheduling, **kwargs):
@@ -2219,10 +2261,6 @@ class SchedulerPluginClusterConfig(BaseClusterConfig):
 
     def _register_validators(self):
         super()._register_validators()
-        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
-        self._register_validator(
-            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
-        )
         scheduler_definition = self.scheduling.settings.scheduler_definition
         self._register_validator(
             SchedulerPluginOsArchitectureValidator,
@@ -2239,38 +2277,6 @@ class SchedulerPluginClusterConfig(BaseClusterConfig):
             supported_regions=get_attr(scheduler_definition, "requirements.supported_regions"),
         )
 
-        checked_images = []
-
-        for queue in self.scheduling.queues:
-            self._register_validator(
-                ComputeResourceLaunchTemplateValidator,
-                queue=queue,
-                ami_id=self.image_dict[queue.name],
-                tags=self.get_cluster_tags(),
-            )
-            queue_image = self.image_dict[queue.name]
-            if queue_image not in checked_images and queue.queue_ami:
-                checked_images.append(queue_image)
-                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
-            for compute_resource in queue.compute_resources:
-                if self.image_dict[queue.name]:
-                    self._register_validator(
-                        InstanceTypeBaseAMICompatibleValidator,
-                        instance_type=compute_resource.instance_type,
-                        image=queue_image,
-                    )
-                self._register_validator(
-                    InstanceArchitectureCompatibilityValidator,
-                    instance_type=compute_resource.instance_type,
-                    architecture=self.head_node.architecture,
-                )
-                self._register_validator(
-                    EfaOsArchitectureValidator,
-                    efa_enabled=compute_resource.efa.enabled,
-                    os=self.image.os,
-                    architecture=self.head_node.architecture,
-                )
-
     @property
     def image_dict(self):
         """Return image dict of queues, key is queue name, value is image id."""
@@ -2284,7 +2290,7 @@ class SchedulerPluginClusterConfig(BaseClusterConfig):
         return self.__image_dict
 
 
-class SlurmClusterConfig(BaseClusterConfig):
+class SlurmClusterConfig(CommonSchedulerClusterConfig):
     """Represent the full Slurm Cluster configuration."""
 
     def __init__(self, cluster_name: str, scheduling: SlurmScheduling, **kwargs):
@@ -2305,10 +2311,6 @@ class SlurmClusterConfig(BaseClusterConfig):
 
     def _register_validators(self):
         super()._register_validators()
-        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
-        self._register_validator(
-            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
-        )
         self._register_validator(
             MixedSecurityGroupOverwriteValidator,
             head_node_security_groups=self.head_node.networking.security_groups,
@@ -2322,38 +2324,9 @@ class SlurmClusterConfig(BaseClusterConfig):
                 cluster_name=self.cluster_name,
             )
 
-        checked_images = []
         instance_types_data = self.get_instance_types_data()
-
         for queue in self.scheduling.queues:
-            self._register_validator(
-                ComputeResourceLaunchTemplateValidator,
-                queue=queue,
-                ami_id=self.image_dict[queue.name],
-                tags=self.get_cluster_tags(),
-            )
-            queue_image = self.image_dict[queue.name]
-            if queue_image not in checked_images and queue.queue_ami:
-                checked_images.append(queue_image)
-                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
-                if self.image_dict[queue.name]:
-                    self._register_validator(
-                        InstanceTypeBaseAMICompatibleValidator,
-                        instance_type=compute_resource.instance_type,
-                        image=queue_image,
-                    )
-                self._register_validator(
-                    InstanceArchitectureCompatibilityValidator,
-                    instance_type=compute_resource.instance_type,
-                    architecture=self.head_node.architecture,
-                )
-                self._register_validator(
-                    EfaOsArchitectureValidator,
-                    efa_enabled=compute_resource.efa.enabled,
-                    os=self.image.os,
-                    architecture=self.head_node.architecture,
-                )
                 if self.scheduling.settings.enable_memory_based_scheduling:
                     self._register_validator(
                         InstanceTypeMemoryInfoValidator,
