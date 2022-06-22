@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import math
 import re
 from abc import ABC
 from enum import Enum
@@ -184,6 +185,34 @@ class EfaOsArchitectureValidator(Validator):
             )
 
 
+class SchedulableMemoryValidator(Validator):
+    """Validate SchedulableMemory parameter passed by user."""
+
+    def _validate(self, schedulable_memory, ec2memory, instance_type):
+        if schedulable_memory is not None:
+            if schedulable_memory < 1:
+                self._add_failure("SchedulableMemory must be at least 1 MiB.", FailureLevel.ERROR)
+            if ec2memory is None:
+                self._add_failure(
+                    f"SchedulableMemory was set but EC2 memory is not available for selected instance type "
+                    f"{instance_type}. Defaulting to 1 MiB.",
+                    FailureLevel.WARNING,
+                )
+            else:
+                if schedulable_memory > ec2memory:
+                    self._add_failure(
+                        f"SchedulableMemory cannot be larger than EC2 Memory for selected instance type "
+                        f"{instance_type} ({ec2memory} MiB).",
+                        FailureLevel.ERROR,
+                    )
+                if schedulable_memory < math.floor(0.95 * ec2memory):
+                    self._add_failure(
+                        f"SchedulableMemory was set lower than 95% of EC2 Memory for selected instance type "
+                        f"{instance_type} ({ec2memory} MiB).",
+                        FailureLevel.INFO,
+                    )
+
+
 class ArchitectureOsValidator(Validator):
     """
     Validate OS and architecture combination.
@@ -279,7 +308,9 @@ class EfaValidator(Validator):
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
         if instance_type_supports_efa and not efa_enabled:
             self._add_failure(
-                f"Instance type '{instance_type}' supports EFA, but it is not enabled.", FailureLevel.WARNING
+                f"To get results faster with the instance type '{instance_type}' at no additional charge, enable the "
+                "Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)",
+                FailureLevel.WARNING,
             )
         if gdr_support and not efa_enabled:
             self._add_failure("The EFA GDR Support can be used only if EFA is enabled.", FailureLevel.ERROR)

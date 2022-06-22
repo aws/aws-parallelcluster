@@ -37,6 +37,7 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         supported_architectures=None,
         efa_supported=False,
         ebs_optimized=False,
+        ec2memory_size_in_mib=4096,
     ):
         super().__init__(instance_type_data={})
         self._gpu_count = gpu_count
@@ -47,6 +48,7 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         self._efa_supported = efa_supported
         self._instance_type = instance_type
         self._ebs_optimized = ebs_optimized
+        self._ec2memory_size_in_mib = ec2memory_size_in_mib
 
     def gpu_count(self):
         return self._gpu_count
@@ -71,6 +73,9 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
 
     def is_ebs_optimized(self):
         return self._ebs_optimized
+
+    def ec2memory_size_in_mib(self):
+        return self._ec2memory_size_in_mib
 
 
 class _DummyAWSApi(AWSApi):

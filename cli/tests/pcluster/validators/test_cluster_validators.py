@@ -41,6 +41,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    SchedulableMemoryValidator,
     SchedulerOsValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
@@ -156,6 +157,39 @@ def test_max_count_validator(resource_name, resources_length, max_length, expect
     assert_failure_messages(actual_failures, expected_message)
 
 
+@pytest.mark.parametrize(
+    "schedulable_memory, ec2memory, instance_type, expected_message",
+    [
+        (3500, 3600, "dummy_instance_type", None),
+        (0, 3600, "dummy_instance_type", "SchedulableMemory must be at least 1 MiB."),
+        (
+            3700,
+            None,
+            "dummy_instance_type",
+            "SchedulableMemory was set but EC2 memory is not available for selected "
+            "instance type dummy_instance_type. Defaulting to 1 MiB.",
+        ),
+        (
+            3700,
+            3600,
+            "dummy_instance_type",
+            "SchedulableMemory cannot be larger than EC2 Memory for selected "
+            "instance type dummy_instance_type (3600 MiB).",
+        ),
+        (
+            3000,
+            3600,
+            "dummy_instance_type",
+            "SchedulableMemory was set lower than 95% of EC2 Memory for selected "
+            "instance type dummy_instance_type (3600 MiB).",
+        ),
+    ],
+)
+def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_type, expected_message):
+    actual_failures = SchedulableMemoryValidator().execute(schedulable_memory, ec2memory, instance_type)
+    assert_failure_messages(actual_failures, expected_message)
+
+
 # ---------------- EFA validators ---------------- #
 
 
@@ -172,7 +206,7 @@ def test_max_count_validator(resource_name, resources_length, max_length, expect
         ("t2.large", True, False, False, "does not support EFA"),
         ("t2.large", False, False, False, None),
         # EFA not enabled for instance type that supports it
-        ("c5n.18xlarge", False, False, True, "supports EFA, but it is not enabled"),
+        ("c5n.18xlarge", False, False, True, "at no additional charge, enable the Elastic Fabric Adapter"),
     ],
 )
 def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
