@@ -9,6 +9,7 @@
       MaxCount: 10
       MinCount: 0
       Name: c1
+      SchedulableMemory: null
       SpotPrice: null
     - CustomSettings: null
       DisableSimultaneousMultithreading: false
@@ -19,6 +20,7 @@
       MaxCount: 10
       MinCount: 0
       Name: c2
+      SchedulableMemory: null
       SpotPrice: null
   ComputeSettings:
     LocalStorage:
@@ -52,6 +54,7 @@
       MaxCount: 10
       MinCount: 0
       Name: c1
+      SchedulableMemory: null
       SpotPrice: null
   ComputeSettings:
     LocalStorage:
