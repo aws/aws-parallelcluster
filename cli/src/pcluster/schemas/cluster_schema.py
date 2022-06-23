@@ -39,7 +39,6 @@ from pcluster.config.cluster_config import (
     BudgetLimit,
     BudgetNotification,
     BudgetNotificationWithSubscribers,
-    Budgets,
     BudgetSubscriber,
     CapacityType,
     CloudWatchDashboards,
@@ -992,7 +991,9 @@ class BudgetSchema(BaseSchema):
         fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED}),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-    # cost_filter / need to figure out how to create the custom filter field
+
+    cost_filters = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
     budget_limit = fields.Nested(BudgetLimitSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     time_unit = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     notifications_with_subscribers = fields.List(
@@ -1000,24 +1001,23 @@ class BudgetSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
+    # Cost-type fields
+    include_credit = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_discount = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_other_subscription = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_recurring = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_refund = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_subscription = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_support = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_tax = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    include_up_front = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    use_amortized = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    use_blended = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Budget(**data)
-
-
-class BudgetsSchema(BaseSchema):
-    """Represents the schema of the list of Bugets."""
-
-    budgets = fields.List(
-        fields.Nested(BudgetSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}),
-        metadata={"update_policy": UpdatePolicy.SUPPORTED},
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Create resource."""
-        return Budgets(**data)
 
 
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
@@ -1027,6 +1027,11 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     ami_search_filters = fields.Nested(AmiSearchFiltersSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     timeouts = fields.Nested(TimeoutsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    budgets = fields.List(
+        fields.Nested(BudgetSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
 
     @post_load
     def make_resource(self, data, **kwargs):

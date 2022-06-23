@@ -97,6 +97,7 @@ from pcluster.templates.cdk_builder_utils import (
     to_comma_separated_string,
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
+from pcluster.templates.budget_builder import CostBudgets
 from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_attr, join_shell_args
 
@@ -288,6 +289,11 @@ class ClusterCdkStack(Stack):
                 shared_storage_infos=self.shared_storage_infos,
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
             )
+
+        # Budgets
+        if self.config.dev_settings and self.config.dev_settings.budgets:
+            cost_budgets = CostBudgets(self, self.config)
+            self.budget_list = cost_budgets.create_budgets()
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(

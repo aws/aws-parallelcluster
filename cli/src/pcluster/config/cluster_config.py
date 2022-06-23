@@ -864,9 +864,8 @@ class BudgetNotification(Resource):
         notification_type: str = "ACTUAL",
         comparison_operator: str = "GREATER_THAN",
         threshold: int = None,
-        **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__()
         self.notification_type = Resource.init_param(notification_type)
         self.comparison_operator = Resource.init_param(comparison_operator)
         self.threshold = Resource.init_param(threshold)
@@ -875,8 +874,8 @@ class BudgetNotification(Resource):
 class BudgetSubscriber(Resource):
     """Represent the configuration of an individual subscriber of a budget notification."""
 
-    def __init__(self, subscription_type: str = None, address: str = None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, subscription_type: str = None, address: str = None):
+        super().__init__()
         self.subscription_type = Resource.init_param(subscription_type)
         self.address = Resource.init_param(address)
 
@@ -884,8 +883,8 @@ class BudgetSubscriber(Resource):
 class BudgetNotificationWithSubscribers(Resource):
     """Represent the configuration of the NotificationWithSubscribers field of a budget."""
 
-    def __int__(self, notification: BudgetNotification = None, subscribers: List[BudgetSubscriber] = None, **kwargs):
-        super().__init__(**kwargs)
+    def __int__(self, notification: BudgetNotification = None, subscribers: List[BudgetSubscriber] = None):
+        super().__init__()
         self.notification = Resource.init_param(notification)
         self.subscribers = Resource.init_param(subscribers)
 
@@ -893,10 +892,10 @@ class BudgetNotificationWithSubscribers(Resource):
 class BudgetLimit(Resource):
     """Represent the configuration of a budget limit."""
 
-    def __init__(self, amount: int = None, unit: str = None, **kwargs):
-        super.__init(**kwargs)
+    def __init__(self, amount: int = None, unit: str = None):
+        super().__init__()
         self.amount = Resource.init_param(amount)
-        self.unit = Resource.init_param(unit)
+        self.unit = Resource.init_param(unit, default="USD")
 
 
 class Budget(Resource):
@@ -907,27 +906,41 @@ class Budget(Resource):
         budget_name: str = None,
         budget_category: str = None,
         queue_name: str = None,
-        # cost_filter...
         budget_limit: BudgetLimit = None,
-        time_unit: str = "MONTHLY",
+        cost_filters: Dict = None,
+        time_unit: str = None,
         notifications_with_subscribers: List[BudgetNotificationWithSubscribers] = None,
-        **kwargs,
+        include_credit: bool = None,
+        include_discount: bool = None,
+        include_other_subscription: bool = None,
+        include_recurring: bool = None,
+        include_refund: bool = None,
+        include_subscription: bool = None,
+        include_support: bool = None,
+        include_tax: bool = None,
+        include_up_front: bool = None,
+        use_amortized: bool = None,
+        use_blended: bool = None,
     ):
-        super.__init__(**kwargs)
+        super().__init__()
         self.budget_name = Resource.init_param(budget_name)
         self.budget_category = Resource.init_param(budget_category)
-        self.queue_name = Resource.init_param(queue_name)
+        self.queue_name = Resource.init_param(queue_name, default=None)
         self.budget_limit = Resource.init_param(budget_limit)
-        self.time_unit = Resource.init_param(time_unit)
+        self.cost_filters = Resource.init_param(cost_filters, default=None)
+        self.time_unit = Resource.init_param(time_unit, default="MONTHLY")
         self.notifications_with_subscribers = Resource.init_param(notifications_with_subscribers)
-
-
-class Budgets(Resource):
-    """Represents the configuration of the list of budgets."""
-
-    def __init__(self, budgets: List[Budget] = None, **kwargs):
-        super.__init__(**kwargs)
-        self.budgets = Resource.init_param(budgets)
+        self.include_credit = Resource.init_param(include_credit, default=True)
+        self.include_discount = Resource.init_param(include_discount, default=True)
+        self.include_other_subscription = Resource.init_param(include_other_subscription, default=True)
+        self.include_recurring = Resource.init_param(include_recurring, default=True)
+        self.include_refund = Resource.init_param(include_refund, default=True)
+        self.include_subscription = Resource.init_param(include_subscription, default=True)
+        self.include_support = Resource.init_param(include_support, default=True)
+        self.include_tax = Resource.init_param(include_tax, default=True)
+        self.include_up_front = Resource.init_param(include_up_front, default=True)
+        self.use_amortized = Resource.init_param(use_amortized, default=True)
+        self.use_blended = Resource.init_param(use_blended, default=False)
 
 
 class ClusterDevSettings(BaseDevSettings):
@@ -939,6 +952,7 @@ class ClusterDevSettings(BaseDevSettings):
         ami_search_filters: AmiSearchFilters = None,
         instance_types_data: str = None,
         timeouts: Timeouts = None,
+        budgets: List[Budget] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -946,6 +960,7 @@ class ClusterDevSettings(BaseDevSettings):
         self.ami_search_filters = Resource.init_param(ami_search_filters)
         self.instance_types_data = Resource.init_param(instance_types_data)
         self.timeouts = Resource.init_param(timeouts)
+        self.budgets = Resource.init_param(budgets)
 
     def _register_validators(self):
         super()._register_validators()
