@@ -21,6 +21,7 @@ from botocore.response import StreamingBody
 from dateutil import tz
 
 from pcluster.api.models import ClusterStatus
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
@@ -614,6 +615,10 @@ class TestCluster:
     @pytest.mark.parametrize("force", [False, True])
     def test_validate_empty_change_set(self, mocker, force):
         mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image",
+            return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
+        )
         cluster = Cluster(
             FAKE_NAME,
             stack=ClusterStack(
@@ -817,6 +822,11 @@ Scheduling:
         mocker.patch(
             "pcluster.models.cluster.ComputeFleetStatusManager.get_status", return_value=ComputeFleetStatus.STOPPED
         )
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image",
+            return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
+        )
+
         try:
             cluster.validate_update_request(
                 target_source_config=plugin_new_configuration, validator_suppressors={AllValidatorsSuppressor()}
