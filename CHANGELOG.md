@@ -29,6 +29,7 @@ x.x.x
 - Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
 - Add `parallelcluster:cluster-name` tag to all resources created by ParallelCluster.
 - Do not allow setting `PlacementGroup/Id` when `PlacementGroup/Enabled` is explicitly set to `false`.
+- Restrict IPv6 access to IMDS to root and cluster admin users only.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
