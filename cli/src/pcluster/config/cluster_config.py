@@ -173,10 +173,6 @@ class Ebs(Resource):
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
     def _register_validators(self):
-        self._register_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
-        self._register_validator(
-            EbsVolumeIopsValidator, volume_type=self.volume_type, volume_size=self.size, volume_iops=self.iops
-        )
         self._register_validator(
             EbsVolumeThroughputValidator, volume_type=self.volume_type, volume_throughput=self.throughput
         )
@@ -262,6 +258,10 @@ class SharedEbs(Ebs):
 
     def _register_validators(self):
         super()._register_validators()
+        self._register_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
+        self._register_validator(
+            EbsVolumeIopsValidator, volume_type=self.volume_type, volume_size=self.size, volume_iops=self.iops
+        )
         self._register_validator(SharedStorageNameValidator, name=self.name)
         if self.kms_key_id:
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
@@ -1180,10 +1180,24 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
         )
+        ami_volume_size = AWSApi.instance().ec2.describe_image(self.head_node_ami).volume_size
+        root_volume = self.head_node.local_storage.root_volume
+        root_volume_size = root_volume.size
+        if root_volume_size is None:  # If root volume size is not specified, it will be the size of the AMI.
+            root_volume_size = ami_volume_size
         self._register_validator(
             RootVolumeSizeValidator,
-            root_volume_size=self.head_node.local_storage.root_volume.size,
-            ami_id=self.head_node_ami,
+            root_volume_size=root_volume_size,
+            ami_volume_size=ami_volume_size,
+        )
+        self._register_validator(
+            EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
+        )
+        self._register_validator(
+            EbsVolumeIopsValidator,
+            volume_type=root_volume.volume_type,
+            volume_size=root_volume_size,
+            volume_iops=root_volume.iops,
         )
 
     def _register_storage_validators(self):
@@ -2214,10 +2228,24 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 ami_id=queue_image,
                 tags=self.get_cluster_tags(),
             )
+            ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
+            root_volume = queue.compute_settings.local_storage.root_volume
+            root_volume_size = root_volume.size
+            if root_volume_size is None:  # If root volume size is not specified, it will be the size of the AMI.
+                root_volume_size = ami_volume_size
             self._register_validator(
                 RootVolumeSizeValidator,
-                root_volume_size=queue.compute_settings.local_storage.root_volume.size,
-                ami_id=queue_image,
+                root_volume_size=root_volume_size,
+                ami_volume_size=ami_volume_size,
+            )
+            self._register_validator(
+                EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
+            )
+            self._register_validator(
+                EbsVolumeIopsValidator,
+                volume_type=root_volume.volume_type,
+                volume_size=root_volume_size,
+                volume_iops=root_volume.iops,
             )
             if queue_image not in checked_images and queue.queue_ami:
                 checked_images.append(queue_image)

@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that
 from munch import DefaultMunch
 
-from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config.cluster_config import PlacementGroup, Tag
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
@@ -1153,9 +1153,5 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
 )
 def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected_message):
     mock_aws_api(mocker)
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.describe_image",
-        return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": ami_size}}]}),
-    )
-    actual_failures = RootVolumeSizeValidator().execute(root_volume_size, "ami-123456789a8a37250")
+    actual_failures = RootVolumeSizeValidator().execute(root_volume_size, ami_size)
     assert_failure_messages(actual_failures, expected_message)
