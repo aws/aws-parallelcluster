@@ -90,6 +90,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
     SharedStorageMountDirValidator,
@@ -159,7 +160,6 @@ class Ebs(Resource):
 
     def __init__(
         self,
-        size: int = None,
         encrypted: bool = None,
         volume_type: str = None,
         iops: int = None,
@@ -167,7 +167,6 @@ class Ebs(Resource):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.encrypted = Resource.init_param(encrypted, default=True)
         self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
@@ -192,8 +191,9 @@ class Ebs(Resource):
 class RootVolume(Ebs):
     """Represent the root volume configuration."""
 
-    def __init__(self, delete_on_termination: bool = None, **kwargs):
+    def __init__(self, size: int = None, delete_on_termination: bool = None, **kwargs):
         super().__init__(**kwargs)
+        self.size = Resource.init_param(size)
         # The default delete_on_termination takes effect both on head and compute nodes.
         # If the default of the head node is to be changed, please separate this class for different defaults.
         self.delete_on_termination = Resource.init_param(delete_on_termination, default=True)
@@ -241,6 +241,7 @@ class SharedEbs(Ebs):
         self,
         mount_dir: str,
         name: str,
+        size: int = None,
         kms_key_id: str = None,
         snapshot_id: str = None,
         volume_id: str = None,
@@ -249,6 +250,7 @@ class SharedEbs(Ebs):
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.mount_dir = Resource.init_param(mount_dir)
         self.name = Resource.init_param(name)
@@ -1177,6 +1179,11 @@ class BaseClusterConfig(Resource):
         self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
+        )
+        self._register_validator(
+            RootVolumeSizeValidator,
+            root_volume_size=self.head_node.local_storage.root_volume.size,
+            ami_id=self.head_node_ami,
         )
 
     def _register_storage_validators(self):

@@ -30,6 +30,7 @@ x.x.x
 - Add `parallelcluster:cluster-name` tag to all resources created by ParallelCluster.
 - Do not allow setting `PlacementGroup/Id` when `PlacementGroup/Enabled` is explicitly set to `false`.
 - Restrict IPv6 access to IMDS to root and cluster admin users only.
+- Change the default root volume size from 35 GiB to the size of AMIs. The default can be overwritten in cluster configuration file.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
