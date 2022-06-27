@@ -108,7 +108,6 @@ from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
     DELETION_POLICIES_WITH_SNAPSHOT,
-    EBS_VOLUME_SIZE_DEFAULT,
     FSX_LUSTRE,
     FSX_ONTAP,
     FSX_OPENZFS,
@@ -169,14 +168,6 @@ class HeadNodeRootVolumeSchema(BaseSchema):
         """Generate resource."""
         return RootVolume(**data)
 
-    @validates("size")
-    def validate_size(self, value):
-        """Validate the size of root volume."""
-        if value < EBS_VOLUME_SIZE_DEFAULT:
-            raise ValidationError(
-                f"Root volume size {value} is invalid. It must be at least {EBS_VOLUME_SIZE_DEFAULT}."
-            )
-
 
 class QueueRootVolumeSchema(BaseSchema):
     """Represent the RootVolume schema for the queue."""
@@ -191,14 +182,6 @@ class QueueRootVolumeSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return RootVolume(**data)
-
-    @validates("size")
-    def validate_size(self, value):
-        """Validate the size of root volume."""
-        if value < EBS_VOLUME_SIZE_DEFAULT:
-            raise ValidationError(
-                f"Root volume size {value} is invalid. It must be at least {EBS_VOLUME_SIZE_DEFAULT}."
-            )
 
 
 class RaidSchema(BaseSchema):

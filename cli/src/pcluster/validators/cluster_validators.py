@@ -1078,6 +1078,19 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
         )
 
 
+class RootVolumeSizeValidator(Validator):
+    """Verify the root volume size is equal or greater to the size of the snapshot of the AMI."""
+
+    def _validate(self, root_volume_size, ami_volume_size):
+        if root_volume_size:
+            if root_volume_size < ami_volume_size:
+                self._add_failure(
+                    f"Root volume size {root_volume_size} GiB must be equal or greater than the volume size of "
+                    f"the AMI: {ami_volume_size} GiB.",
+                    FailureLevel.ERROR,
+                )
+
+
 class HostedZoneValidator(Validator):
     """Validate custom private domain in the same VPC as head node."""
 
