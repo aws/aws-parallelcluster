@@ -14,7 +14,12 @@
   ComputeSettings:
     LocalStorage:
       EphemeralVolume: null
-      RootVolume: null
+      RootVolume:
+        Encrypted: true
+        Iops: 3000
+        Size: null
+        Throughput: 125
+        VolumeType: gp3
   CustomActions: null
   CustomSettings: null
   Iam:
