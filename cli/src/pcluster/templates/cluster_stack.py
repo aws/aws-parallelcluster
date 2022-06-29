@@ -71,6 +71,7 @@ from pcluster.constants import (
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
+from pcluster.templates.budget_builder import CostBudgets
 from pcluster.templates.cdk_builder_utils import (
     ComputeNodeIamResources,
     HeadNodeIamResources,
@@ -97,7 +98,6 @@ from pcluster.templates.cdk_builder_utils import (
     to_comma_separated_string,
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
-from pcluster.templates.budget_builder import CostBudgets
 from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_attr, join_shell_args
 

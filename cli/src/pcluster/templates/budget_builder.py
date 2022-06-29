@@ -24,29 +24,15 @@ class CostBudgets:
                     amount=budget.budget_limit.amount,
                     unit=budget.budget_limit.unit,
                 ),
-
-                cost_types=budgets.CfnBudget.CostTypesProperty(
-                    include_credit=budget.include_credit,
-                    include_discount=budget.include_discount,
-                    include_other_subscription=budget.include_other_subscription,
-                    include_recurring=budget.include_recurring,
-                    include_refund=budget.include_refund,
-                    include_subscription=budget.include_subscription,
-                    include_support=budget.include_support,
-                    include_tax=budget.include_tax,
-                    include_upfront=budget.include_up_front,
-                    use_amortized=budget.use_amortized,
-                    use_blended=budget.use_blended,
-                ),
-
                 cost_filters=(
-                    budget.cost_filters if budget.budget_category == 'custom' else (
-                        {"TagKeyValue": [f'user:parallelcluster:cluster-name${self.cluster_config.cluster_name}']}
-                        if budget.budget_category == 'cluster' else (
-                            {"TagKeyValue": [f"user:parallelcluster:queue-name${budget.queue_name}"]}
-                        )
+                    budget.cost_filters
+                    if budget.budget_category == "custom"
+                    else (
+                        {"TagKeyValue": [f"user:parallelcluster:cluster-name${self.cluster_config.cluster_name}"]}
+                        if budget.budget_category == "cluster"
+                        else ({"TagKeyValue": [f"user:parallelcluster:queue-name${budget.queue_name}"]})
                     )
-                )
+                ),
             )
 
             notifications_with_subscribers = None
@@ -59,9 +45,10 @@ class CostBudgets:
                     notifications_with_subscribers.append(
                         budgets.CfnBudget.NotificationWithSubscribersProperty(
                             notification=budgets.CfnBudget.NotificationProperty(
-                                comparison_operator=single_notification.comparison_operator,
-                                notification_type=single_notification.notification_type,
-                                threshold_type=single_notification.threshold_type,
+                                comparison_operator=single_notification.notification.comparison_operator,
+                                notification_type=single_notification.notification.notification_type,
+                                threshold_type=single_notification.notification.threshold_type,
+                                threshold=single_notification.notification.threshold,
                             ),
                             subscribers=[
                                 budgets.CfnBudget.SubscriberProperty(
@@ -73,7 +60,7 @@ class CostBudgets:
                         )
                     )
 
-            budget_id = f"CfnBudget-cluster:{self.cluster_config.cluster_name}" + str(index)
+            budget_id = f"CfnBudget{self.cluster_config.cluster_name}" + str(index)
             cfn_budget = budgets.CfnBudget(
                 self.scope, budget_id, budget=budget_data, notifications_with_subscribers=notifications_with_subscribers
             )

@@ -861,14 +861,16 @@ class BudgetNotification(Resource):
 
     def __init__(
         self,
-        notification_type: str = "ACTUAL",
-        comparison_operator: str = "GREATER_THAN",
+        notification_type: str = None,
+        comparison_operator: str = None,
         threshold: int = None,
+        threshold_type: str = None,
     ):
         super().__init__()
-        self.notification_type = Resource.init_param(notification_type)
-        self.comparison_operator = Resource.init_param(comparison_operator)
+        self.notification_type = Resource.init_param(notification_type, default="ACTUAL")
+        self.comparison_operator = Resource.init_param(comparison_operator, default="GREATER_THAN")
         self.threshold = Resource.init_param(threshold)
+        self.threshold_type = Resource.init_param(threshold_type, default="ABSOLUTE_VALUE")
 
 
 class BudgetSubscriber(Resource):
@@ -883,10 +885,10 @@ class BudgetSubscriber(Resource):
 class BudgetNotificationWithSubscribers(Resource):
     """Represent the configuration of the NotificationWithSubscribers field of a budget."""
 
-    def __int__(self, notification: BudgetNotification = None, subscribers: List[BudgetSubscriber] = None):
+    def __init__(self, notification: BudgetNotification = None, subscribers: List[BudgetSubscriber] = None):
         super().__init__()
-        self.notification = Resource.init_param(notification)
-        self.subscribers = Resource.init_param(subscribers)
+        self.notification = notification
+        self.subscribers = subscribers
 
 
 class BudgetLimit(Resource):
@@ -910,17 +912,6 @@ class Budget(Resource):
         cost_filters: Dict = None,
         time_unit: str = None,
         notifications_with_subscribers: List[BudgetNotificationWithSubscribers] = None,
-        include_credit: bool = None,
-        include_discount: bool = None,
-        include_other_subscription: bool = None,
-        include_recurring: bool = None,
-        include_refund: bool = None,
-        include_subscription: bool = None,
-        include_support: bool = None,
-        include_tax: bool = None,
-        include_up_front: bool = None,
-        use_amortized: bool = None,
-        use_blended: bool = None,
     ):
         super().__init__()
         self.budget_name = Resource.init_param(budget_name)
@@ -929,18 +920,7 @@ class Budget(Resource):
         self.budget_limit = Resource.init_param(budget_limit)
         self.cost_filters = Resource.init_param(cost_filters, default=None)
         self.time_unit = Resource.init_param(time_unit, default="MONTHLY")
-        self.notifications_with_subscribers = Resource.init_param(notifications_with_subscribers)
-        self.include_credit = Resource.init_param(include_credit, default=True)
-        self.include_discount = Resource.init_param(include_discount, default=True)
-        self.include_other_subscription = Resource.init_param(include_other_subscription, default=True)
-        self.include_recurring = Resource.init_param(include_recurring, default=True)
-        self.include_refund = Resource.init_param(include_refund, default=True)
-        self.include_subscription = Resource.init_param(include_subscription, default=True)
-        self.include_support = Resource.init_param(include_support, default=True)
-        self.include_tax = Resource.init_param(include_tax, default=True)
-        self.include_up_front = Resource.init_param(include_up_front, default=True)
-        self.use_amortized = Resource.init_param(use_amortized, default=True)
-        self.use_blended = Resource.init_param(use_blended, default=False)
+        self.notifications_with_subscribers = notifications_with_subscribers
 
 
 class ClusterDevSettings(BaseDevSettings):
