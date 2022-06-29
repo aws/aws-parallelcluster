@@ -444,7 +444,7 @@ def _prompt_for_efa():
 
 def _prompt_for_placement_group():
     print(
-        "Enabling EFA requires compute instances to be placed within a Placement Group, Specify an existing "
+        "Enabling EFA requires compute instances to be placed within a Placement Group. Specify an existing "
         "Placement Group name or leave blank for ParallelCluster to create one"
     )
 
