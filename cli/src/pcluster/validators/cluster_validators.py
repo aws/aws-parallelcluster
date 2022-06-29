@@ -29,6 +29,7 @@ from pcluster.constants import (
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
+    SUPPORTED_SCHEDULERS,
 )
 from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
@@ -1121,5 +1122,16 @@ class HostedZoneValidator(Validator):
                     f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
                     f"current length is {total_length}"
                 ),
+                FailureLevel.ERROR,
+            )
+
+
+class SchedulerValidator(Validator):
+    """Validate that only supported schedulers are specified."""
+
+    def _validate(self, scheduler):
+        if scheduler not in SUPPORTED_SCHEDULERS:
+            self._add_failure(
+                f"{scheduler} scheduler is not supported. Supported schedulers are: {', '.join(SUPPORTED_SCHEDULERS)}.",
                 FailureLevel.ERROR,
             )
