@@ -93,6 +93,7 @@ from pcluster.validators.cluster_validators import (
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
+    SchedulerValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
 )
@@ -1176,6 +1177,7 @@ class BaseClusterConfig(Resource):
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
+        self._register_validator(SchedulerValidator, scheduler=self.scheduling.scheduler)
         self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
