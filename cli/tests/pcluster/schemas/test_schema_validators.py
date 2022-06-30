@@ -16,6 +16,10 @@ from assertpy import assert_that
 from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
     AwsBatchQueueSchema,
+    BudgetLimitSchema,
+    BudgetNotificationSchema,
+    BudgetSchema,
+    BudgetSubscriberSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
@@ -601,3 +605,97 @@ def test_instance_role_validator(instance_role, expected_message):
 )
 def test_password_secret_arn_validator(password_secret_arn, expected_message):
     _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "notification_type, comparison_operator, threshold, threshold_type, expected_message",
+    [
+        (None, None, 150, None, None),
+        ("ACTUAL", "EQUAL", 200, None, "Must be one of"),
+        ("Actual", None, 100, None, "Must be one of"),
+        (None, None, 150, "ABSOLUTE", "Must be one of"),
+        (None, None, None, None, "Field may not be null"),
+        ("FORECASTED", "EQUAL_TO", 100, "PERCENTAGE", None),
+        (None, "GREATER_THAN", 200, "ABSOLUTE_VALUE", None),
+        (None, "LESS_THAN", 2, None, None),
+    ],
+)
+def test_budget_notification_schema(
+    notification_type,
+    comparison_operator,
+    threshold,
+    threshold_type,
+    expected_message,
+):
+    section_dict = {
+        "NotificationType": notification_type,
+        "ComparisonOperator": comparison_operator,
+        "Threshold": threshold,
+        "ThresholdType": threshold_type,
+    }
+    _validate_and_assert_error(BudgetNotificationSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "subscription_type, address, expected_message",
+    [
+        (None, "alias@amazon.com", None),
+        ("EMAIL", "alias@amazon.com", None),
+        ("SNS", "arn:aws:sns:us-east-1:444455556666:MyTopic", None),
+        ("GMAIL", "email@gmail.com", "Must be one of"),
+        (None, None, "Field may not be null"),
+    ],
+)
+def test_budget_subscriber_schema(subscription_type, address, expected_message):
+    section_dict = {
+        "Address": address,
+        "SubscriptionType": subscription_type,
+    }
+    _validate_and_assert_error(BudgetSubscriberSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "amount, unit, expected_message",
+    [
+        (120, "USD", None),
+        (100, None, None),
+        (None, None, "Field may not be null"),
+        (None, "BRP", "Field may not be null"),
+    ],
+)
+def test_budget_limit_schema(amount, unit, expected_message):
+    section_dict = {
+        "Amount": amount,
+        "Unit": unit,
+    }
+    _validate_and_assert_error(BudgetLimitSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "budget_category, budget_limit, time_unit, queue_name, cost_filters, expected_message",
+    [
+        ("cluster", {"Amount": 100, "Unit": "USD"}, "MONTHLY", None, None, None),
+        ("queue", {"Amount": 150}, "ANNUALLY", "queue1", None, None),
+        ("custom", {"Amount": 200}, "QUARTERLY", None, {"TagKeyValue": "user:customTag$hpc"}, None),
+        ("cluster", {"Amount": 300}, None, None, None, None),
+        ("cluster", None, None, None, None, "Field may not be null"),
+        ("wrongValue", {"Amount": 100}, None, None, None, "Must be one of"),
+        ("cluster", {"Amount": 100}, "DAILY", None, None, "Must be one of"),
+    ],
+)
+def test_budget_schema(
+    budget_category,
+    budget_limit,
+    time_unit,
+    queue_name,
+    cost_filters,
+    expected_message,
+):
+    section_dict = {
+        "BudgetCategory": budget_category,
+        "BudgetLimit": budget_limit,
+        "TimeUnit": time_unit,
+        "QueueName": queue_name,
+        "CostFilters": cost_filters,
+    }
+    _validate_and_assert_error(BudgetSchema(), section_dict, expected_message)

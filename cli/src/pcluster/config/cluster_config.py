@@ -878,7 +878,7 @@ class BudgetSubscriber(Resource):
 
     def __init__(self, subscription_type: str = None, address: str = None):
         super().__init__()
-        self.subscription_type = Resource.init_param(subscription_type)
+        self.subscription_type = Resource.init_param(subscription_type, default="EMAIL")
         self.address = Resource.init_param(address)
 
 
@@ -905,7 +905,6 @@ class Budget(Resource):
 
     def __init__(
         self,
-        budget_name: str = None,
         budget_category: str = None,
         queue_name: str = None,
         budget_limit: BudgetLimit = None,
@@ -914,7 +913,6 @@ class Budget(Resource):
         notifications_with_subscribers: List[BudgetNotificationWithSubscribers] = None,
     ):
         super().__init__()
-        self.budget_name = Resource.init_param(budget_name)
         self.budget_category = Resource.init_param(budget_category)
         self.queue_name = Resource.init_param(queue_name, default=None)
         self.budget_limit = Resource.init_param(budget_limit)

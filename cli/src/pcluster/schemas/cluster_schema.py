@@ -933,10 +933,19 @@ class TimeoutsSchema(BaseSchema):
 class BudgetNotificationSchema(BaseSchema):
     """Represent the schema of each notification under the NotificationsWithSubscribers field of a budget."""
 
-    notification_type = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    comparison_operator = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    threshold = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    threshold_type = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    notification_type = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["ACTUAL", "FORECASTED"]),
+    )
+    comparison_operator = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["GREATER_THAN", "EQUAL_TO", "LESS_THAN"]),
+    )
+    threshold = fields.Int(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    threshold_type = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["ABSOLUTE_VALUE", "PERCENTAGE"]),
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -947,8 +956,11 @@ class BudgetNotificationSchema(BaseSchema):
 class BudgetSubscriberSchema(BaseSchema):
     """Represent the schema of an individual subscriber of a budget notification."""
 
-    subscription_type = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    address = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    subscription_type = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["EMAIL", "SNS"]),
+    )
+    address = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -959,9 +971,15 @@ class BudgetSubscriberSchema(BaseSchema):
 class BudgetNotificationWithSubscribersSchema(BaseSchema):
     """Represent the schema of the NotificationsWithSubscriber field of a budget."""
 
-    notification = fields.Nested(BudgetNotificationSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    notification = fields.Nested(
+        BudgetNotificationSchema,
+        equired=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
     subscribers = fields.Nested(
         BudgetSubscriberSchema,
+        required=True,
         many=True,
         metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Name"},
     )
@@ -975,7 +993,7 @@ class BudgetNotificationWithSubscribersSchema(BaseSchema):
 class BudgetLimitSchema(BaseSchema):
     """Represent the schema of the BudgetLimit field of a budget."""
 
-    amount = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    amount = fields.Int(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     unit = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
@@ -987,14 +1005,20 @@ class BudgetLimitSchema(BaseSchema):
 class BudgetSchema(BaseSchema):
     """Represent the schema of an aws budget."""
 
-    budget_name = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    budget_category = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    budget_category = fields.Str(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["cluster", "custom", "queue"]),
+    )
     queue_name = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     cost_filters = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
-    budget_limit = fields.Nested(BudgetLimitSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    time_unit = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    budget_limit = fields.Nested(BudgetLimitSchema, required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    time_unit = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["MONTHLY", "QUARTERLY", "ANNUALLY"]),
+    )
     notifications_with_subscribers = fields.Nested(
         BudgetNotificationWithSubscribersSchema,
         many=True,

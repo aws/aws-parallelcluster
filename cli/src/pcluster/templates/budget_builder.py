@@ -5,19 +5,20 @@ from pcluster.config.cluster_config import BaseClusterConfig
 
 
 class CostBudgets:
-    """Creates the budgets based on the configuration file"""
+    """Create the budgets based on the configuration file."""
 
     def __init__(self, scope: Construct, cluster_config: BaseClusterConfig):
         self.cluster_config = cluster_config
         self.scope = scope
 
     def create_budgets(self):
+        """Create the Cfn templates for the list of budgets."""
         budget_list = self.cluster_config.dev_settings.budgets
         cfn_budget_list = []
         for index, budget in enumerate(budget_list):
 
             budget_data = budgets.CfnBudget.BudgetDataProperty(
-                budget_name=budget.budget_name,
+                budget_name=f"CfnBudget{self.cluster_config.cluster_name}" + str(index),
                 budget_type="COST",
                 time_unit=budget.time_unit,
                 budget_limit=budgets.CfnBudget.SpendProperty(
