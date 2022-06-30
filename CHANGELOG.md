@@ -36,6 +36,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
 - Handle corner case in the scaling logic when instance is just launched and the describe instances API doesn't report yet all the EC2 info.
+- Fix file handle leak in `computemgtd`.
 
 3.1.4
 ------
