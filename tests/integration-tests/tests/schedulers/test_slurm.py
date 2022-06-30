@@ -390,36 +390,35 @@ def test_scontrol_reboot(
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
 
-    # Test that an idle static node can be rebooted
-    _test_scontrol_reboot_idle_static_node(
-        remote_command_executor,
+    # Run first job to wake up dynamic nodes from power_down state
+    slurm_commands.submit_command(
+        command="hostname",
+        nodes=2,
+        slots=2,
+        constraint="dynamic",
+    )
+    wait_for_compute_nodes_states(
         slurm_commands,
-        "queue1-st-t2medium-1",
-        asap=False,
+        ["queue1-dy-t2medium-1", "queue1-dy-t2medium-2"],
+        "idle",
     )
 
-    # Test that an idle static node can be rebooted ASAP
-    _test_scontrol_reboot_idle_static_node(
+    # Test that idle static and dynamic nodes can be rebooted
+    _test_scontrol_reboot_idle_nodes(
         remote_command_executor,
         slurm_commands,
-        "queue1-st-t2medium-1",
-        asap=True,
     )
 
-    # Test that an allocated static node can be rebooted
-    _test_scontrol_reboot_alloc_static_node(
-        remote_command_executor,
-        slurm_commands,
-        "queue1-st-t2medium-1",
-        asap=False,
+    # Run job to allocate all nodes
+    slurm_commands.submit_command(
+        command="sleep 150",
+        nodes=4,
+        slots=4,
     )
 
-    # Test that an allocated static node can be rebooted ASAP
-    _test_scontrol_reboot_alloc_static_node(
+    _test_scontrol_reboot_alloc_nodes(
         remote_command_executor,
         slurm_commands,
-        "queue1-st-t2medium-1",
-        asap=True,
     )
 
 
@@ -1605,20 +1604,35 @@ def _test_memory_based_scheduling_enabled_true(
     # TODO: Add functional tests for memory-based scheduling
 
 
-def _test_scontrol_reboot_idle_static_node(
+def _test_scontrol_reboot_idle_nodes(
         remote_command_executor,
         slurm_commands,
-        nodename,
-        asap: bool,
 ):
-    """Test scontrol reboot with an idle static node."""
+    """Test scontrol reboot with idle nodes."""
 
-    assert_compute_node_states(slurm_commands, [nodename], "idle")
-    slurm_commands.reboot_compute_node(nodename, asap)
+    # Get nodes and check that they are idle
+    nodes_in_queue = slurm_commands.get_compute_nodes("queue1")
+    assert_compute_node_states(slurm_commands, nodes_in_queue, "idle")
+
+    # Reboot nodes according to this logic:
+    # - 1 static idle node
+    # - 1 static idle node asap
+    # - 1 dynamic idle node
+    # - 1 dynamic idle node asap
+    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_queue)
+    assert_that(len(static_nodes)).is_equal_to(2)
+    assert_that(len(dynamic_nodes)).is_equal_to(2)
+    slurm_commands.reboot_compute_node(static_nodes[0], False)
+    slurm_commands.reboot_compute_node(static_nodes[1], True)
+    slurm_commands.reboot_compute_node(dynamic_nodes[0], False)
+    slurm_commands.reboot_compute_node(dynamic_nodes[1], True)
+
+    # Check that nodes enter a reboot state
     time.sleep(2)
-    assert_compute_node_states(slurm_commands, [nodename], "reboot^")
-    wait_for_compute_nodes_states(slurm_commands, [nodename], expected_states=["idle"])
+    assert_compute_node_states(slurm_commands, nodes_in_queue, "reboot^")
 
+    # Wait that nodes come back after a while, without having triggered clustermgtd
+    wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["idle"])
     assert_no_msg_in_logs(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
@@ -1626,26 +1640,38 @@ def _test_scontrol_reboot_idle_static_node(
     )
 
 
-def _test_scontrol_reboot_alloc_static_node(
+def _test_scontrol_reboot_alloc_nodes(
         remote_command_executor,
         slurm_commands,
-        nodename,
-        asap: bool,
 ):
-    """Test scontrol reboot with an idle static node."""
 
-    assert_compute_node_states(slurm_commands, [nodename], expected_states=["idle"])
-    slurm_commands.submit_command(
-        command="sleep 60",
-        slots=1,
-        other_options=f"-w {nodename}",
-    )
+    """Test scontrol reboot with allocated nodes."""
+
+    # Get nodes and check that they are idle
+    nodes_in_queue = slurm_commands.get_compute_nodes("queue1")
+    assert_compute_node_states(slurm_commands, nodes_in_queue, ["allocated", "mixed"])
+
+    # Reboot nodes according to this logic:
+    # - 1 static idle node
+    # - 1 static idle node asap
+    # - 1 dynamic idle node
+    # - 1 dynamic idle node asap
+    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_queue)
+    assert_that(len(static_nodes)).is_equal_to(2)
+    assert_that(len(dynamic_nodes)).is_equal_to(2)
+    slurm_commands.reboot_compute_node(static_nodes[0], False)
+    slurm_commands.reboot_compute_node(static_nodes[1], True)
+    slurm_commands.reboot_compute_node(dynamic_nodes[0], False)
+    slurm_commands.reboot_compute_node(dynamic_nodes[1], True)
+
+    # Check that nodes enter a reboot state
     time.sleep(2)
-    assert_compute_node_states(slurm_commands, [nodename], expected_states=["mixed", "allocated"])
-    slurm_commands.reboot_compute_node(nodename, asap)
-    wait_for_compute_nodes_states(slurm_commands, [nodename], expected_states=["reboot^"])
-    wait_for_compute_nodes_states(slurm_commands, [nodename], expected_states=["idle"])
+    assert_compute_node_states(slurm_commands, nodes_in_queue, ["mixed@", "allocated@", "draining@"])
 
+    # Wait that nodes go in reboot state and then come back after a while
+    # without triggering clustermgtd
+    wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["reboot^"])
+    wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["idle"])
     assert_no_msg_in_logs(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],

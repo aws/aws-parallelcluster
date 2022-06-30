@@ -16,8 +16,8 @@ Scheduling:
       ComputeResources:
         - Name: t2medium
           InstanceType: t2.medium
-          MinCount: 1
-          MaxCount: 2
+          MinCount: 2
+          MaxCount: 4
 SharedStorage:
   - MountDir: /shared
     Name: name1
