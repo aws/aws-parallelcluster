@@ -380,10 +380,10 @@ def test_slurm_memory_based_scheduling(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_scontrol_reboot
 def test_scontrol_reboot(
-        pcluster_config_reader,
-        clusters_factory,
-        test_datadir,
-        scheduler_commands_factory,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -424,16 +424,10 @@ def test_scontrol_reboot(
     )
 
     # Check that node in REBOOT_REQUESTED state can be powered down
-    _test_scontrol_reboot_powerdown_reboot_requested_node(
-        slurm_commands,
-        "queue1-st-t2medium-1"
-    )
+    _test_scontrol_reboot_powerdown_reboot_requested_node(slurm_commands, "queue1-st-t2medium-1")
 
     # Check that node in REBOOT_ISSUED state can be powered down
-    _test_scontrol_reboot_powerdown_reboot_requested_node(
-        slurm_commands,
-        "queue1-st-t2medium-2"
-    )
+    _test_scontrol_reboot_powerdown_reboot_requested_node(slurm_commands, "queue1-st-t2medium-2")
 
 
 def _assert_cluster_initial_conditions(
@@ -1619,8 +1613,8 @@ def _test_memory_based_scheduling_enabled_true(
 
 
 def _test_scontrol_reboot_idle_nodes(
-        remote_command_executor,
-        slurm_commands,
+    remote_command_executor,
+    slurm_commands,
 ):
     """Test scontrol reboot with idle nodes."""
 
@@ -1650,13 +1644,13 @@ def _test_scontrol_reboot_idle_nodes(
     assert_no_msg_in_logs(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
-        ["Found the following unhealthy static nodes"]
+        ["Found the following unhealthy static nodes"],
     )
 
 
 def _test_scontrol_reboot_alloc_nodes(
-        remote_command_executor,
-        slurm_commands,
+    remote_command_executor,
+    slurm_commands,
 ):
 
     """Test scontrol reboot with allocated nodes."""
@@ -1689,12 +1683,13 @@ def _test_scontrol_reboot_alloc_nodes(
     assert_no_msg_in_logs(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
-        ["Found the following unhealthy static nodes"]
+        ["Found the following unhealthy static nodes"],
     )
 
+
 def _test_scontrol_reboot_powerdown_reboot_requested_node(
-        slurm_commands,
-        node,
+    slurm_commands,
+    node,
 ):
     """
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
@@ -1730,8 +1725,8 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
 
 
 def _test_scontrol_reboot_powerdown_reboot_issued_node(
-        slurm_commands,
-        node,
+    slurm_commands,
+    node,
 ):
     """
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
@@ -1756,5 +1751,3 @@ def _test_scontrol_reboot_powerdown_reboot_issued_node(
     assert_compute_node_states(slurm_commands, [node], ["down%"])
 
     # The node will be handled as a POWER_DOWN node by clustermgtd
-
-
