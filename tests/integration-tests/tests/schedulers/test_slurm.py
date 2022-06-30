@@ -377,6 +377,52 @@ def test_slurm_memory_based_scheduling(
     )
 
 
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_scontrol_reboot
+def test_scontrol_reboot(
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    # Test that an idle static node can be rebooted
+    _test_scontrol_reboot_idle_static_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2medium-1",
+        asap=False,
+    )
+
+    # Test that an idle static node can be rebooted ASAP
+    _test_scontrol_reboot_idle_static_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2medium-1",
+        asap=True,
+    )
+
+    # Test that an allocated static node can be rebooted
+    _test_scontrol_reboot_alloc_static_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2medium-1",
+        asap=False,
+    )
+
+    # Test that an allocated static node can be rebooted ASAP
+    _test_scontrol_reboot_alloc_static_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2medium-1",
+        asap=True,
+    )
+
+
 def _assert_cluster_initial_conditions(
     scheduler_commands, expected_num_dummy, expected_num_instance_node, expected_num_static
 ):
@@ -1557,3 +1603,51 @@ def _test_memory_based_scheduling_enabled_true(
     # check RealMemory overridden via config file parameter
     assert_that(slurm_commands.get_node_attribute("queue1-dy-ondemand1-i3-1", "Memory")).is_equal_to("31400")
     # TODO: Add functional tests for memory-based scheduling
+
+
+def _test_scontrol_reboot_idle_static_node(
+        remote_command_executor,
+        slurm_commands,
+        nodename,
+        asap: bool,
+):
+    """Test scontrol reboot with an idle static node."""
+
+    assert_compute_node_states(slurm_commands, [nodename], "idle")
+    slurm_commands.reboot_compute_node(nodename, asap)
+    time.sleep(2)
+    assert_compute_node_states(slurm_commands, [nodename], "reboot^")
+    wait_for_compute_nodes_states(slurm_commands, [nodename], expected_states=["idle"])
+
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Found the following unhealthy static nodes"]
+    )
+
+
+def _test_scontrol_reboot_alloc_static_node(
+        remote_command_executor,
+        slurm_commands,
+        nodename,
+        asap: bool,
+):
+    """Test scontrol reboot with an idle static node."""
+
+    assert_compute_node_states(slurm_commands, [nodename], expected_states=["idle"])
+    slurm_commands.submit_command(
+        command="sleep 60",
+        slots=1,
+        other_options=f"-w {nodename}",
+    )
+    time.sleep(2)
+    assert_compute_node_states(slurm_commands, [nodename], expected_states=["mixed", "allocated"])
+    slurm_commands.reboot_compute_node(nodename, asap)
+    wait_for_compute_nodes_states(slurm_commands, [nodename], expected_states=["reboot^"])
+    wait_for_compute_nodes_states(slurm_commands, [nodename], expected_states=["idle"])
+
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Found the following unhealthy static nodes"]
+    )

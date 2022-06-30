@@ -483,6 +483,12 @@ class SlurmCommands(SchedulerCommands):
         match = re.search(r"(\S*)\s*$", result.stdout)
         return match.group(1)
 
+    def reboot_compute_node(self, nodename, asap: bool):
+        """Reboot a compute node via Slurm."""
+        asap_string = "asap" if asap else ""
+        command = f"sudo -i scontrol reboot {asap_string} {nodename}"
+        self._remote_command_executor.run_remote_command(command)
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""

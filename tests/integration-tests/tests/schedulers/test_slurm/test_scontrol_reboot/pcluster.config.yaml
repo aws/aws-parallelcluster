@@ -1,0 +1,24 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {{ scheduler_prefix }}Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: t2medium
+          InstanceType: t2.medium
+          MinCount: 1
+          MaxCount: 2
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
