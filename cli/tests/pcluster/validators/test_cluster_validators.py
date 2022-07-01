@@ -827,32 +827,48 @@ def test_fsx_architecture_os_validator(architecture, os, expected_message):
 
 
 @pytest.mark.parametrize(
-    "mount_dir_list, expected_message",
+    "shared_mount_dir_list, local_mount_dir_list, expected_message",
     [
         (
             ["dir1"],
+            [],
             None,
         ),
         (
             ["dir1", "dir2"],
+            [],
             None,
         ),
         (
             ["dir1", "dir2", "dir3"],
+            [],
             None,
         ),
         (
             ["dir1", "dir1", "dir2"],
+            [],
             "Mount directory dir1 cannot be specified for multiple file systems",
         ),
         (
             ["dir1", "dir2", "dir3", "dir2", "dir1"],
+            [],
             "Mount directories dir2, dir1 cannot be specified for multiple file systems",
+        ),
+        (
+            ["dir1", "dir2", "/scratch"],
+            [],
+            None,
+        ),
+        (
+            ["dir1", "dir2", "/scratch"],
+            ["/scratch"],
+            "Ephemeral drive mount directory `/scratch` is overwritten by shared storage mount directory. "
+            "Please consider changing either directory to avoid the overwrite.",
         ),
     ],
 )
-def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
-    actual_failures = DuplicateMountDirValidator().execute(mount_dir_list)
+def test_duplicate_mount_dir_validator(shared_mount_dir_list, local_mount_dir_list, expected_message):
+    actual_failures = DuplicateMountDirValidator().execute(shared_mount_dir_list, local_mount_dir_list)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -939,7 +955,6 @@ def test_shared_storage_name_validator(name, expected_message):
         ("shared", None),
         ("/shared", None),
         ("home", "mount directory .* is reserved"),
-        ("/scratch", "mount directory .* is reserved"),
     ],
 )
 def test_shared_storage_mount_dir_validator(mount_dir, expected_message):

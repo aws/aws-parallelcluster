@@ -205,6 +205,10 @@ class InstanceTypeInfo:
 
         return vcpus
 
+    def instance_storage_supported(self) -> bool:
+        """Indicate whether instance storage is supported."""
+        return self.instance_type_data.get("InstanceStorageSupported")
+
     def supported_architecture(self):
         """Return the list of supported architectures."""
         supported_architectures = self.instance_type_data.get("ProcessorInfo").get("SupportedArchitectures")

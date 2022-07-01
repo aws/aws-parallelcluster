@@ -19,7 +19,6 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
-    DEFAULT_EPHEMERAL_DIR,
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
@@ -581,8 +580,8 @@ class DuplicateMountDirValidator(Validator):
     Verify if there are duplicated mount dirs between shared storage and ephemeral volumes.
     """
 
-    def _validate(self, mount_dir_list):
-        duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
+    def _validate(self, shared_mount_dir_list, local_mount_dir_list):
+        duplicated_mount_dirs = _find_duplicate_params(shared_mount_dir_list)
         if duplicated_mount_dirs:
             self._add_failure(
                 "Mount {0} {1} cannot be specified for multiple file systems".format(
@@ -591,6 +590,13 @@ class DuplicateMountDirValidator(Validator):
                 ),
                 FailureLevel.ERROR,
             )
+        for local_mount_dir in local_mount_dir_list:
+            if local_mount_dir in shared_mount_dir_list:
+                self._add_failure(
+                    f"Ephemeral drive mount directory `{local_mount_dir}` is overwritten by shared storage "
+                    f"mount directory. Please consider changing either directory to avoid the overwrite.",
+                    FailureLevel.ERROR,
+                )
 
 
 class OverlappingMountDirValidator(Validator):
@@ -714,10 +720,9 @@ class SharedStorageMountDirValidator(Validator):
             "/usr",
             "/var",
         ]
-        default_directories = [DEFAULT_EPHEMERAL_DIR]
         if not mount_dir.startswith("/"):
             mount_dir = "/" + mount_dir
-        if mount_dir in reserved_directories + default_directories:
+        if mount_dir in reserved_directories:
             self._add_failure(
                 f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
                 FailureLevel.ERROR,
