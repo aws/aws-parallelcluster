@@ -338,6 +338,7 @@ class Cluster:
         disable_rollback: bool = False,
         validator_suppressors: Set[ValidatorSuppressor] = None,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
+        enable_termination_protection: bool = False,
     ) -> Tuple[Optional[str], List]:
         """
         Create cluster.
@@ -360,7 +361,10 @@ class Cluster:
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
                 self.template_body = CDKTemplateBuilder().build_cluster_template(
-                    cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
+                    cluster_config=self.config,
+                    bucket=self.bucket,
+                    stack_name=self.stack_name,
+                    enable_termination_protection=enable_termination_protection,
                 )
 
             # upload cluster artifacts and generated template
@@ -374,6 +378,7 @@ class Cluster:
                 ),
                 disable_rollback=disable_rollback,
                 tags=self._get_cfn_tags(),
+                enable_termination_protection=enable_termination_protection,
             )
 
             return creation_result.get("StackId"), suppressed_validation_failures

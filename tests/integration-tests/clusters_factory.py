@@ -425,7 +425,10 @@ class ClustersFactory:
             "--cluster-name",
             name,
         ]
+        termination_protection = kwargs.pop("--enable-termination-protection", False)
         wait = kwargs.pop("wait", True)
+        if termination_protection:
+            command.append("--enable-termination-protection")
         if wait:
             command.append("--wait")
         for k, val in kwargs.items():
