@@ -424,10 +424,21 @@ def test_scontrol_reboot(
     )
 
     # Check that node in REBOOT_REQUESTED state can be powered down
-    _test_scontrol_reboot_powerdown_reboot_requested_node(slurm_commands, "queue1-st-t2medium-1")
+    _test_scontrol_reboot_powerdown_reboot_requested_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2medium-1",
+    )
+
+    # Clear clustermgtd logs produced in previous tests
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
 
     # Check that node in REBOOT_ISSUED state can be powered down
-    _test_scontrol_reboot_powerdown_reboot_requested_node(slurm_commands, "queue1-st-t2medium-2")
+    _test_scontrol_reboot_powerdown_reboot_issued_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2medium-2",
+    )
 
 
 def _assert_cluster_initial_conditions(
@@ -1652,7 +1663,6 @@ def _test_scontrol_reboot_alloc_nodes(
     remote_command_executor,
     slurm_commands,
 ):
-
     """Test scontrol reboot with allocated nodes."""
 
     # Get nodes and check that they are idle
@@ -1688,6 +1698,7 @@ def _test_scontrol_reboot_alloc_nodes(
 
 
 def _test_scontrol_reboot_powerdown_reboot_requested_node(
+    remote_command_executor,
     slurm_commands,
     node,
 ):
@@ -1722,9 +1733,15 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
     assert_compute_node_states(slurm_commands, [node], ["draining!"])
 
     # The node will be handled as a POWER_DOWN node by clustermgtd
+    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Found the following unhealthy static nodes"],
+    )
 
 
 def _test_scontrol_reboot_powerdown_reboot_issued_node(
+    remote_command_executor,
     slurm_commands,
     node,
 ):
@@ -1742,12 +1759,18 @@ def _test_scontrol_reboot_powerdown_reboot_issued_node(
 
     # Request node power down
     slurm_commands.set_nodes_state([node], "POWER_DOWN_FORCE")
-    time.sleep(15)
-    assert_compute_node_states(slurm_commands, [node], ["down%"])
+    time.sleep(2)
+    assert_compute_node_states(slurm_commands, [node], ["idle!"])
+    wait_for_compute_nodes_states(slurm_commands, [node], ["idle%"])
 
     # Check that a new reboot does not change the state
     slurm_commands.reboot_compute_node(node, asap=False)
     time.sleep(2)
-    assert_compute_node_states(slurm_commands, [node], ["down%"])
+    assert_compute_node_states(slurm_commands, [node], ["idle%"])
 
     # The node will be handled as a POWER_DOWN node by clustermgtd
+    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Found the following unhealthy static nodes"],
+    )

@@ -27,6 +27,7 @@ CommunicationParameters=NoAddrCache
 SuspendProgram=<%= node['pcluster']['local_dir'] %>/scripts/slurm/slurm_suspend
 ResumeProgram=<%= node['pcluster']['local_dir'] %>/scripts/slurm/slurm_resume
 ResumeFailProgram=<%= node['pcluster']['local_dir'] %>/scripts/slurm/slurm_suspend
+RebootProgram=/sbin/reboot
 SuspendTimeout=120
 ResumeTimeout=1800
 PrivateData=cloud
