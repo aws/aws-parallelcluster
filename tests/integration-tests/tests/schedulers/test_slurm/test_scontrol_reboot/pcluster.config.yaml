@@ -14,11 +14,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
-        - Name: t2medium
-          InstanceType: t2.medium
+        - Name: t2micro
+          InstanceType: t2.micro
           MinCount: 2
           MaxCount: 4
-SharedStorage:
-  - MountDir: /shared
-    Name: name1
-    StorageType: Ebs
