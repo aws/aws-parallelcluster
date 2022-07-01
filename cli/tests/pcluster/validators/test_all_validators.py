@@ -224,14 +224,14 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         any_order=True,
     )
     key_pair_validator.assert_has_calls([call(key_name="ec2-key-name")])
-    instance_type_validator.assert_has_calls([call(instance_type="t2.micro")])
+    instance_type_validator.assert_has_calls([call(instance_type="c5d.xlarge")])
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
-            call(instance_type="t2.micro", image="ami-12345678"),
+            call(instance_type="c5d.xlarge", image="ami-12345678"),
             call(instance_type="c5.2xlarge", image="ami-12345678"),
             call(instance_type="c4.2xlarge", image="ami-12345678"),
             call(instance_type="c5.4xlarge", image="ami-12345678"),
-            call(instance_type="c4.4xlarge", image="ami-12345678"),
+            call(instance_type="c5d.xlarge", image="ami-12345678"),
         ],
         any_order=True,
     )
@@ -251,7 +251,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
             call(instance_type="c5.2xlarge", architecture="x86_64"),
             call(instance_type="c4.2xlarge", architecture="x86_64"),
             call(instance_type="c5.4xlarge", architecture="x86_64"),
-            call(instance_type="c4.4xlarge", architecture="x86_64"),
+            call(instance_type="c5d.xlarge", architecture="x86_64"),
         ]
     )
 
@@ -263,11 +263,12 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2")])
     # Scratch mount directories are retrieved from a set. So the order of them is not guaranteed.
     # The first item in call_args is regular args, the second item is keyword args.
-    mount_dir_list = duplicate_mount_dir_validator.call_args[1]["mount_dir_list"]
-    mount_dir_list.sort()
-    assert_that(mount_dir_list).is_equal_to(
-        ["/my/mount/point1", "/my/mount/point2", "/my/mount/point3", "/scratch", "/scratch_head"]
-    )
+    shared_mount_dir_list = duplicate_mount_dir_validator.call_args[1]["shared_mount_dir_list"]
+    shared_mount_dir_list.sort()
+    assert_that(shared_mount_dir_list).is_equal_to(["/my/mount/point1", "/my/mount/point2", "/my/mount/point3"])
+    local_mount_dir_list = duplicate_mount_dir_validator.call_args[1]["local_mount_dir_list"]
+    local_mount_dir_list.sort()
+    assert_that(local_mount_dir_list).is_equal_to(["/scratch", "/scratch_head"])
     number_of_storage_validator.assert_has_calls(
         [
             call(storage_type="EBS", max_number=5, storage_count=1),

@@ -1266,7 +1266,8 @@ class BaseClusterConfig(Resource):
     def _validate_mount_dirs(self):
         self._register_validator(
             DuplicateMountDirValidator,
-            mount_dir_list=self.shared_mount_dir_list + list(self.local_mount_dir_set),
+            shared_mount_dir_list=self.shared_mount_dir_list,
+            local_mount_dir_list=list(self.local_mount_dir_set),
         )
         self._register_validator(
             OverlappingMountDirValidator,
@@ -1331,19 +1332,24 @@ class BaseClusterConfig(Resource):
     @property
     def local_mount_dir_set(self):
         """Retrieve the list of local mount dirs of head compute nodes ephemeral volume."""
-        mount_dir_set = {
-            self.head_node.local_storage.ephemeral_volume.mount_dir
-            if self.head_node.local_storage.ephemeral_volume
-            else DEFAULT_EPHEMERAL_DIR
-        }
+        mount_dir_set = (
+            {
+                self.head_node.local_storage.ephemeral_volume.mount_dir
+                if self.head_node.local_storage.ephemeral_volume
+                else DEFAULT_EPHEMERAL_DIR
+            }
+            if self.head_node.instance_type_info.instance_storage_supported()
+            else set()
+        )
         scheduling = self.scheduling
         if isinstance(scheduling, (SchedulerPluginScheduling, SlurmScheduling)):
             for queue in scheduling.queues:
-                mount_dir_set.add(
-                    queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                    if queue.compute_settings.local_storage.ephemeral_volume
-                    else DEFAULT_EPHEMERAL_DIR
-                )
+                if queue.has_instance_storage():
+                    mount_dir_set.add(
+                        queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                        if queue.compute_settings.local_storage.ephemeral_volume
+                        else DEFAULT_EPHEMERAL_DIR
+                    )
 
         return mount_dir_set
 
@@ -1788,6 +1794,13 @@ class SlurmQueue(_CommonQueue):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
 
+    def has_instance_storage(self):
+        """Indicate if any of the compute resource has instance storage."""
+        for compute_resource in self.compute_resources:
+            if compute_resource.instance_type_info.instance_storage_supported():
+                return True
+        return False
+
 
 class Dns(Resource):
     """Represent the DNS settings."""
@@ -1904,6 +1917,13 @@ class SchedulerPluginQueue(_CommonQueue):
     def instance_type_list(self):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
+
+    def has_instance_storage(self):
+        """Indicate if any of the compute resource has instance storage."""
+        for compute_resource in self.compute_resources:
+            if compute_resource.instance_type_info.instance_storage_supported():
+                return True
+        return False
 
 
 class SchedulerPluginSupportedDistros(Resource):

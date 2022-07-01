@@ -2,7 +2,7 @@ Image:
   Os: alinux2
   CustomAmi: ami-12345678
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: c5d.xlarge
   Networking:
     SubnetId: subnet-12345678
   Ssh:
@@ -31,7 +31,7 @@ Scheduling:
           InstanceType: c5.4xlarge
           MaxCount: 5
         - Name: compute_resource2
-          InstanceType: c4.4xlarge
+          InstanceType: c5d.xlarge
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1

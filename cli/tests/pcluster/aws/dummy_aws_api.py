@@ -77,6 +77,11 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
     def ec2memory_size_in_mib(self):
         return self._ec2memory_size_in_mib
 
+    def instance_storage_supported(self):
+        # There are more instance types supporting instance storage.
+        # But for the simplicity of the mock, only c5d is considered.
+        return True if self._instance_type.startswith("c5d") else False
+
 
 class _DummyAWSApi(AWSApi):
     def __init__(self):
@@ -262,6 +267,4 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
     """Mock AWS Api."""
     mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
     if mock_instance_type_info:
-        mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.get_instance_type_info", return_value=_DummyInstanceTypeInfo("t2.micro")
-        )
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)

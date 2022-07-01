@@ -82,9 +82,14 @@ def test_ebs_snapshot(
     assert_that(result.stdout.strip()).is_equal_to("hello world")
 
 
-@pytest.mark.usefixtures("instance")
-def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region, os, scheduler_commands_factory):
+def test_ebs_multiple(
+    scheduler, instance, pcluster_config_reader, clusters_factory, region, os, scheduler_commands_factory
+):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
+    if not utils.get_instance_info(instance)["InstanceStorageSupported"]:
+        # If the instance type does not support instance store, mount an EBS to /scratch to make sure our code allows it
+        mount_dirs[0] = "/scratch"
+
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
 
     # for volume type sc1 and st1, the minimum volume sizes are 500G
