@@ -159,6 +159,10 @@ class CWDashboardConstruct(Construct):
                 for cond_dict in log_params.conditions:
                     if cond_dict.param in cond_dict.allowed_values:
                         self.empty_section = False
+                        return
+            else:
+                self.empty_section = False
+                return
 
     def _add_text_widget(self, markdown):
         """Add the textwidget to the cloudwatch dashboard and update coordinates."""

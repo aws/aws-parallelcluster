@@ -72,7 +72,8 @@ def test_ebs_snapshot(
 
     mount_dir = "/" + mount_dir
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.7")
+    # In alinux2 the volume is rounded smaller (9.7G)
+    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.[7,8]")
     _test_ebs_resize(remote_command_executor, mount_dir, volume_size=volume_size)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 

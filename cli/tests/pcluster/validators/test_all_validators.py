@@ -12,6 +12,7 @@ from unittest.mock import PropertyMock, call
 
 from assertpy import assert_that
 
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 from pcluster.validators import (
@@ -83,6 +84,11 @@ def test_all_validators_are_called(test_datadir, mocker):
     mocker.patch(
         "pcluster.config.cluster_config.SlurmClusterConfig.get_instance_types_data",
     )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_image",
+        return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
+    )
+
     mock_aws_api(mocker)
 
     # Need to load two configuration files to execute all validators because there are mutually exclusive parameters.
@@ -188,6 +194,11 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         "pcluster.config.cluster_config.SlurmComputeResource.architecture",
         new_callable=PropertyMock(return_value="x86_64"),
     )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_image",
+        return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
+    )
+
     mock_aws_api(mocker)
 
     _load_and_validate(test_datadir / "slurm.yaml")

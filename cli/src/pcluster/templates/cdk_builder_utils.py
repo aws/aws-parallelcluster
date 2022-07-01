@@ -27,7 +27,6 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     HeadNode,
     LocalStorage,
-    RootVolume,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmQueue,
@@ -63,7 +62,7 @@ def get_block_device_mappings(local_storage: LocalStorage, os: str):
             ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
         )
 
-    root_volume = local_storage.root_volume or RootVolume()
+    root_volume = local_storage.root_volume
 
     block_device_mappings.append(
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(

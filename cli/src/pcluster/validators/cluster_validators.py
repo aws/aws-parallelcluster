@@ -29,6 +29,7 @@ from pcluster.constants import (
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
+    SUPPORTED_SCHEDULERS,
 )
 from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
@@ -1078,6 +1079,19 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
         )
 
 
+class RootVolumeSizeValidator(Validator):
+    """Verify the root volume size is equal or greater to the size of the snapshot of the AMI."""
+
+    def _validate(self, root_volume_size, ami_volume_size):
+        if root_volume_size:
+            if root_volume_size < ami_volume_size:
+                self._add_failure(
+                    f"Root volume size {root_volume_size} GiB must be equal or greater than the volume size of "
+                    f"the AMI: {ami_volume_size} GiB.",
+                    FailureLevel.ERROR,
+                )
+
+
 class HostedZoneValidator(Validator):
     """Validate custom private domain in the same VPC as head node."""
 
@@ -1108,5 +1122,16 @@ class HostedZoneValidator(Validator):
                     f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
                     f"current length is {total_length}"
                 ),
+                FailureLevel.ERROR,
+            )
+
+
+class SchedulerValidator(Validator):
+    """Validate that only supported schedulers are specified."""
+
+    def _validate(self, scheduler):
+        if scheduler not in SUPPORTED_SCHEDULERS:
+            self._add_failure(
+                f"{scheduler} scheduler is not supported. Supported schedulers are: {', '.join(SUPPORTED_SCHEDULERS)}.",
                 FailureLevel.ERROR,
             )

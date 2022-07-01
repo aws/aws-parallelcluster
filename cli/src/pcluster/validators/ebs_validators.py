@@ -45,7 +45,7 @@ class EbsVolumeTypeSizeValidator(Validator):
     """
 
     def _validate(self, volume_type: str, volume_size: int):
-        if volume_type in EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS:
+        if volume_size is not None and volume_type in EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS:
             min_size, max_size = EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.get(volume_type)
             if volume_size > max_size:
                 self._add_failure(

@@ -41,6 +41,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
     SharedStorageMountDirValidator,
@@ -1136,4 +1137,21 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
         queues=queues,
     )
     expected_message = "make sure.*cluster nodes are reachable" if expect_warning else None
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "root_volume_size, ami_size, expected_message",
+    [
+        (65, 50, None),
+        (
+            25,
+            50,
+            "Root volume size 25 GiB must be equal or greater than .* 50 GiB.",
+        ),
+    ],
+)
+def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected_message):
+    mock_aws_api(mocker)
+    actual_failures = RootVolumeSizeValidator().execute(root_volume_size, ami_size)
     assert_failure_messages(actual_failures, expected_message)

@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-x.x.x
+3.2.0
 ------
 
 **ENHANCEMENTS**
@@ -11,12 +11,11 @@ x.x.x
 - Add support for multiple FSx File Systems.
 - Add support for attaching existing FSx for Ontap and FSx for OpenZFS File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
-- Show `requested_value` and `current_value` values in the change set when adding or removing a section.
-- Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based
-  scheduling in Slurm.
-  - Add new configuration parameter to override default value of schedulable memory on compute nodes.
+- Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based scheduling in Slurm.
+- Add new configuration parameter `Scheduling/SlurmQueues/ComputeResources/SchedulableMemory` to override default value of the memory seen by the scheduler on compute nodes.
 - Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
 - Change default EBS volume types from gp2 to gp3 in both the root and additional volumes.
+- Add support for rebooting compute nodes via Slurm.
 
 **CHANGES**
 - Remove support for Python 3.6.
@@ -28,10 +27,15 @@ x.x.x
 - Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
 - Add `parallelcluster:cluster-name` tag to all resources created by ParallelCluster.
 - Do not allow setting `PlacementGroup/Id` when `PlacementGroup/Enabled` is explicitly set to `false`.
-- Restrict IPv6 access to IMDS to root and cluster admin users only.
+- Restrict IPv6 access to IMDS to root and cluster admin users only, when configuration parameter `HeadNode/Imds/Secured` is enabled.
+- Change the default root volume size from 35 GiB to the size of AMIs. The default can be overwritten in cluster configuration file.
+- Automatic disabling of the compute fleet when the configuration parameter `Scheduling/SlurmQueues/ComputeResources/SpotPrice`
+  is lower than the minimum required Spot request fulfillment price.
+- Show `requested_value` and `current_value` values in the change set when adding or removing a section.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
+- Handle corner case in the scaling logic when instance is just launched and the describe instances API doesn't report yet all the EC2 info.
 
 3.1.4
 ------
