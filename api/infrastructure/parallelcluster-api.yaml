@@ -59,6 +59,16 @@ Parameters:
       - true
       - false
 
+  EnableS3FullAccess:
+    Description: |
+      When set to true the ParallelCluster API can access, write all the S3 buckets, it is needed to import/export from/to S3 when creating an FSx filesystem.
+      WARNING - setting this to true grants to the Lambda function S3 Get*, List* and PutObject privileges on all the buckets.
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+
   PermissionsBoundaryPolicy:
     Description: |
       ARN of a IAM policy to use as PermissionsBoundary for all IAM resources created by ParallelCluster API.
@@ -610,6 +620,21 @@ Resources:
                 iam:AWSServiceName:
                   - fsx.amazonaws.com
                   - s3.data-source.lustre.fsx.amazonaws.com
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:AttachRolePolicy
+              - iam:PutRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/s3.data-source.lustre.fsx.amazonaws.com/*
+            Effect: Allow
+            Sid: FSxS3PoliciesAttach
+          - Action:
+              - s3:Get*
+              - s3:List*
+              - s3:PutObject
+            Resource: '*'
+            Effect: Allow
+            Condition: !Equals [!Ref EnableS3FullAccess, true]
+            Sid: FSxS3FullAccess
           - Action:
               - lambda:CreateFunction
               - lambda:TagResource
