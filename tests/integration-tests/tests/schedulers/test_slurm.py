@@ -377,6 +377,72 @@ def test_slurm_memory_based_scheduling(
     )
 
 
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_scontrol_reboot
+def test_scontrol_reboot(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    # Clear clustermgtd logs before starting the tests
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+
+    # Run first job to wake up dynamic nodes from power_down state
+    slurm_commands.submit_command(
+        command="hostname",
+        nodes=2,
+        slots=2,
+        constraint="dynamic",
+    )
+    wait_for_compute_nodes_states(
+        slurm_commands,
+        ["queue1-dy-t2micro-1", "queue1-dy-t2micro-2"],
+        "idle",
+    )
+
+    # Test that idle static and dynamic nodes can be rebooted
+    _test_scontrol_reboot_nodes(
+        remote_command_executor,
+        slurm_commands,
+        "idle",
+    )
+
+    # Run job to allocate all nodes and test that allocated nodes can be rebooted
+    slurm_commands.submit_command(
+        command="sleep 150",
+        nodes=4,
+        slots=4,
+    )
+    _test_scontrol_reboot_nodes(
+        remote_command_executor,
+        slurm_commands,
+        "alloc",
+    )
+
+    # Check that node in REBOOT_REQUESTED state can be powered down
+    _test_scontrol_reboot_powerdown_reboot_requested_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2micro-1",
+    )
+
+    # Clear clustermgtd logs produced in previous tests
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+
+    # Check that node in REBOOT_ISSUED state can be powered down
+    _test_scontrol_reboot_powerdown_reboot_issued_node(
+        remote_command_executor,
+        slurm_commands,
+        "queue1-st-t2micro-2",
+    )
+
+
 def _assert_cluster_initial_conditions(
     scheduler_commands, expected_num_dummy, expected_num_instance_node, expected_num_static
 ):
@@ -1557,3 +1623,130 @@ def _test_memory_based_scheduling_enabled_true(
     # check RealMemory overridden via config file parameter
     assert_that(slurm_commands.get_node_attribute("queue1-dy-ondemand1-i3-1", "Memory")).is_equal_to("31400")
     # TODO: Add functional tests for memory-based scheduling
+
+
+def _test_scontrol_reboot_nodes(
+    remote_command_executor,
+    slurm_commands,
+    nodes_state,
+):
+    """Test scontrol reboot with idle nodes."""
+
+    jiff = 2
+
+    # Get nodes and check that they are in the expected state
+    nodes_in_queue = slurm_commands.get_compute_nodes("queue1")
+    if nodes_state == "idle":
+        assert_compute_node_states(slurm_commands, nodes_in_queue, "idle")
+    else:
+        assert_compute_node_states(slurm_commands, nodes_in_queue, ["allocated", "mixed"])
+
+    # Reboot nodes according to this logic:
+    # - 1 static idle node
+    # - 1 static idle node asap
+    # - 1 dynamic idle node
+    # - 1 dynamic idle node asap
+    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_queue)
+    assert_that(len(static_nodes)).is_equal_to(2)
+    assert_that(len(dynamic_nodes)).is_equal_to(2)
+    slurm_commands.reboot_compute_node(static_nodes[0], asap=False)
+    slurm_commands.reboot_compute_node(static_nodes[1], asap=True)
+    slurm_commands.reboot_compute_node(dynamic_nodes[0], asap=False)
+    slurm_commands.reboot_compute_node(dynamic_nodes[1], asap=True)
+
+    # Check that nodes enter a reboot state
+    time.sleep(jiff)
+    if nodes_state == "idle":
+        assert_compute_node_states(slurm_commands, nodes_in_queue, "reboot^")
+    else:
+        assert_compute_node_states(slurm_commands, nodes_in_queue, ["mixed@", "allocated@", "draining@"])
+        wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["reboot^"])
+
+    # Wait that nodes come back after a while, without having triggered clustermgtd
+    wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["idle"])
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Found the following unhealthy static nodes"],
+    )
+
+
+def _test_scontrol_reboot_powerdown_reboot_requested_node(
+    remote_command_executor,
+    slurm_commands,
+    node,
+):
+    """
+    Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
+    (either manually or by a parameter update strategy).
+    """
+
+    jiff = 2
+
+    # Submit a job on the node to have it allocated
+    slurm_commands.submit_command(
+        command="sleep 120",
+        nodes=1,
+        slots=1,
+        other_options=f"-w {node}",
+    )
+    time.sleep(jiff)
+    assert_compute_node_states(slurm_commands, [node], ["allocated", "mixed"])
+
+    # Request node reboot
+    slurm_commands.reboot_compute_node(node, asap=False)
+    time.sleep(jiff)
+    assert_compute_node_states(slurm_commands, [node], ["mixed@", "allocated@"])
+
+    # Request node power down
+    slurm_commands.set_nodes_state([node], "POWER_DOWN_ASAP")
+    time.sleep(jiff)
+    assert_compute_node_states(slurm_commands, [node], ["draining!"])
+
+    # Check that a new reboot does not change the state
+    slurm_commands.reboot_compute_node(node, asap=False)
+    time.sleep(jiff)
+    assert_compute_node_states(slurm_commands, [node], ["draining!"])
+
+    # The node will be handled as a POWER_DOWN node by clustermgtd
+    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Found the following unhealthy static nodes"],
+    )
+
+
+def _test_scontrol_reboot_powerdown_reboot_issued_node(
+    remote_command_executor,
+    slurm_commands,
+    node,
+):
+    """
+    Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
+    (either manually or by a parameter update strategy).
+    """
+
+    jiff = 2
+
+    assert_compute_node_states(slurm_commands, [node], ["idle"])
+
+    # Request node reboot
+    slurm_commands.reboot_compute_node(node, asap=False)
+    time.sleep(jiff)
+    assert_compute_node_states(slurm_commands, [node], ["reboot^"])
+
+    # Request node power down
+    slurm_commands.set_nodes_state([node], "POWER_DOWN_FORCE")
+    wait_for_compute_nodes_states(slurm_commands, [node], ["idle%"])
+
+    # Check that a new reboot does not change the state
+    slurm_commands.reboot_compute_node(node, asap=False)
+    time.sleep(jiff)
+    assert_compute_node_states(slurm_commands, [node], ["idle%"])
+
+    # The node will be handled as a POWER_DOWN node by clustermgtd
+    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Found the following unhealthy static nodes"],
+    )

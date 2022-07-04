@@ -1,0 +1,20 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {{ scheduler_prefix }}Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: t2micro
+          InstanceType: t2.micro
+          MinCount: 2
+          MaxCount: 4
