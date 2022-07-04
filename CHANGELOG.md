@@ -32,6 +32,7 @@ CHANGELOG
 - Automatic disabling of the compute fleet when the configuration parameter `Scheduling/SlurmQueues/ComputeResources/SpotPrice`
   is lower than the minimum required Spot request fulfillment price.
 - Show `requested_value` and `current_value` values in the change set when adding or removing a section.
+- Do not replace dynamic node in POWER_DOWN as jobs may be still running.
 
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
