@@ -66,13 +66,13 @@ paths:
       tags:
         - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
     post:
       description: Create a managed cluster in a given region.
       operationId: CreateCluster
@@ -166,13 +166,13 @@ paths:
       tags:
         - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/clusters/{clusterName}:
     delete:
       description: Initiate the deletion of a cluster.
@@ -232,13 +232,13 @@ paths:
       tags:
         - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
     get:
       description: Get detailed information about an existing cluster.
       operationId: DescribeCluster
@@ -297,13 +297,13 @@ paths:
       tags:
         - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
     put:
       description: Update a cluster managed in a given region.
       operationId: UpdateCluster
@@ -411,13 +411,13 @@ paths:
       tags:
         - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/clusters/{clusterName}/computefleet:
     get:
       description: Describe the status of the compute fleet.
@@ -477,13 +477,13 @@ paths:
       tags:
         - Cluster ComputeFleet
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
     patch:
       description: Update the status of the cluster compute fleet.
       operationId: UpdateComputeFleet
@@ -548,13 +548,13 @@ paths:
       tags:
         - Cluster ComputeFleet
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/clusters/{clusterName}/instances:
     delete:
       description: Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters.
@@ -617,13 +617,13 @@ paths:
       tags:
         - Cluster Instances
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
     get:
       description: Describe the instances belonging to a given cluster.
       operationId: DescribeClusterInstances
@@ -693,13 +693,13 @@ paths:
       tags:
         - Cluster Instances
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/clusters/{clusterName}/logstreams:
     get:
       description: Retrieve the list of log streams associated with a cluster.
@@ -784,13 +784,13 @@ paths:
       tags:
         - Cluster Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/clusters/{clusterName}/logstreams/{logStreamName}:
     get:
       description: Retrieve the events associated with a log stream.
@@ -892,13 +892,13 @@ paths:
       tags:
         - Cluster Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/clusters/{clusterName}/stackevents:
     get:
       description: Retrieve the events associated with the stack for a given cluster.
@@ -964,13 +964,13 @@ paths:
       tags:
         - Cluster Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/images/custom:
     get:
       description: Retrieve the list of existing custom images.
@@ -1028,13 +1028,13 @@ paths:
       tags:
         - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
     post:
       description: Create a custom ParallelCluster image in a given region.
       operationId: BuildImage
@@ -1128,13 +1128,13 @@ paths:
       tags:
         - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/images/custom/{imageId}:
     delete:
       description: Initiate the deletion of the custom ParallelCluster image.
@@ -1201,13 +1201,13 @@ paths:
       tags:
         - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
     get:
       description: Get detailed information about an existing image.
       operationId: DescribeImage
@@ -1266,13 +1266,13 @@ paths:
       tags:
         - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/images/custom/{imageId}/logstreams:
     get:
       description: Retrieve the list of log streams associated with an image.
@@ -1338,13 +1338,13 @@ paths:
       tags:
         - Image Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/images/custom/{imageId}/logstreams/{logStreamName}:
     get:
       description: Retrieve the events associated with an image build.
@@ -1446,13 +1446,13 @@ paths:
       tags:
         - Image Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/images/custom/{imageId}/stackevents:
     get:
       description: Retrieve the events associated with the stack for a given image build.
@@ -1518,13 +1518,13 @@ paths:
       tags:
         - Image Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
   /v3/images/official:
     get:
       description: List Official ParallelCluster AMIs.
@@ -1582,13 +1582,13 @@ paths:
       tags:
         - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${APIGatewayExecutionRole.Arn}
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
+        credentials:
+          Fn::Sub: ${APIGatewayExecutionRole.Arn}
+        payloadFormatVersion: "2.0"
 components:
   schemas:
     AmiInfo:
