@@ -50,7 +50,7 @@ echo "# SCALE TEST"
 echo "# - Iterations: ${ITERATIONS}"
 echo "# - Jobs / Iteration: ${JOBS_PER_ITERATION}"
 echo "# - Processes / Job: ${NUM_PROCESSES_PER_JOB}"
-echo "# - Job Users: ${JOB_USERS[@]}"
+echo "# - Job Users:" "${JOB_USERS[@]}"
 echo "# - Job Wrapper Script: ${JOB_WRAPPER_SCRIPT}"
 echo "# - Job Command: ${JOB_COMMAND}"
 echo "# - Test Output: ${OUTPUT_DIR}"
@@ -70,7 +70,7 @@ for iteration in $(seq 1 ${ITERATIONS}); do
   # Job Launch
   JOB_IDS=()
   for j in $(seq 1 ${JOBS_PER_ITERATION}); do
-    JOB_USER=$(get_circular_array_element $(( ${j} - 1 )) ${JOB_USERS[@]})
+    JOB_USER=$(get_circular_array_element $(( ${j} - 1 )) "${JOB_USERS[@]}")
     log "Submitting job ${j}/${JOBS_PER_ITERATION} for iteration ${iteration}/${ITERATIONS} as user ${JOB_USER}"
     JOB_ID=$(launch_job "${JOB_USER}" "${NUM_PROCESSES_PER_JOB}" "${JOB_WRAPPER_SCRIPT}" "${OUTPUT_DIR}" "${JOB_COMMAND}")
     JOB_SUBMISSION_TIME_MILLIS=$(timestamp_millis)
@@ -87,8 +87,8 @@ for iteration in $(seq 1 ${ITERATIONS}); do
   done
 
   # Waiting Jobs Completion
-  log "Waiting for jobs completion: ${JOB_IDS[@]}"
-  wait_job_completion $(join_array_by "," ${JOB_IDS[@]}) 120
+  log "Waiting for jobs completion:" "${JOB_IDS[@]}"
+  wait_job_completion $(join_array_by "," "${JOB_IDS[@]}") 120
 
   # Metrics
   COMPUTE_NODES_METRICS=("instancePreInstallUpTime" "instancePostInstallUpTime")
@@ -101,21 +101,21 @@ for iteration in $(seq 1 ${ITERATIONS}); do
   COMPUTE_NODES_SAMPLE_FILE="${OUTPUT_DIR}/compute-nodes.${iteration}.sample.json"
   COMPUTE_NODES_METRICS_DIR="${SHARED_DIR}/metrics/compute-nodes"
   COMPUTE_NODES_METRICS_FILES=$(find ${COMPUTE_NODES_METRICS_DIR} -type f -name "instance-*.json")
-  for metric in ${COMPUTE_NODES_METRICS_WITH_TIMESTAMPS[@]}; do
+  for metric in "${COMPUTE_NODES_METRICS_WITH_TIMESTAMPS[@]}"; do
     add_to_json "${metric}Sample" $(get_sample_from_json "${metric}" "${COMPUTE_NODES_METRICS_FILES}") ${COMPUTE_NODES_SAMPLE_FILE}
   done
 
-  for JOB_ID in ${JOB_IDS[@]}; do
+  for JOB_ID in "${JOB_IDS[@]}"; do
     JOB_METRICS_FILE="${OUTPUT_DIR}/job.${JOB_ID}.sample.json"
     # Compute Nodes metrics
     # firstComputeNode timings, i.e. time metrics from the first launched compute node
     FIRST_COMPUTE_NODE_METRICS=$(get_json_with_minimum "instancePreInstallTimestamp" "${COMPUTE_NODES_METRICS_FILES}")
-    for metric in ${COMPUTE_NODES_METRICS_WITH_TIMESTAMPS_AND_INSTANCE_ID[@]}; do
+    for metric in "${COMPUTE_NODES_METRICS_WITH_TIMESTAMPS_AND_INSTANCE_ID[@]}"; do
       add_to_json "firstComputeNode.${metric}" "$(echo ${FIRST_COMPUTE_NODE_METRICS} | jq -r ".${metric}")" ${JOB_METRICS_FILE}
     done
     # lastComputeNode timings, i.e. time metrics from the last launched compute node
     LAST_COMPUTE_NODE_METRICS=$(get_json_with_maximum "instancePreInstallTimestamp" "${COMPUTE_NODES_METRICS_FILES}")
-    for metric in ${COMPUTE_NODES_METRICS_WITH_TIMESTAMPS_AND_INSTANCE_ID[@]}; do
+    for metric in "${COMPUTE_NODES_METRICS_WITH_TIMESTAMPS_AND_INSTANCE_ID[@]}"; do
       add_to_json "lastComputeNode.${metric}" "$(echo ${LAST_COMPUTE_NODE_METRICS} | jq -r ".${metric}")" ${JOB_METRICS_FILE}
     done
 
@@ -155,11 +155,11 @@ done
 log "Generating samples"
 SAMPLES_FILE="${OUTPUT_DIR}/samples.json"
 JOBS_SAMPLE_FILES=$(find ${OUTPUT_DIR} -type f -name "job.*.sample.json")
-for metric in ${JOB_METRICS[@]}; do
+for metric in "${JOB_METRICS[@]}"; do
   add_to_json "${metric}Sample" $(get_sample_from_json "${metric}" "${JOBS_SAMPLE_FILES}") ${SAMPLES_FILE}
 done
 COMPUTE_NODES_SAMPLE_FILES=$(find ${OUTPUT_DIR} -type f -name "compute-nodes.*.sample.json")
-for metric in ${COMPUTE_NODES_METRICS[@]}; do
+for metric in "${COMPUTE_NODES_METRICS[@]}"; do
   add_to_json "${metric}Sample" $(get_sample_from_json "${metric}Sample" "${COMPUTE_NODES_SAMPLE_FILES}") ${SAMPLES_FILE}
 done
 
@@ -167,7 +167,7 @@ done
 log "Generating statistics"
 STATISTICS_FILE="${OUTPUT_DIR}/statistics.json"
 STATISTICS_METRICS=(${JOB_METRICS[@]} ${COMPUTE_NODES_METRICS[@]})
-for metric in ${STATISTICS_METRICS[@]}; do
+for metric in "${STATISTICS_METRICS[@]}"; do
   add_to_json "${metric}.min" $(get_min "$(cat ${SAMPLES_FILE} | jq -r ".${metric}Sample")") ${STATISTICS_FILE}
   add_to_json "${metric}.max" $(get_max "$(cat ${SAMPLES_FILE} | jq -r ".${metric}Sample")") ${STATISTICS_FILE}
   add_to_json "${metric}.avg" $(get_avg "$(cat ${SAMPLES_FILE} | jq -r ".${metric}Sample")") ${STATISTICS_FILE}

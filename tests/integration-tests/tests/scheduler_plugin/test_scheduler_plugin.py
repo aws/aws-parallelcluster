@@ -110,7 +110,7 @@ def test_scheduler_plugin_integration(
         run_as_user=run_as_user,
         plugin_interface_version=SCHEDULER_PLUGIN_INTERFACE_VERSION,
     )
-    cluster = clusters_factory(before_update_cluster_config, suppress_validators="type:SchedulerValidator")
+    cluster = clusters_factory(before_update_cluster_config)
     cluster_config = pcluster_config_reader(
         bucket=bucket_name,
         bucket_key_prefix=s3_bucket_key_prefix,
@@ -600,7 +600,7 @@ def _test_cluster_update(cluster, cluster_config):
     """Test cluster update."""
     cluster.stop()
     _check_fleet_status(cluster, "STOPPED")
-    cluster.update(str(cluster_config), force_update="true", suppress_validators="type:SchedulerValidator")
+    cluster.update(str(cluster_config), force_update="true")
     cluster.start()
     _check_fleet_status(cluster, "RUNNING")
 
