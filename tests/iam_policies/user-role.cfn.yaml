@@ -353,6 +353,18 @@ Resources:
                   - fsx.amazonaws.com
                   - s3.data-source.lustre.fsx.amazonaws.com
           - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:AttachRolePolicy
+              - iam:PutRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/s3.data-source.lustre.fsx.amazonaws.com/*
+            Effect: Allow
+          - Action:
+              - s3:Get*
+              - s3:List*
+              - s3:PutObject
+            Resource: '*'
+            Effect: Allow
+          - Action:
               - lambda:CreateFunction
               - lambda:TagResource
               - lambda:DeleteFunction
