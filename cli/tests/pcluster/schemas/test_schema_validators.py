@@ -614,25 +614,28 @@ def test_password_secret_arn_validator(password_secret_arn, expected_message):
         ("ACTUAL", "EQUAL", 200, None, "Must be one of"),
         ("Actual", None, 100, None, "Must be one of"),
         (None, None, 150, "ABSOLUTE", "Must be one of"),
-        (None, None, None, None, "Field may not be null"),
         ("FORECASTED", "EQUAL_TO", 100, "PERCENTAGE", None),
         (None, "GREATER_THAN", 200, "ABSOLUTE_VALUE", None),
         (None, "LESS_THAN", 2, None, None),
     ],
 )
-def test_budget_notification_schema(
+def test_budget_notification_schema_validators(
     notification_type,
     comparison_operator,
     threshold,
     threshold_type,
     expected_message,
 ):
-    section_dict = {
-        "NotificationType": notification_type,
-        "ComparisonOperator": comparison_operator,
-        "Threshold": threshold,
-        "ThresholdType": threshold_type,
-    }
+    section_dict = {}
+    if notification_type:
+        section_dict["NotificationType"] = notification_type
+    if comparison_operator:
+        section_dict["ComparisonOperator"] = comparison_operator
+    if threshold:
+        section_dict["Threshold"] = threshold
+    if threshold_type:
+        section_dict["ThresholdType"] = threshold_type
+
     _validate_and_assert_error(BudgetNotificationSchema(), section_dict, expected_message)
 
 
@@ -643,14 +646,14 @@ def test_budget_notification_schema(
         ("EMAIL", "alias@amazon.com", None),
         ("SNS", "arn:aws:sns:us-east-1:444455556666:MyTopic", None),
         ("GMAIL", "email@gmail.com", "Must be one of"),
-        (None, None, "Field may not be null"),
     ],
 )
-def test_budget_subscriber_schema(subscription_type, address, expected_message):
-    section_dict = {
-        "Address": address,
-        "SubscriptionType": subscription_type,
-    }
+def test_budget_subscriber_schema_validators(subscription_type, address, expected_message):
+    section_dict = {}
+    if address:
+        section_dict["Address"] = address
+    if subscription_type:
+        section_dict["SubscriptionType"] = subscription_type
     _validate_and_assert_error(BudgetSubscriberSchema(), section_dict, expected_message)
 
 
@@ -658,16 +661,15 @@ def test_budget_subscriber_schema(subscription_type, address, expected_message):
     "amount, unit, expected_message",
     [
         (120, "USD", None),
-        (100, None, None),
-        (None, None, "Field may not be null"),
-        (None, "BRP", "Field may not be null"),
+        (100, "GBP", None),
     ],
 )
-def test_budget_limit_schema(amount, unit, expected_message):
-    section_dict = {
-        "Amount": amount,
-        "Unit": unit,
-    }
+def test_budget_limit_schema_validators(amount, unit, expected_message):
+    section_dict = {}
+    if amount:
+        section_dict["Amount"] = amount
+    if unit:
+        section_dict["Unit"] = unit
     _validate_and_assert_error(BudgetLimitSchema(), section_dict, expected_message)
 
 
@@ -675,15 +677,14 @@ def test_budget_limit_schema(amount, unit, expected_message):
     "budget_category, budget_limit, time_unit, queue_name, cost_filters, expected_message",
     [
         ("cluster", {"Amount": 100, "Unit": "USD"}, "MONTHLY", None, None, None),
-        ("queue", {"Amount": 150}, "ANNUALLY", "queue1", None, None),
-        ("custom", {"Amount": 200}, "QUARTERLY", None, {"TagKeyValue": "user:customTag$hpc"}, None),
-        ("cluster", {"Amount": 300}, None, None, None, None),
-        ("cluster", None, None, None, None, "Field may not be null"),
-        ("wrongValue", {"Amount": 100}, None, None, None, "Must be one of"),
-        ("cluster", {"Amount": 100}, "DAILY", None, None, "Must be one of"),
+        ("queue", {"Amount": 150, "Unit": "GBP"}, "ANNUALLY", "queue1", None, None),
+        ("custom", {"Amount": 200, "Unit": "USD"}, "QUARTERLY", None, {"TagKeyValue": "user:customTag$hpc"}, None),
+        ("cluster", {"Amount": 300, "Unit": "USD"}, None, None, None, None),
+        ("wrongValue", {"Amount": 100, "Unit": "USD"}, None, None, None, "Must be one of"),
+        ("cluster", {"Amount": 100, "Unit": "USD"}, "DAILY", None, None, "Must be one of"),
     ],
 )
-def test_budget_schema(
+def test_budget_schema_validators(
     budget_category,
     budget_limit,
     time_unit,
@@ -691,11 +692,16 @@ def test_budget_schema(
     cost_filters,
     expected_message,
 ):
-    section_dict = {
-        "BudgetCategory": budget_category,
-        "BudgetLimit": budget_limit,
-        "TimeUnit": time_unit,
-        "QueueName": queue_name,
-        "CostFilters": cost_filters,
-    }
+    section_dict = {}
+    if budget_category:
+        section_dict["BudgetCategory"] = budget_category
+    if budget_limit:
+        section_dict["BudgetLimit"] = budget_limit
+    if time_unit:
+        section_dict["TimeUnit"] = time_unit
+    if queue_name:
+        section_dict["QueueName"] = queue_name
+    if cost_filters:
+        section_dict["CostFilters"] = cost_filters
+
     _validate_and_assert_error(BudgetSchema(), section_dict, expected_message)

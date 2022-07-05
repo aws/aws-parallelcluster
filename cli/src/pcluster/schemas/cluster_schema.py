@@ -941,7 +941,11 @@ class BudgetNotificationSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
         validate=validate.OneOf(["GREATER_THAN", "EQUAL_TO", "LESS_THAN"]),
     )
-    threshold = fields.Int(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    threshold = fields.Float(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.Range(min=0),
+    )
     threshold_type = fields.Str(
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
         validate=validate.OneOf(["ABSOLUTE_VALUE", "PERCENTAGE"]),
@@ -973,7 +977,7 @@ class BudgetNotificationWithSubscribersSchema(BaseSchema):
 
     notification = fields.Nested(
         BudgetNotificationSchema,
-        equired=True,
+        required=True,
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
@@ -993,8 +997,8 @@ class BudgetNotificationWithSubscribersSchema(BaseSchema):
 class BudgetLimitSchema(BaseSchema):
     """Represent the schema of the BudgetLimit field of a budget."""
 
-    amount = fields.Int(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    unit = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    amount = fields.Float(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    unit = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1029,6 +1033,44 @@ class BudgetSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Budget(**data)
+
+    @validates_schema
+    def no_category_conflict(self, data, **kwargs):
+        """Validate that only custom budgets have CostFilters, and only queue budgets have QueueName."""
+        budget_category = data.get("budget_category")
+        cost_filters = data.get("cost_filters")
+        queue_name = data.get("queue_name")
+        if budget_category != "custom" and cost_filters:
+            raise ValidationError("CostFilters can only be configured when BudgetCategory is set to custom.")
+        if budget_category == "custom" and not cost_filters:
+            raise ValidationError("CostFilters is required when BudgetCategory is set to custom.")
+
+        if budget_category != "queue" and queue_name:
+            raise ValidationError("QueueName can only be specified when BudgetCategory is set to queue.")
+        if budget_category == "queue" and not queue_name:
+            raise ValidationError("QueueName is required when BudgetCategory is set to queue.")
+
+    @validates_schema
+    def only_support_filter_keys(self, data, **kwargs):
+        """Validate the keys from the CostFilter dictionary, if any."""
+        accepted_keys = [
+            "AZ",
+            "CostCategory",
+            "InstanceType",
+            "LinkedAccount",
+            "Region",
+            "Service",
+            "TagKeyValue",
+            "UsageType",
+            "UsageTypeGroup",
+        ]
+        cost_filters = data.get("cost_filters")
+
+        if cost_filters is not None:
+
+            for key in cost_filters.keys():
+                if key not in accepted_keys:
+                    raise ValidationError(f"{key} is not an accepted CostTypes key.")
 
 
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):

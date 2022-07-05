@@ -292,8 +292,7 @@ class ClusterCdkStack(Stack):
 
         # Budgets
         if self.config.dev_settings and self.config.dev_settings.budgets:
-            cost_budgets = CostBudgets(self, self.config)
-            self.budget_list = cost_budgets.create_budgets()
+            self.budgets = CostBudgets(self, self.config)
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(

@@ -861,9 +861,9 @@ class BudgetNotification(Resource):
 
     def __init__(
         self,
+        threshold: float,
         notification_type: str = None,
         comparison_operator: str = None,
-        threshold: int = None,
         threshold_type: str = None,
     ):
         super().__init__()
@@ -876,7 +876,7 @@ class BudgetNotification(Resource):
 class BudgetSubscriber(Resource):
     """Represent the configuration of an individual subscriber of a budget notification."""
 
-    def __init__(self, subscription_type: str = None, address: str = None):
+    def __init__(self, address: str, subscription_type: str = None):
         super().__init__()
         self.subscription_type = Resource.init_param(subscription_type, default="EMAIL")
         self.address = Resource.init_param(address)
@@ -885,7 +885,7 @@ class BudgetSubscriber(Resource):
 class BudgetNotificationWithSubscribers(Resource):
     """Represent the configuration of the NotificationWithSubscribers field of a budget."""
 
-    def __init__(self, notification: BudgetNotification = None, subscribers: List[BudgetSubscriber] = None):
+    def __init__(self, notification: BudgetNotification, subscribers: List[BudgetSubscriber] = None):
         super().__init__()
         self.notification = notification
         self.subscribers = subscribers
@@ -894,10 +894,10 @@ class BudgetNotificationWithSubscribers(Resource):
 class BudgetLimit(Resource):
     """Represent the configuration of a budget limit."""
 
-    def __init__(self, amount: int = None, unit: str = None):
+    def __init__(self, amount: float, unit: str):
         super().__init__()
         self.amount = Resource.init_param(amount)
-        self.unit = Resource.init_param(unit, default="USD")
+        self.unit = Resource.init_param(unit)
 
 
 class Budget(Resource):
@@ -905,9 +905,9 @@ class Budget(Resource):
 
     def __init__(
         self,
-        budget_category: str = None,
+        budget_category: str,
+        budget_limit: BudgetLimit,
         queue_name: str = None,
-        budget_limit: BudgetLimit = None,
         cost_filters: Dict = None,
         time_unit: str = None,
         notifications_with_subscribers: List[BudgetNotificationWithSubscribers] = None,
