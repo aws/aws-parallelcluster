@@ -1657,7 +1657,7 @@ def _test_memory_based_scheduling_enabled_false(
 
     # Compile C program to test memory allocations
     remote_command_executor.run_remote_command("gcc memory_allocation_chars.c")
-    assert_that(remote_command_executor.run_remote_command("ls ./a.out").stdout).contains("a.out")
+    remote_command_executor.run_remote_command("ls ./a.out")
 
     # Check that I can use the `--mem` flag to filter compute nodes
     # Try to allocate on nodes with not enough memory
@@ -1712,6 +1712,7 @@ def _test_memory_based_scheduling_enabled_false(
     slurm_commands.wait_job_completed(job_id_2)
 
     # Check that without memory constraining, jobs might contend memory on the compute node
+    # (memory constraining makes sense only if memory is set as consumable resource)
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
