@@ -13,6 +13,7 @@ Scheduling:
   Scheduler: slurm
   SlurmSettings:
     EnableMemoryBasedScheduling: true
+    QueueUpdateStrategy: DRAIN
   SlurmQueues:
     - Name: queue1
       Networking:
@@ -22,6 +23,7 @@ Scheduling:
         - Name: ondemand1-i1
           InstanceType: c5.large
           MinCount: 1
+          SchedulableMemory: 3000
         - Name: ondemand1-i2
           InstanceType: {{ instance }}
         - Name: ondemand1-i3

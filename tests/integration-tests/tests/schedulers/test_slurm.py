@@ -341,7 +341,12 @@ def test_slurm_config_update(
     # test update without queue param change, clustermgtd and slurmctld not restart
     _test_update_without_update_queue_params(pcluster_config_reader, cluster, remote_command_executor)
     # test update with queue param change, clustermgtd and slurmctld restart
-    _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor)
+    _test_update_with_queue_params(
+        pcluster_config_reader,
+        cluster,
+        remote_command_executor,
+        config_file="pcluster.config.update_scheduling.yaml",
+    )
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -365,7 +370,12 @@ def test_slurm_memory_based_scheduling(
     )
 
     # test update cluster with memory-based scheduling, clustermgtd and slurmctld restart
-    _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor)
+    _test_update_with_queue_params(
+        pcluster_config_reader,
+        cluster,
+        remote_command_executor,
+        config_file="pcluster.config.mem-based-scheduling.yaml",
+    )
 
     # test Slurm with memory-based scheduling feature
     _test_memory_based_scheduling_enabled_true(
@@ -373,6 +383,35 @@ def test_slurm_memory_based_scheduling(
         slurm_commands,
         test_datadir,
     )
+
+    # Check that jobs submitted prior to an update of SchedulableMemory via queue parameter update
+    # strategy can still access the memory requested at submission time
+    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "nodes": 1,
+            "slots": 1,
+            "command": "srun ./a.out 3500000000 300",
+            "other_options": "-w queue1-st-ondemand1-i1-1",
+            "raise_on_error": False,
+        }
+    )
+    slurm_commands.wait_job_running(job_id_1)
+    node = slurm_commands.get_job_info(job_id_1, field="NodeList")
+
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update-schedulable-memory.yaml")
+    cluster.update(
+        config_file=updated_config_file,
+        wait=True,
+    )
+
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/slurmctld.log"],
+        [f"node {node} memory is overallocated"],
+    )
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
+    slurm_commands.wait_job_completed(job_id_1)
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("COMPLETED")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1570,9 +1609,14 @@ def _test_update_without_update_queue_params(pcluster_config_reader, cluster, re
     )
 
 
-def _test_update_with_queue_params(pcluster_config_reader, cluster, remote_command_executor):
+def _test_update_with_queue_params(
+    pcluster_config_reader,
+    cluster,
+    remote_command_executor,
+    config_file,
+):
     """Test update queue param change, clustermgtd and slurmctld restart."""
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update_scheduling.yaml")
+    updated_config_file = pcluster_config_reader(config_file=config_file)
     _update_and_start_cluster(cluster, updated_config_file)
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
         remote_command_executor,
