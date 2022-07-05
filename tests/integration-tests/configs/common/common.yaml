@@ -465,6 +465,12 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_reboot:
+    dimensions:
+      - regions: ["us-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
 spot:
   test_spot.py::test_spot_default:
     dimensions:
