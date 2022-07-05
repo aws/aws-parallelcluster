@@ -228,7 +228,7 @@ def configure(args):  # noqa: C901
             max_cluster_size = int(
                 prompt(
                     "Maximum {0}".format(size_name),
-                    validator=lambda x: str(x).isdigit() and int(x) >= min_cluster_size,  # pylint: disable=W0640
+                    validator=lambda x, ms=min_cluster_size: str(x).isdigit() and int(x) >= ms,  # pylint: disable=W0640
                     default_value=DEFAULT_MAX_COUNT,
                 )
             )
