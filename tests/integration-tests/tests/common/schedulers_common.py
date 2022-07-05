@@ -404,9 +404,13 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command(check_core_cmd)
         return re.search(r"(\d+)", result.stdout).group(1)
 
-    def get_job_info(self, job_id):
-        """Return job details from slurm"""
-        return self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
+    def get_job_info(self, job_id, field=None):
+        """Return job details from slurm. If field is provided, only the field is returned"""
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
+        if field is not None:
+            match = re.search(rf"({field})=(\S*)", result)
+            return match.group(2)
+        return result
 
     def cancel_job(self, job_id):
         """Cancel a job"""
