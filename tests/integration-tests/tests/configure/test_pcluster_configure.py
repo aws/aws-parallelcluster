@@ -19,6 +19,34 @@ import yaml
 from assertpy import assert_that
 from conftest import inject_additional_config_settings
 
+PROMPTS = {
+    "region": lambda region: {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
+    "key_pair": lambda key_name: {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
+    "scheduler": lambda scheduler: {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
+    "os": lambda os: {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
+    "head_instance_type": lambda instance: {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
+    "no_of_queues": lambda n: {"prompt": rf"Number of queues \[{n}\]: ", "response": f"{n}", "skip_for_batch": True},
+    "queue_name": lambda queue, name: {"prompt": rf"Name of queue {queue} \[queue{queue}\]: ", "response": name},
+    "no_of_compute_resources": lambda queue_name, queue, n: {
+        "prompt": rf"Number of compute resources for {queue_name} \[{queue}\]: ",
+        "response": f"{n}",
+        "skip_for_batch": True,
+    },
+    "compute_instance_type": lambda resource, queue_name, instance: {
+        "prompt": rf"Compute instance type for compute resource {resource} in {queue_name} \[t.\.micro\]: ",
+        "response": instance,
+        "skip_for_batch": True,
+    },
+    "enable_efa": lambda response: {
+        "prompt": r"Enable EFA .* \(y/n\) \[y\]:",
+        "response": response,
+    },
+    "placement_group": lambda response: {"prompt": r"Placement Group name \[\]:", "response": response},
+    "vpc_creation": lambda response: {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": response},
+    "vpc_id": lambda vpc_id: {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
+    "subnet_creation": lambda response: {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": response},
+}
+
 
 def test_pcluster_configure(
     request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir
@@ -26,27 +54,8 @@ def test_pcluster_configure(
     """Verify that the config file produced by `pcluster configure` can be used to create a cluster."""
     skip_if_unsupported_test_options_were_used(request)
     config_path = test_datadir / "config.yaml"
-    stages = orchestrate_pcluster_configure_stages(
-        region,
-        key_name,
-        scheduler,
-        os,
-        instance,
-        vpc_stack.cfn_outputs["VpcId"],
-        vpc_stack.cfn_outputs["PublicSubnetId"],
-        vpc_stack.cfn_outputs["PrivateSubnetId"],
-    )
-    assert_configure_workflow(region, stages, config_path)
-    assert_config_contains_expected_values(
-        key_name,
-        scheduler,
-        os,
-        instance,
-        region,
-        vpc_stack.cfn_outputs["PublicSubnetId"],
-        vpc_stack.cfn_outputs["PrivateSubnetId"],
-        config_path,
-    )
+
+    _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack)
 
     inject_additional_config_settings(config_path, request, region)
     clusters_factory(config_path)
@@ -70,22 +79,18 @@ def test_pcluster_configure_avoid_bad_subnets(
     subnets
     """
     config_path = test_datadir / "config.yaml"
-    stages = orchestrate_pcluster_configure_stages(
-        region,
-        key_name,
-        scheduler,
-        os,
-        instance,
-        vpc_stack.cfn_outputs["VpcId"],
-        # This test does not provide head_node/compute_subnet_ids input.
-        # Therefore, pcluster configure should use the subnet specified in the config file by default.
-        # However, in this test, the availability zone of the subnet in the config file does not contain c5.xlarge.
-        # Eventually, pcluster configure should omit the subnet in the config file
-        # and use the first subnet in the remaining list of subnets
-        "",
-        "",
-        omitted_subnets_num=1,
+    bad_subnets_prompts = (
+        standard_first_stage_prompts(region, key_name, scheduler, os, instance)
+        + standard_queue_prompts(scheduler, instance)
+        + [
+            PROMPTS["vpc_creation"]("n"),
+            PROMPTS["vpc_id"](vpc_stack.cfn_outputs["VpcId"]),
+            PROMPTS["subnet_creation"]("n"),
+            prompt_head_node_subnet_id(subnet_id="", no_of_omitted_subnets=1),
+            prompt_compute_node_subnet_id(subnet_id="", head_node_subnet_id="", no_of_omitted_subnets=1),
+        ]
     )
+    stages = orchestrate_pcluster_configure_stages(prompts=bad_subnets_prompts, scheduler=scheduler)
     assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(key_name, scheduler, os, instance, region, None, None, config_path)
 
@@ -96,16 +101,12 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
     In other words, t3.micro is retrieved when the region does not contain t2.micro
     """
     config_path = test_datadir / "config.yaml"
-    stages = orchestrate_pcluster_configure_stages(
-        region,
-        key_name,
-        scheduler,
-        os,
-        "",
-        vpc_stack.cfn_outputs["VpcId"],
-        vpc_stack.cfn_outputs["PublicSubnetId"],
-        vpc_stack.cfn_outputs["PrivateSubnetId"],
+    region_without_t2micro_prompts = (
+        standard_first_stage_prompts(region, key_name, scheduler, os, "")
+        + standard_queue_prompts(scheduler, "")
+        + standard_vpc_subnet_prompts(vpc_stack)
     )
+    stages = orchestrate_pcluster_configure_stages(region_without_t2micro_prompts, scheduler)
     assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
         key_name,
@@ -117,6 +118,157 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
         vpc_stack.cfn_outputs["PrivateSubnetId"],
         config_path,
     )
+
+
+@pytest.mark.parametrize(
+    "efa_response, efa_config, placement_group_response_type",
+    [
+        ("y", {"enabled": True}, "default"),
+        ("y", {"enabled": True}, "custom"),
+        ("n", {"enabled": False}, "none"),
+    ],
+)
+def test_efa_and_placement_group(
+    vpc_stack,
+    key_name,
+    region,
+    os,
+    instance,
+    scheduler,
+    clusters_factory,
+    test_datadir,
+    efa_response,
+    efa_config,
+    placement_group_response_type,
+    placement_group_stack,
+):
+    config_path = test_datadir / "config.yaml"
+
+    placement_group_config = expected_placement_group_configuration(
+        placement_group_response_type, placement_group_stack.cfn_resources["PlacementGroup"]
+    )
+
+    queue_prompts = [
+        PROMPTS["no_of_queues"](1),
+        PROMPTS["queue_name"](queue=1, name="myqueue"),
+        PROMPTS["no_of_compute_resources"](queue_name="myqueue", queue=1, n=1),
+        PROMPTS["compute_instance_type"](resource=1, queue_name="myqueue", instance=instance),
+        PROMPTS["enable_efa"](efa_response),
+        prompt_max_size(scheduler=scheduler),
+    ]
+
+    if efa_response == "y":
+        queue_prompts.append(PROMPTS["placement_group"](placement_group_config["response"]))
+
+    standard_prompts = (
+        standard_first_stage_prompts(region, key_name, scheduler, os, instance)
+        + queue_prompts
+        + standard_vpc_subnet_prompts(vpc_stack)
+    )
+    stages = orchestrate_pcluster_configure_stages(standard_prompts, scheduler)
+    assert_configure_workflow(region, stages, config_path)
+    assert_config_contains_expected_values(
+        key_name,
+        scheduler,
+        os,
+        instance,
+        region,
+        vpc_stack.cfn_outputs["PublicSubnetId"],
+        vpc_stack.cfn_outputs["PrivateSubnetId"],
+        config_path,
+        efa_config=efa_config,
+        placement_group_config=placement_group_config["configuration"],
+    )
+    clusters_factory(config_path)
+
+
+def test_efa_unsupported(vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir):
+    config_path = test_datadir / "config.yaml"
+    _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack)
+
+
+def _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack):
+    standard_prompts = (
+        standard_first_stage_prompts(region, key_name, scheduler, os, instance)
+        + standard_queue_prompts(scheduler, instance)
+        + standard_vpc_subnet_prompts(vpc_stack)
+    )
+    stages = orchestrate_pcluster_configure_stages(standard_prompts, scheduler)
+    assert_configure_workflow(region, stages, config_path)
+    assert_config_contains_expected_values(
+        key_name,
+        scheduler,
+        os,
+        instance,
+        region,
+        vpc_stack.cfn_outputs["PublicSubnetId"],
+        vpc_stack.cfn_outputs["PrivateSubnetId"],
+        config_path,
+    )
+
+
+def expected_placement_group_configuration(response_type, existing_placement_group):
+    responses = {
+        "default": {"response": "", "configuration": {"enabled": True}},
+        "custom": {
+            "response": existing_placement_group,
+            "configuration": {"enabled": True, "id": existing_placement_group},
+        },
+        "none": {"response": None, "configuration": None},
+    }
+    return responses[response_type]
+
+
+def standard_first_stage_prompts(region, key_name, scheduler, os, instance):
+    return [
+        PROMPTS["region"](region),
+        PROMPTS["key_pair"](key_name),
+        PROMPTS["scheduler"](scheduler),
+        PROMPTS["os"](os),
+        PROMPTS["head_instance_type"](instance),
+    ]
+
+
+def standard_queue_prompts(scheduler, instance, size=""):
+    return [
+        PROMPTS["no_of_queues"](1),
+        PROMPTS["queue_name"](queue=1, name="myqueue"),
+        PROMPTS["no_of_compute_resources"](queue_name="myqueue", queue=1, n=1),
+        PROMPTS["compute_instance_type"](resource=1, queue_name="myqueue", instance=instance),
+        prompt_max_size(scheduler=scheduler, size=size),
+    ]
+
+
+def standard_vpc_subnet_prompts(vpc_stack):
+    return [
+        PROMPTS["vpc_creation"]("n"),
+        PROMPTS["vpc_id"](vpc_stack.cfn_outputs["VpcId"]),
+        PROMPTS["subnet_creation"]("n"),
+        prompt_head_node_subnet_id(subnet_id=vpc_stack.cfn_outputs["PublicSubnetId"]),
+        prompt_compute_node_subnet_id(
+            subnet_id=vpc_stack.cfn_outputs["PrivateSubnetId"],
+            head_node_subnet_id=vpc_stack.cfn_outputs["PublicSubnetId"],
+        ),
+    ]
+
+
+def prompt_head_node_subnet_id(subnet_id, no_of_omitted_subnets=0):
+    # When there are omitted subnets, a note should be printed
+    omitted_note = "Note: {0} subnet.+not listed.+".format(no_of_omitted_subnets) if no_of_omitted_subnets else ""
+    return {"prompt": rf"{omitted_note}head node subnet ID \[subnet-.+\]: ", "response": subnet_id}
+
+
+def prompt_compute_node_subnet_id(subnet_id, head_node_subnet_id, no_of_omitted_subnets=0):
+    omitted_note = "Note: {0} subnet.+not listed.+".format(no_of_omitted_subnets) if no_of_omitted_subnets else ""
+
+    # Default compute subnet follows the selection of head node subnet
+    default_compute_subnet = head_node_subnet_id or "subnet-.+"
+    return {"prompt": rf"{omitted_note}compute subnet ID \[{default_compute_subnet}\]: ", "response": subnet_id}
+
+
+def prompt_max_size(scheduler, size=""):
+    size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
+    return {"prompt": rf"Maximum {size_name} \[10\]: ", "response": f"{size}"}
 
 
 def skip_if_unsupported_test_options_were_used(request):
@@ -153,8 +305,28 @@ def assert_configure_workflow(region, stages, config_path):
 
 
 def assert_config_contains_expected_values(
-    key_name, scheduler, os, instance, region, head_node_subnet_id, compute_subnet_id, config_path
+    key_name,
+    scheduler,
+    os,
+    instance,
+    region,
+    head_node_subnet_id,
+    compute_subnet_id,
+    config_path,
+    efa_config=None,
+    placement_group_config=None,
 ):
+    """
+    :param efa_config: Dictionary describing EFA configuration
+        {
+            "enabled": True
+        }
+    :param placement_group_config: Dictionary describing the placement_group configuration
+        {
+            "enabled": True,
+            "id": <PlacementGroupName>
+        }
+    """
     with open(config_path, encoding="utf-8") as conf_file:
         config = yaml.safe_load(conf_file)
 
@@ -190,6 +362,28 @@ def assert_config_contains_expected_values(
                 "expected_value": 0,
             },
         ]
+        if efa_config and "enabled" in efa_config:
+            param_validators.append(
+                {
+                    "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "Efa", "Enabled"],
+                    "expected_value": efa_config["enabled"],
+                }
+            )
+        if placement_group_config:
+            if "enabled" in placement_group_config:
+                param_validators.append(
+                    {
+                        "parameter_path": ["Scheduling", "SlurmQueues", 0, "Networking", "PlacementGroup", "Enabled"],
+                        "expected_value": placement_group_config["enabled"],
+                    }
+                )
+            if "id" in placement_group_config:
+                param_validators.append(
+                    {
+                        "parameter_path": ["Scheduling", "SlurmQueues", 0, "Networking", "PlacementGroup", "Id"],
+                        "expected_value": placement_group_config["id"],
+                    }
+                )
     elif scheduler == "awsbatch":
         param_validators += [
             {
@@ -197,11 +391,10 @@ def assert_config_contains_expected_values(
                 "expected_value": 0,
             }
         ]
-
     for validator in param_validators:
         expected_value = validator.get("expected_value")
         logging.info(validator.get("parameter_path"))
-        if not expected_value:
+        if expected_value in ("", None):
             # if expected_value is empty, skip the assertion.
             continue
         observed_value = _get_value_by_nested_key(config, validator.get("parameter_path"))
@@ -216,37 +409,9 @@ def _get_value_by_nested_key(d, keys):
     return _d
 
 
-def orchestrate_pcluster_configure_stages(
-    region, key_name, scheduler, os, instance, vpc_id, head_node_subnet_id, compute_subnet_id, omitted_subnets_num=0
-):
-    size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
-    # Default compute subnet follows the selection of head node subnet
-    default_compute_subnet = head_node_subnet_id or "subnet-.+"
-    # When there are omitted subnets, a note should be printed
-    omitted_note = "Note: {0} subnet.+not listed.+".format(omitted_subnets_num) if omitted_subnets_num else ""
-    stage_list = [
-        {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
-        {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
-        {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
-        {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
-        {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
-        {"prompt": r"Number of queues \[1\]: ", "response": "1", "skip_for_batch": True},
-        {"prompt": r"Name of queue 1 \[queue1\]: ", "response": "myqueue"},
-        {"prompt": r"Number of compute resources for myqueue \[1\]: ", "response": "1", "skip_for_batch": True},
-        {
-            "prompt": r"Compute instance type for compute resource 1 in myqueue \[t.\.micro\]: ",
-            "response": instance,
-            "skip_for_batch": True,
-        },
-        {"prompt": rf"Maximum {size_name} \[10\]: ", "response": ""},
-        {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
-        {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
-        {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
-        {"prompt": rf"{omitted_note}head node subnet ID \[subnet-.+\]: ", "response": head_node_subnet_id},
-        {"prompt": rf"{omitted_note}compute subnet ID \[{default_compute_subnet}\]: ", "response": compute_subnet_id},
-    ]
+def orchestrate_pcluster_configure_stages(prompts, scheduler):
     # When a user selects Batch as the scheduler, pcluster configure does not prompt for OS or compute instance type.
-    return [stage for stage in stage_list if scheduler != "awsbatch" or not stage.get("skip_for_batch")]
+    return [prompt for prompt in prompts if scheduler != "awsbatch" or not prompt.get("skip_for_batch")]
 
 
 @pytest.fixture()
