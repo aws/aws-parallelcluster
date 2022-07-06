@@ -11,8 +11,10 @@ CHANGELOG
 - Add support for multiple FSx File Systems.
 - Add support for attaching existing FSx for Ontap and FSx for OpenZFS File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
-- Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based scheduling in Slurm.
-- Add new configuration parameter `Scheduling/SlurmQueues/ComputeResources/SchedulableMemory` to override default value of the memory seen by the scheduler on compute nodes.
+- Add support for memory-based scheduling in Slurm.
+  - Configure `RealMemory` on compute nodes by default as 95% of the EC2 memory.
+  - Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based scheduling in Slurm.
+  - Add new configuration parameter `Scheduling/SlurmQueues/ComputeResources/SchedulableMemory` to override default value of the memory seen by the scheduler on compute nodes.
 - Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
 - Change default EBS volume types from gp2 to gp3 in both the root and additional volumes.
 - Add support for rebooting compute nodes via Slurm.
