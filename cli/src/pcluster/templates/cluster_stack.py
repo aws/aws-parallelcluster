@@ -610,7 +610,7 @@ class ClusterCdkStack(Stack):
 
     def _add_fsx_storage(self, id: str, shared_fsx: BaseSharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
-        fsx_id = shared_fsx.file_system_id
+        fsx_id = shared_fsx.file_system_id if isinstance(shared_fsx, SharedFsxLustre) else shared_fsx.volume_id
         mount_name = ""
         dns_name = ""
         volume_junction_path = ""
