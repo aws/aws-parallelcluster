@@ -51,6 +51,7 @@ from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
 from troposphere import Ref, Template, ec2
+from troposphere.ec2 import PlacementGroup
 from troposphere.fsx import FileSystem, StorageVirtualMachine, Volume, VolumeOntapConfiguration
 from utils import (
     InstanceTypesData,
@@ -1244,6 +1245,25 @@ def network_interfaces_count(request, instance, region):
         network_interfaces_count = get_network_interfaces_count(instance, region)
         request.config.cache.set(f"{instance}/network_interfaces_count", network_interfaces_count)
     return network_interfaces_count
+
+
+@pytest.fixture(scope="class")
+def placement_group_stack(cfn_stacks_factory, request, region):
+    """Placement group stack contains a placement group."""
+    placement_group_template = Template()
+    placement_group_template.set_version()
+    placement_group_template.set_description("Placement group stack created for testing existing placement group")
+    placement_group_template.add_resource(PlacementGroup("PlacementGroup", Strategy="cluster"))
+    stack = CfnStack(
+        name=generate_stack_name("integ-tests-placement-group", request.config.getoption("stackname_suffix")),
+        region=region,
+        template=placement_group_template.to_json(),
+    )
+    cfn_stacks_factory.create_stack(stack)
+
+    yield stack
+
+    cfn_stacks_factory.delete_stack(stack.name, region)
 
 
 @pytest.fixture()
