@@ -151,7 +151,6 @@ function main() {
     exit $?
   fi
 
-
   # Check if path exist
   if [ -d "${1}" ]; then
     log "Directory ${1} exists."
@@ -212,6 +211,10 @@ function main() {
   _network_info "${TEMP_DIR}"
 
   _save_imds_info "${TEMP_DIR}"
+
+  # Save users info
+  log "Save /etc/passwd content"
+  cp /etc/passwd "${TEMP_DIR}/passwd"
 
   # Create the archive
   log "Create the archive"
