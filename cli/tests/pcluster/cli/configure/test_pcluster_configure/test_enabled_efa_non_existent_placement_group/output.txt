@@ -34,8 +34,8 @@ Allowed values for Operating System:
 2. centos7
 3. ubuntu1804
 4. ubuntu2004
-To get results faster with the instance selected at no additional charge, enable the Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)
-Enabling EFA requires compute instances to be placed within a Placement Group. Specify an existing Placement Group name or leave blank for ParallelCluster to create one
+The EC2 instance selected supports enhanced networking capabilities using Elastic Fabric Adapter (EFA). EFA enables you to run applications requiring high levels of inter-node communications at scale on AWS at no additional charge (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html).
+Enabling EFA requires compute instances to be placed within a Placement Group. Please specify an existing Placement Group name or leave it blank for ParallelCluster to create one.
 ERROR: non-existent-test-pg is not an acceptable value for Placement Group name
 Allowed values for VPC ID:
   #  id            name                                 number_of_subnets
