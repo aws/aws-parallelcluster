@@ -1541,41 +1541,40 @@ def svm_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
     """
     Define a fixture to manage the creation and destruction of storage virtual machine for FSx for Ontap.
 
-    return svm_id
+    return volume ids
     """
     created_stacks = []
 
-    def _svm_factory(file_system_ids):
+    def _svm_factory(file_system_id, num_volumes=1):
         # SVM stack
-        if not file_system_ids:
-            return []
         fsx_svm_template = Template()
         fsx_svm_template.set_version()
         fsx_svm_template.set_description("Create Storage Virtual Machine stack")
 
-        storage_virtual_machine_resource_name = "StorageVirtualMachineFileSystemResource"
+        fsx_svm = StorageVirtualMachine(
+            title="StorageVirtualMachineFileSystemResource",
+            Name="fsx",
+            FileSystemId=file_system_id,
+        )
+        fsx_svm_template.add_resource(fsx_svm)
+
+        svm_volume_resource_name = "SVMVolume"
         max_concurrency = 15
-        for index, file_system_id in enumerate(file_system_ids):
+        for index in range(num_volumes):
             depends_on_arg = {}
             if index >= max_concurrency:
-                depends_on_arg = {"DependsOn": [f"{storage_virtual_machine_resource_name}{index - max_concurrency}"]}
-            fsx_svm = StorageVirtualMachine(
-                title=f"{storage_virtual_machine_resource_name}{index}",
-                Name="fsx",
-                FileSystemId=file_system_id,
-                **depends_on_arg,
-            )
-            fsx_svm_template.add_resource(fsx_svm)
+                depends_on_arg = {"DependsOn": [f"{svm_volume_resource_name}{index - max_concurrency}"]}
             fsx_svm_volume = Volume(
-                title=f"{storage_virtual_machine_resource_name}Volume{index}",
-                Name="vol1",
+                title=f"{svm_volume_resource_name}{index}",
+                Name=f"vol{index}",
                 VolumeType="ONTAP",
                 OntapConfiguration=VolumeOntapConfiguration(
-                    JunctionPath="/vol1",
+                    JunctionPath=f"/vol{index}",
                     SizeInMegabytes="10240",
                     StorageEfficiencyEnabled="true",
                     StorageVirtualMachineId=Ref(fsx_svm),
                 ),
+                **depends_on_arg,
             )
             fsx_svm_template.add_resource(fsx_svm_volume)
         fsx_stack = CfnStack(
@@ -1585,13 +1584,7 @@ def svm_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
         )
         cfn_stacks_factory.create_stack(fsx_stack)
         created_stacks.append(fsx_stack)
-        return [
-            (
-                fsx_stack.cfn_resources[f"{storage_virtual_machine_resource_name}{i}"],
-                fsx_stack.cfn_resources[f"{storage_virtual_machine_resource_name}Volume{i}"],
-            )
-            for i in range(len(file_system_ids))
-        ]
+        return [fsx_stack.cfn_resources[f"{svm_volume_resource_name}{i}"] for i in range(num_volumes)]
 
     yield _svm_factory
 

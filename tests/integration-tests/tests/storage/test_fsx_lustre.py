@@ -18,9 +18,11 @@ import pytest
 import utils
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
+from troposphere import Template
 from troposphere.fsx import (
     ClientConfigurations,
     LustreConfiguration,
@@ -28,6 +30,8 @@ from troposphere.fsx import (
     OntapConfiguration,
     OpenZFSConfiguration,
     RootVolumeConfiguration,
+    Volume,
+    VolumeOpenZFSConfiguration,
 )
 
 BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING", "PENDING"}
@@ -130,7 +134,7 @@ def _test_fsx_lustre_configuration_options(
 ):
     check_fsx(cluster, region, scheduler_commands_factory, [mount_dir], bucket_name)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
+    fsx_fs_id = get_fsx_ids(cluster, region)[0]
     fsx = boto3.client("fsx", region_name=region).describe_file_systems(FileSystemIds=[fsx_fs_id])
 
     _test_storage_type(storage_type, fsx)
@@ -185,22 +189,22 @@ def check_fsx(
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    fsx_fs_ids = get_fsx_fs_ids(cluster, region)
+    fsx_ids = get_fsx_ids(cluster, region)
     logging.info("Checking the length of mount dirs is the same as the length of FSXIDs")
-    assert_that(len(mount_dirs)).is_equal_to(len(fsx_fs_ids))
-    for mount_dir, fsx_fs_id in zip(mount_dirs, fsx_fs_ids):
-        logging.info("Checking %s on %s", fsx_fs_id, mount_dir)
-        file_system_type = get_file_system_type(fsx_fs_id, region)
+    assert_that(len(mount_dirs)).is_equal_to(len(fsx_ids))
+    for mount_dir, fsx_id in zip(mount_dirs, fsx_ids):
+        logging.info("Checking %s on %s", fsx_id, mount_dir)
+        file_system_type = get_file_system_type(fsx_id, region)
         if file_system_type == "LUSTRE":
-            assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
+            assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_id)
             if bucket_name:
                 _test_import_path(remote_command_executor, mount_dir)
                 _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
-                _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
+                _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_id, region)
         elif file_system_type == "OPENZFS":
-            assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id)
+            assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, fsx_id)
         elif file_system_type == "ONTAP":
-            assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id)
+            assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, fsx_id)
         assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
 
 
@@ -232,7 +236,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    fsx_fs_id = get_fsx_fs_ids(cluster, region)[0]
+    fsx_fs_id = get_fsx_ids(cluster, region)[0]
 
     # Mount file system
     assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id)
@@ -259,7 +263,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
 
     cluster_restore = clusters_factory(cluster_config_restore)
     remote_command_executor_restore = RemoteCommandExecutor(cluster_restore)
-    fsx_fs_id_restore = get_fsx_fs_ids(cluster_restore, region)[0]
+    fsx_fs_id_restore = get_fsx_ids(cluster_restore, region)[0]
 
     # Mount the restored file system
     assert_fsx_lustre_correctly_mounted(remote_command_executor_restore, mount_dir, region, fsx_fs_id_restore)
@@ -304,7 +308,58 @@ def create_fsx_open_zfs(fsx_factory, num):
     volume_list = boto3.client("fsx").describe_volumes(Filters=[{"Name": "file-system-id", "Values": file_system_ids}])[
         "Volumes"
     ]
-    return [(volume["FileSystemId"], volume["VolumeId"]) for volume in volume_list]
+    return [volume["VolumeId"] for volume in volume_list]
+
+
+@pytest.fixture(scope="class")
+def open_zfs_volume_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+    """
+    Define a fixture to manage the creation and destruction of volumes for FSx for OpenZFS.
+
+    return volume ids
+    """
+    created_stacks = []
+
+    def _open_zfs_volume_factory(root_volume_id, num_volumes=1):
+        fsx_open_zfs_volume_template = Template()
+        fsx_open_zfs_volume_template.set_version()
+        fsx_open_zfs_volume_template.set_description("Create Storage Virtual Machine stack")
+
+        open_zfs_volume_resource_name = "OpenZFSVolume"
+        max_concurrency = 15
+        for index in range(num_volumes):
+            depends_on_arg = {}
+            if index >= max_concurrency:
+                depends_on_arg = {"DependsOn": [f"{open_zfs_volume_resource_name}{index - max_concurrency}"]}
+            fsx_open_zfs_volume = Volume(
+                title=f"{open_zfs_volume_resource_name}{index}",
+                Name=f"vol{index}",
+                VolumeType="OPENZFS",
+                OpenZFSConfiguration=VolumeOpenZFSConfiguration(
+                    NfsExports=[
+                        NfsExports(ClientConfigurations=[ClientConfigurations(Clients="*", Options=["rw", "crossmnt"])])
+                    ],
+                    ParentVolumeId=root_volume_id,
+                ),
+                **depends_on_arg,
+            )
+            fsx_open_zfs_volume_template.add_resource(fsx_open_zfs_volume)
+        fsx_stack = CfnStack(
+            name=utils.generate_stack_name(
+                "integ-tests-fsx-openzfs-volume", request.config.getoption("stackname_suffix")
+            ),
+            region=region,
+            template=fsx_open_zfs_volume_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(fsx_stack)
+        created_stacks.append(fsx_stack)
+        return [fsx_stack.cfn_resources[f"{open_zfs_volume_resource_name}{i}"] for i in range(num_volumes)]
+
+    yield _open_zfs_volume_factory
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
@@ -313,6 +368,7 @@ def test_multiple_fsx(
     region,
     fsx_factory,
     svm_factory,
+    open_zfs_volume_factory,
     vpc_stack,
     pcluster_config_reader,
     s3_bucket_factory,
@@ -335,23 +391,23 @@ def test_multiple_fsx(
     export_path = "s3://{0}/export_dir".format(bucket_name)
     partition = utils.get_arn_partition(region)
     num_new_fsx_lustre = 1
-    num_existing_fsx_ontap = 1 if partition != "aws-cn" else 0  # China does not have Ontap
-    num_existing_fsx_open_zfs = 1 if partition == "aws" else 0  # China and GovCloud do not have OpenZFS.
+    num_existing_fsx_ontap_volumes = 2 if partition != "aws-cn" else 0  # China does not have Ontap
+    num_existing_fsx_open_zfs_volumes = 2 if partition == "aws" else 0  # China and GovCloud do not have OpenZFS.
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more FSx when benchmarks are specified. Limiting OS to reduce cost of too many file systems
         num_existing_fsx = 50
     else:
         # Minimal total existing FSx is the number of Ontap and OpenZFS plus one existing FSx Lustre
-        num_existing_fsx = num_existing_fsx_ontap + num_existing_fsx_open_zfs + 1
-    num_existing_fsx_lustre = num_existing_fsx - num_existing_fsx_ontap - num_existing_fsx_open_zfs
+        num_existing_fsx = num_existing_fsx_ontap_volumes + num_existing_fsx_open_zfs_volumes + 1
+    num_existing_fsx_lustre = num_existing_fsx - num_existing_fsx_ontap_volumes - num_existing_fsx_open_zfs_volumes
     fsx_lustre_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
     for i in range(num_new_fsx_lustre + num_existing_fsx_lustre - 1):
         fsx_lustre_mount_dirs.append(f"/fsx_lustre_mount_dir{i}")
     fsx_ontap_mount_dirs = []
-    for i in range(num_existing_fsx_ontap):
+    for i in range(num_existing_fsx_ontap_volumes):
         fsx_ontap_mount_dirs.append(f"/fsx_ontap_mount_dir{i}")
     fsx_open_zfs_mount_dirs = []
-    for i in range(num_existing_fsx_open_zfs):
+    for i in range(num_existing_fsx_open_zfs_volumes):
         fsx_open_zfs_mount_dirs.append(f"/fsx_open_zfs_mount_dir{i}")
     existing_fsx_lustre_fs_ids = fsx_factory(
         ports=[988],
@@ -367,11 +423,18 @@ def test_multiple_fsx(
             PerUnitStorageThroughput=200,
         ),
     )
-    fsx_ontap_fs_ids = create_fsx_ontap(fsx_factory, num=num_existing_fsx_ontap)
-    fsx_ontap_volume_ids = (volume_id for _, volume_id in svm_factory(fsx_ontap_fs_ids))
-    fsx_open_zfs_volume_ids = (
-        volume_id for _, volume_id in create_fsx_open_zfs(fsx_factory, num=num_existing_fsx_open_zfs)
-    )
+    if num_existing_fsx_ontap_volumes > 0:
+        fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
+        fsx_ontap_volume_ids = svm_factory(fsx_ontap_fs_id, num_volumes=num_existing_fsx_ontap_volumes)
+    else:
+        fsx_ontap_volume_ids = []
+    if num_existing_fsx_open_zfs_volumes > 0:
+        fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
+        fsx_open_zfs_volume_ids = open_zfs_volume_factory(
+            fsx_open_zfs_root_volume_id, num_volumes=num_existing_fsx_open_zfs_volumes
+        )
+    else:
+        fsx_open_zfs_volume_ids = []
 
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
@@ -417,23 +480,31 @@ def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, regi
     )
 
 
-def assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id):
+def assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, volume_id):
     logging.info("Testing fsx OpenZFS is correctly mounted on the head node")
     result = remote_command_executor.run_remote_command("df -h -t nfs4")
-    dns_name = boto3.client("fsx").describe_file_systems(FileSystemIds=[fsx_fs_id])["FileSystems"][0]["DNSName"]
-    remote_path = f"{dns_name}:/fsx"
+    fsx_client = boto3.client("fsx")
+    volume = fsx_client.describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+    volume_path = volume["OpenZFSConfiguration"]["VolumePath"]
+    fs_id = volume["FileSystemId"]
+    dns_name = fsx_client.describe_file_systems(FileSystemIds=[fs_id])["FileSystems"][0]["DNSName"]
+    remote_path = f"{dns_name}:{volume_path}"
     assert_that(result.stdout).matches(rf"{remote_path} .* {mount_dir}")
     # example output: "fs-123456.fsx.us-west-2.amazonaws.com:/fsx 64G 256K 64G 1% /fsx_mount_dir0"""
     check_fstab_file(remote_command_executor, f"{remote_path} {mount_dir} nfs nfsvers=4.2 0 0")
 
 
-def assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, fsx_fs_id):
+def assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, volume_id):
     logging.info("Testing fsx Ontap is correctly mounted on the head node")
     result = remote_command_executor.run_remote_command("df -h -t nfs4")
+    fsx_client = boto3.client("fsx")
+    volume = fsx_client.describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+    junction_path = volume["OntapConfiguration"]["JunctionPath"]
+    storage_virtual_machine_id = volume["OntapConfiguration"]["StorageVirtualMachineId"]
     dns_name = boto3.client("fsx").describe_storage_virtual_machines(
-        Filters=[{"Name": "file-system-id", "Values": [fsx_fs_id]}]
+        StorageVirtualMachineIds=[storage_virtual_machine_id]
     )["StorageVirtualMachines"][0]["Endpoints"]["Nfs"]["DNSName"]
-    remote_path = f"{dns_name}:/vol1"
+    remote_path = f"{dns_name}:{junction_path}"
     assert_that(result.stdout).matches(rf"{remote_path} .* {mount_dir}")
     # example output: "svm-123456.fs-123456.fsx.us-west-2.amazonaws.com:/vol1 9.5G 448K 9.5G 1% /fsx_mount_dir1"""
     check_fstab_file(remote_command_executor, f"{remote_path} {mount_dir} nfs defaults 0 0")
@@ -455,13 +526,17 @@ def get_mount_name(fsx_fs_id, region):
     )
 
 
-def get_file_system_type(fsx_fs_id, region):
-    logging.info("Getting file system type from DescribeFilesystem API.")
+def get_file_system_type(fsx_id, region):
     fsx = boto3.client("fsx", region_name=region)
-    return fsx.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0].get("FileSystemType")
+    if fsx_id.startswith("fs-"):
+        logging.info("Getting file system type from DescribeFilesystems API.")
+        return fsx.describe_file_systems(FileSystemIds=[fsx_id]).get("FileSystems")[0].get("FileSystemType")
+    else:
+        logging.info("Getting file system type from FSx DescribeVolumes API.")
+        return fsx.describe_volumes(VolumeIds=[fsx_id]).get("Volumes")[0].get("VolumeType")
 
 
-def get_fsx_fs_ids(cluster, region):
+def get_fsx_ids(cluster, region):
     return utils.retrieve_cfn_outputs(cluster.cfn_name, region).get("FSXIds").split(",")
 
 

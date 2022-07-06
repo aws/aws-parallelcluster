@@ -1354,9 +1354,9 @@ class BaseClusterConfig(Resource):
         if self.shared_storage:
             for storage in self.shared_storage:
                 fs_id = None
-                if isinstance(storage, (SharedEfs, BaseSharedFsx)):
+                if isinstance(storage, (SharedEfs, SharedFsxLustre)):
                     fs_id = storage.file_system_id
-                elif isinstance(storage, SharedEbs):
+                elif isinstance(storage, (SharedEbs, ExistingFsxOpenZfs, ExistingFsxOntap)):
                     fs_id = storage.volume_id
                 if fs_id:
                     fs_id_list.append(fs_id)
