@@ -13,5 +13,6 @@ mpirun \
 -x RDMAV_FORK_SAFE=1 \
 -x NCCL_ALGO=ring \
 -x NCCL_DEBUG=WARNING \
+-x NCCL_PROTO=simple \
 --mca pml ^cm --mca btl tcp,self --mca btl_tcp_if_exclude lo,docker0 --bind-to none \
 /shared/openmpi/nccl-tests-2.10.0/build/all_reduce_perf -b 8 -e 1G -f 2 -g 1 -c 1 -n 100 > /shared/nccl_tests.out
