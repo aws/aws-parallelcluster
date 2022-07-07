@@ -8,13 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk.core import Construct, Stack
 
-from pcluster.config.cluster_config import BaseClusterConfig, SharedStorageType
+from pcluster.config.cluster_config import BaseClusterConfig, SharedFsxLustre, SharedStorageType
 
 MAX_WIDTH = 24
 
@@ -235,6 +235,57 @@ class CWDashboardConstruct(Construct):
             widgets_list.append(graph_widget)
         return widgets_list
 
+    def _add_fsx_widgets(self, storages_list):
+        common_metrics = [
+            new_pcluster_metric(title="Data Read/Write Ops", metrics=["DataReadOperations", "DataWriteOperations"]),
+            new_pcluster_metric(title="Data Read/Write Bytes", metrics=["DataReadBytes", "DataWriteBytes"]),
+        ]
+        free_data_storage_capacity_graph_title = "Free Data Storage Capacity"
+        lustre_metrics = common_metrics + [
+            new_pcluster_metric(title=free_data_storage_capacity_graph_title, metrics=["FreeDataStorageCapacity"])
+        ]
+        namespace = "AWS/FSx"
+        metric_graphs = defaultdict(list)
+        for index, storage in enumerate(storages_list):
+            if isinstance(storage.config, SharedFsxLustre):
+                metrics = lustre_metrics
+                dimensions_map = {"FileSystemId": storage.id}
+            else:
+                metrics = common_metrics
+                dimensions_map = {"FileSystemId": storage.config.file_system_id, "VolumeId": storage.id}
+
+                # FSx Ontap/OpenZFS do not provide free capacity metric. The code below generates the metric using math.
+                free_capacity_metric = cloudwatch.MathExpression(
+                    label=f"{storage.id} FreeDataStorageCapacity",
+                    expression=f"capacity{index} - used_capacity{index}",
+                    using_metrics={
+                        f"capacity{index}": cloudwatch.Metric(
+                            namespace=namespace,
+                            metric_name="StorageCapacity",
+                            dimensions_map=dimensions_map,
+                        ),
+                        f"used_capacity{index}": cloudwatch.Metric(
+                            namespace=namespace,
+                            metric_name="UsedStorageCapacity",
+                            dimensions_map=dimensions_map,
+                        ),
+                    },
+                )
+                metric_graphs[free_data_storage_capacity_graph_title].append(free_capacity_metric)
+            for metrics_param in metrics:
+                metric_list = metric_graphs[metrics_param.title]
+                for metric in metrics_param.metrics:
+                    cloudwatch_metric = cloudwatch.Metric(
+                        namespace=namespace,
+                        metric_name=metric,
+                        dimensions_map=dimensions_map,
+                    )
+                    metric_list.append(cloudwatch_metric)
+        widgets_list = []
+        for title, metric_list in metric_graphs.items():
+            widgets_list.append(self._generate_graph_widget(title, metric_list))
+        return widgets_list
+
     def _add_head_node_instance_metrics_graphs(self):
         # Create a text widget for subtitle "Head Node Instance Metrics"
         self._add_text_widget("## Head Node Instance Metrics")
@@ -319,19 +370,9 @@ class CWDashboardConstruct(Construct):
         self._add_text_widget("## FSx Metrics")
         fsx_volumes_list = self.shared_storage_infos[SharedStorageType.FSX]
 
-        # Unconditional FSX metrics
-        fsx_metrics = [
-            new_pcluster_metric(title="Data Read/Write Ops", metrics=["DataReadOperations", "DataWriteOperations"]),
-            new_pcluster_metric(title="Data Read/Write Bytes", metrics=["DataReadBytes", "DataWriteBytes"]),
-            new_pcluster_metric(title="Free Data Storage Capacity", metrics=["FreeDataStorageCapacity"]),
-        ]
-
         # Add FSx metrics graphs and update coordinates
-        widgets_list = self._add_storage_widgets(
-            metrics=fsx_metrics,
+        widgets_list = self._add_fsx_widgets(
             storages_list=fsx_volumes_list,
-            namespace="AWS/FSx",
-            dimension_name="FileSystemId",
         )
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
         self._update_coord_after_section(self.graph_height)
