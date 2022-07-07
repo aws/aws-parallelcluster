@@ -221,7 +221,7 @@ def configure(args):  # noqa: C901
 
                 efa_supported_by_instance_type = instance_type_supports_efa(compute_instance_type)
                 if efa_supported_by_instance_type:
-                    efa_enabled_in_compute_resource = _prompt_for_efa()
+                    efa_enabled_in_compute_resource = _prompt_for_efa(compute_instance_type)
                     if efa_enabled_in_compute_resource:
                         efa_enabled_in_queue = True
             min_cluster_size = DEFAULT_MIN_COUNT
@@ -431,21 +431,20 @@ def _prompt_for_subnet(all_subnets, qualified_subnets, message, default_subnet=N
     return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
 
 
-def _prompt_for_efa():
+def _prompt_for_efa(instance_type):
     print(
-        "To get results faster with the instance selected at no additional charge, enable the "
-        "Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)"
+        "The EC2 instance selected supports enhanced networking capabilities using Elastic Fabric Adapter (EFA). "
+        "EFA enables you to run applications requiring high levels of inter-node communications at scale on AWS at no "
+        "additional charge (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)."
     )
-    enable_efa = prompt(
-        "Enable EFA on compute instances (EFA) (y/n)", validator=lambda x: x in ("y", "n"), default_value="y"
-    )
+    enable_efa = prompt(f"Enable EFA on {instance_type} (y/n)", validator=lambda x: x in ("y", "n"), default_value="y")
     return enable_efa == "y"
 
 
 def _prompt_for_placement_group():
     print(
-        "Enabling EFA requires compute instances to be placed within a Placement Group. Specify an existing "
-        "Placement Group name or leave blank for ParallelCluster to create one"
+        "Enabling EFA requires compute instances to be placed within a Placement Group. Please specify an existing "
+        "Placement Group name or leave it blank for ParallelCluster to create one."
     )
 
     return prompt("Placement Group name", validator=lambda x: x == "" or placement_group_exists(x), default_value="")
