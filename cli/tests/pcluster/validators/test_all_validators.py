@@ -263,12 +263,19 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2")])
     # Scratch mount directories are retrieved from a set. So the order of them is not guaranteed.
     # The first item in call_args is regular args, the second item is keyword args.
-    shared_mount_dir_list = duplicate_mount_dir_validator.call_args[1]["shared_mount_dir_list"]
-    shared_mount_dir_list.sort()
-    assert_that(shared_mount_dir_list).is_equal_to(["/my/mount/point1", "/my/mount/point2", "/my/mount/point3"])
-    local_mount_dir_list = duplicate_mount_dir_validator.call_args[1]["local_mount_dir_list"]
-    local_mount_dir_list.sort()
-    assert_that(local_mount_dir_list).is_equal_to(["/scratch", "/scratch_head"])
+    shared_storage_name_mount_dir_tuple_list = duplicate_mount_dir_validator.call_args[1][
+        "shared_storage_name_mount_dir_tuple_list"
+    ]
+    shared_storage_name_mount_dir_tuple_list.sort(key=lambda tup: tup[1])
+    assert_that(shared_storage_name_mount_dir_tuple_list).is_equal_to(
+        [("name1", "/my/mount/point1"), ("name2", "/my/mount/point2"), ("name3", "/my/mount/point3")]
+    )
+    local_mount_dir_instance_types_dict = duplicate_mount_dir_validator.call_args[1][
+        "local_mount_dir_instance_types_dict"
+    ]
+    assert_that(local_mount_dir_instance_types_dict).is_equal_to(
+        {"/scratch": {"c5d.xlarge"}, "/scratch_head": {"c5d.xlarge"}}
+    )
     number_of_storage_validator.assert_has_calls(
         [
             call(storage_type="EBS", max_number=5, storage_count=1),

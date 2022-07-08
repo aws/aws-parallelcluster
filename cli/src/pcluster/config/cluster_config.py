@@ -1266,13 +1266,13 @@ class BaseClusterConfig(Resource):
     def _validate_mount_dirs(self):
         self._register_validator(
             DuplicateMountDirValidator,
-            shared_mount_dir_list=self.shared_mount_dir_list,
-            local_mount_dir_list=list(self.local_mount_dir_set),
+            shared_storage_name_mount_dir_tuple_list=self.shared_storage_name_mount_dir_tuple_list,
+            local_mount_dir_instance_types_dict=self.local_mount_dir_instance_types_dict,
         )
         self._register_validator(
             OverlappingMountDirValidator,
-            shared_mount_dir_list=self.shared_mount_dir_list,
-            local_mount_dir_list=list(self.local_mount_dir_set),
+            shared_mount_dir_list=[mount_dir for mount_dir, _ in self.shared_storage_name_mount_dir_tuple_list],
+            local_mount_dir_list=list(self.local_mount_dir_instance_types_dict.keys()),
         )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
@@ -1321,37 +1321,37 @@ class BaseClusterConfig(Resource):
         return get_partition()
 
     @property
-    def shared_mount_dir_list(self):
-        """Retrieve the list of shared mount dirs."""
+    def shared_storage_name_mount_dir_tuple_list(self):
+        """Retrieve the list of shared storage names and mount dirs."""
         mount_dir_list = []
         if self.shared_storage:
             for storage in self.shared_storage:
-                mount_dir_list.append(storage.mount_dir)
+                mount_dir_list.append((storage.name, storage.mount_dir))
         return mount_dir_list
 
     @property
-    def local_mount_dir_set(self):
-        """Retrieve the list of local mount dirs of head compute nodes ephemeral volume."""
-        mount_dir_set = (
-            {
+    def local_mount_dir_instance_types_dict(self):
+        """Retrieve a dictionary of local mount dirs and corresponding instance types."""
+        mount_dir_instance_types_dict = defaultdict(set)
+        if self.head_node.instance_type_info.instance_storage_supported():
+            mount_dir_instance_types_dict[
                 self.head_node.local_storage.ephemeral_volume.mount_dir
                 if self.head_node.local_storage.ephemeral_volume
                 else DEFAULT_EPHEMERAL_DIR
-            }
-            if self.head_node.instance_type_info.instance_storage_supported()
-            else set()
-        )
+            ].add(self.head_node.instance_type)
+
         scheduling = self.scheduling
         if isinstance(scheduling, (SchedulerPluginScheduling, SlurmScheduling)):
             for queue in scheduling.queues:
-                if queue.has_instance_storage():
-                    mount_dir_set.add(
+                instance_types_with_instance_storage = queue.instance_types_with_instance_storage
+                if instance_types_with_instance_storage:
+                    mount_dir_instance_types_dict[
                         queue.compute_settings.local_storage.ephemeral_volume.mount_dir
                         if queue.compute_settings.local_storage.ephemeral_volume
                         else DEFAULT_EPHEMERAL_DIR
-                    )
+                    ].update(instance_types_with_instance_storage)
 
-        return mount_dir_set
+        return mount_dir_instance_types_dict
 
     @property
     def existing_storage_id_list(self):
@@ -1794,12 +1794,14 @@ class SlurmQueue(_CommonQueue):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
 
-    def has_instance_storage(self):
-        """Indicate if any of the compute resource has instance storage."""
+    @property
+    def instance_types_with_instance_storage(self):
+        """Return a set of instance types in the queue that have instance store."""
+        result = set()
         for compute_resource in self.compute_resources:
             if compute_resource.instance_type_info.instance_storage_supported():
-                return True
-        return False
+                result.add(compute_resource.instance_type)
+        return result
 
 
 class Dns(Resource):
@@ -1918,12 +1920,14 @@ class SchedulerPluginQueue(_CommonQueue):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
 
-    def has_instance_storage(self):
-        """Indicate if any of the compute resource has instance storage."""
+    @property
+    def instance_types_with_instance_storage(self):
+        """Return a set of instance types in the queue that have instance store."""
+        result = set()
         for compute_resource in self.compute_resources:
             if compute_resource.instance_type_info.instance_storage_supported():
-                return True
-        return False
+                result.add(compute_resource.instance_type)
+        return result
 
 
 class SchedulerPluginSupportedDistros(Resource):
