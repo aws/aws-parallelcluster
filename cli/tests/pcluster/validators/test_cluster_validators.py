@@ -207,7 +207,7 @@ def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_ty
         ("t2.large", True, False, False, "does not support EFA"),
         ("t2.large", False, False, False, None),
         # EFA not enabled for instance type that supports it
-        ("c5n.18xlarge", False, False, True, "at no additional charge, enable the Elastic Fabric Adapter"),
+        ("c5n.18xlarge", False, False, True, "supports enhanced networking capabilities using Elastic Fabric Adapter"),
     ],
 )
 def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):

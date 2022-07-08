@@ -309,8 +309,10 @@ class EfaValidator(Validator):
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
         if instance_type_supports_efa and not efa_enabled:
             self._add_failure(
-                f"To get results faster with the instance type '{instance_type}' at no additional charge, enable the "
-                "Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)",
+                f"The EC2 instance selected ({instance_type}) supports enhanced networking capabilities using "
+                "Elastic Fabric Adapter (EFA). EFA enables you to run applications requiring high levels of "
+                "inter-node communications at scale on AWS at no additional charge. You can update the cluster's "
+                "configuration to enable EFA (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html)",
                 FailureLevel.WARNING,
             )
         if gdr_support and not efa_enabled:
