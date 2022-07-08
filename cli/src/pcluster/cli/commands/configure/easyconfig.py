@@ -435,7 +435,7 @@ def _prompt_for_efa(instance_type):
     print(
         "The EC2 instance selected supports enhanced networking capabilities using Elastic Fabric Adapter (EFA). "
         "EFA enables you to run applications requiring high levels of inter-node communications at scale on AWS at no "
-        "additional charge (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)."
+        "additional charge (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html)."
     )
     enable_efa = prompt(f"Enable EFA on {instance_type} (y/n)", validator=lambda x: x in ("y", "n"), default_value="y")
     return enable_efa == "y"
