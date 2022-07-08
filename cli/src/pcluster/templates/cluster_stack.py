@@ -71,6 +71,7 @@ from pcluster.constants import (
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
+from pcluster.templates.budget_builder import CostBudgets
 from pcluster.templates.cdk_builder_utils import (
     ComputeNodeIamResources,
     HeadNodeIamResources,
@@ -288,6 +289,10 @@ class ClusterCdkStack(Stack):
                 shared_storage_infos=self.shared_storage_infos,
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
             )
+
+        # Budgets
+        if self.config.dev_settings and self.config.dev_settings.budgets:
+            self.budgets = CostBudgets(self, self.config)
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(

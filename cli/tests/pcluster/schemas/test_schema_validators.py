@@ -16,6 +16,10 @@ from assertpy import assert_that
 from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
     AwsBatchQueueSchema,
+    BudgetLimitSchema,
+    BudgetNotificationSchema,
+    BudgetSchema,
+    BudgetSubscriberSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
@@ -601,3 +605,103 @@ def test_instance_role_validator(instance_role, expected_message):
 )
 def test_password_secret_arn_validator(password_secret_arn, expected_message):
     _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "notification_type, comparison_operator, threshold, threshold_type, expected_message",
+    [
+        (None, None, 150, None, None),
+        ("ACTUAL", "EQUAL", 200, None, "Must be one of"),
+        ("Actual", None, 100, None, "Must be one of"),
+        (None, None, 150, "ABSOLUTE", "Must be one of"),
+        ("FORECASTED", "EQUAL_TO", 100, "PERCENTAGE", None),
+        (None, "GREATER_THAN", 200, "ABSOLUTE_VALUE", None),
+        (None, "LESS_THAN", 2, None, None),
+    ],
+)
+def test_budget_notification_schema_validators(
+    notification_type,
+    comparison_operator,
+    threshold,
+    threshold_type,
+    expected_message,
+):
+    section_dict = {}
+    if notification_type:
+        section_dict["NotificationType"] = notification_type
+    if comparison_operator:
+        section_dict["ComparisonOperator"] = comparison_operator
+    if threshold:
+        section_dict["Threshold"] = threshold
+    if threshold_type:
+        section_dict["ThresholdType"] = threshold_type
+
+    _validate_and_assert_error(BudgetNotificationSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "subscription_type, address, expected_message",
+    [
+        (None, "alias@amazon.com", None),
+        ("EMAIL", "alias@amazon.com", None),
+        ("SNS", "arn:aws:sns:us-east-1:444455556666:MyTopic", None),
+        ("GMAIL", "email@gmail.com", "Must be one of"),
+    ],
+)
+def test_budget_subscriber_schema_validators(subscription_type, address, expected_message):
+    section_dict = {}
+    if address:
+        section_dict["Address"] = address
+    if subscription_type:
+        section_dict["SubscriptionType"] = subscription_type
+    _validate_and_assert_error(BudgetSubscriberSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "amount, unit, expected_message",
+    [
+        (120, "USD", None),
+        (100, "GBP", None),
+    ],
+)
+def test_budget_limit_schema_validators(amount, unit, expected_message):
+    section_dict = {}
+    if amount:
+        section_dict["Amount"] = amount
+    if unit:
+        section_dict["Unit"] = unit
+    _validate_and_assert_error(BudgetLimitSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "budget_category, budget_limit, time_unit, queue_name, cost_filters, expected_message",
+    [
+        ("cluster", {"Amount": 100, "Unit": "USD"}, "MONTHLY", None, None, None),
+        ("queue", {"Amount": 150, "Unit": "GBP"}, "ANNUALLY", "queue1", None, None),
+        ("custom", {"Amount": 200, "Unit": "USD"}, "QUARTERLY", None, {"TagKeyValue": "user:customTag$hpc"}, None),
+        ("cluster", {"Amount": 300, "Unit": "USD"}, None, None, None, None),
+        ("wrongValue", {"Amount": 100, "Unit": "USD"}, None, None, None, "Must be one of"),
+        ("cluster", {"Amount": 100, "Unit": "USD"}, "DAILY", None, None, "Must be one of"),
+    ],
+)
+def test_budget_schema_validators(
+    budget_category,
+    budget_limit,
+    time_unit,
+    queue_name,
+    cost_filters,
+    expected_message,
+):
+    section_dict = {}
+    if budget_category:
+        section_dict["BudgetCategory"] = budget_category
+    if budget_limit:
+        section_dict["BudgetLimit"] = budget_limit
+    if time_unit:
+        section_dict["TimeUnit"] = time_unit
+    if queue_name:
+        section_dict["QueueName"] = queue_name
+    if cost_filters:
+        section_dict["CostFilters"] = cost_filters
+
+    _validate_and_assert_error(BudgetSchema(), section_dict, expected_message)

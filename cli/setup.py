@@ -31,6 +31,7 @@ REQUIRES = [
     "marshmallow~=3.10",
     "aws-cdk.core~=" + CDK_VERSION,
     "aws-cdk.aws-batch~=" + CDK_VERSION,
+    "aws-cdk.aws-budgets~=" + CDK_VERSION,
     "aws_cdk.aws-cloudwatch~=" + CDK_VERSION,
     "aws-cdk.aws-codebuild~=" + CDK_VERSION,
     "aws-cdk.aws-dynamodb~=" + CDK_VERSION,

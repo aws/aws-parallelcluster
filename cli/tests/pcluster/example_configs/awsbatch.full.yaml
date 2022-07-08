@@ -116,3 +116,62 @@ DevSettings:
   NodePackage: https://nodepackage.url
   Timeouts:
     HeadNodeBootstrapTimeout: 1000  # Default 1800 (seconds)
+  Budgets:
+    - BudgetCategory: cluster
+      BudgetLimit:
+        Amount: 85.0
+        Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            Threshold: 76.0
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias1@amazon.com
+        - Notification:
+            Threshold: 40.0
+            NotificationType: FORECASTED
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias2@amazon.com
+    - BudgetCategory: queue
+      QueueName: queue1
+      BudgetLimit:
+        Amount: 45.0
+        Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            Threshold: 34.0
+            ComparisonOperator: LESS_THAN
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias1@amazon.com
+        - Notification:
+            Threshold: 45.0
+            NotificationType: FORECASTED
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias2@amazon.com
+    - BudgetCategory: custom
+      BudgetLimit:
+        Amount: 65.0
+        Unit: USD
+      CostFilters:
+        TagKeyValue:
+          - user:parallelcluster:node-type$Compute
+      NotificationsWithSubscribers:
+        - Notification:
+            Threshold: 40.0
+            ComparisonOperator: EQUAL_TO
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias1@amazon.com
+        - Notification:
+            Threshold: 65.0
+            NotificationType: FORECASTED
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias2@amazon.com
+

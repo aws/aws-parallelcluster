@@ -23,6 +23,7 @@ from yaml.parser import ParserError
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
+    BudgetSchema,
     ClusterSchema,
     HeadNodeIamSchema,
     HeadNodeRootVolumeSchema,
@@ -49,7 +50,6 @@ from tests.pcluster.utils import load_cluster_model_from_yaml
 def _check_cluster_schema(config_file_name):
     # Load cluster model from Yaml file
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-
     # Re-create Yaml file from model and compare content
     cluster_schema = ClusterSchema(cluster_name="clustername")
     cluster_schema.context = {"delete_defaults_when_dump": True}
@@ -861,3 +861,99 @@ def test_timeouts_schema(head_node_bootstrap_timeout, compute_node_bootstrap_tim
         assert_that(timeouts.compute_node_bootstrap_timeout).is_equal_to(
             compute_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
         )
+
+
+@pytest.mark.parametrize(
+    "budget_category, budget_limit, time_unit, queue_name, cost_filters, failure_message",
+    [
+        ("cluster", {"Amount": 100, "Unit": "USD"}, "MONTHLY", None, None, None),
+        ("queue", {"Amount": 150, "Unit": "USD"}, "ANNUALLY", "queue1", None, None),
+        ("custom", {"Amount": 200, "Unit": "USD"}, "QUARTERLY", None, {"TagKeyValue": "user:customTag$hpc"}, None),
+        ("cluster", {"Amount": 300, "Unit": "USD"}, None, None, None, None),
+        (
+            "cluster",
+            {"Amount": 100, "Unit": "USD"},
+            "MONTHLY",
+            "queue1",
+            None,
+            "QueueName can only be specified when BudgetCategory is set to queue.",
+        ),
+        (
+            "custom",
+            {"Amount": 100, "Unit": "USD"},
+            "MONTHLY",
+            "queue1",
+            {"TagKeyValue": "user:customTag$hpc"},
+            "QueueName can only be specified when BudgetCategory is set to queue.",
+        ),
+        (
+            "queue",
+            {"Amount": 100, "Unit": "USD"},
+            "MONTHLY",
+            "queue1",
+            {"TagKeyValue": "user:customTag$hpc"},
+            "CostFilters can only be configured when BudgetCategory is set to custom.",
+        ),
+        (
+            "cluster",
+            {"Amount": 100, "Unit": "USD"},
+            "MONTHLY",
+            None,
+            {"TagKeyValue": "user:customTag$hpc"},
+            "CostFilters can only be configured when BudgetCategory is set to custom.",
+        ),
+        (
+            "custom",
+            {"Amount": 100, "Unit": "USD"},
+            "MONTHLY",
+            None,
+            None,
+            "CostFilters is required when BudgetCategory is set to custom.",
+        ),
+        (
+            "queue",
+            {"Amount": 150, "Unit": "USD"},
+            "ANNUALLY",
+            None,
+            None,
+            "QueueName is required when BudgetCategory is set to queue.",
+        ),
+        (
+            "custom",
+            {"Amount": 200, "Unit": "USD"},
+            "QUARTERLY",
+            None,
+            {"Tag": "user:customTag$hpc"},
+            "Tag is not an accepted CostTypes key.",
+        ),
+    ],
+)
+def test_budget_schema_validators(
+    budget_category,
+    budget_limit,
+    time_unit,
+    queue_name,
+    cost_filters,
+    failure_message,
+):
+    budget_schema = {}
+    if budget_category:
+        budget_schema["BudgetCategory"] = budget_category
+    if budget_limit:
+        budget_schema["BudgetLimit"] = budget_limit
+    if time_unit:
+        budget_schema["TimeUnit"] = time_unit
+    if queue_name:
+        budget_schema["QueueName"] = queue_name
+    if cost_filters:
+        budget_schema["CostFilters"] = cost_filters
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            BudgetSchema().load(budget_schema)
+    else:
+        budget = BudgetSchema().load(budget_schema)
+        assert_that(budget.budget_category).is_equal_to(budget_category)
+        assert_that(budget.time_unit).is_equal_to(time_unit or "MONTHLY")
+        assert_that(budget.cost_filters).is_equal_to(cost_filters)
+        assert_that(budget.queue_name).is_equal_to(queue_name)
