@@ -1217,7 +1217,7 @@ class BaseClusterConfig(Resource):
             )
             self._register_validator(
                 DuplicateNameValidator,
-                name_list=self.existing_fs_id_list,
+                name_list=self.existing_storage_id_list,
                 resource_name="Shared Storage IDs",
             )
 
@@ -1348,19 +1348,19 @@ class BaseClusterConfig(Resource):
         return mount_dir_set
 
     @property
-    def existing_fs_id_list(self):
+    def existing_storage_id_list(self):
         """Retrieve the list of IDs of EBS, FSx, EFS provided."""
-        fs_id_list = []
+        storage_id_list = []
         if self.shared_storage:
             for storage in self.shared_storage:
-                fs_id = None
+                storage_id = None
                 if isinstance(storage, (SharedEfs, SharedFsxLustre)):
-                    fs_id = storage.file_system_id
+                    storage_id = storage.file_system_id
                 elif isinstance(storage, (SharedEbs, ExistingFsxOpenZfs, ExistingFsxOntap)):
-                    fs_id = storage.volume_id
-                if fs_id:
-                    fs_id_list.append(fs_id)
-        return fs_id_list
+                    storage_id = storage.volume_id
+                if storage_id:
+                    storage_id_list.append(storage_id)
+        return storage_id_list
 
     @property
     def compute_subnet_ids(self):
