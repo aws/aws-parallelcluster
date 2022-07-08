@@ -1,0 +1,69 @@
+Image:
+  Os: {{ os }}
+Tags:
+  - Key: ConfigFileTag
+    Value: ConfigFileTagValue
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          MinvCpus: 4
+          DesiredvCpus: 4
+          {% else %}
+          InstanceType: {{ instance }}
+          MinCount: 1
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+DevSettings:
+  Budgets:
+    - BudgetCategory: custom
+      BudgetLimit:
+        Amount: 65.0
+        Unit: USD
+      CostFilters:
+        TagKeyValue:
+          - user:parallelcluster:node-type$Compute
+      NotificationsWithSubscribers:
+        - Notification:
+            Threshold: 40.0
+            ComparisonOperator: EQUAL_TO
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias3@amazon.com
+    - BudgetCategory: cluster
+      BudgetLimit:
+        Amount: 85.0
+        Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            Threshold: 76.0
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias1@amazon.com
+    - BudgetCategory: queue
+      QueueName: queue1
+      BudgetLimit:
+        Amount: 45.0
+        Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            Threshold: 34.0
+            ComparisonOperator: LESS_THAN
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: alias2@amazon.com

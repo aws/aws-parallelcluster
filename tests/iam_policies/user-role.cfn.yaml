@@ -420,6 +420,13 @@ Resources:
                   aws:RequestedRegion:
                     - !Ref Region
             Sid: CloudWatchLogs
+            # Required to create and modify budgets
+          - Action:
+              - budgets:ModifyBudget
+              - budgets:ViewBudget
+            Resource: '*'
+            Effect: Allow
+            Sid: BudgetsDescribeModify
 
   ### IMAGE ACTIONS POLICIES
 

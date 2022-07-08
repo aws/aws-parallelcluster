@@ -2,6 +2,7 @@ from aws_cdk import aws_budgets as budgets
 from aws_cdk.core import Construct
 
 from pcluster.config.cluster_config import BaseClusterConfig
+from pcluster.utils import random_alphanumeric
 
 
 class CostBudgets:
@@ -33,7 +34,9 @@ class CostBudgets:
             name = f"{self.cluster_config.cluster_name}-{index}-custom-{self.cluster_config.region}"
 
         budget_data = budgets.CfnBudget.BudgetDataProperty(
-            budget_name=name,
+            # Some fields need replacement to be updated in Cfn. The name without a hash would create duplicates.
+            # The chance of collision (assuming reasonably uniform distribution) is < 0.000002% with 5 alphanum digits
+            budget_name=name + random_alphanumeric(5),
             budget_type="COST",
             time_unit=budget.time_unit,
             budget_limit=budgets.CfnBudget.SpendProperty(

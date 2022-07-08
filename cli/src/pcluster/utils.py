@@ -333,3 +333,8 @@ def get_attr(obj, attributes, default=None):
         if obj is None:
             return default
     return obj
+
+
+def random_alphanumeric(size):
+    """Generate a random alphanumeric string."""
+    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))  # nosec nosemgrep

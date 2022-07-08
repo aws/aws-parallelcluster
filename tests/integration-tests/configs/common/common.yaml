@@ -29,6 +29,13 @@ arm_pl:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+budgets:
+  test_budgets.py::test_update_budget_properties:
+    dimensions:
+      - regions: [ "us-east-1" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "awsbatch"]
 scheduler_plugin:
   test_scheduler_plugin.py::test_scheduler_plugin_integration:
     dimensions:
