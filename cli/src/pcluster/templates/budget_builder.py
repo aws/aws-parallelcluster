@@ -1,3 +1,5 @@
+import uuid
+
 from aws_cdk import aws_budgets as budgets
 from aws_cdk.core import Construct
 
@@ -33,7 +35,10 @@ class CostBudgets:
             name = f"{self.cluster_config.cluster_name}-{index}-custom-{self.cluster_config.region}"
 
         budget_data = budgets.CfnBudget.BudgetDataProperty(
-            budget_name=name,
+            # This name will show up on the budget console, so less hash digits = better
+            # The chance of collision (assuming reasonably uniform distribution) is below 0.0001% with 5 hex digits
+            # If it collides, the update will roll back, but that's all
+            budget_name=name + uuid.uuid4().hex[:5],
             budget_type="COST",
             time_unit=budget.time_unit,
             budget_limit=budgets.CfnBudget.SpendProperty(
