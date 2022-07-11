@@ -11,6 +11,7 @@
 import math
 import re
 from abc import ABC
+from collections import defaultdict
 from enum import Enum
 from itertools import combinations, product
 
@@ -19,7 +20,6 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
-    DEFAULT_EPHEMERAL_DIR,
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
@@ -29,6 +29,7 @@ from pcluster.constants import (
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
+    SUPPORTED_SCHEDULERS,
 )
 from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
@@ -308,8 +309,10 @@ class EfaValidator(Validator):
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
         if instance_type_supports_efa and not efa_enabled:
             self._add_failure(
-                f"To get results faster with the instance type '{instance_type}' at no additional charge, enable the "
-                "Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)",
+                f"The EC2 instance selected ({instance_type}) supports enhanced networking capabilities using "
+                "Elastic Fabric Adapter (EFA). EFA enables you to run applications requiring high levels of "
+                "inter-node communications at scale on AWS at no additional charge. You can update the cluster's "
+                "configuration to enable EFA (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html)",
                 FailureLevel.WARNING,
             )
         if gdr_support and not efa_enabled:
@@ -578,16 +581,28 @@ class DuplicateMountDirValidator(Validator):
     Verify if there are duplicated mount dirs between shared storage and ephemeral volumes.
     """
 
-    def _validate(self, mount_dir_list):
-        duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
-        if duplicated_mount_dirs:
-            self._add_failure(
-                "Mount {0} {1} cannot be specified for multiple file systems".format(
-                    "directories" if len(duplicated_mount_dirs) > 1 else "directory",
-                    ", ".join(mount_dir for mount_dir in duplicated_mount_dirs),
-                ),
-                FailureLevel.ERROR,
-            )
+    def _validate(self, shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict):
+        mount_dir_to_names = defaultdict(list)
+        for shared_storage_name, shared_mount_dir in shared_storage_name_mount_dir_tuple_list:
+            mount_dir_to_names[shared_mount_dir].append(shared_storage_name)
+        for mount_dir, names in mount_dir_to_names.items():
+            if len(names) > 1:
+                self._add_failure(
+                    f"The mount directory `{mount_dir}` is used for multiple shared storage: {names}. "
+                    "Shared storage mount directories should be unique. "
+                    "Please change the mount directory configuration of the shared storage.",
+                    FailureLevel.ERROR,
+                )
+        for local_mount_dir, instance_types in local_mount_dir_instance_types_dict.items():
+            shared_storage_names = mount_dir_to_names.get(local_mount_dir)
+            if shared_storage_names:
+                self._add_failure(
+                    f"The mount directory `{local_mount_dir}` used for shared storage {shared_storage_names} "
+                    f"clashes with the one used for ephemeral volumes of the instances {list(instance_types)}. "
+                    f"Please change the mount directory configuration of either the shared storage or the ephemeral "
+                    f"volume of the impacted nodes.",
+                    FailureLevel.ERROR,
+                )
 
 
 class OverlappingMountDirValidator(Validator):
@@ -622,8 +637,8 @@ class NumberOfStorageValidator(Validator):
     def _validate(self, storage_type: str, max_number: int, storage_count: int):
         if storage_count > max_number:
             self._add_failure(
-                f"Invalid number of shared storage of {storage_type} type specified. "
-                f"Currently only supports upto {max_number}.",
+                f"Too many {storage_type} shared storage specified in the configuration. "
+                f"ParallelCluster supports {max_number} {storage_type}.",
                 FailureLevel.ERROR,
             )
 
@@ -711,10 +726,9 @@ class SharedStorageMountDirValidator(Validator):
             "/usr",
             "/var",
         ]
-        default_directories = [DEFAULT_EPHEMERAL_DIR]
         if not mount_dir.startswith("/"):
             mount_dir = "/" + mount_dir
-        if mount_dir in reserved_directories + default_directories:
+        if mount_dir in reserved_directories:
             self._add_failure(
                 f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
                 FailureLevel.ERROR,
@@ -1078,6 +1092,19 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
         )
 
 
+class RootVolumeSizeValidator(Validator):
+    """Verify the root volume size is equal or greater to the size of the snapshot of the AMI."""
+
+    def _validate(self, root_volume_size, ami_volume_size):
+        if root_volume_size:
+            if root_volume_size < ami_volume_size:
+                self._add_failure(
+                    f"Root volume size {root_volume_size} GiB must be equal or greater than the volume size of "
+                    f"the AMI: {ami_volume_size} GiB.",
+                    FailureLevel.ERROR,
+                )
+
+
 class HostedZoneValidator(Validator):
     """Validate custom private domain in the same VPC as head node."""
 
@@ -1108,5 +1135,16 @@ class HostedZoneValidator(Validator):
                     f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
                     f"current length is {total_length}"
                 ),
+                FailureLevel.ERROR,
+            )
+
+
+class SchedulerValidator(Validator):
+    """Validate that only supported schedulers are specified."""
+
+    def _validate(self, scheduler):
+        if scheduler not in SUPPORTED_SCHEDULERS:
+            self._add_failure(
+                f"{scheduler} scheduler is not supported. Supported schedulers are: {', '.join(SUPPORTED_SCHEDULERS)}.",
                 FailureLevel.ERROR,
             )

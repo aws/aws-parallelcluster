@@ -12,6 +12,7 @@ from unittest.mock import PropertyMock, call
 
 from assertpy import assert_that
 
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 from pcluster.validators import (
@@ -83,6 +84,11 @@ def test_all_validators_are_called(test_datadir, mocker):
     mocker.patch(
         "pcluster.config.cluster_config.SlurmClusterConfig.get_instance_types_data",
     )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_image",
+        return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
+    )
+
     mock_aws_api(mocker)
 
     # Need to load two configuration files to execute all validators because there are mutually exclusive parameters.
@@ -188,6 +194,11 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         "pcluster.config.cluster_config.SlurmComputeResource.architecture",
         new_callable=PropertyMock(return_value="x86_64"),
     )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_image",
+        return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
+    )
+
     mock_aws_api(mocker)
 
     _load_and_validate(test_datadir / "slurm.yaml")
@@ -213,14 +224,14 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         any_order=True,
     )
     key_pair_validator.assert_has_calls([call(key_name="ec2-key-name")])
-    instance_type_validator.assert_has_calls([call(instance_type="t2.micro")])
+    instance_type_validator.assert_has_calls([call(instance_type="c5d.xlarge")])
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
-            call(instance_type="t2.micro", image="ami-12345678"),
+            call(instance_type="c5d.xlarge", image="ami-12345678"),
             call(instance_type="c5.2xlarge", image="ami-12345678"),
             call(instance_type="c4.2xlarge", image="ami-12345678"),
             call(instance_type="c5.4xlarge", image="ami-12345678"),
-            call(instance_type="c4.4xlarge", image="ami-12345678"),
+            call(instance_type="c5d.xlarge", image="ami-12345678"),
         ],
         any_order=True,
     )
@@ -240,11 +251,11 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
             call(instance_type="c5.2xlarge", architecture="x86_64"),
             call(instance_type="c4.2xlarge", architecture="x86_64"),
             call(instance_type="c5.4xlarge", architecture="x86_64"),
-            call(instance_type="c4.4xlarge", architecture="x86_64"),
+            call(instance_type="c5d.xlarge", architecture="x86_64"),
         ]
     )
 
-    ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp2", volume_size=35)])
+    ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp3", volume_size=35)])
     kms_key_validator.assert_has_calls([call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab")])
     kms_key_id_encrypted_validator.assert_has_calls(
         [call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab", encrypted=True)]
@@ -252,18 +263,26 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2")])
     # Scratch mount directories are retrieved from a set. So the order of them is not guaranteed.
     # The first item in call_args is regular args, the second item is keyword args.
-    mount_dir_list = duplicate_mount_dir_validator.call_args[1]["mount_dir_list"]
-    mount_dir_list.sort()
-    assert_that(mount_dir_list).is_equal_to(
-        ["/my/mount/point1", "/my/mount/point2", "/my/mount/point3", "/scratch", "/scratch_head"]
+    shared_storage_name_mount_dir_tuple_list = duplicate_mount_dir_validator.call_args[1][
+        "shared_storage_name_mount_dir_tuple_list"
+    ]
+    shared_storage_name_mount_dir_tuple_list.sort(key=lambda tup: tup[1])
+    assert_that(shared_storage_name_mount_dir_tuple_list).is_equal_to(
+        [("name1", "/my/mount/point1"), ("name2", "/my/mount/point2"), ("name3", "/my/mount/point3")]
+    )
+    local_mount_dir_instance_types_dict = duplicate_mount_dir_validator.call_args[1][
+        "local_mount_dir_instance_types_dict"
+    ]
+    assert_that(local_mount_dir_instance_types_dict).is_equal_to(
+        {"/scratch": {"c5d.xlarge"}, "/scratch_head": {"c5d.xlarge"}}
     )
     number_of_storage_validator.assert_has_calls(
         [
             call(storage_type="EBS", max_number=5, storage_count=1),
             call(storage_type="existing EFS", max_number=20, storage_count=0),
-            call(storage_type="existing FSX", max_number=20, storage_count=0),
+            call(storage_type="existing FSx", max_number=20, storage_count=0),
             call(storage_type="new EFS", max_number=1, storage_count=1),
-            call(storage_type="new FSX", max_number=1, storage_count=1),
+            call(storage_type="new FSx", max_number=1, storage_count=1),
             call(storage_type="new RAID", max_number=1, storage_count=0),
         ],
         any_order=True,

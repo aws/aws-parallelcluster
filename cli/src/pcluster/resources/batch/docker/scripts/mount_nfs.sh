@@ -83,4 +83,4 @@ main() {
     mount_nfs
 }
 
-main $@
+main "$@"

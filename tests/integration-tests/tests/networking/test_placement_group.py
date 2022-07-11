@@ -15,10 +15,6 @@ import boto3
 import pytest
 import utils
 from assertpy import assert_that
-from cfn_stacks_factory import CfnStack
-from troposphere import Template
-from troposphere.ec2 import PlacementGroup
-from utils import generate_stack_name
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler", "region")
@@ -67,22 +63,3 @@ def _get_slurm_placement_group_from_stack(cluster, region):
     stack_resources = utils.retrieve_cfn_resources(cluster.cfn_name, region)
     placement_group = next(v for k, v in stack_resources.items() if k.startswith("ComputeFleetPlacementGroup"))
     return placement_group
-
-
-@pytest.fixture(scope="class")
-def placement_group_stack(cfn_stacks_factory, request, region):
-    """Placement group stack contains a placement group."""
-    placement_group_template = Template()
-    placement_group_template.set_version()
-    placement_group_template.set_description("Placement group stack created for testing existing placement group")
-    placement_group_template.add_resource(PlacementGroup("PlacementGroup", Strategy="cluster"))
-    stack = CfnStack(
-        name=generate_stack_name("integ-tests-placement-group", request.config.getoption("stackname_suffix")),
-        region=region,
-        template=placement_group_template.to_json(),
-    )
-    cfn_stacks_factory.create_stack(stack)
-
-    yield stack
-
-    cfn_stacks_factory.delete_stack(stack.name, region)

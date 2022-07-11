@@ -373,12 +373,13 @@ Resources:
           !Sub
             - |
               #!/bin/bash -e
+              set -o pipefail
               exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
               yum update -y aws-cfn-bootstrap
-              /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource AdDomainAdminNode --configsets setup --region ${AWS::Region}
-              echo "Domain Name: " ${DirectoryDomain}
-              echo "Domain Certificate Secret: " ${DomainCertificateSecretArn}
-              echo "Domain Private Key Secret: " ${DomainPrivateKeySecretArn}
+              /opt/aws/bin/cfn-init -v --stack "${AWS::StackName}" --resource AdDomainAdminNode --configsets setup --region "${AWS::Region}"
+              echo "Domain Name: ${DirectoryDomain}"
+              echo "Domain Certificate Secret: ${DomainCertificateSecretArn}"
+              echo "Domain Private Key Secret: ${DomainPrivateKeySecretArn}"
               cat << EOF > /etc/resolv.conf
               search           ${DirectoryDomain}
               nameserver       ${DnsIp1}
@@ -386,30 +387,30 @@ Resources:
               EOF
               sed -i 's/PEERDNS=.*/PEERDNS=no/' /etc/sysconfig/network-scripts/ifcfg-eth0
               chattr +i /etc/resolv.conf
-              ADMIN_PW=${AdminPassword}
-              echo $ADMIN_PW | sudo realm join -U Admin ${DirectoryDomain}
+              ADMIN_PW="${AdminPassword}"
+              echo "$ADMIN_PW" | sudo realm join -U Admin "${DirectoryDomain}"
               sleep 10
               echo "Registering ReadOnlyUser..."
-              echo $ADMIN_PW | adcli create-user -x -U Admin --domain=${DirectoryDomain} --display-name=ReadOnlyUser ReadOnlyUser
+              echo "$ADMIN_PW" | adcli create-user -x -U Admin --domain="${DirectoryDomain}" --display-name=ReadOnlyUser ReadOnlyUser
               sleep 0.5
               echo "Registering User..."
-              echo $ADMIN_PW | adcli create-user -x -U Admin --domain=${DirectoryDomain} --display-name=${UserName} ${UserName}
-
+              echo "$ADMIN_PW" | adcli create-user -x -U Admin --domain="${DirectoryDomain}" --display-name="${UserName}" "${UserName}"
+              
               echo "Creating domain certificate..."
               PRIVATE_KEY="${DirectoryDomain}.key"
               CERTIFICATE="${DirectoryDomain}.crt"
-              printf ".\n.\n.\n.\n.\n${DirectoryDomain}\n.\n" | openssl req -x509 -sha256 -nodes -newkey rsa:2048 -keyout $PRIVATE_KEY -days 365 -out $CERTIFICATE
-
+              printf '.\n.\n.\n.\n.\n%s\n.\n' "${DirectoryDomain}" | openssl req -x509 -sha256 -nodes -newkey rsa:2048 -keyout "$PRIVATE_KEY" -days 365 -out "$CERTIFICATE"
+              
               echo "Storing domain private key to Secrets Manager..."
-              aws secretsmanager put-secret-value --secret-id ${DomainPrivateKeySecretArn} --secret-string file://$PRIVATE_KEY --region ${AWS::Region}
-
+              aws secretsmanager put-secret-value --secret-id "${DomainPrivateKeySecretArn}" --secret-string "file://$PRIVATE_KEY" --region "${AWS::Region}"
+              
               echo "Storing domain certificate to Secrets Manager..."
-              aws secretsmanager put-secret-value --secret-id ${DomainCertificateSecretArn} --secret-string file://$CERTIFICATE --region ${AWS::Region}
-
+              aws secretsmanager put-secret-value --secret-id "${DomainCertificateSecretArn}" --secret-string "file://$CERTIFICATE" --region "${AWS::Region}"
+              
               echo "Deleting private key and certificate from local file system..."
-              rm -rf $PRIVATE_KEY $CERTIFICATE
-
-              /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AdDomainAdminNode --region ${AWS::Region}
+              rm -rf "$PRIVATE_KEY" "$CERTIFICATE"
+              
+              /opt/aws/bin/cfn-signal -e "$?" --stack "${AWS::StackName}" --resource AdDomainAdminNode --region "${AWS::Region}"
 
             - { DirectoryDomain: !GetAtt Prep.DomainName,
                 AdminPassword: !Ref AdminPassword,
@@ -492,10 +493,18 @@ Resources:
           def create_physical_resource_id():
               alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
               return ''.join(random.choice(alnum) for _ in range(16))
-
+          
+          def redact_keys(event: dict, redactions: set):
+              ret = {}
+              for k in event.keys():
+                  if k in redactions:
+                      ret[k] = "[REDACTED]"
+                  else:
+                      ret[k] = redact_keys(event[k], redactions) if type(event[k]) is dict else event[k] # handle nesting
+              return ret
+          
           def handler(event, context):
-              redact_keys = {"ReadOnlyPassword", "UserPassword", "AdminPassword"}
-              print({k:event[k] if k not in redact_keys else "[REDACTED]" for k in event.keys()})
+              print(redact_keys(event, {"ReadOnlyPassword", "UserPassword", "AdminPassword"}))
               print( 'boto version {}'.format(boto3.__version__))
               directory_id = event['ResourceProperties']['DirectoryId']
               instance_id = event['ResourceProperties']['AdminNodeInstanceId']

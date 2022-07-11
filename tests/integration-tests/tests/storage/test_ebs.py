@@ -72,7 +72,8 @@ def test_ebs_snapshot(
 
     mount_dir = "/" + mount_dir
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.8")
+    # In alinux2 the volume is rounded smaller (9.7G)
+    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.[7,8]")
     _test_ebs_resize(remote_command_executor, mount_dir, volume_size=volume_size)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
@@ -81,9 +82,14 @@ def test_ebs_snapshot(
     assert_that(result.stdout.strip()).is_equal_to("hello world")
 
 
-@pytest.mark.usefixtures("instance")
-def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region, os, scheduler_commands_factory):
+def test_ebs_multiple(
+    scheduler, instance, pcluster_config_reader, clusters_factory, region, os, scheduler_commands_factory
+):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
+    if not utils.get_instance_info(instance)["InstanceStorageSupported"]:
+        # If the instance type does not support instance store, mount an EBS to /scratch to make sure our code allows it
+        mount_dirs[0] = "/scratch"
+
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
 
     # for volume type sc1 and st1, the minimum volume sizes are 500G

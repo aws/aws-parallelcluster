@@ -9,6 +9,7 @@
       MaxCount: 10
       MinCount: 0
       Name: c1
+      SchedulableMemory: null
       SpotPrice: null
     - CustomSettings: null
       DisableSimultaneousMultithreading: false
@@ -19,11 +20,17 @@
       MaxCount: 10
       MinCount: 0
       Name: c2
+      SchedulableMemory: null
       SpotPrice: null
   ComputeSettings:
     LocalStorage:
       EphemeralVolume: null
-      RootVolume: null
+      RootVolume:
+        Encrypted: true
+        Iops: 3000
+        Size: null
+        Throughput: 125
+        VolumeType: gp3
   CustomActions: null
   CustomSettings: null
   Iam:
@@ -52,11 +59,17 @@
       MaxCount: 10
       MinCount: 0
       Name: c1
+      SchedulableMemory: null
       SpotPrice: null
   ComputeSettings:
     LocalStorage:
       EphemeralVolume: null
-      RootVolume: null
+      RootVolume:
+        Encrypted: true
+        Iops: 3000
+        Size: null
+        Throughput: 125
+        VolumeType: gp3
   CustomActions: null
   CustomSettings: null
   Iam:

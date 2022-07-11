@@ -404,9 +404,13 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command(check_core_cmd)
         return re.search(r"(\d+)", result.stdout).group(1)
 
-    def get_job_info(self, job_id):
-        """Return job details from slurm"""
-        return self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
+    def get_job_info(self, job_id, field=None):
+        """Return job details from slurm. If field is provided, only the field is returned"""
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
+        if field is not None:
+            match = re.search(rf"({field})=(\S*)", result)
+            return match.group(2)
+        return result
 
     def cancel_job(self, job_id):
         """Cancel a job"""
@@ -482,6 +486,12 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command(check_attribute_cmd)
         match = re.search(r"(\S*)\s*$", result.stdout)
         return match.group(1)
+
+    def reboot_compute_node(self, nodename, asap: bool):
+        """Reboot a compute node via Slurm."""
+        asap_string = "asap" if asap else ""
+        command = f"sudo -i scontrol reboot {asap_string} {nodename}"
+        self._remote_command_executor.run_remote_command(command)
 
 
 class TorqueCommands(SchedulerCommands):

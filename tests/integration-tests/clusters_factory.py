@@ -86,6 +86,9 @@ class Cluster:
                 command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
             else:
                 command.extend([f"--{kebab_case(k)}", str(val)])
+        # TODO Remove the validator suppression below once the plugin scheduler is officially supported
+        if self.config["Scheduling"]["Scheduler"] == "plugin":
+            command.extend(["--suppress-validators", "type:SchedulerValidator"])
         result = run_pcluster_command(command, raise_on_error=raise_on_error, log_error=log_error)
         logging.info("update-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
@@ -433,6 +436,9 @@ class ClustersFactory:
                 command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
             else:
                 command.extend([f"--{kebab_case(k)}", str(val)])
+        # TODO Remove the validator suppression below once the plugin scheduler is officially supported
+        if cluster.config["Scheduling"]["Scheduler"] == "plugin":
+            command.extend(["--suppress-validators", "type:SchedulerValidator"])
         try:
             result = run_pcluster_command(command, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
 

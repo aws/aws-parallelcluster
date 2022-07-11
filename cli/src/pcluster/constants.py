@@ -78,7 +78,7 @@ EBS_VOLUME_TYPE_IOPS_DEFAULT = {
     "gp3": 3000,
 }
 EBS_VOLUME_SIZE_DEFAULT = 35
-EBS_VOLUME_TYPE_DEFAULT = "gp2"
+EBS_VOLUME_TYPE_DEFAULT = "gp3"
 
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0
@@ -90,8 +90,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.2.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.2.0",
+    "parallelcluster": "3.2.0b2",
+    "cookbook": "aws-parallelcluster-cookbook-3.2.0b2",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",

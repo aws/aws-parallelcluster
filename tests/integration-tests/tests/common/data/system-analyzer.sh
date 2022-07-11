@@ -151,7 +151,6 @@ function main() {
     exit $?
   fi
 
-
   # Check if path exist
   if [ -d "${1}" ]; then
     log "Directory ${1} exists."
@@ -167,7 +166,7 @@ function main() {
   local TEMP_DIR="${BASE_TEMP_DIR}/system-information/"
 
   # Register signal handling to clean the temporary directory in case of kill, kill -9, ctrl+c, error in the script
-  trap 'signal_handler ${?} ${LINENO} ${BASE_TEMP_DIR}' SIGKILL SIGINT SIGTERM SIGHUP INT ERR EXIT
+  trap 'signal_handler ${?} ${LINENO} ${BASE_TEMP_DIR}' SIGINT SIGTERM SIGHUP INT ERR EXIT
 
   log "Create temporary directory"
   mkdir "${TEMP_DIR}"
@@ -212,6 +211,10 @@ function main() {
   _network_info "${TEMP_DIR}"
 
   _save_imds_info "${TEMP_DIR}"
+
+  # Save users info
+  log "Save /etc/passwd content"
+  cp /etc/passwd "${TEMP_DIR}/passwd"
 
   # Create the archive
   log "Create the archive"
