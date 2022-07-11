@@ -12,9 +12,15 @@ from collections import defaultdict, namedtuple
 
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk.core import Construct, Stack
+from aws_cdk import aws_logs as logs
+from aws_cdk.core import Construct, Duration, Stack
 
-from pcluster.config.cluster_config import BaseClusterConfig, SharedFsxLustre, SharedStorageType
+from pcluster.config.cluster_config import (
+    BaseClusterConfig,
+    CommonSchedulerClusterConfig,
+    SharedFsxLustre,
+    SharedStorageType,
+)
 
 MAX_WIDTH = 24
 
@@ -28,6 +34,7 @@ class Coord:
 
 
 _PclusterMetric = namedtuple("_PclusterMetric", ["title", "metrics", "supported_vol_types"])
+_CustomMetricFilter = namedtuple("MetricFilter", ["metric_name", "filter_pattern"])
 _Filter = namedtuple("new_filter", ["pattern", "param"])
 _CWLogWidget = namedtuple(
     "_CWLogWidget",
@@ -51,6 +58,7 @@ class CWDashboardConstruct(Construct):
         head_node_instance: ec2.CfnInstance,
         shared_storage_infos: dict,
         cw_log_group_name: str,
+        cw_log_group: logs.CfnLogGroup,
     ):
         super().__init__(scope, id)
         self.stack_scope = scope
@@ -59,6 +67,7 @@ class CWDashboardConstruct(Construct):
         self.head_node_instance = head_node_instance
         self.shared_storage_infos = shared_storage_infos
         self.cw_log_group_name = cw_log_group_name
+        self.cw_log_group = cw_log_group
 
         self.dashboard_name = self.stack_name + "-" + self._stack_region
         self.coord = Coord(x_value=0, y_value=0)
@@ -132,9 +141,10 @@ class CWDashboardConstruct(Construct):
         if len(self.shared_storage_infos[SharedStorageType.FSX]) > 0:
             self._add_fsx_metrics_graphs()
 
-        # Head Node logs, if CW Logs are enabled
+        # Head Node logs, adds custom metrics if CW Logs are enabled
         if self.config.is_cw_logging_enabled:
             self._add_cw_log()
+            self.add_custom_error_metrics()
 
     def _update_coord(self, d_x, d_y):
         """Calculate coordinates for the new graph."""
@@ -218,6 +228,128 @@ class CWDashboardConstruct(Construct):
                 graph_widget = self._generate_graph_widget(metric_condition_params.title, metric_list)
                 widgets_list.append(graph_widget)
         return widgets_list
+
+    def custom_pcluster_metric_filter(self, metric_name, filter_pattern, custom_namespace):
+        """Adding custom metric filter from named tuple."""
+        metric_filter = logs.CfnMetricFilter(
+            scope=self.stack_scope,
+            id=metric_name + " Filter",
+            filter_pattern=filter_pattern,
+            log_group_name=self.cw_log_group_name,
+            metric_transformations=[
+                logs.CfnMetricFilter.MetricTransformationProperty(
+                    metric_namespace=custom_namespace,
+                    metric_name=metric_name,
+                    metric_value="1",
+                    default_value=0,
+                )
+            ],
+        )
+        metric_filter.add_depends_on(self.cw_log_group)
+        return metric_filter
+
+    def add_custom_error_metrics(self):
+        """Create custom error metric filter and outputs to cloudwatch graph."""
+        jobs_not_starting_errors = [
+            _CustomMetricFilter(
+                metric_name="Mismatch between IAM Group",
+                filter_pattern="?UnauthorizedOperation ?AccessDeniedException",
+            ),
+            _CustomMetricFilter(
+                metric_name="AMI larger than root volume",
+                filter_pattern="InvalidBlockDeviceMapping",
+            ),
+            _CustomMetricFilter(
+                metric_name="Vcpu limit",
+                filter_pattern="VcpuLimitExceeded",
+            ),
+            _CustomMetricFilter(
+                metric_name="Volume Limit",
+                filter_pattern="?VolumeLimitExceeded ?InsufficientVolumeCapacity",
+            ),
+            _CustomMetricFilter(
+                metric_name="Node Capacity Insufficient",
+                filter_pattern="?InsufficientInstanceCapacity ?InsufficientHostCapacity "
+                "?InsufficientReservedInstanceCapacity ?InsufficientCapacity",
+            ),
+        ]
+
+        custom_script_errors = [
+            _CustomMetricFilter(
+                metric_name="Cannot retrieve custom script",
+                filter_pattern="error occurred 403 when calling the HeadObject operation Forbidden",
+            ),
+            _CustomMetricFilter(
+                metric_name="Error With Custom Script",
+                filter_pattern="Failed to run bootstrap recipes",
+            ),
+            _CustomMetricFilter(
+                metric_name="Script Timeout",
+                filter_pattern="WARNING Node bootstrap error Resume timeout "
+                "expires state DOWN CLOUD POWERED DOWN NOT RESPONDING",
+            ),
+        ]
+
+        compute_node_events = [
+            _CustomMetricFilter(
+                metric_name="Terminated EC2 compute node before job submission ",
+                filter_pattern="WARNING Node state check no corresponding instance in EC2 for node",
+            ),
+            _CustomMetricFilter(
+                metric_name="EC2 Health Check",
+                filter_pattern="Nodes not responding setting DOWN",
+            ),
+            _CustomMetricFilter(
+                metric_name="EC2 Maintenance Events",
+                filter_pattern="Setting nodes failing health check type ec2_health_check to DRAIN",
+            ),
+            _CustomMetricFilter(
+                metric_name="Slurm Health Check Failure",
+                filter_pattern="Performing actions for health check type scheduled_events_check",
+            ),
+        ]
+
+        other_potential_issues = [
+            _CustomMetricFilter(
+                metric_name="Errors and Warnings",
+                filter_pattern="?error ?Error ?ERROR ?WARNING ?Warning ?warning",
+            ),
+        ]
+
+        error_metric_dict = {
+            "Other Error and Warning Messages": other_potential_issues,
+            "Jobs Not Starting Errors": jobs_not_starting_errors,
+            "Unexpected EC2 Termination": compute_node_events,
+        }
+
+        if self.config.head_node.custom_actions or (
+            isinstance(self.config, CommonSchedulerClusterConfig) and self.config.do_compute_nodes_have_custom_actions
+        ):
+            error_metric_dict.update({"Custom Script Errors": custom_script_errors})
+
+        self._add_text_widget("## Metrics for Common Errors")
+        custom_namespace = "ParallelCluster/Errors/" + self.config.cluster_name
+        widgets_list = []
+        for title, metric_filters in error_metric_dict.items():
+            metric_list = []
+            for new_filter in metric_filters:
+                self.custom_pcluster_metric_filter(
+                    metric_name=new_filter.metric_name,
+                    filter_pattern=new_filter.filter_pattern,
+                    custom_namespace=custom_namespace,
+                )
+                cloudwatch_metric = cloudwatch.Metric(
+                    namespace=custom_namespace,
+                    metric_name=new_filter.metric_name,
+                    period=Duration.minutes(1),
+                    statistic="Sum",
+                )
+                metric_list.append(cloudwatch_metric)
+            graph_widget = self._generate_graph_widget(title, metric_list)
+            widgets_list.append(graph_widget)
+
+        self.cloudwatch_dashboard.add_widgets(*widgets_list)
+        self._update_coord_after_section(self.graph_height)
 
     def _add_storage_widgets(self, metrics, storages_list, namespace, dimension_name):
         widgets_list = []

@@ -2301,6 +2301,14 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     architecture=self.head_node.architecture,
                 )
 
+    @property
+    def do_compute_nodes_have_custom_actions(self):
+        """Return True if any queues have custom scripts."""
+        for queue in self.scheduling.queues:
+            if queue.custom_actions:
+                return True
+        return False
+
 
 class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
     """Represent the full Scheduler Plugin Cluster configuration."""
