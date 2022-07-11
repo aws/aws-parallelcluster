@@ -101,10 +101,10 @@ def get_ad_config_param_vals(
 
 
 def get_fsx_config_param_vals(fsx_factory, svm_factory):
-    fsx_ontap_fs_ids = create_fsx_ontap(fsx_factory, num=1)
-    fsx_ontap_volume_ids = [volume_id for _, volume_id in svm_factory(fsx_ontap_fs_ids)]
-    fsx_open_zfs_volume_ids = create_fsx_open_zfs(fsx_factory, num=1)
-    return {"fsx_ontap_volume_id": fsx_ontap_volume_ids[0], "fsx_open_zfs_volume_id": fsx_open_zfs_volume_ids[0]}
+    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
+    fsx_ontap_volume_id = svm_factory(fsx_ontap_fs_id)[0]
+    fsx_open_zfs_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
+    return {"fsx_ontap_volume_id": fsx_ontap_volume_id, "fsx_open_zfs_volume_id": fsx_open_zfs_volume_id}
 
 
 def _add_file_to_zip(zip_file, path, arcname):
