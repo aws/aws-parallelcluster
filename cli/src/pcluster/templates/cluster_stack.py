@@ -287,6 +287,7 @@ class ClusterCdkStack(Stack):
                 head_node_instance=self.head_node_instance,
                 shared_storage_infos=self.shared_storage_infos,
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
+                cw_log_group=self.log_group,
             )
 
     def _add_iam_resources(self):

@@ -114,7 +114,8 @@ write_files:
 
       function error_exit
       {
-        echo "Bootstrap failed with error: $1"
+        echo "B]\
+        ootstrap failed with error: $1"
         # wait logs flush before signaling the failure
         sleep 10
         # TODO: add possibility to override this behavior and keep the instance for debugging
