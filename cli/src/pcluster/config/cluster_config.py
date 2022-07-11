@@ -1276,18 +1276,19 @@ class BaseClusterConfig(Resource):
         )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
-        for storage_type in ["efs", "fsx", "raid"]:
+        for storage_type in ["EFS", "FSx", "RAID"]:
+            storage_type_lower_case = storage_type.lower()
             self._register_validator(
                 NumberOfStorageValidator,
-                storage_type=f"new {storage_type.upper()}",
-                max_number=MAX_NEW_STORAGE_COUNT.get(storage_type),
-                storage_count=new_storage_count[storage_type],
+                storage_type=f"new {storage_type}",
+                max_number=MAX_NEW_STORAGE_COUNT.get(storage_type_lower_case),
+                storage_count=new_storage_count[storage_type_lower_case],
             )
             self._register_validator(
                 NumberOfStorageValidator,
-                storage_type=f"existing {storage_type.upper()}",
-                max_number=MAX_EXISTING_STORAGE_COUNT.get(storage_type),
-                storage_count=existing_storage_count[storage_type],
+                storage_type=f"existing {storage_type}",
+                max_number=MAX_EXISTING_STORAGE_COUNT.get(storage_type_lower_case),
+                storage_count=existing_storage_count[storage_type_lower_case],
             )
         self._register_validator(
             NumberOfStorageValidator,
