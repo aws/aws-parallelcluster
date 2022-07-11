@@ -827,32 +827,59 @@ def test_fsx_architecture_os_validator(architecture, os, expected_message):
 
 
 @pytest.mark.parametrize(
-    "mount_dir_list, expected_message",
+    "shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict, expected_message",
     [
         (
-            ["dir1"],
+            [("name1", "dir1")],
+            {},
             None,
         ),
         (
-            ["dir1", "dir2"],
+            [("name1", "dir1"), ("name2", "dir2")],
+            {},
             None,
         ),
         (
-            ["dir1", "dir2", "dir3"],
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "dir3")],
+            {},
             None,
         ),
         (
-            ["dir1", "dir1", "dir2"],
-            "Mount directory dir1 cannot be specified for multiple file systems",
+            [("name1", "dir1"), ("name3", "dir1"), ("name2", "dir2")],
+            {},
+            r"The mount directory `dir1` is used for multiple shared storage: \['name1', 'name3'\]",
+        ),
+        # The two test cases below check two different errors from the same input.
+        # Because there are two duplicate mount directories.
+        (
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "dir3"), ("name4", "dir2"), ("name5", "dir1")],
+            {},
+            r"The mount directory `dir1` is used for multiple shared storage: \['name1', 'name5'\]",
         ),
         (
-            ["dir1", "dir2", "dir3", "dir2", "dir1"],
-            "Mount directories dir2, dir1 cannot be specified for multiple file systems",
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "dir3"), ("name4", "dir2"), ("name5", "dir1")],
+            {},
+            r"The mount directory `dir2` is used for multiple shared storage: \['name2', 'name4'\]",
+        ),
+        (
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "/scratch")],
+            {},
+            None,
+        ),
+        (
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "/scratch")],
+            {"/scratch": ["c5d.xlarge"]},
+            r"The mount directory `/scratch` used for shared storage \['name3'\] clashes with the one used for "
+            r"ephemeral volumes of the instances \['c5d.xlarge'\].",
         ),
     ],
 )
-def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
-    actual_failures = DuplicateMountDirValidator().execute(mount_dir_list)
+def test_duplicate_mount_dir_validator(
+    shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict, expected_message
+):
+    actual_failures = DuplicateMountDirValidator().execute(
+        shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -939,7 +966,6 @@ def test_shared_storage_name_validator(name, expected_message):
         ("shared", None),
         ("/shared", None),
         ("home", "mount directory .* is reserved"),
-        ("/scratch", "mount directory .* is reserved"),
     ],
 )
 def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
