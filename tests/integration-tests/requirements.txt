@@ -26,3 +26,4 @@ retrying
 troposphere
 untangle
 psutil
+xmltodict
