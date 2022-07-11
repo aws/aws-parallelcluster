@@ -1839,7 +1839,7 @@ def _test_scontrol_reboot_nodes(
     # Get nodes and check that they are in the expected state
     nodes_in_queue = slurm_commands.get_compute_nodes("queue1")
     if nodes_state == "idle":
-        assert_compute_node_states(slurm_commands, nodes_in_queue, "idle")
+        assert_compute_node_states(slurm_commands, nodes_in_queue, ["idle"])
     else:
         assert_compute_node_states(slurm_commands, nodes_in_queue, ["allocated", "mixed"])
 
