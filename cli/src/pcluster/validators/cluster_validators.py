@@ -601,7 +601,7 @@ class DuplicateMountDirValidator(Validator):
                     f"clashes with the one used for ephemeral volumes of the instances {list(instance_types)}. "
                     f"Please change the mount directory configuration of either the shared storage or the ephemeral "
                     f"volume of the impacted nodes.",
-                    FailureLevel.ERROR,
+                    FailureLevel.WARNING,
                 )
 
 
