@@ -931,9 +931,9 @@ def test_overlapping_mount_dir_validator(shared_mount_dir_list, local_mount_dir_
 @pytest.mark.parametrize(
     "storage_type, max_number, storage_count, expected_message",
     [
-        ("fsx", 1, 0, None),
-        ("efs", 1, 1, None),
-        ("ebs", 5, 6, "Invalid number of shared storage of ebs type specified. Currently only supports upto 5"),
+        ("FSx", 1, 0, None),
+        ("EFS", 1, 1, None),
+        ("EBS", 5, 6, "Too many EBS shared storage specified in the configuration. ParallelCluster supports 5 EBS."),
     ],
 )
 def test_number_of_storage_validator(storage_type, max_number, storage_count, expected_message):
