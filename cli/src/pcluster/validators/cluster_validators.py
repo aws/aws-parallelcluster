@@ -388,13 +388,14 @@ class EfaSecurityGroupValidator(Validator):
 # --------------- Storage validators --------------- #
 
 
-def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
+def _check_in_out_access(security_groups_ids, port, is_cidr_optional, protocol="tcp"):
     """
     Verify given list of security groups to check if they allow in and out access on the given port.
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
     :param is_cidr_optional: if it is True, don't enforce check on CIDR.
+    :param protocol: the IP protocol to be checked.
     :return: True if both in and out access are allowed
     :raise: ClientError if a given security group doesn't exist
     """
@@ -405,14 +406,14 @@ def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
 
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
-            if _check_sg_rules_for_port(rule, port):
+            if _check_sg_rules_for_port(rule, port, protocol):
                 if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
                     in_access = True
                     break
 
         # Check all outbound rules
         for rule in sec_group.get("IpPermissionsEgress"):
-            if _check_sg_rules_for_port(rule, port):
+            if _check_sg_rules_for_port(rule, port, protocol):
                 if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
                     out_access = True
                     break
@@ -423,12 +424,13 @@ def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
     return False
 
 
-def _check_sg_rules_for_port(rule, port_to_check):
+def _check_sg_rules_for_port(rule, port_to_check, protocol):
     """
     Verify if the security group rule accepts connections on the given port.
 
     :param rule: The rule to check
     :param port_to_check: The port to check
+    :param protocol: the IP protocol to be checked.
     :return: True if the rule accepts connection, False otherwise
     """
     from_port = rule.get("FromPort")
@@ -438,9 +440,16 @@ def _check_sg_rules_for_port(rule, port_to_check):
     # if ip_protocol is -1, all ports are allowed
     if ip_protocol == "-1":
         return True
-    # tcp == protocol 6,
-    # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
-    if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
+    # Add protocol number in addition to the protocol name
+    if protocol == "tcp":
+        expected_protocol = [protocol, "6"]
+    elif protocol == "udp":
+        expected_protocol = [protocol, "17"]
+    else:
+        # ToDo: When adding new checks for other protocols, change the code to include the protocol number too.
+        expected_protocol = [protocol]
+
+    if (ip_protocol in expected_protocol) and (from_port <= port_to_check <= to_port):
         return True
 
     return False
@@ -505,22 +514,39 @@ class ExistingFsxNetworkingValidator(Validator):
                     network_interface_responses.append(network_interfaces_data[network_interface_id])
 
                 network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
-                ports = FSX_PORTS[file_system.file_system_type]
-                for port in ports:
-                    fs_access = False
-                    for network_interface in network_interfaces:
-                        # Get list of security group IDs
-                        sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                        if _check_in_out_access(sg_ids, port=port, is_cidr_optional=are_all_security_groups_customized):
-                            fs_access = True
-                            break
-                    if not fs_access:
+
+                for protocol, ports in FSX_PORTS[file_system.file_system_type].items():
+                    missing_ports = self._get_missing_ports(
+                        are_all_security_groups_customized, network_interfaces, ports, protocol
+                    )
+
+                    if missing_ports:
                         self._add_failure(
                             f"The current security group settings on file system '{file_system_id}' does not"
                             " satisfy mounting requirement. The file system must be associated to a security group"
-                            f" that allows inbound and outbound TCP traffic through ports {ports}.",
+                            f" that allows inbound and outbound {protocol.upper()} traffic through ports {ports}. "
+                            f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,
                         )
+
+    def _get_missing_ports(self, are_all_security_groups_customized, network_interfaces, ports, protocol):
+        missing_ports = []
+        for port in ports:
+            fs_access = False
+            for network_interface in network_interfaces:
+                # Get list of security group IDs
+                sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
+                if _check_in_out_access(
+                    sg_ids,
+                    port=port,
+                    is_cidr_optional=are_all_security_groups_customized,
+                    protocol=protocol,
+                ):
+                    fs_access = True
+                    break
+            if not fs_access:
+                missing_ports.append(port)
+        return missing_ports
 
 
 class FsxArchitectureOsValidator(Validator):

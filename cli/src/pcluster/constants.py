@@ -65,11 +65,11 @@ FSX_VOLUME_ID_REGEX = r"^fsvol-[0-9a-f]{17}$"
 
 FSX_PORTS = {
     # Lustre Security group: https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html
-    LUSTRE: [988],
+    LUSTRE: {"tcp": [988]},
     # OpenZFS Security group: https://docs.aws.amazon.com/fsx/latest/OpenZFSGuide/limit-access-security-groups.html
-    OPENZFS: [111, 2049, 20001, 20002, 20003],
+    OPENZFS: {"tcp": [111, 2049, 20001, 20002, 20003], "udp": [111, 2049, 20001, 20002, 20003]},
     # Ontap Security group: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/limit-access-security-groups.html
-    ONTAP: [111, 635, 2049, 4046],
+    ONTAP: {"tcp": [111, 635, 2049, 4046], "udp": [111, 635, 2049, 4046]},
 }
 
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
