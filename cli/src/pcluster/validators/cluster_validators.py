@@ -637,8 +637,8 @@ class NumberOfStorageValidator(Validator):
     def _validate(self, storage_type: str, max_number: int, storage_count: int):
         if storage_count > max_number:
             self._add_failure(
-                f"Invalid number of shared storage of {storage_type} type specified. "
-                f"Currently only supports upto {max_number}.",
+                f"Too many {storage_type} shared storage specified in the configuration. "
+                f"ParallelCluster supports {max_number} {storage_type}.",
                 FailureLevel.ERROR,
             )
 
