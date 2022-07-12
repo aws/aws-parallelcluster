@@ -529,22 +529,28 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_p
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(config_file="pcluster.config.yaml", benchmarks=None, **kwargs):
+    def _config_renderer(
+        config_file="pcluster.config.yaml",
+        benchmarks=None,
+        output_file=None,
+        **kwargs,
+    ):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
+        output_file_path = test_datadir / output_file if output_file else config_file_path
         default_values = _get_default_template_values(vpc_stack, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
-        config_file_path.write_text(rendered_template)
+        output_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
             inject_additional_config_settings(
-                config_file_path, request, region, benchmarks, scheduler_plugin_configuration
+                output_file_path, request, region, benchmarks, scheduler_plugin_configuration
             )
         else:
-            inject_additional_image_configs_settings(config_file_path, request)
-        return config_file_path
+            inject_additional_image_configs_settings(output_file_path, request)
+        return output_file_path
 
     return _config_renderer
 
