@@ -59,15 +59,22 @@ Parameters:
       - true
       - false
 
-  EnableS3FullAccess:
+  EnableFSxS3Access:
     Description: |
-      When set to true the ParallelCluster API can access, write all the S3 buckets, it is needed to import/export from/to S3 when creating an FSx filesystem.
-      WARNING - setting this to true grants to the Lambda function S3 Get*, List* and PutObject privileges on all the buckets.
+      When set to true the ParallelCluster API can access, write to the S3 buckets specified in the Filed FsxS3Bucket, it is needed to import/export from/to S3 when creating an FSx filesystem.
+      WARNING - setting this to true grants to the Lambda function S3 Get*, List* and PutObject privileges on the buckets specified in FsxS3Buckets.
     Type: String
     Default: false
     AllowedValues:
       - true
       - false
+
+  FsxS3Buckets:
+    Description: |
+      Comma separated arn of the S3 buckets, to allow the lambda function to import/export from/to S3 when creating an FSx filesystem.
+      WARNING - The setting is used only when EnableFSxS3Access is set to true. (example arn:aws:s3:::<S3_BUCKET_1>,arn:aws:s3:::<S3_BUCKET_2>)
+    Type: String
+    AllowedPattern: ^arn:aws:s3:[a-z0-9\-]*:([0-9]{12})*:.+
 
   PermissionsBoundaryPolicy:
     Description: |
@@ -165,6 +172,7 @@ Conditions:
     Fn::And:
       - !Not [!Equals [!Ref ImageBuilderVpcId, ""]]
       - !Not [!Equals [!Ref ImageBuilderSubnetId, ""]]
+  EnableFSxS3AccessCondition: !Equals [!Ref EnableFSxS3Access, true]
 
 Resources:
 
@@ -631,10 +639,10 @@ Resources:
               - s3:Get*
               - s3:List*
               - s3:PutObject
-            Resource: '*'
+            Resource: !Split [",", !Ref FsxS3Buckets]
             Effect: Allow
-            Condition: !Equals [!Ref EnableS3FullAccess, true]
-            Sid: FSxS3FullAccess
+            Condition: EnableFSxS3AccessCondition
+            Sid: EnableFSxS3Access
           - Action:
               - lambda:CreateFunction
               - lambda:TagResource
