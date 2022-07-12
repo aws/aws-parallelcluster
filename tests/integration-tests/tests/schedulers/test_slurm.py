@@ -1706,7 +1706,7 @@ def _test_memory_based_scheduling_enabled_false(
     # because without memory as consumable resource, Slurm doesn't track the memory usage of
     # each job.
     assert_that(slurm_commands.get_job_info(job_id_1, field="NodeList")).is_equal_to(
-        slurm_commands.get_job_info(job_id_1, field="NodeList")
+        slurm_commands.get_job_info(job_id_2, field="NodeList")
     )
     slurm_commands.wait_job_completed(job_id_1)
     slurm_commands.wait_job_completed(job_id_2)
