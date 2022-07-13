@@ -22,7 +22,6 @@ from pcluster.validators.cluster_validators import (
     ClusterNameValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
-    DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
@@ -399,29 +398,6 @@ def test_efa_security_group_validator(
 
 
 # ---------------- Architecture Validators ---------------- #
-
-
-@pytest.mark.parametrize(
-    "disable_simultaneous_multithreading, architecture, expected_message",
-    [
-        (True, "x86_64", None),
-        (False, "x86_64", None),
-        (
-            True,
-            "arm64",
-            "Disabling simultaneous multithreading is only supported"
-            " on instance types that support these architectures",
-        ),
-        (False, "arm64", None),
-    ],
-)
-def test_disable_simultaneous_multithreading_architecture_validator(
-    disable_simultaneous_multithreading, architecture, expected_message
-):
-    actual_failures = DisableSimultaneousMultithreadingArchitectureValidator().execute(
-        disable_simultaneous_multithreading, architecture
-    )
-    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

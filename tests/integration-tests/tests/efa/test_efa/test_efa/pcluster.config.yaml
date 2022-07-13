@@ -35,7 +35,7 @@ Scheduling:
           InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ max_queue_size }}
-          DisableSimultaneousMultithreading: {{ multithreading_disabled }}
+          DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
             {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}

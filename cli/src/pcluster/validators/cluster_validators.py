@@ -159,23 +159,6 @@ class ComputeResourceSizeValidator(Validator):
             self._add_failure("Max count must be greater than or equal to min count.", FailureLevel.ERROR)
 
 
-class DisableSimultaneousMultithreadingArchitectureValidator(Validator):
-    """
-    Simultaneous Multithreading architecture validator.
-
-    Validate Simultaneous Multithreading and architecture combination.
-    """
-
-    def _validate(self, disable_simultaneous_multithreading, architecture: str):
-        supported_architectures = ["x86_64"]
-        if disable_simultaneous_multithreading and architecture not in supported_architectures:
-            self._add_failure(
-                "Disabling simultaneous multithreading is only supported on instance types that support "
-                "these architectures: {0}.".format(", ".join(supported_architectures)),
-                FailureLevel.ERROR,
-            )
-
-
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 

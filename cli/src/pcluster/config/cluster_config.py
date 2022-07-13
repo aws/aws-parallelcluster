@@ -68,7 +68,6 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     CustomAmiTagValidator,
     DcvValidator,
-    DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
     EfaOsArchitectureValidator,
@@ -975,11 +974,6 @@ class HeadNode(Resource):
 
     def _register_validators(self):
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._register_validator(
-            DisableSimultaneousMultithreadingArchitectureValidator,
-            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
-            architecture=self.architecture,
-        )
 
     @property
     def architecture(self) -> str:
@@ -1000,7 +994,7 @@ class HeadNode(Resource):
     @property
     def pass_cpu_options_in_launch_template(self) -> bool:
         """Check whether CPU Options must be passed in launch template for head node."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
+        return self.disable_simultaneous_multithreading_via_cpu_options
 
     @property
     def is_ebs_optimized(self) -> bool:
@@ -1022,12 +1016,20 @@ class HeadNode(Resource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
     @property
     def instance_role(self):
@@ -1647,11 +1649,6 @@ class SlurmComputeResource(BaseComputeResource):
         super()._register_validators()
         self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
-            DisableSimultaneousMultithreadingArchitectureValidator,
-            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
-            architecture=self.architecture,
-        )
-        self._register_validator(
             EfaValidator,
             instance_type=self.instance_type,
             efa_enabled=self.efa.enabled,
@@ -1682,8 +1679,8 @@ class SlurmComputeResource(BaseComputeResource):
 
     @property
     def pass_cpu_options_in_launch_template(self) -> bool:
-        """Check whether CPU Options must be passed in launch template for head node."""
-        return self.disable_simultaneous_multithreading and self._instance_type_info.is_cpu_options_supported_in_lt()
+        """Check whether CPU Options must be passed in launch template for compute node."""
+        return self.disable_simultaneous_multithreading_via_cpu_options
 
     @property
     def is_ebs_optimized(self) -> bool:
@@ -1705,12 +1702,20 @@ class SlurmComputeResource(BaseComputeResource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
 
 class _CommonQueue(BaseQueue):
