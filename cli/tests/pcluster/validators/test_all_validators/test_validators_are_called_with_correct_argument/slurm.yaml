@@ -19,7 +19,7 @@ Scheduling:
           - subnet-23456789
       ComputeResources:
         - Name: compute_resource1
-          InstanceType: c5.2xlarge
+          InstanceType: t2.large
         - Name: compute_resource2
           InstanceType: c4.2xlarge
     - Name: queue2
@@ -30,8 +30,13 @@ Scheduling:
         - Name: compute_resource1
           InstanceType: c5.4xlarge
           MaxCount: 5
+          DisableSimultaneousMultithreading: true
         - Name: compute_resource2
           InstanceType: c5d.xlarge
+          DisableSimultaneousMultithreading: false
+        - Name: compute_resource3
+          InstanceType: t2.large
+          DisableSimultaneousMultithreading: true
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1

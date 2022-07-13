@@ -115,9 +115,6 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     compute_resource_size_validator = mocker.patch(
         cluster_validators + ".ComputeResourceSizeValidator._validate", return_value=[]
     )
-    disable_simultaneous_multithreading_architecture_validator = mocker.patch(
-        cluster_validators + ".DisableSimultaneousMultithreadingArchitectureValidator._validate", return_value=[]
-    )
     architecture_os_validator = mocker.patch(cluster_validators + ".ArchitectureOsValidator._validate", return_value=[])
     instance_architecture_compatibility_validator = mocker.patch(
         cluster_validators + ".InstanceArchitectureCompatibilityValidator._validate", return_value=[]
@@ -219,7 +216,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         [
             call(max_length=10, resource_name="SlurmQueues", resources_length=2),
             call(max_length=5, resource_name="ComputeResources", resources_length=2),
-            call(max_length=5, resource_name="ComputeResources", resources_length=2),
+            call(max_length=5, resource_name="ComputeResources", resources_length=3),
         ],
         any_order=True,
     )
@@ -228,10 +225,11 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
             call(instance_type="c5d.xlarge", image="ami-12345678"),
-            call(instance_type="c5.2xlarge", image="ami-12345678"),
+            call(instance_type="t2.large", image="ami-12345678"),
             call(instance_type="c4.2xlarge", image="ami-12345678"),
             call(instance_type="c5.4xlarge", image="ami-12345678"),
             call(instance_type="c5d.xlarge", image="ami-12345678"),
+            call(instance_type="t2.large", image="ami-12345678"),
         ],
         any_order=True,
     )
@@ -239,19 +237,16 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
-    # Defaults of disable_simultaneous_multithreading=False
-    disable_simultaneous_multithreading_architecture_validator.assert_has_calls(
-        [call(disable_simultaneous_multithreading=False, architecture="x86_64")] * 5
-    )
     architecture_os_validator.assert_has_calls(
         [call(os="alinux2", architecture="x86_64", custom_ami="ami-12345678", ami_search_filters=None)]
     )
     instance_architecture_compatibility_validator.assert_has_calls(
         [
-            call(instance_type="c5.2xlarge", architecture="x86_64"),
+            call(instance_type="t2.large", architecture="x86_64"),
             call(instance_type="c4.2xlarge", architecture="x86_64"),
             call(instance_type="c5.4xlarge", architecture="x86_64"),
             call(instance_type="c5d.xlarge", architecture="x86_64"),
+            call(instance_type="t2.large", architecture="x86_64"),
         ]
     )
 
