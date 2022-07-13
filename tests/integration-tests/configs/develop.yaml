@@ -29,6 +29,12 @@ test-suites:
           instances: [{{ common.instance("instance_type_1") }}]
           oss: [ "alinux2", "centos7", "ubuntu2004" ]
           schedulers: [ "slurm" ]
+    test_fabric.py::test_fabric:
+      dimensions:
+        - regions: [ "us-east-1" ]
+          instances: [ "p4d.24xlarge" ]
+          oss: [ "alinux2" ]
+          schedulers: [ "slurm" ]
   # need to duplicate api section because test_official_images works only after release
   pcluster_api:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
