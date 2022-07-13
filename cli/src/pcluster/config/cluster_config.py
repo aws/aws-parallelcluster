@@ -1221,27 +1221,28 @@ class BaseClusterConfig(Resource):
                 resource_name="Shared Storage IDs",
             )
 
-            existing_fsx = []
+            existing_fsx = set()
             for storage in self.shared_storage:
                 self._register_validator(SharedStorageNameValidator, name=storage.name)
                 self._register_validator(SharedStorageMountDirValidator, mount_dir=storage.mount_dir)
-                if isinstance(storage, BaseSharedFsx):
+                if isinstance(storage, SharedFsxLustre):
                     if storage.file_system_id:
                         existing_storage_count["fsx"] += 1
-                        existing_fsx.append(storage.file_system_id)
+                        existing_fsx.add(storage.file_system_id)
                     else:
                         new_storage_count["fsx"] += 1
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
-                if isinstance(storage, (ExistingFsxOpenZfs, ExistingFsxOntap)):
-                    existing_fsx.append(storage.file_system_id)
-                if isinstance(storage, SharedEbs):
+                elif isinstance(storage, (ExistingFsxOpenZfs, ExistingFsxOntap)):
+                    existing_storage_count["fsx"] += 1
+                    existing_fsx.add(storage.file_system_id)
+                elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
                     else:
                         ebs_count += 1
-                if isinstance(storage, SharedEfs):
+                elif isinstance(storage, SharedEfs):
                     if storage.file_system_id:
                         existing_storage_count["efs"] += 1
                         self._register_validator(
@@ -1254,7 +1255,7 @@ class BaseClusterConfig(Resource):
                         new_storage_count["efs"] += 1
             self._register_validator(
                 ExistingFsxNetworkingValidator,
-                file_system_ids=existing_fsx,
+                file_system_ids=list(existing_fsx),
                 head_node_subnet_id=self.head_node.networking.subnet_id,
                 are_all_security_groups_customized=self.are_all_security_groups_customized,
             )
