@@ -12,6 +12,7 @@ import os
 
 from pcluster.aws.batch import BatchClient
 from pcluster.aws.cfn import CfnClient
+from pcluster.aws.cost_explorer import CostExplorerClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.efs import EfsClient
@@ -43,6 +44,7 @@ class AWSApi:
 
         self._batch = None
         self._cfn = None
+        self._cost_explorer = None
         self._ec2 = None
         self._efs = None
         self._fsx = None
@@ -64,6 +66,13 @@ class AWSApi:
         if not self._cfn:
             self._cfn = CfnClient()
         return self._cfn
+
+    @property
+    def cost_explorer(self):
+        """Cost explorer client."""
+        if not self._cost_explorer:
+            self._cost_explorer = CostExplorerClient()
+        return self._cost_explorer
 
     @property
     def batch(self):

@@ -61,6 +61,7 @@ from pcluster.validators.awsbatch_validators import (
     AwsBatchInstancesArchitectureCompatibilityValidator,
     AwsBatchRegionValidator,
 )
+from pcluster.validators.budget_validators import BudgetFilterTagValidator
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ClusterNameValidator,
@@ -919,6 +920,10 @@ class Budget(Resource):
         self.cost_filters = Resource.init_param(cost_filters, default=None)
         self.time_unit = Resource.init_param(time_unit, default="MONTHLY")
         self.notifications_with_subscribers = notifications_with_subscribers
+
+    def _register_validators(self):
+        if self.budget_category:
+            self._register_validator(BudgetFilterTagValidator, budget_category=self.budget_category)
 
 
 class ClusterDevSettings(BaseDevSettings):
