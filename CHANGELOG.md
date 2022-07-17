@@ -40,6 +40,7 @@ CHANGELOG
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
 - Handle corner case in the scaling logic when instance is just launched and the describe instances API doesn't report yet all the EC2 info.
 - Dropped validation that would prevent ARM instance type to be used when `DisableSimultaneousMultithreading` was set to true.
+- Add missing policies for EcrImageDeletionLambda and ImageBuilderInstance roles that were causing failure when upgrading ParallelCluster API from one version to another.
 
 3.1.4
 ------
