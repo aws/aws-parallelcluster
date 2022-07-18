@@ -5,42 +5,43 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add new configuration parameter `Scheduling/SlurmSettings/QueueUpdateStrategy` to allow cluster update when
-  `SlurmQueues` configuration changes don't impact Slurm scheduler configuration.
-- Add support for multiple Elastic File Systems.
-- Add support for multiple FSx File Systems.
-- Add support for attaching existing FSx for Ontap and FSx for OpenZFS File Systems.
-- Add support for FSx Lustre Persistent_2 deployment type.
-- Add support for memory-based scheduling in Slurm.
-  - Configure `RealMemory` on compute nodes by default as 95% of the EC2 memory.
-  - Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based scheduling in Slurm.
+- Add support for memory-based job scheduling in Slurm
+  - Configure compute nodes real memory in the Slurm cluster configuration.
+  - Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to enable memory-based scheduling in Slurm.
   - Add new configuration parameter `Scheduling/SlurmQueues/ComputeResources/SchedulableMemory` to override default value of the memory seen by the scheduler on compute nodes.
+- Improve flexibility on cluster configuration updates to avoid the stop and start of the entire cluster whenever possible.
+  - Add new configuration parameter `Scheduling/SlurmSettings/QueueUpdateStrategy` to set the preferred strategy to adopt for compute nodes needing a configuration update and replacement.
+- Add support to mount existing FSx for ONTAP and FSx for OpenZFS file systems.
+- Add support to mount multiple instances of existing EFS, FSx for Lustre / for ONTAP/ for OpenZFS file systems.
+- Add support for FSx Lustre Persistent_2 deployment type.
 - Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
-- Change default EBS volume types from gp2 to gp3 in both the root and additional volumes.
 - Add support for rebooting compute nodes via Slurm.
 
 **CHANGES**
-- Remove support for Python 3.6.
 - Upgrade Slurm to version 21.08.8-2.
-- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+- Upgrade EFA installer to version 1.17.2 
+  - ---TBC---
+- Change default EBS volume types from gp2 to gp3 for both the root and additional volumes.
 - Changes to FSx for Lustre file systems created by ParallelCluster:
   - Change the default deployment type to `Scratch_2`.
   - Change the Lustre server version to `2.12`.
-- Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
+- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
 - Add `parallelcluster:cluster-name` tag to all resources created by ParallelCluster.
 - Do not allow setting `PlacementGroup/Id` when `PlacementGroup/Enabled` is explicitly set to `false`.
-- Restrict IPv6 access to IMDS to root and cluster admin users only, when configuration parameter `HeadNode/Imds/Secured` is enabled.
-- Change the default root volume size from 35 GiB to the size of AMIs. The default can be overwritten in cluster configuration file.
+- Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
+- Restrict IPv6 access to IMDS to root and cluster admin users only, when configuration parameter `HeadNode/Imds/Secured` is true as by default.
+- With a custom AMI, use the AMI root volume size instead of the ParallelCluster default of 35 GiB. The value can be changed in cluster configuration file.
 - Automatic disabling of the compute fleet when the configuration parameter `Scheduling/SlurmQueues/ComputeResources/SpotPrice`
   is lower than the minimum required Spot request fulfillment price.
-- Show `requested_value` and `current_value` values in the change set when adding or removing a section.
+- Show `requested_value` and `current_value` values in the change set when adding or removing a section during an update.
 - Do not replace dynamic node in POWER_DOWN as jobs may be still running.
+- Remove support for Python 3.6.
 
 **BUG FIXES**
-- Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
-- Handle corner case in the scaling logic when instance is just launched and the describe instances API doesn't report yet all the EC2 info.
-- Dropped validation that would prevent ARM instance type to be used when `DisableSimultaneousMultithreading` was set to true.
-- Add missing policies for EcrImageDeletionLambda and ImageBuilderInstance roles that were causing failure when upgrading ParallelCluster API from one version to another.
+- Fix the default behaviour to disable the validation and test components when building a custom AMI.
+- Handle corner case in the scaling logic when an instance is just launched and the describe instances API call doesn't report all the EC2 info yet.
+- Fixed support for `DisableSimultaneousMultithreading` parameter on instance types with ARM processors.
+- Add missing policies for `EcrImageDeletionLambda` and `ImageBuilderInstance` roles that were causing failure when upgrading ParallelCluster API from one version to another.
 
 3.1.4
 ------
