@@ -10,7 +10,7 @@ set -ex
 # /shared/fabtests/outputs/fabtests.log \
 # /shared/fabtests/outputs/fabtests.report \
 # q1-st-g4dn8xl-efa-1 q1-st-g4dn8xl-efa-2 \
-# rdm_tagged_bw,rdm_tagged_pingpong \
+# rdm_tagged_bw,rdm_tagged_pingpong,runt \
 # enable-gdr
 
 FABTESTS_DIR="$1"
@@ -35,7 +35,7 @@ COMPUTE_IP_1=$(host $COMPUTE_NODE_1 | cut -d ' ' -f 4)
 COMPUTE_IP_2=$(host $COMPUTE_NODE_2 | cut -d ' ' -f 4)
 TEST_EXPRESSION=${TEST_CASES//,/ or }
 TEST_ENVIRONMENT_OPTION=""
-[[ "$TEST_OPTIONS" == *"enable-gdr"* ]] && TEST_ENVIRONMENT_OPTION="-E FI_EFA_USE_DEVICE_RDMA=1"
+[[ "$TEST_OPTIONS" == *"enable-gdr"* ]] && TEST_ENVIRONMENT_OPTION="-E \"FI_EFA_USE_DEVICE_RDMA=1\""
 
 mkdir -p $(dirname $PID_FILE)
 mkdir -p $(dirname $LOG_FILE)
@@ -47,7 +47,7 @@ python3 $FABTESTS_RUNNER \
   --expression "$TEST_EXPRESSION" \
   --timeout $FABTESTS_TIMEOUT \
   --junit-xml $REPORT_FILE \
-  $TEST_ENVIRONMENT_OPTION $COMPUTE_IP_1 $COMPUTE_IP_2 > $LOG_FILE 2>&1 &
+  -v $TEST_ENVIRONMENT_OPTION $COMPUTE_IP_1 $COMPUTE_IP_2 > $LOG_FILE 2>&1 &
 
 echo $! > $PID_FILE
 
