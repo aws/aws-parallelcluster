@@ -427,6 +427,12 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: BudgetsDescribeModify
+          # Required to update tag status and describe tags
+          - Action:
+              - ce:ListCostAllocationTags
+            Resource: '*'
+            Effect: Allow
+            Sid: CostAllocationTagsUpdateDescribe
 
   ### IMAGE ACTIONS POLICIES
 

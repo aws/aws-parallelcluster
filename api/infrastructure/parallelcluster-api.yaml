@@ -684,6 +684,11 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: BudgetsDescribeModify
+          - Action:
+              - ce:ListCostAllocationTags
+            Resource: '*'
+            Effect: Allow
+            Sid: CostAllocationTagsUpdateDescribe
 
   ### IMAGE ACTIONS POLICIES
 

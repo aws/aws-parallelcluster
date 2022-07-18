@@ -645,6 +645,16 @@ def test_budget_notification_schema_validators(
         (None, "alias@amazon.com", None),
         ("EMAIL", "alias@amazon.com", None),
         ("SNS", "arn:aws:sns:us-east-1:444455556666:MyTopic", None),
+        ("SNS", "arn:sns:us-east-1:56986798:topic", "The specified valued for Address is not a valid SNS topic arn."),
+        (
+            "SNS",
+            " arn:aws:sns:us-east-1:444455556666:MyTopic",
+            "The specified valued for Address is not a valid SNS topic arn.",
+        ),
+        ("SNS", "12321412:213432", "The specified valued for Address is not a valid SNS topic arn."),
+        ("EMAIL", "myemail.com", "The specified value for Address is not a valid Email address."),
+        ("EMAIL", "amazonemail@amazon.com.br", None),
+        ("EMAIL", "email@gmail.amazon.com", None),
         ("GMAIL", "email@gmail.com", "Must be one of"),
     ],
 )

@@ -971,6 +971,19 @@ class BudgetSubscriberSchema(BaseSchema):
         """Generate resource."""
         return BudgetSubscriber(**data)
 
+    @validates_schema
+    def checks_address_format(self, data, **kwargs):
+        """Check email/sns format using regex."""
+        subscription_type = data.get("subscription_type")
+        address = data.get("address")
+
+        if subscription_type == "EMAIL":
+            if not re.match(r"^.+\@.+\..+$", address):
+                raise ValidationError("The specified value for Address is not a valid Email address.")
+        else:
+            if not re.match(r"^arn:aws:sns:.+$", address):
+                raise ValidationError("The specified valued for Address is not a valid SNS topic arn.")
+
 
 class BudgetNotificationWithSubscribersSchema(BaseSchema):
     """Represent the schema of the NotificationsWithSubscriber field of a budget."""
