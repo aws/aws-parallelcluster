@@ -41,6 +41,7 @@ CHANGELOG
 - Handle corner case in the scaling logic when instance is just launched and the describe instances API doesn't report yet all the EC2 info.
 - Dropped validation that would prevent ARM instance type to be used when `DisableSimultaneousMultithreading` was set to true.
 - Add missing policies for EcrImageDeletionLambda and ImageBuilderInstance roles that were causing failure when upgrading ParallelCluster API from one version to another.
+- Add missing permissions needed to import/export from S3 when using FSx for Lustre via ParallelCluster API.
 
 3.1.4
 ------
