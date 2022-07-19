@@ -32,7 +32,6 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         instance_type,
         gpu_count=0,
         interfaces_count=1,
-        default_threads_per_core=1,
         vcpus=1,
         supported_architectures=None,
         efa_supported=False,
@@ -42,7 +41,6 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         super().__init__(instance_type_data={})
         self._gpu_count = gpu_count
         self._max_network_interface_count = interfaces_count
-        self._default_threads_per_core = default_threads_per_core
         self._vcpus = vcpus
         self._supported_architectures = supported_architectures if supported_architectures else ["x86_64"]
         self._efa_supported = efa_supported
@@ -57,7 +55,14 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         return self._max_network_interface_count
 
     def default_threads_per_core(self):
-        return self._default_threads_per_core
+        # There are more instance types, but for the simplicity of the mock,
+        # we consider only t2 as having one thread per core.
+        return 1 if self._instance_type.startswith("t2") else 2
+
+    def valid_threads_per_core(self):
+        # There are more instance types, but for the simplicity of the mock,
+        # we consider only t2 as not reporting valid threads per core.
+        return [] if self._instance_type.startswith("t2") else [1, 2]
 
     def vcpus_count(self):
         return self._vcpus
@@ -76,6 +81,11 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
 
     def ec2memory_size_in_mib(self):
         return self._ec2memory_size_in_mib
+
+    def instance_storage_supported(self):
+        # There are more instance types supporting instance storage.
+        # But for the simplicity of the mock, only c5d is considered.
+        return True if self._instance_type.startswith("c5d") else False
 
 
 class _DummyAWSApi(AWSApi):
@@ -262,6 +272,4 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
     """Mock AWS Api."""
     mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
     if mock_instance_type_info:
-        mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.get_instance_type_info", return_value=_DummyInstanceTypeInfo("t2.micro")
-        )
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)

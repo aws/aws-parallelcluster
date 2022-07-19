@@ -11,6 +11,7 @@
 import math
 import re
 from abc import ABC
+from collections import defaultdict
 from enum import Enum
 from itertools import combinations, product
 
@@ -19,7 +20,6 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
-    DEFAULT_EPHEMERAL_DIR,
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
@@ -159,23 +159,6 @@ class ComputeResourceSizeValidator(Validator):
             self._add_failure("Max count must be greater than or equal to min count.", FailureLevel.ERROR)
 
 
-class DisableSimultaneousMultithreadingArchitectureValidator(Validator):
-    """
-    Simultaneous Multithreading architecture validator.
-
-    Validate Simultaneous Multithreading and architecture combination.
-    """
-
-    def _validate(self, disable_simultaneous_multithreading, architecture: str):
-        supported_architectures = ["x86_64"]
-        if disable_simultaneous_multithreading and architecture not in supported_architectures:
-            self._add_failure(
-                "Disabling simultaneous multithreading is only supported on instance types that support "
-                "these architectures: {0}.".format(", ".join(supported_architectures)),
-                FailureLevel.ERROR,
-            )
-
-
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
@@ -309,8 +292,10 @@ class EfaValidator(Validator):
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
         if instance_type_supports_efa and not efa_enabled:
             self._add_failure(
-                f"To get results faster with the instance type '{instance_type}' at no additional charge, enable the "
-                "Elastic Fabric Adapter (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa.html)",
+                f"The EC2 instance selected ({instance_type}) supports enhanced networking capabilities using "
+                "Elastic Fabric Adapter (EFA). EFA enables you to run applications requiring high levels of "
+                "inter-node communications at scale on AWS at no additional charge. You can update the cluster's "
+                "configuration to enable EFA (https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html)",
                 FailureLevel.WARNING,
             )
         if gdr_support and not efa_enabled:
@@ -386,13 +371,14 @@ class EfaSecurityGroupValidator(Validator):
 # --------------- Storage validators --------------- #
 
 
-def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
+def _check_in_out_access(security_groups_ids, port, is_cidr_optional, protocol="tcp"):
     """
     Verify given list of security groups to check if they allow in and out access on the given port.
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
     :param is_cidr_optional: if it is True, don't enforce check on CIDR.
+    :param protocol: the IP protocol to be checked.
     :return: True if both in and out access are allowed
     :raise: ClientError if a given security group doesn't exist
     """
@@ -403,14 +389,14 @@ def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
 
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
-            if _check_sg_rules_for_port(rule, port):
+            if _check_sg_rules_for_port(rule, port, protocol):
                 if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
                     in_access = True
                     break
 
         # Check all outbound rules
         for rule in sec_group.get("IpPermissionsEgress"):
-            if _check_sg_rules_for_port(rule, port):
+            if _check_sg_rules_for_port(rule, port, protocol):
                 if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
                     out_access = True
                     break
@@ -421,12 +407,13 @@ def _check_in_out_access(security_groups_ids, port, is_cidr_optional):
     return False
 
 
-def _check_sg_rules_for_port(rule, port_to_check):
+def _check_sg_rules_for_port(rule, port_to_check, protocol):
     """
     Verify if the security group rule accepts connections on the given port.
 
     :param rule: The rule to check
     :param port_to_check: The port to check
+    :param protocol: the IP protocol to be checked.
     :return: True if the rule accepts connection, False otherwise
     """
     from_port = rule.get("FromPort")
@@ -436,9 +423,16 @@ def _check_sg_rules_for_port(rule, port_to_check):
     # if ip_protocol is -1, all ports are allowed
     if ip_protocol == "-1":
         return True
-    # tcp == protocol 6,
-    # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
-    if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
+    # Add protocol number in addition to the protocol name
+    if protocol == "tcp":
+        expected_protocol = [protocol, "6"]
+    elif protocol == "udp":
+        expected_protocol = [protocol, "17"]
+    else:
+        # ToDo: When adding new checks for other protocols, change the code to include the protocol number too.
+        expected_protocol = [protocol]
+
+    if (ip_protocol in expected_protocol) and (from_port <= port_to_check <= to_port):
         return True
 
     return False
@@ -503,22 +497,39 @@ class ExistingFsxNetworkingValidator(Validator):
                     network_interface_responses.append(network_interfaces_data[network_interface_id])
 
                 network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
-                ports = FSX_PORTS[file_system.file_system_type]
-                for port in ports:
-                    fs_access = False
-                    for network_interface in network_interfaces:
-                        # Get list of security group IDs
-                        sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                        if _check_in_out_access(sg_ids, port=port, is_cidr_optional=are_all_security_groups_customized):
-                            fs_access = True
-                            break
-                    if not fs_access:
+
+                for protocol, ports in FSX_PORTS[file_system.file_system_type].items():
+                    missing_ports = self._get_missing_ports(
+                        are_all_security_groups_customized, network_interfaces, ports, protocol
+                    )
+
+                    if missing_ports:
                         self._add_failure(
                             f"The current security group settings on file system '{file_system_id}' does not"
                             " satisfy mounting requirement. The file system must be associated to a security group"
-                            f" that allows inbound and outbound TCP traffic through ports {ports}.",
+                            f" that allows inbound and outbound {protocol.upper()} traffic through ports {ports}. "
+                            f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,
                         )
+
+    def _get_missing_ports(self, are_all_security_groups_customized, network_interfaces, ports, protocol):
+        missing_ports = []
+        for port in ports:
+            fs_access = False
+            for network_interface in network_interfaces:
+                # Get list of security group IDs
+                sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
+                if _check_in_out_access(
+                    sg_ids,
+                    port=port,
+                    is_cidr_optional=are_all_security_groups_customized,
+                    protocol=protocol,
+                ):
+                    fs_access = True
+                    break
+            if not fs_access:
+                missing_ports.append(port)
+        return missing_ports
 
 
 class FsxArchitectureOsValidator(Validator):
@@ -579,16 +590,28 @@ class DuplicateMountDirValidator(Validator):
     Verify if there are duplicated mount dirs between shared storage and ephemeral volumes.
     """
 
-    def _validate(self, mount_dir_list):
-        duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
-        if duplicated_mount_dirs:
-            self._add_failure(
-                "Mount {0} {1} cannot be specified for multiple file systems".format(
-                    "directories" if len(duplicated_mount_dirs) > 1 else "directory",
-                    ", ".join(mount_dir for mount_dir in duplicated_mount_dirs),
-                ),
-                FailureLevel.ERROR,
-            )
+    def _validate(self, shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict):
+        mount_dir_to_names = defaultdict(list)
+        for shared_storage_name, shared_mount_dir in shared_storage_name_mount_dir_tuple_list:
+            mount_dir_to_names[shared_mount_dir].append(shared_storage_name)
+        for mount_dir, names in mount_dir_to_names.items():
+            if len(names) > 1:
+                self._add_failure(
+                    f"The mount directory `{mount_dir}` is used for multiple shared storage: {names}. "
+                    "Shared storage mount directories should be unique. "
+                    "Please change the mount directory configuration of the shared storage.",
+                    FailureLevel.ERROR,
+                )
+        for local_mount_dir, instance_types in local_mount_dir_instance_types_dict.items():
+            shared_storage_names = mount_dir_to_names.get(local_mount_dir)
+            if shared_storage_names:
+                self._add_failure(
+                    f"The mount directory `{local_mount_dir}` used for shared storage {shared_storage_names} "
+                    f"clashes with the one used for ephemeral volumes of the instances {list(instance_types)}. "
+                    f"Please change the mount directory configuration of either the shared storage or the ephemeral "
+                    f"volume of the impacted nodes.",
+                    FailureLevel.WARNING,
+                )
 
 
 class OverlappingMountDirValidator(Validator):
@@ -623,8 +646,8 @@ class NumberOfStorageValidator(Validator):
     def _validate(self, storage_type: str, max_number: int, storage_count: int):
         if storage_count > max_number:
             self._add_failure(
-                f"Invalid number of shared storage of {storage_type} type specified. "
-                f"Currently only supports upto {max_number}.",
+                f"Too many {storage_type} shared storage specified in the configuration. "
+                f"ParallelCluster supports {max_number} {storage_type}.",
                 FailureLevel.ERROR,
             )
 
@@ -712,10 +735,9 @@ class SharedStorageMountDirValidator(Validator):
             "/usr",
             "/var",
         ]
-        default_directories = [DEFAULT_EPHEMERAL_DIR]
         if not mount_dir.startswith("/"):
             mount_dir = "/" + mount_dir
-        if mount_dir in reserved_directories + default_directories:
+        if mount_dir in reserved_directories:
             self._add_failure(
                 f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
                 FailureLevel.ERROR,

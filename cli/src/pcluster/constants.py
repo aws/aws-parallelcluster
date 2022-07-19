@@ -65,11 +65,11 @@ FSX_VOLUME_ID_REGEX = r"^fsvol-[0-9a-f]{17}$"
 
 FSX_PORTS = {
     # Lustre Security group: https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html
-    LUSTRE: [988],
+    LUSTRE: {"tcp": [988]},
     # OpenZFS Security group: https://docs.aws.amazon.com/fsx/latest/OpenZFSGuide/limit-access-security-groups.html
-    OPENZFS: [111, 2049, 20001, 20002, 20003],
+    OPENZFS: {"tcp": [111, 2049, 20001, 20002, 20003], "udp": [111, 2049, 20001, 20002, 20003]},
     # Ontap Security group: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/limit-access-security-groups.html
-    ONTAP: [111, 635, 2049, 4046],
+    ONTAP: {"tcp": [111, 635, 2049, 4046], "udp": [111, 635, 2049, 4046]},
 }
 
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
@@ -90,8 +90,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.2.0b2",
-    "cookbook": "aws-parallelcluster-cookbook-3.2.0b2",
+    "parallelcluster": "3.2.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.2.0",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",

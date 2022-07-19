@@ -22,7 +22,6 @@ from pcluster.validators.cluster_validators import (
     ClusterNameValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
-    DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
@@ -207,7 +206,7 @@ def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_ty
         ("t2.large", True, False, False, "does not support EFA"),
         ("t2.large", False, False, False, None),
         # EFA not enabled for instance type that supports it
-        ("c5n.18xlarge", False, False, True, "at no additional charge, enable the Elastic Fabric Adapter"),
+        ("c5n.18xlarge", False, False, True, "supports enhanced networking capabilities using Elastic Fabric Adapter"),
     ],
 )
 def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
@@ -399,29 +398,6 @@ def test_efa_security_group_validator(
 
 
 # ---------------- Architecture Validators ---------------- #
-
-
-@pytest.mark.parametrize(
-    "disable_simultaneous_multithreading, architecture, expected_message",
-    [
-        (True, "x86_64", None),
-        (False, "x86_64", None),
-        (
-            True,
-            "arm64",
-            "Disabling simultaneous multithreading is only supported"
-            " on instance types that support these architectures",
-        ),
-        (False, "arm64", None),
-    ],
-)
-def test_disable_simultaneous_multithreading_architecture_validator(
-    disable_simultaneous_multithreading, architecture, expected_message
-):
-    actual_failures = DisableSimultaneousMultithreadingArchitectureValidator().execute(
-        disable_simultaneous_multithreading, architecture
-    )
-    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -827,32 +803,59 @@ def test_fsx_architecture_os_validator(architecture, os, expected_message):
 
 
 @pytest.mark.parametrize(
-    "mount_dir_list, expected_message",
+    "shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict, expected_message",
     [
         (
-            ["dir1"],
+            [("name1", "dir1")],
+            {},
             None,
         ),
         (
-            ["dir1", "dir2"],
+            [("name1", "dir1"), ("name2", "dir2")],
+            {},
             None,
         ),
         (
-            ["dir1", "dir2", "dir3"],
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "dir3")],
+            {},
             None,
         ),
         (
-            ["dir1", "dir1", "dir2"],
-            "Mount directory dir1 cannot be specified for multiple file systems",
+            [("name1", "dir1"), ("name3", "dir1"), ("name2", "dir2")],
+            {},
+            r"The mount directory `dir1` is used for multiple shared storage: \['name1', 'name3'\]",
+        ),
+        # The two test cases below check two different errors from the same input.
+        # Because there are two duplicate mount directories.
+        (
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "dir3"), ("name4", "dir2"), ("name5", "dir1")],
+            {},
+            r"The mount directory `dir1` is used for multiple shared storage: \['name1', 'name5'\]",
         ),
         (
-            ["dir1", "dir2", "dir3", "dir2", "dir1"],
-            "Mount directories dir2, dir1 cannot be specified for multiple file systems",
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "dir3"), ("name4", "dir2"), ("name5", "dir1")],
+            {},
+            r"The mount directory `dir2` is used for multiple shared storage: \['name2', 'name4'\]",
+        ),
+        (
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "/scratch")],
+            {},
+            None,
+        ),
+        (
+            [("name1", "dir1"), ("name2", "dir2"), ("name3", "/scratch")],
+            {"/scratch": ["c5d.xlarge"]},
+            r"The mount directory `/scratch` used for shared storage \['name3'\] clashes with the one used for "
+            r"ephemeral volumes of the instances \['c5d.xlarge'\].",
         ),
     ],
 )
-def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
-    actual_failures = DuplicateMountDirValidator().execute(mount_dir_list)
+def test_duplicate_mount_dir_validator(
+    shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict, expected_message
+):
+    actual_failures = DuplicateMountDirValidator().execute(
+        shared_storage_name_mount_dir_tuple_list, local_mount_dir_instance_types_dict
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -904,9 +907,9 @@ def test_overlapping_mount_dir_validator(shared_mount_dir_list, local_mount_dir_
 @pytest.mark.parametrize(
     "storage_type, max_number, storage_count, expected_message",
     [
-        ("fsx", 1, 0, None),
-        ("efs", 1, 1, None),
-        ("ebs", 5, 6, "Invalid number of shared storage of ebs type specified. Currently only supports upto 5"),
+        ("FSx", 1, 0, None),
+        ("EFS", 1, 1, None),
+        ("EBS", 5, 6, "Too many EBS shared storage specified in the configuration. ParallelCluster supports 5 EBS."),
     ],
 )
 def test_number_of_storage_validator(storage_type, max_number, storage_count, expected_message):
@@ -939,7 +942,6 @@ def test_shared_storage_name_validator(name, expected_message):
         ("shared", None),
         ("/shared", None),
         ("home", "mount directory .* is reserved"),
-        ("/scratch", "mount directory .* is reserved"),
     ],
 )
 def test_shared_storage_mount_dir_validator(mount_dir, expected_message):

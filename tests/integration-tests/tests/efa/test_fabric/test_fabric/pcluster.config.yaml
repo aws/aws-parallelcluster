@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ head_node_instance }}
+  InstanceType: c5n.9xlarge
   Networking:
     SubnetId: {{ public_subnet_id }}
     {% if instance == "p4d.24xlarge" %}ElasticIp: true{% endif %}
@@ -11,7 +11,7 @@ HeadNode:
     Secured: {{ imds_secured }}
 {% if instance == "p4d.24xlarge" %}
   Iam:
-    # Needed to use the p4d capacity reservation 
+    # Needed to use the p4d capacity reservation
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonEC2FullAccess
     S3Access:
@@ -24,22 +24,21 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
-    - Name: efa-enabled
+    - Name: q1
       Networking:
         PlacementGroup:
           Enabled: {% if instance != "p4d.24xlarge" %}true{% else %}false{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
-        - Name: efa-enabled-i1
+        - Name: efa-enabled
           InstanceType: {{ instance }}
-          MaxCount: {{ max_queue_size }}
-          MinCount: {{ max_queue_size }}
+          MinCount: 2
+          MaxCount: 2
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
-            {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}
 SharedStorage:
   - MountDir: /shared
-    Name: name1
+    Name: shared-ebs-1
     StorageType: Ebs

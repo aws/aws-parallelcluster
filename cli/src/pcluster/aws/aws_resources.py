@@ -205,6 +205,10 @@ class InstanceTypeInfo:
 
         return vcpus
 
+    def instance_storage_supported(self) -> bool:
+        """Indicate whether instance storage is supported."""
+        return self.instance_type_data.get("InstanceStorageSupported")
+
     def supported_architecture(self):
         """Return the list of supported architectures."""
         supported_architectures = self.instance_type_data.get("ProcessorInfo").get("SupportedArchitectures")
@@ -220,10 +224,9 @@ class InstanceTypeInfo:
         return self.instance_type_data.get("InstanceType")
 
     def is_cpu_options_supported_in_lt(self):
-        """Check whether hyperthreading can be disabled via CPU options."""
-        # If default threads per core is 1, HT doesn't need to be disabled
+        """Check whether CPUOptions can be set in launch template."""
         # When CpuOptions is not supported, valid threads per core can't be found in vcpu info
-        return self.default_threads_per_core() > 1 and 1 in self.valid_threads_per_core()
+        return len(self.valid_threads_per_core()) != 0
 
     def is_ebs_optimized(self):
         """Check whether the instance has optimized EBS support."""

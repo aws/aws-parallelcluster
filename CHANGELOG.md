@@ -11,8 +11,10 @@ CHANGELOG
 - Add support for multiple FSx File Systems.
 - Add support for attaching existing FSx for Ontap and FSx for OpenZFS File Systems.
 - Add support for FSx Lustre Persistent_2 deployment type.
-- Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based scheduling in Slurm.
-- Add new configuration parameter `Scheduling/SlurmQueues/ComputeResources/SchedulableMemory` to override default value of the memory seen by the scheduler on compute nodes.
+- Add support for memory-based scheduling in Slurm.
+  - Configure `RealMemory` on compute nodes by default as 95% of the EC2 memory.
+  - Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based scheduling in Slurm.
+  - Add new configuration parameter `Scheduling/SlurmQueues/ComputeResources/SchedulableMemory` to override default value of the memory seen by the scheduler on compute nodes.
 - Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
 - Change default EBS volume types from gp2 to gp3 in both the root and additional volumes.
 - Add support for rebooting compute nodes via Slurm.
@@ -37,6 +39,9 @@ CHANGELOG
 **BUG FIXES**
 - Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
 - Handle corner case in the scaling logic when instance is just launched and the describe instances API doesn't report yet all the EC2 info.
+- Dropped validation that would prevent ARM instance type to be used when `DisableSimultaneousMultithreading` was set to true.
+- Add missing policies for EcrImageDeletionLambda and ImageBuilderInstance roles that were causing failure when upgrading ParallelCluster API from one version to another.
+- Add missing permissions needed to import/export from S3 when using FSx for Lustre via ParallelCluster API.
 
 3.1.4
 ------

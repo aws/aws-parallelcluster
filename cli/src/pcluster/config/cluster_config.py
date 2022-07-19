@@ -68,7 +68,6 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     CustomAmiTagValidator,
     DcvValidator,
-    DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
     EfaOsArchitectureValidator,
@@ -975,11 +974,6 @@ class HeadNode(Resource):
 
     def _register_validators(self):
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._register_validator(
-            DisableSimultaneousMultithreadingArchitectureValidator,
-            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
-            architecture=self.architecture,
-        )
 
     @property
     def architecture(self) -> str:
@@ -1000,7 +994,7 @@ class HeadNode(Resource):
     @property
     def pass_cpu_options_in_launch_template(self) -> bool:
         """Check whether CPU Options must be passed in launch template for head node."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
+        return self.disable_simultaneous_multithreading_via_cpu_options
 
     @property
     def is_ebs_optimized(self) -> bool:
@@ -1022,12 +1016,20 @@ class HeadNode(Resource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
     @property
     def instance_role(self):
@@ -1217,31 +1219,32 @@ class BaseClusterConfig(Resource):
             )
             self._register_validator(
                 DuplicateNameValidator,
-                name_list=self.existing_fs_id_list,
+                name_list=self.existing_storage_id_list,
                 resource_name="Shared Storage IDs",
             )
 
-            existing_fsx = []
+            existing_fsx = set()
             for storage in self.shared_storage:
                 self._register_validator(SharedStorageNameValidator, name=storage.name)
                 self._register_validator(SharedStorageMountDirValidator, mount_dir=storage.mount_dir)
-                if isinstance(storage, BaseSharedFsx):
+                if isinstance(storage, SharedFsxLustre):
                     if storage.file_system_id:
                         existing_storage_count["fsx"] += 1
-                        existing_fsx.append(storage.file_system_id)
+                        existing_fsx.add(storage.file_system_id)
                     else:
                         new_storage_count["fsx"] += 1
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
-                if isinstance(storage, (ExistingFsxOpenZfs, ExistingFsxOntap)):
-                    existing_fsx.append(storage.file_system_id)
-                if isinstance(storage, SharedEbs):
+                elif isinstance(storage, (ExistingFsxOpenZfs, ExistingFsxOntap)):
+                    existing_storage_count["fsx"] += 1
+                    existing_fsx.add(storage.file_system_id)
+                elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
                     else:
                         ebs_count += 1
-                if isinstance(storage, SharedEfs):
+                elif isinstance(storage, SharedEfs):
                     if storage.file_system_id:
                         existing_storage_count["efs"] += 1
                         self._register_validator(
@@ -1254,7 +1257,7 @@ class BaseClusterConfig(Resource):
                         new_storage_count["efs"] += 1
             self._register_validator(
                 ExistingFsxNetworkingValidator,
-                file_system_ids=existing_fsx,
+                file_system_ids=list(existing_fsx),
                 head_node_subnet_id=self.head_node.networking.subnet_id,
                 are_all_security_groups_customized=self.are_all_security_groups_customized,
             )
@@ -1266,27 +1269,29 @@ class BaseClusterConfig(Resource):
     def _validate_mount_dirs(self):
         self._register_validator(
             DuplicateMountDirValidator,
-            mount_dir_list=self.shared_mount_dir_list + list(self.local_mount_dir_set),
+            shared_storage_name_mount_dir_tuple_list=self.shared_storage_name_mount_dir_tuple_list,
+            local_mount_dir_instance_types_dict=self.local_mount_dir_instance_types_dict,
         )
         self._register_validator(
             OverlappingMountDirValidator,
-            shared_mount_dir_list=self.shared_mount_dir_list,
-            local_mount_dir_list=list(self.local_mount_dir_set),
+            shared_mount_dir_list=[mount_dir for mount_dir, _ in self.shared_storage_name_mount_dir_tuple_list],
+            local_mount_dir_list=list(self.local_mount_dir_instance_types_dict.keys()),
         )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
-        for storage_type in ["efs", "fsx", "raid"]:
+        for storage_type in ["EFS", "FSx", "RAID"]:
+            storage_type_lower_case = storage_type.lower()
             self._register_validator(
                 NumberOfStorageValidator,
-                storage_type=f"new {storage_type.upper()}",
-                max_number=MAX_NEW_STORAGE_COUNT.get(storage_type),
-                storage_count=new_storage_count[storage_type],
+                storage_type=f"new {storage_type}",
+                max_number=MAX_NEW_STORAGE_COUNT.get(storage_type_lower_case),
+                storage_count=new_storage_count[storage_type_lower_case],
             )
             self._register_validator(
                 NumberOfStorageValidator,
-                storage_type=f"existing {storage_type.upper()}",
-                max_number=MAX_EXISTING_STORAGE_COUNT.get(storage_type),
-                storage_count=existing_storage_count[storage_type],
+                storage_type=f"existing {storage_type}",
+                max_number=MAX_EXISTING_STORAGE_COUNT.get(storage_type_lower_case),
+                storage_count=existing_storage_count[storage_type_lower_case],
             )
         self._register_validator(
             NumberOfStorageValidator,
@@ -1320,47 +1325,52 @@ class BaseClusterConfig(Resource):
         return get_partition()
 
     @property
-    def shared_mount_dir_list(self):
-        """Retrieve the list of shared mount dirs."""
+    def shared_storage_name_mount_dir_tuple_list(self):
+        """Retrieve the list of shared storage names and mount dirs."""
         mount_dir_list = []
         if self.shared_storage:
             for storage in self.shared_storage:
-                mount_dir_list.append(storage.mount_dir)
+                mount_dir_list.append((storage.name, storage.mount_dir))
         return mount_dir_list
 
     @property
-    def local_mount_dir_set(self):
-        """Retrieve the list of local mount dirs of head compute nodes ephemeral volume."""
-        mount_dir_set = {
-            self.head_node.local_storage.ephemeral_volume.mount_dir
-            if self.head_node.local_storage.ephemeral_volume
-            else DEFAULT_EPHEMERAL_DIR
-        }
+    def local_mount_dir_instance_types_dict(self):
+        """Retrieve a dictionary of local mount dirs and corresponding instance types."""
+        mount_dir_instance_types_dict = defaultdict(set)
+        if self.head_node.instance_type_info.instance_storage_supported():
+            mount_dir_instance_types_dict[
+                self.head_node.local_storage.ephemeral_volume.mount_dir
+                if self.head_node.local_storage.ephemeral_volume
+                else DEFAULT_EPHEMERAL_DIR
+            ].add(self.head_node.instance_type)
+
         scheduling = self.scheduling
         if isinstance(scheduling, (SchedulerPluginScheduling, SlurmScheduling)):
             for queue in scheduling.queues:
-                mount_dir_set.add(
-                    queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                    if queue.compute_settings.local_storage.ephemeral_volume
-                    else DEFAULT_EPHEMERAL_DIR
-                )
+                instance_types_with_instance_storage = queue.instance_types_with_instance_storage
+                if instance_types_with_instance_storage:
+                    mount_dir_instance_types_dict[
+                        queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                        if queue.compute_settings.local_storage.ephemeral_volume
+                        else DEFAULT_EPHEMERAL_DIR
+                    ].update(instance_types_with_instance_storage)
 
-        return mount_dir_set
+        return mount_dir_instance_types_dict
 
     @property
-    def existing_fs_id_list(self):
+    def existing_storage_id_list(self):
         """Retrieve the list of IDs of EBS, FSx, EFS provided."""
-        fs_id_list = []
+        storage_id_list = []
         if self.shared_storage:
             for storage in self.shared_storage:
-                fs_id = None
-                if isinstance(storage, (SharedEfs, BaseSharedFsx)):
-                    fs_id = storage.file_system_id
-                elif isinstance(storage, SharedEbs):
-                    fs_id = storage.volume_id
-                if fs_id:
-                    fs_id_list.append(fs_id)
-        return fs_id_list
+                storage_id = None
+                if isinstance(storage, (SharedEfs, SharedFsxLustre)):
+                    storage_id = storage.file_system_id
+                elif isinstance(storage, (SharedEbs, ExistingFsxOpenZfs, ExistingFsxOntap)):
+                    storage_id = storage.volume_id
+                if storage_id:
+                    storage_id_list.append(storage_id)
+        return storage_id_list
 
     @property
     def compute_subnet_ids(self):
@@ -1639,11 +1649,6 @@ class SlurmComputeResource(BaseComputeResource):
         super()._register_validators()
         self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
-            DisableSimultaneousMultithreadingArchitectureValidator,
-            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
-            architecture=self.architecture,
-        )
-        self._register_validator(
             EfaValidator,
             instance_type=self.instance_type,
             efa_enabled=self.efa.enabled,
@@ -1674,8 +1679,8 @@ class SlurmComputeResource(BaseComputeResource):
 
     @property
     def pass_cpu_options_in_launch_template(self) -> bool:
-        """Check whether CPU Options must be passed in launch template for head node."""
-        return self.disable_simultaneous_multithreading and self._instance_type_info.is_cpu_options_supported_in_lt()
+        """Check whether CPU Options must be passed in launch template for compute node."""
+        return self.disable_simultaneous_multithreading_via_cpu_options
 
     @property
     def is_ebs_optimized(self) -> bool:
@@ -1697,12 +1702,20 @@ class SlurmComputeResource(BaseComputeResource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        return (
+            self.disable_simultaneous_multithreading
+            and self.instance_type_info.default_threads_per_core() > 1
+            and not self.instance_type_info.is_cpu_options_supported_in_lt()
+        )
 
 
 class _CommonQueue(BaseQueue):
@@ -1787,6 +1800,15 @@ class SlurmQueue(_CommonQueue):
     def instance_type_list(self):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
+
+    @property
+    def instance_types_with_instance_storage(self):
+        """Return a set of instance types in the queue that have instance store."""
+        result = set()
+        for compute_resource in self.compute_resources:
+            if compute_resource.instance_type_info.instance_storage_supported():
+                result.add(compute_resource.instance_type)
+        return result
 
 
 class Dns(Resource):
@@ -1904,6 +1926,15 @@ class SchedulerPluginQueue(_CommonQueue):
     def instance_type_list(self):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
+
+    @property
+    def instance_types_with_instance_storage(self):
+        """Return a set of instance types in the queue that have instance store."""
+        result = set()
+        for compute_resource in self.compute_resources:
+            if compute_resource.instance_type_info.instance_storage_supported():
+                result.add(compute_resource.instance_type)
+        return result
 
 
 class SchedulerPluginSupportedDistros(Resource):

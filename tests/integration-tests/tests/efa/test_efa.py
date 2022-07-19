@@ -51,10 +51,8 @@ def test_efa(
 
     if architecture == "x86_64":
         head_node_instance = "c5.18xlarge"
-        multithreading_disabled = True
     else:
         head_node_instance = "c6g.16xlarge"
-        multithreading_disabled = False
 
     # Post-install script to use P4d targeted ODCR
     bucket_name = ""
@@ -63,12 +61,11 @@ def test_efa(
         bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
         bucket.upload_file(str(test_datadir / "run_instance_override.sh"), "run_instance_override.sh")
 
-    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=multithreading_disabled)
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
         max_queue_size=max_queue_size,
         head_node_instance=head_node_instance,
         bucket_name=bucket_name,
-        multithreading_disabled=multithreading_disabled,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)

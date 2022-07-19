@@ -115,9 +115,6 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     compute_resource_size_validator = mocker.patch(
         cluster_validators + ".ComputeResourceSizeValidator._validate", return_value=[]
     )
-    disable_simultaneous_multithreading_architecture_validator = mocker.patch(
-        cluster_validators + ".DisableSimultaneousMultithreadingArchitectureValidator._validate", return_value=[]
-    )
     architecture_os_validator = mocker.patch(cluster_validators + ".ArchitectureOsValidator._validate", return_value=[])
     instance_architecture_compatibility_validator = mocker.patch(
         cluster_validators + ".InstanceArchitectureCompatibilityValidator._validate", return_value=[]
@@ -219,19 +216,20 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         [
             call(max_length=10, resource_name="SlurmQueues", resources_length=2),
             call(max_length=5, resource_name="ComputeResources", resources_length=2),
-            call(max_length=5, resource_name="ComputeResources", resources_length=2),
+            call(max_length=5, resource_name="ComputeResources", resources_length=3),
         ],
         any_order=True,
     )
     key_pair_validator.assert_has_calls([call(key_name="ec2-key-name")])
-    instance_type_validator.assert_has_calls([call(instance_type="t2.micro")])
+    instance_type_validator.assert_has_calls([call(instance_type="c5d.xlarge")])
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
-            call(instance_type="t2.micro", image="ami-12345678"),
-            call(instance_type="c5.2xlarge", image="ami-12345678"),
+            call(instance_type="c5d.xlarge", image="ami-12345678"),
+            call(instance_type="t2.large", image="ami-12345678"),
             call(instance_type="c4.2xlarge", image="ami-12345678"),
             call(instance_type="c5.4xlarge", image="ami-12345678"),
-            call(instance_type="c4.4xlarge", image="ami-12345678"),
+            call(instance_type="c5d.xlarge", image="ami-12345678"),
+            call(instance_type="t2.large", image="ami-12345678"),
         ],
         any_order=True,
     )
@@ -239,19 +237,16 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
-    # Defaults of disable_simultaneous_multithreading=False
-    disable_simultaneous_multithreading_architecture_validator.assert_has_calls(
-        [call(disable_simultaneous_multithreading=False, architecture="x86_64")] * 5
-    )
     architecture_os_validator.assert_has_calls(
         [call(os="alinux2", architecture="x86_64", custom_ami="ami-12345678", ami_search_filters=None)]
     )
     instance_architecture_compatibility_validator.assert_has_calls(
         [
-            call(instance_type="c5.2xlarge", architecture="x86_64"),
+            call(instance_type="t2.large", architecture="x86_64"),
             call(instance_type="c4.2xlarge", architecture="x86_64"),
             call(instance_type="c5.4xlarge", architecture="x86_64"),
-            call(instance_type="c4.4xlarge", architecture="x86_64"),
+            call(instance_type="c5d.xlarge", architecture="x86_64"),
+            call(instance_type="t2.large", architecture="x86_64"),
         ]
     )
 
@@ -263,18 +258,26 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2")])
     # Scratch mount directories are retrieved from a set. So the order of them is not guaranteed.
     # The first item in call_args is regular args, the second item is keyword args.
-    mount_dir_list = duplicate_mount_dir_validator.call_args[1]["mount_dir_list"]
-    mount_dir_list.sort()
-    assert_that(mount_dir_list).is_equal_to(
-        ["/my/mount/point1", "/my/mount/point2", "/my/mount/point3", "/scratch", "/scratch_head"]
+    shared_storage_name_mount_dir_tuple_list = duplicate_mount_dir_validator.call_args[1][
+        "shared_storage_name_mount_dir_tuple_list"
+    ]
+    shared_storage_name_mount_dir_tuple_list.sort(key=lambda tup: tup[1])
+    assert_that(shared_storage_name_mount_dir_tuple_list).is_equal_to(
+        [("name1", "/my/mount/point1"), ("name2", "/my/mount/point2"), ("name3", "/my/mount/point3")]
+    )
+    local_mount_dir_instance_types_dict = duplicate_mount_dir_validator.call_args[1][
+        "local_mount_dir_instance_types_dict"
+    ]
+    assert_that(local_mount_dir_instance_types_dict).is_equal_to(
+        {"/scratch": {"c5d.xlarge"}, "/scratch_head": {"c5d.xlarge"}}
     )
     number_of_storage_validator.assert_has_calls(
         [
             call(storage_type="EBS", max_number=5, storage_count=1),
             call(storage_type="existing EFS", max_number=20, storage_count=0),
-            call(storage_type="existing FSX", max_number=20, storage_count=0),
+            call(storage_type="existing FSx", max_number=20, storage_count=0),
             call(storage_type="new EFS", max_number=1, storage_count=1),
-            call(storage_type="new FSX", max_number=1, storage_count=1),
+            call(storage_type="new FSx", max_number=1, storage_count=1),
             call(storage_type="new RAID", max_number=1, storage_count=0),
         ],
         any_order=True,

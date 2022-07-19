@@ -1,0 +1,35 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    EnableMemoryBasedScheduling: true
+    QueueUpdateStrategy: DRAIN
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand1-i1
+          InstanceType: c5.large
+          MinCount: 1
+        - Name: ondemand1-i2
+          InstanceType: {{ instance }}
+        - Name: ondemand1-i3
+          InstanceType: c5.4xlarge
+          MinCount: 0
+          SchedulableMemory: 31400
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

@@ -42,7 +42,7 @@ Scheduling:
           - {{ private_subnet_id }}
         {% if scheduler != "awsbatch" %}
         PlacementGroup:
-          Enabled: true
+          Enabled: {% if instance != "p4d.24xlarge" %}true{% else %}false{% endif %}
         {% endif %}
 SharedStorage:
   - MountDir: /shared

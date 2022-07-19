@@ -110,6 +110,19 @@ configure:
         - regions: ["eu-north-1"] # must be regions that do not have t2.micro
           oss: ["centos7"]
           schedulers: ["slurm"]
+  test_pcluster_configure.py::test_efa_and_placement_group:
+    dimensions:
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_EFA_SUPPORTED_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+  test_pcluster_configure.py::test_efa_unsupported:
+    dimensions:
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_EFA_UNSUPPORTED_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+
 create:
   test_create.py::test_create_wrong_os:
     dimensions:

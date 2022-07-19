@@ -133,6 +133,7 @@ class RemoteCommandExecutor:
         timeout=None,
         run_as_root=False,
         login_shell=True,
+        pty=True,
     ):
         """
         Execute a script remotely on the cluster head node.
@@ -145,7 +146,8 @@ class RemoteCommandExecutor:
         :param hide: do not print command output to the local stdout
         :param timeout: interrupt connection after N seconds, default of None = no timeout
         :param run_as_root: boolean; if True 'sudo' is prepended to the command used to run the script
-        :login_shell: boolean; passed to run_remote_command
+        :param login_shell: boolean; passed to run_remote_command
+        :param pty: if True, uses pty to execute commands; default is True.
         :return: result of the execution.
         """
         script_name = os.path.basename(script_file)
@@ -162,6 +164,7 @@ class RemoteCommandExecutor:
             hide=hide,
             timeout=timeout,
             login_shell=login_shell,
+            pty=pty,
         )
 
     def _copy_additional_files(self, files):
