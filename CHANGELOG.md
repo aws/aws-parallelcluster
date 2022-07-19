@@ -50,7 +50,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix the default behavior to skip the validation and test steps when building a custom AMI.
 - Fix file handle leak in `computemgtd`.
-- Handle corner case in the scaling logic when an instance is just launched and the describe instances API call doesn't report all the EC2 info yet.
+- Fix race condition that was sporadically causing launched instances to be immediately terminated because not available yet in EC2 DescribeInstances response
 - Fixed support for `DisableSimultaneousMultithreading` parameter on instance types with Arm processors.
 - Add missing policies for `EcrImageDeletionLambda` and `ImageBuilderInstance` roles that were causing failure when upgrading ParallelCluster API from one version to another.
 
