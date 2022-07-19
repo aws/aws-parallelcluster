@@ -1019,17 +1019,6 @@ Resources:
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
         - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilderECRContainerBuilds
-      Policies:
-        - PolicyName: ImageBuilderCustomPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: ecs:RegisterContainerInstance
-                Resource: !Sub arn:${AWS::Partition}:ecs:*:${AWS::AccountId}:cluster/*
-              - Effect: Allow
-                Action: ecs:DiscoverPollEndpoint
-                Resource: "*"
       AssumeRolePolicyDocument:
         Statement:
           - Action:
