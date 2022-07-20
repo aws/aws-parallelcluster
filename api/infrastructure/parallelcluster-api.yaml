@@ -75,7 +75,7 @@ Parameters:
       NOTE - The setting is used only when EnableFSxS3Access is set to true. (example arn:aws:s3:::<S3_BUCKET_1>,arn:aws:s3:::<S3_BUCKET_2>)
     Type: String
     Default: ''
-    AllowedPattern: ^((arn:[a-z\-]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/\*]+)?(,arn:[a-z\-]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/\*]+)*)$|^\*$
+    AllowedPattern: ^((arn:[a-z\-\*]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/]+)?(,arn:[a-z\-\*]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/]+)*)$|^\*$
     ConstraintDescription: |
       The list of S3 buckets is incorrectly formatted. The list should have the format: arn:<PARTITION>:s3:<REGION>:<ACCOUNT_ID>:<BUCKET_NAME>[,arn:<PARTITION>:s3:<REGION>:<ACCOUNT_ID>:<BUCKET_NAME>,...]
       Example: arn:aws:s3:::test-bucket-1,arn:aws:s3:::test-bucket-2,arn:aws:s3:::test-bucket-3
