@@ -25,7 +25,7 @@ Parameters:
       When set to true the ParallelCluster API can access, write to the S3 buckets specified in the Filed FsxS3Bucket, it is needed to import/export from/to S3 when creating an FSx filesystem.
       NOTE - setting this to true grants the Lambda function S3 Get*, List* and PutObject privileges on the buckets specified in FsxS3Buckets.
     Type: String
-    Default: false
+    Default: true
     AllowedValues:
       - true
       - false
@@ -35,7 +35,8 @@ Parameters:
       Comma separated list of S3 bucket ARNs, to allow the lambda function to import/export from/to S3 when creating an FSx filesystem.
       NOTE - The setting is used only when EnableFSxS3Access is set to true. (example arn:aws:s3:::<S3_BUCKET_1>,arn:aws:s3:::<S3_BUCKET_2>)
     Type: String
-    AllowedPattern: ^((arn:[a-z\-]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/\*]+)?(,arn:[a-z\-]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/\*]+)*)$|^\*$
+    Default: 'arn:*:s3:::integ-tests-*'
+    AllowedPattern: ^((arn:[a-z\-\*]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/]+)?(,arn:[a-z\-\*]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/]+)*)$|^\*$
     ConstraintDescription: |
       The list of S3 buckets is incorrectly formatted. The list should have the format: arn:<PARTITION>:s3:<REGION>:<ACCOUNT_ID>:<BUCKET_NAME>[,arn:<PARTITION>:s3:<REGION>:<ACCOUNT_ID>:<BUCKET_NAME>,...]
       Example: arn:aws:s3:::test-bucket-1,arn:aws:s3:::test-bucket-2,arn:aws:s3:::test-bucket-3
