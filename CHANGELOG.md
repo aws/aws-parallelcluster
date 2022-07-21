@@ -5,43 +5,55 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add new configuration parameter `Scheduling/SlurmSettings/QueueUpdateStrategy` to allow cluster update when
-  `SlurmQueues` configuration changes don't impact Slurm scheduler configuration.
-- Add support for multiple Elastic File Systems.
-- Add support for multiple FSx File Systems.
-- Add support for attaching existing FSx for Ontap and FSx for OpenZFS File Systems.
-- Add support for FSx Lustre Persistent_2 deployment type.
-- Add support for memory-based scheduling in Slurm.
-  - Configure `RealMemory` on compute nodes by default as 95% of the EC2 memory.
-  - Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to configure memory-based scheduling in Slurm.
+- Add support for memory-based job scheduling in Slurm
+  - Configure compute nodes real memory in the Slurm cluster configuration.
+  - Add new configuration parameter `Scheduling/SlurmSettings/EnableMemoryBasedScheduling` to enable memory-based scheduling in Slurm.
   - Add new configuration parameter `Scheduling/SlurmQueues/ComputeResources/SchedulableMemory` to override default value of the memory seen by the scheduler on compute nodes.
+- Improve flexibility on cluster configuration updates to avoid the stop and start of the entire cluster whenever possible.
+  - Add new configuration parameter `Scheduling/SlurmSettings/QueueUpdateStrategy` to set the preferred strategy to adopt for compute nodes needing a configuration update and replacement.
+- Improve failover mechanism over available compute resources when hitting insufficient capacity issues with EC2 instances. Disable compute nodes by a configurable amount of time (default 10 min) when a node launch fails due to insufficient capacity.
+- Add support to mount existing FSx for ONTAP and FSx for OpenZFS file systems.
+- Add support to mount multiple instances of existing EFS, FSx for Lustre / for ONTAP/ for OpenZFS file systems.
+- Add support for FSx for Lustre Persistent_2 deployment type when creating a new file system.
 - Prompt user to enable EFA for supported instance types when using `pcluster configure` wizard.
-- Change default EBS volume types from gp2 to gp3 in both the root and additional volumes.
 - Add support for rebooting compute nodes via Slurm.
+- Improved handling of Slurm power states to also account for manual powering down of nodes.
+- Add NVIDIA GDRCopy 2.3 into the product AMIs to enable low-latency GPU memory copy.
 
 **CHANGES**
-- Remove support for Python 3.6.
-- Upgrade Slurm to version 21.08.8-2.
-- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+- Upgrade EFA installer to version 1.17.2
+  - EFA driver: ``efa-1.16.0-1``
+  - EFA configuration: ``efa-config-1.10-1``
+  - EFA profile: ``efa-profile-1.5-1``
+  - Libfabric: ``libfabric-aws-1.16.0~amzn2.0-1``
+  - RDMA core: ``rdma-core-41.0-2``
+  - Open MPI: ``openmpi40-aws-4.1.4-2``
+- Upgrade NICE DCV to version 2022.0-12760.
+- Upgrade NVIDIA driver to version 470.129.06.
+- Upgrade NVIDIA Fabric Manager to version 470.129.06.
+- Change default EBS volume types from gp2 to gp3 for both the root and additional volumes.
 - Changes to FSx for Lustre file systems created by ParallelCluster:
   - Change the default deployment type to `Scratch_2`.
   - Change the Lustre server version to `2.12`.
-- Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
-- Add `parallelcluster:cluster-name` tag to all resources created by ParallelCluster.
+- Do not require `PlacementGroup/Enabled` to be set to `true` when passing an existing `PlacementGroup/Id`.
+- Add `parallelcluster:cluster-name` tag to all the resources created by ParallelCluster.
 - Do not allow setting `PlacementGroup/Id` when `PlacementGroup/Enabled` is explicitly set to `false`.
-- Restrict IPv6 access to IMDS to root and cluster admin users only, when configuration parameter `HeadNode/Imds/Secured` is enabled.
-- Change the default root volume size from 35 GiB to the size of AMIs. The default can be overwritten in cluster configuration file.
+- Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
+- Restrict IPv6 access to IMDS to root and cluster admin users only, when configuration parameter `HeadNode/Imds/Secured` is true as by default.
+- With a custom AMI, use the AMI root volume size instead of the ParallelCluster default of 35 GiB. The value can be changed in cluster configuration file.
 - Automatic disabling of the compute fleet when the configuration parameter `Scheduling/SlurmQueues/ComputeResources/SpotPrice`
   is lower than the minimum required Spot request fulfillment price.
-- Show `requested_value` and `current_value` values in the change set when adding or removing a section.
-- Do not replace dynamic node in POWER_DOWN as jobs may be still running.
+- Show `requested_value` and `current_value` values in the change set when adding or removing a section during an update.
+- Disable `aws-ubuntu-eni-helper` service in DLAMI to avoid conflicts with `configure_nw_interface.sh` when configuring instances with multiple network cards.
+- Remove support for Python 3.6.
 
 **BUG FIXES**
-- Fix default for disable validate and test components when building custom AMI. The default was to disable those components, but it wasn't effective.
-- Handle corner case in the scaling logic when instance is just launched and the describe instances API doesn't report yet all the EC2 info.
-- Dropped validation that would prevent ARM instance type to be used when `DisableSimultaneousMultithreading` was set to true.
-- Fix resource pattern used for the ListImagePipelineImages Action in the EcrImageDeletionLambdaRole. This is causing a stack update failure when upgrading ParallelCluster API from one version to another.
-- Add missing permissions needed to import/export from S3 when using FSx for Lustre via ParallelCluster API.
+- Fix the default behavior to skip the ParallelCluster validation and test steps when building a custom AMI.
+- Fix file handle leak in `computemgtd`.
+- Fix race condition that was sporadically causing launched instances to be immediately terminated because not available yet in EC2 DescribeInstances response
+- Fix support for `DisableSimultaneousMultithreading` parameter on instance types with Arm processors.
+- Fix ParallelCluster API stack update failure when upgrading from a previus version. Add resource pattern used for the `ListImagePipelineImages` action in the `EcrImageDeletionLambdaRole`. 
+- Fix ParallelCluster API adding missing permissions needed to import/export from S3 when creating an FSx for Lustre storage.
 
 3.1.4
 ------
