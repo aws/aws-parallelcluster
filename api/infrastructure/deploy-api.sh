@@ -68,6 +68,16 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+    --enable-fsx-s3-access)
+    export ENABLE_FSX_S3_ACCESS=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --fsx-s3-buckets)
+    export FSX_S3_BUCKETS=$2
+    shift # past argument
+    shift # past value
+    ;;
     *)    # unknown option
     echo "$usage" >&2
     exit 1

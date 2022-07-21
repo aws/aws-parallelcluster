@@ -48,11 +48,12 @@ CHANGELOG
 - Remove support for Python 3.6.
 
 **BUG FIXES**
-- Fix the default behavior to skip the validation and test steps when building a custom AMI.
+- Fix the default behavior to skip the ParallelCluster validation and test steps when building a custom AMI.
 - Fix file handle leak in `computemgtd`.
 - Fix race condition that was sporadically causing launched instances to be immediately terminated because not available yet in EC2 DescribeInstances response
-- Fixed support for `DisableSimultaneousMultithreading` parameter on instance types with Arm processors.
-- Add missing policies for `EcrImageDeletionLambda` and `ImageBuilderInstance` roles that were causing failure when upgrading ParallelCluster API from one version to another.
+- Fix support for `DisableSimultaneousMultithreading` parameter on instance types with Arm processors.
+- Fix ParallelCluster API stack update failure when upgrading from a previus version. Add resource pattern used for the `ListImagePipelineImages` action in the `EcrImageDeletionLambdaRole`. 
+- Fix ParallelCluster API adding missing permissions needed to import/export from S3 when creating an FSx for Lustre storage.
 
 3.1.4
 ------

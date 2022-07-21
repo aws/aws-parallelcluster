@@ -59,6 +59,27 @@ Parameters:
       - true
       - false
 
+  EnableFSxS3Access:
+    Description: |
+      When set to true the ParallelCluster API can access, write to the S3 buckets specified in the Filed FsxS3Bucket, it is needed to import/export from/to S3 when creating an FSx filesystem.
+      NOTE - setting this to true grants the Lambda function S3 Get*, List* and PutObject privileges on the buckets specified in FsxS3Buckets.
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+
+  FsxS3Buckets:
+    Description: |
+      Comma separated list of S3 bucket ARNs, to allow the lambda function to import/export from/to S3 when creating an FSx filesystem.
+      NOTE - The setting is used only when EnableFSxS3Access is set to true. (example arn:aws:s3:::<S3_BUCKET_1>,arn:aws:s3:::<S3_BUCKET_2>)
+    Type: String
+    Default: ''
+    AllowedPattern: ^((arn:[a-z\-\*]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/]+)?(,arn:[a-z\-\*]*:s3:[a-z0-9\-]*:([0-9]{12})*:[^,\s\/]+)*)$|^\*$
+    ConstraintDescription: |
+      The list of S3 buckets is incorrectly formatted. The list should have the format: arn:<PARTITION>:s3:<REGION>:<ACCOUNT_ID>:<BUCKET_NAME>[,arn:<PARTITION>:s3:<REGION>:<ACCOUNT_ID>:<BUCKET_NAME>,...]
+      Example: arn:aws:s3:::test-bucket-1,arn:aws:s3:::test-bucket-2,arn:aws:s3:::test-bucket-3
+
   PermissionsBoundaryPolicy:
     Description: |
       ARN of a IAM policy to use as PermissionsBoundary for all IAM resources created by ParallelCluster API.
@@ -155,6 +176,10 @@ Conditions:
     Fn::And:
       - !Not [!Equals [!Ref ImageBuilderVpcId, ""]]
       - !Not [!Equals [!Ref ImageBuilderSubnetId, ""]]
+  EnableFSxS3AccessCondition: !And
+    - !Equals [!Ref EnableFSxS3Access, true]
+    - !Condition CreateIamResources
+  UseAllBucketsForFSxS3: !Equals [!Ref FsxS3Buckets, "*"]
 
 Resources:
 
@@ -458,6 +483,36 @@ Resources:
                   aws:RequestedRegion:
                     - !Ref Region
             Sid: ECS
+
+  FSxS3AccessPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableFSxS3AccessCondition
+    Properties:
+      PolicyName: FSxS3AccessPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:AttachRolePolicy
+              - iam:PutRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/s3.data-source.lustre.fsx.amazonaws.com/*
+            Effect: Allow
+            Sid: FSxS3PoliciesAttach
+          - Action:
+              - s3:Get*
+              - s3:List*
+              - s3:PutObject
+            Resource: !Split
+              - ","
+              - !If
+                - UseAllBucketsForFSxS3
+                - "*"
+                - !Sub ["${FsxS3Buckets},${FsxS3BucketsObjects}", FsxS3BucketsObjects: !Join ["/*,", !Split [",", !Sub "${FsxS3Buckets}/*"]]]
+            Effect: Allow
+            Sid: EnableFSxS3Access
+      Roles:
+        - !Ref ParallelClusterUserRole
 
   ParallelClusterClusterPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -964,17 +1019,6 @@ Resources:
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
         - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilderECRContainerBuilds
-      Policies:
-        - PolicyName: ImageBuilderCustomPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: ecs:RegisterContainerInstance
-                Resource: !Sub arn:${AWS::Partition}:ecs:*:${AWS::AccountId}:cluster/*
-              - Effect: Allow
-                Action: ecs:DiscoverPollEndpoint
-                Resource: "*"
       AssumeRolePolicyDocument:
         Statement:
           - Action:

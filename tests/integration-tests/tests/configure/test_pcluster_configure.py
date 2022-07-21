@@ -129,6 +129,7 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
     ],
 )
 def test_efa_and_placement_group(
+    request,
     vpc_stack,
     key_name,
     region,
@@ -179,6 +180,7 @@ def test_efa_and_placement_group(
         efa_config=efa_config,
         placement_group_config=placement_group_config["configuration"],
     )
+    inject_additional_config_settings(config_path, request, region)
     clusters_factory(config_path)
 
 
