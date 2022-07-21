@@ -993,7 +993,7 @@ class BudgetNotificationWithSubscribersSchema(BaseSchema):
         required=True,
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-
+    trigger_fleet_stop = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     subscribers = fields.Nested(
         BudgetSubscriberSchema,
         required=True,
@@ -1053,6 +1053,7 @@ class BudgetSchema(BaseSchema):
         budget_category = data.get("budget_category")
         cost_filters = data.get("cost_filters")
         queue_name = data.get("queue_name")
+
         if budget_category != "custom" and cost_filters:
             raise ValidationError("CostFilters can only be configured when BudgetCategory is set to custom.")
         if budget_category == "custom" and not cost_filters:

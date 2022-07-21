@@ -9,9 +9,15 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+
 import boto3
 import pytest
 from assertpy import assert_that
+from retrying import retry
+from time_utils import minutes, seconds
+from utils import get_arn_partition
+
+from tests.common.utils import get_sts_endpoint
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -32,6 +38,45 @@ def test_update_budget_properties(pcluster_config_reader, clusters_factory, test
 
     # Add one budget of each BudgetCategory, update them, and check that the fields match the expected values
     _test_update_cluster_and_check_fields(cluster, budget_client, account_id, region, pcluster_config_reader)
+
+    # Enable fleet stop action, trigger sns topic notification, and assert that the fleet has stopped
+    _test_stop_compute_fleet(cluster, pcluster_config_reader)
+
+
+def _test_stop_compute_fleet(cluster, pcluster_config_reader):
+    # Create the initial cluster with a budget triggered compute-fleet stop action
+    stop_fleet_config_file = pcluster_config_reader(config_file="budget_with_fleet_stop.yaml")
+    cluster.update(str(stop_fleet_config_file), force_update="true")
+
+    cluster_info = cluster.describe_cluster()
+
+    assert_that(cluster_info.get("computeFleetStatus")).is_in("RUNNING", "ENABLED")
+
+    sns_client = boto3.client("sns")
+
+    account_id = (
+        boto3.client(
+            "sts",
+            endpoint_url=get_sts_endpoint(cluster.region),
+            region_name=cluster.region,
+        )
+        .get_caller_identity()
+        .get("Account")
+    )
+    topic_arn = (
+        f"arn:{get_arn_partition(cluster.region)}:sns:{cluster.region}:{account_id}:pcluster-BudgetTopic-{cluster.name}"
+    )
+
+    # Message should trigger fleet stopper lambda
+    sns_client.publish(TopicArn=topic_arn, Message="Test Stop Fleet")
+
+    _assert_compute_fleet_stop(cluster)
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def _assert_compute_fleet_stop(cluster):
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info.get("computeFleetStatus")).is_in("STOPPED", "DISABLED")
 
 
 def _test_create_and_delete_budgets(

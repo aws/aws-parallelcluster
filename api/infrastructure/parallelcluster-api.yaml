@@ -689,6 +689,18 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: CostAllocationTagsUpdateDescribe
+          - Action:
+              - sns:GetTopicAttributes
+              - sns:TagResource
+              - sns:CreateTopic
+              - sns:Subscribe
+              - sns:DeleteTopic
+              - sns:Unsubscribe
+              - sns:SetTopicAttributes
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:pcluster-BudgetTopic*'
+            Sid: BudgetTriggeredSNS
 
   ### IMAGE ACTIONS POLICIES
 

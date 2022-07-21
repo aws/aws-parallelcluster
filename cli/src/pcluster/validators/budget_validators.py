@@ -42,3 +42,21 @@ class BudgetFilterTagValidator(Validator):
     def _get_tag_status(self):
         client_tags = AWSApi.instance().cost_explorer.list_cost_allocation_tags()["CostAllocationTags"]
         return next((tag["Status"] for tag in client_tags if tag["TagKey"] == self.tag_key), "NotFound")
+
+
+class TriggerFleetStopValidator(Validator):
+    """
+    Validate that trigger_fleet_stop is only specified if budget_category = cluster.
+
+    This is not in schema validators so that it can be skipped, if necessary.
+    """
+
+    def _validate(self, budget_category, notifications_with_subscribers):
+        if budget_category != "cluster" and any(
+            (not notification_with_subscribers.is_implied("trigger_fleet_stop"))
+            for notification_with_subscribers in notifications_with_subscribers
+        ):
+            self._add_failure(
+                "TriggerFleetStop can only be specified when BudgetCategory is set to cluster.",
+                FailureLevel.ERROR,
+            )

@@ -1,6 +1,7 @@
 import pytest
 
-from pcluster.validators.budget_validators import BudgetFilterTagValidator
+from pcluster.config.cluster_config import BudgetNotification, BudgetNotificationWithSubscribers
+from pcluster.validators.budget_validators import BudgetFilterTagValidator, TriggerFleetStopValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -48,4 +49,47 @@ def test_budget_filter_tag_validator(mocker, budget_category, tag_status, expect
         return_value={"CostAllocationTags": [{"TagKey": tag_key, "Status": tag_status}]},
     )
     actual_failures = BudgetFilterTagValidator().execute(budget_category=budget_category)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "budget_category, notifications_with_subscribers, expected_message",
+    [
+        (
+            "cluster",
+            [
+                BudgetNotificationWithSubscribers(
+                    notification=BudgetNotification(threshold=100),
+                    trigger_fleet_stop=True,
+                ),
+            ],
+            None,
+        ),
+        (
+            "queue",
+            [
+                BudgetNotificationWithSubscribers(
+                    notification=BudgetNotification(threshold=80),
+                    trigger_fleet_stop=False,
+                ),
+            ],
+            "TriggerFleetStop can only be specified when BudgetCategory is set to cluster.",
+        ),
+        (
+            "queue",
+            [
+                BudgetNotificationWithSubscribers(
+                    notification=BudgetNotification(threshold=80),
+                    trigger_fleet_stop=True,
+                ),
+            ],
+            "TriggerFleetStop can only be specified when BudgetCategory is set to cluster.",
+        ),
+    ],
+)
+def test_trigger_fleet_stop_validator(budget_category, notifications_with_subscribers, expected_message):
+    actual_failures = TriggerFleetStopValidator().execute(
+        budget_category=budget_category,
+        notifications_with_subscribers=notifications_with_subscribers,
+    )
     assert_failure_messages(actual_failures, expected_message)

@@ -61,7 +61,7 @@ from pcluster.validators.awsbatch_validators import (
     AwsBatchInstancesArchitectureCompatibilityValidator,
     AwsBatchRegionValidator,
 )
-from pcluster.validators.budget_validators import BudgetFilterTagValidator
+from pcluster.validators.budget_validators import BudgetFilterTagValidator, TriggerFleetStopValidator
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ClusterNameValidator,
@@ -886,10 +886,16 @@ class BudgetSubscriber(Resource):
 class BudgetNotificationWithSubscribers(Resource):
     """Represent the configuration of the NotificationWithSubscribers field of a budget."""
 
-    def __init__(self, notification: BudgetNotification, subscribers: List[BudgetSubscriber] = None):
+    def __init__(
+        self,
+        notification: BudgetNotification,
+        trigger_fleet_stop: bool = None,
+        subscribers: List[BudgetSubscriber] = None,
+    ):
         super().__init__()
         self.notification = notification
         self.subscribers = subscribers
+        self.trigger_fleet_stop = Resource.init_param(trigger_fleet_stop, default=False)
 
 
 class BudgetLimit(Resource):
@@ -924,6 +930,12 @@ class Budget(Resource):
     def _register_validators(self):
         if self.budget_category:
             self._register_validator(BudgetFilterTagValidator, budget_category=self.budget_category)
+            if self.notifications_with_subscribers:
+                self._register_validator(
+                    TriggerFleetStopValidator,
+                    budget_category=self.budget_category,
+                    notifications_with_subscribers=self.notifications_with_subscribers,
+                )
 
 
 class ClusterDevSettings(BaseDevSettings):

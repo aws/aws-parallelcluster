@@ -101,7 +101,7 @@ class AwsBatchConstruct(Construct):
         return Stack.of(self).stack_id
 
     def _get_compute_env_prefix(self):
-        return Fn.select(1, Fn.split("compute-environment/", self._compute_env.ref))
+        return Fn.select(1, Fn.split("compute-environment/", self.compute_env.ref))
 
     def _cluster_scoped_iam_path(self):
         """Return a path to be associated IAM roles and instance profiles."""
@@ -125,7 +125,7 @@ class AwsBatchConstruct(Construct):
             self._spot_iam_fleet_role = self._add_spot_fleet_iam_role()
 
         # Batch resources
-        self._compute_env = self._add_compute_env()
+        self.compute_env = self._add_compute_env()
         self._job_queue = self._add_job_queue()
         self._job_role = self._add_job_role()
         self._docker_images_repo = self._add_docker_images_repo()
@@ -190,7 +190,7 @@ class AwsBatchConstruct(Construct):
             priority=1,
             compute_environment_order=[
                 batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
-                    compute_environment=self._compute_env.ref,
+                    compute_environment=self.compute_env.ref,
                     order=1,
                 )
             ],
@@ -821,7 +821,7 @@ class AwsBatchConstruct(Construct):
             self.stack_scope,
             "BatchComputeEnvironmentArn",
             description="Compute Environment created within the cluster.",
-            value=self._compute_env.ref,
+            value=self.compute_env.ref,
         )
         CfnOutput(
             self.stack_scope,
