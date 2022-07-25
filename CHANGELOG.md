@@ -46,6 +46,8 @@ CHANGELOG
 - Show `requested_value` and `current_value` values in the change set when adding or removing a section during an update.
 - Disable `aws-ubuntu-eni-helper` service in DLAMI to avoid conflicts with `configure_nw_interface.sh` when configuring instances with multiple network cards.
 - Remove support for Python 3.6.
+- Set MTU to 9001 for all the network interfaces when configuring instances with multiple network cards.
+- Remove the trailing dot when configuring the compute node FQDN.
 
 **BUG FIXES**
 - Fix the default behavior to skip the ParallelCluster validation and test steps when building a custom AMI.
