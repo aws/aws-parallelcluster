@@ -1152,7 +1152,7 @@ Resources:
                     client.update_function_code(FunctionName=function_to_update, ImageUri=uri, Publish=True)
 
       Handler: index.handler
-      Runtime: python3.7
+      Runtime: python3.9
       Role: !GetAtt UpdateParallelClusterLambdaRole.Arn
       Environment:
         Variables:
@@ -1275,7 +1275,7 @@ Resources:
               cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
 
       Handler: index.handler
-      Runtime: python3.7
+      Runtime: python3.9
       Role: !GetAtt EcrImageDeletionLambdaRole.Arn
 
   EcrImageDeletionLambdaLogGroup:
