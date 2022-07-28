@@ -19,9 +19,7 @@ import utils
 import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
-from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_errors_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
@@ -655,74 +653,3 @@ def _test_update_queue_strategy_with_running_job(
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
     _check_queue_ami(cluster, ec2, pcluster_copy_ami_id, "queue2")
     assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
-
-
-@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_update_slurm_reconfigure_race_condition(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
-):
-    """
-    Test race condition between restart of slurmctld and scontrol reconfigure.
-
-    In Slurm 21.08 it looks like cloud nodes may not get powered-down after their
-    SuspendTime has expired if a cluster update is performed, which restarts the
-    slurmctld daemon and immediately performs an scontrol reconfigure.
-    """
-
-    max_count_cr1 = 10
-    scale_down_idle_time_mins = 5
-
-    cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.yaml",
-        output_file="pcluster.config.initial.yaml",
-        max_count_cr1=max_count_cr1,
-        scale_down_idle_time_mins=scale_down_idle_time_mins,
-    )
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    slurm_commands = scheduler_commands_factory(remote_command_executor)
-
-    assert_compute_node_states(slurm_commands, compute_nodes=None, expected_states=["idle~"])
-
-    for iter in range(1, 6):
-
-        job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
-            submit_command_args={
-                "nodes": 2,
-                "slots": 2,
-                "command": "srun sleep 300",
-                "raise_on_error": False,
-            }
-        )
-        slurm_commands.wait_job_running(job_id_1)
-        nodelist = slurm_commands.get_job_info(job_id_1, field="NodeList")
-        nodes = remote_command_executor.run_remote_command(
-            f"sinfo -N --nodes {nodelist} -h -O NodeHost:100 | sort | uniq"
-        ).stdout.splitlines()
-        nodes = [node.strip() for node in nodes]
-        slurm_commands.cancel_job(job_id_1)
-
-        max_count_cr1 = max_count_cr1 + 3
-
-        updated_config_file = pcluster_config_reader(
-            config_file="pcluster.config.yaml",
-            output_file=f"pcluster.config.iter_{iter}.yaml",
-            max_count_cr1=max_count_cr1,
-            scale_down_idle_time_mins=scale_down_idle_time_mins,
-        )
-        cluster.update(
-            config_file=updated_config_file,
-            wait=True,
-        )
-
-        # Check that nodes get powered down by Slurm.
-        retry(wait_fixed=seconds(30), stop_max_delay=minutes(2 * scale_down_idle_time_mins))(
-            assert_compute_node_states
-        )(
-            scheduler_commands=slurm_commands,
-            compute_nodes=nodes,
-            expected_states=["idle%"],
-        )
