@@ -102,17 +102,13 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         name:
-          - Python 3.6 AWS Batch CLI Tests
           - Python 3.7 AWS Batch CLI Tests
           - Python 3.8 AWS Batch CLI Tests
           - Python 3.9 AWS Batch CLI Tests
-          - Python 3.8 AWS Batch CLI Tests Coverage
+          - Python 3.10 AWS Batch CLI Tests
+          - Python 3.10 AWS Batch CLI Tests Coverage
           - Code Checks AWS Batch CLI
         include:
-          - name: Python 3.6 AWS Batch CLI Tests
-            python: 3.6
-            toxdir: awsbatch-cli
-            toxenv: py36-nocov
           - name: Python 3.7 AWS Batch CLI Tests
             python: 3.7
             toxdir: awsbatch-cli
@@ -125,12 +121,16 @@ jobs:
             python: 3.9
             toxdir: awsbatch-cli
             toxenv: py39-nocov
-          - name: Python 3.8 AWS Batch CLI Tests Coverage
-            python: 3.8
+          - name: Python 3.10 AWS Batch CLI Tests
+            python: '3.10'
             toxdir: awsbatch-cli
-            toxenv: py38-cov
+            toxenv: py310-nocov
+          - name: Python 3.10 AWS Batch CLI Tests Coverage
+            python: '3.10'
+            toxdir: awsbatch-cli
+            toxenv: py310-cov
           - name: Code Checks AWS Batch CLI
-            python: 3.9
+            python: '3.10'
             toxdir: awsbatch-cli
             toxenv: code-linters
     steps:

@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.x.x
+-----
+
+**CHANGES**
+- Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
+
 3.2.0
 ------
 
