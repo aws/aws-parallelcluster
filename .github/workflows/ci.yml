@@ -41,7 +41,8 @@ jobs:
           - Python 3.7 Tests
           - Python 3.8 Tests
           - Python 3.9 Tests
-          - Python 3.8 Tests Coverage
+          - Python 3.10 Tests
+          - Python 3.10 Tests Coverage
           - Code Checks
           - CLI CloudFormation Templates Checks
           - API CloudFormation Templates Checks
@@ -59,24 +60,28 @@ jobs:
             python: 3.9
             toxdir: cli
             toxenv: py39-nocov
-          - name: Python 3.8 Tests Coverage
-            python: 3.8
+          - name: Python 3.10 Tests
+            python: '3.10'
             toxdir: cli
-            toxenv: py38-cov
+            toxenv: py310-nocov
+          - name: Python 3.10 Tests Coverage
+            python: '3.10'
+            toxdir: cli
+            toxenv: py310-cov
           - name: Code Checks
-            python: 3.9
+            python: '3.10'
             toxdir: cli
             toxenv: code-linters
           - name: CLI CloudFormation Templates Checks
-            python: 3.8
+            python: '3.10'
             toxdir: cli
             toxenv: cfn-format-check,cfn-lint,cfn-tests
           - name: API CloudFormation Templates Checks
-            python: 3.8
+            python: '3.10'
             toxdir: api
             toxenv: cfn-lint
           - name: Integration Tests Config Checks
-            python: 3.8
+            python: '3.10'
             toxdir: tests/integration-tests
             toxenv: validate-test-configs
     steps:
