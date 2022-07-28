@@ -866,7 +866,7 @@
             }
           ]
         },
-        "Runtime": "python3.6",
+        "Runtime": "python3.9",
         "Timeout": 60
       }
     },
@@ -1026,7 +1026,7 @@
             }
           ]
         },
-        "Runtime": "python3.6",
+        "Runtime": "python3.9",
         "Timeout": 60
       },
       "DependsOn": "DockerBuildWaitHandle"

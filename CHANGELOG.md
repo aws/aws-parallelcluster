@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+2.x.x
+-----
+**CHANGES**
+Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.9.
+
 2.11.7
 -----
 
