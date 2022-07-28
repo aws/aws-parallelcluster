@@ -1,5 +1,5 @@
 ### Stage 1: creates the wheel package from the pcluster source
-FROM public.ecr.aws/lambda/python:3.8 AS build_pcluster
+FROM public.ecr.aws/lambda/python:3.9 AS build_pcluster
 
 RUN python -m pip install --upgrade setuptools wheel pip
 COPY src ./cli/src
@@ -7,10 +7,10 @@ COPY setup.py MANIFEST.in README ./cli/
 RUN cd cli && python setup.py bdist_wheel
 
 ### Stage 2: prepares the AWS Lambda environment
-FROM public.ecr.aws/lambda/python:3.8 AS pcluster_lambda
+FROM public.ecr.aws/lambda/python:3.9 AS pcluster_lambda
 
 # Copy the node runtime
-COPY --from=public.ecr.aws/lambda/nodejs:14 /var/lang/bin/node /var/lang/bin
+COPY --from=public.ecr.aws/lambda/nodejs:16 /var/lang/bin/node /var/lang/bin
 # Copy the aws-parallelcluster wheel package
 COPY --from=build_pcluster /var/task/cli/dist/* ./dist/
 # Install aws-parallelcluster
