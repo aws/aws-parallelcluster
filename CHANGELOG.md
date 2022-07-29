@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+**ENHANCEMENTS**
+- Introducing error metrics to cloudwatch dashboard
+  - Include configuration option to enable/disable
+
 3.2.0
 ------
 
