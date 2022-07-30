@@ -48,7 +48,14 @@ class CostBudgets:
                 else (
                     {"TagKeyValue": [f"user:parallelcluster:cluster-name${self.cluster_config.cluster_name}"]}
                     if budget.budget_category == "cluster"
-                    else ({"TagKeyValue": [f"user:parallelcluster:queue-name${budget.queue_name}"]})
+                    else (
+                        {
+                            "TagKeyValue": [
+                                f"user:parallelcluster:queue-name${budget.queue_name}",
+                                f"user:parallelcluster:cluster-name${self.cluster_config.cluster_name}",
+                            ]
+                        }
+                    )
                 )
             ),
         )
