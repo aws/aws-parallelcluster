@@ -8,7 +8,7 @@ usage: pcluster build-image [-h]
 
 Create a custom ParallelCluster image in a given region.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --suppress-validators SUPPRESS_VALIDATORS [SUPPRESS_VALIDATORS ...]
                         Identifies one or more config validators to suppress.

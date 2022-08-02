@@ -3,7 +3,7 @@ usage: pcluster describe-image [-h] -i IMAGE_ID [-r REGION] [--debug]
 
 Get detailed information about an existing image.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -i IMAGE_ID, --image-id IMAGE_ID
                         Id of the image.

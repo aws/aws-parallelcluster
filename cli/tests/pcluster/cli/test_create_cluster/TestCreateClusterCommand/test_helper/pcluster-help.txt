@@ -8,7 +8,7 @@ usage: pcluster create-cluster [-h] [-r REGION]
 
 Create a managed cluster in a given region.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.

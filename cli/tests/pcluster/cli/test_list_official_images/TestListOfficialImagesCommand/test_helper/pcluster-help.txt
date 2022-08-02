@@ -4,7 +4,7 @@ usage: pcluster list-official-images [-h] [-r REGION] [--os OS]
 
 List Official ParallelCluster AMIs.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.
