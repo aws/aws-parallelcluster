@@ -155,9 +155,7 @@ Scheduling:
         region,
         rollback_on_failure,
     ):
-        cluster_create_mock = mocker.patch(
-            "pcluster.models.cluster.Cluster.create", auto_spec=True, return_value=("id", errors)
-        )
+        cluster_create_mock = mocker.patch("pcluster.models.cluster.Cluster.create", return_value=("id", errors))
 
         response = self._send_test_request(
             client,
@@ -199,7 +197,7 @@ Scheduling:
 
     @pytest.mark.parametrize("errors", [([]), ([ValidationResult("message", FailureLevel.WARNING, "type")])])
     def test_dryrun(self, client, mocker, errors):
-        mocker.patch("pcluster.models.cluster.Cluster.validate_create_request", auto_spec=True, return_value=(errors))
+        mocker.patch("pcluster.models.cluster.Cluster.validate_create_request", return_value=(errors))
 
         create_cluster_request_content = {"clusterName": "cluster", "clusterConfiguration": self.CONFIG}
 
@@ -401,7 +399,7 @@ Scheduling:
         ],
     )
     def test_cluster_action_error(self, client, mocker, error_type, error_code):
-        mocker.patch("pcluster.models.cluster.Cluster.create", auto_spec=True, side_effect=error_type("error message"))
+        mocker.patch("pcluster.models.cluster.Cluster.create", autospec=True, side_effect=error_type("error message"))
 
         response = self._send_test_request(
             client,
@@ -476,7 +474,7 @@ class TestDeleteCluster:
     )
     def test_successful_request(self, mocker, client, cfn_stack_data, expected_response):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
-        cluster_delete_mock = mocker.patch("pcluster.models.cluster.Cluster.delete", auto_spec=True)
+        cluster_delete_mock = mocker.patch("pcluster.models.cluster.Cluster.delete")
         response = self._send_test_request(client)
 
         with soft_assertions():
@@ -547,7 +545,7 @@ class TestDeleteCluster:
     )
     def test_cluster_action_error(self, client, mocker, error_type, error_code):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response())
-        mocker.patch("pcluster.models.cluster.Cluster.delete", auto_spec=True, side_effect=error_type("error message"))
+        mocker.patch("pcluster.models.cluster.Cluster.delete", autospec=True, side_effect=error_type("error message"))
 
         response = self._send_test_request(client)
 
@@ -1200,9 +1198,7 @@ class TestUpdateCluster:
         ]
         stack_data = cfn_describe_stack_mock_response()
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
-        cluster_update_mock = mocker.patch(
-            "pcluster.models.cluster.Cluster.update", auto_spec=True, return_value=(change_set, errors)
-        )
+        cluster_update_mock = mocker.patch("pcluster.models.cluster.Cluster.update", return_value=(change_set, errors))
 
         response = self._send_test_request(
             client,
@@ -1265,7 +1261,7 @@ class TestUpdateCluster:
         ]
         mocker.patch(
             "pcluster.models.cluster.Cluster.validate_update_request",
-            auto_spec=True,
+            autospec=True,
             return_value=(None, changes, errors),
         )
 
@@ -1683,7 +1679,7 @@ class TestUpdateCluster:
         else:
             error = error_type("error message")
 
-        mocker.patch("pcluster.models.cluster.Cluster.update", auto_spec=True, side_effect=error)
+        mocker.patch("pcluster.models.cluster.Cluster.update", autospec=True, side_effect=error)
 
         response = self._send_test_request(
             client, update_cluster_request_content={"clusterConfiguration": self.CONFIG}, cluster_name="clusterName"

@@ -508,7 +508,6 @@ class TestBuildImage:
     ):
         mocked_call = mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.create",
-            auto_spec=True,
             return_value=suppressed_validation_errors,
         )
         mocker.patch(
