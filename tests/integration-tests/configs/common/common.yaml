@@ -39,11 +39,10 @@ cloudwatch_logging:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: {{ common.SCHEDULERS_TRAD }}
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda 
-#      - regions: ["us-gov-east-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+      - regions: ["us-gov-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
       # 2) run the test for all x86 OSes with slurm
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -67,11 +66,10 @@ configure:
         schedulers: ["slurm"]
       # Do not run on ARM + Batch
       # pcluster configure always picks optimal and Batch does not support ARM for optimal for now
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda       
-#      - regions: ["us-gov-west-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+      - regions: ["us-gov-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
   test_pcluster_configure.py::test_pcluster_configure_avoid_bad_subnets:
     dimensions:
       - regions: ["us-east-1"]  # region must be us-east-1 due to hardcoded logic for AZ selection
@@ -147,16 +145,15 @@ dcv:
         {{- common.OSS_COMMERCIAL_ARM.append("ubuntu2004") or "" }}
         schedulers: ["slurm"]
       # DCV on Batch
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
-#      - regions: ["us-east-1"]
-#        instances: ["g4dn.2xlarge"]
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
-#      # DCV on Batch + ARM
-#      - regions: ["us-east-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+      - regions: ["us-east-1"]
+        instances: ["g4dn.2xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+      # DCV on Batch + ARM
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
       # DCV in cn regions and non GPU enabled instance
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -242,11 +239,11 @@ iam:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"] # awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
+        schedulers: ["slurm", "awsbatch"]
   test_iam.py::test_iam_roles:
     dimensions:
       - regions: ["us-east-2"]
-        schedulers: ["slurm"] # awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
+        schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
   test_iam.py::test_s3_read_write_resource:
@@ -254,7 +251,7 @@ iam:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"] # awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
+        schedulers: ["slurm", "awsbatch"]
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
@@ -284,30 +281,27 @@ networking:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"] # awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
-
+        schedulers: ["slurm", "awsbatch"]
   test_security_groups.py::test_additional_sg_and_ssh_from:
     dimensions:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda        
-#      - regions: ["eu-north-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
   test_security_groups.py::test_overwrite_sg:
     dimensions:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda   
-#      - regions: ["eu-north-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
   test_placement_group.py::test_existing_placement_group_in_cluster:
     dimensions:
       - regions: ["af-south-1"]
@@ -344,21 +338,20 @@ scaling:
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
 schedulers:
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda   
-#  test_awsbatch.py::test_awsbatch:
-#    dimensions:
-#      - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
-#      - regions: ["ap-southeast-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
-#      - regions: ["ap-northeast-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+  test_awsbatch.py::test_awsbatch:
+    dimensions:
+      - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+      - regions: ["ap-southeast-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+      - regions: ["ap-northeast-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
   test_slurm.py::test_slurm:
     dimensions:
       - regions: ["us-east-2"]
@@ -444,7 +437,7 @@ storage:
       - regions: ["us-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"] # awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
+        schedulers: ["slurm", "awsbatch"]
   test_efs.py::test_efs_same_az:
     dimensions:
       - regions: ["ap-northeast-1"]
@@ -455,17 +448,16 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_CHINA_X86 }}
         schedulers: ["slurm"]
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
-#      - regions: ["ap-northeast-1", "cn-north-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: {{ common.OSS_BATCH }}
-#        schedulers: ["awsbatch"]
-#  test_efs.py::test_existing_efs:
-#    dimensions:
-#      - regions: ["ap-northeast-2"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+      - regions: ["ap-northeast-1", "cn-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_BATCH }}
+        schedulers: ["awsbatch"]
+  test_efs.py::test_existing_efs:
+    dimensions:
+      - regions: ["ap-northeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
@@ -486,11 +478,10 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_GOVCLOUD_X86 }}
         schedulers: ["slurm"]
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
-#      - regions: ["ap-south-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: {{ common.OSS_BATCH }}
-#        schedulers: ["awsbatch"]
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_BATCH }}
+        schedulers: ["awsbatch"]
   test_ebs.py::test_default_ebs:
     dimensions:
       - regions: ["cn-northwest-1"]
@@ -499,11 +490,10 @@ storage:
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_multiple:
     dimensions:
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
-#      - regions: ["eu-west-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
-#        schedulers: ["awsbatch"]
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
@@ -544,14 +534,13 @@ tags:
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"] # awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
+        schedulers: ["slurm", "awsbatch"]
 update:
-# awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
-#  test_update.py::test_update_awsbatch:
-#    dimensions:
-#      - regions: ["eu-south-1"]
-#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-#        oss: ["alinux2"]
+  test_update.py::test_update_awsbatch:
+    dimensions:
+      - regions: ["eu-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
   test_update.py::test_update_slurm:
     dimensions:
       - regions: ["eu-west-1"]
@@ -563,4 +552,4 @@ resource_bucket:
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm"] # awsbatch temporarily disabled due to deprecation of Python 3.6 runtime in AWS Lambda
+        schedulers: ["slurm", "awsbatch"]
