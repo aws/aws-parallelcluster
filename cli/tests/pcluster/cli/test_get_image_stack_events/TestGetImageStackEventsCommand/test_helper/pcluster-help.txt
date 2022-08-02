@@ -4,7 +4,7 @@ usage: pcluster get-image-stack-events [-h] -i IMAGE_ID [-r REGION]
 
 Retrieve the events associated with the stack for a given image build.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -i IMAGE_ID, --image-id IMAGE_ID
                         Id of the image.

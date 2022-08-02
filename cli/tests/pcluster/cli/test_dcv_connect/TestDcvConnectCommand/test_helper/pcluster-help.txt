@@ -4,7 +4,7 @@ usage: pcluster dcv-connect [-h] [--debug] [-r REGION] -n CLUSTER_NAME
 Permits to connect to the head node through an interactive session by using
 NICE DCV.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
   -r REGION, --region REGION

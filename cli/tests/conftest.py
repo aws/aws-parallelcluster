@@ -238,8 +238,10 @@ def run_cli(mocker, capsys):
 def assert_out_err(capsys):
     def _assert_out_err(expected_out, expected_err):
         out_err = capsys.readouterr()
+        # In Python 3.10 ArgParse renamed the 'optional arguments' section in the helper to 'option'
+        expected_out_alternative = expected_out.replace("options", "optional arguments")
         with soft_assertions():
-            assert_that(out_err.out.strip()).contains(expected_out)
+            assert_that(out_err.out.strip()).is_in(expected_out, expected_out_alternative)
             assert_that(out_err.err.strip()).contains(expected_err)
 
     return _assert_out_err

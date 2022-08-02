@@ -9,7 +9,7 @@ usage: pcluster get-cluster-log-events [-h] -n CLUSTER_NAME --log-stream-name
 
 Retrieve the events associated with a log stream.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster

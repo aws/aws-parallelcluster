@@ -10,7 +10,7 @@ usage: pcluster export-cluster-logs [-h] [--debug] [-r REGION] -n CLUSTER_NAME
 Export the logs of the cluster to a local tar.gz archive by passing through an
 Amazon S3 Bucket.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
   -r REGION, --region REGION

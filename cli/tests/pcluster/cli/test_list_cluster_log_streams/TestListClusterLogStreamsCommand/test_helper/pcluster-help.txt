@@ -5,7 +5,7 @@ usage: pcluster list-cluster-log-streams [-h] -n CLUSTER_NAME [-r REGION]
 
 Retrieve the list of log streams associated with a cluster.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster

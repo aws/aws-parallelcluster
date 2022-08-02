@@ -3,7 +3,7 @@ usage: pcluster describe-cluster [-h] -n CLUSTER_NAME [-r REGION] [--debug]
 
 Get detailed information about an existing cluster.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster

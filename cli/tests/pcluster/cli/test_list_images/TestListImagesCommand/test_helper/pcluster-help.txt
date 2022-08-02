@@ -4,7 +4,7 @@ usage: pcluster list-images [-h] [-r REGION] [--next-token NEXT_TOKEN]
 
 Retrieve the list of existing custom images.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -r REGION, --region REGION
                         List images built in a given AWS Region.

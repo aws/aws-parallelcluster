@@ -3,7 +3,7 @@ usage: pcluster describe-compute-fleet [-h] -n CLUSTER_NAME [-r REGION]
 
 Describe the status of the compute fleet.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
