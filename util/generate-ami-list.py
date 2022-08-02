@@ -183,7 +183,8 @@ def get_latest_images(images):
         for _key, value in DISTROS.items():
             ami_filtered_and_sorted = sorted(
                 filter(
-                    lambda ami: "-{0}-".format(value) in ami["Name"] and ami["Architecture"] == architecture,
+                    lambda ami, val=value, arch=architecture: "-{0}-".format(val) in ami["Name"]
+                    and ami["Architecture"] == arch,
                     images["Images"],
                 ),
                 key=lambda ami: ami["CreationDate"],
