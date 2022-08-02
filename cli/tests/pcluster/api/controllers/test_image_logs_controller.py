@@ -103,7 +103,6 @@ class TestGetImageLogEvents:
 
         get_log_events_mock = mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.get_log_events",
-            auto_spec=True,
             return_value=mock_log_stream,
         )
 
@@ -172,7 +171,7 @@ class TestGetImageLogEvents:
         err_msg = "The specified %s doesn't exist." % ("log stream" if image_exists else "log group")
         mocker.patch(
             "pcluster.aws.logs.LogsClient.get_log_events",
-            auto_spec=True,
+            autospec=True,
             side_effect=AWSClientError("get_log_events", err_msg, 404),
         )
         response = self._send_test_request(client, "image", "logstream", "us-east-2", None, None, None, None, None)
@@ -403,7 +402,7 @@ class TestListImageLogStreams:
         mock_image_stack(image_id="image", stack_exists=image_stack_found)
         mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.get_log_events",
-            auto_spec=True,
+            autospec=True,
             side_effect=AWSClientError("get_log_events", err_msg, 404),
         )
         response = self._send_test_request(client, "image", "us-east-1", None)

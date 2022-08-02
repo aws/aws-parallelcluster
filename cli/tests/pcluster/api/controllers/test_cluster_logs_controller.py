@@ -103,7 +103,6 @@ class TestGetClusterLogEvents:
 
         get_log_events_mock = mocker.patch(
             "pcluster.models.cluster.Cluster.get_log_events",
-            auto_spec=True,
             return_value=mock_log_stream,
         )
 
@@ -114,13 +113,14 @@ class TestGetClusterLogEvents:
         )
 
         expected_args = {
+            "log_stream_name": log_stream_name,
             "start_time": start_time and to_utc_datetime(start_time),
             "end_time": end_time and to_utc_datetime(end_time),
             "limit": limit,
             "start_from_head": start_from_head,
             "next_token": next_token,
         }
-        get_log_events_mock.assert_called_with(log_stream_name, **expected_args)
+        get_log_events_mock.assert_called_with(**expected_args)
 
         expected = {
             "events": [
@@ -246,7 +246,7 @@ class TestGetClusterStackEvents:
 
         validate_cluster = mocker.patch(
             "pcluster.api.controllers.cluster_logs_controller.validate_cluster",
-            auto_spec=True,
+            autospec=True,
             return_value=True,
         )
 
@@ -376,7 +376,6 @@ class TestListClusterLogStreams:
 
         mocker.patch(
             "pcluster.models.cluster.Cluster.head_node_instance",
-            auto_spec=True,
             new_callable=mocker.PropertyMock,
             return_value=MockHeadNode(),
         )
