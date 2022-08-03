@@ -71,7 +71,7 @@ TEST_DEFAULTS = {
     "api_definition_s3_uri": None,
     "api_infrastructure_s3_uri": None,
     "public_ecr_image_uri": None,
-    "no_delete": False,
+    "no_delete": True,
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
