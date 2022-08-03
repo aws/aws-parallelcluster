@@ -724,6 +724,12 @@ def url_validator(param_key, param_value, pcluster_config):
             warnings.append("{0} {1} {2}".format(param_value, e.code, e.reason))
         except urllib.error.URLError as e:
             warnings.append("{0} {1}".format(param_value, e.reason))
+        except ClientError as e:
+            warnings.append(
+                "Unable to perform HeadObject operation on object URL '{0}': {1}".format(
+                    param_value, e.response.get("Error").get("Message")
+                )
+            )
         except ValueError:
             errors.append(
                 "The value '{0}' used for the parameter '{1}' is not a valid URL".format(param_value, param_key)
