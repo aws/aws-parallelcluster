@@ -9,9 +9,9 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-import time
 import boto3
 import pytest
+import time
 from assertpy import assert_that
 from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
@@ -23,7 +23,6 @@ from utils import check_metric_data_query, retrieve_metric_data
     "dashboard_enabled, cw_log_enabled, enabled_error_metrics",
     [(True, True, True), (True, False, True), (False, False, False)],
 )
-@pytest.mark.parametrize("dashboard_enabled, cw_log_enabled,enabled_error_metrics ", [(True, True, True)])
 def test_dashboard(
     dashboard_enabled,
     cw_log_enabled,
@@ -71,7 +70,6 @@ def test_dashboard(
                 s3 = boto3.resource("s3")
                 s3.Object(bucket_name, "preinstall.sh").delete()
                 # Submit job
-
                 slurm_commands.submit_command_and_assert_job_accepted(
                     submit_command_args={
                         "command": "sleep 150",
@@ -83,7 +81,6 @@ def test_dashboard(
                 time.sleep(600)
                 response = retrieve_metric_data(unique_name, cluster.name, metric_name, period_sec, collection_time_min)
                 check_metric_data_query(response, 1)
-
             else:
                 assert_that(response["DashboardBody"]).does_not_contain("Metrics for Common Errors")
         else:
