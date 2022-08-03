@@ -19,7 +19,13 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import check_status, get_compute_nodes_instance_ids, get_instance_info
+from utils import (
+    check_metric_data_query,
+    check_status,
+    get_compute_nodes_instance_ids,
+    get_instance_info,
+    retrieve_metric_data,
+)
 
 from tests.common.assertions import (
     assert_errors_in_logs,
@@ -700,6 +706,12 @@ def _test_cloud_node_health_check(
     kill_job_id = _submit_kill_networking_job(
         remote_command_executor, scheduler_commands, partition, node_type="dynamic", num_nodes=num_dynamic_nodes
     )
+    # Check corresponding custom metric value
+    metric_name = ["EC2 Health Check"]
+    unique_name = [cluster_name + "." + metric_name]
+    period_sec = 60
+    collection_time_min = 12
+    response = retrieve_metric_data(unique_name, cluster_name, metric_name, period_sec)
     # Sleep for a bit so the command to detach network interface can be run
     time.sleep(15)
     # Job will hang, cancel it manually to avoid waiting for job failing
@@ -713,6 +725,8 @@ def _test_cloud_node_health_check(
         ["/var/log/slurmctld.log"],
         ["Nodes {} not responding, setting DOWN".format(",".join(dynamic_nodes))],
     )
+    # Assert if custom metric value has increased
+    check_metric_data_query(response, 1, collection_time_min)
     # Assert dynamic nodes are reset
     _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -736,6 +750,12 @@ def _test_ec2_status_check_replacement(
     """Test nodes with failing ec2 status checks are correctly replaced."""
     logging.info("Testing that nodes with failing ec2 status checks are correctly replaced")
     static_nodes, _ = assert_initial_conditions(scheduler_commands, num_static_nodes, 0, partition)
+    # Get Error Metric
+    metric_name = ["Slurm Health Check Failure"]
+    unique_name = [cluster_name + "." + metric_name]
+    period_sec = 60
+    collection_time_min = 18
+    response = retrieve_metric_data(unique_name, cluster_name, metric_name, period_sec)
     # Can take up to 15 mins for ec2_status_check to show
     # Need to increase SlurmdTimeout to avoid slurm health check and trigger ec2_status_check code path
     _set_slurmd_timeout(remote_command_executor, slurm_root_path, timeout=10000)
@@ -749,6 +769,8 @@ def _test_ec2_status_check_replacement(
         ["Setting nodes failing health check type ec2_health_check to DRAIN"],
     )
     scheduler_commands.cancel_job(kill_job_id)
+    # Assert custom metric value has increased
+    check_metric_data_query(response, 1, collection_time_min)
     # Assert static nodes are reset
     _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[])
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -1299,6 +1321,12 @@ def _test_disable_protected_mode(
     # Disable protected_mode by setting protected_failure_count to -1
     _set_protected_failure_count(remote_command_executor, -1, clustermgtd_conf_path)
     _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader)
+    # check custom metric for bootstrap failure
+    metric_name = ["Error With Custom Script"]
+    unique_name = [cluster.name + "." + metric_name]
+    period_sec = 60
+    collection_time_min = 8
+    response = retrieve_metric_data(unique_name, cluster.name, metric_name, period_sec)
     # wait till the node failed
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
         remote_command_executor,
@@ -1313,6 +1341,10 @@ def _test_disable_protected_mode(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Node bootstrap error"],
     )
+    # Checks if metric is there in the first place along to see if metric value has changed at all
+    assert_that(response["MetricDataResults"][0]["Values"]).is_not_none()
+    # Checks if metric has changed value, since unique cluster name metric value should start as 0
+    check_metric_data_query(response, 0, collection_time_min)
 
 
 def _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path):
@@ -1420,6 +1452,12 @@ def _test_compute_node_bootstrap_timeout(
     slurm_root_path,
 ):
     """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
+    # add error metric test
+    metric_name = ["Script Timeout"]
+    unique_name = [cluster.name + "." + metric_name]
+    period_sec = 60
+    collection_time_min = 53
+    response = retrieve_metric_data(unique_name, cluster.name, metric_name, period_sec, collection_time_min)
     slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
         "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
     ).stdout
@@ -1442,6 +1480,8 @@ def _test_compute_node_bootstrap_timeout(
     clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
     assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
+    # Test if infinite script error metric has increased here
+    check_metric_data_query(response, 1)
 
 
 def _retrieve_slurm_root_path(remote_command_executor):
