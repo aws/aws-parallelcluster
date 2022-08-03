@@ -1,6 +1,9 @@
 CHANGELOG
 =========
 
+**hanwong changes**
+- introducing error metrics to parallelcluster
+
 3.2.0
 ------
 
