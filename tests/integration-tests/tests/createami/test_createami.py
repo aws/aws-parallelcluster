@@ -383,8 +383,10 @@ def build_image_custom_resource(cfn_stacks_factory, region, request):
         return instance_role_arn
 
     yield _custom_resource
-    if stack_name_post_test:
+    if stack_name_post_test and not request.config.getoption("no_delete"):
         cfn_stacks_factory.delete_stack(stack_name_post_test, region)
+    else:
+        logging.warning("Skipping deletion of CFN image stacks because --no-delete option is set")
 
 
 def test_build_image_custom_components(
