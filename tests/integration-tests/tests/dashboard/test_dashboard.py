@@ -10,7 +10,6 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import time
-
 import boto3
 import pytest
 from assertpy import assert_that
@@ -20,6 +19,10 @@ from utils import check_metric_data_query, retrieve_metric_data
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
+@pytest.mark.parametrize(
+    "dashboard_enabled, cw_log_enabled, enabled_error_metrics",
+    [(True, True, True), (True, False, True), (False, False, False)],
+)
 @pytest.mark.parametrize("dashboard_enabled, cw_log_enabled,enabled_error_metrics ", [(True, True, True)])
 def test_dashboard(
     dashboard_enabled,
