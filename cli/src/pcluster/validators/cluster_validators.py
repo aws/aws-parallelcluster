@@ -41,6 +41,12 @@ NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {"x86_64": [], "arm64": ["centos7"]}
 
+EFS_MESSAGES = {
+    "errors": {
+        "ignored_param_with_efs_fs_id": "{efs_param} cannot be specified when an existing EFS file system is used.",
+    }
+}
+
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSES,
     "arm64": ["ubuntu1804", "ubuntu2004", "alinux2", "centos7"],

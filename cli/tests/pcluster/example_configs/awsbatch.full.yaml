@@ -86,7 +86,6 @@ SharedStorage:
       PerformanceMode: maxIO  # generalPurpose | maxIO
       ThroughputMode: provisioned  # bursting | provisioned
       ProvisionedThroughput: 1024
-      FileSystemId: fs-12345678
 Iam:
   Roles:
     LambdaFunctionsRole: arn:aws:iam::aws:role/CustomResourcesLambdaRole
