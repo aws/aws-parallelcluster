@@ -471,7 +471,11 @@ def images_factory(request):
         return image
 
     yield _image_factory
-    factory.destroy_all_images()
+
+    if not request.config.getoption("no_delete"):
+        factory.destroy_all_images()
+    else:
+        logging.warning("Skipping deletion of CFN image stacks because --no-delete option is set")
 
 
 def _write_config_to_outdir(request, config, config_dir):
