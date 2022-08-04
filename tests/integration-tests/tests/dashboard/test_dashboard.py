@@ -16,10 +16,14 @@ from botocore.exceptions import ClientError
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
-@pytest.mark.parametrize("dashboard_enabled, cw_log_enabled", [(True, True), (True, False), (False, False)])
+@pytest.mark.parametrize(
+    "dashboard_enabled, cw_log_enabled, enabled_error_metrics",
+    [(True, True, False), (True, False, True), (False, False, False)],
+)
 def test_dashboard(
     dashboard_enabled,
     cw_log_enabled,
+    enabled_error_metrics,
     region,
     pcluster_config_reader,
     clusters_factory,
@@ -28,6 +32,7 @@ def test_dashboard(
     cluster_config = pcluster_config_reader(
         dashboard_enabled=str(dashboard_enabled).lower(),
         cw_log_enabled=str(cw_log_enabled).lower(),
+        enabled_error_metrics=str(enabled_error_metrics).lower(),
     )
     cluster = clusters_factory(cluster_config)
     cw_client = boto3.client("cloudwatch", region_name=region)
@@ -38,6 +43,10 @@ def test_dashboard(
         assert_that(response["DashboardName"]).is_equal_to(dashboard_name)
         if cw_log_enabled:
             assert_that(response["DashboardBody"]).contains("Head Node Logs")
+            if enabled_error_metrics:
+                assert_that(response["DashboardBody"]).contains("Metrics for Common Errors")
+            else:
+                assert_that(response["DashboardBody"]).does_not_contain("Metrics for Common Errors")
         else:
             assert_that(response["DashboardBody"]).does_not_contain("Head Node Logs")
     else:
