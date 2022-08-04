@@ -9,6 +9,9 @@ CHANGELOG
 - Upgrade Python and NodeJS versions in API infrastructure, API Docker container and cluster Lambda resources.
 - Move head node tags from launch template to instance definition to avoid head node replacement on tags updates.
 
+**BUG FIXES**
+- Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified along with other `SharedStorage/EfsSettings` parameters.
+
 3.2.0
 ------
 
