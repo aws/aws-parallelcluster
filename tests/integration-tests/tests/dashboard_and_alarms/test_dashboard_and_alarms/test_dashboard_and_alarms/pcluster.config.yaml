@@ -34,3 +34,4 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: {{ dashboard_enabled }}
+      EnableErrorMetrics: {{ enabled_error_metrics }}
