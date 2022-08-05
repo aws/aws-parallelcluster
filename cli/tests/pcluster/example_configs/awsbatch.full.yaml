@@ -124,6 +124,7 @@ DevSettings:
       NotificationsWithSubscribers:
         - Notification:
             Threshold: 76.0
+          TriggerFleetStop: true
           Subscribers:
             - SubscriptionType: EMAIL
               Address: alias1@amazon.com

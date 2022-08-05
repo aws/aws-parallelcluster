@@ -433,6 +433,18 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: CostAllocationTagsUpdateDescribe
+          - Action:
+              - sns:GetTopicAttributes
+              - sns:TagResource
+              - sns:CreateTopic
+              - sns:Subscribe
+              - sns:DeleteTopic
+              - sns:Unsubscribe
+              - sns:SetTopicAttributes
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:pcluster-BudgetTopic*'
+            Sid: BudgetTriggeredSNS
 
   ### IMAGE ACTIONS POLICIES
 
@@ -744,6 +756,11 @@ Resources:
             Resource:
               - !Sub arn:${AWS::Partition}:s3:::integ-tests-*
             Effect: Allow
+          - Action:
+              - sns:Publish
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:pcluster-BudgetTopic*'
 
   ### PERMISSIONS BOUNDARY
 

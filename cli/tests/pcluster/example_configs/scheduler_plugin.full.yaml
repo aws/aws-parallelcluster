@@ -239,7 +239,7 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
-    LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+    LambdaFunctionsRole: arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
   DetailedMonitoring: true  # false
   Logs:
@@ -286,6 +286,7 @@ DevSettings:
       NotificationsWithSubscribers:
         - Notification:
             Threshold: 76.0
+          TriggerFleetStop: true
           Subscribers:
             - SubscriptionType: EMAIL
               Address: alias1@amazon.com
