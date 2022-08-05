@@ -432,6 +432,7 @@ def _test_build_image_success(image):
         logging.info(pcluster_describe_image_result)
     if image.image_status != "BUILD_COMPLETE":
         image.keep_logs = True
+        _keep_recent_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
 
 
@@ -482,5 +483,12 @@ def _test_build_image_failed(image):
 
     if image.image_status == "BUILD_FAILED":
         image.keep_logs = True
-
+        _keep_recent_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_FAILED")
+
+
+def _keep_recent_logs(image):
+    """Keep several lines of recent log to the console when creating an image fails."""
+    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
+    failure_logs = image.get_log_events(log_stream_name, start_from_head=True, query="events[*].message", limit=100)
+    logging.info(f"Image built failed for {image.image_id}, the last 100 lines of the log are: {failure_logs}")
