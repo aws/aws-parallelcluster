@@ -240,3 +240,127 @@ def _get_cfn_init_file_content(template, resource, file):
     content_separator = content_join[0]
     content_elements = content_join[1]
     return content_separator.join(str(elem) for elem in content_elements)
+
+
+@freeze_time("2021-01-01T01:01:01")
+@pytest.mark.parametrize(
+    "config_file_name, expected_instance_tags, expected_volume_tags",
+    [
+        (
+            "slurm.full.yaml",
+            {},
+            {
+                "parallelcluster:cluster-name": "clustername",
+                "parallelcluster:node-type": "HeadNode",
+                "String": "String",
+                "two": "two22",
+            },
+        ),
+        (
+            "awsbatch.full.yaml",
+            {},
+            {
+                "parallelcluster:cluster-name": "clustername",
+                "parallelcluster:node-type": "HeadNode",
+                "String": "String",
+                "two": "two22",
+            },
+        ),
+        (
+            "scheduler_plugin.full.yaml",
+            {},
+            {
+                "parallelcluster:cluster-name": "clustername",
+                "parallelcluster:node-type": "HeadNode",
+                "String": "String",
+                "two": "two22",
+            },
+        ),
+    ],
+)
+def test_head_node_tags_from_launch_template(mocker, config_file_name, expected_instance_tags, expected_volume_tags):
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    tags_specifications = (
+        generated_template.get("Resources")
+        .get("HeadNodeLaunchTemplate")
+        .get("Properties")
+        .get("LaunchTemplateData")
+        .get("TagSpecifications", [])
+    )
+
+    instance_tags = next((specs for specs in tags_specifications if specs["ResourceType"] == "instance"), {}).get(
+        "Tags", []
+    )
+    actual_instance_tags = {tag["Key"]: tag["Value"] for tag in instance_tags}
+    assert_that(actual_instance_tags).is_equal_to(expected_instance_tags)
+
+    volume_tags = next((specs for specs in tags_specifications if specs["ResourceType"] == "volume"), {}).get(
+        "Tags", []
+    )
+    actual_volume_tags = {tag["Key"]: tag["Value"] for tag in volume_tags}
+    assert_that(actual_volume_tags).is_equal_to(expected_volume_tags)
+
+
+@freeze_time("2021-01-01T01:01:01")
+@pytest.mark.parametrize(
+    "config_file_name, expected_tags",
+    [
+        (
+            "slurm.full.yaml",
+            {
+                "Name": "HeadNode",
+                "parallelcluster:cluster-name": "clustername",
+                "parallelcluster:node-type": "HeadNode",
+                "parallelcluster:attributes": "centos7, slurm, [0-9\\.A-Za-z]+, x86_64",
+                "parallelcluster:filesystem": "efs=1, multiebs=1, raid=0, fsx=3",
+                "parallelcluster:networking": "EFA=NONE",
+                "String": "String",
+                "two": "two22",
+            },
+        ),
+        (
+            "awsbatch.full.yaml",
+            {
+                "Name": "HeadNode",
+                "parallelcluster:cluster-name": "clustername",
+                "parallelcluster:node-type": "HeadNode",
+                "parallelcluster:attributes": "alinux2, awsbatch, [0-9\\.A-Za-z]+, x86_64",
+                "parallelcluster:filesystem": "efs=1, multiebs=0, raid=2, fsx=0",
+                "parallelcluster:networking": "EFA=NONE",
+                "String": "String",
+                "two": "two22",
+            },
+        ),
+        (
+            "scheduler_plugin.full.yaml",
+            {
+                "Name": "HeadNode",
+                "parallelcluster:cluster-name": "clustername",
+                "parallelcluster:node-type": "HeadNode",
+                "parallelcluster:attributes": "centos7, plugin, [0-9\\.A-Za-z]+, x86_64",
+                "parallelcluster:filesystem": "efs=1, multiebs=1, raid=0, fsx=1",
+                "parallelcluster:networking": "EFA=NONE",
+                "String": "String",
+                "two": "two22",
+            },
+        ),
+    ],
+)
+def test_head_node_tags_from_instance_definition(mocker, config_file_name, expected_tags):
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    tags = generated_template.get("Resources").get("HeadNode").get("Properties").get("Tags", [])
+
+    actual_tags = {tag["Key"]: tag["Value"] for tag in tags}
+    assert_that(actual_tags.keys()).is_equal_to(expected_tags.keys())
+    for key in actual_tags.keys():
+        assert_that(actual_tags[key]).matches(expected_tags[key])

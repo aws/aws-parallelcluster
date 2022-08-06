@@ -7,6 +7,7 @@ CHANGELOG
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
 - Upgrade Python and NodeJS versions in API infrastructure, API Docker container and cluster Lambda resources.
+- Move head node tags from launch template to instance definition to avoid head node replacement on tags updates.
 
 3.2.0
 ------
