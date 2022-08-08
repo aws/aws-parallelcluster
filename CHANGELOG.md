@@ -12,6 +12,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified 
   along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
+- Fix cluster update when changing the order of SharedStorage together with other changes in the configuration.
 
 3.2.0
 ------
