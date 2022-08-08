@@ -10,7 +10,8 @@ CHANGELOG
 - Move head node tags from launch template to instance definition to avoid head node replacement on tags updates.
 
 **BUG FIXES**
-- Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified along with other `SharedStorage/EfsSettings` parameters.
+- Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified 
+  along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
 
 3.2.0
 ------

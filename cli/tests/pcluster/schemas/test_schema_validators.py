@@ -374,7 +374,7 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"FileSystemId": "fs-0123456789abcdef0"}, None),
         (
             {"FileSystemId": "fs-0123456789abcdef0", "StorageCapacity": 3600},
-            "storage_capacity is ignored when an existing Lustre file system is specified",
+            "storage_capacity cannot be specified when an existing Lustre file system is used",
         ),
         (
             {
