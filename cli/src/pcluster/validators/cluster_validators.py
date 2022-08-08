@@ -61,7 +61,7 @@ FSX_MESSAGES = {
         "compute instance type and/or custom AMI configurations.",
         "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
         "cannot be specified.",
-        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when an existing Lustre file system is specified.",
+        "ignored_param_with_fsx_fs_id": "{fsx_param} cannot be specified when an existing Lustre file system is used.",
     }
 }
 
