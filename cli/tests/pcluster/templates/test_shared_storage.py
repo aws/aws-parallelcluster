@@ -22,8 +22,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
 @pytest.mark.parametrize(
     "config_file_name, resource_logical_name, security_group_property, expected_security_group",
     [
-        ("efs.config.yaml", "EFS0MTstring", "SecurityGroups", "ComputeSecurityGroup"),
-        ("fsx-lustre.config.yaml", "FSX0", "SecurityGroupIds", "ComputeSecurityGroup"),
+        ("efs.config.yaml", "EFS8d3a330efcad8cd3MTstring", "SecurityGroups", "ComputeSecurityGroup"),
+        ("fsx-lustre.config.yaml", "FSX0c14c0b8f045af82", "SecurityGroupIds", "ComputeSecurityGroup"),
     ],
 )
 def test_shared_storage_security_group(
