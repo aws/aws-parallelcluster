@@ -255,7 +255,7 @@ def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     logging.info(f"Retrieve head node system information for test: {request.node.name}")
-    result = remote_command_executor.run_remote_script(SYSTEM_ANALYZER_SCRIPT, args=[head_node_dir])
+    result = remote_command_executor.run_remote_script(SYSTEM_ANALYZER_SCRIPT, args=[head_node_dir], timeout=180)
     logging.debug(f"result.failed={result.failed}")
     logging.debug(f"result.stdout={result.stdout}")
     logging.info(
@@ -275,7 +275,7 @@ def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=
         SYSTEM_ANALYZER_SCRIPT, script_args=[compute_node_shared_dir], partition=partition
     )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.wait_job_completed(job_id, timeout=180)
     scheduler_commands.assert_job_succeeded(job_id)
     logging.info(
         "Copy results from remote cluster into: "
