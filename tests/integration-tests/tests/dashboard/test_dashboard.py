@@ -9,6 +9,8 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import time
+
 import boto3
 import pytest
 from assertpy import assert_that
@@ -57,15 +59,16 @@ def test_dashboard(
                 metric_name = [
                     "Cannot retrieve custom script",
                     "Error With Custom Script",
-                    "Terminated EC2 compute node before job submission",
+                    "Terminated EC2 compute node before job submission ",
                 ]
-                unique_name = ["retrieve", "error", "termination"]
+                unique_name = ["retrieve", "error", "terminate"]
                 period_sec = 60
                 collection_time_min = 12
                 # Delete script from file
                 s3 = boto3.resource("s3")
                 s3.Object(bucket_name, "preinstall.sh").delete()
                 # Submit job
+
                 slurm_commands.submit_command_and_assert_job_accepted(
                     submit_command_args={
                         "command": "sleep 150",
@@ -76,6 +79,7 @@ def test_dashboard(
                 # Check if metric value has increased
                 response = retrieve_metric_data(unique_name, cluster.name, metric_name, period_sec, collection_time_min)
                 check_metric_data_query(response, 1)
+
             else:
                 assert_that(response["DashboardBody"]).does_not_contain("Metrics for Common Errors")
         else:

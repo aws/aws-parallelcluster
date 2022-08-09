@@ -160,11 +160,10 @@ def retrieve_metric_data(unique_name, cluster_name, metric_name, period_length_s
 
     return client.get_metric_data(
         MetricDataQueries=metric_queries,
-        StartTime=datetime.now() - timedelta(minutes=collection_time_min),
-        EndTime=datetime.now() ,
+        StartTime=datetime.now() - timedelta(days=collection_time_min),
+        EndTime=datetime.now() + timedelta(days=collection_time_min),
         ScanBy="TimestampDescending",
     )
-
 
 
 def check_metric_data_query(response, desired_result):
