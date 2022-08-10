@@ -126,11 +126,6 @@ def dummy_head_node(mocker):
         instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv, imds=head_node_imds
     )
 
-    disable_ht_cpu_opts_mock = mocker.PropertyMock(return_value="true")
-    mocker.patch(
-        "pcluster.config.cluster_config.HeadNode.disable_simultaneous_multithreading_via_cpu_options",
-        new_callable=disable_ht_cpu_opts_mock,
-    )
     return head_node
 
 
