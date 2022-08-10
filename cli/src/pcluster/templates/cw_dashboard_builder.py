@@ -50,15 +50,15 @@ class CWDashboardConstruct(Construct):
     """Create the resources required when creating cloudwatch dashboard."""
 
     def __init__(
-            self,
-            scope: Construct,
-            stack_name: str,
-            id: str,
-            cluster_config: BaseClusterConfig,
-            head_node_instance: ec2.CfnInstance,
-            shared_storage_infos: dict,
-            cw_log_group_name: str,
-            cw_log_group: logs.CfnLogGroup,
+        self,
+        scope: Construct,
+        stack_name: str,
+        id: str,
+        cluster_config: BaseClusterConfig,
+        head_node_instance: ec2.CfnInstance,
+        shared_storage_infos: dict,
+        cw_log_group_name: str,
+        cw_log_group: logs.CfnLogGroup,
     ):
         super().__init__(scope, id)
         self.stack_scope = scope
@@ -219,12 +219,12 @@ class CWDashboardConstruct(Construct):
         return metric_list
 
     def _add_conditional_storage_widgets(
-            self,
-            conditional_metrics,
-            volumes_list,
-            namespace,
-            dimension_vol_name,
-            vol_attribute_name,
+        self,
+        conditional_metrics,
+        volumes_list,
+        namespace,
+        dimension_vol_name,
+        vol_attribute_name,
     ):
         """Add widgets for conditional metrics for EBS, Raid and EFS."""
         widgets_list = []
@@ -285,7 +285,7 @@ class CWDashboardConstruct(Construct):
             _CustomMetricFilter(
                 metric_name="Node Capacity Insufficient",
                 filter_pattern="?InsufficientInstanceCapacity ?InsufficientHostCapacity "
-                               "?InsufficientReservedInstanceCapacity ?InsufficientCapacity",
+                "?InsufficientReservedInstanceCapacity ?InsufficientCapacity",
             ),
         ]
 
@@ -301,7 +301,7 @@ class CWDashboardConstruct(Construct):
             _CustomMetricFilter(
                 metric_name="Script Timeout",
                 filter_pattern="WARNING Node bootstrap error Resume timeout "
-                               "expires state DOWN CLOUD POWERED DOWN NOT RESPONDING",
+                "expires state DOWN CLOUD POWERED DOWN NOT RESPONDING",
             ),
         ]
 
@@ -339,17 +339,25 @@ class CWDashboardConstruct(Construct):
 
         keys_list = list(error_metric_dict)
         troubleshooting_links = {
-            keys_list[0]: "General [Troubleshooting Resources](https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)" ,
-            keys_list[1]: "Jobs not starting [Troubleshooting Resources](https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html#troubleshooting-policy-size-issues)" ,
-            keys_list[2]: "Issues with EC2 [Troubleshooting Resources](https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)" ,
+            keys_list[0]: "General [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
+            keys_list[1]: "Jobs not starting [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html)",
+            keys_list[2]: "Issues with EC2 [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
         }
 
         if self.config.head_node.custom_actions or (
-                isinstance(self.config, CommonSchedulerClusterConfig) and self.config.do_compute_nodes_have_custom_actions
+            isinstance(self.config, CommonSchedulerClusterConfig) and self.config.do_compute_nodes_have_custom_actions
         ):
             metric_group_title = "Custom Script Errors"
             error_metric_dict.update({metric_group_title: custom_script_errors})
-            troubleshooting_links.update({metric_group_title:"Problems with custom actions [Troubleshooting Resources](https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)"})
+            troubleshooting_links.update(
+                {
+                    metric_group_title: "Problems with custom actions [Troubleshooting Resources]"
+                    "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)"
+                }
+            )
 
         self._add_text_widget("## Metrics for Common Errors")
         custom_namespace = "ParallelCluster/Errors/" + self.config.cluster_name
@@ -384,9 +392,6 @@ class CWDashboardConstruct(Construct):
         self.cloudwatch_dashboard.add_widgets(*text_widgets)
         self.coord.x_value = 0
         self.coord.y_value += 1
-
-
-
 
     def _add_storage_widgets(self, metrics, storages_list, namespace, dimension_name):
         widgets_list = []
@@ -705,4 +710,3 @@ class CWDashboardConstruct(Construct):
         if param is None:
             param = "@logStream"
         return _Filter(pattern, param)
-

@@ -59,7 +59,7 @@ def test_dashboard(
                 metric_name = [
                     "Cannot retrieve custom script",
                     "Error With Custom Script",
-                    "Terminated EC2 compute node before job submission ",
+                    "Unexpected Termination of Compute Nodes",
                 ]
                 unique_name = ["retrieve", "error", "terminate"]
                 period_sec = 60
@@ -77,6 +77,7 @@ def test_dashboard(
                     }
                 )
                 # Check if metric value has increased
+                time.sleep(600)
                 response = retrieve_metric_data(unique_name, cluster.name, metric_name, period_sec, collection_time_min)
                 check_metric_data_query(response, 1)
 
