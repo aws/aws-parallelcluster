@@ -578,14 +578,15 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         },
                     ),
                     iam.PolicyStatement(
-                        sid="EC2RunInstances",
-                        actions=["ec2:RunInstances"],
+                        sid="EC2RunInstancesCreateFleet",
+                        actions=["ec2:RunInstances", "ec2:CreateFleet"],
                         effect=iam.Effect.ALLOW,
                         resources=[
                             self._format_arn(service="ec2", resource=f"subnet/{subnet_id}")
                             for subnet_id in self._config.compute_subnet_ids
                         ]
                         + [
+                            self._format_arn(service="ec2", resource="fleet/*"),
                             self._format_arn(service="ec2", resource="network-interface/*"),
                             self._format_arn(service="ec2", resource="instance/*"),
                             self._format_arn(service="ec2", resource="volume/*"),
@@ -598,6 +599,12 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                             self._format_arn(service="ec2", resource=f"image/{queue_ami}", account="")
                             for _, queue_ami in self._config.image_dict.items()
                         ],
+                    ),
+                    iam.PolicyStatement(
+                        sid="EC2DescribeCapacityReservations",
+                        actions=["ec2:DescribeCapacityReservations"],
+                        effect=iam.Effect.ALLOW,
+                        resources=["*"],
                     ),
                     iam.PolicyStatement(
                         sid="PassRole",
