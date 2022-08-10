@@ -59,11 +59,6 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         # we consider only t2 as having one thread per core.
         return 1 if self._instance_type.startswith("t2") else 2
 
-    def valid_threads_per_core(self):
-        # There are more instance types, but for the simplicity of the mock,
-        # we consider only t2 as not reporting valid threads per core.
-        return [] if self._instance_type.startswith("t2") else [1, 2]
-
     def vcpus_count(self):
         return self._vcpus
 

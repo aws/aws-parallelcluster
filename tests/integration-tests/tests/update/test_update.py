@@ -222,10 +222,7 @@ def _assert_launch_templates_config(queues_config, cluster_name, region):
             else:
                 assert_that("InstanceMarketOptions").is_not_in(launch_template_data)
             assert_that(launch_template_data["InstanceType"]).is_equal_to(compute_resource_config["instance_type"])
-            if compute_resource_config["disable_hyperthreading"]:
-                assert_that(launch_template_data["CpuOptions"]["ThreadsPerCore"]).is_equal_to(1)
-            else:
-                assert_that("CpuOptions").is_not_in(launch_template_data)
+            assert_that("CpuOptions").is_not_in(launch_template_data)
             if compute_resource_config["enable_efa"]:
                 assert_that(launch_template_data["NetworkInterfaces"][0]["InterfaceType"]).is_equal_to("efa")
             else:

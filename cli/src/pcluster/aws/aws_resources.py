@@ -191,10 +191,6 @@ class InstanceTypeInfo:
         """Return the default threads per core for the given instance type."""
         return self.instance_type_data.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
 
-    def valid_threads_per_core(self):
-        """Return the valid threads per core for the given instance type."""
-        return self.instance_type_data.get("VCpuInfo", {}).get("ValidThreadsPerCore", [])
-
     def vcpus_count(self) -> int:
         """Get number of vcpus for the given instance type."""
         try:
@@ -222,11 +218,6 @@ class InstanceTypeInfo:
     def instance_type(self):
         """Get the instance type."""
         return self.instance_type_data.get("InstanceType")
-
-    def is_cpu_options_supported_in_lt(self):
-        """Check whether CPUOptions can be set in launch template."""
-        # When CpuOptions is not supported, valid threads per core can't be found in vcpu info
-        return len(self.valid_threads_per_core()) != 0
 
     def is_ebs_optimized(self):
         """Check whether the instance has optimized EBS support."""
