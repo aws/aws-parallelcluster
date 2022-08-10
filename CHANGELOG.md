@@ -3,9 +3,11 @@ CHANGELOG
 
 3.x.x
 -----
+**ENHANCEMENTS**
+- Add support for updating `SharedStorage` configuration.
 
 **ENHANCEMENTS**
-- Add new configuration parameter `DeletionPolicy` for EFs and FSx for Lustre shared storage
+- Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage
   to support storage retention on deletion.
 - Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 - Add support for on-demand capacity reservations.

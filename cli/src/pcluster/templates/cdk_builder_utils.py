@@ -491,7 +491,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             ),
             iam.PolicyStatement(
                 sid="Ec2TagsAndVolumes",
-                actions=["ec2:AttachVolume", "ec2:CreateTags"],
+                actions=["ec2:AttachVolume", "ec2:CreateTags", "ec2:DetachVolume"],
                 effect=iam.Effect.ALLOW,
                 resources=[
                     self._format_arn(

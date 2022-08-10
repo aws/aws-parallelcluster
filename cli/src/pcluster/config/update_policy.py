@@ -11,7 +11,7 @@
 from enum import Enum
 
 from pcluster.config.cluster_config import QueueUpdateStrategy
-from pcluster.constants import DEFAULT_MAX_COUNT
+from pcluster.constants import AWSBATCH, DEFAULT_MAX_COUNT, SLURM
 
 
 class UpdatePolicy:
@@ -125,6 +125,39 @@ def is_slurm_queues_change(change):
     return any(path.startswith("SlurmQueues[") for path in change.path)
 
 
+def is_slurm_scheduler(patch):
+    return patch.cluster.stack.scheduler == SLURM
+
+
+def is_awsbatch_scheduler(_, patch):
+    return patch.cluster.stack.scheduler == AWSBATCH
+
+
+def is_stop_required_for_shared_storage(change):
+    """
+    Cluster stop is required for unmount operation.
+
+    1. Remove managed/external EBS EFS and FSx sections, which indicates unmount operation.
+    2. Change MountDir, which indicates unmount operation.
+    """
+    if change.is_list and change.key == "SharedStorage" and change.old_value is not None and change.new_value is None:
+        return True
+    elif not change.is_list and change.key == "MountDir":
+        return True
+    return False
+
+
+def fail_reason_shared_storage_update_policy(change, patch):
+    if is_awsbatch_scheduler(change, patch):
+        return f"Update actions are not currently supported for the '{change.key}' parameter"
+    reason = "All compute nodes must be stopped"
+    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
+    if not is_stop_required_for_shared_storage(change) and is_slurm_scheduler(patch):
+        reason += " or QueueUpdateStrategy must be set"
+
+    return reason
+
+
 def fail_reason_queue_update_strategy(change, _):
     reason = "All compute nodes must be stopped"
     # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
@@ -149,11 +182,48 @@ def condition_checker_queue_update_strategy(change, patch):
     return result
 
 
+def actions_needed_shared_storage_update(change, patch):
+    if is_awsbatch_scheduler(change, patch):
+        return (
+            f"Restore '{change.key}' value to '{change.old_value}'"
+            if change.old_value is not None
+            else "{0} the parameter '{1}'".format("Restore" if change.is_list else "Remove", change.key)
+            + ". If you need this change, please consider creating a new cluster instead of updating the existing one."
+        )
+    actions = "Stop the compute fleet with the pcluster update-compute-fleet command"
+    if not is_stop_required_for_shared_storage(change) and is_slurm_scheduler(patch):
+        actions += ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation"
+
+    return actions
+
+
+def condition_checker_shared_storage_update_policy(change, patch):
+    """
+    Check different requirements for different schedulers.
+
+    Compute fleet stop is required for plugin scheduler.
+    Update for awsbatch scheduler is not supported.
+    QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues for slurm scheduler.
+    """
+    if is_awsbatch_scheduler(change, patch):
+        return False
+    result = not patch.cluster.has_running_capacity()
+    if is_slurm_scheduler(patch) and not is_stop_required_for_shared_storage(change):
+        result = (
+            result
+            or patch.target_config.get("Scheduling")
+            .get("SlurmSettings", {})
+            .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
+            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+        )
+
+    return result
+
+
 # Common fail_reason messages
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
     "operating system.",
-    "shared_storage_change": "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation",
     "cookbook_update": lambda change, patch: (
         "Updating cookbook related parameter is not supported because it only "
         "applies updates to compute nodes. If you still want to proceed, first stop the compute fleet with the "
@@ -169,6 +239,7 @@ UpdatePolicy.ACTIONS_NEEDED = {
     ),
     "pcluster_stop": lambda change, patch: "Stop the compute fleet with the pcluster update-compute-fleet command",
     "pcluster_stop_conditional": actions_needed_queue_update_strategy,
+    "shared_storage_update_conditional": actions_needed_shared_storage_update,
 }
 
 # Base policies
@@ -218,6 +289,15 @@ UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
     fail_reason=fail_reason_queue_update_strategy,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop_conditional"],
     condition_checker=condition_checker_queue_update_strategy,
+)
+
+# Update policy for updating SharedStorage
+UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY = UpdatePolicy(
+    name="SHARED_STORAGE_UPDATE_POLICY",
+    level=6 if not is_awsbatch_scheduler else 1000,
+    fail_reason=fail_reason_shared_storage_update_policy,
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["shared_storage_update_conditional"],
+    condition_checker=condition_checker_shared_storage_update_policy,
 )
 
 # Update supported on new addition or on removal only with all compute nodes down
