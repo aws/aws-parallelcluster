@@ -302,7 +302,7 @@ def test_fast_capacity_failover(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     # after the cluster is launched, apply the override patch to launch ice nodes
     remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
-    nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1")
+    nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1", all_nodes=True)
     static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
     ice_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
     static_nodes_in_ice_compute_resource = [node for node in static_nodes if "ice-compute-resource" in node]
