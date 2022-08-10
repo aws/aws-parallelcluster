@@ -378,7 +378,7 @@ class CWDashboardConstruct(Construct):
                     statistic="Sum",
                 )
                 metric_list.append(cloudwatch_metric)
-            graph_widget = self._generate_graph_widget(title, metric_list)
+            graph_widget = self._generate_graph_widget(title, metric_list, True)
 
             widgets_list.append(graph_widget)
 
