@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ instance }}
+  InstanceType: t2.micro
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -15,13 +15,17 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
+      CustomActions:
+        OnNodeConfigured:
+          # install script that causes issues
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: compute-resource1
           {% if scheduler == "awsbatch" %}
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceType: {{ instance }}
+          InstanceType: t2.micro
           {% endif %}
 Monitoring:
   DetailedMonitoring: true
