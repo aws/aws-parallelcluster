@@ -141,7 +141,7 @@ class CWDashboardConstruct(Construct):
         if len(self.shared_storage_infos[SharedStorageType.FSX]) > 0:
             self._add_fsx_metrics_graphs()
 
-        # Head Node logs, adds custom metrics if CW Logs are enabled
+        # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
             self._add_cw_log()
             if self.config.are_custom_errors_enabled:
@@ -271,7 +271,7 @@ class CWDashboardConstruct(Construct):
             _CustomMetricFilter(
                 metric_name="Node Capacity Insufficient",
                 filter_pattern="?InsufficientInstanceCapacity ?InsufficientHostCapacity "
-                               "?InsufficientReservedInstanceCapacity ?InsufficientCapacity",
+                "?InsufficientReservedInstanceCapacity ?InsufficientCapacity",
             ),
         ]
 
@@ -287,7 +287,7 @@ class CWDashboardConstruct(Construct):
             _CustomMetricFilter(
                 metric_name="Script Timeout",
                 filter_pattern="WARNING Node bootstrap error Resume timeout "
-                               "expires state DOWN CLOUD POWERED DOWN NOT RESPONDING",
+                "expires state DOWN CLOUD POWERED DOWN NOT RESPONDING",
             ),
         ]
 
@@ -363,7 +363,7 @@ class CWDashboardConstruct(Construct):
                     statistic="Sum",
                 )
                 metric_list.append(cloudwatch_metric)
-            graph_widget = self._generate_graph_widget(title, metric_list)
+            graph_widget = self._generate_graph_widget(title, metric_list, True)
             widgets_list.append(graph_widget)
 
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
