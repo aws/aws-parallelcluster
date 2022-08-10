@@ -182,15 +182,29 @@ class CWDashboardConstruct(Construct):
         self.cloudwatch_dashboard.add_widgets(text_widget)
         self._update_coord_after_section(d_y=1)
 
-    def _generate_graph_widget(self, title, metric_list):
+    def _generate_graph_widget(self, title, metric_list, error_label):
         """Generate a graph widget and update the coordinates."""
-        widget = cloudwatch.GraphWidget(
-            title=title,
-            left=metric_list,
-            region=self._stack_region,
-            width=self.graph_width,
-            height=self.graph_height,
-        )
+        if error_label:
+            widget = cloudwatch.GraphWidget(
+                title=title,
+                left=metric_list,
+                region=self._stack_region,
+                width=self.graph_width,
+                height=self.graph_height,
+                left_annotations=[
+                    cloudwatch.HorizontalAnnotation(
+                        value=1, label="github.com/aws/aws-parallelcluster/wiki#known-issues-"
+                    ),
+                ],
+            )
+        else:
+            widget = cloudwatch.GraphWidget(
+                title=title,
+                left=metric_list,
+                region=self._stack_region,
+                width=self.graph_width,
+                height=self.graph_height,
+            )
         widget.position(x=self.coord.x_value, y=self.coord.y_value)
         self._update_coord(self.graph_width, self.graph_height)
         return widget
@@ -226,7 +240,7 @@ class CWDashboardConstruct(Construct):
                     metric_list.append(cloudwatch_metric)
 
             if len(metric_list) > 0:  # Add the metrics only if there exist support volumes for it
-                graph_widget = self._generate_graph_widget(metric_condition_params.title, metric_list)
+                graph_widget = self._generate_graph_widget(metric_condition_params.title, metric_list, False)
                 widgets_list.append(graph_widget)
         return widgets_list
 
@@ -293,6 +307,7 @@ class CWDashboardConstruct(Construct):
 
         compute_node_events = [
             _CustomMetricFilter(
+
                 metric_name="Terminated EC2 compute node before job submission",
                 filter_pattern="WARNING Node state check no corresponding instance in EC2 for node",
             ),
@@ -321,16 +336,6 @@ class CWDashboardConstruct(Construct):
             "Other Error and Warning Messages": other_potential_issues,
             "Jobs Not Starting Errors": jobs_not_starting_errors,
             "Issues with EC2 Instances": compute_node_events,
-        }
-
-        keys_list = list(error_metric_dict)
-        troubleshooting_links = {
-            keys_list[0]: "General [Troubleshooting Resources]"
-            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
-            keys_list[1]: "Jobs not starting [Troubleshooting Resources]"
-            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html)",
-            keys_list[2]: "Issues with EC2 [Troubleshooting Resources]"
-            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
         }
 
         keys_list = list(error_metric_dict)
@@ -374,6 +379,7 @@ class CWDashboardConstruct(Construct):
                 )
                 metric_list.append(cloudwatch_metric)
             graph_widget = self._generate_graph_widget(title, metric_list)
+
             widgets_list.append(graph_widget)
 
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
@@ -391,7 +397,7 @@ class CWDashboardConstruct(Construct):
                         dimensions_map={dimension_name: storage.id},
                     )
                     metric_list.append(cloudwatch_metric)
-            graph_widget = self._generate_graph_widget(metrics_param.title, metric_list)
+            graph_widget = self._generate_graph_widget(metrics_param.title, metric_list, False)
             widgets_list.append(graph_widget)
         return widgets_list
 
@@ -443,7 +449,7 @@ class CWDashboardConstruct(Construct):
                     metric_list.append(cloudwatch_metric)
         widgets_list = []
         for title, metric_list in metric_graphs.items():
-            widgets_list.append(self._generate_graph_widget(title, metric_list))
+            widgets_list.append(self._generate_graph_widget(title, metric_list, False))
         return widgets_list
 
     def _add_head_node_instance_metrics_graphs(self):
@@ -463,7 +469,7 @@ class CWDashboardConstruct(Construct):
         widgets_list = []
         for metrics_param in ec2_metrics:
             metrics_list = self._generate_ec2_metrics_list(metrics_param.metrics)
-            graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list)
+            graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list, False)
             widgets_list.append(graph_widget)
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
         self._update_coord_after_section(self.graph_height)
