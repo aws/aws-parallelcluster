@@ -634,7 +634,7 @@ def _test_update_queue_strategy_with_running_job(
     # check queue1 AMIs are not replaced
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
 
-    queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
+    queue2_nodes = scheduler_commands.get_compute_nodes("queue2", all_nodes=True)
     # assert queue2 node state are in expected status corresponding to the queue strategy
     if queue_update_strategy == "DRAIN":
         scheduler_commands.assert_job_state(queue2_job_id, "RUNNING")
