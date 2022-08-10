@@ -135,13 +135,14 @@ class TestGetClusterLogEventsCommand:
 
         # verify arguments
         kwargs = {
+            "log_stream_name": "log-stream-name",
             "start_time": args.get("start_time", None) and to_utc_datetime(args["start_time"]),
             "end_time": args.get("end_time", None) and to_utc_datetime(args["end_time"]),
             "start_from_head": True if args.get("start_from_head", None) else None,
             "limit": int(args["limit"]) if args.get("limit", None) else None,
             "next_token": args.get("next_token", None),
         }
-        get_cluster_log_events_mock.assert_called_with("log-stream-name", **kwargs)
+        get_cluster_log_events_mock.assert_called_with(**kwargs)
 
     @staticmethod
     def _build_cli_args(args):

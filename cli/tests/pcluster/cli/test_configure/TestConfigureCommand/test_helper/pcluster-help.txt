@@ -2,7 +2,7 @@ usage: pcluster configure [-h] [--debug] [-r REGION] -c CONFIG
 
 Start the AWS ParallelCluster configuration.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
   -r REGION, --region REGION

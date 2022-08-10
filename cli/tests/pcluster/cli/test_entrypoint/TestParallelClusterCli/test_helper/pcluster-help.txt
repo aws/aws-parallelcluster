@@ -5,7 +5,7 @@ usage: pcluster [-h]
 pcluster is the AWS ParallelCluster CLI and permits launching and management
 of HPC clusters in the AWS cloud.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
 
 COMMANDS:

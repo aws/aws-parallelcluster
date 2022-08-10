@@ -39,7 +39,7 @@ setup(
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=REQUIRES,
     entry_points={
         "console_scripts": [
@@ -64,7 +64,6 @@ setup(
         "Environment :: Console",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

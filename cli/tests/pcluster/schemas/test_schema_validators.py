@@ -339,6 +339,20 @@ def test_efs_validator(section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
+        ({"FileSystemId": "fs-12345678901234567"}, None),
+        (
+            {"FileSystemId": "fs-12345678901234567", "Encrypted": "True"},
+            "encrypted cannot be specified when an existing EFS file system is used",
+        ),
+    ],
+)
+def test_efs_validate_file_system_id_ignored_parameters(section_dict, expected_message):
+    _validate_and_assert_error(EfsSettingsSchema(), section_dict, expected_message, partial=False)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
         (
             {"ThroughputMode": "bursting", "ProvisionedThroughput": 1024},
             "When specifying provisioned throughput, the throughput mode must be set to provisioned",
@@ -360,7 +374,7 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"FileSystemId": "fs-0123456789abcdef0"}, None),
         (
             {"FileSystemId": "fs-0123456789abcdef0", "StorageCapacity": 3600},
-            "storage_capacity is ignored when an existing Lustre file system is specified",
+            "storage_capacity cannot be specified when an existing Lustre file system is used",
         ),
         (
             {

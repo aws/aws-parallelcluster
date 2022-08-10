@@ -137,10 +137,16 @@ class TagSchema(BaseSchema):
     """Represent the schema of Tag section."""
 
     key = fields.Str(
-        required=True, validate=validate.Length(max=128), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        # TODO Tags can be updated with policy QUEUE_UPDATE_STRATEGY
+        required=True,
+        validate=validate.Length(max=128),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     value = fields.Str(
-        required=True, validate=validate.Length(max=256), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        # TODO Tags can be updated with policy QUEUE_UPDATE_STRATEGY
+        required=True,
+        validate=validate.Length(max=256),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
 
     @post_load

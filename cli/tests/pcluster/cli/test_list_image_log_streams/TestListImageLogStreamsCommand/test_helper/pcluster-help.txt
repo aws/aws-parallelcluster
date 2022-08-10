@@ -4,7 +4,7 @@ usage: pcluster list-image-log-streams [-h] -i IMAGE_ID [-r REGION]
 
 Retrieve the list of log streams associated with an image.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -i IMAGE_ID, --image-id IMAGE_ID
                         Id of the image.

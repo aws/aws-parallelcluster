@@ -57,7 +57,8 @@ def submit_initial_job(
 
 def assert_compute_node_states(scheduler_commands, compute_nodes, expected_states):
     node_states = scheduler_commands.get_nodes_status(compute_nodes)
-    for node in compute_nodes:
+    node_list = compute_nodes if compute_nodes else list(node_states.keys())
+    for node in node_list:
         assert_that(expected_states).contains(node_states.get(node))
 
 

@@ -151,14 +151,19 @@ def pcluster_config_reader(test_datadir):
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(config_file="pcluster.config.yaml", **kwargs):
+    def _config_renderer(
+        config_file="pcluster.config.yaml",
+        output_file=None,
+        **kwargs,
+    ):
         config_file_path = os.path.join(str(test_datadir), config_file)
+        output_file_path = os.path.join(str(test_datadir), output_file) if output_file else config_file_path
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**kwargs)
-        with open(config_file_path, "w", encoding="utf-8") as f:
+        with open(output_file_path, "w", encoding="utf-8") as f:
             f.write(rendered_template)
-        return config_file_path
+        return output_file_path
 
     return _config_renderer
 
@@ -233,8 +238,10 @@ def run_cli(mocker, capsys):
 def assert_out_err(capsys):
     def _assert_out_err(expected_out, expected_err):
         out_err = capsys.readouterr()
+        # In Python 3.10 ArgParse renamed the 'optional arguments' section in the helper to 'option'
+        expected_out_alternative = expected_out.replace("options", "optional arguments")
         with soft_assertions():
-            assert_that(out_err.out.strip()).contains(expected_out)
+            assert_that(out_err.out.strip()).is_in(expected_out, expected_out_alternative)
             assert_that(out_err.err.strip()).contains(expected_err)
 
     return _assert_out_err

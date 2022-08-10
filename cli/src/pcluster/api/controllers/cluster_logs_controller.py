@@ -115,7 +115,7 @@ def get_cluster_log_events(
         raise BadRequestException(f"CloudWatch logging is not enabled for cluster {cluster.name}.")
 
     log_events = cluster.get_log_events(
-        log_stream_name,
+        log_stream_name=log_stream_name,
         start_time=start_dt,
         end_time=end_dt,
         start_from_head=start_from_head,

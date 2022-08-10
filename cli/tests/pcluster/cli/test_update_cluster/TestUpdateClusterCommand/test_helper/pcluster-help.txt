@@ -7,7 +7,7 @@ usage: pcluster update-cluster [-h] -n CLUSTER_NAME
 
 Update a cluster managed in a given region.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster

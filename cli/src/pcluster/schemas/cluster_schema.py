@@ -127,7 +127,7 @@ from pcluster.schemas.common_schema import (
     get_field_validator,
     validate_no_reserved_tag,
 )
-from pcluster.validators.cluster_validators import FSX_MESSAGES
+from pcluster.validators.cluster_validators import EFS_MESSAGES, FSX_MESSAGES
 
 # pylint: disable=C0302
 
@@ -313,6 +313,18 @@ class EfsSettingsSchema(BaseSchema):
         validate=validate.Regexp(r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}$"),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
+
+    @validates_schema
+    def validate_file_system_id_ignored_parameters(self, data, **kwargs):
+        """Return errors for parameters in the Efs config section that would be ignored."""
+        # If file_system_id is specified, all parameters are ignored.
+        messages = []
+        if data.get("file_system_id") is not None:
+            for key in data:
+                if key is not None and key != "file_system_id":
+                    messages.append(EFS_MESSAGES["errors"]["ignored_param_with_efs_fs_id"].format(efs_param=key))
+            if messages:
+                raise ValidationError(message=messages)
 
     @validates_schema
     def validate_existence_of_mode_throughput(self, data, **kwargs):

@@ -3,7 +3,7 @@ usage: pcluster ssh [-h] [--debug] [-r REGION] -n CLUSTER_NAME
 
 Run ssh command with the cluster username and IP address pre-populated. Arbitrary arguments are appended to the end of the ssh command.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
   -r REGION, --region REGION
