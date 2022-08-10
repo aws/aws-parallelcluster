@@ -825,7 +825,14 @@ class ClusterCdkStack(Stack):
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
-                        {**get_common_user_data_env(head_node, self.config)},
+                        {
+                            **{
+                                "DisableMultiThreadingManually": "true"
+                                if head_node.disable_simultaneous_multithreading_manually
+                                else "false",
+                            },
+                            **get_common_user_data_env(head_node, self.config),
+                        },
                     )
                 ),
                 tag_specifications=[
@@ -860,9 +867,6 @@ class ClusterCdkStack(Stack):
                     "raid_type": to_comma_separated_string(
                         self.shared_storage_attributes[SharedStorageType.RAID]["Type"]
                     ),
-                    "disable_hyperthreading_manually": "true"
-                    if head_node.disable_simultaneous_multithreading_manually
-                    else "false",
                     "base_os": self.config.image.os,
                     "preinstall": pre_install_action.script if pre_install_action else "NONE",
                     "preinstall_args": join_shell_args(pre_install_action.args)
@@ -1428,7 +1432,7 @@ class ComputeFleetConstruct(Construct):
                                 "RAIDType": to_comma_separated_string(
                                     self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
                                 ),
-                                "DisableHyperThreadingManually": "true"
+                                "DisableMultiThreadingManually": "true"
                                 if compute_resource.disable_simultaneous_multithreading_manually
                                 else "false",
                                 "BaseOS": self._config.image.os,
