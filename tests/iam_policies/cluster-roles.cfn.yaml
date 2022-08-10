@@ -87,7 +87,9 @@ Resources:
                     ec2:ResourceTag/parallelcluster:node-type: Compute
                 Effect: Allow
                 Resource: '*'
-              - Action: ec2:RunInstances
+              - Action:
+                  - ec2:RunInstances
+                  - ec2:CreateFleet
                 Resource: '*'
                 Effect: Allow
               - Action:
@@ -105,6 +107,7 @@ Resources:
                   - ec2:DescribeInstanceStatus
                   - ec2:DescribeVolumes
                   - ec2:DescribeInstanceAttribute
+                  - ec2:DescribeCapacityReservations
                 Effect: Allow
                 Resource: '*'
               - Action:
