@@ -1,8 +1,14 @@
 CHANGELOG
 =========
 
+**ENHANCEMENTS**
+- Introducing error metrics to cloudwatch dashboard
+  - Include configuration option to enable/disable
+  - Added prototype text widget under metric graphs displaying troubleshooting link
+
 **hanwong changes**
 - introducing error metrics to parallelcluster
+  - Included integration tests for metrics
 
 **ENHANCEMENTS**
 - Introducing error metrics to cloudwatch dashboard
