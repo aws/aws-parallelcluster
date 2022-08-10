@@ -20,7 +20,8 @@ from utils import check_metric_data_query, retrieve_metric_data
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
-@pytest.mark.parametrize("dashboard_enabled, cw_log_enabled,enabled_error_metrics ", [(True, True, True)])
+@pytest.mark.parametrize("dashboard_enabled, cw_log_enabled,enabled_error_metrics ",
+                         [(True, True, True), (True, False, True), (False, False, False)],)
 def test_dashboard(
     dashboard_enabled,
     cw_log_enabled,
