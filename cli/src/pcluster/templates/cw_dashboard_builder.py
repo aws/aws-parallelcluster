@@ -307,7 +307,6 @@ class CWDashboardConstruct(Construct):
 
         compute_node_events = [
             _CustomMetricFilter(
-
                 metric_name="Terminated EC2 compute node before job submission",
                 filter_pattern="WARNING Node state check no corresponding instance in EC2 for node",
             ),
