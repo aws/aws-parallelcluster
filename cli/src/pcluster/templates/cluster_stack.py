@@ -597,7 +597,7 @@ class ClusterCdkStack(Stack):
     def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
         storage_list = self.shared_storage_infos[storage.shared_storage_type]
-        cfn_resource_id = "{0}{1}".format(storage.shared_storage_type.name, len(storage_list))
+        cfn_resource_id = "{0}{1}".format(storage.shared_storage_type.name, create_hash_suffix(storage.name))
         if storage.shared_storage_type == SharedStorageType.FSX:
             storage_list.append(StorageInfo(self._add_fsx_storage(cfn_resource_id, storage), storage))
         elif storage.shared_storage_type == SharedStorageType.EBS:

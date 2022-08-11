@@ -126,6 +126,16 @@ Scheduling:
         PlacementGroup:
           Enabled: false
 SharedStorage:
+  - MountDir: raid
+    StorageType: Ebs
+    Name: raid
+    EbsSettings:
+      VolumeType: gp3
+      Iops: 3200
+      Throughput: 130
+      Raid:
+        Type: 0
+        NumberOfVolumes: 2
   - MountDir: shared
     Name: ebs
     StorageType: Ebs
@@ -139,16 +149,6 @@ SharedStorage:
     EfsSettings:
       ThroughputMode: provisioned
       ProvisionedThroughput: 1024
-  - MountDir: raid
-    StorageType: Ebs
-    Name: raid
-    EbsSettings:
-      VolumeType: gp3
-      Iops: 3200
-      Throughput: 130
-      Raid:
-        Type: 0
-        NumberOfVolumes: 2
   - MountDir: fsx
     Name: fsx
     StorageType: FsxLustre
