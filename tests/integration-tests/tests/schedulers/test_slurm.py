@@ -711,7 +711,7 @@ def _test_cloud_node_health_check(
     unique_name = [cluster_name + "." + metric_name]
     period_sec = 60
     collection_time_min = 12
-    response = retrieve_metric_data(unique_name, cluster_name, metric_name, period_sec)
+    response = retrieve_metric_data(unique_name, cluster_name, metric_name, period_sec, collection_time_min)
     # Sleep for a bit so the command to detach network interface can be run
     time.sleep(15)
     # Job will hang, cancel it manually to avoid waiting for job failing
@@ -726,7 +726,7 @@ def _test_cloud_node_health_check(
         ["Nodes {} not responding, setting DOWN".format(",".join(dynamic_nodes))],
     )
     # Assert if custom metric value has increased
-    check_metric_data_query(response, 1, collection_time_min)
+    check_metric_data_query(response, 1)
     # Assert dynamic nodes are reset
     _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -755,7 +755,7 @@ def _test_ec2_status_check_replacement(
     unique_name = [cluster_name + "." + metric_name]
     period_sec = 60
     collection_time_min = 18
-    response = retrieve_metric_data(unique_name, cluster_name, metric_name, period_sec)
+    response = retrieve_metric_data(unique_name, cluster_name, metric_name, period_sec, collection_time_min)
     # Can take up to 15 mins for ec2_status_check to show
     # Need to increase SlurmdTimeout to avoid slurm health check and trigger ec2_status_check code path
     _set_slurmd_timeout(remote_command_executor, slurm_root_path, timeout=10000)
@@ -770,7 +770,7 @@ def _test_ec2_status_check_replacement(
     )
     scheduler_commands.cancel_job(kill_job_id)
     # Assert custom metric value has increased
-    check_metric_data_query(response, 1, collection_time_min)
+    check_metric_data_query(response, 1)
     # Assert static nodes are reset
     _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[])
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -1326,7 +1326,7 @@ def _test_disable_protected_mode(
     unique_name = [cluster.name + "." + metric_name]
     period_sec = 60
     collection_time_min = 8
-    response = retrieve_metric_data(unique_name, cluster.name, metric_name, period_sec)
+    response = retrieve_metric_data(unique_name, cluster.name, metric_name, period_sec, collection_time_min)
     # wait till the node failed
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
         remote_command_executor,
@@ -1344,7 +1344,7 @@ def _test_disable_protected_mode(
     # Checks if metric is there in the first place along to see if metric value has changed at all
     assert_that(response["MetricDataResults"][0]["Values"]).is_not_none()
     # Checks if metric has changed value, since unique cluster name metric value should start as 0
-    check_metric_data_query(response, 0, collection_time_min)
+    check_metric_data_query(response, 0)
 
 
 def _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path):
