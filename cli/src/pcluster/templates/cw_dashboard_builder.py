@@ -307,7 +307,7 @@ class CWDashboardConstruct(Construct):
 
         compute_node_events = [
             _CustomMetricFilter(
-                metric_name="Terminated EC2 compute node before job submission ",
+                metric_name="Terminated EC2 compute node before job submission",
                 filter_pattern="WARNING Node state check no corresponding instance in EC2 for node",
             ),
             _CustomMetricFilter(
@@ -330,17 +330,34 @@ class CWDashboardConstruct(Construct):
                 filter_pattern="?error ?Error ?ERROR ?WARNING ?Warning ?warning",
             ),
         ]
-
+        # TODO: Merge this with keys list using named tuple to reference the attributes instead of an index later
         error_metric_dict = {
             "Other Error and Warning Messages": other_potential_issues,
             "Jobs Not Starting Errors": jobs_not_starting_errors,
-            "Unexpected EC2 Termination": compute_node_events,
+            "Issues with EC2 Instances": compute_node_events,
+        }
+
+        keys_list = list(error_metric_dict)
+        troubleshooting_links = {
+            keys_list[0]: "General [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
+            keys_list[1]: "Jobs not starting [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html)",
+            keys_list[2]: "Issues with EC2 [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
         }
 
         if self.config.head_node.custom_actions or (
             isinstance(self.config, CommonSchedulerClusterConfig) and self.config.do_compute_nodes_have_custom_actions
         ):
-            error_metric_dict.update({"Custom Script Errors": custom_script_errors})
+            metric_group_title = "Custom Script Errors"
+            error_metric_dict.update({metric_group_title: custom_script_errors})
+            troubleshooting_links.update(
+                {
+                    metric_group_title: "Problems with custom actions [Troubleshooting Resources]"
+                    "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)"
+                }
+            )
 
         self._add_text_widget("## Metrics for Common Errors")
         custom_namespace = "ParallelCluster/Errors/" + self.config.cluster_name
@@ -365,6 +382,16 @@ class CWDashboardConstruct(Construct):
 
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
         self._update_coord_after_section(self.graph_height)
+
+        text_widgets = []
+        for key in error_metric_dict:
+            text_widget = cloudwatch.TextWidget(markdown="\n" + troubleshooting_links[key] + "\n", height=1, width=6)
+            text_widget.position(x=self.coord.x_value, y=self.coord.y_value)
+            text_widgets.append(text_widget)
+            self.coord.x_value += self.graph_width
+        self.cloudwatch_dashboard.add_widgets(*text_widgets)
+        self.coord.x_value = 0
+        self.coord.y_value += 1
 
     def _add_storage_widgets(self, metrics, storages_list, namespace, dimension_name):
         widgets_list = []
