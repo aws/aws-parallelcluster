@@ -4,6 +4,8 @@ CHANGELOG
 **ENHANCEMENTS**
 - Introducing error metrics to cloudwatch dashboard
   - Include configuration option to enable/disable
+  - Includes integration tests for custom metrics
+  - Includes prototype text-widget that displays troubleshooting link under custom metrics
 
 3.2.0
 ------

@@ -15,6 +15,10 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
+      CustomActions:
+        OnNodeConfigured:
+          # install script that causes issues
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: compute-resource1
           {% if scheduler == "awsbatch" %}
