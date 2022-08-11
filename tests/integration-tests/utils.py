@@ -18,6 +18,7 @@ import shlex
 import socket
 import string
 import subprocess
+from datetime import datetime, timedelta
 
 import boto3
 from assertpy import assert_that
@@ -135,6 +136,59 @@ def retrieve_cfn_parameters(stack_name, region):
 def retrieve_cfn_outputs(stack_name, region):
     """Retrieve CloudFormation Stack Outputs from a given stack."""
     return _retrieve_cfn_data(stack_name, region, "Output")
+
+
+def create_metric(unique_names, metric_names, cluster_name, period_length_sec, stat):
+    return {
+        "Id": unique_names,
+        "MetricStat": {
+            "Metric": {
+                "Namespace": "ParallelCluster/Errors/" + cluster_name,
+                "MetricName": metric_names,
+            },
+            "Period": period_length_sec,
+            "Stat": stat,
+        },
+    }
+
+
+def retrieve_metric_data(
+    unique_names, cluster_name, metric_names, period_length_sec, collection_time_min, stat="Sum", region="us-east-1"
+):
+    """Create Boto3 get_metric_data request and output the results"""
+    assert_that(len(unique_names)).is_equal_to(len(metric_names))
+    metric_queries = [
+        create_metric(unique_names, metric_names, cluster_name, period_length_sec, stat)
+        for unique_names, metric_names in zip(unique_names, metric_names)
+    ]
+
+    client = boto3.client("cloudwatch", region)
+
+    return client.get_metric_data(
+        MetricDataQueries=metric_queries,
+        StartTime=datetime.now() - timedelta(days=collection_time_min),
+        EndTime=datetime.now() + timedelta(days=collection_time_min),
+        ScanBy="TimestampDescending",
+    )
+
+
+def check_metric_data_query(response, desired_result):
+    """
+    Iterates through get_metric_data query output and check for desired results,
+    output in MetricDataResults format which is described here
+    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudwatch.html#CloudWatch.Client.get_metric_data
+    if desired results = 0 ,check for no change else check if value changed
+    """
+    list_of_responses = response["MetricDataResults"]
+    try:
+        for i in range(len(list_of_responses)):
+            if desired_result == 0:
+                assert_that(max(list_of_responses[i]["Values"])).is_equal_to(desired_result)
+            else:
+                assert_that(max(list_of_responses[i]["Values"])).is_greater_than(0)
+    except Exception as e:
+        logging.warning(e)
+        raise
 
 
 @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
