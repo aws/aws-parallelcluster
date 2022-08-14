@@ -315,6 +315,9 @@ class EfsSettingsSchema(BaseSchema):
         validate=validate.Regexp(r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}$"),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
+    deletion_policy = fields.Str(
+        validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @validates_schema
     def validate_file_system_id_ignored_parameters(self, data, **kwargs):
@@ -397,6 +400,9 @@ class FsxLustreSettingsSchema(BaseSchema):
         data_key="StorageType",
         validate=validate.OneOf(["HDD", "SSD"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+    )
+    deletion_policy = fields.Str(
+        validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
 
     @validates_schema

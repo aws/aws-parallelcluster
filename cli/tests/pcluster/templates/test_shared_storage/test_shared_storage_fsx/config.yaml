@@ -1,0 +1,39 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+SharedStorage:
+  - MountDir: /opt/shared/fsx-lustre/managed/1
+    Name: shared-fsx-lustre-managed-1
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+  - MountDir: /opt/shared/fsx-lustre/managed/2
+    Name: shared-fsx-lustre-managed-2
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      DeletionPolicy: Delete
+  - MountDir: /opt/shared/fsx-lustre/managed/3
+    Name: shared-fsx-lustre-managed-3
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      DeletionPolicy: Retain
+#  - MountDir: /opt/shared/fsx/external/1
+#    Name: shared-fsx-external-1
+#    StorageType: FsxLustre
+#    FsxLustreSettings:
+#      FileSystemId: fs-0123456789
