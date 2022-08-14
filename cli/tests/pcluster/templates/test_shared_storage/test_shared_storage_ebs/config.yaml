@@ -1,0 +1,35 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+SharedStorage:
+  - MountDir: /opt/shared/ebs/managed/1
+    Name: shared-ebs-managed-1
+    StorageType: Ebs
+  - MountDir: /opt/shared/ebs/managed/2
+    Name: shared-ebs-managed-2
+    StorageType: Ebs
+    EbsSettings:
+      DeletionPolicy: Delete
+  - MountDir: /opt/shared/ebs/managed/3
+    Name: shared-ebs-managed-3
+    StorageType: Ebs
+    EbsSettings:
+      DeletionPolicy: Retain
+#  - MountDir: /opt/shared/ebs/external/1
+#    Name: shared-ebs-external-1
+#    StorageType: Ebs
+#    EbsSettings:
+#      VolumeId: vol-0123456789

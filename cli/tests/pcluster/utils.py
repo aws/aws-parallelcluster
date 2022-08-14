@@ -27,3 +27,19 @@ def load_cluster_model_from_yaml(config_file_name, test_datadir=None):
     cluster = ClusterSchema(cluster_name="clustername").load(copy_input_yaml)
     print(cluster)
     return input_yaml, cluster
+
+
+def get_resources(generated_template: dict, name: str = None, type: str = None, properties: dict = None):
+    return dict(
+        (res_name, res_value)
+        for res_name, res_value in generated_template.get("Resources", {}).items()
+        if (name is None or res_name == name)
+        and (type is None or res_value.get("Type") == type)
+        and (
+            properties is None
+            or all(
+                res_value.get("Properties", {}).get(prop_name) == prop_value
+                for prop_name, prop_value in properties.items()
+            )
+        )
+    )

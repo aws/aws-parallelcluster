@@ -284,6 +284,7 @@ class SharedEfs(Resource):
         throughput_mode: str = None,
         provisioned_throughput: int = None,
         file_system_id: str = None,
+        deletion_policy: str = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
@@ -295,6 +296,7 @@ class SharedEfs(Resource):
         self.throughput_mode = Resource.init_param(throughput_mode, default="bursting")
         self.provisioned_throughput = Resource.init_param(provisioned_throughput)
         self.file_system_id = Resource.init_param(file_system_id)
+        self.deletion_policy = Resource.init_param(deletion_policy, default="Delete" if not file_system_id else None)
 
     def _register_validators(self):
         self._register_validator(SharedStorageNameValidator, name=self.name)
@@ -351,6 +353,7 @@ class SharedFsxLustre(BaseSharedFsx):
         auto_import_policy: str = None,
         drive_cache_type: str = None,
         fsx_storage_type: str = None,
+        deletion_policy: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -375,6 +378,7 @@ class SharedFsxLustre(BaseSharedFsx):
         self.drive_cache_type = Resource.init_param(drive_cache_type)
         self.file_system_type = LUSTRE
         self.file_system_type_version = "2.12" if backup_id is None and file_system_id is None else None
+        self.deletion_policy = Resource.init_param(deletion_policy, default="Delete" if not file_system_id else None)
 
     def _register_validators(self):
         super()._register_validators()

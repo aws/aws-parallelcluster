@@ -17,18 +17,18 @@ from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
+from tests.pcluster.utils import get_resources
 
 
 @pytest.mark.parametrize(
-    "config_file_name, resource_logical_name, security_group_property, expected_security_group",
+    "config_file_name, storage_name, deletion_policy",
     [
-        ("efs.config.yaml", "EFS8d3a330efcad8cd3MTstring", "SecurityGroups", "ComputeSecurityGroup"),
-        ("fsx-lustre.config.yaml", "FSX0c14c0b8f045af82", "SecurityGroupIds", "ComputeSecurityGroup"),
+        ("config.yaml", "shared-ebs-managed-1", "Delete"),
+        ("config.yaml", "shared-ebs-managed-2", "Delete"),
+        ("config.yaml", "shared-ebs-managed-3", "Retain"),
     ],
 )
-def test_shared_storage_security_group(
-    mocker, test_datadir, config_file_name, resource_logical_name, security_group_property, expected_security_group
-):
+def test_shared_storage_ebs(mocker, test_datadir, config_file_name, storage_name, deletion_policy):
     mock_aws_api(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
@@ -39,8 +39,145 @@ def test_shared_storage_security_group(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
-    actual_security_group_resource = generated_template["Resources"][resource_logical_name]["Properties"][
-        security_group_property
-    ]
+    volumes = get_resources(
+        generated_template, type="AWS::EC2::Volume", properties={"Tags": [{"Key": "Name", "Value": storage_name}]}
+    )
+    assert_that(volumes).is_length(1)
 
-    assert_that(actual_security_group_resource).is_equal_to([{"Ref": expected_security_group}])
+    volume = next(iter(volumes.values()))
+    assert_that(volume["DeletionPolicy"]).is_equal_to(deletion_policy)
+
+
+@pytest.mark.parametrize(
+    "config_file_name, storage_name, deletion_policy",
+    [
+        ("config.yaml", "shared-efs-managed-1", "Delete"),
+        ("config.yaml", "shared-efs-managed-2", "Delete"),
+        ("config.yaml", "shared-efs-managed-3", "Retain"),
+    ],
+)
+def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name, deletion_policy):
+    mock_aws_api(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    file_systems = get_resources(
+        generated_template,
+        type="AWS::EFS::FileSystem",
+        properties={"FileSystemTags": [{"Key": "Name", "Value": storage_name}]},
+    )
+
+    assert_that(file_systems).is_length(1)
+
+    file_system_name = next(iter(file_systems.keys()))
+    file_system = file_systems[file_system_name]
+    assert_that(file_system["DeletionPolicy"]).is_equal_to(deletion_policy)
+
+    mount_targets = get_resources(
+        generated_template, type="AWS::EFS::MountTarget", properties={"FileSystemId": {"Ref": file_system_name}}
+    )
+
+    assert_that(mount_targets).is_length(1)
+
+    mount_target = next(iter(mount_targets.values()))
+    assert_that(mount_target["DeletionPolicy"]).is_equal_to(deletion_policy)
+
+    mount_target_sg_name = mount_target["Properties"]["SecurityGroups"][0]["Ref"]
+    mount_target_sg = generated_template["Resources"][mount_target_sg_name]
+    assert_that(mount_target_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
+
+    for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", mount_target_sg_name]:
+        assert_sg_rule(
+            generated_template,
+            mount_target_sg_name,
+            rule_type="ingress",
+            protocol="-1",
+            port_range=[0, 65535],
+            target_sg=sg,
+        )
+        assert_sg_rule(
+            generated_template,
+            mount_target_sg_name,
+            rule_type="egress",
+            protocol="-1",
+            port_range=[0, 65535],
+            target_sg=sg,
+        )
+
+
+@pytest.mark.parametrize(
+    "config_file_name, storage_name, fs_type, deletion_policy",
+    [
+        ("config.yaml", "shared-fsx-lustre-managed-1", "LUSTRE", "Delete"),
+        ("config.yaml", "shared-fsx-lustre-managed-2", "LUSTRE", "Delete"),
+        ("config.yaml", "shared-fsx-lustre-managed-3", "LUSTRE", "Retain"),
+    ],
+)
+def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name, fs_type, deletion_policy):
+    mock_aws_api(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    file_systems = get_resources(
+        generated_template, type="AWS::FSx::FileSystem", properties={"Tags": [{"Key": "Name", "Value": storage_name}]}
+    )
+    assert_that(file_systems).is_length(1)
+
+    file_system = next(iter(file_systems.values()))
+    assert_that(file_system["Properties"]["FileSystemType"]).is_equal_to(fs_type)
+    assert_that(file_system["DeletionPolicy"]).is_equal_to(deletion_policy)
+
+    file_system_sg_name = file_system["Properties"]["SecurityGroupIds"][0]["Ref"]
+    file_system_sg = generated_template["Resources"][file_system_sg_name]
+    assert_that(file_system_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
+
+    for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", file_system_sg_name]:
+        assert_sg_rule(
+            generated_template,
+            file_system_sg_name,
+            rule_type="ingress",
+            protocol="-1",
+            port_range=[0, 65535],
+            target_sg=sg,
+        )
+        assert_sg_rule(
+            generated_template,
+            file_system_sg_name,
+            rule_type="egress",
+            protocol="-1",
+            port_range=[0, 65535],
+            target_sg=sg,
+        )
+
+
+def assert_sg_rule(
+    generated_template: dict, sg_name: str, rule_type: str, protocol: str, port_range: list, target_sg: str
+):
+    constants = {
+        "ingress": {"resource_type": "AWS::EC2::SecurityGroupIngress", "sg_field": "SourceSecurityGroupId"},
+        "egress": {"resource_type": "AWS::EC2::SecurityGroupEgress", "sg_field": "DestinationSecurityGroupId"},
+    }
+    sg_rules = get_resources(
+        generated_template,
+        type=constants[rule_type]["resource_type"],
+        properties={
+            "GroupId": {"Ref": sg_name},
+            "IpProtocol": protocol,
+            "FromPort": port_range[0],
+            "ToPort": port_range[1],
+            constants[rule_type]["sg_field"]: {"Ref": target_sg},
+        },
+    )
+
+    assert_that(sg_rules).is_length(1)
