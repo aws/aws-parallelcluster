@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **ec2_ami_info** | [**Ec2AmiInfoSummary**](Ec2AmiInfoSummary.md) |  | [optional] 
 **cloudformation_stack_arn** | **str** | ARN of the main CloudFormation stack. | [optional] 
 **cloudformation_stack_status** | [**CloudFormationStackStatus**](CloudFormationStackStatus.md) |  | [optional] 
+**any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

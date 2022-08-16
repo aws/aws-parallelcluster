@@ -152,7 +152,6 @@ pcluster_client/model/update_error.py
 pcluster_client/model/validation_level.py
 pcluster_client/model_utils.py
 pcluster_client/models/__init__.py
-pcluster_client/models/__init__.py
 pcluster_client/rest.py
 requirements.txt
 setup.cfg
