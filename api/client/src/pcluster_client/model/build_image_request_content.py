@@ -111,7 +111,7 @@ class BuildImageRequestContent(ModelNormal):
         """BuildImageRequestContent - a model defined in OpenAPI
 
         Args:
-            image_configuration (str): Image configuration as a YAML document
+            image_configuration (str): Image configuration as a YAML document.
             image_id (str): Id of the Image that will be built.
 
         Keyword Args:
@@ -202,7 +202,7 @@ class BuildImageRequestContent(ModelNormal):
         """BuildImageRequestContent - a model defined in OpenAPI
 
         Args:
-            image_configuration (str): Image configuration as a YAML document
+            image_configuration (str): Image configuration as a YAML document.
             image_id (str): Id of the Image that will be built.
 
         Keyword Args:

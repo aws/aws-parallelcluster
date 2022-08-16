@@ -66,7 +66,7 @@ structure ClusterConfigurationStructure {
     url: String,
 }
 
-@documentation("Cluster configuration as a YAML document")
+@documentation("Cluster configuration as a YAML document.")
 string ClusterConfigurationData
 
 list ChangeSet {
