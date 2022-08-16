@@ -10,6 +10,7 @@ repositories {
 
 buildscript {
     dependencies {
+        classpath("software.amazon.smithy:smithy-cli:1.22.0")
         classpath("software.amazon.smithy:smithy-openapi:1.22.0")
         classpath("software.amazon.smithy:smithy-aws-traits:1.22.0")
         classpath("software.amazon.smithy:smithy-aws-apigateway-openapi:1.22.0")
