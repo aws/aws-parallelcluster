@@ -104,7 +104,7 @@ class UpdateClusterRequestContent(ModelNormal):
         """UpdateClusterRequestContent - a model defined in OpenAPI
 
         Args:
-            cluster_configuration (str): Cluster configuration as a YAML document
+            cluster_configuration (str): Cluster configuration as a YAML document.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -193,7 +193,7 @@ class UpdateClusterRequestContent(ModelNormal):
         """UpdateClusterRequestContent - a model defined in OpenAPI
 
         Args:
-            cluster_configuration (str): Cluster configuration as a YAML document
+            cluster_configuration (str): Cluster configuration as a YAML document.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types

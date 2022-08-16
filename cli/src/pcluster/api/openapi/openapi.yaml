@@ -5,6 +5,7 @@ info:
   version: 3.2.0
 servers:
 - url: /
+# override: auth is defined the the API GW level
 # security:
 # - aws.auth.sigv4: []
 paths:
@@ -77,13 +78,13 @@ paths:
       tags:
       - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
     post:
       description: Create a managed cluster in a given region.
@@ -131,7 +132,6 @@ paths:
         schema:
           description: Only perform request validation without creating any resource.
             May be used to validate the cluster configuration. (Defaults to 'false'.)
-          nullable: true
           type: boolean
         style: form
       - description: When set it automatically initiates a cluster stack rollback
@@ -143,14 +143,13 @@ paths:
         schema:
           description: When set it automatically initiates a cluster stack rollback
             on failures. (Defaults to 'true'.)
-          nullable: true
           type: boolean
         style: form
       requestBody:
         content:
           application/json:
             schema:
-              x-body-name: create_cluster_request_content
+              x-body-name: create_cluster_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/CreateClusterRequestContent'
         required: true
       responses:
@@ -199,13 +198,13 @@ paths:
       tags:
       - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
   /v3/clusters/{clusterName}:
     delete:
@@ -271,13 +270,13 @@ paths:
       tags:
       - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
     get:
       description: Get detailed information about an existing cluster.
@@ -342,13 +341,13 @@ paths:
       tags:
       - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
     put:
       description: Update a cluster managed in a given region.
@@ -408,7 +407,6 @@ paths:
           description: Only perform request validation without creating any resource.
             May be used to validate the cluster configuration and update requirements.
             (Defaults to 'false'.)
-          nullable: true
           type: boolean
         style: form
       - description: Force update by ignoring the update validation errors. (Defaults
@@ -420,14 +418,13 @@ paths:
         schema:
           description: Force update by ignoring the update validation errors. (Defaults
             to 'false'.)
-          nullable: true
           type: boolean
         style: form
       requestBody:
         content:
           application/json:
             schema:
-              x-body-name: update_cluster_request_content
+              x-body-name: update_cluster_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/UpdateClusterRequestContent'
         required: true
       responses:
@@ -482,13 +479,13 @@ paths:
       tags:
       - Cluster Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
   /v3/clusters/{clusterName}/computefleet:
     get:
@@ -554,13 +551,13 @@ paths:
       tags:
       - Cluster ComputeFleet
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_compute_fleet_controller
     patch:
       description: Update the status of the cluster compute fleet.
@@ -589,7 +586,7 @@ paths:
         content:
           application/json:
             schema:
-              x-body-name: update_compute_fleet_request_content
+              x-body-name: update_compute_fleet_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/UpdateComputeFleetRequestContent'
         required: true
       responses:
@@ -632,13 +629,13 @@ paths:
       tags:
       - Cluster ComputeFleet
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_compute_fleet_controller
   /v3/clusters/{clusterName}/instances:
     delete:
@@ -674,7 +671,6 @@ paths:
         schema:
           description: Force the deletion also when the cluster with the given name
             is not found. (Defaults to 'false'.)
-          nullable: true
           type: boolean
         style: form
       responses:
@@ -713,13 +709,13 @@ paths:
       tags:
       - Cluster Instances
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_instances_controller
     get:
       description: Describe the instances belonging to a given cluster.
@@ -804,13 +800,13 @@ paths:
       tags:
       - Cluster Instances
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_instances_controller
   /v3/clusters/{clusterName}/logstreams:
     get:
@@ -836,19 +832,21 @@ paths:
           description: Region that the given cluster belongs to.
           type: string
         style: form
-      - description: "Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\n\
-          Accepted filters are:\nprivate-dns-name - The short form of the private\
-          \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type,\
-          \ the only accepted value for this filter is HeadNode."
+      - description: |-
+          Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.
+          Accepted filters are:
+          private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).
+          node-type - The node type, the only accepted value for this filter is HeadNode.
         explode: true
         in: query
         name: filters
         required: false
         schema:
-          description: "Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\n\
-            Accepted filters are:\nprivate-dns-name - The short form of the private\
-            \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node\
-            \ type, the only accepted value for this filter is HeadNode."
+          description: |-
+            Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.
+            Accepted filters are:
+            private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).
+            node-type - The node type, the only accepted value for this filter is HeadNode.
           items:
             type: string
           type: array
@@ -903,13 +901,13 @@ paths:
       tags:
       - Cluster Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
   /v3/clusters/{clusterName}/logstreams/{logStreamName}:
     get:
@@ -964,7 +962,6 @@ paths:
           description: "If the value is true, the earliest log events are returned\
             \ first. If the value is false, the latest log events are returned first.\
             \ (Defaults to 'false'.)"
-          nullable: true
           type: boolean
         style: form
       - description: "The maximum number of log events returned. If you don't specify\
@@ -978,7 +975,7 @@ paths:
           description: "The maximum number of log events returned. If you don't specify\
             \ a value, the maximum is as many log events as can fit in a response\
             \ size of 1 MB, up to 10,000 log events."
-          format: int32
+          format: int32  # override: connexion does not handle number correctly
           nullable: true
           type: integer
         style: form
@@ -1050,13 +1047,13 @@ paths:
       tags:
       - Cluster Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
   /v3/clusters/{clusterName}/stackevents:
     get:
@@ -1131,13 +1128,13 @@ paths:
       tags:
       - Cluster Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
   /v3/images/custom:
     get:
@@ -1204,13 +1201,13 @@ paths:
       tags:
       - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
     post:
       description: Create a custom ParallelCluster image in a given region.
@@ -1249,7 +1246,6 @@ paths:
         schema:
           description: Only perform request validation without creating any resource.
             It can be used to validate the image configuration. (Defaults to 'false'.)
-          nullable: true
           type: boolean
         style: form
       - description: "When set, will automatically initiate an image stack rollback\
@@ -1261,7 +1257,6 @@ paths:
         schema:
           description: "When set, will automatically initiate an image stack rollback\
             \ on failure. (Defaults to 'false'.)"
-          nullable: true
           type: boolean
         style: form
       - description: AWS Region that the operation corresponds to.
@@ -1277,7 +1272,7 @@ paths:
         content:
           application/json:
             schema:
-              x-body-name: build_image_request_content
+              x-body-name: build_image_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/BuildImageRequestContent'
         required: true
       responses:
@@ -1326,13 +1321,13 @@ paths:
       tags:
       - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
   /v3/images/custom/{imageId}:
     delete:
@@ -1367,7 +1362,6 @@ paths:
         schema:
           description: Force deletion in case there are instances using the AMI or
             in case the AMI is shared. (Defaults to 'false'.)
-          nullable: true
           type: boolean
         style: form
       responses:
@@ -1410,13 +1404,13 @@ paths:
       tags:
       - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
     get:
       description: Get detailed information about an existing image.
@@ -1481,13 +1475,13 @@ paths:
       tags:
       - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
   /v3/images/custom/{imageId}/logstreams:
     get:
@@ -1562,13 +1556,13 @@ paths:
       tags:
       - Image Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
   /v3/images/custom/{imageId}/logstreams/{logStreamName}:
     get:
@@ -1623,7 +1617,6 @@ paths:
           description: "If the value is true, the earliest log events are returned\
             \ first. If the value is false, the latest log events are returned first.\
             \ (Defaults to 'false'.)"
-          nullable: true
           type: boolean
         style: form
       - description: "The maximum number of log events returned. If you don't specify\
@@ -1637,7 +1630,7 @@ paths:
           description: "The maximum number of log events returned. If you don't specify\
             \ a value, the maximum is as many log events as can fit in a response\
             \ size of 1 MB, up to 10,000 log events."
-          format: int32
+          format: int32  # override: connexion does not handle number correctly
           nullable: true
           type: integer
         style: form
@@ -1709,13 +1702,13 @@ paths:
       tags:
       - Image Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
   /v3/images/custom/{imageId}/stackevents:
     get:
@@ -1791,13 +1784,13 @@ paths:
       tags:
       - Image Logs
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
   /v3/images/official:
     get:
@@ -1865,13 +1858,13 @@ paths:
       tags:
       - Image Operations
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
-        httpMethod: POST
-        payloadFormatVersion: "2.0"
         type: aws_proxy
+        httpMethod: POST
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        payloadFormatVersion: "2.0"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
 components:
   schemas:
@@ -1883,20 +1876,20 @@ components:
         version: version
         architecture: architecture
       properties:
+        architecture:
+          title: architecture
+          type: string
         amiId:
           title: amiId
-          type: string
-        os:
-          title: os
           type: string
         name:
           title: name
           type: string
+        os:
+          title: os
+          type: string
         version:
           title: version
-          type: string
-        architecture:
-          title: architecture
           type: string
       required:
       - amiId
@@ -1919,14 +1912,14 @@ components:
       description: This exception is thrown when a client calls the BuildImage API
         with an invalid request. This includes an error due to invalid image configuration.
       properties:
+        message:
+          title: message
+          type: string
         configurationValidationErrors:
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
           title: configurationValidationErrors
           type: array
-        message:
-          title: message
-          type: string
       title: BuildImageBadRequestExceptionResponseContent
       type: object
     BuildImageRequestContent:
@@ -1936,14 +1929,17 @@ components:
       properties:
         imageConfiguration:
           description: Image configuration as a YAML document.
+          title: imageConfiguration
           type: string
         imageId:
           description: Id of the Image that will be built.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          title: imageId
           type: string
       required:
       - imageConfiguration
       - imageId
+      title: BuildImageRequestContent
       type: object
     BuildImageResponseContent:
       example:
@@ -1988,11 +1984,11 @@ components:
         parameter:
           title: parameter
           type: string
-        requestedValue:
-          title: requestedValue
-          type: string
         currentValue:
           title: currentValue
+          type: string
+        requestedValue:
+          title: requestedValue
           type: string
       title: Change
       type: object
@@ -2048,6 +2044,11 @@ components:
       type: object
     ClusterInfoSummary:
       example:
+        scheduler:
+          metadata:
+            name: name
+            version: version
+          type: type
         clusterName: clusterName
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
@@ -2060,12 +2061,6 @@ components:
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: clusterName
           type: string
-        cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStackStatus'
-        cloudformationStackArn:
-          description: ARN of the main CloudFormation stack.
-          title: cloudformationStackArn
-          type: string
         region:
           description: AWS region where the cluster is created.
           title: region
@@ -2074,8 +2069,16 @@ components:
           description: ParallelCluster version used to create the cluster.
           title: version
           type: string
+        cloudformationStackArn:
+          description: ARN of the main CloudFormation stack.
+          title: cloudformationStackArn
+          type: string
+        cloudformationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
+        scheduler:
+          $ref: '#/components/schemas/Scheduler'
       required:
       - cloudformationStackArn
       - cloudformationStackStatus
@@ -2096,28 +2099,28 @@ components:
         nodeType: null
         privateIpAddress: privateIpAddress
       properties:
+        instanceId:
+          title: instanceId
+          type: string
+        instanceType:
+          title: instanceType
+          type: string
         launchTime:
           format: date-time
           title: launchTime
           type: string
-        instanceId:
-          title: instanceId
-          type: string
-        queueName:
-          title: queueName
+        privateIpAddress:
+          title: privateIpAddress
           type: string
         publicIpAddress:
           title: publicIpAddress
-          type: string
-        instanceType:
-          title: instanceType
           type: string
         state:
           $ref: '#/components/schemas/InstanceState'
         nodeType:
           $ref: '#/components/schemas/NodeType'
-        privateIpAddress:
-          title: privateIpAddress
+        queueName:
+          title: queueName
           type: string
       required:
       - instanceId
@@ -2174,8 +2177,6 @@ components:
         type: type
         message: message
       properties:
-        level:
-          $ref: '#/components/schemas/ValidationLevel'
         id:
           description: Id of the validator.
           title: id
@@ -2184,6 +2185,8 @@ components:
           description: Type of the validator.
           title: type
           type: string
+        level:
+          $ref: '#/components/schemas/ValidationLevel'
         message:
           description: Validation message
           title: message
@@ -2204,14 +2207,14 @@ components:
         API with an invalid request. This includes an error due to invalid cluster
         configuration.
       properties:
+        message:
+          title: message
+          type: string
         configurationValidationErrors:
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
           title: configurationValidationErrors
           type: array
-        message:
-          title: message
-          type: string
       title: CreateClusterBadRequestExceptionResponseContent
       type: object
     CreateClusterRequestContent:
@@ -2222,17 +2225,25 @@ components:
         clusterName:
           description: Name of the cluster that will be created.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          title: clusterName
           type: string
         clusterConfiguration:
           description: Cluster configuration as a YAML document.
+          title: clusterConfiguration
           type: string
       required:
       - clusterConfiguration
       - clusterName
+      title: CreateClusterRequestContent
       type: object
     CreateClusterResponseContent:
       example:
         cluster:
+          scheduler:
+            metadata:
+              name: name
+              version: version
+            type: type
           clusterName: clusterName
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -2265,6 +2276,11 @@ components:
     DeleteClusterResponseContent:
       example:
         cluster:
+          scheduler:
+            metadata:
+              name: name
+              version: version
+            type: type
           clusterName: clusterName
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -2317,15 +2333,15 @@ components:
           privateIpAddress: privateIpAddress
         nextToken: nextToken
       properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
         instances:
           items:
             $ref: '#/components/schemas/ClusterInstance'
           title: instances
           type: array
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
       required:
       - instances
       title: DescribeClusterInstancesResponseContent
@@ -2341,6 +2357,11 @@ components:
           key: key
         - value: value
           key: key
+        scheduler:
+          metadata:
+            name: name
+            version: version
+          type: type
         cloudFormationStackStatus: null
         clusterName: clusterName
         computeFleetStatus: null
@@ -2357,54 +2378,56 @@ components:
           state: null
           privateIpAddress: privateIpAddress
       properties:
-        creationTime:
-          description: Timestamp representing the cluster creation time.
-          format: date-time
-          title: creationTime
-          type: string
-        version:
-          description: ParallelCluster version used to create the cluster.
-          title: version
-          type: string
-        clusterConfiguration:
-          $ref: '#/components/schemas/ClusterConfigurationStructure'
-        tags:
-          description: Tags associated with the cluster.
-          items:
-            $ref: '#/components/schemas/Tag'
-          title: tags
-          type: array
-        cloudFormationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterName:
           description: Name of the cluster.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: clusterName
           type: string
-        computeFleetStatus:
-          $ref: '#/components/schemas/ComputeFleetStatus'
-        failureReason:
-          description: "Reason of the failure when the stack is in CREATE_FAILED,\
-            \ UPDATE_FAILED or DELETE_FAILED status."
-          title: failureReason
+        region:
+          description: AWS region where the cluster is created.
+          title: region
           type: string
+        version:
+          description: ParallelCluster version used to create the cluster.
+          title: version
+          type: string
+        cloudFormationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
+        clusterStatus:
+          $ref: '#/components/schemas/ClusterStatus'
+        scheduler:
+          $ref: '#/components/schemas/Scheduler'
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
+          type: string
+        creationTime:
+          description: Timestamp representing the cluster creation time.
+          format: date-time
+          title: creationTime
           type: string
         lastUpdatedTime:
           description: Timestamp representing the last cluster update time.
           format: date-time
           title: lastUpdatedTime
           type: string
-        region:
-          description: AWS region where the cluster is created.
-          title: region
-          type: string
-        clusterStatus:
-          $ref: '#/components/schemas/ClusterStatus'
+        clusterConfiguration:
+          $ref: '#/components/schemas/ClusterConfigurationStructure'
+        computeFleetStatus:
+          $ref: '#/components/schemas/ComputeFleetStatus'
+        tags:
+          description: Tags associated with the cluster.
+          items:
+            $ref: '#/components/schemas/Tag'
+          title: tags
+          type: array
         headNode:
           $ref: '#/components/schemas/EC2Instance'
+        failureReason:
+          description: "Reason of the failure when the stack is in CREATE_FAILED,\
+            \ UPDATE_FAILED or DELETE_FAILED status."
+          title: failureReason
+          type: string
       required:
       - cloudFormationStackStatus
       - cloudformationStackArn
@@ -2424,13 +2447,13 @@ components:
         status: null
         lastStatusUpdatedTime: 2000-01-23T04:56:07.000+00:00
       properties:
+        status:
+          $ref: '#/components/schemas/ComputeFleetStatus'
         lastStatusUpdatedTime:
           description: Timestamp representing the last status update time.
           format: date-time
           title: lastStatusUpdatedTime
           type: string
-        status:
-          $ref: '#/components/schemas/ComputeFleetStatus'
       required:
       - status
       title: DescribeComputeFleetResponseContent
@@ -2438,8 +2461,6 @@ components:
     DescribeImageResponseContent:
       example:
         cloudformationStackStatusReason: cloudformationStackStatusReason
-        imageConfiguration:
-          url: url
         imagebuilderImageStatusReason: imagebuilderImageStatusReason
         imageId: imageId
         cloudformationStackTags:
@@ -2450,6 +2471,8 @@ components:
         imagebuilderImageStatus: null
         creationTime: 2000-01-23T04:56:07.000+00:00
         version: version
+        imageConfiguration:
+          url: url
         imageBuildStatus: null
         cloudformationStackStatus: null
         imageBuildLogsArn: imageBuildLogsArn
@@ -2468,38 +2491,38 @@ components:
             key: key
           architecture: architecture
       properties:
-        cloudformationStackStatusReason:
-          description: Reason for the CloudFormation stack status.
-          title: cloudformationStackStatusReason
-          type: string
-        imageConfiguration:
-          $ref: '#/components/schemas/ImageConfigurationStructure'
-        imagebuilderImageStatusReason:
-          description: Reason for the ImageBuilder Image status.
-          title: imagebuilderImageStatusReason
-          type: string
         imageId:
           description: Id of the Image to retrieve detailed information for.
           title: imageId
           type: string
-        imagebuilderImageStatus:
-          $ref: '#/components/schemas/ImageBuilderImageStatus'
-        creationTime:
-          description: Timestamp representing the image creation time.
-          format: date-time
-          title: creationTime
+        region:
+          description: AWS region where the image is created.
+          title: region
+          type: string
+        version:
+          description: ParallelCluster version used to build the image.
+          title: version
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
+        imageBuildLogsArn:
+          description: ARN of the logs for the image build process.
+          title: imageBuildLogsArn
+          type: string
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStackStatus'
+        cloudformationStackStatusReason:
+          description: Reason for the CloudFormation stack status.
+          title: cloudformationStackStatusReason
+          type: string
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
-        imageBuildLogsArn:
-          description: ARN of the logs for the image build process.
-          title: imageBuildLogsArn
+        creationTime:
+          description: Timestamp representing the image creation time.
+          format: date-time
+          title: creationTime
           type: string
         cloudformationStackCreationTime:
           description: Timestamp representing the CloudFormation stack creation time.
@@ -2512,16 +2535,16 @@ components:
             $ref: '#/components/schemas/Tag'
           title: cloudformationStackTags
           type: array
-        region:
-          description: AWS region where the image is created.
-          title: region
+        imageConfiguration:
+          $ref: '#/components/schemas/ImageConfigurationStructure'
+        imagebuilderImageStatus:
+          $ref: '#/components/schemas/ImageBuilderImageStatus'
+        imagebuilderImageStatusReason:
+          description: Reason for the ImageBuilder Image status.
+          title: imagebuilderImageStatusReason
           type: string
         ec2AmiInfo:
           $ref: '#/components/schemas/Ec2AmiInfo'
-        version:
-          description: ParallelCluster version used to build the image.
-          title: version
-          type: string
       required:
       - imageBuildStatus
       - imageConfiguration
@@ -2534,13 +2557,6 @@ components:
       description: Communicates that the operation would have succeeded without the
         dryrun flag.
       properties:
-        validationMessages:
-          description: List of messages collected during cluster config validation
-            whose level is lower than the 'validationFailureLevel' set by the user.
-          items:
-            $ref: '#/components/schemas/ConfigValidationMessage'
-          title: validationMessages
-          type: array
         message:
           title: message
           type: string
@@ -2549,6 +2565,13 @@ components:
           items:
             $ref: '#/components/schemas/Change'
           title: changeSet
+          type: array
+        validationMessages:
+          description: List of messages collected during cluster config validation
+            whose level is lower than the 'validationFailureLevel' set by the user.
+          items:
+            $ref: '#/components/schemas/ConfigValidationMessage'
+          title: validationMessages
           type: array
       title: DryrunOperationExceptionResponseContent
       type: object
@@ -2561,24 +2584,24 @@ components:
         state: null
         privateIpAddress: privateIpAddress
       properties:
-        launchTime:
-          format: date-time
-          title: launchTime
-          type: string
         instanceId:
           title: instanceId
-          type: string
-        publicIpAddress:
-          title: publicIpAddress
           type: string
         instanceType:
           title: instanceType
           type: string
-        state:
-          $ref: '#/components/schemas/InstanceState'
+        launchTime:
+          format: date-time
+          title: launchTime
+          type: string
         privateIpAddress:
           title: privateIpAddress
           type: string
+        publicIpAddress:
+          title: publicIpAddress
+          type: string
+        state:
+          $ref: '#/components/schemas/InstanceState'
       required:
       - instanceId
       - instanceType
@@ -2600,29 +2623,29 @@ components:
           key: key
         architecture: architecture
       properties:
-        amiName:
-          description: EC2 AMI name
-          title: amiName
-          type: string
         amiId:
           description: EC2 AMI id
           title: amiId
           type: string
-        description:
-          description: EC2 AMI description
-          title: description
-          type: string
-        state:
-          $ref: '#/components/schemas/Ec2AmiState'
         tags:
           description: EC2 AMI Tags
           items:
             $ref: '#/components/schemas/Tag'
           title: tags
           type: array
+        amiName:
+          description: EC2 AMI name
+          title: amiName
+          type: string
         architecture:
           description: EC2 AMI architecture
           title: architecture
+          type: string
+        state:
+          $ref: '#/components/schemas/Ec2AmiState'
+        description:
+          description: EC2 AMI description
+          title: description
           type: string
       required:
       - amiId
@@ -2828,14 +2851,6 @@ components:
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: imageId
           type: string
-        imageBuildStatus:
-          $ref: '#/components/schemas/ImageBuildStatus'
-        cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStackStatus'
-        cloudformationStackArn:
-          description: ARN of the main CloudFormation stack.
-          title: cloudformationStackArn
-          type: string
         ec2AmiInfo:
           $ref: '#/components/schemas/Ec2AmiInfoSummary'
         region:
@@ -2846,6 +2861,14 @@ components:
           description: ParallelCluster version used to build the image.
           title: version
           type: string
+        cloudformationStackArn:
+          description: ARN of the main CloudFormation stack.
+          title: cloudformationStackArn
+          type: string
+        imageBuildStatus:
+          $ref: '#/components/schemas/ImageBuildStatus'
+        cloudformationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
       required:
       - imageBuildStatus
       - imageId
@@ -2889,7 +2912,6 @@ components:
       type: object
     ListClusterLogStreamsResponseContent:
       example:
-        nextToken: nextToken
         logStreams:
         - logStreamArn: logStreamArn
           creationTime: 2000-01-23T04:56:07.000+00:00
@@ -2905,16 +2927,17 @@ components:
           lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
           lastIngestionTime: 2000-01-23T04:56:07.000+00:00
           uploadSequenceToken: uploadSequenceToken
+        nextToken: nextToken
       properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
         logStreams:
           items:
             $ref: '#/components/schemas/LogStream'
           title: logStreams
           type: array
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
       required:
       - logStreams
       title: ListClusterLogStreamsResponseContent
@@ -2923,13 +2946,23 @@ components:
       example:
         nextToken: nextToken
         clusters:
-        - clusterName: clusterName
+        - scheduler:
+            metadata:
+              name: name
+              version: version
+            type: type
+          clusterName: clusterName
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
           region: region
           version: version
           clusterStatus: null
-        - clusterName: clusterName
+        - scheduler:
+            metadata:
+              name: name
+              version: version
+            type: type
+          clusterName: clusterName
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
           region: region
@@ -2968,22 +3001,21 @@ components:
           uploadSequenceToken: uploadSequenceToken
         nextToken: nextToken
       properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
         logStreams:
           items:
             $ref: '#/components/schemas/LogStream'
           title: logStreams
           type: array
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
       required:
       - logStreams
       title: ListImageLogStreamsResponseContent
       type: object
     ListImagesResponseContent:
       example:
-        nextToken: nextToken
         images:
         - imageId: imageId
           imageBuildStatus: null
@@ -3001,16 +3033,17 @@ components:
             amiId: amiId
           region: region
           version: version
+        nextToken: nextToken
       properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
         images:
           items:
             $ref: '#/components/schemas/ImageInfoSummary'
           title: images
           type: array
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
       required:
       - images
       title: ListImagesResponseContent
@@ -3043,12 +3076,12 @@ components:
         message: message
         timestamp: 2000-01-23T04:56:07.000+00:00
       properties:
-        message:
-          title: message
-          type: string
         timestamp:
           format: date-time
           title: timestamp
+          type: string
+        message:
+          title: message
           type: string
       required:
       - message
@@ -3065,18 +3098,14 @@ components:
         lastIngestionTime: 2000-01-23T04:56:07.000+00:00
         uploadSequenceToken: uploadSequenceToken
       properties:
-        logStreamArn:
-          description: The Amazon Resource Name (ARN) of the log stream.
-          title: logStreamArn
+        logStreamName:
+          description: Name of the log stream.
+          title: logStreamName
           type: string
         creationTime:
           description: The creation time of the stream.
           format: date-time
           title: creationTime
-          type: string
-        logStreamName:
-          description: Name of the log stream.
-          title: logStreamName
           type: string
         firstEventTimestamp:
           description: The time of the first event of the stream.
@@ -3100,6 +3129,10 @@ components:
           description: The sequence token.
           title: uploadSequenceToken
           type: string
+        logStreamArn:
+          description: The Amazon Resource Name (ARN) of the log stream.
+          title: logStreamArn
+          type: string
       required:
       - creationTime
       - firstEventTimestamp
@@ -3109,6 +3142,19 @@ components:
       - logStreamName
       - uploadSequenceToken
       title: LogStream
+      type: object
+    Metadata:
+      example:
+        name: name
+        version: version
+      properties:
+        name:
+          title: name
+          type: string
+        version:
+          title: version
+          type: string
+      title: Metadata
       type: object
     NodeType:
       enum:
@@ -3132,6 +3178,22 @@ components:
       - DISABLED
       title: RequestedComputeFleetStatus
       type: string
+    Scheduler:
+      example:
+        metadata:
+          name: name
+          version: version
+        type: type
+      properties:
+        type:
+          title: type
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+      required:
+      - type
+      title: Scheduler
+      type: object
     StackEvent:
       example:
         eventId: eventId
@@ -3146,32 +3208,13 @@ components:
         resourceType: resourceType
         timestamp: 2000-01-23T04:56:07.000+00:00
       properties:
-        eventId:
-          description: The unique ID of this event.
-          title: eventId
-          type: string
-        physicalResourceId:
-          description: The name or unique identifier associated with the physical
-            instance of the resource.
-          title: physicalResourceId
-          type: string
-        resourceStatus:
-          $ref: '#/components/schemas/CloudFormationResourceStatus'
-        resourceStatusReason:
-          description: Success/failure message associated with the resource.
-          title: resourceStatusReason
-          type: string
-        clientRequestToken:
-          description: The token passed to the operation that generated this event.
-          title: clientRequestToken
-          type: string
-        resourceProperties:
-          description: BLOB of the properties used to create the resource.
-          title: resourceProperties
-          type: string
         stackId:
           description: The unique ID name of the instance of the stack.
           title: stackId
+          type: string
+        eventId:
+          description: The unique ID of this event.
+          title: eventId
           type: string
         stackName:
           description: The name associated with a stack.
@@ -3181,6 +3224,11 @@ components:
           description: The logical name of the resource specified in the template.
           title: logicalResourceId
           type: string
+        physicalResourceId:
+          description: The name or unique identifier associated with the physical
+            instance of the resource.
+          title: physicalResourceId
+          type: string
         resourceType:
           description: Type of resource.
           title: resourceType
@@ -3189,6 +3237,20 @@ components:
           description: Time the status was updated.
           format: date-time
           title: timestamp
+          type: string
+        resourceStatus:
+          $ref: '#/components/schemas/CloudFormationResourceStatus'
+        resourceStatusReason:
+          description: Success/failure message associated with the resource.
+          title: resourceStatusReason
+          type: string
+        resourceProperties:
+          description: BLOB of the properties used to create the resource.
+          title: resourceProperties
+          type: string
+        clientRequestToken:
+          description: The token passed to the operation that generated this event.
+          title: clientRequestToken
           type: string
       required:
       - eventId
@@ -3206,13 +3268,13 @@ components:
         value: value
         key: key
       properties:
-        value:
-          description: Tag value
-          title: value
-          type: string
         key:
           description: Tag name
           title: key
+          type: string
+        value:
+          description: Tag value
+          title: value
           type: string
       title: Tag
       type: object
@@ -3230,14 +3292,14 @@ components:
         API with an invalid request. This includes an error due to invalid cluster
         configuration and unsupported update.
       properties:
+        message:
+          title: message
+          type: string
         configurationValidationErrors:
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
           title: configurationValidationErrors
           type: array
-        message:
-          title: message
-          type: string
         updateValidationErrors:
           items:
             $ref: '#/components/schemas/UpdateError'
@@ -3256,13 +3318,20 @@ components:
       properties:
         clusterConfiguration:
           description: Cluster configuration as a YAML document.
+          title: clusterConfiguration
           type: string
       required:
       - clusterConfiguration
+      title: UpdateClusterRequestContent
       type: object
     UpdateClusterResponseContent:
       example:
         cluster:
+          scheduler:
+            metadata:
+              name: name
+              version: version
+            type: type
           clusterName: clusterName
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -3314,6 +3383,7 @@ components:
           $ref: '#/components/schemas/RequestedComputeFleetStatus'
       required:
       - status
+      title: UpdateComputeFleetRequestContent
       type: object
     UpdateComputeFleetResponseContent:
       example:
@@ -3336,14 +3406,14 @@ components:
         parameter:
           title: parameter
           type: string
+        currentValue:
+          title: currentValue
+          type: string
         requestedValue:
           title: requestedValue
           type: string
         message:
           title: message
-          type: string
-        currentValue:
-          title: currentValue
           type: string
       title: UpdateError
       type: object
@@ -3354,11 +3424,11 @@ components:
       - ERROR
       title: ValidationLevel
       type: string
-  # securitySchemes:
-  #   aws.auth.sigv4:
-  #     description: AWS Signature Version 4 authentication
-  #     in: header
-  #     name: Authorization
-  #     type: apiKey
-  #     x-amazon-apigateway-authtype: awsSigv4
-  #     x-apikeyInfoFunc: pcluster.api.controllers.security_controller_.info_from_aws.auth.sigv4
+  securitySchemes:
+    aws.auth.sigv4:
+      description: AWS Signature Version 4 authentication
+      in: header
+      name: Authorization
+      type: apiKey
+      x-amazon-apigateway-authtype: awsSigv4
+      x-apikeyInfoFunc: pcluster.api.controllers.security_controller_.info_from_aws.auth.sigv4

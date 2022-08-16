@@ -112,7 +112,7 @@ class CreateClusterRequestContent(ModelNormal):
 
         Args:
             cluster_name (str): Name of the cluster that will be created.
-            cluster_configuration (str): Cluster configuration as a YAML document
+            cluster_configuration (str): Cluster configuration as a YAML document.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -203,7 +203,7 @@ class CreateClusterRequestContent(ModelNormal):
 
         Args:
             cluster_name (str): Name of the cluster that will be created.
-            cluster_configuration (str): Cluster configuration as a YAML document
+            cluster_configuration (str): Cluster configuration as a YAML document.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
