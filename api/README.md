@@ -66,12 +66,21 @@ The usual development workflow to follow when extending the ParallelCluster API 
 1. Modify the Smithy model under `spec/smithy` in order to reflect the necessary API changes
 2. Build and validate the Smithy model by running `./gradlew buildSmithyModel`. Review and solve errors and warnings
    produced by the Smithy build.
-3. Review the OpenAPI model by eventually using one of the available documentation tools described above.
-4. Open a PR to review the changes to the API.
-
-Once the new model is reviewed and approved generate the server stub by running `./gradlew generatePythonServer`.
-Import the newly generated models and controllers to the server code which is implemented in the `cli/src` directory.
-Also apply the required changes to the `openapi.yaml` file.
+3. Review the OpenAPI model that is generated under `spec/openapi/ParallelCluster.openapi.yaml` by eventually using
+   one of the available documentation tools described above. Commit the changes.
+4. Run `./gradlew generatePythonServer` to generate the server stub under the `generated/python-server` directory.
+   The generated stub will reflect the same code structure as in `cli/src/pcluster/api`. Import the newly applied changes
+   to the aws-parallelcluster source code:
+   1. Changes to the API request/response model require changes to files under `cli/src/pcluster/api/models`. The
+      newly generated models in the server stub can be imported as is, just mind fixing unused imports and formatting.
+   2. Changes to the API operations and request/response model require an update to the controllers (namely the handlers
+      of the various API endpoints). The updated controller signature can be retrieved from the generated stub files and
+      relevant changes need to be applied to controllers under the `cli/src/pcluster/api/controllers` directory.
+   3. Any API change will generate a change in the OpenAPI spec. Please import the newly changes available in the generated
+      stub to `cli/src/pcluster/api/openapi/openapi.yaml`. For each diff with the respect to the generated file please add
+      an `#  override: reason` comment documenting why this is required.
+5. Generate the new client by running `./gradlew generatePythonClient` and commit the changes in a separate commit.
+6. Open a PR to review the changes to the API.
 
 #### GitHub Workflows
 
