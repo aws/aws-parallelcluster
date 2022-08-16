@@ -19,6 +19,7 @@ Name | Type | Description | Notes
 **imagebuilder_image_status** | [**ImageBuilderImageStatus**](ImageBuilderImageStatus.md) |  | [optional] 
 **imagebuilder_image_status_reason** | **str** | Reason for the ImageBuilder Image status. | [optional] 
 **ec2_ami_info** | [**Ec2AmiInfo**](Ec2AmiInfo.md) |  | [optional] 
+**any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

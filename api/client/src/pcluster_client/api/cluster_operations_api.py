@@ -52,79 +52,7 @@ class ClusterOperationsApi(object):
         if api_client is None:
             api_client = ApiClient()
         self.api_client = api_client
-
-        def __create_cluster(
-            self,
-            create_cluster_request_content,
-            **kwargs
-        ):
-            """create_cluster  # noqa: E501
-
-            Create a managed cluster in a given region.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.create_cluster(create_cluster_request_content, async_req=True)
-            >>> result = thread.get()
-
-            Args:
-                create_cluster_request_content (CreateClusterRequestContent):
-
-            Keyword Args:
-                region (str): AWS Region that the operation corresponds to.. [optional]
-                suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
-                validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.). [optional]
-                dryrun (bool, none_type): Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.). [optional]
-                rollback_on_failure (bool, none_type): When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.). [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                CreateClusterResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['create_cluster_request_content'] = \
-                create_cluster_request_content
-            return self.call_with_http_info(**kwargs)
-
-        self.create_cluster = _Endpoint(
+        self.create_cluster_endpoint = _Endpoint(
             settings={
                 'response_type': (CreateClusterResponseContent,),
                 'auth': [
@@ -148,8 +76,6 @@ class ClusterOperationsApi(object):
                     'create_cluster_request_content',
                 ],
                 'nullable': [
-                    'dryrun',
-                    'rollback_on_failure',
                 ],
                 'enum': [
                 ],
@@ -175,9 +101,9 @@ class ClusterOperationsApi(object):
                     'validation_failure_level':
                         (ValidationLevel,),
                     'dryrun':
-                        (bool, none_type,),
+                        (bool,),
                     'rollback_on_failure':
-                        (bool, none_type,),
+                        (bool,),
                 },
                 'attribute_map': {
                     'region': 'region',
@@ -206,78 +132,9 @@ class ClusterOperationsApi(object):
                     'application/json'
                 ]
             },
-            api_client=api_client,
-            callable=__create_cluster
+            api_client=api_client
         )
-
-        def __delete_cluster(
-            self,
-            cluster_name,
-            **kwargs
-        ):
-            """delete_cluster  # noqa: E501
-
-            Initiate the deletion of a cluster.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.delete_cluster(cluster_name, async_req=True)
-            >>> result = thread.get()
-
-            Args:
-                cluster_name (str): Name of the cluster
-
-            Keyword Args:
-                region (str): AWS Region that the operation corresponds to.. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                DeleteClusterResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['cluster_name'] = \
-                cluster_name
-            return self.call_with_http_info(**kwargs)
-
-        self.delete_cluster = _Endpoint(
+        self.delete_cluster_endpoint = _Endpoint(
             settings={
                 'response_type': (DeleteClusterResponseContent,),
                 'auth': [
@@ -338,78 +195,9 @@ class ClusterOperationsApi(object):
                 ],
                 'content_type': [],
             },
-            api_client=api_client,
-            callable=__delete_cluster
+            api_client=api_client
         )
-
-        def __describe_cluster(
-            self,
-            cluster_name,
-            **kwargs
-        ):
-            """describe_cluster  # noqa: E501
-
-            Get detailed information about an existing cluster.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.describe_cluster(cluster_name, async_req=True)
-            >>> result = thread.get()
-
-            Args:
-                cluster_name (str): Name of the cluster
-
-            Keyword Args:
-                region (str): AWS Region that the operation corresponds to.. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                DescribeClusterResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['cluster_name'] = \
-                cluster_name
-            return self.call_with_http_info(**kwargs)
-
-        self.describe_cluster = _Endpoint(
+        self.describe_cluster_endpoint = _Endpoint(
             settings={
                 'response_type': (DescribeClusterResponseContent,),
                 'auth': [
@@ -470,75 +258,9 @@ class ClusterOperationsApi(object):
                 ],
                 'content_type': [],
             },
-            api_client=api_client,
-            callable=__describe_cluster
+            api_client=api_client
         )
-
-        def __list_clusters(
-            self,
-            **kwargs
-        ):
-            """list_clusters  # noqa: E501
-
-            Retrieve the list of existing clusters.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.list_clusters(async_req=True)
-            >>> result = thread.get()
-
-
-            Keyword Args:
-                region (str): List clusters deployed to a given AWS Region.. [optional]
-                next_token (str): Token to use for paginated requests.. [optional]
-                cluster_status ([ClusterStatusFilteringOption]): Filter by cluster status. (Defaults to all clusters.). [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                ListClustersResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            return self.call_with_http_info(**kwargs)
-
-        self.list_clusters = _Endpoint(
+        self.list_clusters_endpoint = _Endpoint(
             settings={
                 'response_type': (ListClustersResponseContent,),
                 'auth': [
@@ -600,86 +322,9 @@ class ClusterOperationsApi(object):
                 ],
                 'content_type': [],
             },
-            api_client=api_client,
-            callable=__list_clusters
+            api_client=api_client
         )
-
-        def __update_cluster(
-            self,
-            cluster_name,
-            update_cluster_request_content,
-            **kwargs
-        ):
-            """update_cluster  # noqa: E501
-
-            Update a cluster managed in a given region.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.update_cluster(cluster_name, update_cluster_request_content, async_req=True)
-            >>> result = thread.get()
-
-            Args:
-                cluster_name (str): Name of the cluster
-                update_cluster_request_content (UpdateClusterRequestContent):
-
-            Keyword Args:
-                suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
-                validation_failure_level (ValidationLevel): Min validation level that will cause the update to fail. (Defaults to 'ERROR'.). [optional]
-                region (str): AWS Region that the operation corresponds to.. [optional]
-                dryrun (bool, none_type): Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.). [optional]
-                force_update (bool, none_type): Force update by ignoring the update validation errors. (Defaults to 'false'.). [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                UpdateClusterResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['cluster_name'] = \
-                cluster_name
-            kwargs['update_cluster_request_content'] = \
-                update_cluster_request_content
-            return self.call_with_http_info(**kwargs)
-
-        self.update_cluster = _Endpoint(
+        self.update_cluster_endpoint = _Endpoint(
             settings={
                 'response_type': (UpdateClusterResponseContent,),
                 'auth': [
@@ -705,8 +350,6 @@ class ClusterOperationsApi(object):
                     'update_cluster_request_content',
                 ],
                 'nullable': [
-                    'dryrun',
-                    'force_update',
                 ],
                 'enum': [
                 ],
@@ -741,9 +384,9 @@ class ClusterOperationsApi(object):
                     'region':
                         (str,),
                     'dryrun':
-                        (bool, none_type,),
+                        (bool,),
                     'force_update':
-                        (bool, none_type,),
+                        (bool,),
                 },
                 'attribute_map': {
                     'cluster_name': 'clusterName',
@@ -774,6 +417,435 @@ class ClusterOperationsApi(object):
                     'application/json'
                 ]
             },
-            api_client=api_client,
-            callable=__update_cluster
+            api_client=api_client
         )
+
+    def create_cluster(
+        self,
+        create_cluster_request_content,
+        **kwargs
+    ):
+        """create_cluster  # noqa: E501
+
+        Create a managed cluster in a given region.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.create_cluster(create_cluster_request_content, async_req=True)
+        >>> result = thread.get()
+
+        Args:
+            create_cluster_request_content (CreateClusterRequestContent):
+
+        Keyword Args:
+            region (str): AWS Region that the operation corresponds to.. [optional]
+            suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
+            validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.). [optional]
+            dryrun (bool): Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.). [optional]
+            rollback_on_failure (bool): When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.). [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            CreateClusterResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        kwargs['create_cluster_request_content'] = \
+            create_cluster_request_content
+        return self.create_cluster_endpoint.call_with_http_info(**kwargs)
+
+    def delete_cluster(
+        self,
+        cluster_name,
+        **kwargs
+    ):
+        """delete_cluster  # noqa: E501
+
+        Initiate the deletion of a cluster.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.delete_cluster(cluster_name, async_req=True)
+        >>> result = thread.get()
+
+        Args:
+            cluster_name (str): Name of the cluster
+
+        Keyword Args:
+            region (str): AWS Region that the operation corresponds to.. [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            DeleteClusterResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        kwargs['cluster_name'] = \
+            cluster_name
+        return self.delete_cluster_endpoint.call_with_http_info(**kwargs)
+
+    def describe_cluster(
+        self,
+        cluster_name,
+        **kwargs
+    ):
+        """describe_cluster  # noqa: E501
+
+        Get detailed information about an existing cluster.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.describe_cluster(cluster_name, async_req=True)
+        >>> result = thread.get()
+
+        Args:
+            cluster_name (str): Name of the cluster
+
+        Keyword Args:
+            region (str): AWS Region that the operation corresponds to.. [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            DescribeClusterResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        kwargs['cluster_name'] = \
+            cluster_name
+        return self.describe_cluster_endpoint.call_with_http_info(**kwargs)
+
+    def list_clusters(
+        self,
+        **kwargs
+    ):
+        """list_clusters  # noqa: E501
+
+        Retrieve the list of existing clusters.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_clusters(async_req=True)
+        >>> result = thread.get()
+
+
+        Keyword Args:
+            region (str): List clusters deployed to a given AWS Region.. [optional]
+            next_token (str): Token to use for paginated requests.. [optional]
+            cluster_status ([ClusterStatusFilteringOption]): Filter by cluster status. (Defaults to all clusters.). [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            ListClustersResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        return self.list_clusters_endpoint.call_with_http_info(**kwargs)
+
+    def update_cluster(
+        self,
+        cluster_name,
+        update_cluster_request_content,
+        **kwargs
+    ):
+        """update_cluster  # noqa: E501
+
+        Update a cluster managed in a given region.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.update_cluster(cluster_name, update_cluster_request_content, async_req=True)
+        >>> result = thread.get()
+
+        Args:
+            cluster_name (str): Name of the cluster
+            update_cluster_request_content (UpdateClusterRequestContent):
+
+        Keyword Args:
+            suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
+            validation_failure_level (ValidationLevel): Min validation level that will cause the update to fail. (Defaults to 'ERROR'.). [optional]
+            region (str): AWS Region that the operation corresponds to.. [optional]
+            dryrun (bool): Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.). [optional]
+            force_update (bool): Force update by ignoring the update validation errors. (Defaults to 'false'.). [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            UpdateClusterResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        kwargs['cluster_name'] = \
+            cluster_name
+        kwargs['update_cluster_request_content'] = \
+            update_cluster_request_content
+        return self.update_cluster_endpoint.call_with_http_info(**kwargs)
+

@@ -1,6 +1,6 @@
---- a/api/client/src/README.md
-+++ b/api/client/src/README.md
-@@ -17,7 +17,7 @@ Python >= 3.6
+--- api/client/src/README.md.orig	2022-08-16 11:43:01.000000000 +0200
++++ api/client/src/README.md	2022-08-16 11:56:21.000000000 +0200
+@@ -17,7 +17,7 @@
  If the python package is hosted on a repository, you can install directly using:
 
  ```sh
@@ -9,20 +9,20 @@
  ```
  (you may need to run `pip` with root permission: `sudo pip install git+https://github.com/GIT_USER_ID/GIT_REPO_ID.git`)
 
-@@ -60,27 +60,18 @@ from pcluster_client.model.update_compute_fleet_request_content import UpdateCom
+@@ -60,28 +60,19 @@
  from pcluster_client.model.update_compute_fleet_response_content import UpdateComputeFleetResponseContent
  # Defining the host is optional and defaults to http://localhost
  # See configuration.py for a list of all supported configuration parameters.
 -configuration = pcluster_client.Configuration(
 -    host = "http://localhost"
 -)
-+configuration = pcluster_client.Configuration(host = "http://localhost") # Set the base URL of the ParallelCluster API
-
+-
 -# The client must configure the authentication and authorization parameters
 -# in accordance with the API server security policy.
 -# Examples for each auth method are provided below, use the example that
 -# satisfies your auth use case.
--
++configuration = pcluster_client.Configuration(host = "http://localhost") # Set the base URL of the ParallelCluster API
+
 -# Configure API key authorization: aws.auth.sigv4
 -configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 -
@@ -37,8 +37,10 @@
  with pcluster_client.ApiClient(configuration) as api_client:
      # Create an instance of the API class
      api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
--    cluster_name = "AqWzy" # str | Name of the cluster
+-    cluster_name = "AqWzyB" # str | Name of the cluster
+-    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 +    cluster_name = "mycluster" # str | Name of the cluster
- region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
++region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
      try:
+         api_response = api_instance.describe_compute_fleet(cluster_name, region=region)

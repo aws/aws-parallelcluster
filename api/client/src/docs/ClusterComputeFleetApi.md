@@ -18,6 +18,7 @@ Describe the status of the compute fleet.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -50,7 +51,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "AqWzyB" # str | Name of the cluster
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
@@ -92,6 +93,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | DescribeComputeFleet 200 response |  -  |
@@ -113,6 +115,7 @@ Update the status of the cluster compute fleet.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -146,7 +149,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "AqWzyB" # str | Name of the cluster
     update_compute_fleet_request_content = UpdateComputeFleetRequestContent(
         status=RequestedComputeFleetStatus("START_REQUESTED"),
     ) # UpdateComputeFleetRequestContent | 
@@ -192,6 +195,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | UpdateComputeFleet 204 response |  -  |

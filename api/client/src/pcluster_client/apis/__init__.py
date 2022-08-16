@@ -6,7 +6,7 @@
 # raise a `RecursionError`.
 # In order to avoid this, import only the API that you directly need like:
 #
-#   from .api.cluster_compute_fleet_api import ClusterComputeFleetApi
+#   from pcluster_client.api.cluster_compute_fleet_api import ClusterComputeFleetApi
 #
 # or import this package, but before doing it, use:
 #
