@@ -981,22 +981,6 @@ class HeadNode(Resource):
         return self.instance_type_info.supported_architecture()[0]
 
     @property
-    def vcpus(self) -> int:
-        """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
-        instance_type_info = self.instance_type_info
-        default_threads_per_core = instance_type_info.default_threads_per_core()
-        return (
-            instance_type_info.vcpus_count()
-            if not self.disable_simultaneous_multithreading
-            else (instance_type_info.vcpus_count() // default_threads_per_core)
-        )
-
-    @property
-    def pass_cpu_options_in_launch_template(self) -> bool:
-        """Check whether CPU Options must be passed in launch template for head node."""
-        return self.disable_simultaneous_multithreading_via_cpu_options
-
-    @property
     def is_ebs_optimized(self) -> bool:
         """Return True if the instance has optimized EBS support."""
         return self.instance_type_info.is_ebs_optimized()
@@ -1014,22 +998,9 @@ class HeadNode(Resource):
         return self.__instance_type_info
 
     @property
-    def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
-        """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return (
-            self.disable_simultaneous_multithreading
-            and self.instance_type_info.default_threads_per_core() > 1
-            and self.instance_type_info.is_cpu_options_supported_in_lt()
-        )
-
-    @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return (
-            self.disable_simultaneous_multithreading
-            and self.instance_type_info.default_threads_per_core() > 1
-            and not self.instance_type_info.is_cpu_options_supported_in_lt()
-        )
+        return self.disable_simultaneous_multithreading and self.instance_type_info.default_threads_per_core() > 1
 
     @property
     def instance_role(self):
@@ -1667,22 +1638,6 @@ class SlurmComputeResource(BaseComputeResource):
         return self._instance_type_info.supported_architecture()[0]
 
     @property
-    def vcpus(self) -> int:
-        """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
-        instance_type_info = self._instance_type_info
-        default_threads_per_core = instance_type_info.default_threads_per_core()
-        return (
-            instance_type_info.vcpus_count()
-            if not self.disable_simultaneous_multithreading
-            else (instance_type_info.vcpus_count() // default_threads_per_core)
-        )
-
-    @property
-    def pass_cpu_options_in_launch_template(self) -> bool:
-        """Check whether CPU Options must be passed in launch template for compute node."""
-        return self.disable_simultaneous_multithreading_via_cpu_options
-
-    @property
     def is_ebs_optimized(self) -> bool:
         """Return True if the instance has optimized EBS support."""
         return self._instance_type_info.is_ebs_optimized()
@@ -1700,22 +1655,9 @@ class SlurmComputeResource(BaseComputeResource):
         return self.__instance_type_info
 
     @property
-    def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
-        """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return (
-            self.disable_simultaneous_multithreading
-            and self.instance_type_info.default_threads_per_core() > 1
-            and self.instance_type_info.is_cpu_options_supported_in_lt()
-        )
-
-    @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return (
-            self.disable_simultaneous_multithreading
-            and self.instance_type_info.default_threads_per_core() > 1
-            and not self.instance_type_info.is_cpu_options_supported_in_lt()
-        )
+        return self.disable_simultaneous_multithreading and self.instance_type_info.default_threads_per_core() > 1
 
 
 class _CommonQueue(BaseQueue):

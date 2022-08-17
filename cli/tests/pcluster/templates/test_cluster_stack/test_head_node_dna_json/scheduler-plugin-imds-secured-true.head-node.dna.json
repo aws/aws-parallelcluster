@@ -12,7 +12,6 @@
     "dcv_enabled": "false",
     "dcv_port": "NONE",
     "ddb_table": "{'Ref': 'DynamoDBTable'}",
-    "disable_hyperthreading_manually": "false",
     "ebs_shared_dirs": "",
     "efs_fs_ids": "",
     "efs_shared_dirs": "",

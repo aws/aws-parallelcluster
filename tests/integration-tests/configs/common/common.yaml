@@ -229,12 +229,10 @@ dcv:
 disable_hyperthreading:
   test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
     dimensions:
-      # Manually disabled HT
       - regions: ["us-west-1"]
         instances: ["m4.xlarge"]
         oss: ["alinux2", "centos7"]
         schedulers: ["slurm"]
-      # HT disabled via CpuOptions
       - regions: ["us-west-1"]
         instances: ["c5.xlarge"]
         oss: ["ubuntu1804", "ubuntu2004"]
@@ -503,7 +501,7 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
-  # The checks performed in test_multiple_fsx is the same as test_fsx_lustre. 
+  # The checks performed in test_multiple_fsx is the same as test_fsx_lustre.
   # We should consider this when assigning dimensions to each test.
   test_fsx_lustre.py::test_multiple_fsx:
     dimensions:

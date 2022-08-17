@@ -7,11 +7,13 @@ CHANGELOG
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
 - Upgrade Python and NodeJS versions in API infrastructure, API Docker container and cluster Lambda resources.
-- Move head node tags from launch template to instance definition to avoid head node replacement on tags updates.
+- Move head node tags from Launch Template to instance definition to avoid head node replacement on tags updates.
+- Disable Multithreading through script executed by cloud-init and not through CpuOptions set into Launch Template.   
 
 **BUG FIXES**
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified 
   along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
+- Fix cluster update when changing the order of SharedStorage together with other changes in the configuration.
 
 3.2.0
 ------
