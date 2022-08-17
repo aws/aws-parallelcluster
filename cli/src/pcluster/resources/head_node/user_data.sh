@@ -39,6 +39,17 @@ fi
 Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
 
+bootcmd:
+  # Disable multithreading using logic from https://aws.amazon.com/blogs/compute/disabling-intel-hyper-threading-technology-on-amazon-linux/
+  # thread_siblings_list contains a comma (,) or dash (-) separated list of CPU hardware threads within the same core as cpu
+  # e.g. 0-1 or 0,1
+  # cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list
+  #     | tr '-' ','       # convert hyphen (-) to comma (,), to account that some kernels and CPU architectures use a hyphen instead of a comma
+  #     | cut -s -d, -f2-  # split over comma (,) and take the right part
+  #     | tr ',' '\n'      # convert remaining comma (,) into new lines
+  #     | sort -un         # sort and unique
+  - if [ "${DisableMultiThreadingManually}" = "true" ]; then for cpunum in $(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | tr '-' ',' | cut -s -d, -f2- | tr ',' '\n' | sort -un); do echo 0 > /sys/devices/system/cpu/cpu$cpunum/online; done; fi
+
 package_update: false
 package_upgrade: false
 repo_upgrade: none

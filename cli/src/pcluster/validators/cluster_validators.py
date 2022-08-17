@@ -914,11 +914,7 @@ class _LaunchTemplateValidator(Validator, ABC):
             code = e.error_code
             message = str(e)
             subnet_id = kwargs["NetworkInterfaces"][0]["SubnetId"]
-            if code == "UnsupportedOperation":
-                if "does not support specifying CpuOptions" in message:
-                    message.replace("specifying CpuOptions", "disabling simultaneous multithreading")
-                self._add_failure(message, FailureLevel.ERROR)
-            elif code == "InstanceLimitExceeded":
+            if code == "InstanceLimitExceeded":
                 self._add_failure(
                     "You've reached the limit on the number of instances you can run concurrently "
                     f"for the configured instance type. {message}",
@@ -987,13 +983,6 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
             if head_node.networking.additional_security_groups:
                 head_node_security_groups.extend(head_node.networking.additional_security_groups)
 
-            # Initialize CpuOptions
-            head_node_cpu_options = (
-                {"CoreCount": head_node.vcpus, "ThreadsPerCore": 1}
-                if head_node.pass_cpu_options_in_launch_template
-                else {}
-            )
-
             head_node_network_interfaces = self._build_launch_network_interfaces(
                 network_interfaces_count=head_node.max_network_interface_count,
                 use_efa=False,  # EFA is not supported on head node
@@ -1008,7 +997,6 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 MinCount=1,
                 MaxCount=1,
                 ImageId=ami_id,
-                CpuOptions=head_node_cpu_options,
                 NetworkInterfaces=head_node_network_interfaces,
                 DryRun=True,
                 TagSpecifications=self._generate_tag_specifications(tags),
@@ -1052,7 +1040,6 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             if queue.networking.additional_security_groups:
                 queue_security_groups.extend(queue.networking.additional_security_groups)
 
-            # Initialize CpuOptions
             queue_placement_group_id = queue.networking.placement_group.id if queue.networking.placement_group else None
             queue_placement_group = {"GroupName": queue_placement_group_id} if queue_placement_group_id else {}
 
@@ -1081,11 +1068,6 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
         self, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
     ):
         """Test Compute Resource Instance Configuration."""
-        compute_cpu_options = (
-            {"CoreCount": compute_resource.vcpus, "ThreadsPerCore": 1}
-            if compute_resource.disable_simultaneous_multithreading_via_cpu_options
-            else {}
-        )
         network_interfaces = self._build_launch_network_interfaces(
             compute_resource.max_network_interface_count,
             compute_resource.efa.enabled,
@@ -1099,7 +1081,6 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             MinCount=1,
             MaxCount=1,
             ImageId=ami_id,
-            CpuOptions=compute_cpu_options,
             Placement=placement_group,
             NetworkInterfaces=network_interfaces,
             DryRun=True,
