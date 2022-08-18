@@ -26,63 +26,6 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
-@pytest.mark.regions(["us-east-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
-# Slurm test is to verify EFA works correctly when using the SIT model in the config file
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.usefixtures("os")
-def test_sit_efa(
-    region,
-    scheduler,
-    instance,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    architecture,
-    network_interfaces_count,
-):
-    """
-    Test all EFA Features.
-
-    Grouped all tests in a single function so that cluster can be reused for all of them.
-    """
-    # We collected OSU benchmarks results for c5n.18xlarge only.
-    osu_benchmarks_instances = ["c5n.18xlarge"]
-
-    max_queue_size = 2
-    slots_per_instance = fetch_instance_slots(region, instance)
-    head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-
-    _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True)
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler)
-    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
-
-    if instance in osu_benchmarks_instances:
-        benchmark_failures = []
-        benchmark_failures.extend(
-            _test_osu_benchmarks_pt2pt(
-                "openmpi", remote_command_executor, scheduler_commands, test_datadir, instance, slots_per_instance
-            )
-        )
-        if architecture == "x86_64":
-            benchmark_failures.extend(
-                _test_osu_benchmarks_pt2pt(
-                    "intelmpi", remote_command_executor, scheduler_commands, test_datadir, instance, slots_per_instance
-                )
-            )
-        assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
-
-    _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
-    if network_interfaces_count > 1:
-        _test_osu_benchmarks_multiple_bandwidth(
-            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
-        )
-
-
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5n.18xlarge"])
 @pytest.mark.oss(["alinux2"])
