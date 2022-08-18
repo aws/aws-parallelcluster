@@ -13,7 +13,6 @@
     "dcv_port": "NONE",
     "slurm_ddb_table": "{'Ref': 'SlurmDynamoDBTable'}",
     "ddb_table": "{'Ref': 'DynamoDBTable'}",
-    "disable_hyperthreading_manually": "false",
     "dns_domain": "{'Ref': 'ClusterDNSDomain'}",
     "ebs_shared_dirs": "",
     "efs_fs_ids": "",
