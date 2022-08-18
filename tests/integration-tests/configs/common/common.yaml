@@ -228,13 +228,6 @@ efa:
         instances: [{{ common.instance("instance_type_1") }}]
         oss: ["alinux2", "centos7", "ubuntu2004"]
         schedulers: ["slurm"]
-  test_efa.py::test_sit_efa:
-    dimensions:
-      - regions: ["eu-central-1"]
-        instances: ["c5n.18xlarge"]
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        # Slurm test is to verify EFA works correctly when using the SIT model in the config file
-        schedulers: ["slurm"]
 iam:
   test_iam.py::test_iam_policies:
     dimensions:
