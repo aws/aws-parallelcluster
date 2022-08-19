@@ -123,13 +123,13 @@ You can view the running compute hosts:
 $ sinfo
 ```
 
-For more information on any of these steps see the [Getting Started Guide](https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html).
+For more information on any of these steps see the [Getting Started Guide](https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3.html).
 
 Documentation
 -------------
 
 We've been working hard to greatly improve the [Documentation](https://docs.aws.amazon.com/parallelcluster/latest/ug/), it's now published in 10 languages, one of the many benefits of being hosted on AWS Docs. Of most interest to new users is
-the [Getting Started Guide](https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html).
+the [Getting Started Guide](https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3.html).
 
 If you have changes you would like to see in the docs, please either submit feedback using the feedback link at the bottom
 of each page or create an issue or pull request for the project at:
