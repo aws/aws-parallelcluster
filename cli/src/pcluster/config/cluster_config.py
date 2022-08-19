@@ -13,6 +13,7 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 import logging
+from abc import abstractmethod
 from collections import defaultdict
 from enum import Enum
 from typing import Dict, List, Union
@@ -1585,12 +1586,11 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         return pkg_resources.resource_filename(__name__, "../resources/batch")
 
 
-class SlurmComputeResource(BaseComputeResource):
+class _BaseSlurmComputeResource(BaseComputeResource):
     """Represent the Slurm Compute Resource."""
 
     def __init__(
         self,
-        instance_type: str = None,
         max_count: int = None,
         min_count: int = None,
         spot_price: float = None,
@@ -1600,16 +1600,121 @@ class SlurmComputeResource(BaseComputeResource):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.instance_type = Resource.init_param(instance_type)
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
         self.disable_simultaneous_multithreading = Resource.init_param(
             disable_simultaneous_multithreading, default=False
         )
-        self.__instance_type_info = None
         self.efa = efa or Efa(enabled=False, implied=True)
         self.schedulable_memory = Resource.init_param(schedulable_memory)
+        self._instance_types_with_instance_storage = []
+        self._instance_type_info_map = {}
+
+    @staticmethod
+    def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
+        """Return instance type information."""
+        return AWSApi.instance().ec2.get_instance_type_info(instance_type)
+
+    @property
+    def instance_types_with_instance_storage(self):
+        """Return a set of instance types in the Compute Resource that have local instance storage."""
+        if not self._instance_types_with_instance_storage:
+            self._instance_types_with_instance_storage = [
+                instance_type
+                for instance_type in self.instance_types
+                if self.instance_type_info_map[instance_type].instance_storage_supported()
+            ]
+        return self._instance_types_with_instance_storage
+
+    @property
+    def instance_type_info_map(self) -> Dict[str, InstanceTypeInfo]:
+        """List of Instance Type information for each instance type in the compute resource.
+
+        :returns: [ "InstanceType1": {... InstanceTypeInfo ...}, "InstanceType1": {... InstanceTypeInfo ...} ]
+        """
+        if not self._instance_type_info_map:
+            self._instance_type_info_map = {
+                instance_type: self.fetch_instance_type_info(instance_type) for instance_type in self.instance_types
+            }
+        return self._instance_type_info_map
+
+    @property
+    @abstractmethod
+    def disable_simultaneous_multithreading_manually(self) -> bool:
+        pass
+
+    @property
+    @abstractmethod
+    def max_network_interface_count(self) -> int:
+        pass
+
+    @property
+    def is_ebs_optimized(self) -> bool:
+        return all(
+            self.instance_type_info_map[instance_type].is_ebs_optimized() for instance_type in self.instance_types
+        )
+
+    @property
+    @abstractmethod
+    def instance_types(self) -> List[str]:
+        pass
+
+
+class FlexibleInstanceType(Resource):
+    """Represent an instance type listed in the InstanceTypeList of a ComputeResources."""
+
+    def __init__(self, instance_type: str, **kwargs):
+        super().__init__(**kwargs)
+        self.instance_type = Resource.init_param(instance_type)
+
+
+class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
+    """Represents a Slurm Compute Resource with Multiple Instance Types."""
+
+    def __init__(self, instance_type_list: List[FlexibleInstanceType], **kwargs):
+        super().__init__(**kwargs)
+        self.instance_type_list = Resource.init_param(instance_type_list)
+
+    @property
+    def instance_types(self) -> List[str]:
+        """Return list of instance type names in this compute resource."""
+        return [flexible_instance_type.instance_type for flexible_instance_type in self.instance_type_list]
+
+    @property
+    def disable_simultaneous_multithreading_manually(self) -> bool:
+        """Return true if simultaneous multithreading must be disabled with a cookbook script."""
+        return self.disable_simultaneous_multithreading
+
+    @property
+    def max_network_interface_count(self) -> int:
+        """Return max number of NICs for the compute resource.
+
+        In this case the Compute Resource may have multiple instance types, hence the instance-type with
+        the least MaxNetworkInterfaceCards value will be considered.
+        """
+        least_max_nics = self.instance_type_info_map[self.instance_types[0]].max_network_interface_count()
+        if len(self.instance_types) > 1:
+            for instance_type in self.instance_types[1:]:
+                instance_type_info = self.instance_type_info_map[instance_type]
+                max_nics = instance_type_info.max_network_interface_count()
+                if max_nics < least_max_nics:
+                    least_max_nics = max_nics
+        return least_max_nics
+
+
+class SlurmComputeResource(_BaseSlurmComputeResource):
+    """Represents a Slurm Compute Resource with a Single Instance Type."""
+
+    def __init__(self, instance_type, **kwargs):
+        super().__init__(**kwargs)
+        self.instance_type = Resource.init_param(instance_type)
+        self.__instance_type_info = None
+
+    @property
+    def instance_types(self) -> List[str]:
+        """List of instance types under this compute resource."""
+        return [self.instance_type]
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
@@ -1697,17 +1802,36 @@ class _CommonQueue(BaseQueue):
 
 
 class SlurmQueue(_CommonQueue):
-    """Represent the Slurm Queue resource."""
+    """Represents a Slurm Queue that has Compute Resources with both Single and Multiple Instance Types."""
 
     def __init__(
         self,
-        compute_resources: List[SlurmComputeResource],
+        compute_resources: List[_BaseSlurmComputeResource],
         networking: SlurmQueueNetworking,
+        allocation_strategy: str = "lowest-price",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
         self.networking = networking
+        if any(isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in compute_resources):
+            self.allocation_strategy = allocation_strategy
+
+    @property
+    def instance_type_list(self):
+        """Return the list of instance types associated to the Queue."""
+        instance_types = set()
+        for compute_resource in self.compute_resources:
+            instance_types.update(compute_resource.instance_types)
+        return list(instance_types)
+
+    @property
+    def instance_types_with_instance_storage(self):
+        """Return a set of instance types in the queue that have instance store."""
+        result = set()
+        for compute_resource in self.compute_resources:
+            result.update(compute_resource.instance_types_with_instance_storage)
+        return result
 
     def _register_validators(self):
         super()._register_validators()
@@ -1724,9 +1848,6 @@ class SlurmQueue(_CommonQueue):
         )
         for compute_resource in self.compute_resources:
             self._register_validator(
-                CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
-            )
-            self._register_validator(
                 EfaSecurityGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
                 security_groups=self.networking.security_groups,
@@ -1737,20 +1858,12 @@ class SlurmQueue(_CommonQueue):
                 efa_enabled=compute_resource.efa.enabled,
                 placement_group=self.networking.placement_group,
             )
-
-    @property
-    def instance_type_list(self):
-        """Return the list of instance types associated to the Queue."""
-        return [compute_resource.instance_type for compute_resource in self.compute_resources]
-
-    @property
-    def instance_types_with_instance_storage(self):
-        """Return a set of instance types in the queue that have instance store."""
-        result = set()
-        for compute_resource in self.compute_resources:
-            if compute_resource.instance_type_info.instance_storage_supported():
-                result.add(compute_resource.instance_type)
-        return result
+            for instance_type in compute_resource.instance_types:
+                self._register_validator(
+                    CapacityTypeValidator,
+                    capacity_type=self.capacity_type,
+                    instance_type=instance_type,
+                )
 
 
 class Dns(Resource):
@@ -2226,14 +2339,15 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 checked_images.append(queue_image)
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
-                self._register_validator(
-                    InstanceTypeBaseAMICompatibleValidator,
-                    instance_type=compute_resource.instance_type,
-                    image=queue_image,
-                )
+                for instance_type in compute_resource.instance_types:
+                    self._register_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=instance_type,
+                        image=queue_image,
+                    )
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
-                    instance_type=compute_resource.instance_type,
+                    instance_type_info_list=list(compute_resource.instance_type_info_map.values()),
                     architecture=self.head_node.architecture,
                 )
                 self._register_validator(
@@ -2315,8 +2429,9 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
-                instance_type_info = compute_resource.instance_type_info
-                result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+                for instance_type in compute_resource.instance_types:
+                    instance_type_info = compute_resource.instance_type_info_map[instance_type]
+                    result[instance_type] = instance_type_info.instance_type_data
         return result
 
     def _register_validators(self):
@@ -2338,11 +2453,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 if self.scheduling.settings.enable_memory_based_scheduling:
-                    self._register_validator(
-                        InstanceTypeMemoryInfoValidator,
-                        instance_type=compute_resource.instance_type,
-                        instance_type_data=instance_types_data[compute_resource.instance_type],
-                    )
+                    for instance_type in compute_resource.instance_types:
+                        self._register_validator(
+                            InstanceTypeMemoryInfoValidator,
+                            instance_type=instance_type,
+                            instance_type_data=instance_types_data[compute_resource.instance_type],
+                        )
 
     @property
     def image_dict(self):

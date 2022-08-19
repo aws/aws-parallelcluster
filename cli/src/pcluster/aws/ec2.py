@@ -23,7 +23,6 @@ from pcluster.constants import (
     OS_TO_IMAGE_NAME_PART_MAP,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_IMAGE_ID_TAG,
-    SUPPORTED_ARCHITECTURES,
 )
 from pcluster.utils import get_partition
 
@@ -244,10 +243,7 @@ class Ec2Client(Boto3Client):
     def get_supported_architectures(self, instance_type):
         """Return a list of architectures supported for the given instance type."""
         instance_info = self.get_instance_type_info(instance_type)
-        supported_architectures = instance_info.supported_architecture()
-
-        # Some instance types support multiple architectures (x86_64 and i386). Filter unsupported ones.
-        return list(set(supported_architectures) & set(SUPPORTED_ARCHITECTURES))
+        return instance_info.supported_architecture()
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached

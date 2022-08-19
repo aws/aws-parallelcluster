@@ -54,6 +54,7 @@ from pcluster.config.cluster_config import (
     SharedFsxLustre,
     SharedStorageType,
     SlurmClusterConfig,
+    SlurmComputeResource,
     SlurmQueue,
 )
 from pcluster.constants import (
@@ -1371,6 +1372,7 @@ class ComputeFleetConstruct(Construct):
                 subnet_id=queue.networking.subnet_ids[0],
             )
         ]
+
         for network_interface_index in range(1, compute_resource.max_network_interface_count):
             compute_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
@@ -1393,12 +1395,18 @@ class ComputeFleetConstruct(Construct):
                 ),
             )
 
+        conditional_template_properties = {}
+
+        if compute_resource.is_ebs_optimized:
+            conditional_template_properties.update({"ebs_optimized": True})
+        if isinstance(compute_resource, SlurmComputeResource):
+            conditional_template_properties.update({"instance_type": compute_resource.instance_type})
+
         return ec2.CfnLaunchTemplate(
             self,
             f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}",
             launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.name}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
-                instance_type=compute_resource.instance_type,
                 block_device_mappings=get_block_device_mappings(
                     queue.compute_settings.local_storage, self._config.image.os
                 ),
@@ -1406,7 +1414,6 @@ class ComputeFleetConstruct(Construct):
                 network_interfaces=compute_lt_nw_interfaces,
                 placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=queue_placement_group),
                 image_id=self._config.image_dict[queue.name],
-                ebs_optimized=compute_resource.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=instance_profiles[queue.name]
                 ),
@@ -1529,5 +1536,6 @@ class ComputeFleetConstruct(Construct):
                         + get_custom_tags(self._config),
                     ),
                 ],
+                **conditional_template_properties,
             ),
         )

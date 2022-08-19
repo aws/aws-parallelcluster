@@ -14,10 +14,13 @@ from abc import ABC
 from collections import defaultdict
 from enum import Enum
 from itertools import combinations, product
+from typing import List
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
+from pcluster.config import cluster_config
 from pcluster.constants import (
     CIDR_ALL_IPS,
     FSX_PORTS,
@@ -234,17 +237,19 @@ class InstanceArchitectureCompatibilityValidator(Validator):
     Verify that head node and compute instance types imply compatible architectures.
     """
 
-    def _validate(self, instance_type, architecture: str):
+    def _validate(self, instance_type_info_list: List[InstanceTypeInfo], architecture: str):
         head_node_architecture = architecture
-        compute_architectures = AWSApi.instance().ec2.get_supported_architectures(instance_type)
-        if head_node_architecture not in compute_architectures:
-            self._add_failure(
-                "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
-                "compatible with the architecture supported by the head node instance type ({2}).".format(
-                    instance_type, compute_architectures, head_node_architecture
-                ),
-                FailureLevel.ERROR,
-            )
+
+        for instance_type_info in instance_type_info_list:
+            compute_architectures = instance_type_info.supported_architecture()
+            if head_node_architecture not in instance_type_info.supported_architecture():
+                self._add_failure(
+                    "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
+                    "compatible with the architecture supported by the head node instance type ({2}).".format(
+                        instance_type_info.instance_type(), compute_architectures, head_node_architecture
+                    ),
+                    FailureLevel.ERROR,
+                )
 
 
 class NameValidator(Validator):
@@ -1050,15 +1055,18 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 (compute_res for compute_res in queue.compute_resources if compute_res.max_network_interface_count > 1),
                 queue.compute_resources[0],
             )
-            self._test_compute_resource(
-                compute_resource=dry_run_compute_resource,
-                use_public_ips=bool(queue.networking.assign_public_ip),
-                ami_id=ami_id,
-                subnet_id=queue_subnet_id,
-                security_groups_ids=queue_security_groups,
-                placement_group=queue_placement_group,
-                tags=tags,
-            )
+            # Run instance is meant for single instance type compute resources
+            # Todo: Add a create_fleet dry-run validator for multiple instance types Compute Resources
+            if isinstance(dry_run_compute_resource, cluster_config.SlurmComputeResource):
+                self._test_compute_resource(
+                    compute_resource=dry_run_compute_resource,
+                    use_public_ips=bool(queue.networking.assign_public_ip),
+                    ami_id=ami_id,
+                    subnet_id=queue_subnet_id,
+                    security_groups_ids=queue_security_groups,
+                    placement_group=queue_placement_group,
+                    tags=tags,
+                )
         except Exception as e:
             self._add_failure(
                 f"Unable to validate configuration parameters for queue {queue.name}. {str(e)}", FailureLevel.ERROR
