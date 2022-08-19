@@ -65,6 +65,21 @@ def _load_and_validate(config_path):
     assert_that(failures).is_empty()
 
 
+def _assert_instance_architecture(expected_instance_architecture_validator_input, validator):
+    for call_index, validator_call in enumerate(validator.call_args_list):
+        args, kwargs = validator_call
+        instance_type_list = [
+            instance_type_info.instance_type() for instance_type_info in kwargs.get("instance_type_info_list")
+        ]
+        architecture = kwargs.get("architecture")
+        expected_instance_type_list = expected_instance_architecture_validator_input[call_index].get("instance_types")
+        expected_architecture = expected_instance_architecture_validator_input[call_index].get("architecture")
+
+        assert_that(instance_type_list).is_length(len(expected_instance_type_list))
+        assert_that(set(instance_type_list) - set(expected_instance_type_list)).is_length(0)
+        assert_that(architecture).is_equal_to(expected_architecture)
+
+
 def test_slurm_all_validators_are_called(test_datadir, mocker):
     """Verify that all validators are called during validation."""
     mockers = []
@@ -245,14 +260,15 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     architecture_os_validator.assert_has_calls(
         [call(os="alinux2", architecture="x86_64", custom_ami="ami-12345678", ami_search_filters=None)]
     )
-    instance_architecture_compatibility_validator.assert_has_calls(
-        [
-            call(instance_type="t2.large", architecture="x86_64"),
-            call(instance_type="c4.2xlarge", architecture="x86_64"),
-            call(instance_type="c5.4xlarge", architecture="x86_64"),
-            call(instance_type="c5d.xlarge", architecture="x86_64"),
-            call(instance_type="t2.large", architecture="x86_64"),
-        ]
+    _assert_instance_architecture(
+        expected_instance_architecture_validator_input=[
+            {"instance_types": ["t2.large"], "architecture": "x86_64"},
+            {"instance_types": ["c4.2xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["c5.4xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["c5d.xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["t2.large"], "architecture": "x86_64"},
+        ],
+        validator=instance_architecture_compatibility_validator,
     )
 
     ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp3", volume_size=35)])
@@ -511,13 +527,14 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
     architecture_os_validator.assert_has_calls(
         [call(os="centos7", architecture="x86_64", custom_ami="ami-12345678", ami_search_filters=None)]
     )
-    instance_architecture_compatibility_validator.assert_has_calls(
-        [
-            call(instance_type="c5.xlarge", architecture="x86_64"),
-            call(instance_type="c4.xlarge", architecture="x86_64"),
-            call(instance_type="c4.2xlarge", architecture="x86_64"),
-            call(instance_type="c5.2xlarge", architecture="x86_64"),
-        ]
+    _assert_instance_architecture(
+        expected_instance_architecture_validator_input=[
+            {"instance_types": ["c5.xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["c4.xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["c4.2xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["c5.2xlarge"], "architecture": "x86_64"},
+        ],
+        validator=instance_architecture_compatibility_validator,
     )
 
     ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp3", volume_size=35)])

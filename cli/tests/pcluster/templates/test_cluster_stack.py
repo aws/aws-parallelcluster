@@ -16,6 +16,7 @@ import yaml
 from assertpy import assert_that
 from freezegun import freeze_time
 
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
@@ -174,6 +175,98 @@ def test_scheduler_plugin_substack(mocker, config_file_name, expected_scheduler_
     assert_that(generated_template["Resources"].get("SchedulerPluginStack", {})).is_equal_to(
         expected_scheduler_plugin_stack
     )
+
+
+def _mock_instance_type_info(instance_type):
+    instance_types_info = {
+        "c4.xlarge": InstanceTypeInfo(
+            {
+                "InstanceType": "c4.xlarge",
+                "VCpuInfo": {
+                    "DefaultVCpus": 4,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [1, 2],
+                    "ValidThreadsPerCore": [1, 2],
+                },
+                "EbsInfo": {"EbsOptimizedSupport": "default"},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 3},
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+            }
+        ),
+        "t2.micro": InstanceTypeInfo(
+            {
+                "InstanceType": "t2.micro",
+                "VCpuInfo": {
+                    "DefaultVCpus": 4,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [1, 2],
+                    "ValidThreadsPerCore": [1, 2],
+                },
+                "EbsInfo": {"EbsOptimizedSupport": "unsupported"},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 2},
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+            }
+        ),
+    }
+
+    return instance_types_info[instance_type]
+
+
+@pytest.mark.parametrize(
+    "config_file_name, has_instance_type, no_of_network_interfaces, includes_ebs_optimized, is_ebs_optimized",
+    [
+        ("cluster-using-flexible-instance-types.yaml", False, 2, False, None),
+        ("cluster-using-single-instance-type.yaml", True, 3, True, True),
+    ],
+)
+def test_compute_launch_template_properties(
+    mocker,
+    config_file_name,
+    has_instance_type,
+    no_of_network_interfaces,
+    includes_ebs_optimized,
+    is_ebs_optimized,
+    test_datadir,
+):
+    def get_launch_template_data_property(lt_property):
+        return (
+            generated_template["Resources"]
+            .get("ComputeFleetLaunchTemplate64e1c3597ca4c32652225395", {})
+            .get("Properties", {})
+            .get("LaunchTemplateData", {})
+            .get(lt_property, None)
+        )
+
+    mock_aws_api(mocker, mock_instance_type_info=False)
+
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
+        side_effect=_mock_instance_type_info,
+    )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    instance_type = get_launch_template_data_property("InstanceType")
+    if has_instance_type:
+        assert_that(instance_type).is_not_none()
+    else:
+        assert_that(instance_type).is_none()
+
+    network_interfaces = get_launch_template_data_property("NetworkInterfaces")
+    assert_that(network_interfaces).is_length(no_of_network_interfaces)
+
+    ebs_optimized = get_launch_template_data_property("EbsOptimized")
+    if includes_ebs_optimized:
+        assert_that(ebs_optimized).is_equal_to(is_ebs_optimized)
+    else:
+        assert_that(ebs_optimized).is_none()
 
 
 @pytest.mark.parametrize(

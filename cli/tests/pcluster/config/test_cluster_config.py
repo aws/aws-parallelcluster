@@ -6,6 +6,7 @@ from pcluster.config.cluster_config import (
     AmiSearchFilters,
     BaseClusterConfig,
     ClusterDevSettings,
+    FlexibleInstanceType,
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
@@ -13,6 +14,7 @@ from pcluster.config.cluster_config import (
     QueueImage,
     SlurmClusterConfig,
     SlurmComputeResource,
+    SlurmFlexibleComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
     SlurmScheduling,
@@ -59,6 +61,34 @@ class TestBaseClusterConfig:
                 ]
             ),
         )
+
+    def test_instance_type_list_in_slurm_queue(self):
+        queue = SlurmQueue(
+            name="queue0",
+            networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+            compute_resources=[
+                SlurmComputeResource(name="compute_resource_1", instance_type="c5n.4xlarge"),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+                SlurmFlexibleComputeResource(
+                    name="compute_resource_3",
+                    instance_type_list=[
+                        FlexibleInstanceType(instance_type="c5n.4xlarge"),
+                        FlexibleInstanceType(instance_type="c5n.9xlarge"),
+                        FlexibleInstanceType(instance_type="c5n.18xlarge"),
+                    ],
+                ),
+                SlurmFlexibleComputeResource(
+                    name="compute_resource_4",
+                    instance_type_list=[
+                        FlexibleInstanceType(instance_type="c5n.4xlarge"),
+                    ],
+                ),
+            ],
+        )
+
+        expected_instance_type_list = ["c5n.4xlarge", "t2.micro", "c5n.9xlarge", "c5n.18xlarge"]
+        assert_that(queue.instance_type_list).is_length(len(expected_instance_type_list))
+        assert_that(set(queue.instance_type_list) - set(expected_instance_type_list)).is_length(0)
 
     @pytest.mark.parametrize(
         "global_custom_ami, head_node_custom_ami, ami_filters",
