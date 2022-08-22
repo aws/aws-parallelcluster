@@ -862,6 +862,15 @@ class Timeouts(Resource):
         )
 
 
+class CapacityReservationTarget(Resource):
+    """Represent the CapacityReservationTarget configuration."""
+
+    def __init__(self, capacity_reservation_id: str = None, capacity_reservation_resource_group_arn: str = None):
+        super().__init__()
+        self.capacity_reservation_id = Resource.init_param(capacity_reservation_id)
+        self.capacity_reservation_resource_group_arn = Resource.init_param(capacity_reservation_resource_group_arn)
+
+
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
@@ -1602,6 +1611,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         efa: Efa = None,
         disable_simultaneous_multithreading: bool = None,
         schedulable_memory: int = None,
+        capacity_reservation_target: CapacityReservationTarget = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1613,6 +1623,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         )
         self.efa = efa or Efa(enabled=False, implied=True)
         self.schedulable_memory = Resource.init_param(schedulable_memory)
+        self.capacity_reservation_target = capacity_reservation_target
         self._instance_types_with_instance_storage = []
         self._instance_type_info_map = {}
 
@@ -1779,6 +1790,7 @@ class _CommonQueue(BaseQueue):
         custom_actions: CustomActions = None,
         iam: Iam = None,
         image: QueueImage = None,
+        capacity_reservation_target: CapacityReservationTarget = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1786,6 +1798,7 @@ class _CommonQueue(BaseQueue):
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
         self.image = image
+        self.capacity_reservation_target = capacity_reservation_target
 
     @property
     def instance_role(self):
