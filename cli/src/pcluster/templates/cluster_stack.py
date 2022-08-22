@@ -1459,6 +1459,16 @@ class ComputeFleetConstruct(Construct):
         if isinstance(compute_resource, SlurmComputeResource):
             conditional_template_properties.update({"instance_type": compute_resource.instance_type})
 
+        capacity_reservation_specification = None
+        cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+        if cr_target:
+            capacity_reservation_specification = ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
+                capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
+                    capacity_reservation_id=cr_target.capacity_reservation_id,
+                    capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
+                )
+            )
+
         return ec2.CfnLaunchTemplate(
             self,
             f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}",
@@ -1476,6 +1486,7 @@ class ComputeFleetConstruct(Construct):
                 ),
                 instance_market_options=instance_market_options,
                 instance_initiated_shutdown_behavior="terminate",
+                capacity_reservation_specification=capacity_reservation_specification,
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/compute_node/user_data.sh"),

@@ -132,6 +132,8 @@ Scheduling:
       Networking:
         SubnetIds:
           - subnet-12345678
+      CapacityReservationTarget:
+        CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:123456791537:group/MyCRGroupOther
       CustomSettings:  # here you can add any custom setting
         Key1: String
       ComputeResources:
@@ -139,8 +141,12 @@ Scheduling:
           InstanceType: c5.xlarge
           CustomSettings:  # here you can add any custom setting
             RealMemory: 185000
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:123456791537:group/MyCRGroup
         - Name: computeresource2
           InstanceType: c4.xlarge
+          CapacityReservationTarget:
+            CapacityReservationId: cr-54321fcdbd5971234
       CustomActions:
         OnNodeStart:
           Script: https://test.tgz  # s3:// | https://
