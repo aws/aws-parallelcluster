@@ -368,6 +368,53 @@ def test_describe_subnets_cache(boto3_stubber):
     assert_that(AWSApi.instance().ec2.describe_subnets([subnet])[0]["State"]).is_equal_to("available")
 
 
+def get_describe_capacity_reservation_mocked_request(capacity_reservations, state):
+    return MockedBoto3Request(
+        method="describe_capacity_reservations",
+        response={
+            "CapacityReservations": [
+                {"CapacityReservationId": capacity_reservation, "State": state}
+                for capacity_reservation in capacity_reservations
+            ]
+        },
+        expected_params={"CapacityReservationIds": capacity_reservations},
+    )
+
+
+def test_describe_capacity_reservations_cache(boto3_stubber):
+    # First boto3 call. Nothing has been cached
+    capacity_reservation = "cr-123"
+    additional_capacity_reservation = "cr-234"
+    # The first mocked request and the third are about the same cr. However, the state of the cr changes
+    # from pending to available. The second mocked request is about another cr
+    mocked_requests = [
+        get_describe_capacity_reservation_mocked_request([capacity_reservation], "pending"),
+        get_describe_capacity_reservation_mocked_request([additional_capacity_reservation], "pending"),
+        get_describe_capacity_reservation_mocked_request([capacity_reservation], "active"),
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0]["State"]).is_equal_to(
+        "pending"
+    )
+
+    # Second boto3 call with more subnets. The cr already cached should not be included in the boto3 call.
+    response = AWSApi.instance().ec2.describe_capacity_reservations(
+        [capacity_reservation, additional_capacity_reservation]
+    )
+    assert_that(response).is_length(2)
+
+    # Third boto3 call. The result should be from cache even if the state of the cr is different
+    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0]["State"]).is_equal_to(
+        "pending"
+    )
+
+    # Fourth boto3 call after resetting the AWSApi instance. The latest cr state should be retrieved from boto3
+    AWSApi.reset()
+    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0]["State"]).is_equal_to(
+        "active"
+    )
+
+
 def get_describe_security_groups_mocked_request(security_groups, ip_permissions):
     return MockedBoto3Request(
         method="describe_security_groups",
