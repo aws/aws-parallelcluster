@@ -449,31 +449,36 @@ def test_architecture_os_validator(os, architecture, custom_ami, ami_search_filt
 
 
 @pytest.mark.parametrize(
-    "head_node_architecture, compute_architecture, compute_instance_type, expected_message",
+    "head_node_architecture, compute_instance_type_info_list, expected_message",
     [
-        ("x86_64", "x86_64", "c5.xlarge", None),
         (
             "x86_64",
-            "arm64",
-            "m6g.xlarge",
+            [InstanceTypeInfo({"InstanceType": "c4.xlarge", "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]}})],
+            None,
+        ),
+        (
+            "x86_64",
+            [InstanceTypeInfo({"InstanceType": "m6g.xlarge", "ProcessorInfo": {"SupportedArchitectures": ["arm64"]}})],
             "none of which are compatible with the architecture supported by the head node instance type",
         ),
         (
             "arm64",
-            "x86_64",
-            "c5.xlarge",
+            [InstanceTypeInfo({"InstanceType": "c5.xlarge", "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]}})],
             "none of which are compatible with the architecture supported by the head node instance type",
         ),
-        ("arm64", "arm64", "m6g.xlarge", None),
+        (
+            "arm64",
+            [InstanceTypeInfo({"InstanceType": "m6g.xlarge", "ProcessorInfo": {"SupportedArchitectures": ["arm64"]}})],
+            None,
+        ),
     ],
 )
 def test_instance_architecture_compatibility_validator(
-    mocker, head_node_architecture, compute_architecture, compute_instance_type, expected_message
+    mocker, head_node_architecture, compute_instance_type_info_list, expected_message
 ):
     mock_aws_api(mocker)
-    mocker.patch("pcluster.aws.ec2.Ec2Client.get_supported_architectures", return_value=[compute_architecture])
     actual_failures = InstanceArchitectureCompatibilityValidator().execute(
-        compute_instance_type, head_node_architecture
+        compute_instance_type_info_list, head_node_architecture
     )
     assert_failure_messages(actual_failures, expected_message)
 
