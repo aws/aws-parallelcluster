@@ -538,6 +538,7 @@ Resources:
               - ec2:AttachNetworkInterface
               - ec2:AuthorizeSecurityGroupEgress
               - ec2:AuthorizeSecurityGroupIngress
+              - ec2:CreateFleet
               - ec2:CreateLaunchTemplate
               - ec2:CreateLaunchTemplateVersion
               - ec2:CreateNetworkInterface

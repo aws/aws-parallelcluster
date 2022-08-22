@@ -51,6 +51,7 @@ from pcluster.config.cluster_config import (
     EphemeralVolume,
     ExistingFsxOntap,
     ExistingFsxOpenZfs,
+    FlexibleInstanceType,
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
@@ -96,6 +97,7 @@ from pcluster.config.cluster_config import (
     SharedFsxLustre,
     SlurmClusterConfig,
     SlurmComputeResource,
+    SlurmFlexibleComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
     SlurmScheduling,
@@ -1051,6 +1053,17 @@ class QueueCustomActionsSchema(BaseSchema):
         return CustomActions(**data)
 
 
+class InstanceTypeSchema(BaseSchema):
+    """Schema of a compute resource that supports a pool of instance types."""
+
+    instance_type = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return FlexibleInstanceType(**data)
+
+
 class HeadNodeSchema(BaseSchema):
     """Represent the schema of the HeadNode."""
 
@@ -1082,7 +1095,12 @@ class _ComputeResourceSchema(BaseSchema):
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
-    instance_type = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    instance_type = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    instance_type_list = fields.Nested(
+        InstanceTypeSchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "InstanceType"},
+    )
     max_count = fields.Int(validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.MAX_COUNT})
     min_count = fields.Int(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     spot_price = fields.Float(
@@ -1092,9 +1110,22 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     disable_simultaneous_multithreading = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     schedulable_memory = fields.Int(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
+    @validates_schema
+    def no_coexist_instance_type_flexibility(self, data, **kwargs):
+        """Validate that 'instance_type' and 'instance_type_list' do not co-exist."""
+        if self.fields_coexist(
+            data,
+            ["instance_type", "instance_type_list"],
+            one_required=True,
+            **kwargs,
+        ):
+            raise ValidationError("A Compute Resource needs to specify either InstanceType or InstanceTypeList.")
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
+        if data.get("instance_type_list"):
+            return SlurmFlexibleComputeResource(**data)
         return SlurmComputeResource(**data)
 
 
@@ -1173,6 +1204,10 @@ class _CommonQueueSchema(BaseQueueSchema):
 class SlurmQueueSchema(_CommonQueueSchema):
     """Represent the schema of a Slurm Queue."""
 
+    allocation_strategy = fields.Str(
+        validate=validate.OneOf(["lowest-price", "capacity-optimized"]),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,

@@ -39,6 +39,7 @@ from pcluster.schemas.cluster_schema import (
     SchedulerPluginUserSchema,
     SchedulingSchema,
     SharedStorageSchema,
+    SlurmQueueSchema,
     TimeoutsSchema,
 )
 from pcluster.utils import replace_url_parameters
@@ -314,6 +315,94 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
             SchedulingSchema().load(config_dict)
     else:
         SchedulingSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Single Instance Type in a Compute Resource
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+            },
+            "",
+        ),
+        # Multiple Instance Types in a Compute Resource
+        (
+            {
+                "Name": "Flex-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "AllocationStrategy": "lowest-price",
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                        "InstanceTypeList": [{"InstanceType": "c5.2xlarge"}],
+                    }
+                ],
+            },
+            "",
+        ),
+        # Mixing Single plus Flexible Instance Type Compute Resources
+        (
+            {
+                "Name": "Flex-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "AllocationStrategy": "lowest-price",
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                        "InstanceTypeList": [{"InstanceType": "c5.2xlarge"}, {"InstanceType": "c4.2xlarge"}],
+                    },
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+            },
+            "",
+        ),
+        # Failing to specify either InstanceType or InstanceTypeList should return a validation error
+        (
+            {
+                "Name": "Flex-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "AllocationStrategy": "lowest-price",
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                    }
+                ],
+            },
+            "A Compute Resource needs to specify either InstanceType or InstanceTypeList.",
+        ),
+        # Mixing InstanceType and InstanceTypeList in a Compute Resource should return a validation error
+        (
+            {
+                "Name": "Mixed-Instance-Types",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "AllocationStrategy": "lowest-price",
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                        "InstanceType": "c5.2xlarge",
+                        "InstanceTypeList": [{"InstanceType": "c4.2xlarge"}],
+                    },
+                ],
+            },
+            "A Compute Resource needs to specify either InstanceType or InstanceTypeList.",
+        ),
+    ],
+)
+def test_slurm_flexible_queue(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SlurmQueueSchema().load(config_dict)
+    else:
+        SlurmQueueSchema().load(config_dict)
 
 
 @pytest.mark.parametrize(

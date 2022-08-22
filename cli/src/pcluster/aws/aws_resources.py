@@ -220,12 +220,13 @@ class InstanceTypeInfo:
         return self.instance_type_data.get("InstanceType")
 
     def is_ebs_optimized(self):
-        """Check whether the instance has optimized EBS support."""
-        ebs_optimized = False
-        ebs_info = self.instance_type_data.get("EbsInfo")
-        if ebs_info:
-            ebs_optimized = ebs_info.get("EbsOptimizedSupport") != "unsupported"
-        return ebs_optimized
+        """
+        Check whether the instance has optimized EBS support.
+
+        Defaults to `unsupported` if EbsInfo is not available for the instance type.
+        """
+        support_level = self.instance_type_data.get("EbsInfo", {}).get("EbsOptimizedSupport", "unsupported")
+        return support_level != "unsupported"
 
     def supported_usage_classes(self):
         """Return the list supported usage classes."""
