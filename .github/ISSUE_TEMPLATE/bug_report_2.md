@@ -2,10 +2,13 @@
 name: Bug report for ParallelCluster 2.x.x
 about: Detailed report for issues with ParallelCluster 2.x.x
 title: ''
-labels: '2.x'
+labels: 2.x
 assignees: ''
 
 ---
+
+If you have an active AWS support contract, please open a case with AWS Premium Support team using the below documentation to report the issue:
+https://docs.aws.amazon.com/awssupport/latest/user/case-management.html
 
 Before submitting a new issue, please search through open [GitHub Issues](https://github.com/aws/aws-parallelcluster/issues) and check out the [troubleshooting documentation](https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html).
 

@@ -1,8 +1,8 @@
 ---
 name: Known Issue Report
-about: 'Report known issues on github'
+about: Report known issues on github
 title: ''
-labels: 'known-issue-report'
+labels: ''
 assignees: ''
 
 ---
