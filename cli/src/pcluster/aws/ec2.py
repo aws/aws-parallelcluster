@@ -35,6 +35,7 @@ class Ec2Client(Boto3Client):
         self.additional_instance_types_data = {}
         self.security_groups_cache = {}
         self.subnets_cache = {}
+        self.capacity_reservations_cache = {}
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
@@ -81,6 +82,30 @@ class Ec2Client(Boto3Client):
             for subnet in response:
                 self.subnets_cache[subnet.get("SubnetId")] = subnet
                 result.append(subnet)
+        return result
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_capacity_reservations(self, capacity_reservation_ids):
+        """Return a list of Capacity Reservations."""
+        result = []
+        missed_capacity_reservations = []
+        for capacity_reservation_id in capacity_reservation_ids:
+            cached_data = self.capacity_reservations_cache.get(capacity_reservation_id)
+            if cached_data:
+                result.append(cached_data)
+            else:
+                missed_capacity_reservations.append(capacity_reservation_id)
+        if missed_capacity_reservations:
+            response = list(
+                self._paginate_results(
+                    self._client.describe_capacity_reservations, CapacityReservationIds=missed_capacity_reservations
+                )
+            )
+            for capacity_reservation in response:
+                self.capacity_reservations_cache[
+                    capacity_reservation.get("CapacityReservationId")
+                ] = capacity_reservation
+                result.append(capacity_reservation)
         return result
 
     @AWSExceptionHandler.handle_client_exception
