@@ -958,6 +958,20 @@ class CapacityReservationTargetSchema(BaseSchema):
         """Generate resource."""
         return CapacityReservationTarget(**data)
 
+    @validates_schema
+    def no_coexist_instance_type_flexibility(self, data, **kwargs):
+        """Validate that 'capacity_reservation_id' and 'capacity_reservation_resource_group_arn' do not co-exist."""
+        if self.fields_coexist(
+            data,
+            ["capacity_reservation_id", "capacity_reservation_resource_group_arn"],
+            one_required=True,
+            **kwargs,
+        ):
+            raise ValidationError(
+                "A Capacity Reservation Target needs to specify either Capacity Reservation ID or "
+                "Capacity Reservation Resource Group ARN."
+            )
+
 
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of Dev Setting."""
