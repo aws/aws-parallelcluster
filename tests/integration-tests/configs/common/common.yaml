@@ -416,10 +416,12 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
+{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm_plugin"]
+{%- endif %}
   test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
     dimensions:
       - regions: ["ap-southeast-2"]
@@ -436,10 +438,12 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
+{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
       - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm_plugin"]
+{%- endif %}
       - regions: [ "us-east-2" ]
         instances: [{{ common.instance("instance_type_1") }}]
         oss: [ "alinux2" ]
@@ -449,13 +453,25 @@ schedulers:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm", "slurm_plugin"]
+        schedulers: ["slurm"]
+{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
+      - regions: ["ca-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm_plugin"]
+{%- endif %}
   test_slurm.py::test_slurm_protected_mode:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm", "slurm_plugin"]
+        schedulers: ["slurm"]
+{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
+      - regions: ["eu-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm_plugin"]
+{%- endif %}
   test_slurm.py::test_fast_capacity_failover:
     dimensions:
       - regions: ["ap-east-1"]
