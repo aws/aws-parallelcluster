@@ -153,9 +153,6 @@ createami:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2", "ubuntu2004", "centos7"]
-      - regions: ["us-gov-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
   test_createami.py::test_kernel4_build_image_run_cluster:
     dimensions:
       - regions: ["eu-west-1"]
