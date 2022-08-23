@@ -10,7 +10,6 @@
 # limitations under the License.
 import math
 import re
-from abc import ABC
 from collections import defaultdict
 from enum import Enum
 from itertools import combinations, product
@@ -876,7 +875,7 @@ class MixedSecurityGroupOverwriteValidator(Validator):
 # --------------- Instance settings validators --------------- #
 
 
-class _LaunchTemplateValidator(Validator, ABC):
+class _LaunchTemplateValidator(Validator):
     """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
 
     def _build_launch_network_interfaces(
