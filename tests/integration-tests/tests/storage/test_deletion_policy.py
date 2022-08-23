@@ -15,16 +15,17 @@ import boto3
 import pytest
 from assertpy import assert_that
 from botocore.exceptions import ClientError
-from utils import get_compute_nodes_instance_ids, get_root_volume_id, get_stack_id_tag_filter
+from utils import create_hash_suffix, get_compute_nodes_instance_ids, get_root_volume_id, get_stack_id_tag_filter
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_retain_on_deletion(pcluster_config_reader, clusters_factory, region, os):
-    cluster_config = pcluster_config_reader()
+    ebs_name = "ebs0"
+    cluster_config = pcluster_config_reader(ebs_name=ebs_name)
     cluster = clusters_factory(cluster_config)
 
     stack_arn = cluster.cfn_stack_arn
-    retained_volume = cluster.cfn_resources["EBS0"]
+    retained_volume = cluster.cfn_resources[f"EBS{create_hash_suffix(ebs_name)}"]
     head_node_root_volume = get_root_volume_id(cluster.head_node_instance_id, region, os)
     compute_node_instance_ids = get_compute_nodes_instance_ids(cluster.name, region)
     logging.info("Checking at least one compute node is running")
