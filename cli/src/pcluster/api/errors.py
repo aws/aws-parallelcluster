@@ -5,7 +5,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from abc import ABC
 
 from connexion import ProblemException
 from werkzeug.exceptions import HTTPException
@@ -59,7 +58,7 @@ def exception_message(exception):
         }
 
 
-class ParallelClusterApiException(ABC, Exception):
+class ParallelClusterApiException(Exception):
     """Base class for ParallelCluster Api exceptions."""
 
     code: int = None
