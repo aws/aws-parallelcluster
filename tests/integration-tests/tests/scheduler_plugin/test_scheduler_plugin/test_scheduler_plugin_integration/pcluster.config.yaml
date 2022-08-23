@@ -122,7 +122,7 @@ Scheduling:
           - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: /shared
-    Name: name1
+    Name: {{ volume_name }}
     StorageType: Ebs
 Tags:
   - Key: ConfigFileTag

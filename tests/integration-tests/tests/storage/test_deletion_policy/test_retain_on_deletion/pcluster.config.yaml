@@ -31,7 +31,7 @@ Scheduling:
           - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: /ebs1
-    Name: ebs0
+    Name: {{ ebs_name }}
     StorageType: Ebs
     EbsSettings:
       DeletionPolicy: Retain
