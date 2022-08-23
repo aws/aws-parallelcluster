@@ -22,7 +22,8 @@ bash 'install' do
     set -e
 
     # FIXME: installing from GitHub is discouraged
-    #{node['pcluster']['python_root']}/pip install https://github.com/aws/aws-parallelcluster-node/tarball/refs/heads/develop
+    # FIXME: move node package in the scheduler-plugin artifacts
+    #{node['pcluster']['python_root']}/pip install https://github.com/aws/aws-parallelcluster-node/tarball/refs/heads/release-3.2
   DAEMONS
   not_if "#{node['pcluster']['python_root']}/pip list | grep aws-parallelcluster-node"
 end
