@@ -31,11 +31,11 @@ Scheduling:
           - {{ vpc_security_group_id }}
 SharedStorage:
   - MountDir: efs
-    Name: efs
+    Name: {{ efs_name }}
     StorageType: Efs
   {% if scheduler != "awsbatch" %}
   - MountDir: fsx
-    Name: fsx
+    Name: {{ fsx_name }}
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 1200

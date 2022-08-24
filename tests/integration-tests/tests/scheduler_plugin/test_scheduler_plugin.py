@@ -99,6 +99,7 @@ def test_scheduler_plugin_integration(
     run_as_user = OS_MAPPING[os]
     # Create cluster
     another_instance_type = ANOTHER_INSTANCE_TYPE_BY_ARCH[architecture]
+    volume_name = "name1"
     before_update_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.before_update.yaml",
         bucket=bucket_name,
@@ -109,6 +110,7 @@ def test_scheduler_plugin_integration(
         account_id=account_id,
         run_as_user=run_as_user,
         plugin_interface_version=SCHEDULER_PLUGIN_INTERFACE_VERSION,
+        volume_name=volume_name,
     )
     cluster = clusters_factory(before_update_cluster_config)
     cluster_config = pcluster_config_reader(
@@ -121,6 +123,7 @@ def test_scheduler_plugin_integration(
         run_as_user=run_as_user,
         compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
         plugin_interface_version=SCHEDULER_PLUGIN_INTERFACE_VERSION,
+        volume_name=volume_name,
     )
     # Command executor
     command_executor = RemoteCommandExecutor(cluster)
@@ -193,7 +196,7 @@ def test_scheduler_plugin_integration(
     # Test custom log files in Monitoring configuration
     _test_custom_log(cluster, os)
     # Test scheduler plugin tags
-    _test_tags(cluster, os)
+    _test_tags(cluster, os, volume_name)
     # Test get or update compute fleet_status_script
     _test_update_compute_fleet_status_script(command_executor)
     # Test invoke scheduler plugin event handler script
@@ -457,7 +460,7 @@ def _test_cluster_config(request, region, command_executor, cluster_config, rend
         )
 
 
-def _test_tags(cluster, os):
+def _test_tags(cluster, os, volume_name):
     scheduler_plugin_tags = {"SchedulerPluginTag": "SchedulerPluginTagValue"}
     config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
 
@@ -487,6 +490,7 @@ def _test_tags(cluster, os):
         {
             "resource": "Shared EBS Volume",
             "tag_getter": get_shared_volume_tags,
+            "tag_getter_kwargs": {"cluster": cluster, "volume_name": volume_name},
         },
     ]
     for test_case in test_cases:

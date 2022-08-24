@@ -18,7 +18,7 @@ from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import Ref, Template
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress
-from utils import check_head_node_security_group, generate_stack_name, get_username_for_os
+from utils import check_head_node_security_group, create_hash_suffix, generate_stack_name, get_username_for_os
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -49,7 +49,10 @@ def test_additional_sg_and_ssh_from(region, custom_security_group, pcluster_conf
 def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_reader, clusters_factory):
     """Test vpc_security_group_id overwrites pcluster default sg on head and compute nodes, efs, fsx"""
     custom_security_group_id = custom_security_group.cfn_resources["SecurityGroupResource"]
-    cluster_config = pcluster_config_reader(vpc_security_group_id=custom_security_group_id)
+    fsx_name, efs_name = "fsx", "efs"
+    cluster_config = pcluster_config_reader(
+        vpc_security_group_id=custom_security_group_id, fsx_name=fsx_name, efs_name=efs_name
+    )
     cluster = clusters_factory(cluster_config)
     ec2_client = boto3.client("ec2", region_name=region)
     instances = _get_instances_by_security_group(ec2_client, custom_security_group_id)
@@ -61,7 +64,7 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
     if scheduler != "awsbatch":
         # FSx is not supported when using AWS Batch as a scheduler
         logging.info("Collecting security groups of the FSx")
-        fsx_id = cluster.cfn_resources["FSX0"]
+        fsx_id = cluster.cfn_resources[f"FSX{create_hash_suffix(fsx_name)}"]
         fsx_client = boto3.client("fsx", region_name=region)
         network_interface_id = fsx_client.describe_file_systems(FileSystemIds=[fsx_id])["FileSystems"][0][
             "NetworkInterfaceIds"
@@ -74,7 +77,7 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
         assert_that(fsx_security_groups).is_length(1)
 
     logging.info("Collecting security groups of the EFS")
-    efs_id = cluster.cfn_resources["EFS0"]
+    efs_id = cluster.cfn_resources[f"EFS{create_hash_suffix(efs_name)}"]
     efs_client = boto3.client("efs", region_name=region)
     mount_target_ids = [
         mount_target["MountTargetId"]
@@ -97,6 +100,8 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
         updated_config_file = pcluster_config_reader(
             config_file="pcluster.config.update.yaml",
             vpc_security_group_id=custom_security_group_id,
+            fsx_name=fsx_name,
+            efs_name=efs_name,
         )
         cluster.update(str(updated_config_file), force_update="true")
         _check_connections_between_head_node_and_compute_nodes(cluster)

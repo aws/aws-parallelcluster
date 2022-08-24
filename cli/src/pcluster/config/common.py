@@ -65,7 +65,7 @@ class TypeMatchValidatorsSuppressor(ValidatorSuppressor):
         return validator.type in self._validators_to_suppress
 
 
-class Resource(ABC):
+class Resource:
     """Represent an abstract Resource entity."""
 
     class Param:

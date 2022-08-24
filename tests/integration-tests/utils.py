@@ -18,6 +18,7 @@ import shlex
 import socket
 import string
 import subprocess
+from hashlib import sha1
 
 import boto3
 from assertpy import assert_that
@@ -498,3 +499,12 @@ def scheduler_plugin_definition_uploader(upload_script_path, bucket, key_prefix,
     except Exception as e:
         logging.error("Failed when uploading scheduler plugin artifacts", e)
         raise
+
+
+def create_hash_suffix(string_to_hash: str):
+    """Create 16digit hash string."""
+    return (
+        string_to_hash
+        if string_to_hash == "HeadNode"
+        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
+    )
