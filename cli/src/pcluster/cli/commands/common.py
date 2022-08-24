@@ -93,7 +93,7 @@ class Iso8601Arg:
             )
 
 
-class ExportLogsCommand(ABC):
+class ExportLogsCommand:
     """Class to put in common code between image and cluster export logs commands."""
 
     @staticmethod
