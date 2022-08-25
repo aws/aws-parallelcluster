@@ -167,6 +167,36 @@ phases:
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
+      - name: CudaSamplesSrcDir
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
+              if [ ${cuda_ver} \> '11.4' ]; then
+                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_sample_version']" {{ CookbookDefaultFile }})
+                VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+                echo cuda-samples-${VERSION}/Samples
+              else
+                echo cuda-${cuda_ver}/samples
+              fi
+
+      - name: CudaSamplesBinDir
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
+              if [ ${cuda_ver} \> '11.4' ]; then
+                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_sample_version']" {{ CookbookDefaultFile }})
+                VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+                echo cuda-samples-${VERSION}/bin
+              else
+                echo cuda-${cuda_ver}/samples/bin
+              fi
+
       - name: ArmPLVersion
         action: ExecuteBash
         inputs:
@@ -280,7 +310,7 @@ phases:
                   apt list --installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
                   apt-mark showhold | grep "nvidia-fabric.*manager" || exit 1
                 fi
-                echo "Fabric Manager match Nvidia driver and version is locked"              
+                echo "Fabric Manager match Nvidia driver and version is locked"
               fi
 
               echo "Testing CUDA installation with nvcc"
@@ -294,11 +324,11 @@ phases:
               echo "Testing CUDA with deviceQuery..."
               if [ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]; then
                 /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
-                [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1              
+                [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               else
-                 cd /usr/local/cuda-${cuda_ver}/samples/1_Utilities/deviceQuery
+                 cd /usr/local/{{ validate.CudaSamplesSrcDir.outputs.stdout }}/1_Utilities/deviceQuery
                  make
-                 /usr/local/cuda-${cuda_ver}/samples/bin/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
+                 /usr/local/{{ validate.CudaSamplesBinDir.outputs.stdout }}/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
                  [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               fi
               echo "CUDA deviceQuery test passed"
