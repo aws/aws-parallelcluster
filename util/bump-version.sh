@@ -55,11 +55,14 @@ main() {
 
         sed -i "s/\"parallelcluster\": \"$CURRENT_VERSION\"/\"parallelcluster\": \"$NEW_VERSION\"/g" cli/src/pcluster/constants.py
         sed -i "s/aws-parallelcluster-cookbook-$CURRENT_VERSION/aws-parallelcluster-cookbook-$NEW_VERSION/g" cli/src/pcluster/constants.py
+        sed -i "s| version: $CURRENT_VERSION_SHORT| version: $NEW_VERSION_SHORT|g" cli/src/pcluster/api/openapi/openapi.yaml
 
         sed -i "s|pcluster-api:$CURRENT_VERSION|pcluster-api:$NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
         sed -i "s|parallelcluster/$CURRENT_VERSION|parallelcluster/$NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
         sed -i "s| Version: $CURRENT_VERSION| Version: $NEW_VERSION|g" api/infrastructure/parallelcluster-api.yaml
         sed -i "s| ShortVersion: $CURRENT_VERSION_SHORT| ShortVersion: $NEW_VERSION_SHORT|g" api/infrastructure/parallelcluster-api.yaml
+        sed -i "s| version: $CURRENT_VERSION_SHORT| version: $NEW_VERSION_SHORT|g" api/spec/openapi/ParallelCluster.openapi.yaml
+        sed -i "s| version: \"$CURRENT_VERSION_SHORT\"| version: \"$NEW_VERSION_SHORT\"|g" api/spec/smithy/model/parallelcluster.smithy
     fi
 
     if [ "${_plugin_interface_version}" ]; then
