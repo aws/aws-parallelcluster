@@ -526,6 +526,49 @@ class ClusterCdkStack(Stack):
             group_id=group_id,
         )
 
+    def _allow_all_egress(self, description, destination_security_group_id, group_id):
+        ec2.CfnSecurityGroupEgress(
+            self,
+            description,
+            ip_protocol="-1",
+            from_port=0,
+            to_port=65535,
+            destination_security_group_id=destination_security_group_id,
+            group_id=group_id,
+        )
+
+    def _add_storage_security_group(self, storage_cfn_id, storage):
+        storage_type = storage.shared_storage_type
+        storage_security_group = ec2.CfnSecurityGroup(
+            self,
+            "{0}SecurityGroup".format(storage_cfn_id),
+            group_description=f"Allow access to {storage_type} file system {storage_cfn_id}",
+            vpc_id=self.config.vpc_id,
+        )
+        storage_security_group.cfn_options.deletion_policy = convert_deletion_policy(storage.deletion_policy)
+
+        target_security_groups = {
+            "Head": self._get_head_node_security_groups(),
+            "Compute": self._get_compute_security_groups(),
+            "Storage": [storage_security_group.ref],
+        }
+
+        for sg_type, sg_refs in target_security_groups.items():
+            for sg_ref_id, sg_ref in enumerate(sg_refs):
+                self._allow_all_ingress(
+                    description=f"{storage_cfn_id}SecurityGroup{sg_type}Ingress{sg_ref_id}",
+                    source_security_group_id=sg_ref,
+                    group_id=storage_security_group.ref,
+                )
+
+                self._allow_all_egress(
+                    description=f"{storage_cfn_id}SecurityGroup{sg_type}Egress{sg_ref_id}",
+                    destination_security_group_id=sg_ref,
+                    group_id=storage_security_group.ref,
+                )
+
+        return storage_security_group
+
     def _add_compute_security_group(self):
         compute_security_group = ec2.CfnSecurityGroup(
             self, "ComputeSecurityGroup", group_description="Allow access to compute nodes", vpc_id=self.config.vpc_id
@@ -631,6 +674,7 @@ class ClusterCdkStack(Stack):
                     drive_cache_type = shared_fsx.drive_cache_type
                 else:
                     drive_cache_type = "NONE"
+            file_system_security_groups = [self._add_storage_security_group(id, shared_fsx)]
             fsx_resource = fsx.CfnFileSystem(
                 self,
                 id,
@@ -654,10 +698,12 @@ class ClusterCdkStack(Stack):
                 file_system_type=LUSTRE,
                 storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
-                security_group_ids=self._get_compute_security_groups(),
+                security_group_ids=[sg.ref for sg in file_system_security_groups],
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
+            fsx_resource.cfn_options.deletion_policy = convert_deletion_policy(shared_fsx.deletion_policy)
+
             fsx_id = fsx_resource.ref
             # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
             mount_name = fsx_resource.attr_lustre_mount_name
@@ -678,6 +724,7 @@ class ClusterCdkStack(Stack):
         # EFS FileSystem
         efs_id = shared_efs.file_system_id
         new_file_system = efs_id is None
+        deletion_policy = convert_deletion_policy(shared_efs.deletion_policy)
         if not efs_id and shared_efs.mount_dir:
             efs_resource = efs.CfnFileSystem(
                 self,
@@ -689,27 +736,35 @@ class ClusterCdkStack(Stack):
                 throughput_mode=shared_efs.throughput_mode,
             )
             efs_resource.tags.set_tag(key="Name", value=shared_efs.name)
+            efs_resource.cfn_options.deletion_policy = deletion_policy
             efs_id = efs_resource.ref
 
         checked_availability_zones = []
 
         # Mount Targets for Compute Fleet
         compute_subnet_ids = self.config.compute_subnet_ids
-        compute_node_sgs = self._get_compute_security_groups()
+        file_system_security_groups = [self._add_storage_security_group(id, shared_efs)]
 
         for subnet_id in compute_subnet_ids:
             self._add_efs_mount_target(
-                id, efs_id, compute_node_sgs, subnet_id, checked_availability_zones, new_file_system
+                id,
+                efs_id,
+                file_system_security_groups,
+                subnet_id,
+                checked_availability_zones,
+                new_file_system,
+                deletion_policy,
             )
 
         # Mount Target for Head Node
         self._add_efs_mount_target(
             id,
             efs_id,
-            compute_node_sgs,
+            file_system_security_groups,
             self.config.head_node.networking.subnet_id,
             checked_availability_zones,
             new_file_system,
+            deletion_policy,
         )
 
         return efs_id
@@ -722,18 +777,20 @@ class ClusterCdkStack(Stack):
         subnet_id,
         checked_availability_zones,
         new_file_system,
+        deletion_policy,
     ):
         """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
         availability_zone = AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id)
         if availability_zone not in checked_availability_zones:
             if new_file_system or not AWSApi.instance().efs.get_efs_mount_target_id(file_system_id, availability_zone):
-                efs.CfnMountTarget(
+                efs_resource = efs.CfnMountTarget(
                     self,
                     "{0}MT{1}".format(efs_cfn_resource_id, availability_zone),
                     file_system_id=file_system_id,
-                    security_groups=security_groups,
+                    security_groups=[sg.ref for sg in security_groups],
                     subnet_id=subnet_id,
                 )
+                efs_resource.cfn_options.deletion_policy = deletion_policy
             checked_availability_zones.append(availability_zone)
 
     def _add_raid_volume(self, id_prefix: str, shared_ebs: SharedEbs):

@@ -13,7 +13,7 @@ import logging
 
 import boto3
 from assertpy import assert_that
-from utils import get_root_volume_id
+from utils import create_hash_suffix, get_root_volume_id
 
 
 def convert_tags_dicts_to_tags_list(tags_dicts):
@@ -93,7 +93,7 @@ def get_ebs_volume_tags(volume_id, region):
     return boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0].get("Tags")
 
 
-def get_shared_volume_tags(cluster):
+def get_shared_volume_tags(cluster, volume_name):
     """Return the given cluster's EBS volume's tags."""
-    shared_volume = cluster.cfn_resources.get("EBS0")
+    shared_volume = cluster.cfn_resources.get(f"EBS{create_hash_suffix(volume_name)}")
     return get_ebs_volume_tags(shared_volume, cluster.region)

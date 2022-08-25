@@ -31,11 +31,11 @@ Scheduling:
           # to test the managed sg allow access from the custom sg
 SharedStorage:
   - MountDir: efs
-    Name: efs
+    Name: {{ efs_name }}
     StorageType: Efs
   {% if scheduler != "awsbatch" %}
   - MountDir: fsx
-    Name: fsx
+    Name: {{ fsx_name }}
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 1200

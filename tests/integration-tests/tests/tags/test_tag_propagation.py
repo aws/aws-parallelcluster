@@ -43,16 +43,17 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     - compute node's root EBS volume (traditional schedulers)
     - shared EBS volume
     """
-    cluster_config = pcluster_config_reader()
+    volume_name = "name1"
+    cluster_config = pcluster_config_reader(volume_name=volume_name)
     cluster = clusters_factory(cluster_config)
 
     # Uses helper function to perform the tests
-    _check_tag_propagation(cluster, scheduler, os)
+    _check_tag_propagation(cluster, scheduler, os, volume_name)
 
     cluster.stop()
 
     # Updates cluster with new configuration
-    updated_cluster_config = pcluster_config_reader(config_file="pcluster.config.update.yaml")
+    updated_cluster_config = pcluster_config_reader(config_file="pcluster.config.update.yaml", volume_name=volume_name)
     cluster.update(str(updated_cluster_config), force_update="true")
 
     cluster.start()
@@ -61,7 +62,7 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     _wait_for_compute_fleet_start(cluster)
 
     # Checks for tag propagation
-    _check_tag_propagation(cluster, scheduler, os)
+    _check_tag_propagation(cluster, scheduler, os, volume_name)
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
@@ -70,11 +71,10 @@ def _wait_for_compute_fleet_start(cluster):
     assert_that(compute_nodes).is_length(1)
 
 
-def _check_tag_propagation(cluster, scheduler, os):
+def _check_tag_propagation(cluster, scheduler, os, volume_name):
     config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
     version_tags = {"parallelcluster:version": get_installed_parallelcluster_version()}
     cluster_name_tags = {"parallelcluster:cluster-name": cluster.name}
-
     test_cases = [
         {
             "resource": "Main CloudFormation Stack",
@@ -119,6 +119,7 @@ def _check_tag_propagation(cluster, scheduler, os):
         {
             "resource": "Shared EBS Volume",
             "tag_getter": get_shared_volume_tags,
+            "tag_getter_kwargs": {"cluster": cluster, "volume_name": volume_name},
             "expected_tags": (version_tags, config_file_tags, cluster_name_tags),
         },
     ]

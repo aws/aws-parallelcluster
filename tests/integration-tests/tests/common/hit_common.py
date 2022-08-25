@@ -74,7 +74,7 @@ def wait_for_compute_nodes_states(scheduler_commands, compute_nodes, expected_st
 
 def assert_compute_node_reasons(scheduler_commands, compute_nodes, expected_reason):
     for node in compute_nodes:
-        node_info = scheduler_commands.get_nodes_info(node)
+        node_info = scheduler_commands.get_node_info(node)
         assert_that(node_info).contains(f"Reason={expected_reason}")
 
 
