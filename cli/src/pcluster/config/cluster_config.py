@@ -98,6 +98,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
 )
+from pcluster.validators.database_validators import DatabaseUriValidator
 from pcluster.validators.directory_service_validators import (
     AdditionalSssdConfigsValidator,
     DomainAddrValidator,
@@ -1918,6 +1919,28 @@ class Dns(Resource):
         self.use_ec2_hostnames = Resource.init_param(use_ec2_hostnames, default=False)
 
 
+class Database(Resource):
+    """Represent the Slurm Database settings."""
+
+    def __init__(
+        self,
+        uri: str = None,
+        user_name: str = None,
+        password_secret_arn: str = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.uri = Resource.init_param(uri)
+        self.user_name = Resource.init_param(user_name)
+        self.password_secret_arn = Resource.init_param(password_secret_arn)
+
+    def _register_validators(self):
+        if self.uri:
+            self._register_validator(DatabaseUriValidator, uri=self.uri)
+        if self.password_secret_arn:
+            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+
+
 class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
@@ -1927,6 +1950,7 @@ class SlurmSettings(Resource):
         dns: Dns = None,
         queue_update_strategy: str = None,
         enable_memory_based_scheduling: bool = None,
+        database: Database = None,
         **kwargs,
     ):
         super().__init__()
@@ -1936,6 +1960,7 @@ class SlurmSettings(Resource):
             queue_update_strategy, default=QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
         )
         self.enable_memory_based_scheduling = Resource.init_param(enable_memory_based_scheduling, default=False)
+        self.database = database or Database(implied=True)
 
 
 class QueueUpdateStrategy(Enum):

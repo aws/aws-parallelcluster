@@ -47,6 +47,7 @@ from pcluster.config.cluster_config import (
     CustomAction,
     CustomActions,
     Dashboards,
+    Database,
     Dcv,
     DirectoryService,
     Dns,
@@ -1329,6 +1330,23 @@ class DnsSchema(BaseSchema):
         return Dns(**data)
 
 
+class DatabaseSchema(BaseSchema):
+    """Represent the schema of the DirectoryService."""
+
+    uri = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    user_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    password_secret_arn = fields.Str(
+        required=True,
+        validate=validate.Regexp(r"^arn:.*:secret"),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Database(**data)
+
+
 class SlurmSettingsSchema(BaseSchema):
     """Represent the schema of the Scheduling Settings."""
 
@@ -1339,6 +1357,7 @@ class SlurmSettingsSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.IGNORED},
     )
     enable_memory_based_scheduling = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    database = fields.Nested(DatabaseSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
