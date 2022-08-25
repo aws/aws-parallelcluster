@@ -56,6 +56,11 @@ def submit_initial_job(
 
 
 def assert_compute_node_states(scheduler_commands, compute_nodes, expected_states):
+    """
+    Assert that a list of compute nodes is in one of the expected states.
+
+    If the list of compute nodes is empty, all compute nodes in the cluster are evaluated.
+    """
     node_states = scheduler_commands.get_nodes_status(compute_nodes)
     node_list = compute_nodes if compute_nodes else list(node_states.keys())
     for node in node_list:
