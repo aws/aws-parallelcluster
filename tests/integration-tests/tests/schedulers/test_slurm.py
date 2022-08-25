@@ -938,15 +938,17 @@ def _set_nodes_to_suspend_state_manually(scheduler_commands, compute_nodes):
 
 
 def _set_nodes_to_down_manually(scheduler_commands, compute_nodes):
-    scheduler_commands.set_nodes_state(compute_nodes, state="down")
-    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["down"])
+    if len(compute_nodes) > 0:
+        scheduler_commands.set_nodes_state(compute_nodes, state="down")
+        assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["down"])
 
 
 def _set_nodes_to_power_down_manually(scheduler_commands, compute_nodes):
-    scheduler_commands.set_nodes_state(compute_nodes, state="power_down")
-    time.sleep(5)
-    scheduler_commands.set_nodes_state(compute_nodes, state="resume")
-    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["idle~"])
+    if len(compute_nodes) > 0:
+        scheduler_commands.set_nodes_state(compute_nodes, state="power_down")
+        time.sleep(5)
+        scheduler_commands.set_nodes_state(compute_nodes, state="resume")
+        assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["idle~"])
 
 
 def _terminate_nodes_manually(instance_ids, region):
