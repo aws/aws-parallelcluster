@@ -36,15 +36,49 @@ class DatabaseUriValidator(Validator):
             # (for example 'test.example.com:3306' instead of 'mysql://test.example.com:3306`).
             uri_parse = urlparse("//" + uri_parse.path)
 
-        if not uri_parse.netloc:
+        try:
+            scheme = uri_parse.scheme
+        except ValueError as e:
+            self._add_failure(
+                "Invalid URI specified. " + str(e),
+                FailureLevel.ERROR
+            )
+            return
+
+        if scheme:
+            self._add_failure(
+                f"Invalid URI specified. Please do not provide a scheme ('{scheme}://')",
+                FailureLevel.ERROR,
+            )
+
+        try:
+            netloc = uri_parse.netloc
+        except ValueError as e:
+            self._add_failure(
+                "Invalid URI specified. " + str(e),
+                FailureLevel.ERROR
+            )
+            return
+
+        if not netloc:
             self._add_failure(
                 f"Invalid URI specified. Please review the provided URI ('{uri}')",
                 FailureLevel.ERROR,
             )
 
         default_mysql_port = 3306
-        if not uri_parse.port:
+
+        try:
+            port = uri_parse.port
+        except ValueError as e:
             self._add_failure(
-                f"No port specified in the URI. Assuming the use of '{default_mysql_port}'",
+                "Invalid URI specified. " + str(e),
+                FailureLevel.ERROR
+            )
+            return
+
+        if not port:
+            self._add_failure(
+                f"No port specified in the URI. Assuming the use of port {default_mysql_port}",
                 FailureLevel.WARNING,
             )
