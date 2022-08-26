@@ -88,6 +88,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
+    get_slurm_database_dna_json_for_head_node,
     get_directory_service_dna_json_for_head_node,
     get_lambda_log_group_prefix,
     get_log_group_deletion_policy,
@@ -982,6 +983,11 @@ class ClusterCdkStack(Stack):
                     ),
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
+                        if self._condition_is_slurm()
+                        else {}
+                    ),
+                    **(
+                        get_slurm_database_dna_json_for_head_node(self.config)
                         if self._condition_is_slurm()
                         else {}
                     ),
