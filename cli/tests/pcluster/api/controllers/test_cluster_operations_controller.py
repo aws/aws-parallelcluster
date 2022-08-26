@@ -686,7 +686,7 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
-                    "scheduler": {"type": "plugin", "metadata": {"name": "my_scheduler", "version": "1.0.0"}},
+                    "scheduler": {"type": "plugin"},
                 },
             ),
             (
@@ -798,13 +798,17 @@ class TestDescribeCluster:
             mocker.patch(
                 "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
             ).return_value = "presigned-url"
+            config_mock = mocker.patch("pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock)
+            config_mock.return_value.scheduling.settings.scheduler_definition.metadata = metadata
+            config_mock.return_value.scheduling.scheduler = scheduler
         else:
             mocker.patch(
                 "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
             ).side_effect = ClusterActionError("failed")
-        config_mock = mocker.patch("pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock)
-        config_mock.return_value.scheduling.settings.scheduler_definition.metadata = metadata
-        config_mock.return_value.scheduling.scheduler = scheduler
+            mocker.patch(
+                "pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock
+            ).side_effect = ClusterActionError("failed")
+
         response = self._send_test_request(client)
 
         with soft_assertions():
