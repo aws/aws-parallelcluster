@@ -63,6 +63,8 @@ main() {
         sed -i "s| ShortVersion: $CURRENT_VERSION_SHORT| ShortVersion: $NEW_VERSION_SHORT|g" api/infrastructure/parallelcluster-api.yaml
         sed -i "s| version: $CURRENT_VERSION_SHORT| version: $NEW_VERSION_SHORT|g" api/spec/openapi/ParallelCluster.openapi.yaml
         sed -i "s| version: \"$CURRENT_VERSION_SHORT\"| version: \"$NEW_VERSION_SHORT\"|g" api/spec/smithy/model/parallelcluster.smithy
+
+        pushd api && ./gradlew generatePythonClient && popd
     fi
 
     if [ "${_plugin_interface_version}" ]; then
