@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.2.1
+-----
+
+**BUG FIXES**
+- Avoid failing on DescribeCluster when cluster configuration is not available.
+
 3.2.0
 ------
 
