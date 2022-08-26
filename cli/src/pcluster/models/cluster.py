@@ -256,7 +256,7 @@ class Cluster:
             except ConfigValidationError as exc:
                 raise exc
             except Exception as e:
-                raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}")
+                raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}") from e
         return self.__config
 
     @config.setter
@@ -1201,5 +1201,13 @@ class Cluster:
 
     def get_plugin_metadata(self):
         """Get the metadata name and version used for the response of DescribeCluster when the scheduler is plugin."""
-        full_metadata = get_attr(self.config, "scheduling.settings.scheduler_definition.metadata")
-        return Metadata(name=full_metadata.get("Name"), version=full_metadata.get("Version")) if full_metadata else None
+        try:
+            full_metadata = get_attr(self.config, "scheduling.settings.scheduler_definition.metadata")
+            return (
+                Metadata(name=full_metadata.get("Name"), version=full_metadata.get("Version"))
+                if full_metadata
+                else None
+            )
+        except ClusterActionError:
+            LOGGER.warning("Unable to retrieve scheduler metadata from cluster configuration.")
+            return None
