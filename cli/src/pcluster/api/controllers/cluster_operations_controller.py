@@ -80,6 +80,7 @@ def create_cluster(
     validation_failure_level: str = None,
     dryrun: bool = None,
     rollback_on_failure: bool = None,
+    enable_termination_protection: bool = False,
 ) -> CreateClusterResponseContent:
     """
     Create a managed cluster in a given region.
@@ -98,6 +99,8 @@ def create_cluster(
     :param rollback_on_failure: When set it automatically initiates a cluster stack rollback on failures.
     (Defaults to &#39;true&#39;.)
     :type rollback_on_failure: bool
+    :param enable_termination_protection: When set, enables termination protection for the cluster stack
+    :type enable_termination_protection: bool
     """
     assert_valid_node_js()
     # Set defaults
@@ -127,6 +130,7 @@ def create_cluster(
             disable_rollback=not rollback_on_failure,
             validator_suppressors=get_validator_suppressors(suppress_validators),
             validation_failure_level=FailureLevel[validation_failure_level],
+            enable_termination_protection=enable_termination_protection,
         )
 
         return CreateClusterResponseContent(

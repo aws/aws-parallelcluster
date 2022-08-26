@@ -46,6 +46,11 @@ def add_additional_args(parser_map):
     calling the underlying function for the situation where they are not a part
     of the specification.
     """
+    parser_map["create-cluster"].add_argument(
+        "--enable-termination-protection",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     parser_map["create-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
     parser_map["delete-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
     parser_map["update-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)

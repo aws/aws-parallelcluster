@@ -150,6 +150,7 @@ class PclusterApi:
         disable_rollback: bool = False,
         suppress_validators: bool = False,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
+        enable_termination_protection: bool = False,
     ):
         """
         Load cluster model from cluster_config and create stack.
@@ -160,6 +161,7 @@ class PclusterApi:
         :param disable_rollback: Disable rollback in case of failures
         :param suppress_validators: Disable validator execution
         :param validation_failure_level: Min validation level that will cause the creation to fail
+        :param enable_termination_protection: Termination protection for the Cfn stack
         """
         try:
             # Generate model from config dict and validate
@@ -172,7 +174,12 @@ class PclusterApi:
             # check cluster existence
             if AWSApi.instance().cfn.stack_exists(cluster.stack_name):
                 raise Exception(f"Cluster {cluster.name} already exists")
-            cluster.create(disable_rollback, validator_suppressors, validation_failure_level)
+            cluster.create(
+                disable_rollback,
+                validator_suppressors,
+                validation_failure_level,
+                enable_termination_protection=enable_termination_protection,
+            )
             return ClusterInfo(cluster.stack)
         except ConfigValidationError as e:
             return ApiFailure(str(e), validation_failures=e.validation_failures)
