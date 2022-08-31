@@ -18,7 +18,8 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-11
           DisableSimultaneousMultithreading: true
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 1
     - Name: ht-enabled
       Networking:
@@ -27,7 +28,8 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-21
           DisableSimultaneousMultithreading: false
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 1
 SharedStorage:
   - MountDir: /shared

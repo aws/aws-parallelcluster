@@ -15,7 +15,8 @@ Scheduling:
       CapacityType: SPOT
       ComputeResources:
         - Name: compute-i1
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: {{ min_count }}
       Networking:
         SubnetIds:

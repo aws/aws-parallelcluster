@@ -13,7 +13,8 @@ Scheduling:
     - Name: queue1
       ComputeResources:
         - Name: queue1-i1
-          InstanceType: c5.xlarge
+          InstanceTypeList:
+            - InstanceType: c5.xlarge
           MinCount: 1
           MaxCount: 2
       ComputeSettings:
@@ -26,7 +27,8 @@ Scheduling:
     - Name: queue2
       ComputeResources:
         - Name: queue2-i1
-          InstanceType: c5.xlarge
+          InstanceTypeList:
+            - InstanceType: c5.xlarge
           MinCount: 1
           MaxCount: 2
       Networking:

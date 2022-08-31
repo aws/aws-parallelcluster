@@ -18,7 +18,7 @@ Scheduling:
           InstanceType: c5.large
           MinCount: 1
         - Name: ondemand1-i1
-          InstanceType: {{ instance }}
+          InstanceType: { instance }}
 SharedStorage:
   - MountDir: /shared
     Name: name1
