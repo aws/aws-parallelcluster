@@ -119,7 +119,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
-    PlacementGroupIdValidator,
+    PlacementGroupNamingValidator,
 )
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
@@ -539,13 +539,14 @@ class HeadNodeNetworking(_BaseNetworking):
 class PlacementGroup(Resource):
     """Represent the placement group for the Queue networking."""
 
-    def __init__(self, enabled: bool = None, id: str = None):
+    def __init__(self, enabled: bool = None, name: str = None, id: str = None):
         super().__init__()
         self.enabled = Resource.init_param(enabled, default=False)
-        self.id = Resource.init_param(id)
+        self.name = Resource.init_param(name)
+        self.id = Resource.init_param(id)  # Duplicate of name
 
     def _register_validators(self):
-        self._register_validator(PlacementGroupIdValidator, placement_group=self)
+        self._register_validator(PlacementGroupNamingValidator, placement_group=self)
 
 
 class _QueueNetworking(_BaseNetworking):
