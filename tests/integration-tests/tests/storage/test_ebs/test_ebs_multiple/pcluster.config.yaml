@@ -35,7 +35,8 @@ Scheduling:
           MinvCpus: 4
           DesiredvCpus: 4
           {% else %}
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 1
           {% endif %}
       Networking:

@@ -24,7 +24,8 @@ Scheduling:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: broken-static
-          InstanceType: c5.large # instance type has bootstrap failure
+          InstanceTypeList:
+            - InstanceType: c5.large # instance type has bootstrap failure
           MinCount: 2
           MaxCount: 250
       Iam:
@@ -41,10 +42,12 @@ Scheduling:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: broken-dynamic
-          InstanceType: c5.large # instance type has bootstrap failure
+          InstanceTypeList:
+            - InstanceType: c5.large # instance type has bootstrap failure
           MaxCount: 250
         - Name: working-static
-          InstanceType: c5.xlarge # instance type works as expected
+          InstanceTypeList:
+            - InstanceType: c5.xlarge # instance type works as expected
           MinCount: 1
           MaxCount: 250
       Iam:
@@ -61,7 +64,8 @@ Scheduling:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: normal
-          InstanceType: c5.xlarge # instance type works as expected
+          InstanceTypeList:
+            - InstanceType: c5.xlarge # instance type works as expected
           MinCount: 1
           MaxCount: 250
       Iam:

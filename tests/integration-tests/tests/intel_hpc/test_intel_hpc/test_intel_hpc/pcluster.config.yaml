@@ -25,7 +25,8 @@ Scheduling:
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           {% endif %}
           MinCount: 2
       Networking:

@@ -34,11 +34,13 @@ Scheduling:
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: queue1-i1
-          InstanceType: c5.xlarge
+          InstanceTypeList:
+            - InstanceType: c5.xlarge
           MinCount: 1
           MaxCount: 2
         - Name: queue1-i2
-          InstanceType: t2.micro
+          InstanceTypeList:
+            - InstanceType: t2.micro
           MinCount: 1
       Networking:
         SubnetIds:
@@ -56,7 +58,8 @@ Scheduling:
         - Name: queue2-i1
           Efa:
             Enabled: true
-          InstanceType: c5n.18xlarge
+          InstanceTypeList:
+            - InstanceType: c5n.18xlarge
       Iam:
         S3Access:
           - BucketName: {{ resource_bucket }}
