@@ -393,6 +393,8 @@ def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, cluste
         pcluster_ami_id, "-".join(["test", "update", "computenode", generate_random_string()])
     )
 
+    _wait_for_image_available(ec2, pcluster_copy_ami_id)
+
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml", global_custom_ami=pcluster_ami_id, custom_ami=pcluster_copy_ami_id
     )
@@ -402,6 +404,12 @@ def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, cluste
     instances = cluster.get_cluster_instance_ids(node_type="Compute")
     logging.info(instances)
     _check_instance_ami_id(ec2, instances, pcluster_copy_ami_id)
+
+
+def _wait_for_image_available(ec2_client, image_id):
+    logging.info(f"Waiting for {image_id} to be available")
+    waiter = ec2_client.get_waiter("image_available")
+    waiter.wait(Filters=[{"Name": "image-id", "Values": [image_id]}], WaiterConfig={"Delay": 60, "MaxAttempts": 10})
 
 
 def _check_instance_ami_id(ec2, instances, expected_queue_ami):
@@ -489,7 +497,8 @@ def test_queue_parameters_update(
         updated_compute_root_volume_size,
         queue_update_strategy,
     )
-
+    ec2 = boto3.client("ec2", region_name=region)
+    _wait_for_image_available(ec2, pcluster_copy_ami_id)
     # test update without setting queue strategy, update will fail
     _test_update_without_queue_strategy(
         pcluster_config_reader, pcluster_ami_id, pcluster_copy_ami_id, cluster, updated_compute_root_volume_size
