@@ -11,7 +11,7 @@
 
 import os
 
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, setup
 
 
 def readme():
@@ -65,7 +65,7 @@ setup(
     url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     package_dir={"": "src"},
-    packages=find_packages("src"),
+    packages=find_namespace_packages("src"),
     python_requires=">=3.7",
     install_requires=REQUIRES,
     extras_require={
