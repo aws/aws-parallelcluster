@@ -26,7 +26,8 @@ Scheduling:
             - {{ instance }}
           {% else %}
           InstanceTypeList:
-            - InstanceType: {{ instance }}
+            - InstanceType: c5n.18xlarge
+            - InstanceType: c5n.metal
           {% endif %}
           MinCount: 2
       Networking:
