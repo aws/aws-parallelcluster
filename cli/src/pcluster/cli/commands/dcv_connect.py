@@ -17,11 +17,9 @@ from typing import List
 
 from argparse import ArgumentParser, Namespace
 
-from pcluster.api.pcluster_api import PclusterApi
-from pcluster.aws.common import get_region
 from pcluster.cli.commands.common import CliCommand
 from pcluster.constants import PCLUSTER_ISSUES_LINK
-from pcluster.models.cluster import NodeType
+from pcluster.models.cluster import Cluster
 from pcluster.utils import error
 
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
@@ -47,14 +45,15 @@ def _dcv_connect(args):
 
     :param args: pcluster cli arguments.
     """
-    result = PclusterApi().describe_cluster_instances(
-        cluster_name=args.cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
-    )
-    if isinstance(result, list) and len(result) == 1:
-        head_node_ip = result[0].public_ip_address or result[0].private_ip_address
+    try:
+        head_node = Cluster(args.cluster_name).head_node_instance
+    except Exception as e:
+        error(f"Unable to connect to the cluster.\n{e}")
+    else:
+        head_node_ip = head_node.public_ip or head_node.private_ip
         # Prepare ssh command to execute in the head node instance
         cmd = 'ssh {CFN_USER}@{HEAD_NODE_IP} {KEY} "{REMOTE_COMMAND} /home/{CFN_USER}"'.format(
-            CFN_USER=result[0].user,
+            CFN_USER=head_node.default_user,
             HEAD_NODE_IP=head_node_ip,
             KEY="-i {0}".format(args.key_path) if args.key_path else "",
             REMOTE_COMMAND=DCV_CONNECT_SCRIPT,
@@ -80,8 +79,6 @@ def _dcv_connect(args):
                 "Please check the logs in the /var/log/parallelcluster/ folder "
                 "of the head node and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
             )
-    else:
-        error(f"Unable to connect to the cluster.\n{result.message}")
 
 
 def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
