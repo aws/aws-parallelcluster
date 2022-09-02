@@ -99,21 +99,27 @@ class KeyPairValidator(Validator):
             )
 
 
-class PlacementGroupIdValidator(Validator):  # TODO: add tests
-    """Placement group id validator."""
+class PlacementGroupNamingValidator(Validator):  # TODO: add tests
+    """Placement group naming validator."""
 
     def _validate(self, placement_group):
-        if placement_group.id:
+        if placement_group.id and placement_group.name:
+            self._add_failure(
+                "PlacementGroup Id cannot be set when setting PlacementGroup Name.  Please "
+                "set either Id or Name but not both.",
+                FailureLevel.ERROR,
+            )
+        identifier = placement_group.name or placement_group.id
+        if identifier:
             if not placement_group.is_implied("enabled") and not placement_group.enabled:
                 self._add_failure(
-                    "PlacementGroup Id can not be set when setting 'Enabled: false' in queue's "
-                    "networking section. Please remove PlacementGroup Id if you don't want"
-                    " to use PlacementGroup.",
+                    "The PlacementGroup feature must be enabled (Enabled: true) in order "
+                    "to assign a Name or Id parameter",
                     FailureLevel.ERROR,
                 )
             else:
                 try:
-                    AWSApi.instance().ec2.describe_placement_group(placement_group.id)
+                    AWSApi.instance().ec2.describe_placement_group(identifier)
                 except AWSClientError as e:
                     self._add_failure(str(e), FailureLevel.ERROR)
 

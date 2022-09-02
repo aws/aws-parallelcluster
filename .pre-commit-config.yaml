@@ -1,5 +1,5 @@
 repos:
-  - repo: git://github.com/pre-commit/pre-commit-hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.4.0
     hooks:
       - id: trailing-whitespace
@@ -37,7 +37,7 @@ repos:
         args: ['-rc', '-w 120', '--settings-path=cli/.isort.cfg']
 
   - repo: https://github.com/ambv/black
-    rev: 20.8b1
+    rev: 22.6.0
     hooks:
       - id: black
         args: ['-l 120']
