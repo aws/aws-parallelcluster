@@ -1,7 +1,7 @@
 usage: pcluster export-cluster-logs [-h] [--debug] [-r REGION] -n CLUSTER_NAME
                                     --bucket BUCKET
-                                    [--output-file OUTPUT_FILE]
                                     [--bucket-prefix BUCKET_PREFIX]
+                                    [--output-file OUTPUT_FILE]
                                     [--keep-s3-objects KEEP_S3_OBJECTS]
                                     [--start-time START_TIME]
                                     [--end-time END_TIME]
@@ -19,14 +19,15 @@ options:
                         Export the logs of the cluster name provided here.
   --bucket BUCKET       S3 bucket to export cluster logs data to. It must be
                         in the same region of the cluster
+  --bucket-prefix BUCKET_PREFIX
+                        Keypath under which exported logs data will be stored
+                        in s3 bucket. Defaults to <cluster_name>-logs-<current
+                        time in the format of yyyyMMddHHmm>
   --output-file OUTPUT_FILE
                         File path to save log archive to. If this is provided
                         the logs are saved locally. Otherwise they are
                         uploaded to S3 with the url returned in the output.
                         Default is to upload to S3.
-  --bucket-prefix BUCKET_PREFIX
-                        Keypath under which exported logs data will be stored
-                        in s3 bucket.
   --keep-s3-objects KEEP_S3_OBJECTS
                         Keep the exported objects exports to S3. (Defaults to
                         'false'.)
