@@ -7,6 +7,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add new configuration parameter `DeletionPolicy` for EFs and FSx for Lustre shared storage 
   to support storage retention on deletion.
+- Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
@@ -20,6 +21,7 @@ CHANGELOG
   along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
 - Fix cluster update when changing the order of SharedStorage together with other changes in the configuration.
 - Avoid failing on DescribeCluster when cluster configuration is not available.
+- Fix `UpdateParallelClusterLambdaRole` in the ParallelCluster API to upload logs to CloudWatch.
 
 3.2.0
 ------
