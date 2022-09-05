@@ -363,6 +363,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
             "MixedSecurityGroupOverwriteValidator",
             "HostedZoneValidator",
             "InstanceTypeMemoryInfoValidator",
+            "FlexibleInstanceTypesValidator",  # FlexibleInstanceTypes Only supported in Slurm
         ]:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue

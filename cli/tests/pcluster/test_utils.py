@@ -190,6 +190,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(c4_instance_info.max_network_interface_count()).is_equal_to(1)
     assert_that(c4_instance_info.default_threads_per_core()).is_equal_to(2)
     assert_that(c4_instance_info.vcpus_count()).is_equal_to(4)
+    assert_that(c4_instance_info.cores_count()).is_equal_to(2)
     assert_that(c4_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(c4_instance_info.is_efa_supported()).is_equal_to(False)
 

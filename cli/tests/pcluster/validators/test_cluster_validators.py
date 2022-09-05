@@ -28,6 +28,7 @@ from pcluster.validators.cluster_validators import (
     EfaSecurityGroupValidator,
     EfaValidator,
     ExistingFsxNetworkingValidator,
+    FlexibleInstanceTypesValidator,
     FsxArchitectureOsValidator,
     HeadNodeImdsValidator,
     HostedZoneValidator,
@@ -187,6 +188,293 @@ def test_max_count_validator(resource_name, resources_length, max_length, expect
 )
 def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_type, expected_message):
     actual_failures = SchedulableMemoryValidator().execute(schedulable_memory, ec2memory, instance_type)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+# ---------------- Flexible Instance Types validators ---------------- #
+
+
+@pytest.mark.parametrize(
+    "queue_name, compute_resource_name, instance_types_info, disable_simultaneous_multithreading, efa_enabled, "
+    "placement_group_enabled, expected_message",
+    [
+        # Instance Types should have the same number of CPUs
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 5, "DefaultCores": 2}}),
+            },
+            False,
+            False,
+            False,
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of vCPUs.",
+        ),
+        # InstanceTypes should have the same number of cores if simultaneous multithreading is disabled
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4}}),
+                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 5, "DefaultCores": 2}}),
+            },
+            True,
+            False,
+            False,
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of CPU "
+            "cores when Simultaneous Multithreading is disabled.",
+        ),
+        # Instance Types should have the same number of GPUs
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "g4dn.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {"Name": "T4", "Manufacturer": "NVIDIA", "Count": 1, "MemoryInfo": {"SizeInMiB": 16384}}
+                            ],
+                            "TotalGpuMemoryInMiB": 16384,
+                        },
+                    }
+                ),
+                "g5.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {
+                                    "Name": "A10G",
+                                    "Manufacturer": "NVIDIA",
+                                    "Count": 2,
+                                    "MemoryInfo": {"SizeInMiB": 24576},
+                                }
+                            ],
+                            "TotalGpuMemoryInMiB": 24576,
+                        },
+                    }
+                ),
+            },
+            False,
+            False,
+            False,
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of GPUs.",
+        ),
+        # Instance Types should have the same number of Accelerators
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "inf1.6xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+                "inf1.2xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 1, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+            },
+            False,
+            False,
+            False,
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of Inference "
+            "Accelerators.",
+        ),
+        # Instance Types should have the same GPU manufacturer
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "g4dn.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {"Name": "T4", "Manufacturer": "NVIDIA", "Count": 2, "MemoryInfo": {"SizeInMiB": 16384}}
+                            ],
+                            "TotalGpuMemoryInMiB": 16384,
+                        },
+                    }
+                ),
+                "g5.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {
+                                    "Name": "A10G",
+                                    "Manufacturer": "OtherGPUManufacturers",
+                                    "Count": 2,
+                                    "MemoryInfo": {"SizeInMiB": 24576},
+                                }
+                            ],
+                            "TotalGpuMemoryInMiB": 24576,
+                        },
+                    }
+                ),
+            },
+            False,
+            False,
+            False,
+            "Instance types listed under Compute Resource TestComputeResource must have the same GPU manufacturer.",
+        ),
+        # Instance Types should have the same Accelerator Name (Inferentia)
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "inf1.6xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+                "inf1.2xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "AnotherName", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+            },
+            False,
+            False,
+            False,
+            "Instance types listed under Compute Resource TestComputeResource must have the same inference "
+            "accelerator manufacturer",
+        ),
+        # Instance Types should have the same EFA support status if EFA is enabled
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": True},
+                    }
+                ),
+            },
+            False,
+            True,
+            False,
+            "Instance types (t2.micro,t3.micro) in Compute Resource TestComputeResource do not support EFA.",
+        ),
+        # If EFA is NOT enabled and one or more instance types supports EFA, a WARNING message should be printed
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": True},
+                    }
+                ),
+            },
+            False,
+            False,
+            False,
+            "The EC2 instance type(s) selected (c5n.18xlarge) for the Compute Resource TestComputeResource support "
+            "enhanced networking capabilities using Elastic Fabric Adapter (EFA). EFA enables you to run applications "
+            "requiring high levels of inter-node communications at scale on AWS at no additional charge. You can "
+            "update the cluster's configuration to enable EFA ("
+            "https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html).",
+        ),
+        # Instance Types with varying Maximum NICs will have the smallest one used when setting the launch template
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "NetworkInfo": {"MaximumNetworkCards": 4},
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "NetworkInfo": {"MaximumNetworkCards": 2},
+                    }
+                ),
+            },
+            False,
+            False,
+            False,
+            "Compute Resource TestComputeResource has instance types with varying numbers of network cards (Min: 2, "
+            "Max: 4). Compute Resource will be created with 2 network cards.",
+        ),
+        # Using a placement group while having compute resources with multiple instance types increases the chances of
+        # getting an Insufficient Capacity Error
+        (
+            "TestQueue",
+            "TestComputeResource",
+            {},
+            False,
+            False,
+            True,
+            "Enabling placement groups for queue: TestQueue may result in Insufficient Capacity Errors due to the "
+            "use of multiple instance types for Compute Resource: TestComputeResource ("
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html#placement-groups-cluster).",
+        ),
+    ],
+)
+def test_flexible_instance_types_validator(
+    queue_name,
+    compute_resource_name,
+    instance_types_info,
+    disable_simultaneous_multithreading,
+    efa_enabled,
+    placement_group_enabled,
+    expected_message,
+):
+    actual_failures = FlexibleInstanceTypesValidator().execute(
+        queue_name,
+        compute_resource_name,
+        instance_types_info,
+        disable_simultaneous_multithreading,
+        efa_enabled,
+        placement_group_enabled,
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 

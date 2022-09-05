@@ -77,6 +77,7 @@ from pcluster.validators.cluster_validators import (
     EfaValidator,
     EfsIdValidator,
     ExistingFsxNetworkingValidator,
+    FlexibleInstanceTypesValidator,
     FsxArchitectureOsValidator,
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
@@ -1863,6 +1864,18 @@ class SlurmQueue(_CommonQueue):
                 efa_enabled=compute_resource.efa.enabled,
                 placement_group=self.networking.placement_group,
             )
+
+            if isinstance(compute_resource, SlurmFlexibleComputeResource):
+                validator_args = dict(
+                    queue_name=self.name,
+                    compute_resource_name=compute_resource.name,
+                    instance_types_info=compute_resource.instance_type_info_map,
+                    disable_simultaneous_multithreading=compute_resource.disable_simultaneous_multithreading,
+                    efa_enabled=compute_resource.efa,
+                    placement_group_enabled=self.networking.placement_group and self.networking.placement_group.enabled,
+                )
+                self._register_validator(FlexibleInstanceTypesValidator, **validator_args)
+
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
                     CapacityTypeValidator,

@@ -164,7 +164,6 @@ class InstanceTypeInfo:
 
     def gpu_count(self):
         """Return the number of GPUs for the instance."""
-        # FixMe: this method is not used in the pcluster3 CLI
         gpu_info = self.instance_type_data.get("GpuInfo", None)
 
         gpu_count = 0
@@ -183,9 +182,39 @@ class InstanceTypeInfo:
 
         return gpu_count
 
+    def gpu_manufacturers(self):
+        """Return the list of GPU manufacturers supported by this instance type."""
+        gpu_info = self.instance_type_data.get("GpuInfo", None)
+
+        if gpu_info:
+            return list({gpu.get("Manufacturer") for gpu in gpu_info.get("Gpus", [])})
+        return []
+
+    def inference_accelerator_names(self):
+        """Return the list of Inference Accelerator Manufacturers supported by this instance type."""
+        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", None)
+
+        if inference_accelerator_info:
+            return list({accelerator.get("Name") for accelerator in inference_accelerator_info.get("Accelerators", [])})
+        return []
+
+    def inference_accelerator_count(self):
+        """Return the total number of Inference Accelerators associated with this instance type."""
+        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", None)
+
+        accelerator_count = 0
+        if inference_accelerator_info:
+            for accelerator in inference_accelerator_info.get("Accelerators", []):
+                accelerator_name = accelerator.get("Name", "")
+                if accelerator_name.lower() == "inferentia":
+                    accelerator_count += accelerator.get("Count", 0)
+                else:
+                    LOGGER.warning("ParallelCluster currently does not support %s accelerators.", accelerator_name)
+        return accelerator_count
+
     def max_network_interface_count(self) -> int:
         """Max number of NICs for the instance."""
-        return int(self.instance_type_data.get("NetworkInfo").get("MaximumNetworkCards", 1))
+        return int(self.instance_type_data.get("NetworkInfo", {}).get("MaximumNetworkCards", 1))
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""
@@ -201,6 +230,16 @@ class InstanceTypeInfo:
 
         return vcpus
 
+    def cores_count(self) -> int:
+        """Get number of cores for the given instance type."""
+        try:
+            vcpus_info = self.instance_type_data.get("VCpuInfo")
+            cores = vcpus_info.get("DefaultCores")
+        except KeyError:
+            cores = -1
+
+        return cores
+
     def instance_storage_supported(self) -> bool:
         """Indicate whether instance storage is supported."""
         return self.instance_type_data.get("InstanceStorageSupported")
@@ -213,7 +252,7 @@ class InstanceTypeInfo:
 
     def is_efa_supported(self):
         """Check whether EFA is supported."""
-        return self.instance_type_data.get("NetworkInfo").get("EfaSupported")
+        return self.instance_type_data.get("NetworkInfo", {}).get("EfaSupported")
 
     def instance_type(self):
         """Get the instance type."""
