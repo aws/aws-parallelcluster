@@ -5,7 +5,7 @@ CHANGELOG
 -----
 
 **ENHANCEMENTS**
-- Add new configuration parameter `DeletionPolicy` for EFs and FSx for Lustre shared storage 
+- Add new configuration parameter `DeletionPolicy` for EFs and FSx for Lustre shared storage
   to support storage retention on deletion.
 
 **CHANGES**
@@ -14,9 +14,10 @@ CHANGELOG
 - Move head node tags from Launch Template to instance definition to avoid head node replacement on tags updates.
 - Disable Multithreading through script executed by cloud-init and not through CpuOptions set into Launch Template.
 - Add support for multiple instance types in the same Compute Resource.
+- Add support for a Name field in PlacementGroup as the preferred naming method.
 
 **BUG FIXES**
-- Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified 
+- Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified
   along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
 - Fix cluster update when changing the order of SharedStorage together with other changes in the configuration.
 - Avoid failing on DescribeCluster when cluster configuration is not available.
@@ -74,7 +75,7 @@ CHANGELOG
 - Fix file handle leak in `computemgtd`.
 - Fix race condition that was sporadically causing launched instances to be immediately terminated because not available yet in EC2 DescribeInstances response
 - Fix support for `DisableSimultaneousMultithreading` parameter on instance types with Arm processors.
-- Fix ParallelCluster API stack update failure when upgrading from a previus version. Add resource pattern used for the `ListImagePipelineImages` action in the `EcrImageDeletionLambdaRole`. 
+- Fix ParallelCluster API stack update failure when upgrading from a previus version. Add resource pattern used for the `ListImagePipelineImages` action in the `EcrImageDeletionLambdaRole`.
 - Fix ParallelCluster API adding missing permissions needed to import/export from S3 when creating an FSx for Lustre storage.
 
 3.1.4
