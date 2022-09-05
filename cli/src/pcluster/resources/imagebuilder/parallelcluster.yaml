@@ -197,7 +197,22 @@ phases:
           commands:
             - |
               set -v
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+
+              if [[ ${!PLATFORM} == RHEL ]]; then
+                CA_CERTS_FILE=/etc/ssl/certs/ca-bundle.crt
+                yum -y upgrade ca-certificates
+              elif [[ ${!PLATFORM} == DEBIAN ]]; then
+                CA_CERTS_FILE=/etc/ssl/certs/ca-certificates.crt
+                apt-get -y --only-upgrade install ca-certificates
+              fi
+
               curl --retry 3 -L {{ build.CincUrl.outputs.stdout }} | bash -s -- -v {{ ChefVersion }}
+
+              if [[ -e ${!CA_CERTS_FILE} ]]; then
+                ln -sf ${!CA_CERTS_FILE} /opt/cinc/embedded/ssl/certs/cacert.pem
+              fi
+
               /opt/cinc/embedded/bin/gem install --no-document berkshelf:{{ BerkshelfVersion }}
 
       # Download and vendor Cookbook
