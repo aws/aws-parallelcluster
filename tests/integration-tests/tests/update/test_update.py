@@ -376,6 +376,54 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
 
 @pytest.mark.usefixtures("instance")
+def test_update_instance_list(
+    region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir, request, scheduler_commands_factory
+):
+    ec2 = boto3.client("ec2", region)
+    init_config_file = pcluster_config_reader()
+    cluster = clusters_factory(init_config_file)
+    # Command executor
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    # Assert min count
+    instances = cluster.get_cluster_instance_ids(node_type="Compute")
+    logging.info(instances)
+    assert_that(len(instances)).is_equal_to(1)
+
+    # Submit exclusive job on static node
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 1000", "nodes": 1, "other_options": "--exclusive"}
+    )
+    # Check instance type is the expected for min count
+    _check_instance_type(ec2, instances, "c5.xlarge")
+
+    # Update cluster with new configuration, adding new instance type with lower price
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
+    cluster.update(str(updated_config_file))
+
+    # Submit another exclusive job on lower price instance
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 1000", "nodes": 1, "other_options": "--exclusive"}
+    )
+    scheduler_commands.wait_job_running(job_id)
+
+    # Get new instance
+    new_instances = cluster.get_cluster_instance_ids(node_type="Compute")
+    logging.info(new_instances)
+    new_instances.remove(instances[0])
+    # Check new instance type is the expected one
+    _check_instance_type(ec2, new_instances, "t3.xlarge")
+
+    # Update cluster removing instance type from the list
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.remove.yaml")
+    response = cluster.update(str(updated_config_file), raise_on_error=False)
+    assert_that(response["message"]).is_equal_to("Update failure")
+    assert_that(response.get("updateValidationErrors")[0].get("message")).contains("All compute nodes must be stopped")
+
+
+@pytest.mark.usefixtures("instance")
 def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir, request):
     # Create cluster with initial configuration
     ec2 = boto3.client("ec2", region)
@@ -413,6 +461,12 @@ def _check_instance_ami_id(ec2, instances, expected_queue_ami):
     for instance_id in instances:
         instance_info = ec2.describe_instances(Filters=[], InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
         assert_that(instance_info["ImageId"]).is_equal_to(expected_queue_ami)
+
+
+def _check_instance_type(ec2, instances, expected_instance_type):
+    for instance_id in instances:
+        instance_info = ec2.describe_instances(Filters=[], InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
+        assert_that(instance_info["InstanceType"]).is_equal_to(expected_instance_type)
 
 
 def _verify_initialization(region, cluster, config):

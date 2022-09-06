@@ -20,7 +20,8 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: broken-static
-          InstanceType: c5.large # instance type has bootstrap failure
+          InstanceTypeList:
+            - InstanceType: c5.large # instance type has bootstrap failure
           MinCount: 3 # Set min_count larger than bootstrap failure threshold (which is 2) to test pcluster stop and start don't treat static nodes as bootstrap failure nodes and not set into protected node
       Iam:
         S3Access:
@@ -32,9 +33,11 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: broken-dynamic
-          InstanceType: c5.large # instance type has bootstrap failure
+          InstanceTypeList:
+            - InstanceType: c5.large # instance type has bootstrap failure
         - Name: working-static
-          InstanceType: c5.xlarge # instance type works as expected
+          InstanceTypeList:
+            - InstanceType: c5.xlarge # instance type works as expected
       Iam:
         S3Access:
           - BucketName: {{ bucket }}
@@ -45,7 +48,8 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: normal
-          InstanceType: c5.xlarge # instance type works as expected
+          InstanceTypeList:
+            - InstanceType: c5.xlarge # instance type works as expected
       Iam:
         S3Access:
           - BucketName: {{ bucket }}

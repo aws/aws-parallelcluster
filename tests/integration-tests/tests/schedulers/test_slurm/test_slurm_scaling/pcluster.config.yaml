@@ -22,9 +22,11 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: dummy-1
-          InstanceType: c5.large
+          InstanceTypeList:
+            - InstanceType: c5.large
         - Name: ondemand1-i1
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 2   # FIXME expecting 3 initial nodes and a min count of 2
     - Name: ondemand2
       Networking:
@@ -32,7 +34,9 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: dummy-2
-          InstanceType: c5.large
+          InstanceTypeList:
+            - InstanceType: c5.large
         - Name: ondemand2-i1
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 2

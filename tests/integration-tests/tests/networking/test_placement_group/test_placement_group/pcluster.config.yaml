@@ -14,7 +14,8 @@ Scheduling:
     - Name: dynamic
       ComputeResources:
         - Name: compute-resource-0
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MaxCount: 5
       Networking:
         PlacementGroup:
@@ -24,7 +25,8 @@ Scheduling:
     - Name: existing
       ComputeResources:
         - Name: compute-resource-1
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
       Networking:
         PlacementGroup:
           Id: {{ placement_group }}

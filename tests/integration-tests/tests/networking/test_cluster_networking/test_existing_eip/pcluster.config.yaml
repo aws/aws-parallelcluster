@@ -19,7 +19,8 @@ Scheduling:
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           {% endif %}
       Networking:
         SubnetIds:
