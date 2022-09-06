@@ -777,8 +777,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "us-east-1": ["use1-az6"],
     # some instance type is only supported in use2-az2
     "us-east-2": ["use2-az2"],
-    # c4.xlarge is not supported in usw2-az4
-    "us-west-2": ["usw2-az2", "usw2-az1"],
+    # trn available on usw2-az4
+    "us-west-2": ["usw2-az4"],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
     # m6g.xlarge is not supported in apne1-az2

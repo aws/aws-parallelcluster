@@ -21,7 +21,7 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        - regions: ["us-west-2"]
+        - regions: ["eu-west-1"]
           instances: ["c6gn.16xlarge"]
           oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
           schedulers: ["slurm"]
@@ -102,3 +102,9 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_GOVCLOUD_ARM }}
           schedulers: ["slurm"]
+  trainium:
+    test_trainium.py::test_trainium:
+      dimensions:
+        - regions: ["us-west-2"]
+          schedulers: ["slurm"]
+          oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
