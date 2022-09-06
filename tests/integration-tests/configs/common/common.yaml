@@ -265,7 +265,7 @@ efa:
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-west-2"]
+      - regions: ["eu-west-1"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
