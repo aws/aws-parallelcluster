@@ -109,6 +109,8 @@ echo "Deploying API template"
 aws cloudformation deploy \
     --stack-name ${STACK_NAME} \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
+    --s3-bucket ${S3_BUCKET} \
+    --s3-prefix "api/" \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
                           EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
                           ImageBuilderVpcId="${IMAGE_BUILDER_VPC_ID}" \
