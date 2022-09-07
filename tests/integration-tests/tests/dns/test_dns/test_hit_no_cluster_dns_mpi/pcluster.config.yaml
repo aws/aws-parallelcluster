@@ -21,7 +21,8 @@ Scheduling:
           - {{ public_subnet_id }}
       ComputeResources:
         - Name: default-queue-i1
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ min_queue_size }}
           # initial_count was deprecated. The original config has it set to 1. ToDo Check if using MinCount is a good alternative for the test.

@@ -26,7 +26,8 @@ Scheduling:
           DesiredvCpus: 8
           MaxvCpus: 8
           {% else %}
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 1
           {% endif %}
       Networking:

@@ -21,7 +21,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
-    PlacementGroupIdValidator,
+    PlacementGroupNamingValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -409,6 +409,16 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
             None,
         ),
         (
+            PlacementGroup(enabled=True, name="test"),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            None,
+        ),
+        (
             PlacementGroup(enabled=True),
             {
                 "PlacementGroups": [
@@ -429,7 +439,23 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
             None,
         ),
         (
+            PlacementGroup(name="test"),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            None,
+        ),
+        (
             PlacementGroup(id="test"),
+            None,
+            AWSClientError(function_name="describe_placement_group", message="The Placement Group 'test' is unknown"),
+            "The Placement Group 'test' is unknown",
+        ),
+        (
+            PlacementGroup(name="test"),
             None,
             AWSClientError(function_name="describe_placement_group", message="The Placement Group 'test' is unknown"),
             "The Placement Group 'test' is unknown",
@@ -442,7 +468,28 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "PlacementGroup Id can not be set when setting",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+        ),
+        (
+            PlacementGroup(enabled=False, name="test"),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+        ),
+        (
+            PlacementGroup(enabled=True, id="test", name="test2"),
+            {
+                "PlacementGroups": [
+                    {"GroupName": "test", "State": "available", "Strategy": "cluster", "GroupId": "pg-0123"}
+                ]
+            },
+            None,
+            "PlacementGroup Id cannot be set when setting PlacementGroup Name.  Please "
+            "set either Id or Name but not both.",
         ),
     ],
 )
@@ -455,5 +502,5 @@ def test_placement_group_validator(
         return_value=describe_placement_group_return,
         side_effect=side_effect,
     )
-    actual_failures = PlacementGroupIdValidator().execute(placement_group=placement_group)
+    actual_failures = PlacementGroupNamingValidator().execute(placement_group=placement_group)
     assert_failure_messages(actual_failures, expected_message)

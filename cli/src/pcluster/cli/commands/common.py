@@ -105,10 +105,7 @@ class ExportLogsCommand:
             "Default is to upload to S3.",
             type=os.path.realpath,
         )
-        # Export options
-        parser.add_argument(
-            "--bucket-prefix", help="Keypath under which exported logs data will be stored in s3 bucket."
-        )
+
         parser.add_argument(
             "--keep-s3-objects",
             type=partial(to_bool, "keep-s3-objects"),
