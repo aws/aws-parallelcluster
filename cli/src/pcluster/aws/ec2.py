@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
-from typing import List
+from typing import Any, List, Tuple
 
 from botocore.exceptions import ClientError
 
@@ -306,7 +306,7 @@ class Ec2Client(Boto3Client):
         ]
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_instances(self, filters, next_token=None):
+    def describe_instances(self, filters, next_token=None) -> Tuple[List[Any], str]:
         """Retrieve a filtered list of instances."""
         describe_stacks_kwargs = {}
         if next_token:

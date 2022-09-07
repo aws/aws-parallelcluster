@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-import sys
 import textwrap
 from builtins import str
 from functools import partial
@@ -26,10 +25,8 @@ import argparse
 from argparse import ArgumentParser, Namespace
 
 from pcluster import utils
-from pcluster.api.pcluster_api import PclusterApi
-from pcluster.aws.common import get_region
 from pcluster.cli.commands.common import CliCommand, to_bool
-from pcluster.models.cluster import NodeType
+from pcluster.models.cluster import Cluster
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,39 +40,33 @@ def _ssh(args, extra_args):
     :param extra_args: pcluster CLI extra_args
     """
     try:
-        try:
-            from shlex import quote as cmd_quote
-        except ImportError:
-            from pipes import quote as cmd_quote
+        from shlex import quote as cmd_quote
+    except ImportError:
+        from pipes import quote as cmd_quote
 
-        result = PclusterApi().describe_cluster_instances(
-            cluster_name=args.cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
+    try:
+        head_node = Cluster(args.cluster_name).head_node_instance
+    except Exception as e:
+        utils.error(f"Unable to connect to the cluster {args.cluster_name}.\n{e}")
+    else:
+        # build command
+        cmd = "ssh {CFN_USER}@{HEAD_NODE_IP} {ARGS}".format(
+            CFN_USER=head_node.default_user,
+            HEAD_NODE_IP=head_node.public_ip or head_node.private_ip,
+            ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args),
         )
-        if isinstance(result, list) and len(result) == 1:
-            # build command
-            cmd = "ssh {CFN_USER}@{HEAD_NODE_IP} {ARGS}".format(
-                CFN_USER=result[0].user,
-                HEAD_NODE_IP=result[0].public_ip_address or result[0].private_ip_address,
-                ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args),
-            )
 
-            # run command
-            if not args.dryrun:
-                LOGGER.debug("SSH command: %s", cmd)
-                # A nosec comment is appended to the following line in order to disable the B605 check.
-                # This check is disabled for the following reasons:
-                # - The args passed to the remote command are sanitized.
-                # - The default command to which these args is known.
-                # - Users have full control over any customization of the command to which args are passed.
-                os.system(cmd)  # nosec nosemgrep
-            else:
-                print(json.dumps({"command": cmd}, indent=2))
+        # run command
+        if not args.dryrun:
+            LOGGER.debug("SSH command: %s", cmd)
+            # A nosec comment is appended to the following line in order to disable the B605 check.
+            # This check is disabled for the following reasons:
+            # - The args passed to the remote command are sanitized.
+            # - The default command to which these args is known.
+            # - Users have full control over any customization of the command to which args are passed.
+            os.system(cmd)  # nosec nosemgrep
         else:
-            utils.error(f"Unable to connect to the cluster {args.cluster_name}.\n{result.message}")
-
-    except KeyboardInterrupt:
-        print("\nExiting...")
-        sys.exit(0)
+            print(json.dumps({"command": cmd}, indent=2))
 
 
 class SshCommand(CliCommand):

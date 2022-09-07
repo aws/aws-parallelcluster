@@ -698,7 +698,9 @@ class Cluster:
             filters.append({"Name": f"tag:{PCLUSTER_QUEUE_NAME_TAG}", "Values": [queue_name]})
         return filters
 
-    def describe_instances(self, node_type: NodeType = None, next_token: str = None, queue_name: str = None):
+    def describe_instances(
+        self, node_type: NodeType = None, next_token: str = None, queue_name: str = None
+    ) -> Tuple[List[ClusterInstance], str]:
         """Return the cluster instances filtered by node type."""
         try:
             filters = self._get_instance_filters(node_type, queue_name)

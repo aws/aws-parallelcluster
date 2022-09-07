@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **last_ingestion_time** | **datetime** | The last ingestion time. | 
 **upload_sequence_token** | **str** | The sequence token. | 
 **log_stream_arn** | **str** | The Amazon Resource Name (ARN) of the log stream. | 
+**any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

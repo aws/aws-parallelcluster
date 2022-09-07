@@ -112,14 +112,12 @@ paths:
           schema:
             type: boolean
             description: Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.)
-            nullable: true
         - name: rollbackOnFailure
           in: query
           description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)
           schema:
             type: boolean
             description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)
-            nullable: true
       responses:
         "202":
           description: CreateCluster 202 response
@@ -351,14 +349,12 @@ paths:
           schema:
             type: boolean
             description: Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.)
-            nullable: true
         - name: forceUpdate
           in: query
           description: Force update by ignoring the update validation errors. (Defaults to 'false'.)
           schema:
             type: boolean
             description: Force update by ignoring the update validation errors. (Defaults to 'false'.)
-            nullable: true
       responses:
         "202":
           description: UpdateCluster 202 response
@@ -580,7 +576,6 @@ paths:
           schema:
             type: boolean
             description: Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)
-            nullable: true
       responses:
         "202":
           description: DeleteClusterInstances 202 response
@@ -829,15 +824,12 @@ paths:
           schema:
             type: boolean
             description: If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to 'false'.)
-            nullable: true
         - name: limit
           in: query
           description: The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
           schema:
             type: number
             description: The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
-            format: int32
-            nullable: true
         - name: startTime
           in: query
           description: The start of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or later than this time are included.
@@ -1068,14 +1060,12 @@ paths:
           schema:
             type: boolean
             description: Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.)
-            nullable: true
         - name: rollbackOnFailure
           in: query
           description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.)
           schema:
             type: boolean
             description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.)
-            nullable: true
         - name: region
           in: query
           description: AWS Region that the operation corresponds to.
@@ -1160,7 +1150,6 @@ paths:
           schema:
             type: boolean
             description: Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.)
-            nullable: true
       responses:
         "202":
           description: DeleteImage 202 response
@@ -1383,15 +1372,12 @@ paths:
           schema:
             type: boolean
             description: If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to 'false'.)
-            nullable: true
         - name: limit
           in: query
           description: The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
           schema:
             type: number
             description: The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
-            format: int32
-            nullable: true
         - name: startTime
           in: query
           description: The start of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or later than this time are included.
@@ -1631,7 +1617,7 @@ components:
       properties:
         imageConfiguration:
           type: string
-          description: Image configuration as a YAML document
+          description: Image configuration as a YAML document.
         imageId:
           type: string
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
@@ -1835,7 +1821,7 @@ components:
           description: Name of the cluster that will be created.
         clusterConfiguration:
           type: string
-          description: Cluster configuration as a YAML document
+          description: Cluster configuration as a YAML document.
       required:
         - clusterConfiguration
         - clusterName
@@ -2427,7 +2413,7 @@ components:
       properties:
         clusterConfiguration:
           type: string
-          description: Cluster configuration as a YAML document
+          description: Cluster configuration as a YAML document.
       required:
         - clusterConfiguration
     UpdateClusterResponseContent:

@@ -46,7 +46,7 @@ structure ImageConfigurationStructure {
     url: String,
 }
 
-@documentation("Image configuration as a YAML document")
+@documentation("Image configuration as a YAML document.")
 string ImageConfigurationData
 
 @enum([
