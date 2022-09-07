@@ -128,6 +128,7 @@ def get_slurm_database_dna_json_for_head_node(config: BaseClusterConfig) -> dict
     return (
         {
             "slurm_database": {
+                "enabled": "true",
                 "uri": database.uri,
                 "user_name": database.user_name,
                 "password_secret_arn": database.password_secret_arn,
