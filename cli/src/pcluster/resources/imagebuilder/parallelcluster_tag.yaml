@@ -2,6 +2,11 @@ name: ParallelClusterTag
 description: Tag ParallelCluster AMI
 schemaVersion: 1.0
 
+constants:
+  - CookbookDefaultFile:
+      type: string
+      value: /etc/chef/cookbooks/aws-parallelcluster/attributes/default.rb
+
 phases:
   - name: test
     steps:
@@ -131,6 +136,12 @@ phases:
                 echo "${VERSION}"
               }
 
+              get_cookbook_attribute () {
+                ATTRIBUTE_NAME="$1"
+                ATTRIBUTE_VALUE=$(grep -F "${ATTRIBUTE_NAME}" {{ CookbookDefaultFile }})
+                echo ${ATTRIBUTE_VALUE}
+              }
+
               # ParallelCluster bootstrap file
               if [[ -f /opt/parallelcluster/.bootstrapped ]]; then
                 add_tag "parallelcluster:bootstrap_file" "$(cat /opt/parallelcluster/.bootstrapped)"
@@ -176,7 +187,16 @@ phases:
               NVIDIA_VERSION="$(get_modinfo "nvidia")"
               add_tag "parallelcluster:nvidia_version" "${NVIDIA_VERSION}"
               append_description "nvidia" "${NVIDIA_VERSION}"
-              CUDA_VERSION="$(cat /usr/local/cuda/version.txt | cut -d' ' -f3)"
+              # version >= 11.2, version.json
+              CUDA_VERSION="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
+              # version 11.0, version.txt (11.1 does not seem to have a version file)
+              if [ -z "${CUDA_VERSION}" ]; then
+                CUDA_VERSION="$(cat /usr/local/cuda/version.txt | cut -d' ' -f3)"
+              fi
+              # ARM - No version file
+              if [ -z "${CUDA_VERSION}" ] && [ -d /usr/local/cuda ]; then
+                CUDA_VERSION=$(get_cookbook_attribute "default['cluster']['nvidia']['cuda_version']" | tr -d '\n' | cut -d = -f 2 | xargs)
+              fi
               add_tag "parallelcluster:cuda_version" "${CUDA_VERSION}"
               append_description "cuda" "${CUDA_VERSION}"
 
