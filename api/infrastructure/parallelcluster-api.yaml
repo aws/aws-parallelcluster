@@ -1125,11 +1125,15 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       DisplayName: "ParallelCluster ECR Image Builder SNS topic"
+      KmsMasterKeyId: alias/aws/sns
 
   UpdateParallelClusterLambda:
     Condition: DoNotUseCustomEcrImageUri
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub
+        - UpdateParallelClusterLambda-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       MemorySize: 128
       InlineCode: |
         import boto3
@@ -1168,7 +1172,9 @@ Resources:
     Condition: DoNotUseCustomEcrImageUri
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/lambda/${UpdateParallelClusterLambda}
+      LogGroupName: !Sub
+        - /aws/lambda/UpdateParallelClusterLambda-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
 
   UpdateParallelClusterLambdaRole:
     Condition: DoNotUseCustomEcrImageUri
@@ -1191,7 +1197,9 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterApi-UpdateParallelClusterLambda-*
+                Resource: !Sub
+                  - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/UpdateParallelClusterLambda-${StackIdSuffix}:*
+                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
         - PolicyName: UpdateParallelClusterLambdaPolicy
           PolicyDocument:
             Version: 2012-10-17
