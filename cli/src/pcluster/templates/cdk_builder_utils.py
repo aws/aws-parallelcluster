@@ -706,6 +706,15 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 )
             )
 
+        if self._config.scheduling.settings.database:
+            policy.append(
+                iam.PolicyStatement(
+                    actions=["secretsmanager:GetSecretValue"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._config.scheduling.settings.database.password_secret_arn],
+                )
+            )
+
         return policy
 
     def _generate_head_node_pass_role_resources(self):
