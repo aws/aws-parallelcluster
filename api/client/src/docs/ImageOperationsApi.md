@@ -21,6 +21,7 @@ Create a custom ParallelCluster image in a given region.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -58,14 +59,14 @@ with pcluster_client.ApiClient(configuration) as api_client:
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     build_image_request_content = BuildImageRequestContent(
         image_configuration="image_configuration_example",
-        image_id="AqWzy",
+        image_id="AqWzyB",
     ) # BuildImageRequestContent | 
     suppress_validators = [
-        "type:u2LC",
+        "type:u2LC4",
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
     validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.) (optional)
-    dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.) (optional)
-    rollback_on_failure = True # bool, none_type | When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.) (optional)
+    dryrun = True # bool | Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.) (optional)
+    rollback_on_failure = True # bool | When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.) (optional)
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
@@ -92,8 +93,8 @@ Name | Type | Description  | Notes
  **build_image_request_content** | [**BuildImageRequestContent**](BuildImageRequestContent.md)|  |
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
  **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
- **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to &#39;false&#39;.) | [optional]
- **rollback_on_failure** | **bool, none_type**| When set, will automatically initiate an image stack rollback on failure. (Defaults to &#39;false&#39;.) | [optional]
+ **dryrun** | **bool**| Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to &#39;false&#39;.) | [optional]
+ **rollback_on_failure** | **bool**| When set, will automatically initiate an image stack rollback on failure. (Defaults to &#39;false&#39;.) | [optional]
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
@@ -111,6 +112,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **202** | BuildImage 202 response |  -  |
@@ -133,6 +135,7 @@ Initiate the deletion of the custom ParallelCluster image.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -165,9 +168,9 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
-    image_id = "AqWzy" # str | Id of the image.
+    image_id = "AqWzyB" # str | Id of the image.
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
-    force = True # bool, none_type | Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.) (optional)
+    force = True # bool | Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -192,7 +195,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **image_id** | **str**| Id of the image. |
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
- **force** | **bool, none_type**| Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to &#39;false&#39;.) | [optional]
+ **force** | **bool**| Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 
@@ -209,6 +212,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **202** | DeleteImage 202 response |  -  |
@@ -230,6 +234,7 @@ Get detailed information about an existing image.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -262,7 +267,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
-    image_id = "AqWzy" # str | Id of the image.
+    image_id = "AqWzyB" # str | Id of the image.
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
@@ -304,6 +309,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | DescribeImage 200 response |  -  |
@@ -325,6 +331,7 @@ Retrieve the list of existing custom images.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -401,6 +408,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | ListImages 200 response |  -  |
@@ -421,6 +429,7 @@ List Official ParallelCluster AMIs.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -489,6 +498,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | ListOfficialImages 200 response |  -  |

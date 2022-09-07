@@ -19,6 +19,7 @@ Retrieve the events associated with a log stream.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -51,12 +52,12 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_logs_api.ClusterLogsApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "AqWzyB" # str | Name of the cluster
     log_stream_name = "logStreamName_example" # str | Name of the log stream.
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
-    start_from_head = True # bool, none_type | If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to 'false'.) (optional)
-    limit = 3.14 # float, none_type | The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events. (optional)
+    start_from_head = True # bool | If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to 'false'.) (optional)
+    limit = 3.14 # float | The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events. (optional)
     start_time = dateutil_parser('1970-01-01T00:00:00.00Z') # datetime | The start of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or later than this time are included. (optional)
     end_time = dateutil_parser('1970-01-01T00:00:00.00Z') # datetime | The end of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than this time are not included. (optional)
 
@@ -85,8 +86,8 @@ Name | Type | Description  | Notes
  **log_stream_name** | **str**| Name of the log stream. |
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
  **next_token** | **str**| Token to use for paginated requests. | [optional]
- **start_from_head** | **bool, none_type**| If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to &#39;false&#39;.) | [optional]
- **limit** | **float, none_type**| The maximum number of log events returned. If you don&#39;t specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events. | [optional]
+ **start_from_head** | **bool**| If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to &#39;false&#39;.) | [optional]
+ **limit** | **float**| The maximum number of log events returned. If you don&#39;t specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events. | [optional]
  **start_time** | **datetime**| The start of the time range, expressed in ISO 8601 format (e.g. &#39;2021-01-01T20:00:00Z&#39;). Events with a timestamp equal to this time or later than this time are included. | [optional]
  **end_time** | **datetime**| The end of the time range, expressed in ISO 8601 format (e.g. &#39;2021-01-01T20:00:00Z&#39;). Events with a timestamp equal to or later than this time are not included. | [optional]
 
@@ -105,6 +106,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | GetClusterLogEvents 200 response |  -  |
@@ -126,6 +128,7 @@ Retrieve the events associated with the stack for a given cluster.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -158,7 +161,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_logs_api.ClusterLogsApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "AqWzyB" # str | Name of the cluster
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
 
@@ -202,6 +205,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | GetClusterStackEvents 200 response |  -  |
@@ -223,6 +227,7 @@ Retrieve the list of log streams associated with a cluster.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -255,7 +260,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_logs_api.ClusterLogsApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "AqWzyB" # str | Name of the cluster
     region = "region_example" # str | Region that the given cluster belongs to. (optional)
     filters = [
         "filters_example",
@@ -303,6 +308,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | ListClusterLogStreams 200 response |  -  |

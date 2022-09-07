@@ -42,84 +42,7 @@ class ClusterLogsApi(object):
         if api_client is None:
             api_client = ApiClient()
         self.api_client = api_client
-
-        def __get_cluster_log_events(
-            self,
-            cluster_name,
-            log_stream_name,
-            **kwargs
-        ):
-            """get_cluster_log_events  # noqa: E501
-
-            Retrieve the events associated with a log stream.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.get_cluster_log_events(cluster_name, log_stream_name, async_req=True)
-            >>> result = thread.get()
-
-            Args:
-                cluster_name (str): Name of the cluster
-                log_stream_name (str): Name of the log stream.
-
-            Keyword Args:
-                region (str): AWS Region that the operation corresponds to.. [optional]
-                next_token (str): Token to use for paginated requests.. [optional]
-                start_from_head (bool, none_type): If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to 'false'.). [optional]
-                limit (float, none_type): The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.. [optional]
-                start_time (datetime): The start of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or later than this time are included.. [optional]
-                end_time (datetime): The end of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than this time are not included.. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                GetClusterLogEventsResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['cluster_name'] = \
-                cluster_name
-            kwargs['log_stream_name'] = \
-                log_stream_name
-            return self.call_with_http_info(**kwargs)
-
-        self.get_cluster_log_events = _Endpoint(
+        self.get_cluster_log_events_endpoint = _Endpoint(
             settings={
                 'response_type': (GetClusterLogEventsResponseContent,),
                 'auth': [
@@ -146,8 +69,6 @@ class ClusterLogsApi(object):
                     'log_stream_name',
                 ],
                 'nullable': [
-                    'start_from_head',
-                    'limit',
                 ],
                 'enum': [
                 ],
@@ -176,9 +97,9 @@ class ClusterLogsApi(object):
                     'next_token':
                         (str,),
                     'start_from_head':
-                        (bool, none_type,),
+                        (bool,),
                     'limit':
-                        (float, none_type,),
+                        (float,),
                     'start_time':
                         (datetime,),
                     'end_time':
@@ -213,79 +134,9 @@ class ClusterLogsApi(object):
                 ],
                 'content_type': [],
             },
-            api_client=api_client,
-            callable=__get_cluster_log_events
+            api_client=api_client
         )
-
-        def __get_cluster_stack_events(
-            self,
-            cluster_name,
-            **kwargs
-        ):
-            """get_cluster_stack_events  # noqa: E501
-
-            Retrieve the events associated with the stack for a given cluster.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.get_cluster_stack_events(cluster_name, async_req=True)
-            >>> result = thread.get()
-
-            Args:
-                cluster_name (str): Name of the cluster
-
-            Keyword Args:
-                region (str): AWS Region that the operation corresponds to.. [optional]
-                next_token (str): Token to use for paginated requests.. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                GetClusterStackEventsResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['cluster_name'] = \
-                cluster_name
-            return self.call_with_http_info(**kwargs)
-
-        self.get_cluster_stack_events = _Endpoint(
+        self.get_cluster_stack_events_endpoint = _Endpoint(
             settings={
                 'response_type': (GetClusterStackEventsResponseContent,),
                 'auth': [
@@ -351,80 +202,9 @@ class ClusterLogsApi(object):
                 ],
                 'content_type': [],
             },
-            api_client=api_client,
-            callable=__get_cluster_stack_events
+            api_client=api_client
         )
-
-        def __list_cluster_log_streams(
-            self,
-            cluster_name,
-            **kwargs
-        ):
-            """list_cluster_log_streams  # noqa: E501
-
-            Retrieve the list of log streams associated with a cluster.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.list_cluster_log_streams(cluster_name, async_req=True)
-            >>> result = thread.get()
-
-            Args:
-                cluster_name (str): Name of the cluster
-
-            Keyword Args:
-                region (str): Region that the given cluster belongs to.. [optional]
-                filters ([str]): Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'. Accepted filters are: private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101). node-type - The node type, the only accepted value for this filter is HeadNode.. [optional]
-                next_token (str): Token to use for paginated requests.. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                ListClusterLogStreamsResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['cluster_name'] = \
-                cluster_name
-            return self.call_with_http_info(**kwargs)
-
-        self.list_cluster_log_streams = _Endpoint(
+        self.list_cluster_log_streams_endpoint = _Endpoint(
             settings={
                 'response_type': (ListClusterLogStreamsResponseContent,),
                 'auth': [
@@ -500,6 +280,270 @@ class ClusterLogsApi(object):
                 ],
                 'content_type': [],
             },
-            api_client=api_client,
-            callable=__list_cluster_log_streams
+            api_client=api_client
         )
+
+    def get_cluster_log_events(
+        self,
+        cluster_name,
+        log_stream_name,
+        **kwargs
+    ):
+        """get_cluster_log_events  # noqa: E501
+
+        Retrieve the events associated with a log stream.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.get_cluster_log_events(cluster_name, log_stream_name, async_req=True)
+        >>> result = thread.get()
+
+        Args:
+            cluster_name (str): Name of the cluster
+            log_stream_name (str): Name of the log stream.
+
+        Keyword Args:
+            region (str): AWS Region that the operation corresponds to.. [optional]
+            next_token (str): Token to use for paginated requests.. [optional]
+            start_from_head (bool): If the value is true, the earliest log events are returned first. If the value is false, the latest log events are returned first. (Defaults to 'false'.). [optional]
+            limit (float): The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.. [optional]
+            start_time (datetime): The start of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or later than this time are included.. [optional]
+            end_time (datetime): The end of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than this time are not included.. [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            GetClusterLogEventsResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        kwargs['cluster_name'] = \
+            cluster_name
+        kwargs['log_stream_name'] = \
+            log_stream_name
+        return self.get_cluster_log_events_endpoint.call_with_http_info(**kwargs)
+
+    def get_cluster_stack_events(
+        self,
+        cluster_name,
+        **kwargs
+    ):
+        """get_cluster_stack_events  # noqa: E501
+
+        Retrieve the events associated with the stack for a given cluster.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.get_cluster_stack_events(cluster_name, async_req=True)
+        >>> result = thread.get()
+
+        Args:
+            cluster_name (str): Name of the cluster
+
+        Keyword Args:
+            region (str): AWS Region that the operation corresponds to.. [optional]
+            next_token (str): Token to use for paginated requests.. [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            GetClusterStackEventsResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        kwargs['cluster_name'] = \
+            cluster_name
+        return self.get_cluster_stack_events_endpoint.call_with_http_info(**kwargs)
+
+    def list_cluster_log_streams(
+        self,
+        cluster_name,
+        **kwargs
+    ):
+        """list_cluster_log_streams  # noqa: E501
+
+        Retrieve the list of log streams associated with a cluster.  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_cluster_log_streams(cluster_name, async_req=True)
+        >>> result = thread.get()
+
+        Args:
+            cluster_name (str): Name of the cluster
+
+        Keyword Args:
+            region (str): Region that the given cluster belongs to.. [optional]
+            filters ([str]): Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'. Accepted filters are: private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101). node-type - The node type, the only accepted value for this filter is HeadNode.. [optional]
+            next_token (str): Token to use for paginated requests.. [optional]
+            _return_http_data_only (bool): response data without head status
+                code and headers. Default is True.
+            _preload_content (bool): if False, the urllib3.HTTPResponse object
+                will be returned without reading/decoding response data.
+                Default is True.
+            _request_timeout (int/float/tuple): timeout setting for this request. If
+                one number provided, it will be total request timeout. It can also
+                be a pair (tuple) of (connection, read) timeouts.
+                Default is None.
+            _check_input_type (bool): specifies if type checking
+                should be done one the data sent to the server.
+                Default is True.
+            _check_return_type (bool): specifies if type checking
+                should be done one the data received from the server.
+                Default is True.
+            _spec_property_naming (bool): True if the variable names in the input data
+                are serialized names, as specified in the OpenAPI document.
+                False if the variable names in the input data
+                are pythonic names, e.g. snake case (default)
+            _content_type (str/None): force body content-type.
+                Default is None and content-type will be predicted by allowed
+                content-types and body.
+            _host_index (int/None): specifies the index of the server
+                that we want to use.
+                Default is read from the configuration.
+            _request_auths (list): set to override the auth_settings for an a single
+                request; this effectively ignores the authentication
+                in the spec for a single request.
+                Default is None
+            async_req (bool): execute request asynchronously
+
+        Returns:
+            ListClusterLogStreamsResponseContent
+                If the method is called asynchronously, returns the request
+                thread.
+        """
+        kwargs['async_req'] = kwargs.get(
+            'async_req', False
+        )
+        kwargs['_return_http_data_only'] = kwargs.get(
+            '_return_http_data_only', True
+        )
+        kwargs['_preload_content'] = kwargs.get(
+            '_preload_content', True
+        )
+        kwargs['_request_timeout'] = kwargs.get(
+            '_request_timeout', None
+        )
+        kwargs['_check_input_type'] = kwargs.get(
+            '_check_input_type', True
+        )
+        kwargs['_check_return_type'] = kwargs.get(
+            '_check_return_type', True
+        )
+        kwargs['_spec_property_naming'] = kwargs.get(
+            '_spec_property_naming', False
+        )
+        kwargs['_content_type'] = kwargs.get(
+            '_content_type')
+        kwargs['_host_index'] = kwargs.get('_host_index')
+        kwargs['_request_auths'] = kwargs.get('_request_auths', None)
+        kwargs['cluster_name'] = \
+            cluster_name
+        return self.list_cluster_log_streams_endpoint.call_with_http_info(**kwargs)
+

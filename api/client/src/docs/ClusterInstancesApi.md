@@ -18,6 +18,7 @@ Initiate the forced termination of all cluster compute nodes. Does not work with
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -49,9 +50,9 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_instances_api.ClusterInstancesApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "AqWzyB" # str | Name of the cluster
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
-    force = True # bool, none_type | Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.) (optional)
+    force = True # bool | Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -74,7 +75,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
- **force** | **bool, none_type**| Force the deletion also when the cluster with the given name is not found. (Defaults to &#39;false&#39;.) | [optional]
+ **force** | **bool**| Force the deletion also when the cluster with the given name is not found. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 
@@ -91,6 +92,7 @@ void (empty response body)
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **202** | DeleteClusterInstances 202 response |  -  |
@@ -112,6 +114,7 @@ Describe the instances belonging to a given cluster.
 ### Example
 
 * Api Key Authentication (aws.auth.sigv4):
+
 ```python
 import time
 import pcluster_client
@@ -144,7 +147,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_instances_api.ClusterInstancesApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "AqWzyB" # str | Name of the cluster
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
     node_type = NodeType("HeadNode") # NodeType | Filter the instances by node type. (optional)
@@ -192,6 +195,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | DescribeClusterInstances 200 response |  -  |
