@@ -176,7 +176,7 @@ phases:
               NVIDIA_VERSION="$(get_modinfo "nvidia")"
               add_tag "parallelcluster:nvidia_version" "${NVIDIA_VERSION}"
               append_description "nvidia" "${NVIDIA_VERSION}"
-              CUDA_VERSION="$(cat /usr/local/cuda/version.txt | cut -d' ' -f3)"
+              CUDA_VERSION="$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
               add_tag "parallelcluster:cuda_version" "${CUDA_VERSION}"
               append_description "cuda" "${CUDA_VERSION}"
 
