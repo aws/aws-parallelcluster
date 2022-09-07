@@ -1,6 +1,8 @@
 assertpy
+aws-lambda-powertools
 freezegun
 jinja2
+munch
 pytest
 pytest-cov
 pytest-datadir
@@ -8,4 +10,3 @@ pytest-html
 pytest-mock
 pytest-xdist
 recordclass
-munch

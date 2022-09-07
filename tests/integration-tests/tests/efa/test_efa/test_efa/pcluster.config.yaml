@@ -11,7 +11,7 @@ HeadNode:
     Secured: {{ imds_secured }}
 {% if instance == "p4d.24xlarge" %}
   Iam:
-    # Needed to use the p4d capacity reservation 
+    # Needed to use the p4d capacity reservation
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonEC2FullAccess
     S3Access:
@@ -32,7 +32,8 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: efa-enabled-i1
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ max_queue_size }}
           DisableSimultaneousMultithreading: true

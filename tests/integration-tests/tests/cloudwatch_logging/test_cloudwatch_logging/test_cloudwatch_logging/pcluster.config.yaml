@@ -18,7 +18,8 @@ Scheduling:
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           {% endif %}
           {% if scheduler == "awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
       Networking:

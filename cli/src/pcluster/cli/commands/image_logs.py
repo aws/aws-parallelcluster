@@ -43,6 +43,12 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
             required=True,
             help="S3 bucket to export image builder logs data to. It must be in the same region of the image",
         )
+        # Export options
+        parser.add_argument(
+            "--bucket-prefix",
+            help="Keypath under which exported logs data will be stored in s3 bucket. Defaults to "
+            "<image_id>-logs-<current time in the format of yyyyMMddHHmm>",
+        )
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:

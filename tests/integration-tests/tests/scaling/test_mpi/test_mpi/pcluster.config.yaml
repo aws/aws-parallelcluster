@@ -16,7 +16,8 @@ Scheduling:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
       Networking:
         SubnetIds:

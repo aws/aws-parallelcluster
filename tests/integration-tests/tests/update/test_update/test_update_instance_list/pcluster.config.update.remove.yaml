@@ -1,6 +1,5 @@
 Image:
   Os: {{ os }}
-  CustomAmi: {{ global_custom_ami }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -14,12 +13,7 @@ Scheduling:
       ComputeResources:
         - Name: queue1-i1
           InstanceTypeList:
-            - InstanceType: c5.xlarge
-          MinCount: 1
-          MaxCount: 2
-        - Name: queue1-i2
-          InstanceTypeList:
-            - InstanceType: t2.micro
+            - InstanceType: t3.xlarge
           MinCount: 1
           MaxCount: 2
       Networking:

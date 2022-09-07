@@ -42,6 +42,12 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
             required=True,
             help="S3 bucket to export cluster logs data to. It must be in the same region of the cluster",
         )
+        # Export options
+        parser.add_argument(
+            "--bucket-prefix",
+            help="Keypath under which exported logs data will be stored in s3 bucket. Defaults to "
+            "<cluster_name>-logs-<current time in the format of yyyyMMddHHmm>",
+        )
         super()._register_common_command_args(parser)
         # Filters
         filters_arg = _FiltersArg(accepted_filters=["private-dns-name", "node-type"])

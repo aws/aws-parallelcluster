@@ -24,9 +24,11 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource-11
-          InstanceType: c5.large
+          InstanceTypeList:
+            - InstanceType: c5.large
         - Name: compute-resource-12
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 1
     - Name: ondemand2
       Networking:
@@ -34,7 +36,9 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource-21
-          InstanceType: c5.large
+          InstanceTypeList:
+            - InstanceType: c5.large
         - Name: compute-resource-22
-          InstanceType: {{ instance }}
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
           MinCount: 1
