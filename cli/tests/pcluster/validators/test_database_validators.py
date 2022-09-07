@@ -10,10 +10,9 @@
 # limitations under the License.
 import pytest
 
-from pcluster.validators.database_validators import (
-    DatabaseUriValidator,
-)
-from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
+from pcluster.validators.database_validators import DatabaseUriValidator
+from tests.pcluster.validators.utils import assert_failure_messages
+
 
 @pytest.mark.parametrize(
     "uri, expected_message",
@@ -24,7 +23,8 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         ("test.example.com:12345", None),
         (
             "/test.example.com:12345",
-            "Invalid URI specified. Please remove any trailing / at the beginning of the provided URI ('/test.example.com:12345')",
+            "Invalid URI specified. Please remove any trailing / at "
+            "the beginning of the provided URI ('/test.example.com:12345')",
         ),
         ("test.example.com", "No port specified in the URI. Assuming the use of port 3306"),
         ("mysql://test.example.com", "Invalid URI specified. Please do not provide a scheme ('mysql://')"),
@@ -35,5 +35,3 @@ def test_database_uri(uri, expected_message):
         uri=uri,
     )
     assert_failure_messages(actual_failures, expected_message)
-
-

@@ -88,12 +88,12 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_slurm_database_dna_json_for_head_node,
     get_directory_service_dna_json_for_head_node,
     get_lambda_log_group_prefix,
     get_log_group_deletion_policy,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
+    get_slurm_database_dna_json_for_head_node,
     get_slurm_specific_dna_json_for_head_node,
     get_user_data_content,
     to_comma_separated_string,
@@ -986,11 +986,7 @@ class ClusterCdkStack(Stack):
                         if self._condition_is_slurm()
                         else {}
                     ),
-                    **(
-                        get_slurm_database_dna_json_for_head_node(self.config)
-                        if self._condition_is_slurm()
-                        else {}
-                    ),
+                    **(get_slurm_database_dna_json_for_head_node(self.config) if self._condition_is_slurm() else {}),
                     **get_directory_service_dna_json_for_head_node(self.config),
                 },
             },

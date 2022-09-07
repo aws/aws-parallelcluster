@@ -9,8 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, ParseResult
 
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -23,12 +22,7 @@ class DatabaseUriValidator(Validator):
 
         # First, throw error if the URI starts with a "/" (to prevent issues with the
         # manipulation below
-        if uri[0] == "/":
-            self._add_failure(
-                f"Invalid URI specified. Please remove any trailing / at the beginning of the provided URI ('{uri}')",
-                FailureLevel.ERROR,
-            )
-            return
+        self._check_trailing_slash(uri)
 
         uri_parse = urlparse(uri)
         if not uri_parse.scheme and not uri_parse.netloc:
@@ -36,47 +30,53 @@ class DatabaseUriValidator(Validator):
             # (for example 'test.example.com:3306' instead of 'mysql://test.example.com:3306`).
             uri_parse = urlparse("//" + uri_parse.path)
 
+        # Throw error if the URI contains a scheme
+        self._check_scheme(uri_parse)
+
+        # Check if netloc can be parsed
+        self._check_netloc(uri, uri_parse)
+
+        # Check if port is provided and acceptable
+        self._check_port(uri_parse)
+
+    def _check_trailing_slash(self, uri: str):
+        if uri[0] == "/":
+            self._add_failure(
+                f"Invalid URI specified. Please remove any trailing / at the beginning of the provided URI ('{uri}')",
+                FailureLevel.ERROR,
+            )
+
+    def _check_scheme(self, uri_parse: ParseResult):
         try:
             scheme = uri_parse.scheme
         except ValueError as e:
-            self._add_failure(
-                "Invalid URI specified. " + str(e),
-                FailureLevel.ERROR
-            )
+            self._add_failure("Invalid URI specified. " + str(e), FailureLevel.ERROR)
             return
-
         if scheme:
             self._add_failure(
                 f"Invalid URI specified. Please do not provide a scheme ('{scheme}://')",
                 FailureLevel.ERROR,
             )
 
+    def _check_netloc(self, uri: str, uri_parse: ParseResult):
         try:
             netloc = uri_parse.netloc
         except ValueError as e:
-            self._add_failure(
-                "Invalid URI specified. " + str(e),
-                FailureLevel.ERROR
-            )
+            self._add_failure("Invalid URI specified. " + str(e), FailureLevel.ERROR)
             return
-
         if not netloc:
             self._add_failure(
                 f"Invalid URI specified. Please review the provided URI ('{uri}')",
                 FailureLevel.ERROR,
             )
 
+    def _check_port(self, uri_parse: ParseResult):
         default_mysql_port = 3306
-
         try:
             port = uri_parse.port
         except ValueError as e:
-            self._add_failure(
-                "Invalid URI specified. " + str(e),
-                FailureLevel.ERROR
-            )
+            self._add_failure("Invalid URI specified. " + str(e), FailureLevel.ERROR)
             return
-
         if not port:
             self._add_failure(
                 f"No port specified in the URI. Assuming the use of port {default_mysql_port}",
