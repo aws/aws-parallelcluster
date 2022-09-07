@@ -25,7 +25,7 @@ class DatabaseUriValidator(Validator):
         # manipulation below
         if uri[0] == "/":
             self._add_failure(
-                f"Invalid URI specified. Please review the provided URI ('{uri}')",
+                f"Invalid URI specified. Please remove any trailing / at the beginning of the provided URI ('{uri}')",
                 FailureLevel.ERROR,
             )
             return

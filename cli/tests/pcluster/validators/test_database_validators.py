@@ -22,7 +22,10 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         ("172.31.8.14", "No port specified in the URI. Assuming the use of port 3306"),
         ("172.31.8.14:12345", None),
         ("test.example.com:12345", None),
-        ("/test.example.com:12345", "Invalid URI specified. Please review the provided URI ('/test.example.com:12345')"),
+        (
+            "/test.example.com:12345",
+            "Invalid URI specified. Please remove any trailing / at the beginning of the provided URI ('/test.example.com:12345')",
+        ),
         ("test.example.com", "No port specified in the URI. Assuming the use of port 3306"),
         ("mysql://test.example.com", "Invalid URI specified. Please do not provide a scheme ('mysql://')"),
     ],
