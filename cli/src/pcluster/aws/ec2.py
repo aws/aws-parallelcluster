@@ -428,7 +428,7 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def run_instances(self, **kwargs):
-        """Describe network interfaces."""
+        """Run instances."""
         try:
             self._client.run_instances(**kwargs)
         except ClientError as e:
