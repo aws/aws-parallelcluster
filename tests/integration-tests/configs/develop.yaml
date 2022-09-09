@@ -72,6 +72,6 @@ test-suites:
     test_efa.py::test_hit_efa:
       dimensions:
         - regions: ["us-gov-west-1"]
-          instances: ["c5n.9xlarge"]
+          instances: ["c5n.18xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
