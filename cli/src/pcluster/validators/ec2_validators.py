@@ -99,7 +99,7 @@ class KeyPairValidator(Validator):
             )
 
 
-class PlacementGroupNamingValidator(Validator):  # TODO: add tests
+class PlacementGroupNamingValidator(Validator):
     """Placement group naming validator."""
 
     def _validate(self, placement_group):
@@ -111,10 +111,12 @@ class PlacementGroupNamingValidator(Validator):  # TODO: add tests
             )
         identifier = placement_group.name or placement_group.id
         if identifier:
-            if not placement_group.is_implied("enabled") and not placement_group.enabled:
+            if placement_group.enabled is False:
                 self._add_failure(
                     "The PlacementGroup feature must be enabled (Enabled: true) in order "
-                    "to assign a Name or Id parameter",
+                    "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+                    "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+                    "with the Name/Id given",
                     FailureLevel.ERROR,
                 )
             else:

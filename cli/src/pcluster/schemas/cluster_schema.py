@@ -100,6 +100,7 @@ from pcluster.config.cluster_config import (
     SharedFsxLustre,
     SlurmClusterConfig,
     SlurmComputeResource,
+    SlurmComputeResourceNetworking,
     SlurmFlexibleComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
@@ -1128,6 +1129,19 @@ class _ComputeResourceSchema(BaseSchema):
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
+class SlurmComputeResourceNetworkingSchema(BaseSchema):
+    """Represent the Networking schema of the Slurm ComputeResource."""
+
+    placement_group = fields.Nested(
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SlurmComputeResourceNetworking(**data)
+
+
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
@@ -1147,6 +1161,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     schedulable_memory = fields.Int(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
     capacity_reservation_target = fields.Nested(
         CapacityReservationTargetSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+    networking = fields.Nested(
+        SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @validates_schema
