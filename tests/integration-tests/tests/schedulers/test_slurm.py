@@ -762,7 +762,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": "--gpus-per-task {0}".format(gpu_per_instance + 1),
+            "other_options": "--gpus-per-task {0} -n 1".format(gpu_per_instance + 1),
             "raise_on_error": False,
         },
     )
@@ -782,7 +782,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": "-G:{0}".format(gpu_per_instance * max_count + 1),
+            "other_options": "-G {0}".format(gpu_per_instance * max_count + 1),
             "raise_on_error": False,
         },
     )
@@ -796,6 +796,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "other_options": "-G 1 --cpus-per-gpu 32 --cpus-per-task 20",
             "raise_on_error": False,
         },
+        reason="sbatch: error: --cpus-per-gpu is mutually exclusive with --cpus-per-task",
     )
 
     # Commands below should be correctly submitted
@@ -856,10 +857,12 @@ def _test_cluster_limits(slurm_commands, partition, instance_type, max_count, cp
     )
 
 
-def _submit_command_and_assert_job_rejected(slurm_commands, submit_command_args):
+def _submit_command_and_assert_job_rejected(
+    slurm_commands, submit_command_args, reason="sbatch: error: Batch job submission failed:"
+):
     """Submit a limit-violating job and assert the job is failed at submission."""
     result = slurm_commands.submit_command(**submit_command_args)
-    assert_that(result.stdout).contains("sbatch: error: Batch job submission failed:")
+    assert_that(result.stdout).contains(reason)
 
 
 def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_info):
@@ -876,7 +879,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains("TresPerJob=gpu:1", f"CpusPerTres=gpu:{cpus_per_gpu}")
+    assert_that(job_info).contains("TresPerJob=gres:gpu:1", f"CpusPerTres=gres:gpu:{cpus_per_gpu}")
 
     gpus_per_instance = _get_num_gpus_on_instance(instance_type_info)
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
@@ -888,7 +891,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains(f"TresPerNode=gpu:{gpus_per_instance}", f"CpusPerTres=gpu:{cpus_per_gpu}")
+    assert_that(job_info).contains(f"TresPerNode=gres:gpu:{gpus_per_instance}", f"CpusPerTres=gres:gpu:{cpus_per_gpu}")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
