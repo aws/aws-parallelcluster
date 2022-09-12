@@ -414,7 +414,7 @@ def test_update_instance_list(
     logging.info(new_instances)
     new_instances.remove(instances[0])
     # Check new instance type is the expected one
-    _check_instance_type(ec2, new_instances, "t3.xlarge")
+    _check_instance_type(ec2, new_instances, "c5a.xlarge")
 
     # Update cluster removing instance type from the list
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.remove.yaml")
