@@ -55,6 +55,10 @@ Scheduling:
       DisableManagedDns: true
       UseEc2Hostnames: true
     EnableMemoryBasedScheduling: false
+    Database:
+      Uri: # required
+      UserName: # required
+      PasswordSecretArn: # required
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND

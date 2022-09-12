@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from urllib.parse import urlparse, ParseResult
+from urllib.parse import ParseResult, urlparse
 
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -19,7 +19,6 @@ class DatabaseUriValidator(Validator):
 
     def _validate(self, uri: str):
         """Validate database URI."""
-
         # First, throw error if the URI starts with a "/" (to prevent issues with the
         # manipulation below
         if not self._check_trailing_slash(uri):

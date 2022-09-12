@@ -1960,7 +1960,7 @@ class SlurmSettings(Resource):
             queue_update_strategy, default=QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
         )
         self.enable_memory_based_scheduling = Resource.init_param(enable_memory_based_scheduling, default=False)
-        self.database = database or Database(implied=True)
+        self.database = database
 
 
 class QueueUpdateStrategy(Enum):
