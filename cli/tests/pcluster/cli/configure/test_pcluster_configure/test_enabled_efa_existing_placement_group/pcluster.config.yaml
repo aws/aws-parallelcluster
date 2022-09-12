@@ -13,7 +13,8 @@ Scheduling:
     - Name: myqueue
       ComputeResources:
         - Name: c5n18xlarge
-          InstanceType: c5n.18xlarge
+          InstanceTypeList:
+            - InstanceType: c5n.18xlarge
           MinCount: 0
           MaxCount: 10
           Efa:
