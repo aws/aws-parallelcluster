@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict
+
 import pytest
 from assertpy import assert_that
 from munch import DefaultMunch
@@ -35,6 +37,7 @@ from pcluster.validators.cluster_validators import (
     InstanceTypesListAcceleratorsValidator,
     InstanceTypesListCPUValidator,
     InstanceTypesListEFAValidator,
+    InstanceTypesListNetworkingValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
@@ -1596,4 +1599,75 @@ def test_instance_type_list_efa_validator(
     expected_message,
 ):
     actual_failures = InstanceTypesListEFAValidator().execute(compute_resource_name, instance_types_info, efa_enabled)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "queue_name, compute_resource_name, instance_types_info, placement_group_enabled, expected_message",
+    [
+        # Instance Types with varying Maximum NICs will have the smallest one used when setting the launch template
+        (
+            "TestQueue10",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "NetworkInfo": {"MaximumNetworkCards": 4},
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "NetworkInfo": {"MaximumNetworkCards": 2},
+                    }
+                ),
+            },
+            False,
+            "Compute Resource TestComputeResource has instance types with varying numbers of network cards (Min: 2, "
+            "Max: 4). Compute Resource will be created with 2 network cards.",
+        ),
+        (
+            "TestQueue10",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "NetworkInfo": {"MaximumNetworkCards": 4},
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "NetworkInfo": {"MaximumNetworkCards": 4},
+                    }
+                ),
+            },
+            False,
+            "",
+        ),
+        # Using a placement group while having compute resources with multiple instance types increases the chances of
+        # getting an Insufficient Capacity Error
+        (
+            "TestQueue11",
+            "TestComputeResource",
+            {},
+            True,
+            "Enabling placement groups for queue: TestQueue11 may result in Insufficient Capacity Errors due to the "
+            "use of multiple instance types for Compute Resource: TestComputeResource ("
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html#placement-groups-cluster).",
+        ),
+    ]
+)
+def test_instance_type_list_networking_validator(
+    queue_name: str,
+    compute_resource_name: str,
+    instance_types_info: Dict[str, InstanceTypeInfo],
+    placement_group_enabled: bool,
+    expected_message: str,
+):
+    actual_failures = InstanceTypesListNetworkingValidator().execute(
+        queue_name, compute_resource_name, instance_types_info, placement_group_enabled
+    )
     assert_failure_messages(actual_failures, expected_message)

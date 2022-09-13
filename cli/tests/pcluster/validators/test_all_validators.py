@@ -358,6 +358,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
         "InstanceTypesListCPUValidator",
         "InstanceTypesListAcceleratorsValidator",
         "InstanceTypesListEFAValidator",
+        "InstanceTypesListNetworkingValidator",
     ]
 
     # Assert validators are called
