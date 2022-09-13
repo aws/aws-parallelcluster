@@ -235,6 +235,7 @@ def test_init_from_instance_type(mocker, caplog):
     )
     g4ad_instance_info = AWSApi.instance().ec2.get_instance_type_info("g4ad.16xlarge")
     assert_that(g4ad_instance_info.gpu_count()).is_equal_to(0)
+    assert_that(g4ad_instance_info.gpu_manufacturer()).is_equal_to("AMD")
     assert_that(caplog.text).matches("not offer native support for 'AMD' GPUs.")
     assert_that(g4ad_instance_info.max_network_interface_count()).is_equal_to(1)
     assert_that(g4ad_instance_info.default_threads_per_core()).is_equal_to(2)

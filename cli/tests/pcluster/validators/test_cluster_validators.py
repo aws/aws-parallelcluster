@@ -32,6 +32,7 @@ from pcluster.validators.cluster_validators import (
     HeadNodeImdsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
+    InstanceTypesListAcceleratorsValidator,
     InstanceTypesListCPUValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
@@ -1172,17 +1173,26 @@ def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
-                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 5, "DefaultCores": 2}}),
+                "t2.micro": InstanceTypeInfo(
+                    {"InstanceType": "t2.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"InstanceType": "t3.micro", "VCpuInfo": {"DefaultVCpus": 5, "DefaultCores": 2}}
+                ),
             },
             False,
-            "Instance types listed under Compute Resource TestComputeResource must have the same number of vCPUs.",
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of vCPUs "
+            "({'t2.micro': 4, 't3.micro': 5}).",
         ),
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
-                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+                "t2.micro": InstanceTypeInfo(
+                    {"InstanceType": "t2.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"InstanceType": "t3.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
+                ),
             },
             False,
             "",
@@ -1191,12 +1201,16 @@ def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}),
-                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+                "t2.micro": InstanceTypeInfo(
+                    {"InstanceType": "t2.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"InstanceType": "t3.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
+                ),
             },
             True,
             "Instance types listed under Compute Resource TestComputeResource must have the same number of CPU "
-            "cores when Simultaneous Multithreading is disabled.",
+            "cores when Simultaneous Multithreading is disabled ({'t2.micro': 1, 't3.micro': 2}).",
         ),
         (
             "TestComputeResource",
@@ -1219,5 +1233,258 @@ def test_instance_type_list_cpu_validator(
         compute_resource_name,
         instance_types_info,
         disable_simultaneous_multithreading,
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_resource_name, instance_types_info, expected_message",
+    [
+        # Instance Types should have the same number of GPUs
+        (
+            "TestComputeResource",
+            {
+                "g4dn.xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "g4dn.xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {"Name": "T4", "Manufacturer": "NVIDIA", "Count": 1, "MemoryInfo": {"SizeInMiB": 16384}}
+                            ],
+                            "TotalGpuMemoryInMiB": 16384,
+                        },
+                    }
+                ),
+                "g5.xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "g5.xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {
+                                    "Name": "A10G",
+                                    "Manufacturer": "NVIDIA",
+                                    "Count": 2,
+                                    "MemoryInfo": {"SizeInMiB": 24576},
+                                }
+                            ],
+                            "TotalGpuMemoryInMiB": 24576,
+                        },
+                    }
+                ),
+            },
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of GPUs ({"
+            "'g4dn.xlarge': 1, 'g5.xlarge': 2}).",
+        ),
+        (
+            "TestComputeResource",
+            {
+                "g4dn.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {"Name": "T4", "Manufacturer": "NVIDIA", "Count": 2, "MemoryInfo": {"SizeInMiB": 16384}}
+                            ],
+                            "TotalGpuMemoryInMiB": 16384,
+                        },
+                    }
+                ),
+                "g5.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {
+                                    "Name": "A10G",
+                                    "Manufacturer": "NVIDIA",
+                                    "Count": 2,
+                                    "MemoryInfo": {"SizeInMiB": 24576},
+                                }
+                            ],
+                            "TotalGpuMemoryInMiB": 24576,
+                        },
+                    }
+                ),
+            },
+            "",
+        ),
+        # Instance Types should have the same number of Accelerators
+        (
+            "TestComputeResource",
+            {
+                "inf1.6xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "inf1.6xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+                "inf1.2xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "inf1.2xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 1, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+            },
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of Inference "
+            "Accelerators ({'inf1.6xlarge': 4, 'inf1.2xlarge': 1}).",
+        ),
+        (
+            "TestComputeResource",
+            {
+                "inf1.6xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+                "inf1.2xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+            },
+            "",
+        ),
+        # Instance Types should have the same GPU manufacturer
+        (
+            "TestComputeResource",
+            {
+                "g4dn.xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "g4dn.xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {"Name": "T4", "Manufacturer": "NVIDIA", "Count": 2, "MemoryInfo": {"SizeInMiB": 16384}}
+                            ],
+                            "TotalGpuMemoryInMiB": 16384,
+                        },
+                    }
+                ),
+                "g5.xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "g5.xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {
+                                    "Name": "A10G",
+                                    "Manufacturer": "OtherGPUManufacturers",
+                                    "Count": 2,
+                                    "MemoryInfo": {"SizeInMiB": 24576},
+                                }
+                            ],
+                            "TotalGpuMemoryInMiB": 24576,
+                        },
+                    }
+                ),
+            },
+            "Instance types listed under Compute Resource TestComputeResource must have the same GPU manufacturer ({"
+            "'g4dn.xlarge': 'NVIDIA', 'g5.xlarge': 'OtherGPUManufacturers'}).",
+        ),
+        (
+            "TestComputeResource",
+            {
+                "g4dn.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {"Name": "T4", "Manufacturer": "NVIDIA", "Count": 2, "MemoryInfo": {"SizeInMiB": 16384}}
+                            ],
+                            "TotalGpuMemoryInMiB": 16384,
+                        },
+                    }
+                ),
+                "g5.xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                        "GpuInfo": {
+                            "Gpus": [
+                                {
+                                    "Name": "A10G",
+                                    "Manufacturer": "NVIDIA",
+                                    "Count": 2,
+                                    "MemoryInfo": {"SizeInMiB": 24576},
+                                }
+                            ],
+                            "TotalGpuMemoryInMiB": 24576,
+                        },
+                    }
+                ),
+            },
+            "",
+        ),
+        # Instance Types should have the same Accelerator Name (Inferentia)
+        (
+            "TestComputeResource",
+            {
+                "inf1.6xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "inf1.6xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+                "inf1.2xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "inf1.2xlarge",
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "NotAWS"}]
+                        },
+                    }
+                ),
+            },
+            "Instance types listed under Compute Resource TestComputeResource must have the same inference "
+            "accelerator manufacturer ({'inf1.6xlarge': 'AWS', 'inf1.2xlarge': 'NotAWS'}).",
+        ),
+        (
+            "TestComputeResource",
+            {
+                "inf1.6xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+                "inf1.2xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 24, "DefaultCores": 12},
+                        "InferenceAcceleratorInfo": {
+                            "Accelerators": [{"Count": 4, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                        },
+                    }
+                ),
+            },
+            "",
+        ),
+    ],
+)
+def test_instance_type_list_accelerators_validator(
+    compute_resource_name,
+    instance_types_info,
+    expected_message,
+):
+    actual_failures = InstanceTypesListAcceleratorsValidator().execute(
+        compute_resource_name,
+        instance_types_info,
     )
     assert_failure_messages(actual_failures, expected_message)

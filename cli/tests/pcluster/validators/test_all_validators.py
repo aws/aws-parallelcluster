@@ -353,6 +353,12 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
     _load_and_validate(test_datadir / "scheduler_plugin_1.yaml")
     _load_and_validate(test_datadir / "scheduler_plugin_2.yaml")
 
+    # FlexibleInstanceTypes Only supported in Slurm
+    flexible_instance_types_validators = [
+        "InstanceTypesListCPUValidator",
+        "InstanceTypesListAcceleratorsValidator",
+    ]
+
     # Assert validators are called
     for m in mockers:
         if m["name"] in [
@@ -365,8 +371,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
             "InstanceTypeMemoryInfoValidator",
             "CapacityReservationValidator",
             "CapacityReservationResourceGroupValidator",
-            "InstanceTypesListCPUValidator",  # FlexibleInstanceTypes Only supported in Slurm
-        ]:
+        ] + flexible_instance_types_validators:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue
         print("Checking " + m["name"] + " is called")

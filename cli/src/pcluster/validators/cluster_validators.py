@@ -10,6 +10,7 @@
 # limitations under the License.
 import math
 import re
+from abc import ABC
 from collections import defaultdict
 from enum import Enum
 from itertools import combinations, product
@@ -1153,13 +1154,34 @@ class SchedulerValidator(Validator):
             )
 
 
-class InstanceTypesListCPUValidator(Validator):
-    """Confirm CPU requirements for Flexible Instance Types."""
+class _FlexibleInstanceTypesValidator(Validator, ABC):
+    # pylint: disable=B024
+    def validate_property_homogeneity(
+        self,
+        instance_type_info_list: List[InstanceTypeInfo],
+        property_callback: Callable,
+        failure_message_callback: Callable[[Dict[str, int]], str],  # args: {instance_type: value, ...}
+        failure_level: FailureLevel,
+    ):
+        """Check if the instance_types have the same property (CPU count, GPU count etc)."""
+        instance_property = None
+        instance_type = None
+        for instance_type_info in instance_type_info_list:
+            current_instance_property = property_callback(instance_type_info)
+            current_instance_type = instance_type_info.instance_type()
+            if instance_property is not None and instance_property != current_instance_property:
+                mismatching_values = {
+                    instance_type: instance_property,
+                    current_instance_type: current_instance_property,
+                }
+                self._add_failure(failure_message_callback(mismatching_values), failure_level)
+                break
+            instance_property = current_instance_property
+            instance_type = current_instance_type
 
-    def validate_size(self, items, size, failure_message, failure_level):
-        """Check if a list of items has a specific size and add a failure entry if it's exceeded."""
-        if len(items) > size:
-            self._add_failure(failure_message, failure_level)
+
+class InstanceTypesListCPUValidator(_FlexibleInstanceTypesValidator):
+    """Confirm CPU requirements for Flexible Instance Types."""
 
     def validate_property_homogeneity(
         self,
@@ -1192,15 +1214,61 @@ class InstanceTypesListCPUValidator(Validator):
             self.validate_property_homogeneity(
                 instance_type_info_list=list(instance_types_info.values()),
                 property_callback=lambda instance_type_info: instance_type_info.cores_count(),
-                failure_message=f"Instance types listed under Compute Resource {compute_resource_name} must have the "
-                "same number of CPU cores when Simultaneous Multithreading is disabled.",
+                failure_message_callback=lambda heterogeneous_values: f"Instance types listed under Compute Resource "
+                f"{compute_resource_name} must have the same number of CPU cores when Simultaneous Multithreading is "
+                f"disabled ({heterogeneous_values}).",
                 failure_level=FailureLevel.ERROR,
             )
         else:
             self.validate_property_homogeneity(
                 instance_type_info_list=list(instance_types_info.values()),
                 property_callback=lambda instance_type_info: instance_type_info.vcpus_count(),
-                failure_message=f"Instance types listed under Compute Resource {compute_resource_name} must have the "
-                "same number of vCPUs.",
+                failure_message_callback=lambda heterogeneous_values: f"Instance types listed under Compute Resource "
+                f"{compute_resource_name} must have the same number of vCPUs ({heterogeneous_values}).",
                 failure_level=FailureLevel.ERROR,
             )
+
+
+class InstanceTypesListAcceleratorsValidator(_FlexibleInstanceTypesValidator):
+    """Confirm Accelerator requirements for Flexible Instance Types."""
+
+    def _validate(
+        self,
+        compute_resource_name: str,
+        instance_types_info: Dict[str, InstanceTypeInfo],
+    ):
+        """Check if Accelerator requirements are met.
+
+        Instance Types should have the same number of accelerators.
+        """
+        self.validate_property_homogeneity(
+            instance_type_info_list=list(instance_types_info.values()),
+            property_callback=lambda instance_type_info: instance_type_info.gpu_count(),
+            failure_message_callback=lambda heterogeneous_values: f"Instance types listed under Compute Resource "
+            f"{compute_resource_name} must have the same number of GPUs ({heterogeneous_values}).",
+            failure_level=FailureLevel.ERROR,
+        )
+        self.validate_property_homogeneity(
+            instance_type_info_list=list(instance_types_info.values()),
+            property_callback=lambda instance_type_info: instance_type_info.inference_accelerator_count(),
+            failure_message_callback=lambda heterogeneous_values: f"Instance types listed under Compute Resource "
+            f"{compute_resource_name} must have the same number of Inference Accelerators ({heterogeneous_values}).",
+            failure_level=FailureLevel.ERROR,
+        )
+
+        # Instance Types should have the same accelerator manufacturer
+        self.validate_property_homogeneity(
+            instance_type_info_list=list(instance_types_info.values()),
+            property_callback=lambda instance_type_info: instance_type_info.gpu_manufacturer(),
+            failure_message_callback=lambda heterogeneous_values: f"Instance types listed under Compute Resource "
+            f"{compute_resource_name} must have the same GPU manufacturer ({heterogeneous_values}).",
+            failure_level=FailureLevel.ERROR,
+        )
+
+        self.validate_property_homogeneity(
+            instance_type_info_list=list(instance_types_info.values()),
+            property_callback=lambda instance_type_info: instance_type_info.inference_accelerator_manufacturer(),
+            failure_message_callback=lambda heterogeneous_values: f"Instance types listed under Compute Resource "
+            f"{compute_resource_name} must have the same inference accelerator manufacturer ({heterogeneous_values}).",
+            failure_level=FailureLevel.ERROR,
+        )
