@@ -84,6 +84,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     InstanceTypesListAcceleratorsValidator,
     InstanceTypesListCPUValidator,
+    InstanceTypesListEFAValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
@@ -2562,14 +2563,19 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         compute_resource_name=compute_resource.name,
                         instance_types_info=compute_resource.instance_type_info_map,
                         disable_simultaneous_multithreading=compute_resource.disable_simultaneous_multithreading,
-                        efa_enabled=compute_resource.efa,
+                        efa_enabled=compute_resource.efa and compute_resource.efa.enabled,
                         placement_group_enabled=(
                             queue.networking.placement_group and queue.networking.placement_group.enabled
                         ),
                         memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
                     )
-                    self._register_validator(InstanceTypesListCPUValidator, **validator_args)
-                    self._register_validator(InstanceTypesListAcceleratorsValidator, **validator_args)
+                    flexible_instance_types_validators = [
+                        InstanceTypesListCPUValidator,
+                        InstanceTypesListAcceleratorsValidator,
+                        InstanceTypesListEFAValidator,
+                    ]
+                    for validator in flexible_instance_types_validators:
+                        self._register_validator(validator, **validator_args)
 
     @property
     def image_dict(self):

@@ -270,7 +270,7 @@ class InstanceTypeInfo:
 
     def is_efa_supported(self):
         """Check whether EFA is supported."""
-        return self.instance_type_data.get("NetworkInfo").get("EfaSupported")
+        return self.instance_type_data.get("NetworkInfo", {}).get("EfaSupported", False)
 
     def instance_type(self):
         """Get the instance type."""

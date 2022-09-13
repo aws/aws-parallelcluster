@@ -34,6 +34,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     InstanceTypesListAcceleratorsValidator,
     InstanceTypesListCPUValidator,
+    InstanceTypesListEFAValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
@@ -1478,13 +1479,121 @@ def test_instance_type_list_cpu_validator(
         ),
     ],
 )
-def test_instance_type_list_accelerators_validator(
-    compute_resource_name,
-    instance_types_info,
-    expected_message,
-):
+def test_instance_type_list_accelerators_validator(compute_resource_name, instance_types_info, expected_message):
     actual_failures = InstanceTypesListAcceleratorsValidator().execute(
         compute_resource_name,
         instance_types_info,
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_resource_name, instance_types_info, efa_enabled, expected_message",
+    [
+        # Instance Types should have the same EFA support status if EFA is enabled
+        (
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": True},
+                    }
+                ),
+            },
+            True,
+            "Instance type(s) (t2.micro,t3.micro) in Compute Resource TestComputeResource do not support EFA and "
+            "cannot be launched when EFA is enabled in Compute Resource: TestComputeResource.",
+        ),
+        (
+            "TestComputeResource",
+            {
+                "c5n.9xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": True},
+                    }
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": True},
+                    }
+                ),
+            },
+            True,
+            "",
+        ),
+        # If EFA is NOT enabled and one or more instance types supports EFA, a WARNING message should be printed
+        (
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": True},
+                    }
+                ),
+            },
+            False,
+            "The EC2 instance type(s) selected (c5n.18xlarge) for the Compute Resource TestComputeResource support "
+            "enhanced networking capabilities using Elastic Fabric Adapter (EFA). EFA enables you to run applications "
+            "requiring high levels of inter-node communications at scale on AWS at no additional charge. You can "
+            "update the cluster's configuration to enable EFA ("
+            "https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html).",
+        ),
+        # If EFA is enabled and NONE of the instance types supports EFA, an ERROR message should be printed
+        (
+            "TestComputeResource",
+            {
+                "c5n.9xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "VCpuInfo": {"DefaultVCpus": 2, "DefaultCores": 2},
+                        "NetworkInfo": {"EfaSupported": False},
+                    }
+                ),
+            },
+            True,
+            "Compute Resource TestComputeResource has Efa enabled but the Instance Type(s) (c5n.18xlarge,"
+            "c5n.9xlarge) do not support EFA.",
+        ),
+    ],
+)
+def test_instance_type_list_efa_validator(
+    compute_resource_name,
+    instance_types_info,
+    efa_enabled,
+    expected_message,
+):
+    actual_failures = InstanceTypesListEFAValidator().execute(compute_resource_name, instance_types_info, efa_enabled)
     assert_failure_messages(actual_failures, expected_message)

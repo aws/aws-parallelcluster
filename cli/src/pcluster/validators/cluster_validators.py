@@ -10,7 +10,6 @@
 # limitations under the License.
 import math
 import re
-from abc import ABC
 from collections import defaultdict
 from enum import Enum
 from itertools import combinations, product
@@ -1154,8 +1153,7 @@ class SchedulerValidator(Validator):
             )
 
 
-class _FlexibleInstanceTypesValidator(Validator, ABC):
-    # pylint: disable=B024
+class _FlexibleInstanceTypesValidatorMixin:
     def validate_property_homogeneity(
         self,
         instance_type_info_list: List[InstanceTypeInfo],
@@ -1180,24 +1178,8 @@ class _FlexibleInstanceTypesValidator(Validator, ABC):
             instance_type = current_instance_type
 
 
-class InstanceTypesListCPUValidator(_FlexibleInstanceTypesValidator):
+class InstanceTypesListCPUValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Confirm CPU requirements for Flexible Instance Types."""
-
-    def validate_property_homogeneity(
-        self,
-        instance_type_info_list: List[InstanceTypeInfo],
-        property_callback: Callable,
-        failure_message: str,
-        failure_level: FailureLevel,
-    ):
-        """Check if the instance_types have the same property (CPU count, GPU count etc)."""
-        property_count = None
-        for instance_type_info in instance_type_info_list:
-            current_property_count = property_callback(instance_type_info)
-            if property_count is not None and property_count != current_property_count:
-                self._add_failure(failure_message, failure_level)
-                break
-            property_count = current_property_count
 
     def _validate(
         self,
@@ -1229,7 +1211,7 @@ class InstanceTypesListCPUValidator(_FlexibleInstanceTypesValidator):
             )
 
 
-class InstanceTypesListAcceleratorsValidator(_FlexibleInstanceTypesValidator):
+class InstanceTypesListAcceleratorsValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Confirm Accelerator requirements for Flexible Instance Types."""
 
     def _validate(
@@ -1272,3 +1254,76 @@ class InstanceTypesListAcceleratorsValidator(_FlexibleInstanceTypesValidator):
             f"{compute_resource_name} must have the same inference accelerator manufacturer ({heterogeneous_values}).",
             failure_level=FailureLevel.ERROR,
         )
+
+
+class InstanceTypesListEFAValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+    """Validate EFA requirements for Flexible Instance Types."""
+
+    def _validate(
+        self,
+        compute_resource_name: str,
+        instance_types_info: Dict[str, InstanceTypeInfo],
+        efa_enabled: bool,
+    ):
+        """Check if EFA requirements are met.
+
+        Validation Failure is expected if EFA is ENABLED and at least one instance type defined in the compute resource
+        DOES NOT support EFA.
+        """
+        if efa_enabled:
+            all_instance_types = set(instance_types_info.keys())
+            instance_types_without_efa_support = {
+                instance_type_name
+                for instance_type_name, instance_type_info in instance_types_info.items()
+                if not instance_type_info.is_efa_supported()
+            }
+
+            # If all the instance types have EFA support, `instance_types_without_efa_support` should be empty
+            # --> No failure expected
+            # If all the instance types DO NOT have EFA support, `instance_types_without_efa_support` should be the same
+            # as `all_instance_types` (Set difference of 0) --> No failure expected
+            # If there is a mixed support for EFA, `instance_types_without_efa_support` & `all_instance_types`
+            # will have different instance types (Set difference greater than 0) --> Validation Failure expected and
+            # a message with the instance types that DO NOT support EFA is included
+            if instance_types_without_efa_support and len(all_instance_types - instance_types_without_efa_support) > 0:
+                self._add_failure(
+                    (
+                        "Instance type(s) ({0}) in Compute Resource {1} do not support EFA and cannot be launched "
+                        "when EFA is enabled in Compute Resource: {1}.".format(
+                            ",".join(sorted(instance_types_without_efa_support)),
+                            compute_resource_name,
+                        )
+                    ),
+                    FailureLevel.ERROR,
+                )
+            if len(all_instance_types - instance_types_without_efa_support) == 0:
+                self._add_failure(
+                    (
+                        "Compute Resource {0} has Efa enabled but the Instance Type(s) ({1}) do not support"
+                        " EFA.".format(
+                            compute_resource_name,
+                            ",".join(sorted(instance_types_without_efa_support)),
+                        )
+                    ),
+                    FailureLevel.ERROR,
+                )
+        else:
+            instance_types_with_efa_support = {
+                instance_type_name
+                for instance_type_name, instance_type_info in instance_types_info.items()
+                if instance_type_info.is_efa_supported()
+            }
+            if instance_types_with_efa_support:
+                self._add_failure(
+                    (
+                        "The EC2 instance type(s) selected ({0}) for the Compute Resource {1} support enhanced "
+                        "networking capabilities using Elastic Fabric Adapter (EFA). EFA enables you to run "
+                        "applications requiring high levels of inter-node communications at scale on AWS at no "
+                        "additional charge. You can update the cluster's configuration to enable EFA ("
+                        "https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html).".format(
+                            ",".join(sorted(instance_types_with_efa_support)),
+                            compute_resource_name,
+                        )
+                    ),
+                    FailureLevel.WARNING,
+                )
