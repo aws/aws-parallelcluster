@@ -474,6 +474,11 @@ Resources:
                   aws:RequestedRegion:
                     - !Ref Region
             Sid: CloudWatchLogs
+          - Action:
+              - resource-groups:ListGroupResources
+            Resource: '*'
+            Effect: Allow
+            Sid: ResourceGroupRead
 
   ### IMAGE ACTIONS POLICIES
 
