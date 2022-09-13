@@ -137,7 +137,7 @@ function main() {
 
   # Install packages from beta repo --> FIXME they should be installed from official PyPI
   python3 -m pip config set global.extra-index-url "https://${REPO_USER}:${REPO_SECRET}@pip.${REPO_SUFFIX}"
-  pip3 install torch-neuronx==1.10.2.1.*
+  pip3 install torch-neuronx==1.11.*
   pip3 install neuronx-cc==2.*
 }
 
