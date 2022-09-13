@@ -54,14 +54,22 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue1": {
             "compute_resources": {
                 "queue1-i1": {
-                    "instance_type": "c5.xlarge",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "c5.xlarge",
+                        }
+                    ],
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 1,
                     "enable_efa": False,
                     "disable_hyperthreading": False,
                 },
                 "queue1-i2": {
-                    "instance_type": "t2.micro",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "t2.micro",
+                        }
+                    ],
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 9,
                     "enable_efa": False,
@@ -73,7 +81,11 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue2": {
             "compute_resources": {
                 "queue2-i1": {
-                    "instance_type": "c5n.18xlarge",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "c5n.18xlarge",
+                        }
+                    ],
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "enable_efa": False,
@@ -116,21 +128,33 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue1": {
             "compute_resources": {
                 "queue1-i1": {
-                    "instance_type": "c5.xlarge",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "c5.xlarge",
+                        }
+                    ],
                     "expected_running_instances": 2,
                     "expected_power_saved_instances": 2,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
                 "queue1-i2": {
-                    "instance_type": "c5.2xlarge",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "c5.2xlarge",
+                        }
+                    ],
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
                 "queue1-i3": {
-                    "instance_type": "t2.micro",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "t2.micro",
+                        }
+                    ],
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
@@ -142,7 +166,11 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue2": {
             "compute_resources": {
                 "queue2-i1": {
-                    "instance_type": "c5n.18xlarge",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "c5n.18xlarge",
+                        }
+                    ],
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 1,
                     "enable_efa": True,
@@ -155,14 +183,22 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue3": {
             "compute_resources": {
                 "queue3-i1": {
-                    "instance_type": "c5n.18xlarge",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "c5n.18xlarge",
+                        }
+                    ],
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": True,
                     "enable_efa": True,
                 },
                 "queue3-i2": {
-                    "instance_type": "t2.xlarge",
+                    "instance_type_list": [
+                        {
+                            "instance_type": "t2.xlarge",
+                        }
+                    ],
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
@@ -221,7 +257,7 @@ def _assert_launch_templates_config(queues_config, cluster_name, region):
                 )
             else:
                 assert_that("InstanceMarketOptions").is_not_in(launch_template_data)
-            assert_that(launch_template_data["InstanceType"]).is_equal_to(compute_resource_config["instance_type"])
+            assert_that("InstanceType").is_not_in(launch_template_data)  # Using CreateFleet override
             assert_that("CpuOptions").is_not_in(launch_template_data)
             if compute_resource_config["enable_efa"]:
                 assert_that(launch_template_data["NetworkInterfaces"][0]["InterfaceType"]).is_equal_to("efa")

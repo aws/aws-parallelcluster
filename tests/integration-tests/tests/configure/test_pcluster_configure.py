@@ -356,7 +356,16 @@ def assert_config_contains_expected_values(
     if scheduler == "slurm":
         param_validators += [
             {
-                "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "InstanceType"],
+                "parameter_path": [
+                    "Scheduling",
+                    "SlurmQueues",
+                    0,
+                    "ComputeResources",
+                    0,
+                    "InstanceTypeList",
+                    0,
+                    "InstanceType",
+                ],
                 "expected_value": instance,
             },
             {
