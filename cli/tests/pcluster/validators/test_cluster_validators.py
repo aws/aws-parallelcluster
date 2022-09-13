@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from enum import Enum
 from typing import Dict
 
 import pytest
@@ -15,7 +16,7 @@ from assertpy import assert_that
 from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.config.cluster_config import PlacementGroup, Tag
+from pcluster.config.cluster_config import AllocationStrategy, CapacityType, PlacementGroup, Tag
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -35,6 +36,7 @@ from pcluster.validators.cluster_validators import (
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     InstanceTypesListAcceleratorsValidator,
+    InstanceTypesListAllocationStrategyValidator,
     InstanceTypesListCPUValidator,
     InstanceTypesListEFAValidator,
     InstanceTypesListNetworkingValidator,
@@ -1669,5 +1671,34 @@ def test_instance_type_list_networking_validator(
 ):
     actual_failures = InstanceTypesListNetworkingValidator().execute(
         queue_name, compute_resource_name, instance_types_info, placement_group_enabled
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_resource_name, capacity_type, allocation_strategy, expected_message",
+    [
+        # OnDemand Capacity type only supports "lowest-price" allocation strategy
+        # Spot Capacity type supports both "lowest-price" and "capacity-optimized" allocation strategy
+        (
+            "TestComputeResource",
+            CapacityType.ONDEMAND,
+            AllocationStrategy.CAPACITY_OPTIMIZED,
+            "Compute Resource TestComputeResource is using an OnDemand CapacityType. OnDemand CapacityType can only "
+            "use 'lowest-price' allocation strategy.",
+        ),
+        (
+            "TestComputeResource",
+            CapacityType.ONDEMAND,
+            AllocationStrategy.LOWEST_PRICE,
+            ""
+        ),
+    ],
+)
+def test_instance_type_list_allocation_strategy_validator(
+    compute_resource_name: str, capacity_type: Enum, allocation_strategy: Enum, expected_message: str
+):
+    actual_failures = InstanceTypesListAllocationStrategyValidator().execute(
+        compute_resource_name, capacity_type, allocation_strategy
     )
     assert_failure_messages(actual_failures, expected_message)

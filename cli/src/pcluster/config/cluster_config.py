@@ -83,6 +83,7 @@ from pcluster.validators.cluster_validators import (
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     InstanceTypesListAcceleratorsValidator,
+    InstanceTypesListAllocationStrategyValidator,
     InstanceTypesListCPUValidator,
     InstanceTypesListEFAValidator,
     InstanceTypesListNetworkingValidator,
@@ -2575,6 +2576,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         InstanceTypesListAcceleratorsValidator,
                         InstanceTypesListEFAValidator,
                         InstanceTypesListNetworkingValidator,
+                        InstanceTypesListAllocationStrategyValidator,
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)

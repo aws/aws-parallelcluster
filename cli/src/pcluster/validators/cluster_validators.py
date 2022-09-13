@@ -1366,3 +1366,19 @@ class InstanceTypesListNetworkingValidator(Validator, _FlexibleInstanceTypesVali
                 f"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html#placement-groups-cluster).",
                 FailureLevel.WARNING,
             )
+
+
+class InstanceTypesListAllocationStrategyValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+    """Confirm Allocation Strategy matches with the Capacity Type."""
+
+    def _validate(self, compute_resource_name: str, capacity_type: Enum, allocation_strategy: Enum):
+        """On-demand Capacity type only supports "lowest-price" allocation strategy."""
+        if (
+            capacity_type == cluster_config.CapacityType.ONDEMAND
+            and allocation_strategy != cluster_config.AllocationStrategy.LOWEST_PRICE
+        ):
+            self._add_failure(
+                f"Compute Resource {compute_resource_name} is using an OnDemand CapacityType. OnDemand CapacityType "
+                f"can only use '{cluster_config.AllocationStrategy.LOWEST_PRICE.value}' allocation strategy.",
+                FailureLevel.ERROR,
+            )
