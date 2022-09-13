@@ -16,7 +16,8 @@ from pathlib import Path
 
 import argparse
 from framework.tests_configuration.config_utils import discover_all_test_functions
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 
 package_directory = os.path.dirname(os.path.abspath(__file__))
 CONFIG_STUB_FILE = f"{package_directory}/config_stub.yaml.jinja2"
@@ -32,7 +33,7 @@ def _auto_generate_config(tests_root_dir):
     config_dir = os.path.dirname(CONFIG_STUB_FILE)
     config_name = os.path.basename(CONFIG_STUB_FILE)
     file_loader = FileSystemLoader(config_dir)
-    env = Environment(loader=file_loader)
+    env = SandboxedEnvironment(loader=file_loader)
     rendered_template = env.get_template(config_name).render(test_functions=sorted_test_functions)
 
     return rendered_template
