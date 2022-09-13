@@ -183,6 +183,16 @@ class InstanceTypeInfo:
 
         return gpu_count
 
+    def cores_count(self) -> int:
+        """Get number of cores for the given instance type."""
+        try:
+            vcpus_info = self.instance_type_data.get("VCpuInfo")
+            cores = vcpus_info.get("DefaultCores")
+        except KeyError:
+            cores = -1
+
+        return cores
+
     def max_network_interface_count(self) -> int:
         """Max number of NICs for the instance."""
         return int(self.instance_type_data.get("NetworkInfo").get("MaximumNetworkCards", 1))

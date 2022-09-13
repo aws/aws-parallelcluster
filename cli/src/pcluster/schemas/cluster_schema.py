@@ -28,6 +28,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AdditionalPackages,
+    AllocationStrategy,
     AmiSearchFilters,
     AwsBatchClusterConfig,
     AwsBatchComputeResource,
@@ -1245,7 +1246,7 @@ class SlurmQueueSchema(_CommonQueueSchema):
     """Represent the schema of a Slurm Queue."""
 
     allocation_strategy = fields.Str(
-        validate=validate.OneOf(["lowest-price", "capacity-optimized"]),
+        validate=validate.OneOf([strategy.value for strategy in AllocationStrategy]),
         metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
     compute_resources = fields.Nested(

@@ -18,6 +18,7 @@ from pcluster.config.cluster_config import (
     SlurmQueue,
     SlurmQueueNetworking,
     SlurmScheduling,
+    SlurmSettings,
     Tag,
 )
 
@@ -61,6 +62,40 @@ class TestBaseClusterConfig:
                 ]
             ),
         )
+
+    @pytest.mark.parametrize(
+        "memory_scheduling_enabled",
+        [True, False],
+    )
+    def test_registration_of_validators(self, memory_scheduling_enabled, mocker):
+        cluster_config = SlurmClusterConfig(
+            cluster_name="clustername",
+            image=Image("alinux2"),
+            head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
+            scheduling=SlurmScheduling(
+                [
+                    SlurmQueue(
+                        name="queue0",
+                        networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+                        compute_resources=[
+                            SlurmComputeResource(name="compute_resource_1", instance_type="c5.xlarge"),
+                            SlurmFlexibleComputeResource(
+                                [FlexibleInstanceType(instance_type="c5.xlarge")], name="compute_resource_2"
+                            ),
+                            SlurmFlexibleComputeResource(
+                                [FlexibleInstanceType(instance_type="c5n.18xlarge")], name="compute_resource_3"
+                            ),
+                        ],
+                    )
+                ],
+                SlurmSettings(
+                    enable_memory_based_scheduling=memory_scheduling_enabled,
+                ),
+            ),
+        )
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value="")
+        cluster_config._register_validators()
+        assert_that(cluster_config._validators).is_not_empty()
 
     def test_instance_type_list_in_slurm_queue(self):
         queue = SlurmQueue(

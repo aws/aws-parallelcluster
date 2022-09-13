@@ -32,6 +32,7 @@ from pcluster.validators.cluster_validators import (
     HeadNodeImdsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
+    InstanceTypesListCPUValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
@@ -1161,4 +1162,62 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
 def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected_message):
     mock_aws_api(mocker)
     actual_failures = RootVolumeSizeValidator().execute(root_volume_size, ami_size)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_resource_name, instance_types_info, disable_simultaneous_multithreading, expected_message",
+    [
+        # Instance Types should have the same number of CPUs
+        (
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 5, "DefaultCores": 2}}),
+            },
+            False,
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of vCPUs.",
+        ),
+        (
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+            },
+            False,
+            "",
+        ),
+        # InstanceTypes should have the same number of cores if simultaneous multithreading is disabled
+        (
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}),
+                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+            },
+            True,
+            "Instance types listed under Compute Resource TestComputeResource must have the same number of CPU "
+            "cores when Simultaneous Multithreading is disabled.",
+        ),
+        (
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}),
+                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+            },
+            False,
+            "",
+        ),
+    ],
+)
+def test_instance_type_list_cpu_validator(
+    compute_resource_name,
+    instance_types_info,
+    disable_simultaneous_multithreading,
+    expected_message,
+):
+    actual_failures = InstanceTypesListCPUValidator().execute(
+        compute_resource_name,
+        instance_types_info,
+        disable_simultaneous_multithreading,
+    )
     assert_failure_messages(actual_failures, expected_message)

@@ -13,7 +13,7 @@ import re
 from collections import defaultdict
 from enum import Enum
 from itertools import combinations, product
-from typing import List
+from typing import Callable, Dict, List
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
@@ -1150,4 +1150,57 @@ class SchedulerValidator(Validator):
             self._add_failure(
                 f"{scheduler} scheduler is not supported. Supported schedulers are: {', '.join(SUPPORTED_SCHEDULERS)}.",
                 FailureLevel.ERROR,
+            )
+
+
+class InstanceTypesListCPUValidator(Validator):
+    """Confirm CPU requirements for Flexible Instance Types."""
+
+    def validate_size(self, items, size, failure_message, failure_level):
+        """Check if a list of items has a specific size and add a failure entry if it's exceeded."""
+        if len(items) > size:
+            self._add_failure(failure_message, failure_level)
+
+    def validate_property_homogeneity(
+        self,
+        instance_type_info_list: List[InstanceTypeInfo],
+        property_callback: Callable,
+        failure_message: str,
+        failure_level: FailureLevel,
+    ):
+        """Check if the instance_types have the same property (CPU count, GPU count etc)."""
+        property_count = None
+        for instance_type_info in instance_type_info_list:
+            current_property_count = property_callback(instance_type_info)
+            if property_count is not None and property_count != current_property_count:
+                self._add_failure(failure_message, failure_level)
+                break
+            property_count = current_property_count
+
+    def _validate(
+        self,
+        compute_resource_name: str,
+        instance_types_info: Dict[str, InstanceTypeInfo],
+        disable_simultaneous_multithreading: bool,
+    ):
+        """Check if CPU requirements are met.
+
+        Instance types should have the same number of CPUs or same number of Cores if Simultaneous Multithreading
+        is disabled.
+        """
+        if disable_simultaneous_multithreading:
+            self.validate_property_homogeneity(
+                instance_type_info_list=list(instance_types_info.values()),
+                property_callback=lambda instance_type_info: instance_type_info.cores_count(),
+                failure_message=f"Instance types listed under Compute Resource {compute_resource_name} must have the "
+                "same number of CPU cores when Simultaneous Multithreading is disabled.",
+                failure_level=FailureLevel.ERROR,
+            )
+        else:
+            self.validate_property_homogeneity(
+                instance_type_info_list=list(instance_types_info.values()),
+                property_callback=lambda instance_type_info: instance_type_info.vcpus_count(),
+                failure_message=f"Instance types listed under Compute Resource {compute_resource_name} must have the "
+                "same number of vCPUs.",
+                failure_level=FailureLevel.ERROR,
             )

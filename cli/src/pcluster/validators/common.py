@@ -36,6 +36,9 @@ class ValidationResult:
         self.level = level
         self.validator_type = validator_type
 
+    def __repr__(self):
+        return f"ValidationResult(level={self.level}, message={self.message})"
+
 
 class Validator(ABC):
     """Abstract validator. The children must implement the validate method."""
