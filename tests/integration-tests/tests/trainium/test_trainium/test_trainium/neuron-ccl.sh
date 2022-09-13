@@ -47,10 +47,12 @@ else
 fi
 TOTAL_RANK=$(($SLURM_NNODES*32))
 
-# Download file for simulation
-NEFF_FILE=test_nccl_32r_allg_int8_393216/0/file.neff
+# Download file for simulation (64 in the file name corresponds to the number of ranks hardcoded into the file).
+# To use a different number of ranks you need to generate another one:
+# python3 inst-sweep/genneffs_nccl.py -n <total-number-of-ranks> --all --output <output-dir>
+NEFF_FILE=test_nccl_64r_allg_int8_393216/0/file.neff
 if [[ ! -f $NEFF_FILE ]]; then
-  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_32r_allg_int8_393216_0_file.neff $NEFF_FILE
+  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_64r_allg_int8_393216_0_file.neff $NEFF_FILE
 fi
 
 # Print eth0 ip
