@@ -1,7 +1,7 @@
 ad_integration:
   test_ad_integration.py::test_ad_integration:
     dimensions:
-      - regions: ["us-west-2"]
+      - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
@@ -480,7 +480,7 @@ schedulers:
         schedulers: ["slurm"]
   test_slurm.py::test_scontrol_reboot:
     dimensions:
-      - regions: ["us-west-2"]
+      - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
