@@ -18,7 +18,8 @@ from socket import gethostname
 
 import requests
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 
 log = logging.getLogger()
 instance_types_data = {}
@@ -147,7 +148,7 @@ def _get_jinja_env(template_directory):
     # A nosec comment is appended to the following line in order to disable the B701 check.
     # The contents of the default templates are known and the input configuration data is
     # validated by the CLI.
-    env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)  # nosec nosemgrep
+    env = SandboxedEnvironment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)  # nosec nosemgrep
     env.filters["sanify_name"] = lambda value: re.sub(r"[^A-Za-z0-9]", "", value)
     env.filters["gpus"] = _gpu_count
     env.filters["gpu_type"] = _gpu_type

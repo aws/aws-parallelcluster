@@ -1,0 +1,65 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: c5.large
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    # Policy to access to Trainium beta repository info
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::447714826191:policy/TrainiumPreviewPolicy
+    S3Access:
+      - BucketName: {{ bucket_name }}
+      # Needed to download neuronx packages and neff file --> FIXME to be removed once packages are public available
+      - BucketName: aws-parallelcluster-beta
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue-trn32
+      ComputeResources:
+        - Name: compute-resource-trn32
+          InstanceTypeList:
+            - InstanceType: trn1.32xlarge
+          MinCount: 2
+          Efa:
+            Enabled: true
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
+      CustomActions:
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/neuron-installation.sh
+      Iam:
+        # Policy to access to Trainium beta repository info
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::447714826191:policy/TrainiumPreviewPolicy
+        S3Access:
+          # Needed to download post install script
+          - BucketName: {{ bucket_name }}
+          # Needed to download neuronx packages and neff file --> FIXME to be removed once packages are public available
+          - BucketName: aws-parallelcluster-beta
+    - Name: queue-trn2
+      ComputeResources:
+        - Name: compute-resource-trn2
+          InstanceTypeList:
+            - InstanceType: trn1.2xlarge
+          MinCount: 0  # TODO change to 1 once allreduce test is passing
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      CustomActions:
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/neuron-installation.sh
+      Iam:
+        # Policy to access to Trainium beta repository info
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::447714826191:policy/TrainiumPreviewPolicy
+        S3Access:
+          # Needed to download post install script
+          - BucketName: {{ bucket_name }}
+          # Needed to download neuronx packages and neff file --> FIXME to be removed once packages are public available
+          - BucketName: aws-parallelcluster-beta
