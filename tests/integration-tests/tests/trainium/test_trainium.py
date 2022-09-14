@@ -64,4 +64,4 @@ def _test_ccl_two_nodes(test_datadir, remote_command_executor, scheduler_command
     result = remote_command_executor.run_remote_command("cat output-ccl.txt")
 
     print(result.stdout)
-    assert_that(result.stdout).matches(".*CCL(1).*CCL(50).*CCL(99).*CCL(100).*")
+    assert_that(result.stdout).contains("CCL(1)", "CCL(50)", "CCL(99)", "CCL(100)")
