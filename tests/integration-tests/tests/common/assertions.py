@@ -65,6 +65,13 @@ def assert_no_msg_in_logs(remote_command_executor, log_files, log_msg):
         assert_that(log).does_not_contain(message)
 
 
+def assert_msg_in_log(remote_command_executor, log_file, message):
+    """Assert message is in log_file."""
+    __tracebackhide__ = True
+    log = remote_command_executor.run_remote_command(f"sudo cat {log_file}", hide=True).stdout
+    assert_that(log).contains(message)
+
+
 def assert_errors_in_logs(remote_command_executor, log_files, expected_errors):
     # assert every expected error exists in at least one of the log files
     __tracebackhide__ = True

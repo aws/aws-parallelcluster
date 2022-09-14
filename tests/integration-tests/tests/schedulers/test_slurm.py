@@ -18,11 +18,13 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
+from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
 from utils import check_status, get_compute_nodes_instance_ids, get_instance_info
 
 from tests.common.assertions import (
     assert_errors_in_logs,
+    assert_msg_in_log,
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
     assert_no_node_in_ec2,
@@ -555,6 +557,56 @@ def test_update_slurm_reconfigure_race_condition(
             compute_nodes=nodes,
             expected_states=["idle%"],
         )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_slurm_overrides(
+    scheduler,
+    region,
+    pcluster_config_reader,
+    s3_bucket_factory,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    """Test that run-instances and create-fleet overrides is behaving as expected."""
+
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "launch_override.sh"), "launch_override.sh")
+
+    cluster_config = pcluster_config_reader(bucket_name=bucket_name)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    # submit two jobs in the two partitions using run-instances and create-fleet overrides.
+    scheduler_commands.submit_command("sleep 1", partition="fleet")
+    scheduler_commands.submit_command("sleep 1", partition="single")
+
+    # Wait slurm_resume and instances to start
+    wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=2)
+
+    # Assert override file is loaded correctly
+    slurm_resume_log = "/var/log/parallelcluster/slurm_resume.log"
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        [slurm_resume_log],
+        [
+            "Unable to read file '/opt/slurm/etc/pcluster/run_instances_overrides.json' due to an exception",
+            "Unable to read file '/opt/slurm/etc/pcluster/create_fleet_overrides.json' due to an exception",
+        ],
+    )
+
+    # Assert the Tags configured through override setting are correctly attached to the instances
+    for partition, api in [("fleet", "CreateFleet"), ("single", "RunInstances")]:
+        node_tags = get_compute_node_tags(cluster, queue_name=partition)
+        assert_that(node_tags).contains(
+            *convert_tags_dicts_to_tags_list([{f"override{partition}": f"override{partition}"}])
+        )
+        assert_msg_in_log(remote_command_executor, slurm_resume_log, f"Found {api} parameters override")
+
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 def _assert_cluster_initial_conditions(
