@@ -20,6 +20,7 @@ from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
 from pcluster.aws.logs import LogsClient
+from pcluster.aws.resource_groups import ResourceGroupsClient
 from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
@@ -57,6 +58,7 @@ class AWSApi:
         self._logs = None
         self._route53 = None
         self._secretsmanager = None
+        self._resource_groups = None
 
     @property
     def cfn(self):
@@ -162,6 +164,13 @@ class AWSApi:
         if not self._secretsmanager:
             self._secretsmanager = SecretsManagerClient()
         return self._secretsmanager
+
+    @property
+    def resource_groups(self):
+        """Resource Groups client."""
+        if not self._resource_groups:
+            self._resource_groups = ResourceGroupsClient()
+        return self._resource_groups
 
     @staticmethod
     def instance():

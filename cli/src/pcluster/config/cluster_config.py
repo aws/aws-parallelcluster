@@ -114,6 +114,8 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
+    CapacityReservationResourceGroupValidator,
+    CapacityReservationValidator,
     CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
@@ -862,6 +864,15 @@ class Timeouts(Resource):
         )
 
 
+class CapacityReservationTarget(Resource):
+    """Represent the CapacityReservationTarget configuration."""
+
+    def __init__(self, capacity_reservation_id: str = None, capacity_reservation_resource_group_arn: str = None):
+        super().__init__()
+        self.capacity_reservation_id = Resource.init_param(capacity_reservation_id)
+        self.capacity_reservation_resource_group_arn = Resource.init_param(capacity_reservation_resource_group_arn)
+
+
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
@@ -1602,6 +1613,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         efa: Efa = None,
         disable_simultaneous_multithreading: bool = None,
         schedulable_memory: int = None,
+        capacity_reservation_target: CapacityReservationTarget = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1613,6 +1625,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         )
         self.efa = efa or Efa(enabled=False, implied=True)
         self.schedulable_memory = Resource.init_param(schedulable_memory)
+        self.capacity_reservation_target = capacity_reservation_target
         self._instance_types_with_instance_storage = []
         self._instance_type_info_map = {}
 
@@ -1779,6 +1792,7 @@ class _CommonQueue(BaseQueue):
         custom_actions: CustomActions = None,
         iam: Iam = None,
         image: QueueImage = None,
+        capacity_reservation_target: CapacityReservationTarget = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1786,6 +1800,7 @@ class _CommonQueue(BaseQueue):
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
         self.image = image
+        self.capacity_reservation_target = capacity_reservation_target
 
     @property
     def instance_role(self):
@@ -2361,6 +2376,64 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     os=self.image.os,
                     architecture=self.head_node.architecture,
                 )
+                # The validation below has to be in cluster config class instead of queue class
+                # to make sure the subnet APIs are cached by previous validations.
+                if compute_resource.capacity_reservation_target:
+                    cr_target = compute_resource.capacity_reservation_target
+                    self._register_validator(
+                        CapacityReservationValidator,
+                        capacity_reservation_id=cr_target.capacity_reservation_id,
+                        instance_type=compute_resource.instance_type,
+                        subnet=queue.networking.subnet_ids[0],
+                    )
+                    self._register_validator(
+                        CapacityReservationResourceGroupValidator,
+                        capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
+                        instance_type=compute_resource.instance_type,
+                        subnet=queue.networking.subnet_ids[0],
+                    )
+
+    @property
+    def _capacity_reservation_targets(self):
+        """Return a list of capacity reservation targets from all queues and compute resources with the section."""
+        capacity_reservation_targets_list = []
+        for queue in self.scheduling.queues:
+            if queue.capacity_reservation_target:
+                capacity_reservation_targets_list.append(queue.capacity_reservation_target)
+            for compute_resource in queue.compute_resources:
+                if compute_resource.capacity_reservation_target:
+                    capacity_reservation_targets_list.append(compute_resource.capacity_reservation_target)
+        return capacity_reservation_targets_list
+
+    @property
+    def capacity_reservation_ids(self):
+        """Return a list of capacity reservation ids specified in the config."""
+        result = set()
+        for capacity_reservation_target in self._capacity_reservation_targets:
+            if capacity_reservation_target.capacity_reservation_id:
+                result.add(capacity_reservation_target.capacity_reservation_id)
+        return list(result)
+
+    @property
+    def capacity_reservation_resource_group_arns(self):
+        """Return a list of capacity reservation resource group in the config."""
+        result = set()
+        for capacity_reservation_target in self._capacity_reservation_targets:
+            if capacity_reservation_target.capacity_reservation_resource_group_arn:
+                result.add(capacity_reservation_target.capacity_reservation_resource_group_arn)
+        return list(result)
+
+    @property
+    def all_relevant_capacity_reservation_ids(self):
+        """Return a list of capacity reservation ids specified in the config or used by resource groups."""
+        capacity_reservation_ids = set(self.capacity_reservation_ids)
+        for capacity_reservation_resource_group_arn in self.capacity_reservation_resource_group_arns:
+            capacity_reservation_ids.update(
+                AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
+                    capacity_reservation_resource_group_arn
+                )
+            )
+        return list(capacity_reservation_ids)
 
 
 class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
@@ -2370,6 +2443,8 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
+        # Cache capacity reservations information together to reduce number of boto3 calls
+        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""
@@ -2426,6 +2501,8 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
+        # Cache capacity reservations information together to reduce number of boto3 calls
+        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""

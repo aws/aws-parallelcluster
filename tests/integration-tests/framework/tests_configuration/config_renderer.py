@@ -14,7 +14,8 @@ import os
 from functools import lru_cache
 
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
 
 
@@ -58,7 +59,7 @@ def _render_config_file(config_file):
         config_name = os.path.basename(config_file)
         file_loader = FileSystemLoader(config_dir)
         return (
-            Environment(loader=file_loader)
+            SandboxedEnvironment(loader=file_loader)
             .get_template(config_name)
             .render(additional_instance_types_map=InstanceTypesData.additional_instance_types_map)
         )

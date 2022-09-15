@@ -61,11 +61,17 @@ Scheduling:
       Networking:
         SubnetIds:
           - subnet-12345678
+      CapacityReservationTarget:
+        CapacityReservationId: cr-321456cdbd597f551
       ComputeResources:
         - Name: compute-resource-1
           InstanceType: c5.xlarge
+          CapacityReservationTarget:
+            CapacityReservationId: cr-54321fcdbd5971234
         - Name: compute-resource-2
           InstanceType: c4.xlarge
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:123456791537:group/MyCRGroup
       CustomActions:
         OnNodeStart:
           Script: https://test.tgz  # s3:// | https://

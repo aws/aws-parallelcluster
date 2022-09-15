@@ -27,7 +27,8 @@ from tempfile import NamedTemporaryFile
 
 import yaml
 from cfn_tools import dump_yaml, load_yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -77,7 +78,7 @@ def _render_template(template, config, instance_types_info):
     """Apply Jinja rendering to the specified file."""
     try:
         file_loader = FileSystemLoader(os.path.dirname(template))
-        environment = Environment(loader=file_loader)
+        environment = SandboxedEnvironment(loader=file_loader)
         environment.filters["hash"] = (
             lambda value: hashlib.sha1(value.encode()).hexdigest()[0:16].capitalize()
         )
