@@ -18,6 +18,7 @@ CHANGELOG
 - Add support for multiple instance types in the same Compute Resource.
 - Add support for a Name field in PlacementGroup as the preferred naming method.
 - Add support for Networking.PlacementGroup in the SlurmQueues.ComputeResources section
+- Upgrade Slurm to version 22.05.3.
 
 **BUG FIXES**
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified
