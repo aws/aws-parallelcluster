@@ -708,7 +708,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 )
             )
 
-        if self._config.scheduling.settings.database:
+        if self._config.scheduling.scheduler == "slurm" and self._config.scheduling.settings.database:
             policy.append(
                 iam.PolicyStatement(
                     actions=["secretsmanager:GetSecretValue"],

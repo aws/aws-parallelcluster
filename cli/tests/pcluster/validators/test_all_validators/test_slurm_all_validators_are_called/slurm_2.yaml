@@ -11,6 +11,10 @@ Scheduling:
   Scheduler: slurm
   SlurmSettings:
     EnableMemoryBasedScheduling: true
+    Database:
+      Uri: test.databaseserver.com
+      UserName: test_admin
+      PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND
