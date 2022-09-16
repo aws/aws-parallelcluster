@@ -104,6 +104,24 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
+    - Name: queue3
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        AdditionalSecurityGroups:
+          - sg-23456789
+      AllocationStrategy: lowest-price
+      ComputeResources:
+        - Name: compute_resource_1
+          InstanceType: c4.2xlarge
+        - Name: compute_resource_2
+          InstanceTypeList:
+            - InstanceType: c5.2xlarge
+          MinCount: 1
+          MaxCount: 15
+          Efa:
+            Enabled: true
+            GdrSupport: false
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1

@@ -54,6 +54,7 @@ from pcluster.utils import (
     get_partition,
     get_resource_name_from_resource_arn,
     replace_url_parameters,
+    to_snake_case,
 )
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
@@ -133,6 +134,14 @@ from pcluster.validators.fsx_validators import (
     FsxStorageTypeOptionsValidator,
 )
 from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
+from pcluster.validators.instance_type_list_validators import (
+    InstanceTypeListAcceleratorsValidator,
+    InstanceTypeListAllocationStrategyValidator,
+    InstanceTypeListCPUValidator,
+    InstanceTypeListEFAValidator,
+    InstanceTypeListMemorySchedulingValidator,
+    InstanceTypeListNetworkingValidator,
+)
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import (
@@ -1821,6 +1830,13 @@ class _CommonQueue(BaseQueue):
             return None
 
 
+class AllocationStrategy(Enum):
+    """Define supported allocation strategies."""
+
+    LOWEST_PRICE = "lowest-price"
+    CAPACITY_OPTIMIZED = "capacity-optimized"
+
+
 class SlurmQueue(_CommonQueue):
     """Represents a Slurm Queue that has Compute Resources with both Single and Multiple Instance Types."""
 
@@ -1828,14 +1844,18 @@ class SlurmQueue(_CommonQueue):
         self,
         compute_resources: List[_BaseSlurmComputeResource],
         networking: SlurmQueueNetworking,
-        allocation_strategy: str = "lowest-price",
+        allocation_strategy: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
         self.networking = networking
         if any(isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in compute_resources):
-            self.allocation_strategy = allocation_strategy
+            self.allocation_strategy = (
+                AllocationStrategy[to_snake_case(allocation_strategy).upper()]
+                if allocation_strategy
+                else AllocationStrategy.LOWEST_PRICE
+            )
 
     @property
     def instance_type_list(self):
@@ -2539,8 +2559,32 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         self._register_validator(
                             InstanceTypeMemoryInfoValidator,
                             instance_type=instance_type,
-                            instance_type_data=instance_types_data[compute_resource.instance_type],
+                            instance_type_data=instance_types_data[instance_type],
                         )
+                if isinstance(compute_resource, SlurmFlexibleComputeResource):
+                    validator_args = dict(
+                        queue_name=queue.name,
+                        capacity_type=queue.capacity_type,
+                        allocation_strategy=queue.allocation_strategy,
+                        compute_resource_name=compute_resource.name,
+                        instance_types_info=compute_resource.instance_type_info_map,
+                        disable_simultaneous_multithreading=compute_resource.disable_simultaneous_multithreading,
+                        efa_enabled=compute_resource.efa and compute_resource.efa.enabled,
+                        placement_group_enabled=(
+                            queue.networking.placement_group and queue.networking.placement_group.enabled
+                        ),
+                        memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
+                    )
+                    flexible_instance_types_validators = [
+                        InstanceTypeListCPUValidator,
+                        InstanceTypeListAcceleratorsValidator,
+                        InstanceTypeListEFAValidator,
+                        InstanceTypeListNetworkingValidator,
+                        InstanceTypeListAllocationStrategyValidator,
+                        InstanceTypeListMemorySchedulingValidator,
+                    ]
+                    for validator in flexible_instance_types_validators:
+                        self._register_validator(validator, **validator_args)
 
     @property
     def image_dict(self):
