@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import logging
 
 from pcluster.constants import (
@@ -176,58 +177,54 @@ class InstanceTypeInfo:
         return gpu_count
 
     def gpu_manufacturer(self) -> str:
-        """Return the list of GPU manufacturers supported by this instance type."""
-        gpu_info = self.instance_type_data.get("GpuInfo", None)
+        """Return the GPU manufacturer supported by this instance type."""
+        gpu_info = self.instance_type_data.get("GpuInfo", {})
 
-        gpu_manufacturers = list({gpu.get("Manufacturer", "") for gpu in gpu_info.get("Gpus", [])}) if gpu_info else []
+        gpu_manufacturers = list({gpu.get("Manufacturer", "") for gpu in gpu_info.get("Gpus", [])})
 
         # Only one GPU manufacturer is associated with each Instance Type's GPU
         manufacturer = gpu_manufacturers[0] if gpu_manufacturers else ""
         if manufacturer.upper() != "NVIDIA":
             LOGGER.warning(
-                "ParallelCluster currently does not offer native support for '%s' GPUs. "
+                "ParallelCluster currently offers native support for NVIDIA manufactured GPUs only. "
+                "InstanceType (%s) GPU Info: %s. "
                 "Please make sure to use a custom AMI with the appropriate drivers in order to leverage "
                 "GPUs functionalities",
-                manufacturer,
+                self.instance_type(),
+                json.dumps(gpu_info),
             )
         return manufacturer
 
     def inference_accelerator_manufacturer(self) -> str:
-        """Return the list of Inference Accelerator Manufacturers supported by this instance type."""
-        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", None)
+        """Return the Inference Accelerator Manufacturer supported by this instance type."""
+        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", {})
 
-        inference_accelerator_manufacturers = (
-            list(
-                {
-                    accelerator.get("Manufacturer", "")
-                    for accelerator in inference_accelerator_info.get("Accelerators", [])
-                }
-            )
-            if inference_accelerator_info
-            else []
+        inference_accelerator_manufacturers = list(
+            {accelerator.get("Manufacturer", "") for accelerator in inference_accelerator_info.get("Accelerators", [])}
         )
         # Only one accelerator manufacturer is associated with each Instance Type's accelerator
 
         accelerator_manufacturer = inference_accelerator_manufacturers[0] if inference_accelerator_manufacturers else ""
         if accelerator_manufacturer.upper() != "AWS":
             LOGGER.warning(
-                "ParallelCluster currently does not offer native support for '%s' Accelerators. "
+                "ParallelCluster currently offers native support for 'AWS' manufactured Inference Accelerators only. "
+                "InstanceType (%s) accelerator info: %s. "
                 "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
-                "accelerators functionalities",
-                accelerator_manufacturer,
+                "accelerators functionalities.",
+                self.instance_type(),
+                json.dumps(inference_accelerator_info),
             )
 
         return inference_accelerator_manufacturers[0] if inference_accelerator_manufacturers else ""
 
     def inference_accelerator_count(self):
         """Return the total number of Inference Accelerators associated with this instance type."""
-        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", None)
+        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", {})
 
         accelerator_count = 0
-        if inference_accelerator_info:
-            for accelerator in inference_accelerator_info.get("Accelerators", []):
-                if accelerator.get("Manufacturer", "").upper() == "AWS":
-                    accelerator_count += accelerator.get("Count", 0)
+        for accelerator in inference_accelerator_info.get("Accelerators", []):
+            if accelerator.get("Manufacturer", "").upper() == "AWS":
+                accelerator_count += accelerator.get("Count", 0)
         return accelerator_count
 
     def cores_count(self) -> int:

@@ -54,6 +54,7 @@ from pcluster.utils import (
     get_partition,
     get_resource_name_from_resource_arn,
     replace_url_parameters,
+    to_snake_case,
 )
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
@@ -82,11 +83,6 @@ from pcluster.validators.cluster_validators import (
     HeadNodeLaunchTemplateValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
-    InstanceTypesListAcceleratorsValidator,
-    InstanceTypesListAllocationStrategyValidator,
-    InstanceTypesListCPUValidator,
-    InstanceTypesListEFAValidator,
-    InstanceTypesListNetworkingValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
     MaxCountValidator,
@@ -138,6 +134,14 @@ from pcluster.validators.fsx_validators import (
     FsxStorageTypeOptionsValidator,
 )
 from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
+from pcluster.validators.instance_type_list_validators import (
+    InstanceTypeListAcceleratorsValidator,
+    InstanceTypeListAllocationStrategyValidator,
+    InstanceTypeListCPUValidator,
+    InstanceTypeListEFAValidator,
+    InstanceTypeListMemorySchedulingValidator,
+    InstanceTypeListNetworkingValidator,
+)
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import (
@@ -1848,7 +1852,7 @@ class SlurmQueue(_CommonQueue):
         self.networking = networking
         if any(isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in compute_resources):
             self.allocation_strategy = (
-                AllocationStrategy[allocation_strategy.replace("-", "_").upper()]
+                AllocationStrategy[to_snake_case(allocation_strategy).upper()]
                 if allocation_strategy
                 else AllocationStrategy.LOWEST_PRICE
             )
@@ -2572,11 +2576,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
                     )
                     flexible_instance_types_validators = [
-                        InstanceTypesListCPUValidator,
-                        InstanceTypesListAcceleratorsValidator,
-                        InstanceTypesListEFAValidator,
-                        InstanceTypesListNetworkingValidator,
-                        InstanceTypesListAllocationStrategyValidator,
+                        InstanceTypeListCPUValidator,
+                        InstanceTypeListAcceleratorsValidator,
+                        InstanceTypeListEFAValidator,
+                        InstanceTypeListNetworkingValidator,
+                        InstanceTypeListAllocationStrategyValidator,
+                        InstanceTypeListMemorySchedulingValidator,
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)
