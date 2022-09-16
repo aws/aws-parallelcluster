@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import logging
 
 from pcluster.constants import (
@@ -164,28 +165,81 @@ class InstanceTypeInfo:
 
     def gpu_count(self):
         """Return the number of GPUs for the instance."""
-        # FixMe: this method is not used in the pcluster3 CLI
         gpu_info = self.instance_type_data.get("GpuInfo", None)
 
         gpu_count = 0
         if gpu_info:
-            for gpus in gpu_info.get("Gpus", []):
-                gpu_manufacturer = gpus.get("Manufacturer", "")
-                if gpu_manufacturer.upper() == "NVIDIA":
-                    gpu_count += gpus.get("Count", 0)
-                else:
-                    LOGGER.warning(
-                        "ParallelCluster currently does not offer native support for '%s' GPUs. "
-                        "Please make sure to use a custom AMI with the appropriate drivers in order to leverage "
-                        "GPUs functionalities",
-                        gpu_manufacturer,
-                    )
+            for gpu in gpu_info.get("Gpus", []):
+                manufacturer = gpu.get("Manufacturer", "")
+                if manufacturer.upper() == "NVIDIA":
+                    gpu_count += gpu.get("Count", 0)
 
         return gpu_count
 
+    def gpu_manufacturer(self) -> str:
+        """Return the GPU manufacturer supported by this instance type."""
+        gpu_info = self.instance_type_data.get("GpuInfo", {})
+
+        gpu_manufacturers = list({gpu.get("Manufacturer", "") for gpu in gpu_info.get("Gpus", [])})
+
+        # Only one GPU manufacturer is associated with each Instance Type's GPU
+        manufacturer = gpu_manufacturers[0] if gpu_manufacturers else ""
+        if manufacturer.upper() != "NVIDIA":
+            LOGGER.warning(
+                "ParallelCluster currently offers native support for NVIDIA manufactured GPUs only. "
+                "InstanceType (%s) GPU Info: %s. "
+                "Please make sure to use a custom AMI with the appropriate drivers in order to leverage "
+                "GPUs functionalities",
+                self.instance_type(),
+                json.dumps(gpu_info),
+            )
+        return manufacturer
+
+    def inference_accelerator_manufacturer(self) -> str:
+        """Return the Inference Accelerator Manufacturer supported by this instance type."""
+        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", {})
+
+        inference_accelerator_manufacturers = list(
+            {accelerator.get("Manufacturer", "") for accelerator in inference_accelerator_info.get("Accelerators", [])}
+        )
+        # Only one accelerator manufacturer is associated with each Instance Type's accelerator
+
+        accelerator_manufacturer = inference_accelerator_manufacturers[0] if inference_accelerator_manufacturers else ""
+        if accelerator_manufacturer.upper() != "AWS":
+            LOGGER.warning(
+                "ParallelCluster currently offers native support for 'AWS' manufactured Inference Accelerators only. "
+                "InstanceType (%s) accelerator info: %s. "
+                "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                "accelerators functionalities.",
+                self.instance_type(),
+                json.dumps(inference_accelerator_info),
+            )
+
+        return inference_accelerator_manufacturers[0] if inference_accelerator_manufacturers else ""
+
+    def inference_accelerator_count(self):
+        """Return the total number of Inference Accelerators associated with this instance type."""
+        inference_accelerator_info = self.instance_type_data.get("InferenceAcceleratorInfo", {})
+
+        accelerator_count = 0
+        for accelerator in inference_accelerator_info.get("Accelerators", []):
+            if accelerator.get("Manufacturer", "").upper() == "AWS":
+                accelerator_count += accelerator.get("Count", 0)
+        return accelerator_count
+
+    def cores_count(self) -> int:
+        """Get number of cores for the given instance type."""
+        try:
+            vcpus_info = self.instance_type_data.get("VCpuInfo")
+            cores = vcpus_info.get("DefaultCores")
+        except KeyError:
+            cores = -1
+
+        return cores
+
     def max_network_interface_count(self) -> int:
         """Max number of NICs for the instance."""
-        return int(self.instance_type_data.get("NetworkInfo").get("MaximumNetworkCards", 1))
+        return int(self.instance_type_data.get("NetworkInfo", {}).get("MaximumNetworkCards", 1))
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""
@@ -213,7 +267,7 @@ class InstanceTypeInfo:
 
     def is_efa_supported(self):
         """Check whether EFA is supported."""
-        return self.instance_type_data.get("NetworkInfo").get("EfaSupported")
+        return self.instance_type_data.get("NetworkInfo", {}).get("EfaSupported", False)
 
     def instance_type(self):
         """Get the instance type."""
