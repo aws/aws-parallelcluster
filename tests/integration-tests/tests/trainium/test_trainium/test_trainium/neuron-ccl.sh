@@ -50,9 +50,9 @@ TOTAL_RANK=$(($SLURM_NNODES*32))
 # Download file for simulation (64 in the file name corresponds to the number of ranks hardcoded into the file).
 # To use a different number of ranks you need to generate another one:
 # python3 inst-sweep/genneffs_nccl.py -n <total-number-of-ranks> --all --output <output-dir>
-NEFF_FILE=test_nccl_64r_allg_int8_393216/0/file.neff
+NEFF_FILE=test_nccl_64r_50allg_int8_393216/0/file.neff
 if [[ ! -f $NEFF_FILE ]]; then
-  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_64r_allg_int8_393216_0_file.neff $NEFF_FILE
+  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_64r_50allg_int8_393216_0_file.neff $NEFF_FILE
 fi
 
 # Print eth0 ip
@@ -68,8 +68,8 @@ NCCL_DEBUG=trace NCCL_DEBUG_SUBSYS=all NCCL_DEBUG_FILE=$(pwd)/nccl_${SLURM_TASK_
 NEURON_RT_EXEC_TIMEOUT=10 \
 NEURON_RT_ROOT_COMM_ID=$HOST_IP:33666 \
 LD_LIBRARY_PATH=/opt/aws/neuron/lib:/opt/amazon/efa/lib64 \
-neuron-bench infer --fixed-instance-count 32 --enable-only-latency --work 1000 \
-  --run-as-cc-neff --minimal-tensor-io --verbose 4 \
+neuron-bench infer --fixed-instance-count 32 --enable-only-latency --work 1 \
+  --run-as-cc-neff --minimal-tensor-io --verbose 4 --cc-skip-latencies 5\
   --cc-world-size $TOTAL_RANK --cc-rank-start $START_RANK \
   --summary-percentiles=1,50,99,100 \
   --warmup none $NEFF_FILE | tee output-ccl.txt
