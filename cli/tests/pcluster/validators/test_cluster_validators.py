@@ -22,6 +22,7 @@ from pcluster.validators.cluster_validators import (
     ClusterNameValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
+    DeletionPolicyValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
@@ -47,8 +48,9 @@ from pcluster.validators.cluster_validators import (
     SharedStorageNameValidator,
     _LaunchTemplateValidator,
 )
+from pcluster.validators.common import FailureLevel
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.validators.utils import assert_failure_messages
+from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 from tests.utils import MockedBoto3Request
 
 
@@ -1162,3 +1164,29 @@ def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected
     mock_aws_api(mocker)
     actual_failures = RootVolumeSizeValidator().execute(root_volume_size, ami_size)
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "deletion_policy, name, expected_message, failure_level",
+    [
+        (
+            "Delete",
+            "ebs_name",
+            "The DeletionPolicy is set to Delete. The storage 'ebs_name' will be deleted when you remove it from the "
+            "configuration when performing a cluster update or deleting the cluster.",
+            FailureLevel.INFO,
+        ),
+        (
+            "Retain",
+            "efs_name",
+            "The DeletionPolicy is set to Retain. The storage 'efs_name' will be retained when you remove it from the "
+            "configuration when performing a cluster update or deleting the cluster.",
+            FailureLevel.INFO,
+        ),
+        ("Snapshot", "storage", None, None),
+    ],
+)
+def test_deletion_policy_validator(deletion_policy, name, expected_message, failure_level):
+    actual_failures = DeletionPolicyValidator().execute(deletion_policy, name)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, failure_level)

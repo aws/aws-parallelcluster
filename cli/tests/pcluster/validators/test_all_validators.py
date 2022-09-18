@@ -150,7 +150,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     number_of_storage_validator = mocker.patch(
         cluster_validators + ".NumberOfStorageValidator._validate", return_value=[]
     )
-
+    deletion_policy_validator = mocker.patch(cluster_validators + ".DeletionPolicyValidator._validate", return_value=[])
     ec2_validators = validators_path + ".ec2_validators"
     key_pair_validator = mocker.patch(ec2_validators + ".KeyPairValidator._validate", return_value=[])
     instance_type_validator = mocker.patch(ec2_validators + ".InstanceTypeValidator._validate", return_value=[])
@@ -316,6 +316,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     ebs_volume_size_snapshot_validator.assert_called()
     shared_ebs_volume_id_validator.assert_called()
     fsx_persistent_options_validator.assert_called()
+    deletion_policy_validator.assert_called()
 
 
 def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
