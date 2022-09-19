@@ -393,6 +393,24 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
             },
             "A Compute Resource needs to specify either InstanceType or InstanceTypeList.",
         ),
+        # InstanceTypeList in a Compute Resource should not have duplicate instance types
+        (
+            {
+                "Name": "DuplicateInstanceTypes",
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                        "InstanceTypeList": [
+                            {"InstanceType": "c4.2xlarge"},
+                            {"InstanceType": "c5.xlarge"},
+                            {"InstanceType": "c5a.xlarge"},
+                            {"InstanceType": "c4.2xlarge"},
+                        ],
+                    },
+                ],
+            },
+            "Duplicate instance type \\(c4.2xlarge\\) detected.",
+        ),
     ],
 )
 def test_slurm_flexible_queue(mocker, config_dict, failure_message):
