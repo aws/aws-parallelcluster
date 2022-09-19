@@ -18,6 +18,7 @@ import copy
 import hashlib
 import logging
 import re
+from typing import List
 from urllib.request import urlopen
 
 import yaml
@@ -1158,6 +1159,19 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
             **kwargs,
         ):
             raise ValidationError("A Compute Resource needs to specify either InstanceType or InstanceTypeList.")
+
+    @validates("instance_type_list")
+    def no_duplicate_instance_types(self, flexible_instance_types: List[FlexibleInstanceType]):
+        """Verify that there are no duplicates in an InstanceTypeList."""
+        instance_types = set()
+        for flexible_instance_type in flexible_instance_types:
+            instance_type_name = flexible_instance_type.instance_type
+            if instance_type_name in instance_types:
+                raise ValidationError(
+                    f"Duplicate instance type ({instance_type_name}) detected. An InstanceTypeList should not have "
+                    f"duplicate instance types. "
+                )
+            instance_types.add(instance_type_name)
 
     @post_load
     def make_resource(self, data, **kwargs):
