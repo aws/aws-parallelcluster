@@ -17,6 +17,7 @@ CHANGELOG
 - Disable Multithreading through script executed by cloud-init and not through CpuOptions set into Launch Template.
 - Add support for multiple instance types in the same Compute Resource.
 - Add support for a Name field in PlacementGroup as the preferred naming method.
+- Add support for Networking.PlacementGroup in the SlurmQueues.ComputeResources section
 
 **BUG FIXES**
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified

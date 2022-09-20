@@ -11,9 +11,11 @@ from pcluster.config.cluster_config import (
     HeadNodeImage,
     HeadNodeNetworking,
     Image,
+    PlacementGroup,
     QueueImage,
     SlurmClusterConfig,
     SlurmComputeResource,
+    SlurmComputeResourceNetworking,
     SlurmFlexibleComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
@@ -21,6 +23,34 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
+
+mock_compute_resources = [
+    SlurmComputeResource(
+        instance_type="test",
+        name="test1",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(implied=True)),
+    ),
+    SlurmComputeResource(
+        instance_type="test",
+        name="test2",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=True)),
+    ),
+    SlurmComputeResource(
+        instance_type="test",
+        name="test3",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=False)),
+    ),
+    SlurmComputeResource(
+        instance_type="test",
+        name="test4",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(name="test")),
+    ),
+    SlurmComputeResource(
+        instance_type="test",
+        name="test5",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(id="test")),
+    ),
+]
 
 
 @pytest.fixture
@@ -125,6 +155,60 @@ class TestBaseClusterConfig:
         assert_that(queue.instance_type_list).is_length(len(expected_instance_type_list))
         assert_that(set(queue.instance_type_list) - set(expected_instance_type_list)).is_length(0)
 
+    def test_placement_group_in_compute_resource(self):
+        queue = SlurmQueue(
+            name="queue0",
+            networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+            compute_resources=[
+                SlurmComputeResource(
+                    name="compute_resource_1",
+                    instance_type="c5n.4xlarge",
+                    networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(name="mock-pg")),
+                ),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+            ],
+        )
+
+        assert_that(queue.compute_resources[0].networking).is_not_none()
+        assert_that(queue.compute_resources[0].networking.placement_group).is_not_none()
+        assert_that(queue.compute_resources[0].networking.placement_group.name).is_equal_to("mock-pg")
+        assert_that(queue.compute_resources[0].networking.placement_group.id).is_none()
+        assert_that(queue.compute_resources[0].networking.placement_group.enabled).is_false()
+
+        queue = SlurmQueue(
+            name="queue0",
+            networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+            compute_resources=[
+                SlurmComputeResource(
+                    name="compute_resource_1",
+                    instance_type="c5n.4xlarge",
+                    networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(id="mock-pg")),
+                ),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+            ],
+        )
+
+        assert_that(queue.compute_resources[0].networking.placement_group.id).is_equal_to("mock-pg")
+        assert_that(queue.compute_resources[0].networking.placement_group.name).is_none()
+        assert_that(queue.compute_resources[0].networking.placement_group.enabled).is_false()
+
+        queue = SlurmQueue(
+            name="queue0",
+            networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+            compute_resources=[
+                SlurmComputeResource(
+                    name="compute_resource_1",
+                    instance_type="c5n.4xlarge",
+                    networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=True)),
+                ),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+            ],
+        )
+
+        assert_that(queue.compute_resources[0].networking.placement_group.id).is_none()
+        assert_that(queue.compute_resources[0].networking.placement_group.name).is_none()
+        assert_that(queue.compute_resources[0].networking.placement_group.enabled).is_true()
+
     @pytest.mark.parametrize(
         "global_custom_ami, head_node_custom_ami, ami_filters",
         [
@@ -185,3 +269,152 @@ class TestBaseClusterConfig:
             aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2", "x86_64", ami_filters)
         else:
             aws_api_mock.ec2.get_official_image_id.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "queue, expected_result",
+        [
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                [(None, None), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                [("queue-test1", True), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
+                    compute_resources=mock_compute_resources,
+                ),
+                [("test-q", False), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
+                    compute_resources=mock_compute_resources,
+                ),
+                [(None, None), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+            ),
+        ],
+    )
+    def test_get_placement_group_key_for_compute_resource(self, queue, expected_result):
+        actual = []
+        for resource in queue.compute_resources:
+            actual.append(queue.get_placement_group_key_for_compute_resource(resource))
+        assert_that(actual).is_equal_to(expected_result)
+
+    @pytest.mark.parametrize(
+        "queue, expected_result",
+        [
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test2"],
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test1", "queue-test2"],
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test2"],
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test2"],
+            ),
+        ],
+    )
+    def test_get_managed_placement_group_keys(self, queue, expected_result):
+        actual = queue.get_managed_placement_group_keys()
+        assert_that(actual).is_equal_to(expected_result)
+
+    @pytest.mark.parametrize(
+        "queue, compute_resource_pg_enabled, expected_result",
+        [
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                None,
+                True,
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                None,
+                False,
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                False,
+                True,
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                False,
+                True,
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                True,
+                False,
+            ),
+            (
+                SlurmQueue(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                True,
+                False,
+            ),
+        ],
+    )
+    def test_is_placement_group_disabled_for_compute_resource(
+        self, queue, compute_resource_pg_enabled, expected_result
+    ):
+        actual = queue.is_placement_group_disabled_for_compute_resource(compute_resource_pg_enabled)
+        assert_that(actual).is_equal_to(expected_result)
