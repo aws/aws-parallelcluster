@@ -28,6 +28,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
         ),
         ("test.example.com", "No port specified in the URI. Assuming the use of port 3306"),
         ("mysql://test.example.com", "Invalid URI specified. Please do not provide a scheme ('mysql://')"),
+        ("", "Invalid URI specified. Please review the provided URI ('')"),
     ],
 )
 def test_database_uri(uri, expected_message):

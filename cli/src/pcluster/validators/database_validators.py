@@ -43,7 +43,7 @@ class DatabaseUriValidator(Validator):
             return
 
     def _check_trailing_slash(self, uri: str) -> bool:
-        if uri[0] == "/":
+        if uri and uri[0] == "/":
             self._add_failure(
                 f"Invalid URI specified. Please remove any trailing / at the beginning of the provided URI ('{uri}')",
                 FailureLevel.ERROR,
