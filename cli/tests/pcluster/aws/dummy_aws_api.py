@@ -290,7 +290,6 @@ class _DummySecretsManagerClient(SecretsManagerClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         self._client = None
-        pass
 
     def describe_secret(self, secret_arn):
         return {
