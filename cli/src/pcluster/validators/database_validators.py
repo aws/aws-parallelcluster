@@ -25,10 +25,10 @@ class DatabaseUriValidator(Validator):
             return
 
         uri_parse = urlparse(uri)
-        if not uri_parse.scheme and not uri_parse.netloc:
+        if not uri_parse.netloc:
             # This happens if users provide an URI without explicit scheme followed by ://
             # (for example 'test.example.com:3306' instead of 'mysql://test.example.com:3306`).
-            uri_parse = urlparse("//" + uri_parse.path)
+            uri_parse = urlparse("//" + uri)
 
         # Throw error if the URI contains a scheme
         if not self._check_scheme(uri_parse):
