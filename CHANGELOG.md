@@ -6,6 +6,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Avoid failing on DescribeCluster when cluster configuration is not available.
+- Fix a hang in upgrading ubuntu via `pcluster build-image` when `Build:UpdateOsPackages:Enabled:true` is set.
 
 3.2.0
 ------
