@@ -23,7 +23,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
         ("test.example.com:12345", None),
         (
             "/test.example.com:12345",
-            "Invalid URI specified. Please remove any trailing / at "
+            "Invalid URI specified. Please remove any leading / at "
             "the beginning of the provided URI ('/test.example.com:12345')",
         ),
         ("test.example.com", "No port specified in the URI. Assuming the use of port 3306"),

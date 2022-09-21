@@ -21,7 +21,7 @@ class DatabaseUriValidator(Validator):
         """Validate database URI."""
         # First, throw error if the URI starts with a "/" (to prevent issues with the
         # manipulation below
-        if not self._check_trailing_slash(uri):
+        if not self._check_leading_slash(uri):
             return
 
         uri_parse = urlparse(uri)
@@ -42,10 +42,10 @@ class DatabaseUriValidator(Validator):
         if not self._check_port(uri_parse):
             return
 
-    def _check_trailing_slash(self, uri: str) -> bool:
-        if uri and uri[0] == "/":
+    def _check_leading_slash(self, uri: str) -> bool:
+        if uri.startswith("/"):
             self._add_failure(
-                f"Invalid URI specified. Please remove any trailing / at the beginning of the provided URI ('{uri}')",
+                f"Invalid URI specified. Please remove any leading / at the beginning of the provided URI ('{uri}')",
                 FailureLevel.ERROR,
             )
             return False
