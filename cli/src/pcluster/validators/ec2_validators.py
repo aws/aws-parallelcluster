@@ -99,7 +99,7 @@ class KeyPairValidator(Validator):
             )
 
 
-class PlacementGroupNamingValidator(Validator):  # TODO: add tests
+class PlacementGroupNamingValidator(Validator):
     """Placement group naming validator."""
 
     def _validate(self, placement_group):
@@ -111,10 +111,12 @@ class PlacementGroupNamingValidator(Validator):  # TODO: add tests
             )
         identifier = placement_group.name or placement_group.id
         if identifier:
-            if not placement_group.is_implied("enabled") and not placement_group.enabled:
+            if placement_group.enabled is False:
                 self._add_failure(
                     "The PlacementGroup feature must be enabled (Enabled: true) in order "
-                    "to assign a Name or Id parameter",
+                    "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+                    "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+                    "with the Name/Id given",
                     FailureLevel.ERROR,
                 )
             else:
@@ -165,3 +167,49 @@ class AmiOsCompatibleValidator(Validator):
                 f"they are compatible before cluster creation and update operations.",
                 FailureLevel.WARNING,
             )
+
+
+class CapacityReservationValidator(Validator):
+    """Validate capacity reservation can be used with the instance type and subnet."""
+
+    def _validate(self, capacity_reservation_id: str, instance_type: str, subnet: str):
+        if capacity_reservation_id:
+            capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
+            if capacity_reservation["InstanceType"] != instance_type:
+                self._add_failure(
+                    f"Capacity reservation {capacity_reservation_id} must has the same instance type "
+                    f"as {instance_type}.",
+                    FailureLevel.ERROR,
+                )
+            if capacity_reservation["AvailabilityZone"] != AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
+                self._add_failure(
+                    f"Capacity reservation {capacity_reservation_id} must use the same availability zone "
+                    f"as subnet {subnet}.",
+                    FailureLevel.ERROR,
+                )
+
+
+class CapacityReservationResourceGroupValidator(Validator):
+    """Validate at least one capacity reservation in the resource group can be used with the instance and subnet."""
+
+    def _validate(self, capacity_reservation_resource_group_arn: str, instance_type: str, subnet: str):
+        if capacity_reservation_resource_group_arn:
+            capacity_reservation_ids = (
+                AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
+                    capacity_reservation_resource_group_arn
+                )
+            )
+            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
+            found_qualified_capacity_reservation = False
+            for capacity_reservation in capacity_reservations:
+                if capacity_reservation["InstanceType"] == instance_type and capacity_reservation[
+                    "AvailabilityZone"
+                ] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
+                    found_qualified_capacity_reservation = True
+                    break
+            if not found_qualified_capacity_reservation:
+                self._add_failure(
+                    f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have at least "
+                    f"one capacity reservation for {instance_type} in the same availability zone as subnet {subnet}.",
+                    FailureLevel.ERROR,
+                )

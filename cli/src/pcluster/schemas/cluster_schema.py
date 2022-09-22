@@ -18,6 +18,7 @@ import copy
 import hashlib
 import logging
 import re
+from typing import List
 from urllib.request import urlopen
 
 import yaml
@@ -28,6 +29,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AdditionalPackages,
+    AllocationStrategy,
     AmiSearchFilters,
     AwsBatchClusterConfig,
     AwsBatchComputeResource,
@@ -35,6 +37,7 @@ from pcluster.config.cluster_config import (
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
     AwsBatchSettings,
+    CapacityReservationTarget,
     CapacityType,
     CloudWatchDashboards,
     CloudWatchLogs,
@@ -97,6 +100,7 @@ from pcluster.config.cluster_config import (
     SharedFsxLustre,
     SlurmClusterConfig,
     SlurmComputeResource,
+    SlurmComputeResourceNetworking,
     SlurmFlexibleComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
@@ -950,6 +954,32 @@ class TimeoutsSchema(BaseSchema):
         return Timeouts(**data)
 
 
+class CapacityReservationTargetSchema(BaseSchema):
+    """Represent the schema of the CapacityReservationTarget section."""
+
+    capacity_reservation_id = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    capacity_reservation_resource_group_arn = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CapacityReservationTarget(**data)
+
+    @validates_schema
+    def no_coexist_instance_type_flexibility(self, data, **kwargs):
+        """Validate that 'capacity_reservation_id' and 'capacity_reservation_resource_group_arn' do not co-exist."""
+        if self.fields_coexist(
+            data,
+            ["capacity_reservation_id", "capacity_reservation_resource_group_arn"],
+            one_required=True,
+            **kwargs,
+        ):
+            raise ValidationError(
+                "A Capacity Reservation Target needs to specify either Capacity Reservation ID or "
+                "Capacity Reservation Resource Group ARN."
+            )
+
+
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of Dev Setting."""
 
@@ -1103,6 +1133,19 @@ class _ComputeResourceSchema(BaseSchema):
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
+class SlurmComputeResourceNetworkingSchema(BaseSchema):
+    """Represent the Networking schema of the Slurm ComputeResource."""
+
+    placement_group = fields.Nested(
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SlurmComputeResourceNetworking(**data)
+
+
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
@@ -1120,6 +1163,12 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     efa = fields.Nested(EfaSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
     disable_simultaneous_multithreading = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     schedulable_memory = fields.Int(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    capacity_reservation_target = fields.Nested(
+        CapacityReservationTargetSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+    networking = fields.Nested(
+        SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
 
     @validates_schema
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
@@ -1131,6 +1180,19 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
             **kwargs,
         ):
             raise ValidationError("A Compute Resource needs to specify either InstanceType or InstanceTypeList.")
+
+    @validates("instance_type_list")
+    def no_duplicate_instance_types(self, flexible_instance_types: List[FlexibleInstanceType]):
+        """Verify that there are no duplicates in an InstanceTypeList."""
+        instance_types = set()
+        for flexible_instance_type in flexible_instance_types:
+            instance_type_name = flexible_instance_type.instance_type
+            if instance_type_name in instance_types:
+                raise ValidationError(
+                    f"Duplicate instance type ({instance_type_name}) detected. An InstanceTypeList should not have "
+                    f"duplicate instance types. "
+                )
+            instance_types.add(instance_type_name)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1210,13 +1272,16 @@ class _CommonQueueSchema(BaseQueueSchema):
     )
     iam = fields.Nested(QueueIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    capacity_reservation_target = fields.Nested(
+        CapacityReservationTargetSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
 
 
 class SlurmQueueSchema(_CommonQueueSchema):
     """Represent the schema of a Slurm Queue."""
 
     allocation_strategy = fields.Str(
-        validate=validate.OneOf(["lowest-price", "capacity-optimized"]),
+        validate=validate.OneOf([strategy.value for strategy in AllocationStrategy]),
         metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
     compute_resources = fields.Nested(

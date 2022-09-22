@@ -64,7 +64,7 @@ class BaseSchema(Schema):
 
     def on_bind_field(self, field_name, field_obj):
         """
-        Bind PascalCase in the config with with snake_case in Python.
+        Bind PascalCase in the config with snake_case in Python.
 
         For example, subnet_id in the code is automatically bind with SubnetId in the config file.
         The bind can be overwritten by specifying data_key.
@@ -76,11 +76,11 @@ class BaseSchema(Schema):
     @staticmethod
     def fields_coexist(data, field_list, one_required=False, **kwargs):
         """
-        Check if at least two fields in the filed lists co-exist in the schema.
+        Check if at least two fields in the field list co-exist in the schema.
 
         :param data: data to be checked
         :param field_list: list including the name of the fields to check
-        :param one_required: True if one of the field is required to be existed
+        :param one_required: True if one of the fields is required to exist
         :return: True if one and only one field is not None
         """
         if kwargs.get("partial"):

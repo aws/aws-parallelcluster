@@ -20,6 +20,10 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.xlarge
+        - Name: compute_resource2
+          InstanceType: t2.micro
+          CapacityReservationTarget:
+            CapacityReservationId: cr-54321fcdbd5971234
 SharedStorage:
   - MountDir: /my/mount/point2
     Name: name1

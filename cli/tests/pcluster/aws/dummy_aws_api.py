@@ -20,6 +20,7 @@ from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
 from pcluster.aws.logs import LogsClient
+from pcluster.aws.resource_groups import ResourceGroupsClient
 from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
@@ -100,6 +101,7 @@ class _DummyAWSApi(AWSApi):
         self._logs = _DummyLogsClient()
         self._ddb_resource = _DummyDynamoResource()
         self._route53 = _DummyRoute53Client()
+        self._resource_groups = _DummyResourceGroupsClient()
 
 
 class _DummyCfnClient(CfnClient):
@@ -111,7 +113,12 @@ class _DummyCfnClient(CfnClient):
 class _DummyEc2Client(Ec2Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-        pass
+        self.capacity_reservations_cache = {
+            "cr-54321fcdbd5971234": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
+            "cr-321456cdbd597f551": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
+            "cr-123": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
+            "cr-234": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
+        }
 
     def get_official_image_id(self, os, architecture, filters=None):
         return "dummy-ami-id"
@@ -261,6 +268,20 @@ class _DummyRoute53Client(Route53Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
+
+
+class _DummyResourceGroupsClient(ResourceGroupsClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+    def get_capacity_reservation_ids_from_group_resources(self, group):
+        """Return a list of capacity reservation ids."""
+        return (
+            ["cr-123", "cr-234"]
+            if group != "skip_dummy"
+            else super().get_capacity_reservation_ids_from_group_resources(group)
+        )
 
 
 def mock_aws_api(mocker, mock_instance_type_info=True):

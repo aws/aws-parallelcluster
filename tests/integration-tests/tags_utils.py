@@ -81,9 +81,9 @@ def get_compute_node_root_volume_tags(cluster, os):
     return get_tags_for_volume(root_volume_id, cluster.region)
 
 
-def get_compute_node_tags(cluster):
+def get_compute_node_tags(cluster, queue_name=None):
     """Return the given cluster's compute node's tags."""
-    compute_nodes = cluster.get_cluster_instance_ids(node_type="Compute")
+    compute_nodes = cluster.get_cluster_instance_ids(node_type="Compute", queue_name=queue_name)
     assert_that(compute_nodes).is_length(1)
     return get_ec2_instance_tags(compute_nodes[0], cluster.region)
 

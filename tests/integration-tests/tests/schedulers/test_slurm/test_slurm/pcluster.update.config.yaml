@@ -18,7 +18,7 @@ Scheduling:
       ComputeResources:
         - Name: ondemand-i1
           InstanceTypeList:
-            - InstanceType: c4.xlarge
+            - InstanceType: c5.large
         - Name: same-name-diff-queue
           InstanceTypeList:
             - InstanceType: c5.xlarge

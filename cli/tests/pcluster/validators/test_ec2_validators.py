@@ -16,6 +16,8 @@ from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import CapacityType, PlacementGroup
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
+    CapacityReservationResourceGroupValidator,
+    CapacityReservationValidator,
     CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
@@ -468,7 +470,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=False, name="test"),
@@ -478,7 +483,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=True, id="test", name="test2"),
@@ -503,4 +511,125 @@ def test_placement_group_validator(
         side_effect=side_effect,
     )
     actual_failures = PlacementGroupNamingValidator().execute(placement_group=placement_group)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "capacity_reservation_instance_type, capacity_reservation_availability_zone, "
+    "instance_type, subnet_availability_zone, expected_message",
+    [
+        ("c5.xlarge", "us-east-1a", "c5.xlarge", "us-east-1a", None),
+        # Wrong instance type
+        (
+            "m5.xlarge",
+            "us-east-1a",
+            "c5.xlarge",
+            "us-east-1a",
+            "Capacity reservation .* must has the same instance type as c5.xlarge.",
+        ),
+        # Wrong availability zone
+        (
+            "c5.xlarge",
+            "us-east-1b",
+            "c5.xlarge",
+            "us-east-1a",
+            "Capacity reservation .* must use the same availability zone as subnet",
+        ),
+        # Both instance type and availability zone are wrong
+        (
+            "m5.xlarge",
+            "us-east-1b",
+            "c5.xlarge",
+            "us-east-1a",
+            "Capacity reservation .* must has the same instance type as c5.xlarge.",
+        ),
+        (
+            "m5.xlarge",
+            "us-east-1b",
+            "c5.xlarge",
+            "us-east-1a",
+            "Capacity reservation .* must use the same availability zone as subnet",
+        ),
+    ],
+)
+def test_capacity_reservation_validator(
+    mocker,
+    capacity_reservation_instance_type,
+    capacity_reservation_availability_zone,
+    instance_type,
+    subnet_availability_zone,
+    expected_message,
+):
+    mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+        return_value=[
+            {
+                "InstanceType": capacity_reservation_instance_type,
+                "AvailabilityZone": capacity_reservation_availability_zone,
+            }
+        ],
+    )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
+        return_value=subnet_availability_zone,
+    )
+    actual_failures = CapacityReservationValidator().execute(
+        capacity_reservation_id="cr-123", instance_type=instance_type, subnet="subnet-123"
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "capacity_reservations_in_resource_group, expected_message",
+    [
+        (["cr-good"], None),
+        (["cr-bad-1", "cr-good", "cr-bad-2"], None),
+        (
+            [],
+            "Capacity reservation resource group .* must have at least one capacity reservation "
+            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+        ),
+        (
+            ["cr-bad-1"],
+            "Capacity reservation resource group .* must have at least one capacity reservation "
+            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+        ),
+        (
+            ["cr-bad-1", "cr-bad-2"],
+            "Capacity reservation resource group .* must have at least one capacity reservation "
+            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+        ),
+    ],
+)
+def test_capacity_reservation_resource_group_validator(
+    mocker,
+    capacity_reservations_in_resource_group,
+    expected_message,
+):
+    mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.aws.resource_groups.ResourceGroupsClient.get_capacity_reservation_ids_from_group_resources",
+        side_effect=lambda group: capacity_reservations_in_resource_group,
+    )
+    desired_instance_type = "c5.xlarge"
+    desired_availability_zone = "us-east-1b"
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+        side_effect=lambda capacity_reservation_ids: [
+            {
+                "CapacityReservationId": capacity_reservation_id,
+                "InstanceType": desired_instance_type if "good" in capacity_reservation_id else "m5.xlarge",
+                "AvailabilityZone": desired_availability_zone,
+            }
+            for capacity_reservation_id in capacity_reservation_ids
+        ],
+    )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
+        return_value=desired_availability_zone,
+    )
+    actual_failures = CapacityReservationResourceGroupValidator().execute(
+        capacity_reservation_resource_group_arn="skip_dummy", instance_type=desired_instance_type, subnet="subnet-123"
+    )
     assert_failure_messages(actual_failures, expected_message)

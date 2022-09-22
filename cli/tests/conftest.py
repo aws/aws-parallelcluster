@@ -15,7 +15,8 @@ from assertpy import assert_that, soft_assertions
 from botocore.stub import Stubber
 from dateutil import tz
 from flask.testing import FlaskClient
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 
 from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.aws.common import StackNotFoundError
@@ -159,7 +160,7 @@ def pcluster_config_reader(test_datadir):
         config_file_path = os.path.join(str(test_datadir), config_file)
         output_file_path = os.path.join(str(test_datadir), output_file) if output_file else config_file_path
         file_loader = FileSystemLoader(str(test_datadir))
-        env = Environment(loader=file_loader)
+        env = SandboxedEnvironment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**kwargs)
         with open(output_file_path, "w", encoding="utf-8") as f:
             f.write(rendered_template)

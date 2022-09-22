@@ -1364,47 +1364,39 @@ class ComputeFleetConstruct(Construct):
     def _add_placement_groups(self) -> Dict[str, ec2.CfnPlacementGroup]:
         managed_placement_groups = {}
         for queue in self._config.scheduling.queues:
-            if (
-                queue.networking.placement_group
-                and queue.networking.placement_group.enabled
-                and not (queue.networking.placement_group.id or queue.networking.placement_group.name)
-            ):
-                managed_placement_groups[queue.name] = ec2.CfnPlacementGroup(
-                    self, f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
+            for key in queue.get_managed_placement_group_keys():
+                managed_placement_groups[key] = ec2.CfnPlacementGroup(
+                    self,
+                    f"PlacementGroup{create_hash_suffix(key)}",
+                    strategy="cluster",
                 )
         return managed_placement_groups
+
+    @staticmethod
+    def _get_placement_group_for_compute_resource(queue, managed_placement_groups, compute_resource) -> str:
+        placement_group_key, managed = queue.get_placement_group_key_for_compute_resource(compute_resource)
+        return managed_placement_groups[placement_group_key].ref if managed else placement_group_key
 
     def _add_launch_templates(self, managed_placement_groups, instance_profiles):
         compute_launch_templates = {}
         for queue in self._config.scheduling.queues:
             compute_launch_templates[queue.name] = {}
             queue_lt_security_groups = get_queue_security_groups_full(self._compute_security_group, queue)
-
-            queue_placement_group = None
-            if queue.networking.placement_group:
-                if (queue.networking.placement_group.id or queue.networking.placement_group.name) and (
-                    queue.networking.placement_group.enabled or queue.networking.placement_group.is_implied("enabled")
-                ):
-                    queue_placement_group = queue.networking.placement_group.name or queue.networking.placement_group.id
-                elif queue.networking.placement_group.enabled:
-                    queue_placement_group = managed_placement_groups[queue.name].ref
-
             queue_pre_install_action, queue_post_install_action = (None, None)
             if queue.custom_actions:
                 queue_pre_install_action = queue.custom_actions.on_node_start
                 queue_post_install_action = queue.custom_actions.on_node_configured
 
-            for compute_resource in queue.compute_resources:
-                launch_template = self._add_compute_resource_launch_template(
+            for resource in queue.compute_resources:
+                compute_launch_templates[queue.name][resource.name] = self._add_compute_resource_launch_template(
                     queue,
-                    compute_resource,
+                    resource,
                     queue_pre_install_action,
                     queue_post_install_action,
                     queue_lt_security_groups,
-                    queue_placement_group,
+                    self._get_placement_group_for_compute_resource(queue, managed_placement_groups, resource),
                     instance_profiles,
                 )
-                compute_launch_templates[queue.name][compute_resource.name] = launch_template
         return compute_launch_templates
 
     def _add_compute_resource_launch_template(
@@ -1414,7 +1406,7 @@ class ComputeFleetConstruct(Construct):
         queue_pre_install_action,
         queue_post_install_action,
         queue_lt_security_groups,
-        queue_placement_group,
+        placement_group,
         instance_profiles,
     ):
         # LT network interfaces
@@ -1459,6 +1451,16 @@ class ComputeFleetConstruct(Construct):
         if isinstance(compute_resource, SlurmComputeResource):
             conditional_template_properties.update({"instance_type": compute_resource.instance_type})
 
+        capacity_reservation_specification = None
+        cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+        if cr_target:
+            capacity_reservation_specification = ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
+                capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
+                    capacity_reservation_id=cr_target.capacity_reservation_id,
+                    capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
+                )
+            )
+
         return ec2.CfnLaunchTemplate(
             self,
             f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}",
@@ -1469,13 +1471,14 @@ class ComputeFleetConstruct(Construct):
                 ),
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
-                placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=queue_placement_group),
+                placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=placement_group),
                 image_id=self._config.image_dict[queue.name],
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=instance_profiles[queue.name]
                 ),
                 instance_market_options=instance_market_options,
                 instance_initiated_shutdown_behavior="terminate",
+                capacity_reservation_specification=capacity_reservation_specification,
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/compute_node/user_data.sh"),

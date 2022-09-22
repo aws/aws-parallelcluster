@@ -22,6 +22,7 @@ from pcluster.validators import (
     ec2_validators,
     fsx_validators,
     iam_validators,
+    instance_type_list_validators,
     kms_validators,
     networking_validators,
     s3_validators,
@@ -39,6 +40,7 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
         fsx_validators,
         kms_validators,
         iam_validators,
+        instance_type_list_validators,
         networking_validators,
         s3_validators,
     ]
@@ -353,17 +355,33 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
     _load_and_validate(test_datadir / "scheduler_plugin_1.yaml")
     _load_and_validate(test_datadir / "scheduler_plugin_2.yaml")
 
+    # FlexibleInstanceTypes Only supported in Slurm
+    flexible_instance_types_validators = [
+        "InstanceTypeListCPUValidator",
+        "InstanceTypeListAcceleratorsValidator",
+        "InstanceTypeListEFAValidator",
+        "InstanceTypeListNetworkingValidator",
+        "InstanceTypeListAllocationStrategyValidator",
+        "InstanceTypeListMemorySchedulingValidator",
+    ]
+
     # Assert validators are called
     for m in mockers:
-        if m["name"] in [
-            "TagKeyValidator",
-            "ClusterNameValidator",
-            "InstanceProfileValidator",
-            "RoleValidator",
-            "MixedSecurityGroupOverwriteValidator",
-            "HostedZoneValidator",
-            "InstanceTypeMemoryInfoValidator",
-        ]:
+        if (
+            m["name"]
+            in [
+                "TagKeyValidator",
+                "ClusterNameValidator",
+                "InstanceProfileValidator",
+                "RoleValidator",
+                "MixedSecurityGroupOverwriteValidator",
+                "HostedZoneValidator",
+                "InstanceTypeMemoryInfoValidator",
+                "CapacityReservationValidator",
+                "CapacityReservationResourceGroupValidator",
+            ]
+            + flexible_instance_types_validators
+        ):
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue
         print("Checking " + m["name"] + " is called")
