@@ -53,24 +53,20 @@ if [[ ! -f $NEFF_FILE ]]; then
   aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_32r_allg_int8_393216_0_file.neff $NEFF_FILE
 fi
 
-# Print eth0 ip
-/usr/sbin/ip -br addr show dev eth0 scope global
-
 # Export variables required for neuron-bench
 export PATH="/opt/aws/neuron/bin:$PATH"
 # Export variables required for EFA
 export FI_EFA_USE_DEVICE_RDMA=1
 export FI_PROVIDER=efa
 
-NCCL_DEBUG=trace NCCL_DEBUG_SUBSYS=all NCCL_DEBUG_FILE=$(pwd)/nccl_${SLURM_TASK_PID}.log \
 NEURON_RT_EXEC_TIMEOUT=10 \
 NEURON_RT_ROOT_COMM_ID=$HOST_IP:33666 \
 LD_LIBRARY_PATH=/opt/aws/neuron/lib:/opt/amazon/efa/lib64 \
-neuron-bench infer --fixed-instance-count 32 --enable-only-latency --work 1000 \
+neuron-bench infer --fixed-instance-count 32 --enable-only-throughput --work 1000 \
   --run-as-cc-neff --minimal-tensor-io --verbose 4 \
   --cc-world-size $TOTAL_RANK --cc-rank-start $START_RANK \
   --summary-percentiles=1,50,99,100 \
-  --warmup none $NEFF_FILE | tee output-ccl.txt
+  --worker-thread-count 1 $NEFF_FILE | tee output-ccl.txt
 
 EOF
 
