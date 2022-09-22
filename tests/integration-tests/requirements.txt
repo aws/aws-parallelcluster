@@ -21,6 +21,7 @@ pytest-sugar
 pytest-xdist
 PyYAML
 requests
+requests
 retrying
 troposphere
 untangle

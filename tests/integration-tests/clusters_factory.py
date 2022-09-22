@@ -431,20 +431,14 @@ class ClustersFactory:
         wait = kwargs.pop("wait", True)
         if wait:
             command.append("--wait")
-        # TODO Remove the validator suppression below once the plugin scheduler is officially supported
-        if cluster.config["Scheduling"]["Scheduler"] == "plugin":
-            validators_list = ["type:SchedulerValidator"]
-
-            # concatenate validators
-            validator = kwargs.get("suppress_validators")
-            if validator:
-                validators_list.append(validator)
-            kwargs["suppress_validators"] = validators_list
         for k, val in kwargs.items():
             if isinstance(val, (list, tuple)):
                 command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
             else:
                 command.extend([f"--{kebab_case(k)}", str(val)])
+        # TODO Remove the validator suppression below once the plugin scheduler is officially supported
+        if cluster.config["Scheduling"]["Scheduler"] == "plugin":
+            command.extend(["--suppress-validators", "type:SchedulerValidator"])
         try:
             result = run_pcluster_command(command, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
 
