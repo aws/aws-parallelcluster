@@ -39,8 +39,10 @@ EOF
   wget -qO - https://${REPO_USER}:${REPO_SECRET}@apt.${REPO_SUFFIX}/GPG-PUB-KEY-AMAZON-AWS-NEURON.PUB | sudo apt-key add -
 
   # Install packages from S3 --> FIXME they should be installed from configured repository
-  DEBS=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-1:447714826191:secret:TrainiumPreviewRepository --region us-east-1 --query 'SecretString' --output text | jq -r '.debs')
-  sudo dpkg -i ${DEBS}
+  sudo dpkg -i aws-neuronx-devtools-2.5.6.0.deb
+  sudo dpkg -i aws-neuronx-tools-2.5.6.0.deb
+  sudo dpkg -i aws-neuronx-collectives-2.9.47.0-d96ffa967.deb
+  sudo dpkg -i aws-neuronx-runtime-lib-2.9.39.0-21003aa11.deb
 
   # Install Python venv and activate Python virtual environment to install Neuron pip packages.
   local OS_VERSION="$(grep "^VERSION_ID=" /etc/os-release | cut -d"=" -f 2 | xargs)"
@@ -71,8 +73,10 @@ EOF
   sudo rpm --import https://${REPO_USER}:${REPO_SECRET}@yum.${REPO_SUFFIX}/GPG-PUB-KEY-AMAZON-AWS-NEURON.PUB
 
   # Install packages from S3 --> FIXME they should be installed from configured repository
-  RPMS=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-1:447714826191:secret:TrainiumPreviewRepository --region us-east-1 --query 'SecretString' --output text | jq -r '.rpms')
-  sudo rpm -i ${RPMS}
+  sudo rpm -i aws-neuronx-devtools-2.5.6.0.rpm
+  sudo rpm -i aws-neuronx-tools-2.5.6.0.rpm
+  sudo rpm -i aws-neuronx-collectives-2.9.47.0-d96ffa967.rpm
+  sudo rpm -i aws-neuronx-runtime-lib-2.9.39.0-21003aa11.rpm
 
   python3 -m venv /home/ec2-user/aws_neuron_venv_pytorch
 }
@@ -133,8 +137,8 @@ function main() {
 
   # Install packages from beta repo --> FIXME they should be installed from official PyPI
   python3 -m pip config set global.extra-index-url "https://${REPO_USER}:${REPO_SECRET}@pip.${REPO_SUFFIX}"
-  PIPS=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-1:447714826191:secret:TrainiumPreviewRepository --region us-east-1 --query 'SecretString' --output text | jq -r '.pips')
-  pip3 install ${PIPS}
+  pip3 install torch-neuronx==1.11.*
+  pip3 install neuronx-cc==2.*
 }
 
 main "${@}"
