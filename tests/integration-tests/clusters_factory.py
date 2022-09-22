@@ -412,12 +412,39 @@ class ClustersFactory:
         :param kwargs: additional parameters to be passed to the pcluster command
         """
         name = cluster.name
+        config = cluster.config_file
         if name in self.__created_clusters:
             raise ValueError("Cluster {0} already exists".format(name))
 
         # create the cluster
-        logging.info("Creating cluster {0} with config {1}".format(name, cluster.config_file))
-        command, wait = self._build_command(cluster, kwargs)
+        logging.info("Creating cluster {0} with config {1}".format(name, config))
+        command = [
+            "pcluster",
+            "create-cluster",
+            "--rollback-on-failure",
+            "false",
+            "--cluster-configuration",
+            config,
+            "--cluster-name",
+            name,
+        ]
+        wait = kwargs.pop("wait", True)
+        if wait:
+            command.append("--wait")
+        # TODO Remove the validator suppression below once the plugin scheduler is officially supported
+        if cluster.config["Scheduling"]["Scheduler"] == "plugin":
+            validators_list = ["type:SchedulerValidator"]
+
+            # concatenate validators
+            validator = kwargs.get("suppress_validators")
+            if validator:
+                validators_list.append(validator)
+            kwargs["suppress_validators"] = validators_list
+        for k, val in kwargs.items():
+            if isinstance(val, (list, tuple)):
+                command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
+            else:
+                command.extend([f"--{kebab_case(k)}", str(val)])
         try:
             result = run_pcluster_command(command, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
 
@@ -442,40 +469,6 @@ class ClustersFactory:
                     self.__created_clusters[name] = cluster
             except Exception:
                 pass
-
-    @staticmethod
-    def _build_command(cluster, kwargs):
-        command = [
-            "pcluster",
-            "create-cluster",
-            "--rollback-on-failure",
-            "false",
-            "--cluster-configuration",
-            cluster.config_file,
-            "--cluster-name",
-            cluster.name,
-        ]
-
-        wait = kwargs.pop("wait", True)
-        if wait:
-            command.append("--wait")
-
-        # TODO Remove the validator suppression below once the plugin scheduler is officially supported
-        if cluster.config["Scheduling"]["Scheduler"] == "plugin":
-            validators_list = ["type:SchedulerValidator"]
-            # concatenate validators
-            validator = kwargs.get("suppress_validators")
-            if validator:
-                validators_list.append(validator)
-            kwargs["suppress_validators"] = validators_list
-
-        for k, val in kwargs.items():
-            if isinstance(val, (list, tuple)):
-                command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
-            else:
-                command.extend([f"--{kebab_case(k)}", str(val)])
-
-        return command, wait
 
     def destroy_cluster(self, name, test_passed):
         """Destroy a created cluster."""
