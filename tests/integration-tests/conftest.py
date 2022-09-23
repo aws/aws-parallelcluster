@@ -53,7 +53,16 @@ from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetCon
 from retrying import retry
 from troposphere import Ref, Template, ec2
 from troposphere.ec2 import PlacementGroup
-from troposphere.fsx import FileSystem, StorageVirtualMachine, Volume, VolumeOntapConfiguration
+from troposphere.efs import FileSystem as EFSFileSystem
+from troposphere.fsx import (
+    ClientConfigurations,
+    FileSystem,
+    NfsExports,
+    StorageVirtualMachine,
+    Volume,
+    VolumeOntapConfiguration,
+    VolumeOpenZFSConfiguration,
+)
 from utils import (
     InstanceTypesData,
     create_s3_bucket,
@@ -78,6 +87,7 @@ from tests.common.utils import (
     get_installed_parallelcluster_version,
     retrieve_pcluster_ami_without_standard_naming,
 )
+from tests.storage.snapshots_factory import EBSSnapshotsFactory
 
 
 def pytest_addoption(parser):
@@ -1598,6 +1608,87 @@ def svm_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
         return [fsx_stack.cfn_resources[f"{svm_volume_resource_name}{i}"] for i in range(num_volumes)]
 
     yield _svm_factory
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.fixture(scope="class")
+def open_zfs_volume_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+    """
+    Define a fixture to manage the creation and destruction of volumes for FSx for OpenZFS.
+
+    return volume ids
+    """
+    created_stacks = []
+
+    def _open_zfs_volume_factory(root_volume_id, num_volumes=1):
+        fsx_open_zfs_volume_template = Template()
+        fsx_open_zfs_volume_template.set_version()
+        fsx_open_zfs_volume_template.set_description("Create Storage Virtual Machine stack")
+
+        open_zfs_volume_resource_name = "OpenZFSVolume"
+        max_concurrency = 15
+        for index in range(num_volumes):
+            depends_on_arg = {}
+            if index >= max_concurrency:
+                depends_on_arg = {"DependsOn": [f"{open_zfs_volume_resource_name}{index - max_concurrency}"]}
+            fsx_open_zfs_volume = Volume(
+                title=f"{open_zfs_volume_resource_name}{index}",
+                Name=f"vol{index}",
+                VolumeType="OPENZFS",
+                OpenZFSConfiguration=VolumeOpenZFSConfiguration(
+                    NfsExports=[
+                        NfsExports(ClientConfigurations=[ClientConfigurations(Clients="*", Options=["rw", "crossmnt"])])
+                    ],
+                    ParentVolumeId=root_volume_id,
+                ),
+                **depends_on_arg,
+            )
+            fsx_open_zfs_volume_template.add_resource(fsx_open_zfs_volume)
+        fsx_stack = CfnStack(
+            name=generate_stack_name("integ-tests-fsx-openzfs-volume", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=fsx_open_zfs_volume_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(fsx_stack)
+        created_stacks.append(fsx_stack)
+        return [fsx_stack.cfn_resources[f"{open_zfs_volume_resource_name}{i}"] for i in range(num_volumes)]
+
+    yield _open_zfs_volume_factory
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.fixture(scope="class")
+def snapshots_factory():
+    factory = EBSSnapshotsFactory()
+    yield factory
+    factory.release_all()
+
+
+@pytest.fixture(scope="class")
+def efs_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
+    """EFS stack contains a single efs resource."""
+    created_stacks = []
+
+    def create_efs(num=1):
+        efs_template = Template()
+        efs_template.set_version("2010-09-09")
+        efs_template.set_description("EFS stack created for testing existing EFS")
+        file_system_resource_name = "FileSystemResource"
+        for i in range(num):
+            efs_template.add_resource(EFSFileSystem(f"{file_system_resource_name}{i}"))
+        stack_name = generate_stack_name("integ-tests-efs", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(name=stack_name, region=region, template=efs_template.to_json())
+        cfn_stacks_factory.create_stack(stack)
+        created_stacks.append(stack)
+        return [stack.cfn_resources[f"{file_system_resource_name}{i}"] for i in range(num)]
+
+    yield create_efs
 
     if not request.config.getoption("no_delete"):
         for stack in created_stacks:

@@ -26,6 +26,7 @@ from constants import OS_TO_ROOT_VOLUME_DEVICE
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
+from time_utils import minutes, seconds
 
 
 class InstanceTypesData:
@@ -387,6 +388,11 @@ def check_status(cluster, cluster_status=None, head_node_status=None, compute_fl
         assert_that(cluster_info["headNode"]["state"]).is_equal_to(head_node_status)
     if compute_fleet_status:
         assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def wait_for_computefleet_changed(cluster, desired_status):
+    check_status(cluster, compute_fleet_status=desired_status)
 
 
 def get_network_interfaces_count(instance_type, region_name=None):

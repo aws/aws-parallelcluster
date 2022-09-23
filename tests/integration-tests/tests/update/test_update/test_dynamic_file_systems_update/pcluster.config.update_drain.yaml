@@ -1,0 +1,103 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+Scheduling:
+  SlurmSettings:
+    QueueUpdateStrategy: DRAIN
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      ComputeResources:
+        - Name: queue1-i1
+          InstanceTypeList:
+            - InstanceType: c5.xlarge
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: queue2
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      ComputeResources:
+        - Name: queue2-i1
+          InstanceTypeList:
+            - InstanceType: c5.xlarge
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: {{ new_raid_mount_dir }}
+    StorageType: Ebs
+    Name: manage-raid
+    EbsSettings:
+      VolumeType: io1
+      Size: 15
+      Iops: 750
+      Encrypted: false
+      Raid:
+        Type: 0
+        NumberOfVolumes: 5
+  - MountDir: {{ new_ebs_mount_dir }}
+    Name: /manage-ebs
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp3
+      DeletionPolicy: Delete
+  - MountDir: {{ existing_ebs_mount_dir }}
+    Name: existing_ebs
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+      VolumeId: {{ volume_id }}
+  - MountDir: {{ new_efs_mount_dir }}
+    Name: manage-efs
+    StorageType: Efs
+    EfsSettings:
+      Encrypted: true
+      PerformanceMode: maxIO
+      ThroughputMode: provisioned
+      ProvisionedThroughput: 200
+  - MountDir: {{ existing_efs_mount_dir }}
+    Name: existing_efs
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: {{ existing_efs_id }}
+  - MountDir: {{ new_lustre_mount_dir }}
+    Name: manage-fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      ImportPath: s3://{{ bucket_name }}
+      ExportPath: s3://{{ bucket_name }}/export_dir
+      DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200
+  - MountDir: {{ fsx_lustre_mount_dir }}
+    Name: existingfsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      FileSystemId: {{ existing_fsx_lustre_fs_id }}
+  - MountDir: {{ fsx_open_zfs_mount_dir }}
+    Name: existingopenzfs
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: {{ fsx_open_zfs_volume_id }}
+  - MountDir: {{ fsx_ontap_mount_dir }}
+    Name: existingontap
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: {{ fsx_ontap_volume_id }}

@@ -18,8 +18,8 @@ from utils import get_username_for_os
 
 from tests.common.assertions import (
     assert_aws_identity_access_is_correct,
-    assert_errors_in_logs,
     assert_head_node_is_running,
+    assert_lines_in_logs,
 )
 from tests.common.utils import get_installed_parallelcluster_version, reboot_head_node, retrieve_latest_ami
 
@@ -40,7 +40,7 @@ def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, a
     remote_command_executor = RemoteCommandExecutor(cluster, username=username)
 
     logging.info("Verifying error in logs")
-    assert_errors_in_logs(
+    assert_lines_in_logs(
         remote_command_executor,
         ["/var/log/chef-client.log"],
         ["RuntimeError", rf"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}"],
@@ -66,7 +66,7 @@ def test_create_wrong_pcluster_version(
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     logging.info("Verifying error in logs")
-    assert_errors_in_logs(
+    assert_lines_in_logs(
         remote_command_executor,
         ["/var/log/cloud-init-output.log"],
         ["error_exit", rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}"],

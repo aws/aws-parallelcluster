@@ -20,12 +20,24 @@ import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
+from troposphere.fsx import LustreConfiguration
+from utils import wait_for_computefleet_changed
 
-from tests.common.assertions import assert_errors_in_logs, assert_no_msg_in_logs
+from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import generate_random_string, retrieve_latest_ami
+from tests.storage.storage_common import (
+    check_fsx,
+    create_fsx_ontap,
+    create_fsx_open_zfs,
+    test_ebs_correctly_mounted,
+    test_efs_correctly_mounted,
+    test_raid_correctly_configured,
+    test_raid_correctly_mounted,
+    verify_directory_correctly_shared,
+)
 
 
 @pytest.mark.usefixtures("os", "instance")
@@ -654,7 +666,7 @@ def _test_update_queue_strategy_without_running_job(
     )
     cluster.update(str(updated_config_file))
     # check chef client log contains expected log
-    assert_errors_in_logs(
+    assert_lines_in_logs(
         remote_command_executor,
         ["/var/log/chef-client.log"],
         [
@@ -713,7 +725,7 @@ def _test_update_queue_strategy_with_running_job(
     )
     cluster.update(str(updated_config_file))
     # check chef client log contains expected log
-    assert_errors_in_logs(
+    assert_lines_in_logs(
         remote_command_executor,
         ["/var/log/chef-client.log"],
         [
@@ -749,3 +761,294 @@ def _test_update_queue_strategy_with_running_job(
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
     _check_queue_ami(cluster, ec2, pcluster_copy_ami_id, "queue2")
     assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
+
+
+@pytest.mark.usefixtures("instance")
+def test_dynamic_file_systems_update(
+    region,
+    os,
+    pcluster_config_reader,
+    ami_copy,
+    clusters_factory,
+    scheduler_commands_factory,
+    request,
+    snapshots_factory,
+    efs_stack_factory,
+    vpc_stack,
+    key_name,
+    s3_bucket_factory,
+    test_datadir,
+    fsx_factory,
+    svm_factory,
+    open_zfs_volume_factory,
+):
+    """Test update shared storages."""
+    existing_ebs_mount_dir = "/existing_ebs_mount_dir"
+    existing_efs_mount_dir = "/existing_efs_mount_dir"
+    fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir"
+    fsx_ontap_mount_dir = "/existing_fsx_ontap_mount_dir"
+    fsx_open_zfs_mount_dir = "/existing_fsx_open_zfs_mount_dir"
+    new_ebs_mount_dir = "/new_ebs_mount_dir"
+    new_raid_mount_dir = "/new_raid_dir"
+    new_efs_mount_dir = "/new_efs_mount_dir"
+    new_lustre_mount_dir = "/new_lustre_mount_dir"
+    ebs_mount_dirs = [new_ebs_mount_dir, existing_ebs_mount_dir]
+    efs_mount_dirs = [existing_efs_mount_dir, new_efs_mount_dir]
+    fsx_mount_dirs = [new_lustre_mount_dir, fsx_lustre_mount_dir, fsx_open_zfs_mount_dir, fsx_ontap_mount_dir]
+    all_mount_dirs = ebs_mount_dirs + [new_raid_mount_dir] + efs_mount_dirs + fsx_mount_dirs
+
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    (
+        existing_ebs_volume_id,
+        existing_efs_id,
+        existing_fsx_lustre_fs_id,
+        existing_fsx_ontap_volume_id,
+        existing_fsx_open_zfs_volume_id,
+    ) = _create_shared_storages_resources(
+        snapshots_factory,
+        request,
+        vpc_stack,
+        region,
+        efs_stack_factory,
+        fsx_factory,
+        svm_factory,
+        open_zfs_volume_factory,
+        bucket_name,
+    )
+
+    # Create cluster with initial configuration
+    init_config_file = pcluster_config_reader()
+    cluster = clusters_factory(init_config_file)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    cluster_nodes = scheduler_commands.get_compute_nodes()
+    queue1_nodes = [node for node in cluster_nodes if "queue1" in node]
+
+    # submit a job to queue1
+    queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 3000",  # sleep 3000 to keep the job running
+            "nodes": 1,
+            "partition": "queue1",
+        },
+    )
+
+    # Wait for the job to run
+    scheduler_commands.wait_job_running(queue1_job_id)
+
+    # update cluster to add ebs, efs, fsx with drain strategy
+    update_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update_drain.yaml",
+        volume_id=existing_ebs_volume_id,
+        existing_ebs_mount_dir=existing_ebs_mount_dir,
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        fsx_lustre_mount_dir=fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
+        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        bucket_name=bucket_name,
+        new_ebs_mount_dir=new_ebs_mount_dir,
+        new_raid_mount_dir=new_raid_mount_dir,
+        new_lustre_mount_dir=new_lustre_mount_dir,
+        new_efs_mount_dir=new_efs_mount_dir,
+    )
+
+    cluster.update(str(update_cluster_config))
+
+    # check chef client log contains expected log
+    assert_lines_in_logs(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        [
+            "All queues will be updated in order to update shared storages",
+        ],
+    )
+
+    scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
+    # assert all nodes are drain
+    assert_compute_node_states(
+        scheduler_commands, cluster_nodes, expected_states=["draining", "draining!", "drained*", "drained"]
+    )
+
+    # check file systems are visible on the head node just after the update
+    _test_shared_storages_mount_on_headnode(
+        remote_command_executor,
+        cluster,
+        region,
+        bucket_name,
+        scheduler_commands_factory,
+        ebs_mount_dirs,
+        new_raid_mount_dir,
+        efs_mount_dirs,
+        fsx_mount_dirs,
+    )
+
+    # check newly mounted file systems are not visible on compute nodes that are running jobs
+    for node_name in queue1_nodes:
+        _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
+    for mount_dir in all_mount_dirs:
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue2")
+    scheduler_commands.cancel_job(queue1_job_id)
+    for mount_dir in all_mount_dirs:
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue1")
+
+    # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    cluster.update(str(init_config_file))
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+    # submit a job to queue2
+    queue2_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 3000",
+            "nodes": 1,
+            "partition": "queue1",
+        },
+    )
+    scheduler_commands.wait_job_running(queue2_job_id)
+    cluster_nodes = scheduler_commands.get_compute_nodes()
+    _test_shared_storages_unmount(
+        remote_command_executor,
+        ebs_mount_dirs,
+        new_raid_mount_dir,
+        efs_mount_dirs,
+        fsx_mount_dirs,
+        all_mount_dirs,
+        cluster_nodes,
+    )
+
+
+def _create_shared_storages_resources(
+    snapshots_factory,
+    request,
+    vpc_stack,
+    region,
+    efs_stack_factory,
+    fsx_factory,
+    svm_factory,
+    open_zfs_volume_factory,
+    bucket_name,
+):
+    """Create existing EBS, EFS, FSX resources for test."""
+    # create 1 existing ebs
+    ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.cfn_outputs["PublicSubnetId"], region)
+
+    # create 1 efs
+    existing_efs_id = efs_stack_factory(1)[0]
+
+    # create 1 fsx lustre
+    import_path = "s3://{0}".format(bucket_name)
+    export_path = "s3://{0}/export_dir".format(bucket_name)
+    existing_fsx_lustre_fs_id = fsx_factory(
+        ports=[988],
+        ip_protocols=["tcp"],
+        num=1,
+        file_system_type="LUSTRE",
+        StorageCapacity=1200,
+        LustreConfiguration=LustreConfiguration(
+            title="lustreConfiguration",
+            ImportPath=import_path,
+            ExportPath=export_path,
+            DeploymentType="PERSISTENT_1",
+            PerUnitStorageThroughput=200,
+        ),
+    )[0]
+
+    # create 1 fsx ontap
+    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
+    fsx_ontap_volume_id = svm_factory(fsx_ontap_fs_id, num_volumes=1)[0]
+
+    # create 1 open zfs
+    fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
+    fsx_open_zfs_volume_id = open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=1)[0]
+
+    return (
+        ebs_volume_id,
+        existing_efs_id,
+        existing_fsx_lustre_fs_id,
+        fsx_ontap_volume_id,
+        fsx_open_zfs_volume_id,
+    )
+
+
+def _test_directory_not_mounted(remote_command_executor, mount_dirs, node_type="head", node_name=None):
+    if node_type == "compute":
+        result = remote_command_executor.run_remote_command(f"ssh -q {node_name} df -h")
+    else:
+        result = remote_command_executor.run_remote_command("df -h")
+    for mount_dir in mount_dirs:
+        assert_that(result.stdout).does_not_contain(mount_dir)
+
+
+def _test_ebs_not_mounted(remote_command_executor, mount_dirs):
+    _test_directory_not_mounted(remote_command_executor, mount_dirs)
+    exports_result = remote_command_executor.run_remote_command("cat /etc/exports").stdout
+    fstab_result = remote_command_executor.run_remote_command("cat /etc/fstab").stdout
+    for mount_dir in mount_dirs:
+        assert_that(exports_result).does_not_contain(mount_dir)
+        assert_that(fstab_result).does_not_contain(mount_dir)
+
+
+def _test_raid_not_mount(remote_command_executor, mount_dirs):
+    _test_ebs_not_mounted(remote_command_executor, mount_dirs)
+    exports_result = remote_command_executor.run_remote_command("cat /etc/mdadm.conf").stdout
+    assert_that(exports_result).is_equal_to("")
+
+
+def _test_shared_storages_unmount(
+    remote_command_executor,
+    ebs_mount_dirs,
+    new_raid_mount_dir,
+    efs_mount_dirs,
+    fsx_mount_dirs,
+    all_mount_dirs,
+    node_names,
+):
+    """Check storages are not on headnode."""
+    _test_ebs_not_mounted(remote_command_executor, ebs_mount_dirs)
+    _test_raid_not_mount(remote_command_executor, [new_raid_mount_dir])
+    _test_directory_not_mounted(remote_command_executor, efs_mount_dirs + fsx_mount_dirs)
+
+    # check storages are not on compute nodes
+    for node_name in node_names:
+        _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
+
+
+def _test_shared_storages_mount_on_headnode(
+    remote_command_executor,
+    cluster,
+    region,
+    bucket_name,
+    scheduler_commands_factory,
+    ebs_mount_dirs,
+    new_raid_mount_dir,
+    efs_mount_dirs,
+    fsx_mount_dirs,
+):
+    """Check storages are mounted on headnode."""
+    # ebs
+    for ebs_dir in ebs_mount_dirs:
+        volume_size = "9.[7,8]" if "existing" in ebs_dir else "35"
+        test_ebs_correctly_mounted(remote_command_executor, ebs_dir, volume_size=volume_size)
+    # check raid
+    test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
+    test_raid_correctly_mounted(remote_command_executor, new_raid_mount_dir, volume_size=74)
+    # check efs
+    for efs in efs_mount_dirs:
+        test_efs_correctly_mounted(remote_command_executor, efs)
+        test_efs_correctly_mounted(remote_command_executor, efs)
+    # check fsx
+    check_fsx(
+        cluster,
+        region,
+        scheduler_commands_factory,
+        fsx_mount_dirs,
+        bucket_name,
+        headnode_only=True,
+    )

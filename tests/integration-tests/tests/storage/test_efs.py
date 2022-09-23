@@ -16,13 +16,15 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
-from troposphere import Base64, Ref, Sub, Template, ec2
-from troposphere.ec2 import Instance
-from troposphere.efs import FileSystem, MountTarget
-from utils import generate_stack_name, get_vpc_snakecase_value, random_alphanumeric
+from troposphere import Ref, Template, ec2
+from troposphere.efs import MountTarget
+from utils import generate_stack_name, get_vpc_snakecase_value
 
-from tests.common.utils import retrieve_latest_ami
-from tests.storage.storage_common import verify_directory_correctly_shared
+from tests.storage.storage_common import (
+    test_efs_correctly_mounted,
+    verify_directory_correctly_shared,
+    write_file_into_efs,
+)
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -40,7 +42,7 @@ def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_st
 
     mount_dir = "/" + mount_dir
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    _test_efs_correctly_mounted(remote_command_executor, mount_dir)
+    test_efs_correctly_mounted(remote_command_executor, mount_dir)
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
@@ -59,7 +61,7 @@ def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack
 
     mount_dir = "/" + mount_dir
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    _test_efs_correctly_mounted(remote_command_executor, mount_dir)
+    test_efs_correctly_mounted(remote_command_executor, mount_dir)
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
@@ -95,7 +97,7 @@ def test_multiple_efs(
     if request.config.getoption("benchmarks"):
         mount_target_stack_factory(existing_efs_ids)
     existing_efs_filenames.extend(
-        _write_file_into_efs(
+        write_file_into_efs(
             region, vpc_stack, existing_efs_ids, request, key_name, cfn_stacks_factory, mount_target_stack_factory
         )
     )
@@ -121,37 +123,12 @@ def test_multiple_efs(
         result = remote_command_executor.run_remote_command("df | grep '{0}'".format(mount_dir))
         assert_that(result.stdout).contains(mount_dir)
 
-        _test_efs_correctly_mounted(remote_command_executor, mount_dir)
+        test_efs_correctly_mounted(remote_command_executor, mount_dir)
         _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
     for i in range(num_existing_efs):
         remote_command_executor.run_remote_command(f"cat {existing_efs_mount_dirs[i]}/{existing_efs_filenames[i]}")
 
     run_benchmarks(remote_command_executor, scheduler_commands)
-
-
-@pytest.fixture(scope="class")
-def efs_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
-    """EFS stack contains a single efs resource."""
-    created_stacks = []
-
-    def create_efs(num=1):
-        efs_template = Template()
-        efs_template.set_version("2010-09-09")
-        efs_template.set_description("EFS stack created for testing existing EFS")
-        file_system_resource_name = "FileSystemResource"
-        for i in range(num):
-            efs_template.add_resource(FileSystem(f"{file_system_resource_name}{i}"))
-        stack_name = generate_stack_name("integ-tests-efs", request.config.getoption("stackname_suffix"))
-        stack = CfnStack(name=stack_name, region=region, template=efs_template.to_json())
-        cfn_stacks_factory.create_stack(stack)
-        created_stacks.append(stack)
-        return [stack.cfn_resources[f"{file_system_resource_name}{i}"] for i in range(num)]
-
-    yield create_efs
-
-    if not request.config.getoption("no_delete"):
-        for stack in created_stacks:
-            cfn_stacks_factory.delete_stack(stack.name, region)
 
 
 def _add_mount_targets(subnet_ids, efs_ids, security_group, template):
@@ -238,79 +215,9 @@ def mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
             cfn_stacks_factory.delete_stack(stack.name, region)
 
 
-def _write_file_into_efs(region, vpc_stack, efs_ids, request, key_name, cfn_stacks_factory, mount_target_stack_factory):
-    """Write file stack contains an instance to write an empty file with random name into each of the efs in efs_ids."""
-    write_file_template = Template()
-    write_file_template.set_version("2010-09-09")
-    write_file_template.set_description("Stack to write a file to the existing EFS")
-
-    # Create mount targets so the instance can communicate with the file system
-    mount_target_stack_name = mount_target_stack_factory(efs_ids)
-
-    random_file_names = []
-    write_file_user_data = ""
-    for efs_id in efs_ids:
-        random_file_name = random_alphanumeric()
-        write_file_user_data += _write_user_data(efs_id, random_file_name)
-        random_file_names.append(random_file_name)
-    user_data = f"""
-        #cloud-config
-        package_update: true
-        package_upgrade: true
-        runcmd:
-        - yum install -y nfs-utils
-        {write_file_user_data}
-        - opt/aws/bin/cfn-signal -e $? --stack ${{AWS::StackName}} --resource InstanceToWriteEFS --region ${{AWS::Region}}
-        """  # noqa: E501
-    write_file_template.add_resource(
-        Instance(
-            "InstanceToWriteEFS",
-            CreationPolicy={"ResourceSignal": {"Timeout": "PT10M"}},
-            ImageId=retrieve_latest_ami(region, "alinux2"),
-            InstanceType="c5.xlarge",
-            SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
-            UserData=Base64(Sub(user_data)),
-            KeyName=key_name,
-        )
-    )
-    stack_name = generate_stack_name("integ-tests-efs-write-file", request.config.getoption("stackname_suffix"))
-    write_file_stack = CfnStack(name=stack_name, region=region, template=write_file_template.to_json())
-    cfn_stacks_factory.create_stack(write_file_stack)
-
-    # Delete created stacks so the instance and mount targets are deleted.
-    # The goal is to make the content of this function consistent with its name
-    cfn_stacks_factory.delete_stack(write_file_stack.name, region)
-    cfn_stacks_factory.delete_stack(mount_target_stack_name, region)
-    return random_file_names
-
-
-def _write_user_data(efs_id, random_file_name):
-    mount_dir = "/mnt/efs/fs"
-    return f"""
-        - mkdir -p {mount_dir}
-        - mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev "{efs_id}.efs.${{AWS::Region}}.${{AWS::URLSuffix}}:/" {mount_dir}
-        - touch {mount_dir}/{random_file_name}
-        - umount {mount_dir}
-        """  # noqa: E501
-
-
 def _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands):
     logging.info("Testing efs correctly mounted on compute nodes")
     verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-
-
-def _test_efs_correctly_mounted(remote_command_executor, mount_dir):
-    logging.info("Testing ebs {0} is correctly mounted".format(mount_dir))
-    result = remote_command_executor.run_remote_command("df | grep '{0}'".format(mount_dir))
-    assert_that(result.stdout).contains(mount_dir)
-
-    result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    assert_that(result.stdout).matches(
-        (
-            r".* {mount_dir} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,"
-            r"timeo=30,retrans=2,noresvport,_netdev 0 0"
-        ).format(mount_dir=mount_dir)
-    )
 
 
 def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):

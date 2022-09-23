@@ -10,13 +10,15 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import re
 
 import pytest
-from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
-from tests.storage.storage_common import verify_directory_correctly_shared
+from tests.storage.storage_common import (
+    test_raid_correctly_configured,
+    test_raid_correctly_mounted,
+    verify_directory_correctly_shared,
+)
 
 
 @pytest.mark.usefixtures("region", "os", "instance")
@@ -27,8 +29,8 @@ def test_raid_performance_mode(pcluster_config_reader, clusters_factory, schedul
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     mount_dir = "/raid_dir"
-    _test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
-    _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=74)
+    test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
+    test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=74)
     _test_raid_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
@@ -40,45 +42,11 @@ def test_raid_fault_tolerance_mode(pcluster_config_reader, clusters_factory, sch
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     mount_dir = "/raid_dir"
-    _test_raid_correctly_configured(remote_command_executor, raid_type="1", volume_size=35, raid_devices=2)
-    _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
+    test_raid_correctly_configured(remote_command_executor, raid_type="1", volume_size=35, raid_devices=2)
+    test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
     _test_raid_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-
-
-def _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size):
-    logging.info("Testing raid {0} is correctly mounted".format(mount_dir))
-    result = remote_command_executor.run_remote_command(
-        "df -h -t ext4 | tail -n +2 | awk '{{print $2, $6}}' | grep '{0}'".format(mount_dir)
-    )
-    assert_that(result.stdout).matches(r"{size}G {mount_dir}".format(size=volume_size, mount_dir=mount_dir))
-
-    result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    assert_that(result.stdout).matches(
-        r"/dev/md0 {mount_dir} ext4 defaults,nofail,_netdev 0 2".format(mount_dir=mount_dir)
-    )
 
 
 def _test_raid_correctly_shared(remote_command_executor, mount_dir, scheduler_commands):
     logging.info("Testing raid correctly mounted on compute nodes")
     verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-
-
-def _test_raid_correctly_configured(remote_command_executor, raid_type, volume_size, raid_devices):
-    result = remote_command_executor.run_remote_command("sudo mdadm --detail /dev/md0")
-    assert_that(result.stdout).contains("Raid Level : raid{0}".format(raid_type))
-    assert_that(result.stdout).contains("Raid Devices : {0}".format(raid_devices))
-    assert_that(result.stdout).contains("Active Devices : {0}".format(raid_devices))
-    assert_that(result.stdout).contains("Failed Devices : 0")
-
-    # Compare rounded size to match output from different mdadm version
-    # Array Size : 41942912 (40.00 GiB 42.95 GB) --> on Centos7 with mdadm-4.1-4.el7
-    array_size = re.search(r"Array Size : .*\((.*) GiB", result.stdout).group(1)
-    expected_size = volume_size - 0.1
-    assert_that(float(array_size)).is_greater_than_or_equal_to(expected_size)
-
-    # ensure that the RAID array is reassembled automatically on boot
-    expected_entry = remote_command_executor.run_remote_command("sudo mdadm --detail --scan").stdout
-    mdadm_conf = remote_command_executor.run_remote_command(
-        "sudo cat /etc/mdadm.conf || sudo cat /etc/mdadm/mdadm.conf"
-    ).stdout
-    assert_that(mdadm_conf).contains(expected_entry)

@@ -72,7 +72,7 @@ def assert_msg_in_log(remote_command_executor, log_file, message):
     assert_that(log).contains(message)
 
 
-def assert_errors_in_logs(remote_command_executor, log_files, expected_errors):
+def assert_lines_in_logs(remote_command_executor, log_files, expected_errors):
     # assert every expected error exists in at least one of the log files
     __tracebackhide__ = True
 
