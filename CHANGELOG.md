@@ -4,6 +4,17 @@ CHANGELOG
 3.2.1
 -----
 
+**ENHANCEMENTS**
+
+- Improve the logic to associate the host routing tables to the different network cards to better support EC2 instances with several NICs.
+
+**CHANGES**
+- Upgrade NVIDIA driver to version 470.141.03.
+- Upgrade NVIDIA Fabric Manager to version 470.141.03.
+- Disable cron job tasks man-db and mlocate, which may have a negative impact on node performance.
+- Upgrade Intel MPI Library to 2021.6.0.602.
+- Upgrade Python from 3.7.10 to 3.7.13 in response to this [security risk](https://nvd.nist.gov/vuln/detail/CVE-2021-3737).
+
 **BUG FIXES**
 - Avoid failing on DescribeCluster when cluster configuration is not available.
 
