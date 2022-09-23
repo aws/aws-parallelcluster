@@ -20,10 +20,10 @@ from remote_command_executor import RemoteCommandExecutionError, RemoteCommandEx
 from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
-from utils import check_status, get_compute_nodes_instance_ids, get_instance_info
+from utils import check_status, get_compute_nodes_instance_ids, get_instance_info, wait_for_computefleet_changed
 
 from tests.common.assertions import (
-    assert_errors_in_logs,
+    assert_lines_in_logs,
     assert_msg_in_log,
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
@@ -406,7 +406,7 @@ def test_slurm_memory_based_scheduling(
         wait=True,
     )
 
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/slurmctld.log"],
         [f"node {node} memory is overallocated"],
@@ -834,7 +834,7 @@ def _test_cloud_node_health_check(
     # TO-DO: this test only works with num_dynamic = 1 because slurm will record this error in nodelist format
     # i.e. error: Nodes q2-st-t2large-[1-2] not responding, setting DOWN
     # To support multiple nodes, need to convert list of node into nodelist format string
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/slurmctld.log"],
         ["Nodes {} not responding, setting DOWN".format(",".join(dynamic_nodes))],
@@ -869,7 +869,7 @@ def _test_ec2_status_check_replacement(
         remote_command_executor, scheduler_commands, partition, node_type="static", num_nodes=num_static_nodes
     )
     # Assert ec2_status_check code path is triggered
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(15))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(15))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         ["Setting nodes failing health check type ec2_health_check to DRAIN"],
@@ -943,7 +943,7 @@ def _test_clustermgtd_down_logic(
     logging.info("Waiting for computemgtd to self-terminate all instances")
     wait_for_num_instances_in_cluster(cluster_name, region, 0)
 
-    assert_errors_in_logs(
+    assert_lines_in_logs(
         remote_command_executor,
         ["/var/log/parallelcluster/slurm_resume.log"],
         ["No valid clustermgtd heartbeat detected"],
@@ -1378,18 +1378,13 @@ def _get_num_gpus_on_instance(instance_type_info):
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
-def _wait_for_computefleet_changed(cluster, desired_status):
-    check_status(cluster, compute_fleet_status=desired_status)
-
-
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def _wait_for_partition_state_changed(scheduler_commands, partition, desired_state):
     assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(desired_state)
 
 
 def _update_and_start_cluster(cluster, config_file):
     cluster.stop()
-    _wait_for_computefleet_changed(cluster, "STOPPED")
+    wait_for_computefleet_changed(cluster, "STOPPED")
     # After cluster stop, add time sleep here to wait longer than SuspendTimeout for nodes turn from
     # powering down(%) to power save(~) to avoid the problem in slurm 21.08.3 before cluster update
     time.sleep(150)
@@ -1399,7 +1394,7 @@ def _update_and_start_cluster(cluster, config_file):
     # nodes turn from powering down(% to power save(~) to avoid the problem in slurm 21.08.3
     time.sleep(150)
     cluster.start()
-    _wait_for_computefleet_changed(cluster, "RUNNING")
+    wait_for_computefleet_changed(cluster, "RUNNING")
 
 
 def _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader):
@@ -1428,7 +1423,7 @@ def _test_disable_protected_mode(
     _set_protected_failure_count(remote_command_executor, -1, clustermgtd_conf_path)
     _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader)
     # wait till the node failed
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         [
@@ -1463,7 +1458,7 @@ def _test_active_job_running(scheduler_commands, remote_command_executor, cluste
         submit_command_args={"command": "sleep 60", "nodes": 2, "partition": "half-broken", "constraint": "c5.large"}
     )
     # Check the threshold reach but partition will be still UP since there's active job running
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         [
@@ -1479,7 +1474,7 @@ def _test_active_job_running(scheduler_commands, remote_command_executor, cluste
 def _test_protected_mode(scheduler_commands, remote_command_executor, cluster):
     """Test cluster will be placed into protected mode when protected count reach threshold and no job running."""
     # See if the cluster can be put into protected mode when there's no job running after reaching threshold
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         [
@@ -1630,7 +1625,7 @@ def _test_disable_fast_capacity_failover(
         }
     )
     # wait till the node failed to launch
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/slurm_resume.log"],
         [
@@ -1638,7 +1633,7 @@ def _test_disable_fast_capacity_failover(
         ],
     )
     # assert that ice node is detected as unhealthy node
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         [
@@ -1684,7 +1679,7 @@ def _test_enable_fast_capacity_failover(
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={"command": "sleep 30", "nodes": 2}
     )
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         [
@@ -1703,7 +1698,7 @@ def _test_enable_fast_capacity_failover(
     assert_job_requeue_in_time(scheduler_commands, job_id)
 
     # check insufficient timeout expired
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         [
@@ -1724,7 +1719,7 @@ def _test_update_without_update_queue_params(pcluster_config_reader, cluster, re
     """Test update without queue param change, clustermgtd and slurmctld not restart."""
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
     _update_and_start_cluster(cluster, updated_config_file)
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/chef-client.log"],
         [
@@ -1749,7 +1744,7 @@ def _test_update_with_queue_params(
     """Test update queue param change, clustermgtd and slurmctld restart."""
     updated_config_file = pcluster_config_reader(config_file=config_file)
     _update_and_start_cluster(cluster, updated_config_file)
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/chef-client.log"],
         [
@@ -2042,7 +2037,7 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
     assert_compute_node_states(slurm_commands, [node], ["draining!"])
 
     # The node will be handled as a POWER_DOWN node by clustermgtd
-    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         ["Found the following unhealthy static nodes"],
@@ -2078,7 +2073,7 @@ def _test_scontrol_reboot_powerdown_reboot_issued_node(
     assert_compute_node_states(slurm_commands, [node], ["idle%"])
 
     # The node will be handled as a POWER_DOWN node by clustermgtd
-    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_errors_in_logs)(
+    retry(wait_fixed=seconds(60), stop_max_delay=minutes(10))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         ["Found the following unhealthy static nodes"],

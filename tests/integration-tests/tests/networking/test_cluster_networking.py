@@ -30,7 +30,7 @@ from tests.common.assertions import assert_no_errors_in_logs, assert_no_msg_in_l
 from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
-from tests.storage.test_fsx_lustre import assert_fsx_correctly_shared, assert_fsx_lustre_correctly_mounted, get_fsx_ids
+from tests.storage.storage_common import assert_fsx_correctly_shared, assert_fsx_lustre_correctly_mounted, get_fsx_ids
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")

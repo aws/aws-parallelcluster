@@ -19,10 +19,10 @@ import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
+from utils import wait_for_computefleet_changed
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.schedulers.test_awsbatch import _test_job_submission as _test_job_submission_awsbatch
-from tests.schedulers.test_slurm import _wait_for_computefleet_changed as wait_for_computefleet_changed
 
 
 @pytest.mark.usefixtures("os", "instance")

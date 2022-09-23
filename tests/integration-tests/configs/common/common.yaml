@@ -695,6 +695,16 @@ update:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+  test_update.py::test_dynamic_file_systems_update:
+    dimensions:
+      - regions: ["eu-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["ap-southeast-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: ["slurm"]
 # Temporarily disabling p4d tests
 # multiple_nics:
 #   test_multiple_nics.py::test_multiple_nics:

@@ -18,8 +18,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.storage.kms_key_factory import KMSKeyFactory
-from tests.storage.snapshots_factory import EBSSnapshotsFactory
-from tests.storage.storage_common import verify_directory_correctly_shared
+from tests.storage.storage_common import test_ebs_correctly_mounted, verify_directory_correctly_shared
 
 
 @pytest.mark.usefixtures("instance")
@@ -38,7 +37,7 @@ def test_ebs_single(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     volume_id = get_ebs_volume_ids(cluster, region)[0]
 
-    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
+    test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
     _test_ebs_encrypted_with_kms(volume_id, region, encrypted=True, kms_key_id=kms_key_id)
 
@@ -73,7 +72,7 @@ def test_ebs_snapshot(
     mount_dir = "/" + mount_dir
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     # In alinux2 the volume is rounded smaller (9.7G)
-    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.[7,8]")
+    test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.[7,8]")
     _test_ebs_resize(remote_command_executor, mount_dir, volume_size=volume_size)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
@@ -107,9 +106,7 @@ def test_ebs_multiple(
         # If we test with small volume size(eg: 40G), the number is not large enough to show the gap between the
         # partition size and the filesystem size. For sc1 and st1, the minimum size is 500G, so there will be a size
         # difference.
-        _test_ebs_correctly_mounted(
-            remote_command_executor, mount_dir, volume_size if volume_size != 500 else "49[0-9]"
-        )
+        test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size if volume_size != 500 else "49[0-9]")
         _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
     volume_ids = get_ebs_volume_ids(cluster, region)
@@ -168,7 +165,7 @@ def test_ebs_existing(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     existing_mount_dir = "/" + existing_mount_dir
-    _test_ebs_correctly_mounted(remote_command_executor, existing_mount_dir, volume_size="9.8")
+    test_ebs_correctly_mounted(remote_command_executor, existing_mount_dir, volume_size="9.8")
     _test_ebs_correctly_shared(remote_command_executor, existing_mount_dir, scheduler_commands)
     # Checks for test data
     result = remote_command_executor.run_remote_command("cat {}/test.txt".format(existing_mount_dir))
@@ -178,17 +175,6 @@ def test_ebs_existing(
     cluster.delete()
     # check the volume still exists after deleting the cluster
     _assert_volume_exist(volume_id, region)
-
-
-def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
-    logging.info("Testing ebs {0} is correctly mounted".format(mount_dir))
-    result = remote_command_executor.run_remote_command(
-        "df -h -t ext4 | tail -n +2 | awk '{{print $2, $6}}' | grep '{0}'".format(mount_dir)
-    )
-    assert_that(result.stdout).matches(r"{size}G {mount_dir}".format(size=volume_size, mount_dir=mount_dir))
-
-    result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    assert_that(result.stdout).matches(r"UUID=.* {mount_dir} ext4 _netdev 0 0".format(mount_dir=mount_dir))
 
 
 def _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands):
@@ -318,13 +304,6 @@ def _assert_volume_configuration(expected_settings, volume_id, region):
     )
     for key in expected_settings:
         assert_that(actual_root_volume_settings[key]).is_equal_to(expected_settings[key])
-
-
-@pytest.fixture(scope="class")
-def snapshots_factory():
-    factory = EBSSnapshotsFactory()
-    yield factory
-    factory.release_all()
 
 
 @pytest.fixture(scope="module")
