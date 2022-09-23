@@ -19,7 +19,6 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
-from pcluster.config import cluster_config
 from pcluster.constants import (
     CIDR_ALL_IPS,
     FSX_PORTS,
@@ -1048,18 +1047,16 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 (compute_res for compute_res in queue.compute_resources if compute_res.max_network_interface_count > 1),
                 queue.compute_resources[0],
             )
-            # Run instance is meant for single instance type compute resources
-            # Todo: Add a create_fleet dry-run validator for multiple instance types Compute Resources
-            if isinstance(dry_run_compute_resource, cluster_config.SlurmComputeResource):
-                self._test_compute_resource(
-                    compute_resource=dry_run_compute_resource,
-                    use_public_ips=bool(queue.networking.assign_public_ip),
-                    ami_id=ami_id,
-                    subnet_id=queue_subnet_id,
-                    security_groups_ids=queue_security_groups,
-                    placement_group=queue_placement_group,
-                    tags=tags,
-                )
+            # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
+            self._test_compute_resource(
+                compute_resource=dry_run_compute_resource,
+                use_public_ips=bool(queue.networking.assign_public_ip),
+                ami_id=ami_id,
+                subnet_id=queue_subnet_id,
+                security_groups_ids=queue_security_groups,
+                placement_group=queue_placement_group,
+                tags=tags,
+            )
         except Exception as e:
             self._add_failure(
                 f"Unable to validate configuration parameters for queue {queue.name}. {str(e)}", FailureLevel.ERROR
@@ -1078,7 +1075,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
         )
         self._ec2_run_instance(
             availability_zone=AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id),
-            InstanceType=compute_resource.instance_type,
+            InstanceType=compute_resource.instance_types[0],
             MinCount=1,
             MaxCount=1,
             ImageId=ami_id,
