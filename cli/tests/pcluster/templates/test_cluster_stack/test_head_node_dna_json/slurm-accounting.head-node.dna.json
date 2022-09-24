@@ -50,10 +50,7 @@
     {
       "database":
       {
-        "enabled": "true",
-        "uri": "test.databaseserver.com",
-        "user_name": "test_admin",
-        "password_secret_arn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx"
+        "enabled": "true"
       }
     }
   }

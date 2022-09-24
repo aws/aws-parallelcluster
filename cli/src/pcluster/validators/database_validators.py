@@ -15,7 +15,7 @@ from pcluster.validators.common import FailureLevel, Validator
 
 
 class DatabaseUriValidator(Validator):
-    """Domain address validator."""
+    """Slurm database URI validator."""
 
     def _validate(self, uri: str):
         """Validate database URI."""
@@ -30,16 +30,12 @@ class DatabaseUriValidator(Validator):
             # (for example 'test.example.com:3306' instead of 'mysql://test.example.com:3306`).
             uri_parse = urlparse("//" + uri)
 
-        # Throw error if the URI contains a scheme
-        if not self._check_scheme(uri_parse):
-            return
-
-        # Check if netloc can be parsed
-        if not self._check_netloc(uri, uri_parse):
-            return
-
-        # Check if port is provided and acceptable
-        if not self._check_port(uri_parse):
+        # The following checks do:
+        # - stop the flow in case of parsing exceptions
+        # - throw error if the URI contains a scheme
+        # - throw error if netloc cannot be parsed from the uri
+        # - throw an info if a port has not been provided
+        if not (self._check_scheme(uri_parse) and self._check_netloc(uri, uri_parse) and self._check_port(uri_parse)):
             return
 
     def _check_leading_slash(self, uri: str) -> bool:
@@ -89,6 +85,6 @@ class DatabaseUriValidator(Validator):
         if not port:
             self._add_failure(
                 f"No port specified in the URI. Assuming the use of port {default_mysql_port}",
-                FailureLevel.WARNING,
+                FailureLevel.INFO,
             )
         return True
