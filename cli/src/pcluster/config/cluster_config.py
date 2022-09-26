@@ -2459,8 +2459,8 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 )
                 # The validation below has to be in cluster config class instead of queue class
                 # to make sure the subnet APIs are cached by previous validations.
-                if compute_resource.capacity_reservation_target:
-                    cr_target = compute_resource.capacity_reservation_target
+                cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+                if cr_target:
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
