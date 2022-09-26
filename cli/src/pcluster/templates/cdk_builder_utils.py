@@ -626,6 +626,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 ]
             )
             capacity_reservation_ids = self._config.capacity_reservation_ids
+
             if capacity_reservation_ids:
                 policy.append(
                     iam.PolicyStatement(
@@ -686,6 +687,15 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     actions=["secretsmanager:GetSecretValue"],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
+                )
+            )
+
+        if self._config.scheduling.scheduler == "slurm" and self._config.scheduling.settings.database:
+            policy.append(
+                iam.PolicyStatement(
+                    actions=["secretsmanager:GetSecretValue"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._config.scheduling.settings.database.password_secret_arn],
                 )
             )
 

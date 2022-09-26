@@ -55,6 +55,10 @@ Scheduling:
       DisableManagedDns: true
       UseEc2Hostnames: true
     EnableMemoryBasedScheduling: false
+    Database:
+      Uri: test.databaseserver.com #required
+      UserName: test_admin # required
+      PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx  # required
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND

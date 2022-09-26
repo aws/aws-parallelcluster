@@ -18,6 +18,7 @@ from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import get_installed_version, load_yaml_dict
 from pcluster.validators import (
     cluster_validators,
+    database_validators,
     ebs_validators,
     ec2_validators,
     fsx_validators,
@@ -35,6 +36,7 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 def _mock_all_validators(mocker, mockers, additional_modules=None):
     modules = [
         cluster_validators,
+        database_validators,
         ebs_validators,
         ec2_validators,
         fsx_validators,
@@ -379,6 +381,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
                 "InstanceTypeMemoryInfoValidator",
                 "CapacityReservationValidator",
                 "CapacityReservationResourceGroupValidator",
+                "DatabaseUriValidator",
             ]
             + flexible_instance_types_validators
         ):
