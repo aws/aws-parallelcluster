@@ -19,7 +19,6 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
-from pcluster.config import cluster_config
 from pcluster.constants import (
     CIDR_ALL_IPS,
     FSX_PORTS,
@@ -315,23 +314,17 @@ class EfaValidator(Validator):
 class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
-    def _validate(self, efa_enabled, placement_group):
-        placement_group_enabled = placement_group and (
-            placement_group.enabled or (placement_group.id and placement_group.is_implied("enabled"))
-        )
-        placement_group_config_implicit = placement_group is None or (
-            placement_group.is_implied("enabled") and placement_group.id is None
-        )
-        if efa_enabled and placement_group_config_implicit:
+    def _validate(self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool):
+        if efa_enabled and placement_group_disabled:
+            self._add_failure(
+                "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
+            )
+        elif efa_enabled and placement_group_key is None:
             self._add_failure(
                 "The placement group for EFA-enabled compute resources must be explicit. "
                 "You may see better performance using a placement group, but if you don't wish to use one please add "
                 "'Enabled: false' to the compute resource's configuration section.",
                 FailureLevel.ERROR,
-            )
-        elif efa_enabled and not placement_group_enabled:
-            self._add_failure(
-                "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
             )
 
 
@@ -1054,18 +1047,16 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 (compute_res for compute_res in queue.compute_resources if compute_res.max_network_interface_count > 1),
                 queue.compute_resources[0],
             )
-            # Run instance is meant for single instance type compute resources
-            # Todo: Add a create_fleet dry-run validator for multiple instance types Compute Resources
-            if isinstance(dry_run_compute_resource, cluster_config.SlurmComputeResource):
-                self._test_compute_resource(
-                    compute_resource=dry_run_compute_resource,
-                    use_public_ips=bool(queue.networking.assign_public_ip),
-                    ami_id=ami_id,
-                    subnet_id=queue_subnet_id,
-                    security_groups_ids=queue_security_groups,
-                    placement_group=queue_placement_group,
-                    tags=tags,
-                )
+            # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
+            self._test_compute_resource(
+                compute_resource=dry_run_compute_resource,
+                use_public_ips=bool(queue.networking.assign_public_ip),
+                ami_id=ami_id,
+                subnet_id=queue_subnet_id,
+                security_groups_ids=queue_security_groups,
+                placement_group=queue_placement_group,
+                tags=tags,
+            )
         except Exception as e:
             self._add_failure(
                 f"Unable to validate configuration parameters for queue {queue.name}. {str(e)}", FailureLevel.ERROR
@@ -1084,7 +1075,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
         )
         self._ec2_run_instance(
             availability_zone=AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id),
-            InstanceType=compute_resource.instance_type,
+            InstanceType=compute_resource.instance_types[0],
             MinCount=1,
             MaxCount=1,
             ImageId=ami_id,

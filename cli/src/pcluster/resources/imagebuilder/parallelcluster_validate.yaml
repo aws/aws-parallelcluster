@@ -399,3 +399,11 @@ phases:
                 fi
                 echo "dpkg test passed"
               fi
+      - name: ChefValidations
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+
+              cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster::validations

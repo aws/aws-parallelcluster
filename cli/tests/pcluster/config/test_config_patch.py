@@ -423,15 +423,19 @@ def _test_less_target_sections(base_conf, target_conf):
                 _get_storage_by_name(base_conf, "ebs1"),
                 None,
                 UpdatePolicy(
-                    UpdatePolicy.UNSUPPORTED,
-                    name="UNSUPPORTED",
-                    fail_reason=(
-                        "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation"
-                    ),
+                    UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
+                    name="SHARED_STORAGE_UPDATE_POLICY",
                 ),
                 is_list=True,
             ),
-            Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(
+                ["SharedStorage[ebs2]"],
+                "MountDir",
+                "vol2",
+                "vol1",
+                UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
+                is_list=False,
+            ),
             Change(["SharedStorage[ebs2]", "EbsSettings"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
             Change(
                 ["SharedStorage[ebs2]", "EbsSettings"],
@@ -524,14 +528,18 @@ def _test_more_target_sections(base_conf, target_conf):
                 None,
                 _get_storage_by_name(target_conf, "ebs1"),
                 UpdatePolicy(
-                    UpdatePolicy.UNSUPPORTED,
-                    fail_reason=(
-                        "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation"
-                    ),
+                    UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
                 ),
                 is_list=True,
             ),
-            Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(
+                ["SharedStorage[ebs2]"],
+                "MountDir",
+                "vol2",
+                "vol1",
+                UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
+                is_list=False,
+            ),
             Change(["SharedStorage[ebs2]", "EbsSettings"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
             Change(
                 ["SharedStorage[ebs2]", "EbsSettings"],
@@ -588,10 +596,15 @@ def _test_incompatible_ebs_sections(base_conf, target_conf):
         target_conf,
         [
             Change(
-                ["SharedStorage[ebs1]"], "MountDir", "vol1", "new_value", UpdatePolicy(UpdatePolicy.UNSUPPORTED), False
+                ["SharedStorage[ebs1]"],
+                "MountDir",
+                "vol1",
+                "new_value",
+                UpdatePolicy(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY),
+                False,
             )
         ],
-        UpdatePolicy.UNSUPPORTED,
+        UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
     )
 
 
@@ -615,9 +628,8 @@ def _test_different_names(base_conf, target_conf):
     assert_that(_get_storage_by_name(target_conf, "ebs1")).is_none()
     assert_that(_get_storage_by_name(target_conf, "ebs-")).is_none()
 
-    unsupported_update_policy = UpdatePolicy(
-        UpdatePolicy.UNSUPPORTED,
-        fail_reason="Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation",
+    shared_storage_update_policy = UpdatePolicy(
+        UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
     )
 
     # The patch should contain 5 differences:
@@ -627,12 +639,12 @@ def _test_different_names(base_conf, target_conf):
         base_conf,
         target_conf,
         [
-            Change([], "SharedStorage", None, target_ebs_1_section, unsupported_update_policy, is_list=True),
-            Change([], "SharedStorage", None, target_ebs_2_section, unsupported_update_policy, is_list=True),
-            Change([], "SharedStorage", base_ebs_1_section, None, unsupported_update_policy, is_list=True),
-            Change([], "SharedStorage", base_ebs_2_section, None, unsupported_update_policy, is_list=True),
+            Change([], "SharedStorage", None, target_ebs_1_section, shared_storage_update_policy, is_list=True),
+            Change([], "SharedStorage", None, target_ebs_2_section, shared_storage_update_policy, is_list=True),
+            Change([], "SharedStorage", base_ebs_1_section, None, shared_storage_update_policy, is_list=True),
+            Change([], "SharedStorage", base_ebs_2_section, None, shared_storage_update_policy, is_list=True),
         ],
-        UpdatePolicy.UNSUPPORTED,
+        UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
     )
 
 

@@ -13,7 +13,15 @@ import pytest
 
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
-from pcluster.config.cluster_config import CapacityType, PlacementGroup
+from pcluster.config.cluster_config import (
+    CapacityReservationTarget,
+    CapacityType,
+    PlacementGroup,
+    SlurmComputeResource,
+    SlurmComputeResourceNetworking,
+    SlurmQueue,
+    SlurmQueueNetworking,
+)
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
@@ -23,6 +31,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
+    PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -470,7 +479,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=False, name="test"),
@@ -480,7 +492,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=True, id="test", name="test2"),
@@ -624,6 +639,133 @@ def test_capacity_reservation_resource_group_validator(
         return_value=desired_availability_zone,
     )
     actual_failures = CapacityReservationResourceGroupValidator().execute(
-        capacity_reservation_resource_group_arn="skip_dummy", instance_type=desired_instance_type, subnet="subnet-123"
+        capacity_reservation_resource_group_arn="skip_dummy",
+        instance_types=[desired_instance_type],
+        subnet="subnet-123",
     )
     assert_failure_messages(actual_failures, expected_message)
+
+
+mock_compute_resources = [
+    SlurmComputeResource(
+        instance_type="mock-type",
+        name="test1",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(implied=True)),
+        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-123"),
+    ),
+    SlurmComputeResource(
+        instance_type="mock-type",
+        name="test2",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=True)),
+        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-123"),
+    ),
+    SlurmComputeResource(
+        instance_type="mock-type-3",
+        name="test3",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=False)),
+        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-123"),
+    ),
+    SlurmComputeResource(
+        instance_type="mock-type",
+        name="test4",
+        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(name="test")),
+        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-321"),
+    ),
+]
+
+mock_odcrs = [
+    {
+        "CapacityReservationId": "cr-123",
+        "InstanceType": "mock-type",
+        "AvailabilityZone": "mock-zone",
+    },
+    {
+        "CapacityReservationId": "cr-321",
+        "InstanceType": "mock-type",
+        "AvailabilityZone": "mock-zone",
+        "PlacementGroupArn": "fail-arn",
+    },
+]
+
+
+@pytest.mark.parametrize(
+    "queue, compute_resource, odcr_list, expected_message",
+    [
+        (
+            SlurmQueue(
+                name="mock-queue-1",
+                networking=SlurmQueueNetworking(
+                    subnet_ids=["mock-subnet-1"], placement_group=PlacementGroup(enabled=False)
+                ),
+                compute_resources=mock_compute_resources,
+            ),
+            mock_compute_resources[0],
+            mock_odcrs[:2],
+            None,
+        ),
+        (
+            SlurmQueue(
+                name="mock-queue-2",
+                networking=SlurmQueueNetworking(
+                    subnet_ids=["mock-subnet-2"], placement_group=PlacementGroup(enabled=False)
+                ),
+                compute_resources=mock_compute_resources,
+            ),
+            mock_compute_resources[1],
+            mock_odcrs[:2],
+            "When using an open or targeted capacity reservation with an unrelated placement group, "
+            "insufficient capacity errors may occur due to placement constraints outside of the "
+            "reservation even if the capacity reservation has remaining capacity. Please consider either "
+            "not using a placement group for the compute resource or creating a new capacity reservation "
+            "in a related placement group.",
+        ),
+        (
+            SlurmQueue(
+                name="mock-queue-3",
+                networking=SlurmQueueNetworking(
+                    subnet_ids=["mock-subnet-3"], placement_group=PlacementGroup(enabled=False)
+                ),
+                compute_resources=mock_compute_resources,
+            ),
+            mock_compute_resources[3],
+            mock_odcrs[1:2],
+            "The placement group provided 'test' does not match any placement group in the set of target PG/ODCRs and "
+            "there are no open or targeted 'mock-type' ODCRs included.",
+        ),
+        (
+            SlurmQueue(
+                name="mock-queue-4",
+                networking=SlurmQueueNetworking(
+                    subnet_ids=["mock-subnet-4"], placement_group=PlacementGroup(enabled=False)
+                ),
+                compute_resources=mock_compute_resources,
+            ),
+            mock_compute_resources[2],
+            mock_odcrs[1:2],
+            "There are no open or targeted ODCRs that match the instance_type 'mock-type-3' "
+            "and no placement group provided. Please either provide a placement group or add an ODCR that "
+            "does not target a placement group and targets the instance type.",
+        ),
+    ],
+)
+def test_placement_group_capacity_reservation_validator(
+    mocker,
+    queue,
+    compute_resource,
+    odcr_list,
+    expected_message,
+):
+    mock_aws_api(mocker)
+    desired_availability_zone = "mock-zone"
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+        side_effect=lambda capacity_reservation_ids: odcr_list,
+    )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
+        return_value=desired_availability_zone,
+    )
+    actual_failure = PlacementGroupCapacityReservationValidator().execute(
+        queue=queue, compute_resource=compute_resource
+    )
+    assert_failure_messages(actual_failure, expected_message)

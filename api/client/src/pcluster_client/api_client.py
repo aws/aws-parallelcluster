@@ -635,7 +635,7 @@ class ApiClient(object):
             return
 
         if 'aws.auth.sigv4' in auth_settings:
-            sigv4_auth(method, self.configuration.host, resource_path, querys, body, headers)
+            sigv4_auth(method, self.configuration.host, resource_path, queries, body, headers)
 
         for auth in auth_settings:
             auth_setting = self.configuration.auth_settings().get(auth)

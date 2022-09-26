@@ -13,7 +13,7 @@ from assertpy import assert_that
 from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.config.cluster_config import PlacementGroup, Tag
+from pcluster.config.cluster_config import Tag
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -229,30 +229,30 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group, expected_message",
+    "efa_enabled, placement_group_key, placement_group_disabled, expected_message",
     [
         # Efa disabled
-        (False, PlacementGroup(enabled=True, id="test"), None),
-        (False, PlacementGroup(enabled=True), None),
-        (False, PlacementGroup(id="test"), None),
-        (False, PlacementGroup(enabled=False), None),
-        (False, None, None),
+        (False, "test", False, None),
+        (False, "test", True, None),
+        (False, None, False, None),
+        (False, None, True, None),
         # Efa enabled
-        (True, None, "placement group for EFA-enabled compute resources must be explicit"),
-        (True, PlacementGroup(), "placement group for EFA-enabled compute resources must be explicit"),
-        (True, PlacementGroup(enabled=True), None),
-        (True, PlacementGroup(id="test"), None),
-        (True, PlacementGroup(enabled=True, id="test"), None),
-        (True, PlacementGroup(enabled=False), "may see better performance using a placement group for the queue"),
         (
             True,
-            PlacementGroup(enabled=False, id="test"),
-            "may see better performance using a placement group for the queue",
+            None,
+            False,
+            "The placement group for EFA-enabled compute resources must be explicit. "
+            "You may see better performance using a placement group, "
+            "but if you don't wish to use one please add "
+            "'Enabled: false' to the compute resource's configuration section.",
         ),
+        (True, None, True, "You may see better performance using a placement group for the queue."),
+        (True, "test", False, None),
+        (True, "test", True, "You may see better performance using a placement group for the queue."),
     ],
 )
-def test_efa_placement_group_validator(efa_enabled, placement_group, expected_message):
-    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group)
+def test_efa_placement_group_validator(efa_enabled, placement_group_key, placement_group_disabled, expected_message):
+    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group_key, placement_group_disabled)
 
     assert_failure_messages(actual_failures, expected_message)
 

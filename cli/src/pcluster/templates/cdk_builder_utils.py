@@ -491,7 +491,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             ),
             iam.PolicyStatement(
                 sid="Ec2TagsAndVolumes",
-                actions=["ec2:AttachVolume", "ec2:CreateTags"],
+                actions=["ec2:AttachVolume", "ec2:CreateTags", "ec2:DetachVolume"],
                 effect=iam.Effect.ALLOW,
                 resources=[
                     self._format_arn(
@@ -626,7 +626,8 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 ]
             )
             capacity_reservation_ids = self._config.capacity_reservation_ids
-            if self._config.capacity_reservation_ids:
+
+            if capacity_reservation_ids:
                 policy.append(
                     iam.PolicyStatement(
                         actions=["ec2:RunInstances"],
@@ -642,12 +643,14 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 )
             capacity_reservation_resource_group_arns = self._config.capacity_reservation_resource_group_arns
             if capacity_reservation_resource_group_arns:
-                policy.append(
-                    iam.PolicyStatement(
-                        actions=["ec2:RunInstances"],
-                        effect=iam.Effect.ALLOW,
-                        resources=capacity_reservation_resource_group_arns,
-                    )
+                policy.extend(
+                    [
+                        iam.PolicyStatement(
+                            actions=["ec2:RunInstances", "ec2:CreateFleet", "resource-groups:ListGroupResources"],
+                            effect=iam.Effect.ALLOW,
+                            resources=capacity_reservation_resource_group_arns,
+                        )
+                    ]
                 )
 
         if self._config.scheduling.scheduler == "plugin":

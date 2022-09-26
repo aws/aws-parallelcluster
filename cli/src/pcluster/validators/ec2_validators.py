@@ -8,9 +8,12 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict, List
+
 from pcluster import imagebuilder_utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
+from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -99,7 +102,7 @@ class KeyPairValidator(Validator):
             )
 
 
-class PlacementGroupNamingValidator(Validator):  # TODO: add tests
+class PlacementGroupNamingValidator(Validator):
     """Placement group naming validator."""
 
     def _validate(self, placement_group):
@@ -111,10 +114,12 @@ class PlacementGroupNamingValidator(Validator):  # TODO: add tests
             )
         identifier = placement_group.name or placement_group.id
         if identifier:
-            if not placement_group.is_implied("enabled") and not placement_group.enabled:
+            if placement_group.enabled is False:
                 self._add_failure(
                     "The PlacementGroup feature must be enabled (Enabled: true) in order "
-                    "to assign a Name or Id parameter",
+                    "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+                    "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+                    "with the Name/Id given",
                     FailureLevel.ERROR,
                 )
             else:
@@ -187,27 +192,106 @@ class CapacityReservationValidator(Validator):
                 )
 
 
+def get_capacity_reservations(capacity_reservation_resource_group_arn):
+    capacity_reservation_ids = AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
+        capacity_reservation_resource_group_arn
+    )
+    return AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
+
+
+def capacity_reservation_matches_instance(capacity_reservation: Dict, instance_type: str, subnet: str) -> bool:
+    return capacity_reservation["InstanceType"] == instance_type and capacity_reservation[
+        "AvailabilityZone"
+    ] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet)
+
+
 class CapacityReservationResourceGroupValidator(Validator):
     """Validate at least one capacity reservation in the resource group can be used with the instance and subnet."""
 
-    def _validate(self, capacity_reservation_resource_group_arn: str, instance_type: str, subnet: str):
+    def _validate(self, capacity_reservation_resource_group_arn: str, instance_types: List[str], subnet: str):
         if capacity_reservation_resource_group_arn:
-            capacity_reservation_ids = (
-                AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
-                    capacity_reservation_resource_group_arn
-                )
-            )
-            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
-            found_qualified_capacity_reservation = False
-            for capacity_reservation in capacity_reservations:
-                if capacity_reservation["InstanceType"] == instance_type and capacity_reservation[
-                    "AvailabilityZone"
-                ] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
-                    found_qualified_capacity_reservation = True
-                    break
-            if not found_qualified_capacity_reservation:
+            capacity_reservations = get_capacity_reservations(capacity_reservation_resource_group_arn)
+            for instance_type in instance_types:
+                found_qualified_capacity_reservation = False
+                for capacity_reservation in capacity_reservations:
+                    if capacity_reservation_matches_instance(capacity_reservation, instance_type, subnet):
+                        found_qualified_capacity_reservation = True
+                        break
+                if not found_qualified_capacity_reservation:
+                    self._add_failure(
+                        f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have at "
+                        f"least one capacity reservation for {instance_type} in the same availability zone as subnet"
+                        f" {subnet}.",
+                        FailureLevel.ERROR,
+                    )
+
+
+class PlacementGroupCapacityReservationValidator(Validator):
+    """Validate the placement group is compatible with the capacity reservation target."""
+
+    def _validate_chosen_pg(self, queue, compute_resource, odcr_list, chosen_pg):
+        pg_match, open_or_targeted = False, False
+        for instance_type in compute_resource.instance_types:
+            for odcr in odcr_list:
+                if capacity_reservation_matches_instance(
+                    capacity_reservation=odcr, instance_type=instance_type, subnet=queue.networking.subnet_ids[0]
+                ):
+                    odcr_pg = get_resource_name_from_resource_arn(odcr.get("PlacementGroupArn", None))
+                    if odcr_pg:
+                        if odcr_pg == chosen_pg:
+                            pg_match = True
+                    else:
+                        open_or_targeted = True
+            if not (pg_match or open_or_targeted):
                 self._add_failure(
-                    f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have at least "
-                    f"one capacity reservation for {instance_type} in the same availability zone as subnet {subnet}.",
+                    f"The placement group provided '{chosen_pg}' does not match any placement group in the set of "
+                    f"target PG/ODCRs and there are no open or targeted '{instance_type}' ODCRs included.",
                     FailureLevel.ERROR,
                 )
+            elif open_or_targeted:
+                self._add_failure(
+                    "When using an open or targeted capacity reservation with an unrelated placement group, "
+                    "insufficient capacity errors may occur due to placement constraints outside of the "
+                    "reservation even if the capacity reservation has remaining capacity. Please consider either "
+                    "not using a placement group for the compute resource or creating a new capacity reservation "
+                    "in a related placement group.",
+                    FailureLevel.WARNING,
+                )
+
+    def _validate_no_pg(self, queue, compute_resource, odcr_list):
+        for instance_type in compute_resource.instance_types:
+            odcr_without_pg = False
+            for odcr in odcr_list:
+                odcr_pg = (
+                    get_resource_name_from_resource_arn(odcr["PlacementGroupArn"])
+                    if "PlacementGroupArn" in odcr
+                    else None
+                )
+                if not odcr_pg and capacity_reservation_matches_instance(
+                    capacity_reservation=odcr, instance_type=instance_type, subnet=queue.networking.subnet_ids[0]
+                ):
+                    odcr_without_pg = True
+            if not odcr_without_pg:
+                self._add_failure(
+                    f"There are no open or targeted ODCRs that match the instance_type '{instance_type}' "
+                    f"and no placement group provided. Please either provide a placement group or add an ODCR that "
+                    f"does not target a placement group and targets the instance type.",
+                    FailureLevel.ERROR,
+                )
+
+    def _validate(self, queue, compute_resource):
+        chosen_pg = queue.get_placement_group_key_for_compute_resource(compute_resource)[0]
+        odcr = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+        odcr_id = odcr.capacity_reservation_id if odcr else None
+        odcr_arn = odcr.capacity_reservation_resource_group_arn if odcr else None
+        odcr_list = (
+            AWSApi.instance().ec2.describe_capacity_reservations([odcr_id])
+            if odcr_id
+            else get_capacity_reservations(odcr_arn)
+        )
+        if chosen_pg:
+            self._validate_chosen_pg(
+                queue=queue, compute_resource=compute_resource, odcr_list=odcr_list, chosen_pg=chosen_pg
+            )
+        else:
+            self._validate_no_pg(queue=queue, compute_resource=compute_resource, odcr_list=odcr_list)

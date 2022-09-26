@@ -123,6 +123,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
+    PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
 from pcluster.validators.fsx_validators import (
@@ -519,8 +520,8 @@ class Proxy(Resource):
 class _BaseNetworking(Resource):
     """Represent the networking configuration shared by head node and compute node."""
 
-    def __init__(self, security_groups: List[str] = None, additional_security_groups: List[str] = None):
-        super().__init__()
+    def __init__(self, security_groups: List[str] = None, additional_security_groups: List[str] = None, **kwargs):
+        super().__init__(**kwargs)
         self.security_groups = Resource.init_param(security_groups)
         self.additional_security_groups = Resource.init_param(additional_security_groups)
 
@@ -549,16 +550,34 @@ class HeadNodeNetworking(_BaseNetworking):
 
 
 class PlacementGroup(Resource):
-    """Represent the placement group for the Queue networking."""
+    """Represent the placement group for networking."""
 
-    def __init__(self, enabled: bool = None, name: str = None, id: str = None):
-        super().__init__()
-        self.enabled = Resource.init_param(enabled, default=False)
+    def __init__(self, enabled: bool = None, name: str = None, id: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.enabled = Resource.init_param(enabled)
         self.name = Resource.init_param(name)
         self.id = Resource.init_param(id)  # Duplicate of name
 
     def _register_validators(self):
         self._register_validator(PlacementGroupNamingValidator, placement_group=self)
+
+    @property
+    def is_enabled_and_unassigned(self) -> bool:
+        """Check if the PlacementGroup is enabled without a name or id."""
+        return not (self.id or self.name) and self.enabled
+
+    @property
+    def assignment(self) -> str:
+        """Check if the placement group has a name or id and get it, preferring the name if it exists."""
+        return self.name or self.id
+
+
+class SlurmComputeResourceNetworking(Resource):
+    """Represent the networking configuration for the compute resource."""
+
+    def __init__(self, placement_group: PlacementGroup = None, **kwargs):
+        super().__init__(**kwargs)
+        self.placement_group = placement_group or PlacementGroup(implied=True)
 
 
 class _QueueNetworking(_BaseNetworking):
@@ -575,7 +594,7 @@ class SlurmQueueNetworking(_QueueNetworking):
 
     def __init__(self, placement_group: PlacementGroup = None, proxy: Proxy = None, **kwargs):
         super().__init__(**kwargs)
-        self.placement_group = placement_group
+        self.placement_group = placement_group or PlacementGroup(implied=True)
         self.proxy = proxy
 
 
@@ -1624,6 +1643,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         disable_simultaneous_multithreading: bool = None,
         schedulable_memory: int = None,
         capacity_reservation_target: CapacityReservationTarget = None,
+        networking: SlurmComputeResourceNetworking = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1638,6 +1658,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.capacity_reservation_target = capacity_reservation_target
         self._instance_types_with_instance_storage = []
         self._instance_type_info_map = {}
+        self.networking = networking or SlurmComputeResourceNetworking(implied=True)
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
@@ -1793,11 +1814,25 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         return self.disable_simultaneous_multithreading and self.instance_type_info.default_threads_per_core() > 1
 
 
+class SchedulerPluginComputeResource(SlurmComputeResource):
+    """Represent the Scheduler Plugin Compute Resource."""
+
+    def __init__(
+        self,
+        custom_settings: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.custom_settings = custom_settings
+
+
 class _CommonQueue(BaseQueue):
     """Represent the Common Queue resource between Slurm and Scheduler Plugin."""
 
     def __init__(
         self,
+        compute_resources: List[Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]],
+        networking: Union[SlurmQueueNetworking, SchedulerPluginQueueNetworking],
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -1811,6 +1846,8 @@ class _CommonQueue(BaseQueue):
         self.iam = iam or Iam(implied=True)
         self.image = image
         self.capacity_reservation_target = capacity_reservation_target
+        self.compute_resources = compute_resources
+        self.networking = networking
 
     @property
     def instance_role(self):
@@ -1830,6 +1867,43 @@ class _CommonQueue(BaseQueue):
         else:
             return None
 
+    def get_managed_placement_group_keys(self) -> List[str]:
+        managed_placement_group_keys = []
+        for resource in self.compute_resources:
+            chosen_pg = (
+                resource.networking.placement_group
+                if not resource.networking.placement_group.implied
+                else self.networking.placement_group
+            )
+            if chosen_pg.is_enabled_and_unassigned:
+                managed_placement_group_keys.append(f"{self.name}-{resource.name}")
+        return managed_placement_group_keys
+
+    def get_placement_group_key_for_compute_resource(
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+    ) -> (str, bool):
+        # prefer compute level groups over queue level groups
+        placement_group_key, managed = None, None
+        cr_pg = compute_resource.networking.placement_group
+        if cr_pg.assignment:
+            placement_group_key, managed = cr_pg.assignment, False
+        elif cr_pg.enabled:
+            placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
+        elif cr_pg.enabled is False:
+            placement_group_key, managed = None, False
+        elif self.networking.placement_group.assignment:
+            placement_group_key, managed = self.networking.placement_group.assignment, False
+        elif self.networking.placement_group.enabled:
+            placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
+        return placement_group_key, managed
+
+    def is_placement_group_disabled_for_compute_resource(self, compute_resource_pg_enabled: bool) -> bool:
+        return (
+            compute_resource_pg_enabled is False
+            or self.networking.placement_group.enabled is False
+            and compute_resource_pg_enabled is None
+        )
+
 
 class AllocationStrategy(Enum):
     """Define supported allocation strategies."""
@@ -1843,15 +1917,13 @@ class SlurmQueue(_CommonQueue):
 
     def __init__(
         self,
-        compute_resources: List[_BaseSlurmComputeResource],
-        networking: SlurmQueueNetworking,
         allocation_strategy: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.compute_resources = compute_resources
-        self.networking = networking
-        if any(isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in compute_resources):
+        if any(
+            isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
+        ):
             self.allocation_strategy = (
                 AllocationStrategy[to_snake_case(allocation_strategy).upper()]
                 if allocation_strategy
@@ -1897,7 +1969,10 @@ class SlurmQueue(_CommonQueue):
             self._register_validator(
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
-                placement_group=self.networking.placement_group,
+                placement_group_key=self.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
+                    compute_resource.networking.placement_group.enabled
+                ),
             )
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
@@ -1992,31 +2067,15 @@ class SlurmScheduling(Resource):
         )
 
 
-class SchedulerPluginComputeResource(SlurmComputeResource):
-    """Represent the Scheduler Plugin Compute Resource."""
-
-    def __init__(
-        self,
-        custom_settings: Dict = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.custom_settings = custom_settings
-
-
 class SchedulerPluginQueue(_CommonQueue):
     """Represent the Scheduler Plugin queue."""
 
     def __init__(
         self,
-        compute_resources: List[SchedulerPluginComputeResource],
-        networking: SchedulerPluginQueueNetworking,
         custom_settings: Dict = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.compute_resources = compute_resources
-        self.networking = networking
         self.custom_settings = custom_settings
 
     def _register_validators(self):
@@ -2039,7 +2098,10 @@ class SchedulerPluginQueue(_CommonQueue):
             self._register_validator(
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
-                placement_group=self.networking.placement_group,
+                placement_group_key=self.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
+                    compute_resource.networking.placement_group.enabled
+                ),
             )
 
     @property
@@ -2423,20 +2485,27 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 )
                 # The validation below has to be in cluster config class instead of queue class
                 # to make sure the subnet APIs are cached by previous validations.
-                if compute_resource.capacity_reservation_target:
-                    cr_target = compute_resource.capacity_reservation_target
+                cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+                if cr_target:
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
-                        instance_type=compute_resource.instance_type,
+                        # ToDo: This validator is only correct for single instance type
+                        #  Add more validators to be check ODCR with flexible instance types
+                        instance_type=compute_resource.instance_types[0],
                         subnet=queue.networking.subnet_ids[0],
                     )
                     self._register_validator(
                         CapacityReservationResourceGroupValidator,
                         capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
-                        instance_type=compute_resource.instance_type,
+                        instance_types=compute_resource.instance_types,
                         subnet=queue.networking.subnet_ids[0],
                     )
+                self._register_validator(
+                    PlacementGroupCapacityReservationValidator,
+                    queue=queue,
+                    compute_resource=compute_resource,
+                )
 
     @property
     def _capacity_reservation_targets(self):
