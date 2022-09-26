@@ -7,7 +7,6 @@ module load ${1}
 NCCL_BENCHMARKS_VERSION='2.10.0'
 NCCL_VERSION='2.7.8-1'
 ML_REPO_PKG='nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb'
-CUDA_VERSION='11.4'
 OFI_NCCL_VERSION='1.1.1'
 MPI_HOME=$(which mpirun | awk -F '/bin' '{print $1}')
 NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80" # Arch for NVIDIA A100
@@ -32,6 +31,6 @@ wget https://github.com/aws/aws-ofi-nccl/archive/v${OFI_NCCL_VERSION}.tar.gz
 tar xvfz v${OFI_NCCL_VERSION}.tar.gz
 cd aws-ofi-nccl-${OFI_NCCL_VERSION}
 ./autogen.sh
-./configure --with-libfabric=/opt/amazon/efa --with-cuda=/usr/local/cuda-${CUDA_VERSION}/targets/x86_64-linux/ --with-nccl=/shared/openmpi/nccl-${NCCL_VERSION}/build/ --with-mpi=${MPI_HOME} --prefix /shared/openmpi/ofi-plugin
+./configure --with-libfabric=/opt/amazon/efa --with-cuda=/usr/local/cuda/targets/x86_64-linux/ --with-nccl=/shared/openmpi/nccl-${NCCL_VERSION}/build/ --with-mpi=${MPI_HOME} --prefix /shared/openmpi/ofi-plugin
 make
 make install
