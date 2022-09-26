@@ -20,8 +20,12 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: broken-static
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.large # instance type has bootstrap failure
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.large # instance type has bootstrap failure
+          {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket }}
@@ -32,11 +36,19 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: broken-dynamic
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.large # instance type has bootstrap failure
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.large # instance type has bootstrap failure
+          {% endif %}
         - Name: working-static
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.large # instance type works as expected
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.xlarge # instance type works as expected
+          {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket }}
@@ -47,8 +59,12 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: normal
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.xlarge # instance type works as expected
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.xlarge # instance type works as expected
+          {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket }}
