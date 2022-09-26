@@ -1,4 +1,5 @@
 {%- import 'common.jinja2' as common with context -%}
+{%- set SCHEDULER_PLUGIN_TESTS = false -%}
 ---
 scheduler-plugins:
   slurm_plugin:
