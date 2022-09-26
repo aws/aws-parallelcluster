@@ -122,22 +122,6 @@ def get_slurm_specific_dna_json_for_head_node(config: SlurmClusterConfig, schedu
     }
 
 
-def get_slurm_database_dna_json_for_head_node(config: BaseClusterConfig) -> dict:
-    """Return a dict containing directory service settings to be written to dna.json of head node."""
-    database = config.scheduling.settings.database
-    return (
-        {
-            "slurm": {
-                "database": {
-                    "enabled": "true",
-                }
-            }
-        }
-        if database
-        else {}
-    )
-
-
 def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> dict:
     """Return a dict containing directory service settings to be written to dna.json of head node."""
     directory_service = config.directory_service

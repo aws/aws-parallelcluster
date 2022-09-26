@@ -276,7 +276,6 @@ def test_compute_launch_template_properties(
         ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
         ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
         ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
-        ("slurm-accounting.yaml", "slurm-accounting.head-node.dna.json"),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value
