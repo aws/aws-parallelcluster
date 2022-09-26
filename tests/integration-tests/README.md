@@ -21,7 +21,7 @@ Before executing integration tests it is required to install all the Python depe
 In order to do that simply run the following commands:
 ```bash
 cd tests/integration-tests
-pip install -r tests/integration-tests/requirements.txt
+pip install -r requirements.txt
 ```
 
 After that you can run the CLI by simply executing the following
@@ -182,7 +182,7 @@ Executing the command will run an integration testing suite with the following f
 Each test contained in the suite can be parametrized, at submission time, across four different dimensions: regions,
 instances, operating systems and schedulers. These dimensions allow to dynamically customize the combination of cluster
 parameters that need to be validated by the scheduler. Some tests, due to the specific feature they are validating,
-might not be compatible with the entire set of available dimensions. 
+might not be compatible with the entire set of available dimensions.
 
 In order to specify what tests to execute and the dimensions to select there are two different possibilities:
 1. The recommended approach consists into passing to the `test_runner` a YAML configuration file that declares the tests
@@ -193,7 +193,7 @@ In order to specify what tests to execute and the dimensions to select there are
 
 When executing the `test_runner` CLI, the `--tests-config` argument can be used to specify a configuration file
 containing the list of tests that need to be executed. The configuration file is a YAML document, with optionally Jinja
-templating directives, that needs to comply with the following schema: 
+templating directives, that needs to comply with the following schema:
 https://github.com/aws/aws-parallelcluster/tree/develop/tests/integration-tests/framework/tests_configuration/config_schema.yaml
 
 Here is an example of a tests suite definition file:
@@ -241,8 +241,8 @@ test-suites:
           schedulers: ["slurm"]
 ```
 
-As shown in the example above, the configuration file groups tests by the name of the package where these are defined. 
-For each test function, identified by the test module and the function name, an array of dimensions are specified in 
+As shown in the example above, the configuration file groups tests by the name of the package where these are defined.
+For each test function, identified by the test module and the function name, an array of dimensions are specified in
 order to define how this specific test is parametrized. Each element of the dimensions array generates a parametrization
 of the selected test function which consist in the combination of all defined dimensions. For example the
 cloudwatch_logging suite defined above will produce the following parametrization:
@@ -255,11 +255,11 @@ cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-centra
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[eu-west-1-m6g.xlarge-alinux2-slurm]
 ```
-  
+
 Jinja directives can be used to simplify the declaration of the tests suites.
 
 Some tox commands are offered in order to simplify the generation and validation of such configuration files:
-* ` tox -e validate-test-configs` can be executed to validate all configuration files defined in the 
+* ` tox -e validate-test-configs` can be executed to validate all configuration files defined in the
   `tests/integration-tests/configs` directory. The directory or the specific file to validate can be also selected
   with the additional arguments: `--tests-configs-dir` and `--tests-config-file`
   (e.g. tox -e validate-test-configs -- --tests-config-file configs/develop.yaml)
@@ -267,7 +267,7 @@ Some tox commands are offered in order to simplify the generation and validation
   with the list of all available files. The config file is generated in the `tests/integration-tests/configs` directory.
 
 #### Using CLI options
- 
+
 The following options can be used to control the parametrization of test cases:
 * `-r REGIONS [REGIONS ...], --regions REGIONS [REGIONS ...]`: AWS region where tests are executed.
 * `-i INSTANCES [INSTANCES ...], --instances INSTANCES [INSTANCES ...]`: AWS instances under test.
@@ -374,10 +374,10 @@ in the cluster config then the value in the config is used.
 
 ### Re-use clusters and vpc clusters
 
-When developing integration tests, it can be helpful to re-use a cluster between tests. 
-This is easily accomplished with the use of the `--vpc-stack` and `--cluster` flags. 
+When developing integration tests, it can be helpful to re-use a cluster between tests.
+This is easily accomplished with the use of the `--vpc-stack` and `--cluster` flags.
 
-If you're starting from scratch, run the test with the `--no-delete` flag. 
+If you're starting from scratch, run the test with the `--no-delete` flag.
 This preserves any stacks created for the test:
 
 ```bash
@@ -396,28 +396,28 @@ python -m test_runner \
   --no-delete
 ```
 
-Keep in mind, the cluster you pass can have different `scheduler`, `os` or other features 
+Keep in mind, the cluster you pass can have different `scheduler`, `os` or other features
 than what is specified in the test. This can break the tests in unexpected ways. Be mindful.
 
 ## Cross Account Integration Tests
-If you want to distribute integration tests across multiple accounts you can make use of the `--credential` flag. 
-This is useful to overcome restrictions related to account limits and be compliant with a multi-region, multi-account 
+If you want to distribute integration tests across multiple accounts you can make use of the `--credential` flag.
+This is useful to overcome restrictions related to account limits and be compliant with a multi-region, multi-account
 setup.
 
-When the `--credential` flag is specified and STS assume-role call is made in order to fetch temporary credentials to 
-be used to run tests in a specific region. 
+When the `--credential` flag is specified and STS assume-role call is made in order to fetch temporary credentials to
+be used to run tests in a specific region.
 
-The `--credential` flag is in the form `<region>,<endpoint_url>,<ARN>,<external_id>` and needs to be specified for each 
-region you want to use with an STS assumed role (that usually means for every region you want to have in a separate 
+The `--credential` flag is in the form `<region>,<endpoint_url>,<ARN>,<external_id>` and needs to be specified for each
+region you want to use with an STS assumed role (that usually means for every region you want to have in a separate
 account).
 
- * `region` is the region you want to test with an assumed STS role (which is in the target account where you want to 
+ * `region` is the region you want to test with an assumed STS role (which is in the target account where you want to
  launch the integration tests)
  * `endpoint_url` is the STS endpoint url of the main account to be called in order to assume the delegation role
  * `ARN` is the ARN of the delegation role in the optin region account to be assumed by the main account
- * `external_id` is the external ID of the delegation role  
+ * `external_id` is the external ID of the delegation role
 
-By default, the delegation role lifetime is one hour. Mind that if you are planning to launch tests that last 
+By default, the delegation role lifetime is one hour. Mind that if you are planning to launch tests that last
 more than one hour.
 
 ## Write Integration Tests
@@ -843,7 +843,7 @@ test-suites:
 ```
 The definition above means the `osu_allreduce` and `osu_alltoall` will run in `eu-west-1`. You can extend the list under `benchmarks` or each parameters to get various combinations
 
-6. Use `--benchmarks` option to run performance tests. Performance tests are disabled by default due to the high resource utilization involved with their execution. 
+6. Use `--benchmarks` option to run performance tests. Performance tests are disabled by default due to the high resource utilization involved with their execution.
 
 In conclusion, the performance test will run for a test only if:
 1. The test calls the `run_benchmark` fixture
@@ -895,7 +895,7 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 ### Troubleshooting and fixes
 
-* `IdentityFile` option in `ssh/config` will trigger a `str has no attribute extend` bug in the `fabric` package. 
+* `IdentityFile` option in `ssh/config` will trigger a `str has no attribute extend` bug in the `fabric` package.
 Please remove `IdentityFile` option from `ssh/config` before running the testing framework
 
 
@@ -914,10 +914,10 @@ scheduler-plugins:
 
 `scheduler-plugin` defines an entry for each scheduler plugin you intend to enable in tests.
 For each scheduler plugin you can specify the following fields:
-* `scheduler-definition`: this can be a S3 or HTTPs URL pointing to the scheduler plugin definition. Alternatively, 
+* `scheduler-definition`: this can be a S3 or HTTPs URL pointing to the scheduler plugin definition. Alternatively,
   it can be the path (relative or absolute) to the upload_artifacts.sh script. If the path is relative, it's relative to
   integration tests suite root folder. The upload_artifacts.sh script is in charge to upload the scheduler-definition
-  into a given bucket, that will be created and passed by the test suite. 
+  into a given bucket, that will be created and passed by the test suite.
 * `scheduler-commands`: this is the path to a Python class implementing the scheduler commands interface
   defined in `tests.common.schedulers_common.SchedulerCommands`.
 * `requires-sudo`: this needs to be set to true in case the scheduler plugin requires sudo privileges.
@@ -1010,7 +1010,7 @@ def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=
 
 The nodeJS `diff2html` generates a html file from a diff which helps to compare the differences.
 Compare result from different node type (head, compute) can create misleading results: it is suggested to compare the
-same node type (e.g. head with head) 
+same node type (e.g. head with head)
 Below an example on how compare system analysis results :
 ```bash
 npm install -g diff2html

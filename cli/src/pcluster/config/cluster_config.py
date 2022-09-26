@@ -122,6 +122,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
+    PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
 from pcluster.validators.fsx_validators import (
@@ -2472,11 +2473,14 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     self._register_validator(
                         CapacityReservationResourceGroupValidator,
                         capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
-                        # ToDo: This validator is only correct for single instance type
-                        #  Add more validators to be check ODCR with flexible instance types
-                        instance_type=compute_resource.instance_types[0],
+                        instance_types=compute_resource.instance_types,
                         subnet=queue.networking.subnet_ids[0],
                     )
+                self._register_validator(
+                    PlacementGroupCapacityReservationValidator,
+                    queue=queue,
+                    compute_resource=compute_resource,
+                )
 
     @property
     def _capacity_reservation_targets(self):
