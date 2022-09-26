@@ -966,7 +966,7 @@ class CapacityReservationTargetSchema(BaseSchema):
         return CapacityReservationTarget(**data)
 
     @validates_schema
-    def no_coexist_instance_type_flexibility(self, data, **kwargs):
+    def no_coexist_id_and_group_arn(self, data, **kwargs):
         """Validate that 'capacity_reservation_id' and 'capacity_reservation_resource_group_arn' do not co-exist."""
         if self.fields_coexist(
             data,
