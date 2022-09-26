@@ -1,0 +1,283 @@
+Region: us-east-1
+Image:
+  Os: centos7
+  CustomAmi: ami-12345678
+
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+    ElasticIp: true
+    AdditionalSecurityGroups:
+      {% for i in range(10) %}
+      - sg-3456789{{ i }}
+      {% endfor %}
+    Proxy:
+      HttpProxyAddress: https://proxy-address:port
+  DisableSimultaneousMultithreading: false
+  Ssh:
+    KeyName: ec2-key-name
+    AllowedIps: 1.2.3.4/32
+  LocalStorage:
+    RootVolume:
+      Size: 40
+      Encrypted: true
+      VolumeType: gp2
+      Iops: 100
+      DeleteOnTermination: true
+    EphemeralVolume:
+      MountDir: /test
+  Dcv:
+    Enabled: true
+    Port: 8443
+    AllowedIps: 0.0.0.0/0
+  CustomActions:
+    OnNodeStart:
+      Script: https://test.tgz
+      Args:
+        # Number of args doesn't impact number of resources, just the size of the template
+        {% for i in range(number_of_script_args) %}
+        - arg{{ i }}
+        {% endfor %}
+    OnNodeConfigured:
+      Script: https://test.tgz
+      Args:
+        {% for i in range(number_of_script_args) %}
+        - arg{{ i }}
+        {% endfor %}
+  Iam:
+    InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
+  Imds:
+    Secured: True
+  Image:
+    CustomAmi: ami-98765432
+
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: 10
+    QueueUpdateStrategy: TERMINATE
+    Dns:
+      DisableManagedDns: false
+      UseEc2Hostnames: false
+    EnableMemoryBasedScheduling: false
+  SlurmQueues:
+
+    # ondemand queues
+    {% for i in range((max_number_of_queues / 2) | int) %}
+    - Name: queue-ondemand-{{ i }}
+      CapacityType: ONDEMAND
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        SecurityGroups:
+          {% for i in range(number_of_sg_per_queue) %}
+          - sg-3456789{{ i }}
+          {% endfor %}
+      ComputeResources:
+        {% for j in range(max_number_of_ondemand_crs) %}
+        - Name: compute-resource-ondemand-{{ i }}{{ j }}
+          InstanceType: c5.xlarge
+        {% endfor %}
+      CustomActions:
+        OnNodeStart:
+          Script: https://test.tgz
+          Args:
+            # Number of args doesn't impact number of resources, just the size of the template
+            {% for i in range(number_of_script_args) %}
+            - arg{{ i }}
+            {% endfor %}
+        OnNodeConfigured:
+          Script: https://test.tgz
+          Args:
+            {% for i in range(number_of_script_args) %}
+            - arg{{ i }}
+            {% endfor %}
+      Iam:
+        S3Access:
+          - BucketName: string1
+            EnableWriteAccess: False
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      Image:
+        CustomAmi: ami-12345678
+    {% endfor %}
+
+    # spot queues
+    {% for i in range((max_number_of_queues / 2) | int) %}
+    - Name: queue-spot-{{ i }}
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 35
+            Encrypted: true
+            VolumeType: gp2
+            Iops: 100
+          EphemeralVolume:
+            MountDir: /scratch
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        AssignPublicIp: true
+        SecurityGroups:
+          {% for i in range(number_of_sg_per_queue) %}
+          - sg-3456789{{ i }}
+          {% endfor %}
+        PlacementGroup:
+          Enabled: true
+          Id: String
+        Proxy:
+          HttpProxyAddress: https://proxy-address:port
+      ComputeResources:
+        {% for j in range(max_number_of_spot_crs) %}
+        - Name: compute-resource-spot-{{ i }}{{ j }}
+          InstanceType: c5.2xlarge
+          MinCount: 1
+          MaxCount: 15
+          SpotPrice: 1.1
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+            GdrSupport: false
+        {% endfor %}
+      Iam:
+        InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      Image:
+        CustomAmi: ami-23456789
+    {% endfor %}
+
+SharedStorage:
+  # EBS
+  {% for i in range(max_ebs_count) %}
+  - MountDir: /new/mount/efs{{ i }}
+    Name: nameebs{{ i }}
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+      Iops: 100
+      Size: 150
+      Encrypted: True
+      KmsKeyId: String
+      #SnapshotId: snap-12345678
+      #VolumeId: vol-12345678
+      DeletionPolicy: Retain
+  {% endfor %}
+
+  # New EFS
+  {% for i in range(max_new_storage_count[ "efs" ]) %}
+  - MountDir: /new/mount/efs{{ i }}
+    Name: efs{{ i }}
+    StorageType: Efs
+    EfsSettings:
+      ThroughputMode: provisioned
+      ProvisionedThroughput: 1024
+  {% endfor %}
+  # Existing EFS
+  {% for i in range(10, 10 + max_existing_storage_count["efs"]) %}
+  - MountDir: /existing/mount/efs{{ i }}
+    Name: existing-efs{{ i }}
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: fs-123456{{ i }}
+  {% endfor %}
+
+  # New FSx Lustre
+  {% for i in range(max_new_storage_count["fsx"]) %}
+  - MountDir: /new/mount/fsx
+    Name: fsx{{ i }}
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 3600
+      DeploymentType: PERSISTENT_1
+      ImportedFileChunkSize: 1024
+      DataCompressionType: LZ4
+      ExportPath: s3://bucket/folder
+      ImportPath: s3://bucket
+      WeeklyMaintenanceStartTime: "1:00:00"
+      AutomaticBackupRetentionDays: 0
+      CopyTagsToBackups: true
+      DailyAutomaticBackupStartTime: 01:03
+      PerUnitStorageThroughput: 200
+      KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      AutoImportPolicy: NEW
+      DriveCacheType: READ
+      StorageType: HDD
+  {% endfor %}
+
+  # Existing OpenZFS
+  - MountDir: /existing/mount/openzfs
+    Name: existing-open-zfs
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: fsvol-12345678901234567
+  # Existing Ontap
+  - MountDir: /existing/mount/ontap
+    Name: existing-ontap
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: fsvol-12345678901234567
+  # Existing FSx Lustre
+  {% for i in range(10, 10 + max_existing_storage_count["fsx"] - 2) %}
+  - MountDir: /existing/mount/fsx{{ i }}
+    Name: existing-fsx{{ i }}
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      FileSystemId: fs-213456781234567{{ i }}
+  {% endfor %}
+
+Iam:
+  Roles:
+    LambdaFunctionsRole: arn:aws:iam::aws:role/CustomResourcesLambdaRole
+Monitoring:
+  DetailedMonitoring: true
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 30
+      DeletionPolicy: Retain
+  Dashboards:
+    CloudWatch:
+      Enabled: true
+AdditionalPackages:
+  IntelSoftware:
+    IntelHpcPlatform: false
+Tags:
+  {% for i in range(number_of_tags) %}
+  - Key: String{{ i }}
+    Value: String{{ i }}
+  {% endfor %}
+CustomS3Bucket: String
+AdditionalResources: https://template.url
+
+DirectoryService:
+  DomainName: string
+  DomainAddr: string
+  PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx
+  DomainReadOnlyUser: string
+  LdapTlsCaCert: string
+  LdapTlsReqCert: never
+  LdapAccessFilter: string
+  GenerateSshKeysForUsers: false
+  AdditionalSssdConfigs:
+    parameter_1: value_1
+    parameter_2: value_2
+{% if dev_settings_enabled %}
+DevSettings:
+  ClusterTemplate: https://tests/aws-parallelcluster-template-3.0.tgz
+  Cookbook:
+    ChefCookbook: https://tests/aws-parallelcluster-cookbook-3.0.tgz
+    ExtraChefAttributes: |
+      {"cluster": {"scheduler_slots": "cores", "slurm_node_reg_mem_percent": 75, "realmemory_to_ec2memory_ratio": 0.95}}
+  AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
+  NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
+  AmiSearchFilters:
+    Tags:
+    {% for i in range(number_of_tags) %}
+    - Key: String{{ i }}
+      Value: String{{ i }}
+    {% endfor %}
+    Owner: self
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1201
+    ComputeNodeBootstrapTimeout: 1001
+{% endif %}

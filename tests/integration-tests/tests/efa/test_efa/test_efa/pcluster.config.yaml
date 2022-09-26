@@ -30,7 +30,7 @@ Scheduling:
             {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}
 {% if instance == "p4d.24xlarge" %}
           CapacityReservationTarget:
-            CapacityReservationId: cr-0fa65fcdbd597f551
+            CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:447714826191:group/EC2CRGroup
 {% endif %}
 SharedStorage:
   - MountDir: /shared

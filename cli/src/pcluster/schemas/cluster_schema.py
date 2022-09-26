@@ -100,6 +100,7 @@ from pcluster.config.cluster_config import (
     SharedFsxLustre,
     SlurmClusterConfig,
     SlurmComputeResource,
+    SlurmComputeResourceNetworking,
     SlurmFlexibleComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
@@ -383,11 +384,13 @@ class FsxLustreSettingsSchema(BaseSchema):
     )
     per_unit_storage_throughput = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     backup_id = fields.Str(
-        validate=validate.Regexp("^(backup-[0-9a-f]{8,})$"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        validate=validate.Regexp("^(backup-[0-9a-f]{8,})$"),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     kms_key_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     file_system_id = fields.Str(
-        validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     auto_import_policy = fields.Str(
         validate=validate.OneOf(["NEW", "NEW_CHANGED", "NEW_CHANGED_DELETED"]),
@@ -468,7 +471,9 @@ class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
     mount_dir = fields.Str(
-        required=True, validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True,
+        validate=get_field_validator("file_path"),
+        metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY},
     )
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     storage_type = fields.Str(
@@ -1128,6 +1133,19 @@ class _ComputeResourceSchema(BaseSchema):
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
+class SlurmComputeResourceNetworkingSchema(BaseSchema):
+    """Represent the Networking schema of the Slurm ComputeResource."""
+
+    placement_group = fields.Nested(
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SlurmComputeResourceNetworking(**data)
+
+
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
@@ -1147,6 +1165,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     schedulable_memory = fields.Int(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
     capacity_reservation_target = fields.Nested(
         CapacityReservationTargetSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+    networking = fields.Nested(
+        SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @validates_schema
@@ -1918,9 +1939,7 @@ class ClusterSchema(BaseSchema):
         SharedStorageSchema,
         many=True,
         metadata={
-            "update_policy": UpdatePolicy(
-                UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["shared_storage_change"]
-            ),
+            "update_policy": UpdatePolicy(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY),
             "update_key": "Name",
         },
     )

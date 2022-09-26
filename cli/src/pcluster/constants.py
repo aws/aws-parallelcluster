@@ -25,6 +25,8 @@ DELETION_POLICIES = ["Retain", "Delete"]
 DELETION_POLICIES_WITH_SNAPSHOT = DELETION_POLICIES + ["Snapshot"]
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {"x86_64": SUPPORTED_OSES, "arm64": SUPPORTED_OSES}
+SLURM = "slurm"
+AWSBATCH = "awsbatch"
 
 OS_MAPPING = {
     "centos7": {"user": "centos", "root-device": "/dev/sda1"},

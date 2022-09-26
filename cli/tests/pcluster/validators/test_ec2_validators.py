@@ -470,7 +470,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=False, name="test"),
@@ -480,7 +483,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=True, id="test", name="test2"),

@@ -1,0 +1,138 @@
+Region: us-west-2
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: c7g.4xlarge
+  Networking:
+    SubnetId: subnet-020f39e1a8eb1c972
+  Ssh:
+    KeyName: ndry-hpc
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q-pg-enabled
+      ComputeResources:
+        - Name: cr-pg-enabled
+          InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: true
+        - Name: cr-pg-disabled
+          InstanceType: c6g.xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: false
+        - Name: cr-pg-named
+          InstanceType: m6g.xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'q-enabled-cr-named'
+        - Name: cr-pg-omitted
+          InstanceType: c7g.xlarge
+          MinCount: 1
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - subnet-0bfcd29fad2404485
+        PlacementGroup:
+          Enabled: true
+    - Name: q-pg-disabled
+      ComputeResources:
+        - Name: cr-pg-enabled
+          InstanceType: c6gn.2xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: true
+        - Name: cr-pg-disabled
+          InstanceType: c6g.2xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: false
+        - Name: cr-pg-named
+          InstanceType: m6g.2xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'q-disabled-cr-named'
+        - Name: cr-pg-omitted
+          InstanceType: c7g.2xlarge
+          MinCount: 1
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - subnet-0bfcd29fad2404485
+        PlacementGroup:
+          Enabled: false
+    - Name: q-pg-named
+      ComputeResources:
+        - Name: cr-pg-enabled
+          InstanceType: c6gn.8xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: true
+        - Name: cr-pg-disabled
+          InstanceType: c6g.8xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: false
+        - Name: cr-pg-named
+          InstanceType: m6g.8xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'q-named-cr-named'
+        - Name: cr-pg-omitted
+          InstanceType: c7g.large
+          MinCount: 1
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - subnet-0bfcd29fad2404485
+        PlacementGroup:
+          Name: 'q-named'
+    - Name: q-pg-omitted
+      ComputeResources:
+        - Name: cr-pg-enabled
+          InstanceType: c6gn.12xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: true
+        - Name: cr-pg-disabled
+          InstanceType: c6g.12xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Enabled: false
+        - Name: cr-pg-named
+          InstanceType: m6g.12xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'q-omitted-cr-named'
+        - Name: cr-pg-omitted
+          InstanceType: c7g.medium
+          MinCount: 1
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - subnet-0bfcd29fad2404485

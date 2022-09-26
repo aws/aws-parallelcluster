@@ -9,6 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
+import re
 from datetime import datetime
 
 import pytest
@@ -17,6 +19,13 @@ from assertpy import assert_that
 from freezegun import freeze_time
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.constants import (
+    MAX_EBS_COUNT,
+    MAX_EXISTING_STORAGE_COUNT,
+    MAX_NEW_STORAGE_COUNT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
+)
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
@@ -36,17 +45,71 @@ from tests.pcluster.utils import load_cluster_model_from_yaml
         "scheduler_plugin.full.yaml",
     ],
 )
-def test_cluster_builder_from_configuration_file(mocker, capsys, config_file_name):
+def test_cluster_builder_from_configuration_file(
+    mocker, capsys, pcluster_config_reader, test_datadir, config_file_name
+):
+    """Build CFN template starting from config examples."""
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
-    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+
+    # Search config file from example_configs folder to test standard configuration
+    _, cluster = load_cluster_model_from_yaml(config_file_name)
+    _generate_template(cluster, capsys)
+
+
+def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, test_datadir):
+    """
+    Build CFN template starting from config examples and assert CFN limits (file size and number of resources).
+
+    In the config file we have defined all the possible resources, capped at the current validators limits.
+    https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
+    """
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    # Try to search for jinja templates in the test_datadir, this is mainly to verify pcluster limits
+    rendered_config_file = pcluster_config_reader(
+        "slurm.full.all_resources.yaml",
+        max_ebs_count=MAX_EBS_COUNT,
+        max_new_storage_count=MAX_NEW_STORAGE_COUNT,
+        max_existing_storage_count=MAX_EXISTING_STORAGE_COUNT,
+        # number of queues, compute resources and security groups highly impacts the size of AWS resources
+        max_number_of_queues=MAX_NUMBER_OF_QUEUES,
+        max_number_of_ondemand_crs=MAX_NUMBER_OF_COMPUTE_RESOURCES,
+        max_number_of_spot_crs=MAX_NUMBER_OF_COMPUTE_RESOURCES - 2,  # FIXME: Limit num of CRs to not exceed size limits
+        number_of_sg_per_queue=1,
+        # The number of following items doesn't impact number of resources, but the size of the template.
+        # We have to reduce number of tags, script args and remove dev settings to reduce template size,
+        # because we're overcoming generated template size limits.
+        number_of_tags=1,  # max number of tags is 50
+        number_of_script_args=1,  # this is potentially unlimited
+        dev_settings_enabled=False,  # these shouldn't be used by most of the users
+    )
+    input_yaml, cluster = load_cluster_model_from_yaml(rendered_config_file, test_datadir)
+
+    # Generate CFN template file
+    output_yaml = yaml.dump(_generate_template(cluster, capsys))
+    output_path = str(tmpdir / "generated_cfn_template.yaml")
+    with open(output_path, "w") as output_file:
+        output_file.write(output_yaml)
+
+    # Assert that size of the template doesn't exceed 1MB and number of resources doesn't exceed 500
+    # Note the configuration file defined in the test_datadir is very close to the limit of 500 resources
+    assert_that(os.stat(output_path).st_size).is_less_than(1024 * 1024)
+    matches = len(re.findall("Type.*AWS::", str(output_yaml)))
+    assert_that(matches).is_less_than(500)
+
+
+def _generate_template(cluster, capsys):
+    # Try to build the template
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     _, err = capsys.readouterr()
     assert_that(err).is_empty()  # Assertion failure may become an update of dependency warning deprecations.
-    yaml.dump(generated_template)
+    return generated_template
 
 
 @pytest.mark.parametrize(
