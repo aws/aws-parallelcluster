@@ -213,25 +213,47 @@ def capacity_reservation_matches_instance(capacity_reservation: Dict, instance_t
     ] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet)
 
 
+def capacity_reservation_resource_group_is_service_linked_group(capacity_reservation_resource_group_arn: str):
+    try:
+        group_config = AWSApi.instance().resource_groups.get_group_configuration(
+            group=capacity_reservation_resource_group_arn
+        )
+        is_cr_pool = False
+        for config in group_config["GroupConfiguration"]["Configuration"]:
+            if "CapacityReservationPool" in config["Type"]:
+                is_cr_pool = True
+        return is_cr_pool
+    except AWSClientError:
+        return False
+
+
 class CapacityReservationResourceGroupValidator(Validator):
     """Validate at least one capacity reservation in the resource group can be used with the instance and subnet."""
 
     def _validate(self, capacity_reservation_resource_group_arn: str, instance_types: List[str], subnet: str):
         if capacity_reservation_resource_group_arn:
-            capacity_reservations = get_capacity_reservations(capacity_reservation_resource_group_arn)
-            for instance_type in instance_types:
-                found_qualified_capacity_reservation = False
-                for capacity_reservation in capacity_reservations:
-                    if capacity_reservation_matches_instance(capacity_reservation, instance_type, subnet):
-                        found_qualified_capacity_reservation = True
-                        break
-                if not found_qualified_capacity_reservation:
-                    self._add_failure(
-                        f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have at "
-                        f"least one capacity reservation for {instance_type} in the same availability zone as subnet"
-                        f" {subnet}.",
-                        FailureLevel.ERROR,
-                    )
+            if not capacity_reservation_resource_group_is_service_linked_group(capacity_reservation_resource_group_arn):
+                self._add_failure(
+                    f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must be a "
+                    f"Service Linked Group created from the AWS CLI.  See "
+                    f"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
+                    FailureLevel.ERROR,
+                )
+            else:
+                capacity_reservations = get_capacity_reservations(capacity_reservation_resource_group_arn)
+                for instance_type in instance_types:
+                    found_qualified_capacity_reservation = False
+                    for capacity_reservation in capacity_reservations:
+                        if capacity_reservation_matches_instance(capacity_reservation, instance_type, subnet):
+                            found_qualified_capacity_reservation = True
+                            break
+                    if not found_qualified_capacity_reservation:
+                        self._add_failure(
+                            f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have "
+                            f"at least one capacity reservation for {instance_type} in the same availability zone as "
+                            f"subnet {subnet}.",
+                            FailureLevel.ERROR,
+                        )
 
 
 class PlacementGroupCapacityReservationValidator(Validator):

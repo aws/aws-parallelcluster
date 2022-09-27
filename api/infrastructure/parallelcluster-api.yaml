@@ -736,6 +736,7 @@ Resources:
             Sid: CloudWatchLogs
           - Action:
               - resource-groups:ListGroupResources
+              - resource-groups:GetGroupConfiguration
             Resource: '*'
             Effect: Allow
             Sid: ResourceGroupRead
