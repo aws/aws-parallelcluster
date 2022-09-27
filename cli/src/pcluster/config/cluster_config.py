@@ -2490,9 +2490,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
-                        # ToDo: This validator is only correct for single instance type
-                        #  Add more validators to be check ODCR with flexible instance types
-                        instance_type=compute_resource.instance_types[0],
+                        instance_type=getattr(compute_resource, "instance_type", None),
                         subnet=queue.networking.subnet_ids[0],
                     )
                     self._register_validator(

@@ -177,19 +177,27 @@ class CapacityReservationValidator(Validator):
 
     def _validate(self, capacity_reservation_id: str, instance_type: str, subnet: str):
         if capacity_reservation_id:
-            capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
-            if capacity_reservation["InstanceType"] != instance_type:
+            if not instance_type:  # If the instance type doesn't exist, this is an invalid config
                 self._add_failure(
-                    f"Capacity reservation {capacity_reservation_id} must has the same instance type "
-                    f"as {instance_type}.",
+                    "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
                     FailureLevel.ERROR,
                 )
-            if capacity_reservation["AvailabilityZone"] != AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
-                self._add_failure(
-                    f"Capacity reservation {capacity_reservation_id} must use the same availability zone "
-                    f"as subnet {subnet}.",
-                    FailureLevel.ERROR,
-                )
+            else:
+                capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[
+                    0
+                ]
+                if capacity_reservation["InstanceType"] != instance_type:
+                    self._add_failure(
+                        f"Capacity reservation {capacity_reservation_id} must have the same instance type "
+                        f"as {instance_type}.",
+                        FailureLevel.ERROR,
+                    )
+                if capacity_reservation["AvailabilityZone"] != AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
+                    self._add_failure(
+                        f"Capacity reservation {capacity_reservation_id} must use the same availability zone "
+                        f"as subnet {subnet}.",
+                        FailureLevel.ERROR,
+                    )
 
 
 def get_capacity_reservations(capacity_reservation_resource_group_arn):

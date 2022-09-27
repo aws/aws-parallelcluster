@@ -534,7 +534,7 @@ def test_placement_group_validator(
             "us-east-1a",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must has the same instance type as c5.xlarge.",
+            "Capacity reservation .* must have the same instance type as c5.xlarge.",
         ),
         # Wrong availability zone
         (
@@ -550,7 +550,7 @@ def test_placement_group_validator(
             "us-east-1b",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must has the same instance type as c5.xlarge.",
+            "Capacity reservation .* must have the same instance type as c5.xlarge.",
         ),
         (
             "m5.xlarge",
@@ -558,6 +558,20 @@ def test_placement_group_validator(
             "c5.xlarge",
             "us-east-1a",
             "Capacity reservation .* must use the same availability zone as subnet",
+        ),
+        (
+            "m5.xlarge",
+            "us-east-1b",
+            None,
+            "us-east-1a",
+            "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+        ),
+        (
+            "m5.xlarge",
+            "us-east-1b",
+            "",
+            "us-east-1a",
+            "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
         ),
     ],
 )
