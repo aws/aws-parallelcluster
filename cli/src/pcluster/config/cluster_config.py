@@ -2499,11 +2499,13 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                         instance_types=compute_resource.instance_types,
                         subnet=queue.networking.subnet_ids[0],
                     )
-                self._register_validator(
-                    PlacementGroupCapacityReservationValidator,
-                    queue=queue,
-                    compute_resource=compute_resource,
-                )
+                    self._register_validator(
+                        PlacementGroupCapacityReservationValidator,
+                        placement_group=queue.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                        odcr=cr_target,
+                        subnet=queue.networking.subnet_ids[0],
+                        instance_types=compute_resource.instance_types,
+                    )
 
     @property
     def _capacity_reservation_targets(self):

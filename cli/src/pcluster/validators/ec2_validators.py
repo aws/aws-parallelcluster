@@ -237,12 +237,12 @@ class CapacityReservationResourceGroupValidator(Validator):
 class PlacementGroupCapacityReservationValidator(Validator):
     """Validate the placement group is compatible with the capacity reservation target."""
 
-    def _validate_chosen_pg(self, queue, compute_resource, odcr_list, chosen_pg):
+    def _validate_chosen_pg(self, subnet, instance_types, odcr_list, chosen_pg):
         pg_match, open_or_targeted = False, False
-        for instance_type in compute_resource.instance_types:
+        for instance_type in instance_types:
             for odcr in odcr_list:
                 if capacity_reservation_matches_instance(
-                    capacity_reservation=odcr, instance_type=instance_type, subnet=queue.networking.subnet_ids[0]
+                    capacity_reservation=odcr, instance_type=instance_type, subnet=subnet
                 ):
                     odcr_pg = get_resource_name_from_resource_arn(odcr.get("PlacementGroupArn", None))
                     if odcr_pg:
@@ -266,17 +266,13 @@ class PlacementGroupCapacityReservationValidator(Validator):
                     FailureLevel.WARNING,
                 )
 
-    def _validate_no_pg(self, queue, compute_resource, odcr_list):
-        for instance_type in compute_resource.instance_types:
+    def _validate_no_pg(self, subnet, instance_types, odcr_list):
+        for instance_type in instance_types:
             odcr_without_pg = False
             for odcr in odcr_list:
-                odcr_pg = (
-                    get_resource_name_from_resource_arn(odcr["PlacementGroupArn"])
-                    if "PlacementGroupArn" in odcr
-                    else None
-                )
+                odcr_pg = get_resource_name_from_resource_arn(getattr(odcr, "PlacementGroupArn", None))
                 if not odcr_pg and capacity_reservation_matches_instance(
-                    capacity_reservation=odcr, instance_type=instance_type, subnet=queue.networking.subnet_ids[0]
+                    capacity_reservation=odcr, instance_type=instance_type, subnet=subnet
                 ):
                     odcr_without_pg = True
             if not odcr_without_pg:
@@ -287,19 +283,19 @@ class PlacementGroupCapacityReservationValidator(Validator):
                     FailureLevel.ERROR,
                 )
 
-    def _validate(self, queue, compute_resource):
-        chosen_pg = queue.get_placement_group_key_for_compute_resource(compute_resource)[0]
-        odcr = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
-        odcr_id = odcr.capacity_reservation_id if odcr else None
-        odcr_arn = odcr.capacity_reservation_resource_group_arn if odcr else None
-        odcr_list = (
-            AWSApi.instance().ec2.describe_capacity_reservations([odcr_id])
-            if odcr_id
-            else get_capacity_reservations(odcr_arn)
-        )
-        if chosen_pg:
-            self._validate_chosen_pg(
-                queue=queue, compute_resource=compute_resource, odcr_list=odcr_list, chosen_pg=chosen_pg
-            )
+    def _validate(self, placement_group, odcr, subnet, instance_types):
+        odcr_id = getattr(odcr, "capacity_reservation_id", None)
+        odcr_arn = getattr(odcr, "capacity_reservation_resource_group_arn", None)
+        if odcr_id:
+            odcr_list = AWSApi.instance().ec2.describe_capacity_reservations([odcr_id])
+        elif odcr_arn:
+            odcr_list = get_capacity_reservations(odcr_arn)
         else:
-            self._validate_no_pg(queue=queue, compute_resource=compute_resource, odcr_list=odcr_list)
+            odcr_list = None
+        if odcr_list:
+            if placement_group:
+                self._validate_chosen_pg(
+                    subnet=subnet, instance_types=instance_types, odcr_list=odcr_list, chosen_pg=placement_group
+                )
+            else:
+                self._validate_no_pg(subnet=subnet, instance_types=instance_types, odcr_list=odcr_list)
