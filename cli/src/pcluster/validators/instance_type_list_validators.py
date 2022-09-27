@@ -225,8 +225,9 @@ class InstanceTypeListAllocationStrategyValidator(Validator, _FlexibleInstanceTy
             and allocation_strategy != cluster_config.AllocationStrategy.LOWEST_PRICE
         ):
             self._add_failure(
-                f"Compute Resource {compute_resource_name} is using an OnDemand CapacityType. OnDemand CapacityType "
-                f"can only use '{cluster_config.AllocationStrategy.LOWEST_PRICE.value}' allocation strategy.",
+                f"Compute Resource {compute_resource_name} is using an OnDemand CapacityType but the Allocation "
+                f"Strategy specified is {allocation_strategy.value}. OnDemand CapacityType can only use '"
+                f"{cluster_config.AllocationStrategy.LOWEST_PRICE.value}' allocation strategy.",
                 FailureLevel.ERROR,
             )
 
