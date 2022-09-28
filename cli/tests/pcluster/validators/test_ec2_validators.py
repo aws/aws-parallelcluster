@@ -19,8 +19,6 @@ from pcluster.config.cluster_config import (
     PlacementGroup,
     SlurmComputeResource,
     SlurmComputeResourceNetworking,
-    SlurmQueue,
-    SlurmQueueNetworking,
 )
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
@@ -697,35 +695,52 @@ mock_odcrs = [
         "CapacityReservationId": "cr-321",
         "InstanceType": "mock-type",
         "AvailabilityZone": "mock-zone",
-        "PlacementGroupArn": "fail-arn",
+        "PlacementGroupArn": "mock-acct/mock-arn",
+    },
+    {
+        "CapacityReservationId": "cr-456",
+        "InstanceType": "mock-type-2",
+        "AvailabilityZone": "mock-zone",
+        "PlacementGroupArn": "mock-acct/mock-arn",
     },
 ]
 
 
 @pytest.mark.parametrize(
-    "queue, compute_resource, odcr_list, expected_message",
+    "placement_group, odcr, subnet, instance_types, odcr_list, expected_message",
     [
+        (None, None, "mock-subnet-1", ["mock-type"], mock_odcrs[:2], None),
         (
-            SlurmQueue(
-                name="mock-queue-1",
-                networking=SlurmQueueNetworking(
-                    subnet_ids=["mock-subnet-1"], placement_group=PlacementGroup(enabled=False)
-                ),
-                compute_resources=mock_compute_resources,
-            ),
-            mock_compute_resources[0],
+            None,
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-1",
+            ["mock-type"],
             mock_odcrs[:2],
             None,
         ),
         (
-            SlurmQueue(
-                name="mock-queue-2",
-                networking=SlurmQueueNetworking(
-                    subnet_ids=["mock-subnet-2"], placement_group=PlacementGroup(enabled=False)
-                ),
-                compute_resources=mock_compute_resources,
-            ),
-            mock_compute_resources[1],
+            None,
+            CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
+            "mock-subnet-1",
+            ["mock-type", "mock-type-2"],
+            mock_odcrs[:3],
+            None,
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-1",
+            ["mock-type", "mock-type-2"],
+            mock_odcrs[:2],
+            "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' "
+            "and no placement group provided. Please either provide a placement group or add an ODCR that "
+            "does not target a placement group and targets the instance type.",
+        ),
+        (
+            "mock-placement",
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-2",
+            ["mock-type"],
             mock_odcrs[:2],
             "When using an open or targeted capacity reservation with an unrelated placement group, "
             "insufficient capacity errors may occur due to placement constraints outside of the "
@@ -734,38 +749,31 @@ mock_odcrs = [
             "in a related placement group.",
         ),
         (
-            SlurmQueue(
-                name="mock-queue-3",
-                networking=SlurmQueueNetworking(
-                    subnet_ids=["mock-subnet-3"], placement_group=PlacementGroup(enabled=False)
-                ),
-                compute_resources=mock_compute_resources,
-            ),
-            mock_compute_resources[3],
+            "test",
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-3",
+            ["mock-type"],
             mock_odcrs[1:2],
             "The placement group provided 'test' does not match any placement group in the set of target PG/ODCRs and "
             "there are no open or targeted 'mock-type' ODCRs included.",
         ),
         (
-            SlurmQueue(
-                name="mock-queue-4",
-                networking=SlurmQueueNetworking(
-                    subnet_ids=["mock-subnet-4"], placement_group=PlacementGroup(enabled=False)
-                ),
-                compute_resources=mock_compute_resources,
-            ),
-            mock_compute_resources[2],
+            "test-2",
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-3",
+            ["mock-type"],
             mock_odcrs[1:2],
-            "There are no open or targeted ODCRs that match the instance_type 'mock-type-3' "
-            "and no placement group provided. Please either provide a placement group or add an ODCR that "
-            "does not target a placement group and targets the instance type.",
+            "The placement group provided 'test-2' does not match any placement group in the set of target PG/ODCRs "
+            "and there are no open or targeted 'mock-type' ODCRs included.",
         ),
     ],
 )
 def test_placement_group_capacity_reservation_validator(
     mocker,
-    queue,
-    compute_resource,
+    placement_group,
+    odcr,
+    subnet,
+    instance_types,
     odcr_list,
     expected_message,
 ):
@@ -780,6 +788,6 @@ def test_placement_group_capacity_reservation_validator(
         return_value=desired_availability_zone,
     )
     actual_failure = PlacementGroupCapacityReservationValidator().execute(
-        queue=queue, compute_resource=compute_resource
+        placement_group=placement_group, odcr=odcr, subnet=subnet, instance_types=instance_types
     )
     assert_failure_messages(actual_failure, expected_message)
