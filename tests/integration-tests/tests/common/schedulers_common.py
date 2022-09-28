@@ -115,11 +115,6 @@ class SchedulerCommands(metaclass=ABCMeta):
         """Retrieve node state/status from scheduler"""
         pass
 
-    def reboot_compute_node(self, nodename, asap: bool):
-        """Reboot a compute node via Slurm."""
-        asap_string = "asap" if asap else ""
-        command = f"sudo -i scontrol reboot {asap_string} {nodename}"
-        self._remote_command_executor.run_remote_command(command)
 
 class AWSBatchCommands(SchedulerCommands):
     """Implement commands for awsbatch scheduler."""
@@ -421,6 +416,12 @@ class SlurmCommands(SchedulerCommands):
         """Submit a command and assert the job is accepted by scheduler."""
         result = self.submit_command(**submit_command_args)
         return self.assert_job_submitted(result.stdout)
+
+    def reboot_compute_node(self, nodename, asap: bool):
+        """Reboot a compute node via Slurm."""
+        asap_string = "asap" if asap else ""
+        command = f"sudo -i scontrol reboot {asap_string} {nodename}"
+        self._remote_command_executor.run_remote_command(command)
 
 
 class TorqueCommands(SchedulerCommands):
