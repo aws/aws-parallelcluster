@@ -258,12 +258,12 @@ def test_scontrol_reboot(
         pcluster_config_reader,
         clusters_factory,
         test_datadir,
-        scheduler_commands_factory,
+        slurm_commands_factory,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    slurm_commands = scheduler_commands_factory(remote_command_executor)
+    slurm_commands = slurm_commands_factory(remote_command_executor)
 
     # Clear clustermgtd logs before starting the tests
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
