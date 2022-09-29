@@ -82,3 +82,27 @@ def test_capacity_reservation_ids_from_group_resources(boto3_stubber, resources,
     assert_that(
         ResourceGroupsClient().get_capacity_reservation_ids_from_group_resources(resource_group_name)
     ).is_equal_to(expected_capacity_reservation_ids)
+
+
+mock_good_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::CapacityReservationPool"}]}}
+mock_bad_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::MockService"}]}}
+
+
+@pytest.mark.parametrize(
+    "group, config, expected_response",
+    [
+        ("mock-group", mock_good_config, mock_good_config),
+        ("mock-group", mock_bad_config, mock_bad_config),
+    ],
+)
+def test_get_group_configuration(boto3_stubber, group, config, expected_response):
+    os_lib.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    mocked_requests = [
+        MockedBoto3Request(
+            method="get_group_configuration",
+            response=config,
+            expected_params={"Group": group},
+        )
+    ]
+    boto3_stubber("resource-groups", mocked_requests)
+    assert_that(ResourceGroupsClient().get_group_configuration(group)).is_equal_to(expected_response)

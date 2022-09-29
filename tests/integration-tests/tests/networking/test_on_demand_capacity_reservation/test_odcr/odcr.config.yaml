@@ -39,15 +39,6 @@ Scheduling:
               Name: 'q-enabled-cr-named'
           CapacityReservationTarget:
             CapacityReservationId: 'cr-01df19e7c8c6b8566'
-        - Name: pg-name-odcr-id-wrong-pg
-          InstanceType: c7g.xlarge
-          MinCount: 1
-          MaxCount: 10
-          Networking:
-            PlacementGroup:
-              Name: 'cr-named-wrong-pg'
-          CapacityReservationTarget:
-            CapacityReservationId: 'cr-04331967645330fbe'
       Networking:
         SubnetIds:
           - subnet-0bfcd29fad2404485
@@ -58,7 +49,8 @@ Scheduling:
     - Name: q-pg-en-cr-name-odcr-arn
       ComputeResources:
         - Name: pg-omit-odcr-arn
-          InstanceType: c6gn.xlarge
+          InstanceTypeList:
+            - InstanceType: c6gn.xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
@@ -72,8 +64,15 @@ Scheduling:
               Name: 'q-enabled-cr-named'
           CapacityReservationTarget:
             CapacityReservationResourceGroupArn: 'arn:aws:resource-groups:us-west-2:944054287730:group/odcr-grp'
+        - Name: pg-omit-odcr
+          InstanceTypeList:
+            - InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
+        - Name: pg-omit-odcr-b
+          InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
       Networking:
         SubnetIds:
           - subnet-0bfcd29fad2404485
-      CapacityReservationTarget:
-        CapacityReservationId: 'cr-0573660fb76478d13'
