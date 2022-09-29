@@ -33,3 +33,9 @@ class ResourceGroupsClient(Boto3Client):
                     ).group("reservation_id")
                 )
         return capacity_reservation_ids
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_group_configuration(self, group):
+        """Return the group config or throw an exception if not a Service Linked Group."""
+        return self._client.get_group_configuration(Group=group)

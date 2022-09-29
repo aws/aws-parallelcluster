@@ -13,13 +13,7 @@ import pytest
 
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
-from pcluster.config.cluster_config import (
-    CapacityReservationTarget,
-    CapacityType,
-    PlacementGroup,
-    SlurmComputeResource,
-    SlurmComputeResourceNetworking,
-)
+from pcluster.config.cluster_config import CapacityReservationTarget, CapacityType, PlacementGroup
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
@@ -601,37 +595,69 @@ def test_capacity_reservation_validator(
     assert_failure_messages(actual_failures, expected_message)
 
 
+mock_good_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::CapacityReservationPool"}]}}
+
+mock_bad_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::MockService"}]}}
+
+at_least_one_capacity_reservation_error_message = (
+    "Capacity reservation resource group .* must have at least "
+    "one capacity reservation for c5.xlarge in the same availability "
+    "zone as subnet subnet-123."
+)
+
+
 @pytest.mark.parametrize(
-    "capacity_reservations_in_resource_group, expected_message",
+    "capacity_reservations_in_resource_group, group_configuration, expected_message",
     [
-        (["cr-good"], None),
-        (["cr-bad-1", "cr-good", "cr-bad-2"], None),
+        (["cr-good"], mock_good_config, None),
+        (["cr-bad-1", "cr-good", "cr-bad-2"], mock_good_config, None),
         (
             [],
-            "Capacity reservation resource group .* must have at least one capacity reservation "
-            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+            mock_good_config,
+            at_least_one_capacity_reservation_error_message,
         ),
         (
             ["cr-bad-1"],
-            "Capacity reservation resource group .* must have at least one capacity reservation "
-            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+            mock_good_config,
+            at_least_one_capacity_reservation_error_message,
         ),
         (
             ["cr-bad-1", "cr-bad-2"],
-            "Capacity reservation resource group .* must have at least one capacity reservation "
-            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+            mock_good_config,
+            at_least_one_capacity_reservation_error_message,
+        ),
+        (
+            ["cr-good"],
+            mock_bad_config,
+            "Capacity reservation resource group skip_dummy must be a "
+            "Service Linked Group created from the AWS CLI.  See "
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
+        ),
+        (
+            ["cr-good"],
+            "AWSClientError",
+            "Capacity reservation resource group skip_dummy must be a "
+            "Service Linked Group created from the AWS CLI.  See "
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
         ),
     ],
 )
 def test_capacity_reservation_resource_group_validator(
     mocker,
     capacity_reservations_in_resource_group,
+    group_configuration,
     expected_message,
 ):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.aws.resource_groups.ResourceGroupsClient.get_capacity_reservation_ids_from_group_resources",
         side_effect=lambda group: capacity_reservations_in_resource_group,
+    )
+    mocker.patch(
+        "pcluster.aws.resource_groups.ResourceGroupsClient.get_group_configuration",
+        side_effect=AWSClientError("mock-func", "mock-error")
+        if group_configuration == "AWSClientError"
+        else lambda group: group_configuration,
     )
     desired_instance_type = "c5.xlarge"
     desired_availability_zone = "us-east-1b"
@@ -657,33 +683,6 @@ def test_capacity_reservation_resource_group_validator(
     )
     assert_failure_messages(actual_failures, expected_message)
 
-
-mock_compute_resources = [
-    SlurmComputeResource(
-        instance_type="mock-type",
-        name="test1",
-        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(implied=True)),
-        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-123"),
-    ),
-    SlurmComputeResource(
-        instance_type="mock-type",
-        name="test2",
-        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=True)),
-        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-123"),
-    ),
-    SlurmComputeResource(
-        instance_type="mock-type-3",
-        name="test3",
-        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=False)),
-        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-123"),
-    ),
-    SlurmComputeResource(
-        instance_type="mock-type",
-        name="test4",
-        networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(name="test")),
-        capacity_reservation_target=CapacityReservationTarget(capacity_reservation_id="cr-321"),
-    ),
-]
 
 mock_odcrs = [
     {
