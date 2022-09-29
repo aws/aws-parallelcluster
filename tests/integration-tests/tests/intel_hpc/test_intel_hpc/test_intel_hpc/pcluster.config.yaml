@@ -15,6 +15,10 @@ Scheduling:
   Scheduler: {{ scheduler }}
   {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
     - Name: queue-0
+      {% if scheduler == "slurm" %}
+      AllocationStrategy: capacity-optimized
+      CapacityType: SPOT
+      {% endif %}
       ComputeSettings:
         LocalStorage:
           RootVolume:
