@@ -637,9 +637,9 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
 class PlacementGroupSchema(BaseSchema):
     """Represent the schema of placement group."""
 
-    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-    id = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-    name = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP})
+    id = fields.Str(metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP})
+    name = fields.Str(metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -663,7 +663,7 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of slurm Queue."""
 
     placement_group = fields.Nested(
-        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
     proxy = fields.Nested(QueueProxySchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
@@ -1138,7 +1138,7 @@ class SlurmComputeResourceNetworkingSchema(BaseSchema):
     """Represent the Networking schema of the Slurm ComputeResource."""
 
     placement_group = fields.Nested(
-        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
 
     @post_load
@@ -1168,7 +1168,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         CapacityReservationTargetSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
     networking = fields.Nested(
-        SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+        SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
 
     @validates_schema
