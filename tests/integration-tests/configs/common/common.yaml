@@ -388,7 +388,7 @@ schedulers:
     dimensions:
       - regions: [ "us-west-2" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: [ "ubuntu2004" ]
+        oss: [ "ubuntu1804" ]
         schedulers: [ "slurm" ]
 spot:
   test_spot.py::test_spot_default:
