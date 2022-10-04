@@ -1,0 +1,32 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+  CustomActions:
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/launch_override.sh
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: fleet
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: fleet-1
+          InstanceTypeList:
+            - InstanceType: {{ instance }}
+    - Name: single
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: single-1
+          InstanceType: {{ instance }}

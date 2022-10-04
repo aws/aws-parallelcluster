@@ -27,6 +27,8 @@ DELETION_POLICIES = [DELETE_POLICY, RETAIN_POLICY]
 DELETION_POLICIES_WITH_SNAPSHOT = DELETION_POLICIES + ["Snapshot"]
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {"x86_64": SUPPORTED_OSES, "arm64": SUPPORTED_OSES}
+SLURM = "slurm"
+AWSBATCH = "awsbatch"
 
 OS_MAPPING = {
     "centos7": {"user": "centos", "root-device": "/dev/sda1"},
@@ -92,8 +94,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.2.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.2.0",
+    "parallelcluster": "3.3.0b1",
+    "cookbook": "aws-parallelcluster-cookbook-3.3.0b1",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",

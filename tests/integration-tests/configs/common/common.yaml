@@ -1,10 +1,6 @@
 ad_integration:
   test_ad_integration.py::test_ad_integration:
     dimensions:
-      - regions: ["ap-northeast-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["slurm"]
       - regions: [ "ap-southeast-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
@@ -20,7 +16,7 @@ ad_integration:
         schedulers: ["slurm"]
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004"]
+        oss: ["ubuntu2004", "centos7"]
         schedulers: ["slurm"]
 arm_pl:
   test_arm_pl.py::test_arm_pl:
@@ -492,6 +488,12 @@ schedulers:
   test_slurm.py::test_scontrol_reboot:
     dimensions:
       - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  test_slurm.py::test_slurm_overrides:
+    dimensions:
+      - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]

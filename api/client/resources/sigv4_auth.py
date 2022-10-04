@@ -17,12 +17,12 @@ import botocore
 import json
 
 
-def sigv4_auth(method, host, path, querys, body, headers):
+def sigv4_auth(method, host, path, queries, body, headers):
     "Adds authorization headers for sigv4 to headers parameter."
     endpoint = host.replace('https://', '').replace('http://', '')
     _api_id, _service, region, _domain = endpoint.split('.', maxsplit=3)
 
-    request_parameters = '&'.join([f"{k}={v}" for k, v in querys])
+    request_parameters = '&'.join([f"{k}={v}" for k, v in queries])
     url = f"{host}{path}?{request_parameters}"
 
     session = botocore.session.Session()

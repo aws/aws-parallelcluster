@@ -1,0 +1,78 @@
+Region: us-west-2
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: c7g.4xlarge
+  Networking:
+    SubnetId: subnet-020f39e1a8eb1c972
+  Ssh:
+    KeyName: ndry-hpc
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q-pg-en-cr-name-odcr-id
+      ComputeResources:
+        - Name: pg-name-odcr-id-open
+          InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'cr-named-odcr-open'
+          CapacityReservationTarget:
+            CapacityReservationId: 'cr-0265ef5d5cacbbc22'
+        - Name: pg-name-odcr-id-target
+          InstanceType: m6g.xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'cr-named-odcr-target'
+          CapacityReservationTarget:
+            CapacityReservationId: 'cr-012def4f1628883fa'
+        - Name: pg-name-odcr-id-right-pg
+          InstanceType: c7g.xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'q-enabled-cr-named'
+          CapacityReservationTarget:
+            CapacityReservationId: 'cr-01df19e7c8c6b8566'
+      Networking:
+        SubnetIds:
+          - subnet-0bfcd29fad2404485
+        PlacementGroup:
+          Enabled: true
+      CapacityReservationTarget:
+        CapacityReservationId: 'cr-0573660fb76478d13'
+    - Name: q-pg-en-cr-name-odcr-arn
+      ComputeResources:
+        - Name: pg-omit-odcr-arn
+          InstanceTypeList:
+            - InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: 'arn:aws:resource-groups:us-west-2:944054287730:group/odcr-grp'
+        - Name: pg-name-odcr-arn
+          InstanceType: c6g.xlarge
+          MinCount: 1
+          MaxCount: 10
+          Networking:
+            PlacementGroup:
+              Name: 'q-enabled-cr-named'
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: 'arn:aws:resource-groups:us-west-2:944054287730:group/odcr-grp'
+        - Name: pg-omit-odcr
+          InstanceTypeList:
+            - InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
+        - Name: pg-omit-odcr-b
+          InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - subnet-0bfcd29fad2404485

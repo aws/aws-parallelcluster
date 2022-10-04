@@ -3,12 +3,15 @@ CHANGELOG
 
 3.x.x
 -----
+**ENHANCEMENTS**
+- Add support for updating `SharedStorage` configuration.
 
 **ENHANCEMENTS**
-- Add new configuration parameter `DeletionPolicy` for EFs and FSx for Lustre shared storage
+- Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage
   to support storage retention on deletion.
 - Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 - Add support for on-demand capacity reservations.
+- Add support for Slurm Accounting.
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
@@ -17,6 +20,8 @@ CHANGELOG
 - Disable Multithreading through script executed by cloud-init and not through CpuOptions set into Launch Template.
 - Add support for multiple instance types in the same Compute Resource.
 - Add support for a Name field in PlacementGroup as the preferred naming method.
+- Add support for Networking.PlacementGroup in the SlurmQueues.ComputeResources section
+- Upgrade Slurm to version 22.05.3.
 
 **BUG FIXES**
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified
@@ -25,6 +30,7 @@ CHANGELOG
 - Avoid failing on DescribeCluster when cluster configuration is not available.
 - Fix `UpdateParallelClusterLambdaRole` in the ParallelCluster API to upload logs to CloudWatch.
 - Fix Cinc not using the local CA certificates bundle when installing packages before any cookbooks are executed.
+- Fix a hang in upgrading ubuntu via `pcluster build-image` when `Build:UpdateOsPackages:Enabled:true` is set.
 
 3.2.0
 ------

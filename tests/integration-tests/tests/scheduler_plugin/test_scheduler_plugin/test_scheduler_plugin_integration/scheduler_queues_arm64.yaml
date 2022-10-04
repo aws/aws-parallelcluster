@@ -1,4 +1,5 @@
 - CapacityType: ONDEMAND
+  CapacityReservationTarget: null
   ComputeResources:
     - CustomSettings: null
       DisableSimultaneousMultithreading: false
@@ -11,6 +12,12 @@
       Name: c1
       SchedulableMemory: null
       SpotPrice: null
+      CapacityReservationTarget: null
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
     - CustomSettings: null
       DisableSimultaneousMultithreading: false
       Efa:
@@ -22,6 +29,12 @@
       Name: c2
       SchedulableMemory: null
       SpotPrice: null
+      CapacityReservationTarget: null
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
   ComputeSettings:
     LocalStorage:
       EphemeralVolume: null
@@ -43,12 +56,16 @@
   Networking:
     AdditionalSecurityGroups: null
     AssignPublicIp: null
-    PlacementGroup: null
+    PlacementGroup:
+      Enabled: null
+      Id: null
+      Name: null
     Proxy: null
     SecurityGroups: null
     SubnetIds:
       - subnet-123
 - CapacityType: ONDEMAND
+  CapacityReservationTarget: null
   ComputeResources:
     - CustomSettings: null
       DisableSimultaneousMultithreading: false
@@ -61,6 +78,12 @@
       Name: c1
       SchedulableMemory: null
       SpotPrice: null
+      CapacityReservationTarget: null
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
   ComputeSettings:
     LocalStorage:
       EphemeralVolume: null
@@ -82,7 +105,10 @@
   Networking:
     AdditionalSecurityGroups: null
     AssignPublicIp: null
-    PlacementGroup: null
+    PlacementGroup:
+      Enabled: null
+      Id: null
+      Name: null
     Proxy: null
     SecurityGroups: null
     SubnetIds:

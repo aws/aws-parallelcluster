@@ -185,6 +185,12 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
+        - Name: pg-omit-odcr-arn
+          InstanceType: c6gn.xlarge
+          MinCount: 1
+          MaxCount: 10
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: 'arn:aws:resource-groups:us-west-2:944054287730:group/odcr-grp'
       Iam:
         InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
       Image:

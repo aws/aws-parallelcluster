@@ -13,7 +13,7 @@ import pytest
 
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
-from pcluster.config.cluster_config import CapacityType, PlacementGroup
+from pcluster.config.cluster_config import CapacityReservationTarget, CapacityType, PlacementGroup
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
@@ -23,6 +23,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
+    PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -470,7 +471,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=False, name="test"),
@@ -480,7 +484,10 @@ def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, exp
                 ]
             },
             None,
-            "The PlacementGroup feature must be enabled (Enabled: true) in order to assign a Name or Id parameter",
+            "The PlacementGroup feature must be enabled (Enabled: true) in order "
+            "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+            "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
+            "with the Name/Id given",
         ),
         (
             PlacementGroup(enabled=True, id="test", name="test2"),
@@ -519,7 +526,7 @@ def test_placement_group_validator(
             "us-east-1a",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must has the same instance type as c5.xlarge.",
+            "Capacity reservation .* must have the same instance type as c5.xlarge.",
         ),
         # Wrong availability zone
         (
@@ -535,7 +542,7 @@ def test_placement_group_validator(
             "us-east-1b",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must has the same instance type as c5.xlarge.",
+            "Capacity reservation .* must have the same instance type as c5.xlarge.",
         ),
         (
             "m5.xlarge",
@@ -543,6 +550,20 @@ def test_placement_group_validator(
             "c5.xlarge",
             "us-east-1a",
             "Capacity reservation .* must use the same availability zone as subnet",
+        ),
+        (
+            "m5.xlarge",
+            "us-east-1b",
+            None,
+            "us-east-1a",
+            "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+        ),
+        (
+            "m5.xlarge",
+            "us-east-1b",
+            "",
+            "us-east-1a",
+            "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
         ),
     ],
 )
@@ -574,37 +595,69 @@ def test_capacity_reservation_validator(
     assert_failure_messages(actual_failures, expected_message)
 
 
+mock_good_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::CapacityReservationPool"}]}}
+
+mock_bad_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::MockService"}]}}
+
+at_least_one_capacity_reservation_error_message = (
+    "Capacity reservation resource group .* must have at least "
+    "one capacity reservation for c5.xlarge in the same availability "
+    "zone as subnet subnet-123."
+)
+
+
 @pytest.mark.parametrize(
-    "capacity_reservations_in_resource_group, expected_message",
+    "capacity_reservations_in_resource_group, group_configuration, expected_message",
     [
-        (["cr-good"], None),
-        (["cr-bad-1", "cr-good", "cr-bad-2"], None),
+        (["cr-good"], mock_good_config, None),
+        (["cr-bad-1", "cr-good", "cr-bad-2"], mock_good_config, None),
         (
             [],
-            "Capacity reservation resource group .* must have at least one capacity reservation "
-            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+            mock_good_config,
+            at_least_one_capacity_reservation_error_message,
         ),
         (
             ["cr-bad-1"],
-            "Capacity reservation resource group .* must have at least one capacity reservation "
-            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+            mock_good_config,
+            at_least_one_capacity_reservation_error_message,
         ),
         (
             ["cr-bad-1", "cr-bad-2"],
-            "Capacity reservation resource group .* must have at least one capacity reservation "
-            "for c5.xlarge in the same availability zone as subnet subnet-123.",
+            mock_good_config,
+            at_least_one_capacity_reservation_error_message,
+        ),
+        (
+            ["cr-good"],
+            mock_bad_config,
+            "Capacity reservation resource group skip_dummy must be a "
+            "Service Linked Group created from the AWS CLI.  See "
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
+        ),
+        (
+            ["cr-good"],
+            "AWSClientError",
+            "Capacity reservation resource group skip_dummy must be a "
+            "Service Linked Group created from the AWS CLI.  See "
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
         ),
     ],
 )
 def test_capacity_reservation_resource_group_validator(
     mocker,
     capacity_reservations_in_resource_group,
+    group_configuration,
     expected_message,
 ):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.aws.resource_groups.ResourceGroupsClient.get_capacity_reservation_ids_from_group_resources",
         side_effect=lambda group: capacity_reservations_in_resource_group,
+    )
+    mocker.patch(
+        "pcluster.aws.resource_groups.ResourceGroupsClient.get_group_configuration",
+        side_effect=AWSClientError("mock-func", "mock-error")
+        if group_configuration == "AWSClientError"
+        else lambda group: group_configuration,
     )
     desired_instance_type = "c5.xlarge"
     desired_availability_zone = "us-east-1b"
@@ -624,6 +677,116 @@ def test_capacity_reservation_resource_group_validator(
         return_value=desired_availability_zone,
     )
     actual_failures = CapacityReservationResourceGroupValidator().execute(
-        capacity_reservation_resource_group_arn="skip_dummy", instance_type=desired_instance_type, subnet="subnet-123"
+        capacity_reservation_resource_group_arn="skip_dummy",
+        instance_types=[desired_instance_type],
+        subnet="subnet-123",
     )
     assert_failure_messages(actual_failures, expected_message)
+
+
+mock_odcrs = [
+    {
+        "CapacityReservationId": "cr-123",
+        "InstanceType": "mock-type",
+        "AvailabilityZone": "mock-zone",
+    },
+    {
+        "CapacityReservationId": "cr-321",
+        "InstanceType": "mock-type",
+        "AvailabilityZone": "mock-zone",
+        "PlacementGroupArn": "mock-acct/mock-arn",
+    },
+    {
+        "CapacityReservationId": "cr-456",
+        "InstanceType": "mock-type-2",
+        "AvailabilityZone": "mock-zone",
+        "PlacementGroupArn": "mock-acct/mock-arn",
+    },
+]
+
+
+@pytest.mark.parametrize(
+    "placement_group, odcr, subnet, instance_types, odcr_list, expected_message",
+    [
+        (None, None, "mock-subnet-1", ["mock-type"], mock_odcrs[:2], None),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-1",
+            ["mock-type"],
+            mock_odcrs[:2],
+            None,
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
+            "mock-subnet-1",
+            ["mock-type", "mock-type-2"],
+            mock_odcrs[:3],
+            None,
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-1",
+            ["mock-type", "mock-type-2"],
+            mock_odcrs[:2],
+            "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' "
+            "and no placement group provided. Please either provide a placement group or add an ODCR that "
+            "does not target a placement group and targets the instance type.",
+        ),
+        (
+            "mock-placement",
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-2",
+            ["mock-type"],
+            mock_odcrs[:2],
+            "When using an open or targeted capacity reservation with an unrelated placement group, "
+            "insufficient capacity errors may occur due to placement constraints outside of the "
+            "reservation even if the capacity reservation has remaining capacity. Please consider either "
+            "not using a placement group for the compute resource or creating a new capacity reservation "
+            "in a related placement group.",
+        ),
+        (
+            "test",
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-3",
+            ["mock-type"],
+            mock_odcrs[1:2],
+            "The placement group provided 'test' does not match any placement group in the set of target PG/ODCRs and "
+            "there are no open or targeted 'mock-type' ODCRs included.",
+        ),
+        (
+            "test-2",
+            CapacityReservationTarget(capacity_reservation_id="cr-123"),
+            "mock-subnet-3",
+            ["mock-type"],
+            mock_odcrs[1:2],
+            "The placement group provided 'test-2' does not match any placement group in the set of target PG/ODCRs "
+            "and there are no open or targeted 'mock-type' ODCRs included.",
+        ),
+    ],
+)
+def test_placement_group_capacity_reservation_validator(
+    mocker,
+    placement_group,
+    odcr,
+    subnet,
+    instance_types,
+    odcr_list,
+    expected_message,
+):
+    mock_aws_api(mocker)
+    desired_availability_zone = "mock-zone"
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+        side_effect=lambda capacity_reservation_ids: odcr_list,
+    )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
+        return_value=desired_availability_zone,
+    )
+    actual_failure = PlacementGroupCapacityReservationValidator().execute(
+        placement_group=placement_group, odcr=odcr, subnet=subnet, instance_types=instance_types
+    )
+    assert_failure_messages(actual_failure, expected_message)

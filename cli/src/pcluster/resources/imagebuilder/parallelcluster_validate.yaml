@@ -175,7 +175,7 @@ phases:
               set -v
               cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
               if [ ${cuda_ver} \> '11.4' ]; then
-                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_sample_version']" {{ CookbookDefaultFile }})
+                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_samples_version']" {{ CookbookDefaultFile }})
                 VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
                 echo cuda-samples-${VERSION}/Samples
               else
@@ -190,7 +190,7 @@ phases:
               set -v
               cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
               if [ ${cuda_ver} \> '11.4' ]; then
-                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_sample_version']" {{ CookbookDefaultFile }})
+                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_samples_version']" {{ CookbookDefaultFile }})
                 VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
                 echo cuda-samples-${VERSION}/bin
               else
@@ -399,3 +399,11 @@ phases:
                 fi
                 echo "dpkg test passed"
               fi
+      - name: ChefValidations
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+
+              cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster::validations
