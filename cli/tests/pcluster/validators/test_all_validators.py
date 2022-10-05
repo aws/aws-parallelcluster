@@ -161,6 +161,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     instance_type_base_ami_compatible_validator = mocker.patch(
         ec2_validators + ".InstanceTypeBaseAMICompatibleValidator._validate", return_value=[]
     )
+    instance_type_accelerator_manufacturer_validator = mocker.patch(
+        ec2_validators + ".InstanceTypeAcceleratorManufacturerValidator._validate", return_value=[]
+    )
 
     networking_validators = validators_path + ".networking_validators"
     security_groups_validator = mocker.patch(
@@ -320,6 +323,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     ebs_volume_size_snapshot_validator.assert_called()
     shared_ebs_volume_id_validator.assert_called()
     fsx_persistent_options_validator.assert_called()
+    instance_type_accelerator_manufacturer_validator.assert_called()
 
 
 def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
@@ -379,6 +383,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
                 "MixedSecurityGroupOverwriteValidator",
                 "HostedZoneValidator",
                 "InstanceTypeMemoryInfoValidator",
+                "InstanceTypeAcceleratorManufacturerValidator",
                 "CapacityReservationValidator",
                 "CapacityReservationResourceGroupValidator",
                 "DatabaseUriValidator",

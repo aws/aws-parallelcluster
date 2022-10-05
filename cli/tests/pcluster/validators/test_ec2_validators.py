@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import pytest
+from assertpy import assert_that
 
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
@@ -19,6 +20,7 @@ from pcluster.validators.ec2_validators import (
     CapacityReservationResourceGroupValidator,
     CapacityReservationValidator,
     CapacityTypeValidator,
+    InstanceTypeAcceleratorManufacturerValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
@@ -790,3 +792,105 @@ def test_placement_group_capacity_reservation_validator(
         placement_group=placement_group, odcr=odcr, subnet=subnet, instance_types=instance_types
     )
     assert_failure_messages(actual_failure, expected_message)
+
+
+@pytest.mark.parametrize(
+    "instance_type, instance_type_data, expected_message, logger_message",
+    [
+        (
+            "p4d.24xlarge",
+            {
+                "InstanceType": "p4d.24xlarge",
+                "GpuInfo": {
+                    "Gpus": [
+                        {"Name": "A100", "Manufacturer": "NVIDIA", "Count": 8, "MemoryInfo": {"SizeInMiB": 40960}}
+                    ],
+                    "TotalGpuMemoryInMiB": 327680,
+                },
+            },
+            None,
+            "",
+        ),
+        (
+            "dl1.24xlarge",
+            {
+                "InstanceType": "dl1.24xlarge",
+                "GpuInfo": {
+                    "Gpus": [
+                        {
+                            "Name": "Gaudi HL-205",
+                            "Manufacturer": "Habana",
+                            "Count": 8,
+                            "MemoryInfo": {"SizeInMiB": 32768},
+                        }
+                    ],
+                    "TotalGpuMemoryInMiB": 262144,
+                },
+            },
+            "The GPU manufacturer 'Habana' for instance type 'dl1.24xlarge' is not supported.",
+            "offers native support for NVIDIA manufactured GPUs only.* GPU Info: .*Please "
+            "make sure to use a custom AMI",
+        ),
+        (
+            "g4ad.16xlarge",
+            {
+                "InstanceType": "g4ad.16xlarge",
+                "GpuInfo": {
+                    "Gpus": [
+                        {
+                            "Name": "Radeon Pro V520",
+                            "Manufacturer": "AMD",
+                            "Count": 4,
+                            "MemoryInfo": {"SizeInMiB": 8192},
+                        }
+                    ],
+                    "TotalGpuMemoryInMiB": 32768,
+                },
+            },
+            "The GPU manufacturer 'AMD' for instance type 'g4ad.16xlarge' is not supported.",
+            "offers native support for NVIDIA manufactured GPUs only.* GPU Info: .*Please "
+            "make sure to use a custom AMI",
+        ),
+        (
+            "t2.medium",
+            {
+                "InstanceType": "t2.medium",
+            },
+            None,
+            "",
+        ),
+        (
+            "inf1.24xlarge",
+            {
+                "InstanceType": "inf1.24xlarge",
+                "InferenceAcceleratorInfo": {
+                    "Accelerators": [{"Count": 16, "Name": "Inferentia", "Manufacturer": "AWS"}]
+                },
+            },
+            None,
+            "",
+        ),
+        (
+            "noexist.24xlarge",
+            {
+                "InstanceType": "noexist.24xlarge",
+                "InferenceAcceleratorInfo": {
+                    "Accelerators": [{"Count": 8, "Name": "Inferentia", "Manufacturer": "Company"}]
+                },
+            },
+            "The inference accelerator manufacturer 'Company' for instance type 'noexist.24xlarge' is not supported.",
+            "offers native support for 'AWS' manufactured Inference Accelerators only.* accelerator info: .*Please "
+            "make sure to use a custom AMI",
+        ),
+    ],
+)
+def test_instance_type_accelerator_manufacturer_validator(
+    mocker, instance_type, instance_type_data, expected_message, logger_message, caplog
+):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=[instance_type])
+
+    actual_failures = InstanceTypeAcceleratorManufacturerValidator().execute(instance_type, instance_type_data)
+    assert_failure_messages(actual_failures, expected_message)
+    if logger_message:
+        assert_that(caplog.text).matches(logger_message)

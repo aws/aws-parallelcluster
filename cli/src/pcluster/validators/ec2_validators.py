@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
+import logging
 from typing import Dict, List
 
 from pcluster import imagebuilder_utils
@@ -15,6 +17,67 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
+
+LOGGER = logging.getLogger(__name__)
+
+
+class InstanceTypeAcceleratorManufacturerValidator(Validator):
+    """
+    EC2 Instance Type Accelerator Manufacturer validator.
+
+    ParallelCluster only support specific Accelerator Manufacturer.
+    """
+
+    def _validate(self, instance_type: str, instance_type_data: dict):
+
+        gpu_info = instance_type_data.get("GpuInfo", {})
+        if gpu_info:
+            gpu_manufacturers = list({gpu.get("Manufacturer", "") for gpu in gpu_info.get("Gpus", [])})
+
+            # Only one GPU manufacturer is associated with each Instance Type's GPU
+            manufacturer = gpu_manufacturers[0] if gpu_manufacturers else ""
+            if manufacturer.upper() != "NVIDIA":
+                self._add_failure(
+                    f"The GPU manufacturer '{manufacturer}' for instance type '{instance_type}' is not supported. "
+                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                    "GPUs functionalities",
+                    FailureLevel.WARNING,
+                )
+                LOGGER.warning(
+                    "ParallelCluster offers native support for NVIDIA manufactured GPUs only. "
+                    "InstanceType (%s) GPU Info: %s. "
+                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                    "GPUs functionalities",
+                    instance_type,
+                    json.dumps(gpu_info),
+                )
+
+        inference_accelerator_info = instance_type_data.get("InferenceAcceleratorInfo", {})
+        if inference_accelerator_info:
+            inference_accelerator_manufacturers = list(
+                {
+                    accelerator.get("Manufacturer", "")
+                    for accelerator in inference_accelerator_info.get("Accelerators", [])
+                }
+            )
+
+            # Only one accelerator manufacturer is associated with each Instance Type's accelerator
+            manufacturer = inference_accelerator_manufacturers[0] if inference_accelerator_manufacturers else ""
+            if manufacturer.upper() != "AWS":
+                self._add_failure(
+                    f"The inference accelerator manufacturer '{manufacturer}' for instance type '{instance_type}' is "
+                    "not supported. Please make sure to use a custom AMI with the appropriate drivers in order to "
+                    "leverage the accelerators functionalities",
+                    FailureLevel.WARNING,
+                )
+                LOGGER.warning(
+                    "ParallelCluster offers native support for 'AWS' manufactured Inference Accelerators only. "
+                    "InstanceType (%s) accelerator info: %s. "
+                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                    "accelerators functionalities.",
+                    instance_type,
+                    json.dumps(inference_accelerator_info),
+                )
 
 
 class InstanceTypeValidator(Validator):

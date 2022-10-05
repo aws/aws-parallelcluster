@@ -12,7 +12,6 @@ from enum import Enum
 from typing import Dict, List
 
 import pytest
-from assertpy import assert_that
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config.cluster_config import AllocationStrategy, CapacityType
@@ -99,7 +98,7 @@ def test_instance_type_list_cpu_validator(
 
 
 @pytest.mark.parametrize(
-    "compute_resource_name, instance_types_info, expected_message, logger_message",
+    "compute_resource_name, instance_types_info, expected_message",
     [
         # Instance Types should have the same number of GPUs
         (
@@ -135,7 +134,6 @@ def test_instance_type_list_cpu_validator(
             },
             "Instance types listed under Compute Resource TestComputeResource must have the same number of GPUs ({"
             "'g4dn.xlarge': 1, 'g5.xlarge': 2}).",
-            "",
         ),
         (
             "TestComputeResource",
@@ -167,7 +165,6 @@ def test_instance_type_list_cpu_validator(
                 ),
             },
             "",
-            "",
         ),
         # Instance Types should have the same number of Accelerators
         (
@@ -192,7 +189,6 @@ def test_instance_type_list_cpu_validator(
             },
             "Instance types listed under Compute Resource TestComputeResource must have the same number of Inference "
             "Accelerators ({'inf1.6xlarge': 4, 'inf1.2xlarge': 1}).",
-            "",
         ),
         (
             "TestComputeResource",
@@ -212,7 +208,6 @@ def test_instance_type_list_cpu_validator(
                     }
                 ),
             },
-            "",
             "",
         ),
         # Instance Types should have the same GPU manufacturer
@@ -249,8 +244,6 @@ def test_instance_type_list_cpu_validator(
             },
             "Instance types listed under Compute Resource TestComputeResource must have the same GPU manufacturer ({"
             "'g4dn.xlarge': 'NVIDIA', 'g5.xlarge': 'OtherGPUManufacturers'}).",
-            "offers native support for NVIDIA manufactured GPUs only.* GPU Info: .*Please "
-            "make sure to use a custom AMI",
         ),
         (
             "TestComputeResource",
@@ -282,7 +275,6 @@ def test_instance_type_list_cpu_validator(
                 ),
             },
             "",
-            "",
         ),
         # Instance Types should have the same Accelerator Manufacturer (Inferentia)
         (
@@ -307,8 +299,6 @@ def test_instance_type_list_cpu_validator(
             },
             "Instance types listed under Compute Resource TestComputeResource must have the same inference "
             "accelerator manufacturer ({'inf1.6xlarge': 'AWS', 'inf1.2xlarge': 'NotAWS'}).",
-            "offers native support for 'AWS' manufactured Inference Accelerators only.* accelerator info: .*Please "
-            "make sure to use a custom AMI",
         ),
         (
             "TestComputeResource",
@@ -329,20 +319,15 @@ def test_instance_type_list_cpu_validator(
                 ),
             },
             "",
-            "",
         ),
     ],
 )
-def test_instance_type_list_accelerators_validator(
-    compute_resource_name, instance_types_info, expected_message, logger_message, caplog
-):
+def test_instance_type_list_accelerators_validator(compute_resource_name, instance_types_info, expected_message):
     actual_failures = InstanceTypeListAcceleratorsValidator().execute(
         compute_resource_name,
         instance_types_info,
     )
     assert_failure_messages(actual_failures, expected_message)
-    if logger_message:
-        assert_that(caplog.text).matches(logger_message)
 
 
 @pytest.mark.parametrize(
