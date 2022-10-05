@@ -70,6 +70,7 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     CustomAmiTagValidator,
     DcvValidator,
+    DeletionPolicyValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
     EfaOsArchitectureValidator,
@@ -283,6 +284,7 @@ class SharedEbs(Ebs):
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._register_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
         self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
+        self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
 
 class SharedEfs(Resource):
@@ -317,6 +319,7 @@ class SharedEfs(Resource):
         if self.kms_key_id:
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
+        self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
 
 class BaseSharedFsx(Resource):
@@ -448,6 +451,7 @@ class SharedFsxLustre(BaseSharedFsx):
             self._register_validator(
                 FsxAutoImportValidator, auto_import_policy=self.auto_import_policy, import_path=self.import_path
             )
+        self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
     @property
     def existing_mount_name(self):
