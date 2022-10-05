@@ -92,6 +92,7 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
     assert_that(mount_target_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
 
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", mount_target_sg_name]:
+        rule_deletion_policy = deletion_policy if sg == mount_target_sg_name else None
         assert_sg_rule(
             generated_template,
             mount_target_sg_name,
@@ -99,6 +100,7 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
             protocol="-1",
             port_range=[0, 65535],
             target_sg=sg,
+            deletion_policy=rule_deletion_policy,
         )
         assert_sg_rule(
             generated_template,
@@ -107,6 +109,7 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
             protocol="-1",
             port_range=[0, 65535],
             target_sg=sg,
+            deletion_policy=rule_deletion_policy,
         )
 
 
@@ -143,6 +146,7 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
     assert_that(file_system_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
 
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", file_system_sg_name]:
+        rule_deletion_policy = deletion_policy if sg == file_system_sg_name else None
         assert_sg_rule(
             generated_template,
             file_system_sg_name,
@@ -150,6 +154,7 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
             protocol="-1",
             port_range=[0, 65535],
             target_sg=sg,
+            deletion_policy=rule_deletion_policy,
         )
         assert_sg_rule(
             generated_template,
@@ -158,11 +163,18 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
             protocol="-1",
             port_range=[0, 65535],
             target_sg=sg,
+            deletion_policy=rule_deletion_policy,
         )
 
 
 def assert_sg_rule(
-    generated_template: dict, sg_name: str, rule_type: str, protocol: str, port_range: list, target_sg: str
+    generated_template: dict,
+    sg_name: str,
+    rule_type: str,
+    protocol: str,
+    port_range: list,
+    target_sg: str,
+    deletion_policy: str,
 ):
     constants = {
         "ingress": {"resource_type": "AWS::EC2::SecurityGroupIngress", "sg_field": "SourceSecurityGroupId"},
@@ -171,6 +183,7 @@ def assert_sg_rule(
     sg_rules = get_resources(
         generated_template,
         type=constants[rule_type]["resource_type"],
+        deletion_policy=deletion_policy,
         properties={
             "GroupId": {"Ref": sg_name},
             "IpProtocol": protocol,
