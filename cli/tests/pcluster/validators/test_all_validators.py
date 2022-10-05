@@ -18,6 +18,7 @@ from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import get_installed_version, load_yaml_dict
 from pcluster.validators import (
     cluster_validators,
+    database_validators,
     ebs_validators,
     ec2_validators,
     fsx_validators,
@@ -35,6 +36,7 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 def _mock_all_validators(mocker, mockers, additional_modules=None):
     modules = [
         cluster_validators,
+        database_validators,
         ebs_validators,
         ec2_validators,
         fsx_validators,
@@ -152,12 +154,15 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     number_of_storage_validator = mocker.patch(
         cluster_validators + ".NumberOfStorageValidator._validate", return_value=[]
     )
-
+    deletion_policy_validator = mocker.patch(cluster_validators + ".DeletionPolicyValidator._validate", return_value=[])
     ec2_validators = validators_path + ".ec2_validators"
     key_pair_validator = mocker.patch(ec2_validators + ".KeyPairValidator._validate", return_value=[])
     instance_type_validator = mocker.patch(ec2_validators + ".InstanceTypeValidator._validate", return_value=[])
     instance_type_base_ami_compatible_validator = mocker.patch(
         ec2_validators + ".InstanceTypeBaseAMICompatibleValidator._validate", return_value=[]
+    )
+    instance_type_accelerator_manufacturer_validator = mocker.patch(
+        ec2_validators + ".InstanceTypeAcceleratorManufacturerValidator._validate", return_value=[]
     )
 
     networking_validators = validators_path + ".networking_validators"
@@ -318,6 +323,8 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     ebs_volume_size_snapshot_validator.assert_called()
     shared_ebs_volume_id_validator.assert_called()
     fsx_persistent_options_validator.assert_called()
+    deletion_policy_validator.assert_called()
+    instance_type_accelerator_manufacturer_validator.assert_called()
 
 
 def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
@@ -377,8 +384,10 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
                 "MixedSecurityGroupOverwriteValidator",
                 "HostedZoneValidator",
                 "InstanceTypeMemoryInfoValidator",
+                "InstanceTypeAcceleratorManufacturerValidator",
                 "CapacityReservationValidator",
                 "CapacityReservationResourceGroupValidator",
+                "DatabaseUriValidator",
             ]
             + flexible_instance_types_validators
         ):

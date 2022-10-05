@@ -11,6 +11,7 @@ CHANGELOG
   to support storage retention on deletion.
 - Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 - Add support for on-demand capacity reservations.
+- Add support for Slurm Accounting.
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.

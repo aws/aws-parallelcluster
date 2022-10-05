@@ -41,5 +41,10 @@ def assert_failure_level(actual_failures, expected_failure_level):
         no_errors = all(actual_failure.level != FailureLevel.ERROR for actual_failure in actual_failures)
         at_least_one_warning = any(actual_failure.level == FailureLevel.WARNING for actual_failure in actual_failures)
         assert_that(no_errors and at_least_one_warning).is_true()
+    elif expected_failure_level == FailureLevel.INFO:
+        no_errors = all(actual_failure.level != FailureLevel.ERROR for actual_failure in actual_failures)
+        no_warnings = all(actual_failure.level != FailureLevel.WARNING for actual_failure in actual_failures)
+        at_least_one_info = any(actual_failure.level == FailureLevel.INFO for actual_failure in actual_failures)
+        assert_that(no_errors and no_warnings and at_least_one_info).is_true()
     else:
         assert_that(actual_failures).is_empty()

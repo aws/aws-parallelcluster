@@ -24,8 +24,12 @@ Scheduling:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: broken-static
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.large # instance type has bootstrap failure
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.large # instance type has bootstrap failure
+          {% endif %}
           MinCount: 2
           MaxCount: 250
       Iam:
@@ -42,12 +46,20 @@ Scheduling:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: broken-dynamic
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.large # instance type has bootstrap failure
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.large # instance type has bootstrap failure
+          {% endif %}
           MaxCount: 250
         - Name: working-static
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.xlarge # instance type works as expected
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.xlarge # instance type works as expected
+          {% endif %}
           MinCount: 1
           MaxCount: 250
       Iam:
@@ -64,8 +76,12 @@ Scheduling:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
       ComputeResources:
         - Name: normal
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.xlarge # instance type works as expected
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.xlarge # instance type works as expected
+          {% endif %}
           MinCount: 1
           MaxCount: 250
       Iam:

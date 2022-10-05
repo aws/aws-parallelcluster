@@ -70,6 +70,7 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     CustomAmiTagValidator,
     DcvValidator,
+    DeletionPolicyValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
     EfaOsArchitectureValidator,
@@ -98,6 +99,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
 )
+from pcluster.validators.database_validators import DatabaseUriValidator
 from pcluster.validators.directory_service_validators import (
     AdditionalSssdConfigsValidator,
     DomainAddrValidator,
@@ -118,10 +120,12 @@ from pcluster.validators.ec2_validators import (
     CapacityReservationResourceGroupValidator,
     CapacityReservationValidator,
     CapacityTypeValidator,
+    InstanceTypeAcceleratorManufacturerValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
     InstanceTypeValidator,
     KeyPairValidator,
+    PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
 from pcluster.validators.fsx_validators import (
@@ -280,6 +284,7 @@ class SharedEbs(Ebs):
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._register_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
         self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
+        self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
 
 class SharedEfs(Resource):
@@ -314,6 +319,7 @@ class SharedEfs(Resource):
         if self.kms_key_id:
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
+        self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
 
 class BaseSharedFsx(Resource):
@@ -445,6 +451,7 @@ class SharedFsxLustre(BaseSharedFsx):
             self._register_validator(
                 FsxAutoImportValidator, auto_import_policy=self.auto_import_policy, import_path=self.import_path
             )
+        self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
     @property
     def existing_mount_name(self):
@@ -1992,6 +1999,28 @@ class Dns(Resource):
         self.use_ec2_hostnames = Resource.init_param(use_ec2_hostnames, default=False)
 
 
+class Database(Resource):
+    """Represent the Slurm Database settings."""
+
+    def __init__(
+        self,
+        uri: str = None,
+        user_name: str = None,
+        password_secret_arn: str = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.uri = Resource.init_param(uri)
+        self.user_name = Resource.init_param(user_name)
+        self.password_secret_arn = Resource.init_param(password_secret_arn)
+
+    def _register_validators(self):
+        if self.uri:
+            self._register_validator(DatabaseUriValidator, uri=self.uri)
+        if self.password_secret_arn:
+            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+
+
 class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
@@ -2001,6 +2030,7 @@ class SlurmSettings(Resource):
         dns: Dns = None,
         queue_update_strategy: str = None,
         enable_memory_based_scheduling: bool = None,
+        database: Database = None,
         **kwargs,
     ):
         super().__init__()
@@ -2010,6 +2040,7 @@ class SlurmSettings(Resource):
             queue_update_strategy, default=QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
         )
         self.enable_memory_based_scheduling = Resource.init_param(enable_memory_based_scheduling, default=False)
+        self.database = database
 
 
 class QueueUpdateStrategy(Enum):
@@ -2459,23 +2490,26 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 )
                 # The validation below has to be in cluster config class instead of queue class
                 # to make sure the subnet APIs are cached by previous validations.
-                if compute_resource.capacity_reservation_target:
-                    cr_target = compute_resource.capacity_reservation_target
+                cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+                if cr_target:
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
-                        # ToDo: This validator is only correct for single instance type
-                        #  Add more validators to be check ODCR with flexible instance types
-                        instance_type=compute_resource.instance_types[0],
+                        instance_type=getattr(compute_resource, "instance_type", None),
                         subnet=queue.networking.subnet_ids[0],
                     )
                     self._register_validator(
                         CapacityReservationResourceGroupValidator,
                         capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
-                        # ToDo: This validator is only correct for single instance type
-                        #  Add more validators to be check ODCR with flexible instance types
-                        instance_type=compute_resource.instance_types[0],
+                        instance_types=compute_resource.instance_types,
                         subnet=queue.networking.subnet_ids[0],
+                    )
+                    self._register_validator(
+                        PlacementGroupCapacityReservationValidator,
+                        placement_group=queue.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                        odcr=cr_target,
+                        subnet=queue.networking.subnet_ids[0],
+                        instance_types=compute_resource.instance_types,
                     )
 
     @property
@@ -2626,6 +2660,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                             instance_type=instance_type,
                             instance_type_data=instance_types_data[instance_type],
                         )
+                for instance_type in compute_resource.instance_types:
+                    self._register_validator(
+                        InstanceTypeAcceleratorManufacturerValidator,
+                        instance_type=instance_type,
+                        instance_type_data=instance_types_data[instance_type],
+                    )
                 if isinstance(compute_resource, SlurmFlexibleComputeResource):
                     validator_args = dict(
                         queue_name=queue.name,

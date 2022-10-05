@@ -24,6 +24,7 @@ from pcluster.aws.resource_groups import ResourceGroupsClient
 from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
+from pcluster.aws.secretsmanager import SecretsManagerClient
 from pcluster.aws.sts import StsClient
 
 
@@ -102,6 +103,7 @@ class _DummyAWSApi(AWSApi):
         self._ddb_resource = _DummyDynamoResource()
         self._route53 = _DummyRoute53Client()
         self._resource_groups = _DummyResourceGroupsClient()
+        self._secretsmanager = _DummySecretsManagerClient()
 
 
 class _DummyCfnClient(CfnClient):
@@ -282,6 +284,24 @@ class _DummyResourceGroupsClient(ResourceGroupsClient):
             if group != "skip_dummy"
             else super().get_capacity_reservation_ids_from_group_resources(group)
         )
+
+
+class _DummySecretsManagerClient(SecretsManagerClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        self._client = None
+
+    def describe_secret(self, secret_arn):
+        return {
+            "ARN": "arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx",
+            "Name": "dummy_secret",
+            "Description": "Dummy Secret",
+            "LastChangedDate": "2022-08-01T10:00:00+00:00",
+            "LastAccessedDate": "2022-08-02T02:00:00+00:00",
+            "Tags": [],
+            "VersionIdsToStages": {"12345678-1234-abcd-1234-567890abcdef": ["AWSCURRENT"]},
+            "CreatedDate": "2022-08-01T10:00:00+00:00",
+        }
 
 
 def mock_aws_api(mocker, mock_instance_type_info=True):

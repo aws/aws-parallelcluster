@@ -21,7 +21,9 @@ SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
 SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "plugin": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
-DELETION_POLICIES = ["Retain", "Delete"]
+DELETE_POLICY = "Delete"
+RETAIN_POLICY = "Retain"
+DELETION_POLICIES = [DELETE_POLICY, RETAIN_POLICY]
 DELETION_POLICIES_WITH_SNAPSHOT = DELETION_POLICIES + ["Snapshot"]
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {"x86_64": SUPPORTED_OSES, "arm64": SUPPORTED_OSES}
@@ -92,8 +94,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.2.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.2.0",
+    "parallelcluster": "3.3.0b1",
+    "cookbook": "aws-parallelcluster-cookbook-3.3.0b1",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",

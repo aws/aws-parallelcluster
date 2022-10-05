@@ -22,7 +22,7 @@ from pcluster.schemas.common_schema import BaseSchema
 # Represents a single parameter change in a ConfigPatch instance
 Change = namedtuple("Change", ["path", "key", "old_value", "new_value", "update_policy", "is_list"])
 
-# Patch for deepcopy bug - Issue10076 in Pyhton < 3.7
+# Patch for deepcopy bug - Issue10076 in Python < 3.7
 # see https://bugs.python.org/issue10076
 # see https://docs.python.org/3/whatsnew/3.7.html#re
 if sys.version_info <= (3, 7):

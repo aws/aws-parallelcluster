@@ -21,12 +21,14 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    DELETE_POLICY,
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
     PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
+    RETAIN_POLICY,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
@@ -744,6 +746,24 @@ class SharedStorageMountDirValidator(Validator):
             self._add_failure(
                 f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
                 FailureLevel.ERROR,
+            )
+
+
+class DeletionPolicyValidator(Validator):
+    """Print warning message when deletion policy is set to Delete or Retain."""
+
+    def _validate(self, deletion_policy: str, name: str):
+        if deletion_policy == DELETE_POLICY:
+            self._add_failure(
+                f"The DeletionPolicy is set to {DELETE_POLICY}. The storage '{name}' will be deleted when you remove "
+                "it from the configuration when performing a cluster update or deleting the cluster.",
+                FailureLevel.INFO,
+            )
+        elif deletion_policy == RETAIN_POLICY:
+            self._add_failure(
+                f"The DeletionPolicy is set to {RETAIN_POLICY}. The storage '{name}' will be retained when you remove "
+                "it from the configuration when performing a cluster update or deleting the cluster.",
+                FailureLevel.INFO,
             )
 
 

@@ -47,6 +47,7 @@ from pcluster.config.cluster_config import (
     CustomAction,
     CustomActions,
     Dashboards,
+    Database,
     Dcv,
     DirectoryService,
     Dns,
@@ -636,9 +637,9 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
 class PlacementGroupSchema(BaseSchema):
     """Represent the schema of placement group."""
 
-    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-    id = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-    name = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP})
+    id = fields.Str(metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP})
+    name = fields.Str(metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -662,7 +663,7 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of slurm Queue."""
 
     placement_group = fields.Nested(
-        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
     proxy = fields.Nested(QueueProxySchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
@@ -966,7 +967,7 @@ class CapacityReservationTargetSchema(BaseSchema):
         return CapacityReservationTarget(**data)
 
     @validates_schema
-    def no_coexist_instance_type_flexibility(self, data, **kwargs):
+    def no_coexist_id_and_group_arn(self, data, **kwargs):
         """Validate that 'capacity_reservation_id' and 'capacity_reservation_resource_group_arn' do not co-exist."""
         if self.fields_coexist(
             data,
@@ -1137,7 +1138,7 @@ class SlurmComputeResourceNetworkingSchema(BaseSchema):
     """Represent the Networking schema of the Slurm ComputeResource."""
 
     placement_group = fields.Nested(
-        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+        PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
 
     @post_load
@@ -1167,7 +1168,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         CapacityReservationTargetSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
     networking = fields.Nested(
-        SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+        SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
 
     @validates_schema
@@ -1350,6 +1351,23 @@ class DnsSchema(BaseSchema):
         return Dns(**data)
 
 
+class DatabaseSchema(BaseSchema):
+    """Represent the schema of the DirectoryService."""
+
+    uri = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    user_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    password_secret_arn = fields.Str(
+        required=True,
+        validate=validate.Regexp(r"^arn:.*:secret"),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Database(**data)
+
+
 class SlurmSettingsSchema(BaseSchema):
     """Represent the schema of the Scheduling Settings."""
 
@@ -1360,6 +1378,7 @@ class SlurmSettingsSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.IGNORED},
     )
     enable_memory_based_scheduling = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    database = fields.Nested(DatabaseSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):

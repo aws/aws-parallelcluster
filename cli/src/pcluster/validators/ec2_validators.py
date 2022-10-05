@@ -8,10 +8,76 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
+import logging
+from typing import Dict, List
+
 from pcluster import imagebuilder_utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
+from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
+
+LOGGER = logging.getLogger(__name__)
+
+
+class InstanceTypeAcceleratorManufacturerValidator(Validator):
+    """
+    EC2 Instance Type Accelerator Manufacturer validator.
+
+    ParallelCluster only support specific Accelerator Manufacturer.
+    """
+
+    def _validate(self, instance_type: str, instance_type_data: dict):
+
+        gpu_info = instance_type_data.get("GpuInfo", {})
+        if gpu_info:
+            gpu_manufacturers = list({gpu.get("Manufacturer", "") for gpu in gpu_info.get("Gpus", [])})
+
+            # Only one GPU manufacturer is associated with each Instance Type's GPU
+            manufacturer = gpu_manufacturers[0] if gpu_manufacturers else ""
+            if manufacturer.upper() != "NVIDIA":
+                self._add_failure(
+                    f"The GPU manufacturer '{manufacturer}' for instance type '{instance_type}' is not supported. "
+                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                    "GPUs functionalities",
+                    FailureLevel.WARNING,
+                )
+                LOGGER.warning(
+                    "ParallelCluster offers native support for NVIDIA manufactured GPUs only. "
+                    "InstanceType (%s) GPU Info: %s. "
+                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                    "GPUs functionalities",
+                    instance_type,
+                    json.dumps(gpu_info),
+                )
+
+        inference_accelerator_info = instance_type_data.get("InferenceAcceleratorInfo", {})
+        if inference_accelerator_info:
+            inference_accelerator_manufacturers = list(
+                {
+                    accelerator.get("Manufacturer", "")
+                    for accelerator in inference_accelerator_info.get("Accelerators", [])
+                }
+            )
+
+            # Only one accelerator manufacturer is associated with each Instance Type's accelerator
+            manufacturer = inference_accelerator_manufacturers[0] if inference_accelerator_manufacturers else ""
+            if manufacturer.upper() != "AWS":
+                self._add_failure(
+                    f"The inference accelerator manufacturer '{manufacturer}' for instance type '{instance_type}' is "
+                    "not supported. Please make sure to use a custom AMI with the appropriate drivers in order to "
+                    "leverage the accelerators functionalities",
+                    FailureLevel.WARNING,
+                )
+                LOGGER.warning(
+                    "ParallelCluster offers native support for 'AWS' manufactured Inference Accelerators only. "
+                    "InstanceType (%s) accelerator info: %s. "
+                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                    "accelerators functionalities.",
+                    instance_type,
+                    json.dumps(inference_accelerator_info),
+                )
 
 
 class InstanceTypeValidator(Validator):
@@ -174,42 +240,147 @@ class CapacityReservationValidator(Validator):
 
     def _validate(self, capacity_reservation_id: str, instance_type: str, subnet: str):
         if capacity_reservation_id:
-            capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
-            if capacity_reservation["InstanceType"] != instance_type:
+            if not instance_type:  # If the instance type doesn't exist, this is an invalid config
                 self._add_failure(
-                    f"Capacity reservation {capacity_reservation_id} must has the same instance type "
-                    f"as {instance_type}.",
+                    "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
                     FailureLevel.ERROR,
                 )
-            if capacity_reservation["AvailabilityZone"] != AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
-                self._add_failure(
-                    f"Capacity reservation {capacity_reservation_id} must use the same availability zone "
-                    f"as subnet {subnet}.",
-                    FailureLevel.ERROR,
-                )
+            else:
+                capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[
+                    0
+                ]
+                if capacity_reservation["InstanceType"] != instance_type:
+                    self._add_failure(
+                        f"Capacity reservation {capacity_reservation_id} must have the same instance type "
+                        f"as {instance_type}.",
+                        FailureLevel.ERROR,
+                    )
+                if capacity_reservation["AvailabilityZone"] != AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
+                    self._add_failure(
+                        f"Capacity reservation {capacity_reservation_id} must use the same availability zone "
+                        f"as subnet {subnet}.",
+                        FailureLevel.ERROR,
+                    )
+
+
+def get_capacity_reservations(capacity_reservation_resource_group_arn):
+    capacity_reservation_ids = AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
+        capacity_reservation_resource_group_arn
+    )
+    return AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
+
+
+def capacity_reservation_matches_instance(capacity_reservation: Dict, instance_type: str, subnet: str) -> bool:
+    return capacity_reservation["InstanceType"] == instance_type and capacity_reservation[
+        "AvailabilityZone"
+    ] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet)
+
+
+def capacity_reservation_resource_group_is_service_linked_group(capacity_reservation_resource_group_arn: str):
+    try:
+        group_config = AWSApi.instance().resource_groups.get_group_configuration(
+            group=capacity_reservation_resource_group_arn
+        )
+        is_cr_pool = False
+        for config in group_config["GroupConfiguration"]["Configuration"]:
+            if "CapacityReservationPool" in config["Type"]:
+                is_cr_pool = True
+        return is_cr_pool
+    except AWSClientError:
+        return False
 
 
 class CapacityReservationResourceGroupValidator(Validator):
     """Validate at least one capacity reservation in the resource group can be used with the instance and subnet."""
 
-    def _validate(self, capacity_reservation_resource_group_arn: str, instance_type: str, subnet: str):
+    def _validate(self, capacity_reservation_resource_group_arn: str, instance_types: List[str], subnet: str):
         if capacity_reservation_resource_group_arn:
-            capacity_reservation_ids = (
-                AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
-                    capacity_reservation_resource_group_arn
-                )
-            )
-            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
-            found_qualified_capacity_reservation = False
-            for capacity_reservation in capacity_reservations:
-                if capacity_reservation["InstanceType"] == instance_type and capacity_reservation[
-                    "AvailabilityZone"
-                ] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
-                    found_qualified_capacity_reservation = True
-                    break
-            if not found_qualified_capacity_reservation:
+            if not capacity_reservation_resource_group_is_service_linked_group(capacity_reservation_resource_group_arn):
                 self._add_failure(
-                    f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have at least "
-                    f"one capacity reservation for {instance_type} in the same availability zone as subnet {subnet}.",
+                    f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must be a "
+                    f"Service Linked Group created from the AWS CLI.  See "
+                    f"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
                     FailureLevel.ERROR,
                 )
+            else:
+                capacity_reservations = get_capacity_reservations(capacity_reservation_resource_group_arn)
+                for instance_type in instance_types:
+                    found_qualified_capacity_reservation = False
+                    for capacity_reservation in capacity_reservations:
+                        if capacity_reservation_matches_instance(capacity_reservation, instance_type, subnet):
+                            found_qualified_capacity_reservation = True
+                            break
+                    if not found_qualified_capacity_reservation:
+                        self._add_failure(
+                            f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have "
+                            f"at least one capacity reservation for {instance_type} in the same availability zone as "
+                            f"subnet {subnet}.",
+                            FailureLevel.ERROR,
+                        )
+
+
+class PlacementGroupCapacityReservationValidator(Validator):
+    """Validate the placement group is compatible with the capacity reservation target."""
+
+    def _validate_chosen_pg(self, subnet, instance_types, odcr_list, chosen_pg):
+        pg_match, open_or_targeted = False, False
+        for instance_type in instance_types:
+            for odcr in odcr_list:
+                if capacity_reservation_matches_instance(
+                    capacity_reservation=odcr, instance_type=instance_type, subnet=subnet
+                ):
+                    odcr_pg = get_resource_name_from_resource_arn(odcr.get("PlacementGroupArn", None))
+                    if odcr_pg:
+                        if odcr_pg == chosen_pg:
+                            pg_match = True
+                    else:
+                        open_or_targeted = True
+            if not (pg_match or open_or_targeted):
+                self._add_failure(
+                    f"The placement group provided '{chosen_pg}' does not match any placement group in the set of "
+                    f"target PG/ODCRs and there are no open or targeted '{instance_type}' ODCRs included.",
+                    FailureLevel.ERROR,
+                )
+            elif open_or_targeted:
+                self._add_failure(
+                    "When using an open or targeted capacity reservation with an unrelated placement group, "
+                    "insufficient capacity errors may occur due to placement constraints outside of the "
+                    "reservation even if the capacity reservation has remaining capacity. Please consider either "
+                    "not using a placement group for the compute resource or creating a new capacity reservation "
+                    "in a related placement group.",
+                    FailureLevel.WARNING,
+                )
+
+    def _validate_no_pg(self, subnet, instance_types, odcr_list):
+        for instance_type in instance_types:
+            odcr_without_pg = False
+            for odcr in odcr_list:
+                odcr_pg = get_resource_name_from_resource_arn(getattr(odcr, "PlacementGroupArn", None))
+                if not odcr_pg and capacity_reservation_matches_instance(
+                    capacity_reservation=odcr, instance_type=instance_type, subnet=subnet
+                ):
+                    odcr_without_pg = True
+            if not odcr_without_pg:
+                self._add_failure(
+                    f"There are no open or targeted ODCRs that match the instance_type '{instance_type}' "
+                    f"and no placement group provided. Please either provide a placement group or add an ODCR that "
+                    f"does not target a placement group and targets the instance type.",
+                    FailureLevel.ERROR,
+                )
+
+    def _validate(self, placement_group, odcr, subnet, instance_types):
+        odcr_id = getattr(odcr, "capacity_reservation_id", None)
+        odcr_arn = getattr(odcr, "capacity_reservation_resource_group_arn", None)
+        if odcr_id:
+            odcr_list = AWSApi.instance().ec2.describe_capacity_reservations([odcr_id])
+        elif odcr_arn:
+            odcr_list = get_capacity_reservations(odcr_arn)
+        else:
+            odcr_list = None
+        if odcr_list:
+            if placement_group:
+                self._validate_chosen_pg(
+                    subnet=subnet, instance_types=instance_types, odcr_list=odcr_list, chosen_pg=placement_group
+                )
+            else:
+                self._validate_no_pg(subnet=subnet, instance_types=instance_types, odcr_list=odcr_list)

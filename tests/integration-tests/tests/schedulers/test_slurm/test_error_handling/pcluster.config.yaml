@@ -22,11 +22,19 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: dummy-1
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.large
+          {% else %}
           InstanceTypeList:
             - InstanceType: c5.large
+          {% endif %}
         - Name: ondemand1-i1
+          {% if scheduler == "plugin" %}
+          InstanceType: {{ instance }}
+          {% else %}
           InstanceTypeList:
             - InstanceType: {{ instance }}
+          {% endif %}
           MinCount: 1
 SharedStorage:
   - MountDir: /shared
