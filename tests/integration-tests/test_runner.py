@@ -83,6 +83,7 @@ TEST_DEFAULTS = {
     "iam_user_role_stack_name": None,
     "directory_stack_name": None,
     "ldaps_nlb_stack_name": None,
+    "slurm_database_stack_name": None,
 }
 
 
@@ -369,6 +370,11 @@ def _init_argparser():
         "integration feature.",
         default=TEST_DEFAULTS.get("ldaps_nlb_stack_name"),
     )
+    debug_group.add_argument(
+        "--slurm-database-stack-name",
+        help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
+        default=TEST_DEFAULTS.get("slurm_database_stack_name"),
+    )
 
     return parser
 
@@ -558,6 +564,9 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.ldaps_nlb_stack_name:
         pytest_args.extend(["--ldaps-nlb-stack-name", args.ldaps_nlb_stack_name])
+
+    if args.slurm_database_stack_name:
+        pytest_args.extend(["--slurm-database-stack-name", args.slurm_database_stack_name])
 
 
 def _set_api_args(args, pytest_args):

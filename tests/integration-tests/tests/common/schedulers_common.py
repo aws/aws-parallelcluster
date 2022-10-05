@@ -495,6 +495,26 @@ class SlurmCommands(SchedulerCommands):
         command = f"sudo -i scontrol reboot {asap_string} {nodename}"
         self._remote_command_executor.run_remote_command(command)
 
+    def get_users(self, fields=("user", "account", "adminlevel", "coordinators", "defaultaccount", "defaultwckey")):
+        """Return a list of scheduler user accounts as a list of dicts."""
+        users = self._remote_command_executor.run_remote_command(
+            f"sacctmgr list users -nP Format={','.join(fields)}"
+        ).stdout
+        return (dict(zip(fields, columns)) for columns in SlurmCommands._split_accounting_results(users))
+
+    def get_records_for_job(
+        self, job_id, fields=("jobid", "jobname", "partition", "account", "alloccpus", "state", "exitcode")
+    ):
+        """Return job steps of {job_id} as a series of dicts."""
+        records = self._remote_command_executor.run_remote_command(
+            f"sacct -nP -j {job_id} -o {','.join(fields)}"
+        ).stdout
+        return (dict(zip(fields, columns)) for columns in SlurmCommands._split_accounting_results(records))
+
+    @staticmethod
+    def _split_accounting_results(results):
+        return (result.split("|") for result in results.splitlines())
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
