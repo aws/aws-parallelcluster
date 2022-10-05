@@ -516,7 +516,7 @@ class ClusterCdkStack(Stack):
                 )
 
     def _allow_all_ingress(self, description, source_security_group_id, group_id):
-        ec2.CfnSecurityGroupIngress(
+        return ec2.CfnSecurityGroupIngress(
             self,
             description,
             ip_protocol="-1",
@@ -527,7 +527,7 @@ class ClusterCdkStack(Stack):
         )
 
     def _allow_all_egress(self, description, destination_security_group_id, group_id):
-        ec2.CfnSecurityGroupEgress(
+        return ec2.CfnSecurityGroupEgress(
             self,
             description,
             ip_protocol="-1",
@@ -545,7 +545,8 @@ class ClusterCdkStack(Stack):
             group_description=f"Allow access to {storage_type} file system {storage_cfn_id}",
             vpc_id=self.config.vpc_id,
         )
-        storage_security_group.cfn_options.deletion_policy = convert_deletion_policy(storage.deletion_policy)
+        storage_deletion_policy = convert_deletion_policy(storage.deletion_policy)
+        storage_security_group.cfn_options.deletion_policy = storage_deletion_policy
 
         target_security_groups = {
             "Head": self._get_head_node_security_groups(),
@@ -555,17 +556,21 @@ class ClusterCdkStack(Stack):
 
         for sg_type, sg_refs in target_security_groups.items():
             for sg_ref_id, sg_ref in enumerate(sg_refs):
-                self._allow_all_ingress(
+                ingress_rule = self._allow_all_ingress(
                     description=f"{storage_cfn_id}SecurityGroup{sg_type}Ingress{sg_ref_id}",
                     source_security_group_id=sg_ref,
                     group_id=storage_security_group.ref,
                 )
 
-                self._allow_all_egress(
+                egress_rule = self._allow_all_egress(
                     description=f"{storage_cfn_id}SecurityGroup{sg_type}Egress{sg_ref_id}",
                     destination_security_group_id=sg_ref,
                     group_id=storage_security_group.ref,
                 )
+
+                if sg_type == "Storage":
+                    ingress_rule.cfn_options.deletion_policy = storage_deletion_policy
+                    egress_rule.cfn_options.deletion_policy = storage_deletion_policy
 
         return storage_security_group
 

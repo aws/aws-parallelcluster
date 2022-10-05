@@ -29,12 +29,15 @@ def load_cluster_model_from_yaml(config_file_name, test_datadir=None):
     return input_yaml, cluster
 
 
-def get_resources(generated_template: dict, name: str = None, type: str = None, properties: dict = None):
+def get_resources(
+    generated_template: dict, name: str = None, type: str = None, properties: dict = None, deletion_policy: str = None
+):
     return dict(
         (res_name, res_value)
         for res_name, res_value in generated_template.get("Resources", {}).items()
         if (name is None or res_name == name)
         and (type is None or res_value.get("Type") == type)
+        and (deletion_policy is None or res_value.get("DeletionPolicy") == deletion_policy)
         and (
             properties is None
             or all(
