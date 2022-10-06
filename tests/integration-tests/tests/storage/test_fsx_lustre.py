@@ -277,7 +277,7 @@ def test_multiple_fsx(
     num_existing_fsx_open_zfs_volumes = 2 if partition == "aws" else 0  # China and GovCloud do not have OpenZFS.
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more FSx when benchmarks are specified. Limiting OS to reduce cost of too many file systems
-        num_existing_fsx = 50
+        num_existing_fsx = 20
     else:
         # Minimal total existing FSx is the number of Ontap and OpenZFS plus one existing FSx Lustre
         num_existing_fsx = num_existing_fsx_ontap_volumes + num_existing_fsx_open_zfs_volumes + 1
