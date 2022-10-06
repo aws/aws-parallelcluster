@@ -648,6 +648,113 @@ def _test_different_names(base_conf, target_conf):
     )
 
 
+def _test_storage(base_conf, target_conf):
+    # Check the update of Ebs,Efs,FsxLustreSettings
+    # with both updatable and not updatable keys
+    for storage_type in ("Ebs", "Efs", "FsxLustre"):
+        storage_name = storage_type.lower()
+        base_conf["SharedStorage"].append(
+            {
+                "Name": f"{storage_name}3",
+                "MountDir": f"/{storage_name}3",
+                "StorageType": storage_type,
+            }
+        )
+        target_conf["SharedStorage"].append(
+            {
+                "Name": f"{storage_name}3",
+                "MountDir": f"/{storage_name}3",
+                "StorageType": storage_type,
+                f"{storage_type}Settings": {"DeletionPolicy": "Retain"},
+            }
+        )
+        base_conf["SharedStorage"].append(
+            {
+                "Name": f"{storage_name}4",
+                "MountDir": f"/{storage_name}4",
+                "StorageType": storage_type,
+            }
+        )
+        target_conf["SharedStorage"].append(
+            {
+                "Name": f"{storage_name}4",
+                "MountDir": f"/{storage_name}4",
+                "StorageType": storage_type,
+                f"{storage_type}Settings": {"Encrypted": True}
+                if storage_type in ("Ebs", "Efs")
+                else {"DeploymentType": "PERSISTENT_2"},
+            }
+        )
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["SharedStorage[ebs3]", "EbsSettings"],
+                "DeletionPolicy",
+                None,
+                "Retain",
+                UpdatePolicy(
+                    UpdatePolicy.SUPPORTED,
+                ),
+                is_list=False,
+            ),
+            Change(
+                ["SharedStorage[efs3]", "EfsSettings"],
+                "DeletionPolicy",
+                None,
+                "Retain",
+                UpdatePolicy(
+                    UpdatePolicy.SUPPORTED,
+                ),
+                is_list=False,
+            ),
+            Change(
+                ["SharedStorage[fsxlustre3]", "FsxLustreSettings"],
+                "DeletionPolicy",
+                None,
+                "Retain",
+                UpdatePolicy(
+                    UpdatePolicy.SUPPORTED,
+                ),
+                is_list=False,
+            ),
+            Change(
+                ["SharedStorage[ebs4]", "EbsSettings"],
+                "Encrypted",
+                None,
+                True,
+                UpdatePolicy(
+                    UpdatePolicy.UNSUPPORTED,
+                ),
+                is_list=False,
+            ),
+            Change(
+                ["SharedStorage[efs4]", "EfsSettings"],
+                "Encrypted",
+                None,
+                True,
+                UpdatePolicy(
+                    UpdatePolicy.UNSUPPORTED,
+                ),
+                is_list=False,
+            ),
+            Change(
+                ["SharedStorage[fsxlustre4]", "FsxLustreSettings"],
+                "DeploymentType",
+                None,
+                "PERSISTENT_2",
+                UpdatePolicy(
+                    UpdatePolicy.UNSUPPORTED,
+                ),
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.UNSUPPORTED,
+    )
+
+
 @pytest.mark.parametrize(
     "test",
     [
@@ -658,6 +765,7 @@ def _test_different_names(base_conf, target_conf):
         _test_different_names,
         _test_compute_resources,
         _test_queues,
+        _test_storage,
     ],
 )
 def test_adaptation(mocker, test_datadir, pcluster_config_reader, test):
