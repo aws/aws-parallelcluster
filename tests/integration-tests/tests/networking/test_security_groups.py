@@ -72,9 +72,19 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
         fsx_security_groups = ec2_client.describe_network_interfaces(NetworkInterfaceIds=[network_interface_id])[
             "NetworkInterfaces"
         ][0]["Groups"]
-        logging.info("Asserting the network interface of FSx has and only has the custom security group")
-        assert_that(fsx_security_groups[0]["GroupId"]).is_equal_to(custom_security_group_id)
+        logging.info(
+            "Asserting the network interface of FSx has only the dedicated security group "
+            "allowing all traffic to itself and to the custom security group"
+        )
         assert_that(fsx_security_groups).is_length(1)
+        fsx_security_group = fsx_security_groups[0]
+        fsx_security_group_id = fsx_security_group["GroupId"]
+
+        _assert_security_group_rules(
+            ec2_client,
+            fsx_security_group_id,
+            [fsx_security_group_id, custom_security_group_id],
+        )
 
     logging.info("Collecting security groups of the EFS")
     efs_id = cluster.cfn_resources[f"EFS{create_hash_suffix(efs_name)}"]
@@ -83,13 +93,21 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
         mount_target["MountTargetId"]
         for mount_target in efs_client.describe_mount_targets(FileSystemId=efs_id)["MountTargets"]
     ]
-    logging.info("Asserting the mount targets of EFS has and only has the custom security group")
+    logging.info(
+        "Asserting the mount targets of EFS have only the dedicated security group "
+        "allowing all traffic to itself and to the custom security group"
+    )
     for mount_target_id in mount_target_ids:
         mount_target_security_groups = efs_client.describe_mount_target_security_groups(MountTargetId=mount_target_id)[
             "SecurityGroups"
         ]
-        assert_that(mount_target_security_groups[0]).is_equal_to(custom_security_group_id)
         assert_that(mount_target_security_groups).is_length(1)
+        mount_target_security_group_id = mount_target_security_groups[0]
+        _assert_security_group_rules(
+            ec2_client,
+            mount_target_security_group_id,
+            [mount_target_security_group_id, custom_security_group_id],
+        )
 
     if scheduler == "slurm":
         _check_connections_between_head_node_and_compute_nodes(cluster)
@@ -191,3 +209,20 @@ def _get_instances_by_security_group(ec2_client, security_group_id):
         for reservation in page["Reservations"]:
             instances.extend(reservation["Instances"])
     return instances
+
+
+def _assert_security_group_rules(ec2_client, security_group_id: str, referenced_security_group_ids: list):
+    # We expect the FSx/EFS Security Group to have exactly 4 rules:
+    #  * 2 rules (ingress and egress) allowing traffic to/from the FSx/EFS Security Group itself
+    #  * 2 rules (ingress and egress) allowing traffic to/from the custom Security Group
+    rules = ec2_client.describe_security_group_rules(Filters=[{"Name": "group-id", "Values": [security_group_id]}])[
+        "SecurityGroupRules"
+    ]
+    for sg_id in referenced_security_group_ids:
+        for is_egress in (True, False):
+            match = [
+                rule
+                for rule in rules
+                if rule["IsEgress"] == is_egress and rule["ReferencedGroupInfo"]["GroupId"] == sg_id
+            ]
+            assert_that(match).is_length(1)
