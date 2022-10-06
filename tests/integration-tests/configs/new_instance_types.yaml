@@ -1,0 +1,100 @@
+{%- import 'common.jinja2' as common -%}
+{%- set REGION = ["##PLACEHOLDER##"] -%}
+{%- set NEW_INSTANCE_TYPES = ["##PLACEHOLDER##"] -%}
+---
+test-suites:
+  scaling:
+    test_mpi.py::test_mpi:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+  schedulers:
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_pmix:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
+    test_awsbatch.py::test_awsbatch:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+  storage:
+    test_fsx_lustre.py::test_fsx_lustre:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: [ "slurm" ]
+    test_efs.py::test_efs_compute_az:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_ebs.py::test_ebs_single:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+    # Ephemeral test requires instance type with instance store
+    test_ephemeral.py::test_head_node_stop:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  dcv:
+    # Useful on GPU enabled instances
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
+          schedulers: ["slurm"]
+  configure:
+    test_pcluster_configure.py::test_pcluster_configure:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
+          schedulers: ["slurm"]
+  networking:
+    test_cluster_networking.py::test_cluster_in_private_subnet:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+    # Useful for instances with multiple network interfaces
+    test_multi_cidr.py::test_multi_cidr:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  spot:
+    test_spot.py::test_spot_default:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
