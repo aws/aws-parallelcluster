@@ -90,7 +90,7 @@ def test_multiple_efs(
     existing_efs_mount_dirs = []
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
-        num_existing_efs = 50
+        num_existing_efs = 20
     else:
         num_existing_efs = 2
     existing_efs_ids = efs_stack_factory(num_existing_efs)
