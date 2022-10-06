@@ -161,6 +161,25 @@ def assert_head_node_is_running(region, cluster):
     assert_that(head_node_state).is_equal_to("running")
 
 
+def assert_cluster_imds_v2_requirement_status(region, cluster, status):
+    logging.info(f"Checking that all the nodes in the cluster have IMDSv2 {status}")
+
+    describe_response = boto3.client("ec2", region_name=region).describe_instances(
+        Filters=[
+            {"Name": "tag:parallelcluster:cluster-name", "Values": [cluster.cfn_name]},
+        ]
+    )
+
+    for reservations in describe_response.get("Reservations"):
+        for instance in reservations.get("Instances"):
+            instance_id = instance.get("InstanceId")
+            imds_v2_status = instance.get("MetadataOptions").get("HttpTokens")
+
+            logging.info(f"Instance {instance_id} has IMDSv2 {imds_v2_status}")
+
+            assert_that(imds_v2_status).is_equal_to(status)
+
+
 def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_command_executor=None):
     logging.info("Asserting access to AWS caller identity is correct")
 

@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
@@ -41,6 +41,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RequireImdsV2Validator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -93,6 +94,30 @@ def test_cluster_name_validator(cluster_name, should_trigger_error):
 def test_region_validator(region, expected_message):
     actual_failures = RegionValidator().execute(region)
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "require_imds_v2, expected_message, expected_failure_level",
+    [
+        (
+            False,
+            "The current cluster configuration does not disable IMDSv1, "
+            "which we plan to disable by default in future versions. "
+            "If you do not explicitly need to use IMDSv1 enforce IMDSv2 "
+            "usage by setting the RequireImdsV2 configuration parameter "
+            "to true (see documentation at: https://docs.aws.amazon.com/"
+            "parallelcluster/latest/ug/cluster-configuration-file-v3.html"
+            "#cluster-configuration-file-v3.properties)",
+            FailureLevel.INFO,
+        ),
+        (True, None, None),
+    ],
+)
+def test_require_imds_v2_validator(require_imds_v2, expected_message, expected_failure_level):
+    actual_failures = RequireImdsV2Validator().execute(require_imds_v2)
+    with soft_assertions():
+        assert_failure_messages(actual_failures, expected_message)
+        assert_failure_level(actual_failures, expected_failure_level)
 
 
 @pytest.mark.parametrize(

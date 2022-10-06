@@ -151,6 +151,19 @@ class AwsBatchConstruct(Construct):
         self._code_build_notification_rule = self._add_code_build_notification_rule()
         self._manage_docker_images_custom_resource.add_depends_on(self._code_build_notification_rule)
 
+    def _launch_template(self):
+        launch_template = ec2.CfnLaunchTemplate(
+            self.stack_scope,
+            "PclusterComputeEnvironmentLaunchTemplate",
+            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(http_tokens="required")
+            ),
+        )
+        return batch.CfnComputeEnvironment.LaunchTemplateSpecificationProperty(
+            launch_template_id=launch_template.ref,
+            version=launch_template.attr_latest_version_number,
+        )
+
     def _add_compute_env(self):
         return batch.CfnComputeEnvironment(
             self.stack_scope,
@@ -169,6 +182,7 @@ class AwsBatchConstruct(Construct):
                 instance_role=self._iam_instance_profile.ref,
                 bid_percentage=self.compute_resource.spot_bid_percentage,
                 spot_iam_fleet_role=self._spot_iam_fleet_role.attr_arn if self._spot_iam_fleet_role else None,
+                launch_template=self._launch_template() if self.config.imds.require_imds_v2 else None,
                 tags={
                     **get_default_instance_tags(
                         self.stack_name,

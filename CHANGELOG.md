@@ -10,6 +10,7 @@ CHANGELOG
   to support storage retention on deletion.
 - Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 - Add support for on-demand capacity reservations.
+- Add support for requiring IMDSv2 in cluster configurations.
 - Add support for Slurm Accounting.
 
 **CHANGES**
