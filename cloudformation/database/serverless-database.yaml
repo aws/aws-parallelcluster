@@ -8,7 +8,6 @@ Metadata:
           default: "Database Cluster Configuration"
         Parameters:
           - ClusterAdmin
-          - AdminPasswordSecretName
           - AdminPasswordSecretString
           - MinCapacity
           - MaxCapacity
@@ -20,58 +19,56 @@ Metadata:
           - DatabaseClusterSubnetTwo
     ParameterLabels:
       Vpc:
-        default: "Which VPC should the database cluster be created in?"
+        default: "The VPC to use for the database cluster."
       ClusterAdmin:
-        default: "What should the database administrator user name be?"
-      AdminPasswordSecretName:
-        default: "What should the name of the secret containing the administrator password be?"
+        default: "The database administrator user name."
       AdminPasswordSecretString:
-        default: "What should the administrator password be?"
+        default: "The administrator password."
       MinCapacity:
-        default: "What should the minimum scaling capacity of the database cluster be?"
+        default: "The minimum scaling capacity of the database cluster."
       MaxCapacity:
-        default: "What should the maximum scaling capacity of the database cluster be?"
+        default: "The maximum scaling capacity of the database cluster."
       DatabaseClusterSubnetOne:
-        default: "What is the first subnet the database cluster should be deployed in?"
+        default: "The first subnet to use for the database cluster."
       DatabaseClusterSubnetTwo:
-        default: "What is the second subnet the database cluster should be deployed in?"
+        default: "The second subnet to use for the database cluster."
 Parameters:
-  AdminPasswordSecretName:
-    Description: Name of then Secrets Manager secret for the database cluster administrator password.
-    Type: String
-    MinLength: 2
-    MaxLength: 1024
   AdminPasswordSecretString:
-    Description: Password for the database cluster administrator (leave BLANK to import the password from Secrets Manager).
+    Description: >-
+      Password must be at least 8 characters long and contain at least 1 upper case, 1 lower case, 1 digit, and 1
+      non-alphanumeric character. It must not contain any of the following: / (slash), ' (single quote), " (double quote)
+      or @ (at sign).
     Type: String
     NoEcho: true
+    MinLength: 8
     # Only allow 'Medium' or better strength passwords according to https://dev.mysql.com/doc/refman/8.0/en/validate-password.html
-    AllowedPattern: (?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\s])^.*|^$
-    ConstraintDescription: Password must be BLANK or at least 8 characters with at least one uppercase letter, one lower case letter, one numeric digit, and one special (non-alphanumeric) character.
-    Default: ""
+    AllowedPattern: (?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\s])(?!.*[@/'"])^.*
+    ConstraintDescription: >-
+      Password must be at least 8 characters with at least one uppercase letter, one lower case letter, one numeric
+      digit, and one special (non-alphanumeric) character. It can not contain any of the following: / (slash), ' (single quote), " (double quote) and @ (at sign).
   ClusterAdmin:
-    Description: Database cluster administrator user name.
+    Description: Administrator user name.
     Type: String
     Default: clusteradmin
     MinLength: 3
     MaxLength: 64
   Vpc:
-    Description: VPC ID to create the database cluster in (leave BLANK to create a new one).
+    Description: VPC ID (leave BLANK to create a new VPC).
     Type: String
     # Type: AWS::EC2::VPC::Id
     Default: ""
   DatabaseClusterSubnetOne:
-    Description: Subnet ID of the first subnet (leave BLANK to create).
+    Description: First Subnet ID (leave BLANK to create a new subnet).
     Type: String
     # Type: AWS::EC2::Subnet::Id
     Default: ""
   DatabaseClusterSubnetTwo:
-    Description: Subnet ID of the second subnet (leave BLANK to create). This subnet should be in different availability zone from the first subnet.
+    Description: Second subnet ID (leave BLANK to create a new subnet). This subnet must be in different availability zone from the first subnet.
     Type: String
     # Type: AWS::EC2::Subnet::Id
     Default: ""
   MinCapacity:
-    Description: Minimum scaling capacity for the database cluster. Must be less than or equal to MaxCapacity.
+    Description: Must be less than or equal to the maximum capacity.
     Type: Number
     Default: 1
     AllowedValues:
@@ -85,7 +82,7 @@ Parameters:
       - 128
       - 256
   MaxCapacity:
-    Description: Maximum scaling capacity for the database cluster. Must be greater than or equal to MinCapacity
+    Description: Must be greater than or equal to the minimum capacity.
     Type: Number
     Default: 4
     AllowedValues:
@@ -102,7 +99,6 @@ Transform: AWS::Serverless-2016-10-31
 Conditions:
   CreateVPC: !Equals [!Ref Vpc, '']
   CreateSubnets: !Or [!Condition CreateVPC, !Equals [!Ref DatabaseClusterSubnetOne, ''], !Equals [!Ref DatabaseClusterSubnetTwo, '']]
-  CreateAdminSecret: !Not [!Equals [!Ref AdminPasswordSecretString, '']]
 Rules:
   EmptyVpcAssertions:
     RuleCondition: !Equals
@@ -132,8 +128,8 @@ Resources:
       Tags:
         - Key: Name
           Value: ServerlessDatabaseClusterVPC
-        - Key: 'parallel-cluster:accounting'
-          Value: vpc
+        - Key: 'parallelcluster:usecase'
+          Value: 'infrastructure'
   ServerlessDatabaseClusterSubnet1:
     Type: 'AWS::EC2::Subnet'
     Condition: CreateSubnets
@@ -145,8 +141,8 @@ Resources:
       Tags:
         - Key: Name
           Value: ServerlessDatabaseClusterSubnet1
-        - Key: 'parallel-cluster:accounting'
-          Value: !Sub cluster-subnet-${AWS::Region}a
+        - Key: 'parallelcluster:infrastructure'
+          Value: 'slurm accounting'
   ServerlessDatabaseClusterSubnet1RouteTable:
     Type: 'AWS::EC2::RouteTable'
     Condition: CreateSubnets
@@ -155,8 +151,8 @@ Resources:
       Tags:
         - Key: Name
           Value: ServerlessDatabaseClusterSubnet1
-        - Key: 'parallel-cluster:accounting'
-          Value: !Sub cluster-subnet-${AWS::Region}a
+        - Key: 'parallelcluster:infrastructure'
+          Value: 'slurm accounting'
   ServerlessDatabaseClusterSubnet1RouteTableAssociation:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Condition: CreateSubnets
@@ -174,8 +170,8 @@ Resources:
       Tags:
         - Key: Name
           Value: ServerlessDatabaseClusterSubnet2
-        - Key: 'parallel-cluster:accounting'
-          Value: !Sub cluster-subnet-${AWS::Region}b
+        - Key: 'parallelcluster:infrastructure'
+          Value: 'slurm accounting'
   ServerlessDatabaseClusterSubnet2RouteTable:
     Type: 'AWS::EC2::RouteTable'
     Condition: CreateSubnets
@@ -184,8 +180,8 @@ Resources:
       Tags:
         - Key: Name
           Value: ServerlessDatabaseClusterSubnet2
-        - Key: 'parallel-cluster:accounting'
-          Value: !Sub cluster-subnet-${AWS::Region}b
+        - Key: 'parallelcluster:infrastructure'
+          Value: 'slurm accounting'
   ServerlessDatabaseClusterSubnet2RouteTableAssociation:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Condition: CreateSubnets
@@ -205,8 +201,8 @@ Resources:
         require_secure_transport: 'ON'
         innodb_lock_wait_timeout: '900'
       Tags:
-        - Key: 'parallel-cluster:accounting'
-          Value: rds-parameter-group
+        - Key: 'parallelcluster:usecase'
+          Value: 'slurm accounting'
   ServerlessDatabaseClusterSubnetGroup:
     Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
@@ -215,8 +211,8 @@ Resources:
         - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet1, !Ref DatabaseClusterSubnetOne]
         - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
       Tags:
-        - Key: 'parallel-cluster:accounting'
-          Value: subnet-group
+        - Key: 'parallelcluster:usecase'
+          Value: 'slurm accounting'
   ServerlessDatabaseClusterSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -226,8 +222,8 @@ Resources:
           Description: Allow all outbound traffic by default
           IpProtocol: '-1'
       Tags:
-        - Key: 'parallel-cluster:accounting'
-          Value: database-security-group
+        - Key: 'parallelcluster:usecase'
+          Value: 'slurm accounting'
       VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
   ServerlessDatabaseClusterSecurityGroupInboundRule:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -248,11 +244,12 @@ Resources:
         - Endpoint.Port
   ServerlessDatabaseClusterAdminSecret:
     Type: 'AWS::SecretsManager::Secret'
-    Condition: CreateAdminSecret
     Properties:
       Description: 'Serverless Database Cluster Administrator Password'
-      Name: !Ref AdminPasswordSecretName
       SecretString: !Ref AdminPasswordSecretString
+      Tags:
+        - Key: 'parallelcluster:usecase'
+          Value: 'slurm accounting'
   ServerlessDatabaseCluster:
     Type: 'AWS::RDS::DBCluster'
     Properties:
@@ -263,10 +260,7 @@ Resources:
       EnableHttpEndpoint: false
       EngineMode: serverless
       MasterUsername: !Ref ClusterAdmin
-      MasterUserPassword: !If
-        - CreateAdminSecret
-        - !Ref AdminPasswordSecretString
-        - !Sub '{{resolve:secretsmanager:${AdminPasswordSecretName}:SecretString:::}}'
+      MasterUserPassword: AdminPasswordSecretString
       ScalingConfiguration:
         AutoPause: true
         MaxCapacity: !Ref MaxCapacity
@@ -274,8 +268,8 @@ Resources:
         SecondsUntilAutoPause: 600
       StorageEncrypted: true
       Tags:
-        - Key: 'parallel-cluster:accounting'
-          Value: database-cluster
+        - Key: 'parallelcluster:usecase'
+          Value: 'slurm accounting'
       VpcSecurityGroupIds:
         - !GetAtt
           - ServerlessDatabaseClusterSecurityGroup
@@ -287,8 +281,8 @@ Resources:
     Properties:
       GroupDescription: Security Group to allow connection to Serverless DB Cluster
       Tags:
-        - Key: 'parallel-cluster:accounting'
-          Value: client-security-group
+        - Key: 'parallel-cluster:usecase'
+          Value: 'slurm accounting'
       VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
   ServerlessClusterDatabaseClientSecurityGroupOutboundRule:
     Type: 'AWS::EC2::SecurityGroupEgress'
@@ -308,37 +302,29 @@ Resources:
         - ServerlessDatabaseCluster
         - Endpoint.Port
 Outputs:
-  parallelclusterdatabasehost:
+  DatabaseHost:
     Value: !GetAtt
       - ServerlessDatabaseCluster
       - Endpoint.Address
-    Export:
-      Name: !Sub 'parallel-cluster:accounting:database:hostname:${AWS::StackName}'
-  parallelclusterdatabaseport:
+  DatabasePort:
     Value: !GetAtt
       - ServerlessDatabaseCluster
       - Endpoint.Port
-    Export:
-      Name: !Sub 'parallel-cluster:accounting:database:port:${AWS::StackName}'
-  parallelclusterdatabaseadminuser:
+  DatabaseAdminUser:
     Value: !Ref ClusterAdmin
-    Export:
-      Name: !Sub 'parallel-cluster:accounting:database:admin-user:${AWS::StackName}'
-  parallelclusterdatabasesecretname:
-    Value: !Ref AdminPasswordSecretName
-    Export:
-      Name: !Sub 'parallel-cluster:accounting:database:secret:name:${AWS::StackName}'
-  parallelclusterdatabasesecretarn:
-    Value: !If [CreateAdminSecret, !Ref ServerlessDatabaseClusterAdminSecret, 'external']
-    Export:
-      Name: !Sub 'parallel-cluster:accounting:database:secret:arn:${AWS::StackName}'
-  parallelclusterdatabasevpc:
+  DatabaseSecretArn:
+    Value: !Ref ServerlessDatabaseClusterAdminSecret
+  DatabaseVpcId:
     Value: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
-    Export:
-      Name: !Sub 'parallel-cluster:accounting:vpc:${AWS::StackName}'
-  parallelclusterdatabaseclient:
+  DatabaseClusterSecurityGroup:
+    Value: !GetAtt
+      - ServerlessDatabaseClusterSecurityGroup
+      - GroupId
+  DatabaseClusterSubnet1:
+    Value: !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet1, !Ref DatabaseClusterSubnetOne]
+  DatabaseClusterSubnet2:
+    Value: !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
+  DatabaseClientSecurityGroup:
     Value: !GetAtt
       - ServerlessClusterDatabaseClientSecurityGroup
       - GroupId
-    Export:
-      Name: !Sub 'parallel-cluster:accounting:database:client:security-group:${AWS::StackName}'
