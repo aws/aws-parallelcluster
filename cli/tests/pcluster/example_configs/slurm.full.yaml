@@ -1,3 +1,5 @@
+Imds:
+  RequireImdsV2: true
 Region: us-east-1
 Image:
   Os: centos7

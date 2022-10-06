@@ -23,7 +23,9 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, Resource
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
+from pcluster.config.common import Imds as TopLevelImds
+from pcluster.config.common import Resource
 from pcluster.constants import (
     CIDR_ALL_IPS,
     CW_DASHBOARD_ENABLED_DEFAULT,
@@ -92,6 +94,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RequireImdsV2Validator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -1120,6 +1123,7 @@ class BaseClusterConfig(Resource):
         directory_service: DirectoryService = None,
         config_region: str = None,
         custom_s3_bucket: str = None,
+        imds: TopLevelImds = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
     ):
@@ -1150,6 +1154,7 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
         self.original_config_version = ""
         self._official_ami = None
+        self.imds = imds or TopLevelImds(implied=False)
 
     def _register_validators(self):
         self._register_validator(RegionValidator, region=self.region)
@@ -1225,6 +1230,7 @@ class BaseClusterConfig(Resource):
             volume_size=root_volume_size,
             volume_iops=root_volume.iops,
         )
+        self._register_validator(RequireImdsV2Validator, require_imds_v2=self.imds.require_imds_v2)
 
     def _register_storage_validators(self):
         if self.shared_storage:
