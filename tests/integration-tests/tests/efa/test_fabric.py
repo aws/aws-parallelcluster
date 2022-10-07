@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 
-import boto3
 import xmltodict
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -35,23 +34,13 @@ def test_fabric(
     test_datadir,
     scheduler_commands_factory,
     request,
-    s3_bucket_factory,
 ):
     """
     Test tha EFA is working according to Fabtests, that is the official libfabric test suite.
     See https://github.com/ofiwg/libfabric/tree/main/fabtests
     """
 
-    # Bootstrap script to use p4d targeted ODCR
-    bucket_name = ""
-    if instance == "p4d.24xlarge":
-        bucket_name = s3_bucket_factory()
-        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-        bucket.upload_file(str(test_datadir / "run_instance_override.sh"), "run_instance_override.sh")
-
-    cluster_config = pcluster_config_reader(
-        bucket_name=bucket_name,
-    )
+    cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
