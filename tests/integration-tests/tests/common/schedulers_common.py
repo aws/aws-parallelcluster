@@ -147,7 +147,7 @@ class AWSBatchCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1, slots=None):  # noqa: D102
+    def submit_command(self, command, nodes=1, slots=None, partition=None):  # noqa: D102
         return self._remote_command_executor.run_remote_command('echo "{0}" | awsbsub -n {1}'.format(command, nodes))
 
     def submit_script(self, script, script_args=None, nodes=1, additional_files=None, slots=None):  # noqa: D102
