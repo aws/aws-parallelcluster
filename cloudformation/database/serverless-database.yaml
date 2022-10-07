@@ -260,7 +260,7 @@ Resources:
       EnableHttpEndpoint: false
       EngineMode: serverless
       MasterUsername: !Ref ClusterAdmin
-      MasterUserPassword: AdminPasswordSecretString
+      MasterUserPassword: !Ref AdminPasswordSecretString
       ScalingConfiguration:
         AutoPause: true
         MaxCapacity: !Ref MaxCapacity
