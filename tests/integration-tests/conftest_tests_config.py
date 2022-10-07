@@ -12,7 +12,7 @@ def parametrize_from_config(metafunc):
     Apply parametrization to all test functions loaded by pytest.
 
     The functions discovered by pytest are matched against the ones declared in the test config file. When a match
-    if found, meaning the test is enabled, the dimensions declared in the config file are applied to the test function.
+    is found, meaning the test is enabled, the dimensions declared in the config file are applied to the test function.
     """
     tests_config = metafunc.config.getoption("tests_config")
     test_collection_name = metafunc.definition.nodeid.split(os.path.sep)[0]

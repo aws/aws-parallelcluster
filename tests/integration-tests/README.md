@@ -488,7 +488,7 @@ def test_case_2(cluster_max_size):
 
 ### Restrict Test Cases Dimensions
 
-Note: this does not apply when using a test configuration file to select and parametrized the tests to execute
+Note: this does not apply when using a test configuration file to select and parametrize the tests to execute
 
 It is possible to restrict the dimensions each test is compatible with by using some custom markers.
 The available markers are the following:
@@ -536,7 +536,7 @@ It is possible that some combination of dimensions are not allowed because for e
 available in a given AWS region.
 
 To define such exceptions it is possible to extend the list `UNSUPPORTED_DIMENSIONS` in conftest_markers.py file.
-By default all tuples specified in that list will be added as `skip_dimensions` marker to all tests.
+By default, all tuples specified in that list will be added as `skip_dimensions` markers to all tests.
 
 ### Manage Tests Data
 
@@ -557,23 +557,23 @@ integration-tests
 [pytest-datadir](https://github.com/gabrielcnr/pytest-datadir) is a pytest plugin that is used for manipulating test
 data directories and files.
 
-A fixture `test_datadir` is built on top of it and can be used to the inject the `datadir` with resources for the
+A fixture `test_datadir` is built on top of it and can be used to inject the `datadir` with resources for the
 specific test function.
 
 For example in the following test, defined in the file `test_feature.py`:
 ```python
 def test_case_1(region, instance, os, scheduler, test_datadir):
 ```
-the argument `test_datadir` is initialized at each test run with the a path to a temporary directory that contains
+the argument `test_datadir` is initialized at each test run with the path to a temporary directory that contains
 a copy of the contents of `integration-tests/tests/test_feature/test_case_1`.
 This way the test case can freely modify the contents of that dir at each run without compromising other tests
 executions.
 
-The fixture `shared_datadir` can be used similarly to access the shared resources directory.
+The fixture `shared_datadir` can be used similarly to access the shared resource directory.
 
 ### Parametrized Clusters Configurations
 
-Similarly to parametrized test cases, also cluster configurations can be parametrized or even better written with
+Similar to parametrized test cases, cluster configurations can be parametrized or even better written with
 [Jinja2](http://jinja.pocoo.org/docs/2.10/) templating syntax.
 
 The cluster configuration needed for a given test case needs to reside in the test specific `test_datadir`
@@ -718,12 +718,12 @@ destroyed when the test completes or in case of unexpected errors.
 in the tests output directory.
 
 The object returned by clusters_factory is a `Cluster` instance that contains all the necessary cluster information,
-included the CloudFormation stack outputs.
+including the CloudFormation stack outputs.
 
 ### Execute Remote Commands
 
 To execute remote commands or scripts on the head node of the cluster under test, the `RemoteCommandExecutor`
-class can be used. It simply requires a valid `Cluster` object to be initialized and it offers some utility
+class can be used. It simply requires a valid `Cluster` object to be initialized. It offers some utility
 methods to execute remote commands and scripts as shown in the example below:
 
 ```python
@@ -1030,4 +1030,4 @@ tar xzvf headnode-previous-run.tar.gz -C previous-run/
 diff --exclude=network/ -u *-run/system-information | diff2html -s side -i stdin -o stdout > diff.html ;
 ```
 
-Once generated the file it can be inspected in the browser.
+Once generated the file can be inspected in the browser.
