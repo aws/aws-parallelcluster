@@ -876,7 +876,12 @@ def _test_ec2_status_check_replacement(
     )
     scheduler_commands.cancel_job(kill_job_id)
     # Assert static nodes are reset
-    _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[])
+    _wait_for_node_reset(
+        scheduler_commands,
+        static_nodes=static_nodes,
+        dynamic_nodes=[],
+        stop_max_delay_secs=1200,
+    )
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
     # Reset SlurmdTimeout to 180s
     _set_slurmd_timeout(remote_command_executor, slurm_root_path, timeout=180)
@@ -950,20 +955,42 @@ def _test_clustermgtd_down_logic(
     )
 
 
-def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
+def _wait_for_node_reset(
+    scheduler_commands,
+    static_nodes,
+    dynamic_nodes,
+    wait_fixed_secs=20,
+    stop_max_delay_secs=300,
+):
     """Wait for static and dynamic nodes to be reset."""
     if static_nodes:
         logging.info("Assert static nodes are placed in DOWN during replacement")
         # DRAIN+DOWN = drained
         wait_for_compute_nodes_states(
-            scheduler_commands, static_nodes, expected_states=["down", "down*", "drained", "drained*"]
+            scheduler_commands,
+            static_nodes,
+            expected_states=["down", "down*", "drained", "drained*"],
+            wait_fixed_secs=wait_fixed_secs,
+            stop_max_delay_secs=stop_max_delay_secs,
         )
         logging.info("Assert static nodes are replaced")
-        wait_for_compute_nodes_states(scheduler_commands, static_nodes, expected_states=["idle"])
+        wait_for_compute_nodes_states(
+            scheduler_commands,
+            static_nodes,
+            expected_states=["idle"],
+            wait_fixed_secs=wait_fixed_secs,
+            stop_max_delay_secs=stop_max_delay_secs,
+        )
     # dynamic nodes are power saved after SuspendTimeout. static_nodes must be checked first
     if dynamic_nodes:
         logging.info("Assert dynamic nodes are power saved")
-        wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
+        wait_for_compute_nodes_states(
+            scheduler_commands,
+            dynamic_nodes,
+            expected_states=["idle~"],
+            wait_fixed_secs=wait_fixed_secs,
+            stop_max_delay_secs=stop_max_delay_secs,
+        )
         node_addr_host = scheduler_commands.get_node_addr_host()
         _assert_node_addr_host_reset(node_addr_host, dynamic_nodes)
 
