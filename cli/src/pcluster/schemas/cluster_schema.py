@@ -482,9 +482,9 @@ class SharedStorageSchema(BaseSchema):
         validate=validate.OneOf(["Ebs", FSX_LUSTRE, FSX_OPENZFS, FSX_ONTAP, "Efs"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
-    ebs_settings = fields.Nested(EbsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    efs_settings = fields.Nested(EfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    fsx_lustre_settings = fields.Nested(FsxLustreSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    ebs_settings = fields.Nested(EbsSettingsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
+    efs_settings = fields.Nested(EfsSettingsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
+    fsx_lustre_settings = fields.Nested(FsxLustreSettingsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     fsx_open_zfs_settings = fields.Nested(
         FsxOpenZfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
