@@ -208,6 +208,10 @@ def check_fsx(
             assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
 
 
+def get_efs_ids(cluster, region):
+    return retrieve_cfn_outputs(cluster.cfn_name, region).get("EFSIds").split(",")
+
+
 def get_fsx_ids(cluster, region):
     return retrieve_cfn_outputs(cluster.cfn_name, region).get("FSXIds").split(",")
 
