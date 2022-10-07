@@ -18,9 +18,10 @@ from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import Ref, Template, ec2
 from troposphere.efs import MountTarget
-from utils import generate_stack_name, get_vpc_snakecase_value
+from utils import generate_stack_name, get_compute_nodes_instance_ips, get_vpc_snakecase_value
 
 from tests.storage.storage_common import (
+    get_efs_ids,
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
     write_file_into_efs,
@@ -65,10 +66,11 @@ def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.usefixtures("scheduler", "instance")
+@pytest.mark.usefixtures("instance")
 def test_multiple_efs(
     os,
     region,
+    scheduler,
     efs_stack_factory,
     mount_target_stack_factory,
     pcluster_config_reader,
@@ -129,6 +131,12 @@ def test_multiple_efs(
         remote_command_executor.run_remote_command(f"cat {existing_efs_mount_dirs[i]}/{existing_efs_filenames[i]}")
 
     run_benchmarks(remote_command_executor, scheduler_commands)
+
+    if os == "alinux2" and scheduler == "slurm":
+        logging.info("Checking EFS utils on Amazon linux 2")
+        _test_efs_utils(
+            remote_command_executor, scheduler_commands, cluster, region, all_mount_dirs, get_efs_ids(cluster, region)
+        )
 
 
 def _add_mount_targets(subnet_ids, efs_ids, security_group, template):
@@ -230,3 +238,26 @@ def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
         assert_that(head_node_subnet_az).is_equal_to(compute_subnet_az)
     else:
         assert_that(head_node_subnet_az).is_not_equal_to(compute_subnet_az)
+
+
+def _test_efs_utils(remote_command_executor, scheduler_commands, cluster, region, mount_dirs, efs_ids):
+    # Collect a list of command executors of all compute nodes
+    compute_node_remote_command_executors = []
+    for compute_node_ip in get_compute_nodes_instance_ips(cluster.name, region):
+        compute_node_remote_command_executors.append(RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip))
+    # Unmount all EFS from head node and compute nodes
+    for mount_dir in mount_dirs:
+        command = f"sudo umount {mount_dir}"
+        remote_command_executor.run_remote_command(command)
+        for compute_node_remote_command_executor in compute_node_remote_command_executors:
+            compute_node_remote_command_executor.run_remote_command(command)
+    # Mount all EFS using EFS-utils
+    assert_that(mount_dirs).is_length(len(efs_ids))
+    for mount_dir, efs_id in zip(mount_dirs, efs_ids):
+        command = f"sudo mount -t efs -o tls {efs_id}:/ {mount_dir}"
+        remote_command_executor.run_remote_command(command)
+        for compute_node_remote_command_executor in compute_node_remote_command_executors:
+            compute_node_remote_command_executor.run_remote_command(command)
+        _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+    for mount_dir in mount_dirs:
+        test_efs_correctly_mounted(remote_command_executor, mount_dir)
