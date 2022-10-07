@@ -67,9 +67,16 @@ def assert_compute_node_states(scheduler_commands, compute_nodes, expected_state
         assert_that(expected_states).contains(node_states.get(node))
 
 
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
-def wait_for_compute_nodes_states(scheduler_commands, compute_nodes, expected_states):
-    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states)
+def wait_for_compute_nodes_states(
+    scheduler_commands,
+    compute_nodes,
+    expected_states,
+    wait_fixed_secs=20,
+    stop_max_delay_secs=300,
+):
+    retry(wait_fixed=seconds(wait_fixed_secs), stop_max_delay=seconds(stop_max_delay_secs))(assert_compute_node_states)(
+        scheduler_commands, compute_nodes, expected_states
+    )
 
 
 def assert_compute_node_reasons(scheduler_commands, compute_nodes, expected_reason):
