@@ -574,6 +574,9 @@ def inject_additional_image_configs_settings(image_config, request):
     with open(image_config, encoding="utf-8") as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
+    if not dict_has_nested_key(config_content, ("Build", "Imds", "RequireImdsV2")):
+        dict_add_nested_key(config_content, True, ("Build", "Imds", "RequireImdsV2"))
+
     if request.config.getoption("createami_custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")
     ):

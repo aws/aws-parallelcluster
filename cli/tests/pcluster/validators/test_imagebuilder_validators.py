@@ -10,15 +10,18 @@
 # limitations under the License.
 
 import pytest
+from assertpy import soft_assertions
 
 from pcluster.aws.aws_resources import ImageInfo
+from pcluster.validators.common import FailureLevel
 from pcluster.validators.imagebuilder_validators import (
     AMIVolumeSizeValidator,
     ComponentsValidator,
+    RequireImdsV2Validator,
     SecurityGroupsAndSubnetValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.validators.utils import assert_failure_messages
+from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 
 
 @pytest.mark.parametrize(
@@ -134,3 +137,25 @@ def test_components_validator(components, expected_message):
 def test_security_groups_and_subnet_validator(security_group_ids, subnet_ids, expected_message):
     actual_failures = SecurityGroupsAndSubnetValidator().execute(security_group_ids, subnet_ids)
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "require_imds_v2, expected_message, expected_failure_level",
+    [
+        (
+            False,
+            "The current build image configuration does not disable IMDSv1, "
+            "which we plan to disable by default in future versions. If you do "
+            "not explicitly need to use IMDSv1 enforce IMDSv2 usage by setting the "
+            "RequireImdsV2 configuration parameter to true (see documentation at: "
+            "https://docs.aws.amazon.com/parallelcluster/latest/ug/Build-v3.html)",
+            FailureLevel.INFO,
+        ),
+        (True, None, None),
+    ],
+)
+def test_require_imds_v2_validator(require_imds_v2, expected_message, expected_failure_level):
+    actual_failures = RequireImdsV2Validator().execute(require_imds_v2)
+    with soft_assertions():
+        assert_failure_messages(actual_failures, expected_message)
+        assert_failure_level(actual_failures, expected_failure_level)

@@ -35,6 +35,7 @@ from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
     BaseSchema,
+    ImdsSchema,
     TagSchema,
     get_field_validator,
     validate_json_format,
@@ -175,6 +176,7 @@ class BuildSchema(BaseSchema):
     security_group_ids = fields.List(fields.Str)
     subnet_id = fields.Str(validate=get_field_validator("subnet_id"))
     update_os_packages = fields.Nested(UpdateOsPackagesSchema)
+    imds = fields.Nested(ImdsSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):

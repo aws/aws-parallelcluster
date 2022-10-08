@@ -1,3 +1,5 @@
 Build:
+    Imds:
+        RequireImdsV2: false
     InstanceType: {{ instance }}
     ParentImage: {{ parent_image }}
