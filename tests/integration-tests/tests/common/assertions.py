@@ -172,12 +172,17 @@ def assert_cluster_imds_v2_requirement_status(region, cluster, status):
 
     for reservations in describe_response.get("Reservations"):
         for instance in reservations.get("Instances"):
-            instance_id = instance.get("InstanceId")
-            imds_v2_status = instance.get("MetadataOptions").get("HttpTokens")
+            assert_instance_has_desired_imds_v2_setting(instance, status)
 
-            logging.info(f"Instance {instance_id} has IMDSv2 {imds_v2_status}")
 
-            assert_that(imds_v2_status).is_equal_to(status)
+def assert_instance_has_desired_imds_v2_setting(instance, status):
+    instance_id = instance.get("InstanceId")
+    instance_name = instance.get("Tags").get("Name")
+    imds_v2_status = instance.get("MetadataOptions").get("HttpTokens")
+
+    logging.info(f"Instance {instance_id} ({instance_name}) has IMDSv2 {imds_v2_status}")
+
+    assert_that(imds_v2_status).is_equal_to(status)
 
 
 def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_command_executor=None):
