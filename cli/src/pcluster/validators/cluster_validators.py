@@ -394,17 +394,15 @@ def _check_in_out_access(security_groups_ids, port, is_cidr_optional, protocol="
 
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
-            if _check_sg_rules_for_port(rule, port, protocol):
-                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
-                    in_access = True
-                    break
+            if _check_sg_rules_for_port(rule, port, protocol) and _check_sg_rule_targets(rule, is_cidr_optional):
+                in_access = True
+                break
 
         # Check all outbound rules
         for rule in sec_group.get("IpPermissionsEgress"):
-            if _check_sg_rules_for_port(rule, port, protocol):
-                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
-                    out_access = True
-                    break
+            if _check_sg_rules_for_port(rule, port, protocol) and _check_sg_rule_targets(rule, is_cidr_optional):
+                out_access = True
+                break
 
         if in_access and out_access:
             return True
@@ -441,6 +439,26 @@ def _check_sg_rules_for_port(rule, port_to_check, protocol):
         return True
 
     return False
+
+
+def _check_sg_rule_targets(rule, is_cidr_optional):
+    """
+    Verify if the security group rule has the expected targets.
+    WARNING: The current implementation only enforces the presence of a target, whether it is
+    an IpRange, a PrefixList or a UserIdGroupPair, without inspecting the actual content.
+    TODO: We should improve this check by enforcing specific targets.
+
+    :param rule: The rule to check.
+    :param is_cidr_optional: If it is True, don't enforce check on CIDR.
+    :return: True if the rule has the expected targets, False otherwise.
+    """
+    return (
+        is_cidr_optional
+        or rule.get("IpRanges")
+        or rule.get("Ipv6Ranges")
+        or rule.get("PrefixListIds")
+        or rule.get("UserIdGroupPairs")
+    )
 
 
 class ExistingFsxNetworkingValidator(Validator):

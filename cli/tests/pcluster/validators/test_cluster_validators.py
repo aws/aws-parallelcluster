@@ -558,39 +558,63 @@ def test_queue_name_validator(name, expected_message):
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
-        (  # not working case, wrong security group. Lustre
-            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+        (   # Working case, security group specified. Lustre
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (   # Not working case, wrong port. Lustre
+            # Security group not allowing traffic on the expected ports.
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "tpc", "FromPort": 22, "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             False,
             ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file system .* does not satisfy mounting requirement. "
             "The file system must be associated to a security group that "
             r"allows inbound and outbound TCP traffic through ports \[988\].",
         ),
-        (  # not working case, wrong security group. OpenZFS
-            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+        (   # Working case, security group specified. OpenZFS
             "OPENZFS",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (   # Not working case, wrong port. OpenZFS
+            # Security group not allowing traffic on the expected ports.
+            "OPENZFS",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "tpc", "FromPort": 22, "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             False,
             ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file system .* does not satisfy mounting requirement. "
             "The file system must be associated to a security group that "
             r"allows inbound and outbound TCP traffic through ports \[111, 2049, 20001, 20002, 20003\].",
         ),
-        (  # not working case, wrong security group. Ontap
-            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+        (   # Working case, security group specified. Ontap
             "ONTAP",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             False,
             ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (   # Not working case, wrong port. Ontap
+            # Security group not allowing traffic on the expected ports.
+            "ONTAP",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "tpc", "FromPort": 22, "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            False,
+            ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file system .* does not satisfy mounting requirement. "
             "The file system must be associated to a security group that "
-            r"allows inbound and outbound TCP traffic through ports \[111, 635, 2049, 4046\].",
-        ),
+            r"allows inbound and outbound TCP traffic through ports \[111, 635, 2049, 4046\]."
+    ),
         (  # not working case --> no network interfaces
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
