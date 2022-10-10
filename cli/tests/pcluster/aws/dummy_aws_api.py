@@ -121,6 +121,7 @@ class _DummyEc2Client(Ec2Client):
             "cr-123": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
             "cr-234": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
         }
+        self.security_groups_cache = {}
 
     def get_official_image_id(self, os, architecture, filters=None):
         return "dummy-ami-id"
@@ -161,6 +162,9 @@ class _DummyEfsClient(Ec2Client):
             mt_id = mt_dict.get(avail_zone)
 
         return mt_id
+
+    def get_efs_mount_target_security_groups(self, target_id):
+        return ["sg-12345678", "sg-23456789"]
 
 
 class _DummyFSxClient(FSxClient):

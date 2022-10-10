@@ -12,6 +12,7 @@ import math
 import re
 from collections import defaultdict
 from enum import Enum
+from ipaddress import ip_network
 from itertools import combinations, product
 from typing import List
 
@@ -664,8 +665,8 @@ class EfsIdValidator(Validator):  # TODO add tests
     Validate if there are existing mount target in the head node availability zone
     """
 
-    def _validate(self, efs_id, avail_zones: set, are_all_security_groups_customized):
-        for avail_zone in avail_zones:
+    def _validate(self, efs_id, avail_zones_mapping: dict, are_all_security_groups_customized):
+        for avail_zone, subnets in avail_zones_mapping.items():
             head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, avail_zone)
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
             if head_node_target_id:
@@ -680,6 +681,44 @@ class EfsIdValidator(Validator):  # TODO add tests
                         ),
                         FailureLevel.ERROR,
                     )
+                if not are_all_security_groups_customized:
+                    self._check_cidrs_cover_subnets(head_node_target_id, avail_zone, sg_ids, efs_id, subnets)
+
+    def _check_subnet_access(self, security_groups_ids, subnet_cidr, access_type):
+        permission = "IpPermissions" if access_type == "in" else "IpPermissionsEgress"
+        access = False
+        for sec_group in security_groups_ids:
+            for rule in sec_group.get(permission):
+                if rule.get("PrefixListIds"):
+                    access = True
+                    break
+                if rule.get("IpRanges"):
+                    for ip_range in rule.get("IpRanges"):
+                        if ip_network(ip_range.get("CidrIp")).supernet_of(subnet_cidr):
+                            access = True
+                            break
+        return access
+
+    def _check_cidrs_cover_subnets(self, head_node_target_id, avail_zone, security_groups_ids, efs_id, subnets):
+        """Verify given list of security groups to check if they allow in and out access on cluster subnet CIDRs."""
+        security_groups_ids = AWSApi.instance().ec2.describe_security_groups(security_groups_ids)
+        for subnet in subnets:
+            subnet_cidr = ip_network(AWSApi.instance().ec2.get_subnet_cidr(subnet))
+            in_access, out_access = self._check_subnet_access(
+                security_groups_ids, subnet_cidr, "in"
+            ), self._check_subnet_access(security_groups_ids, subnet_cidr, "out")
+
+            if not in_access or not out_access:
+                self._add_failure(
+                    "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
+                    "but it does not have a security group that allows inbound and outbound rules to allow traffic of "
+                    "subnet {3}. Please modify the Mount Target's security group, to allow traffic on subnet.".format(
+                        head_node_target_id, avail_zone, efs_id, subnet
+                    ),
+                    FailureLevel.WARNING,
+                )
+
+        return False
 
 
 class SharedStorageNameValidator(Validator):

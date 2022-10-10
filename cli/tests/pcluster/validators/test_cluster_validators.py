@@ -28,6 +28,7 @@ from pcluster.validators.cluster_validators import (
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
     EfaValidator,
+    EfsIdValidator,
     ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
     HeadNodeImdsValidator,
@@ -1188,5 +1189,203 @@ def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected
 )
 def test_deletion_policy_validator(deletion_policy, name, expected_message, failure_level):
     actual_failures = DeletionPolicyValidator().execute(deletion_policy, name)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "avail_zones_mapping, cluster_subnet_cidr, are_all_security_groups_customized, security_groups, expected_message, "
+    "failure_level",
+    [
+        (
+            {"dummy-az-1": {"subnet-1", "subnet-2"}},
+            "0.0.0.0/16",
+            False,
+            [
+                {
+                    "IpPermissions": [
+                        {
+                            "FromPort": 2049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "GroupId": "sg-041b924ce46b2dc0b",
+                    "IpPermissionsEgress": [
+                        {
+                            "IpProtocol": "-1",
+                            "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "VpcId": "vpc-12345678",
+                },
+            ],
+            None,
+            None,
+        ),
+        (
+            {"dummy-az-1": {"subnet-1", "subnet-2"}},
+            "0.0.0.0/16",
+            False,
+            [
+                {
+                    "IpPermissions": [
+                        {
+                            "FromPort": 2049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "GroupId": "sg-041b924ce46b2dc0b",
+                    "IpPermissionsEgress": [
+                        {
+                            "IpProtocol": "-1",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "VpcId": "vpc-12345678",
+                },
+            ],
+            "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
+            "but it does not have a security group that allows inbound and outbound rules to allow traffic of subnet "
+            "subnet-2. Please modify the Mount Target's security group, to allow traffic on subnet.",
+            FailureLevel.WARNING,
+        ),
+        (
+            {"dummy-az-1": {"subnet-1", "subnet-2"}},
+            "0.0.0.0/16",
+            True,
+            [
+                {
+                    "IpPermissions": [
+                        {
+                            "FromPort": 2049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "GroupId": "sg-041b924ce46b2dc0b",
+                    "IpPermissionsEgress": [
+                        {
+                            "IpProtocol": "-1",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "VpcId": "vpc-12345678",
+                },
+            ],
+            None,
+            None,
+        ),
+        (
+            {"dummy-az-1": {"subnet-1", "subnet-2"}},
+            "172.31.64.0/20",
+            False,
+            [
+                {
+                    "IpPermissions": [
+                        {
+                            "FromPort": 1049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 1049,
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "GroupId": "sg-041b924ce46b2dc0b",
+                    "IpPermissionsEgress": [
+                        {
+                            "IpProtocol": "-1",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "VpcId": "vpc-12345678",
+                },
+            ],
+            "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
+            "but it does not have a security group that allows inbound and outbound rules to support NFS. Please "
+            "modify the Mount Target's security group, to allow traffic on port 2049.",
+            FailureLevel.ERROR,
+        ),
+        (
+            {"dummy-az-1": {"subnet-1", "subnet-2"}},
+            "172.31.0.0/16",
+            False,
+            [
+                {
+                    "IpPermissions": [
+                        {
+                            "FromPort": 2049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "172.31.64.0/20"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "GroupId": "sg-041b924ce46b2dc0b",
+                    "IpPermissionsEgress": [
+                        {
+                            "IpProtocol": "-1",
+                            "IpRanges": [{"CidrIp": "172.31.64.0/20"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "VpcId": "vpc-12345678",
+                },
+            ],
+            "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
+            "but it does not have a security group that allows inbound and outbound rules to allow traffic of subnet "
+            "subnet-2. Please modify the Mount Target's security group, to allow traffic on subnet.",
+            FailureLevel.WARNING,
+        ),
+    ],
+)
+def test_efs_id_validator(
+    mocker,
+    boto3_stubber,
+    avail_zones_mapping,
+    are_all_security_groups_customized,
+    security_groups,
+    cluster_subnet_cidr,
+    expected_message,
+    failure_level,
+):
+    mock_aws_api(mocker)
+    efs_id = "dummy-efs-1"
+
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_cidr", return_value=cluster_subnet_cidr)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_security_groups", return_value=security_groups)
+
+    actual_failures = EfsIdValidator().execute(efs_id, avail_zones_mapping, are_all_security_groups_customized)
     assert_failure_messages(actual_failures, expected_message)
     assert_failure_level(actual_failures, failure_level)
