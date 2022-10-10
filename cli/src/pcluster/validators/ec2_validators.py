@@ -38,9 +38,9 @@ class InstanceTypeAcceleratorManufacturerValidator(Validator):
             manufacturer = gpu_manufacturers[0] if gpu_manufacturers else ""
             if manufacturer.upper() != "NVIDIA":
                 self._add_failure(
-                    f"The GPU manufacturer '{manufacturer}' for instance type '{instance_type}' is not supported. "
-                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
-                    "GPUs functionalities",
+                    f"The accelerator manufacturer '{manufacturer}' for instance type '{instance_type}' is "
+                    "not supported. Please make sure to use a custom AMI with the appropriate drivers in order to "
+                    "leverage the accelerator functionalities",
                     FailureLevel.WARNING,
                 )
                 LOGGER.warning(
@@ -65,9 +65,9 @@ class InstanceTypeAcceleratorManufacturerValidator(Validator):
             manufacturer = inference_accelerator_manufacturers[0] if inference_accelerator_manufacturers else ""
             if manufacturer.upper() != "AWS":
                 self._add_failure(
-                    f"The inference accelerator manufacturer '{manufacturer}' for instance type '{instance_type}' is "
+                    f"The accelerator manufacturer '{manufacturer}' for instance type '{instance_type}' is "
                     "not supported. Please make sure to use a custom AMI with the appropriate drivers in order to "
-                    "leverage the accelerators functionalities",
+                    "leverage the accelerator functionalities",
                     FailureLevel.WARNING,
                 )
                 LOGGER.warning(
