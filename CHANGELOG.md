@@ -1,12 +1,11 @@
 CHANGELOG
 =========
 
-3.x.x
+3.3.0
 -----
-**ENHANCEMENTS**
-- Add support for updating `SharedStorage` configuration.
 
 **ENHANCEMENTS**
+- Add support for updating `SharedStorage` configuration.
 - Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage
   to support storage retention on deletion.
 - Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
@@ -27,10 +26,25 @@ CHANGELOG
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified
   along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
 - Fix cluster update when changing the order of SharedStorage together with other changes in the configuration.
-- Avoid failing on DescribeCluster when cluster configuration is not available.
 - Fix `UpdateParallelClusterLambdaRole` in the ParallelCluster API to upload logs to CloudWatch.
 - Fix Cinc not using the local CA certificates bundle when installing packages before any cookbooks are executed.
 - Fix a hang in upgrading ubuntu via `pcluster build-image` when `Build:UpdateOsPackages:Enabled:true` is set.
+
+3.2.1
+-----
+
+**ENHANCEMENTS**
+- Improve the logic to associate the host routing tables to the different network cards to better support EC2 instances with several NICs.
+
+**CHANGES**
+- Upgrade NVIDIA driver to version 470.141.03.
+- Upgrade NVIDIA Fabric Manager to version 470.141.03.
+- Disable cron job tasks man-db and mlocate, which may have a negative impact on node performance.
+- Upgrade Intel MPI Library to 2021.6.0.602.
+- Upgrade Python from 3.7.10 to 3.7.13 in response to this [security risk](https://nvd.nist.gov/vuln/detail/CVE-2021-3737).
+
+**BUG FIXES**
+- Avoid failing on DescribeCluster when cluster configuration is not available.
 
 3.2.0
 ------
