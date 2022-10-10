@@ -128,6 +128,15 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
+    def get_subnet_cidr(self, subnet_id):
+        """Return cidr block  of the given subnet."""
+        subnets = self._client.describe_subnets(SubnetIds=[subnet_id]).get("Subnets")
+        if subnets:
+            return subnets[0].get("CidrBlock")
+        raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_image(self, ami_id):
         """Describe image by image id, return an object of ImageInfo."""
         result = self._client.describe_images(ImageIds=[ami_id])
