@@ -19,12 +19,11 @@ import time
 from typing import List
 
 import configparser
-import yaml
 
 from pcluster.api.encoder import JSONEncoder
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.utils import datetime_to_epoch, to_utc_datetime
+from pcluster.utils import datetime_to_epoch, to_utc_datetime, yaml_load
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,17 +55,17 @@ class NotFound(Exception):
 def parse_config(config: str) -> dict:
     """Parse a YAML configuration into a dictionary."""
     try:
-        config_dict = yaml.safe_load(config)
+        config_dict = yaml_load(config)
         if not isinstance(config_dict, dict):
             LOGGER.error("Failed: parsed config is not a dict")
-            raise Exception("parsed config is not a dict")
+            raise Exception("Parsed config is not a dict")
         return config_dict
     except Exception as e:
         try:
             configparser.ConfigParser().read_string(config)
         except Exception:
             LOGGER.error("Failed when parsing the configuration due to invalid YAML document: %s", e)
-            raise BadRequest("Configuration must be a valid YAML document")
+            raise BadRequest("Configuration must be a valid YAML document. %s" % e)
         LOGGER.error("Please use pcluster3 configuration file format: %s", e)
         raise BadRequest(
             "ParallelCluster 3 requires configuration files to be valid YAML documents. "
