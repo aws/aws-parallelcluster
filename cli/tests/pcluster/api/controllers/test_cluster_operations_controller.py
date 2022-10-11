@@ -297,7 +297,7 @@ Scheduling:
                 None,
                 "us-east-1",
                 None,
-                {"message": "Bad Request: Configuration must be a valid YAML document"},
+                {"message": "Bad Request: Configuration must be a valid YAML document. Parsed config is not a dict"},
             ),
             (
                 {"clusterConfiguration": "[cluster]\nkey_name=mykey", "clusterName": "cluster"},
@@ -1541,7 +1541,10 @@ class TestUpdateCluster:
                 None,
                 None,
                 None,
-                {"message": "Bad Request: Cluster update failed.\nConfiguration must be a valid YAML document"},
+                {
+                    "message": "Bad Request: Cluster update failed.\nConfiguration must be a valid YAML document. "
+                    "Parsed config is not a dict"
+                },
                 id="request with single string configuration",
             ),
             pytest.param(

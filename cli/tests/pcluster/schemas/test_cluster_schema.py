@@ -916,7 +916,7 @@ def test_scheduler_plugin_settings_schema(
                 "pcluster.schemas.cluster_schema.urlopen", side_effect=https_error
             ).return_value.__enter__.return_value = file_mock
     if yaml_load_error:
-        mocker.patch("pcluster.schemas.cluster_schema.yaml.safe_load", side_effect=yaml_load_error)
+        mocker.patch("pcluster.utils.yaml.safe_load", side_effect=yaml_load_error)
     if scheduler_definition:
         scheduler_plugin_settings_schema["SchedulerDefinition"] = scheduler_definition
     if grant_sudo_privileges:

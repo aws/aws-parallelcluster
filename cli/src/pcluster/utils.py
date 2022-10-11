@@ -29,6 +29,9 @@ import dateutil.parser
 import pkg_resources
 import yaml
 from pkg_resources import packaging
+from yaml import SafeLoader
+from yaml.constructor import ConstructorError
+from yaml.resolver import BaseResolver
 
 from pcluster.aws.common import get_region
 from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
@@ -312,7 +315,7 @@ def get_url_scheme(url):
 def load_yaml_dict(file_path):
     """Read the content of a yaml file."""
     with open(file_path, encoding="utf-8") as conf_file:
-        yaml_content = yaml.safe_load(conf_file)
+        yaml_content = yaml_load(conf_file)
 
     # TODO use from cfn_flip import load_yaml
     return yaml_content
@@ -333,3 +336,23 @@ def get_attr(obj, attributes, default=None):
         if obj is None:
             return default
     return obj
+
+
+def yaml_load(stream):
+    yaml.add_constructor(
+        tag=BaseResolver.DEFAULT_MAPPING_TAG, constructor=yaml_no_duplicates_constructor, Loader=SafeLoader
+    )
+    return yaml.safe_load(stream)
+
+
+def yaml_no_duplicates_constructor(loader, node, deep=False):
+    """Check for duplicate keys."""
+    mapping = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        value = loader.construct_object(value_node, deep=deep)
+        if key in mapping:
+            raise ConstructorError(problem="Duplicate key found: %s" % key, problem_mark=key_node.start_mark)
+        mapping[key] = value
+
+    return loader.construct_mapping(node, deep)

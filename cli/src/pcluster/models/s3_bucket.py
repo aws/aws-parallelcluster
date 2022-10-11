@@ -24,7 +24,7 @@ import yaml
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
-from pcluster.utils import get_partition, zip_dir
+from pcluster.utils import get_partition, yaml_load, zip_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -293,7 +293,7 @@ class S3Bucket:
         file_content = result["Body"].read().decode("utf-8")
 
         if format == S3FileFormat.YAML:
-            file = yaml.safe_load(file_content)
+            file = yaml_load(file_content)
         elif format == S3FileFormat.JSON:
             file = json.loads(file_content)
         else:
