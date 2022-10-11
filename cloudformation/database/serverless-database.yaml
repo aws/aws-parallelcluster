@@ -17,6 +17,9 @@ Metadata:
           - Vpc
           - DatabaseClusterSubnetOne
           - DatabaseClusterSubnetTwo
+          - VpcCidrBlock
+          - Subnet1CidrBlock
+          - Subnet2CidrBlock
     ParameterLabels:
       Vpc:
         default: "The VPC to use for the database cluster."
@@ -32,6 +35,12 @@ Metadata:
         default: "The first subnet to use for the database cluster."
       DatabaseClusterSubnetTwo:
         default: "The second subnet to use for the database cluster."
+      VpcCidrBlock:
+        default: "The CIDR block to be used for the VPC if its creation is requested."
+      Subnet1CidrBlock:
+        default: "The CIDR block to be used for the first Subnet if its creation is requested."
+      Subnet2CidrBlock:
+        default: "The CIDR block to be used for the second Subnet if its creation is requested."
 Parameters:
   AdminPasswordSecretString:
     Description: >-
@@ -56,17 +65,41 @@ Parameters:
     Description: VPC ID (leave BLANK to create a new VPC).
     Type: String
     # Type: AWS::EC2::VPC::Id
-    Default: ""
+    Default: ''
   DatabaseClusterSubnetOne:
     Description: First Subnet ID (leave BLANK to create a new subnet).
     Type: String
     # Type: AWS::EC2::Subnet::Id
-    Default: ""
+    Default: ''
   DatabaseClusterSubnetTwo:
     Description: Second subnet ID (leave BLANK to create a new subnet). This subnet must be in different availability zone from the first subnet.
     Type: String
     # Type: AWS::EC2::Subnet::Id
-    Default: ""
+    Default: ''
+  VpcCidrBlock:
+    Description: CIDR block for the VPC (used only if creation is requested - IN THIS CASE THE DEFAULT VALUE MUST BE CHANGED).
+    Type: String
+    Default: '0.0.0.0/16'
+    AllowedPattern: >-
+      ^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8])))$
+    ConstraintDescription: >-
+      The CIDR block must be formatted as W.X.Y.Z/prefix , where prefix must be between 16 and 28.
+  Subnet1CidrBlock:
+    Description: CIDR block for first Subnet (used only if creation is requested - IN THIS CASE THE DEFAULT VALUE MUST BE CHANGED).
+    Type: String
+    Default: '0.0.0.0/24'
+    AllowedPattern: >-
+      ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      The CIDR block must be formatted as W.X.Y.Z/prefix , where prefix must be between 16 and 28.
+  Subnet2CidrBlock:
+    Description: CIDR block for the second Subnet (used only if creation is requested - IN THIS CASE THE DEFAULT VALUE MUST BE CHANGED).
+    Type: String
+    Default: '0.0.0.0/24'
+    AllowedPattern: >-
+      ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      The CIDR block must be formatted as W.X.Y.Z/prefix , where prefix must be between 16 and 28.
   MinCapacity:
     Description: Must be less than or equal to the maximum capacity.
     Type: Number
@@ -108,11 +141,43 @@ Rules:
       - Assert: !Equals
           - !Ref DatabaseClusterSubnetOne
           - ''
-        AssertDescription: DatabaseClusterSubnetOne must be empty if Vpc is not provided.
+        AssertDescription: DatabaseClusterSubnetOne must be empty if VPC is not provided.
       - Assert: !Equals
           - !Ref DatabaseClusterSubnetTwo
           - ''
-        AssertDescription: DatabaseClusterSubnetTwo must be empty if Vpc is not provided.
+        AssertDescription: DatabaseClusterSubnetTwo must be empty if VPC is not provided.
+  BadVpcCidrAssertion:
+    RuleCondition: !Equals
+      - !Ref Vpc
+      - ''
+    Assertions:
+      - Assert: !Not
+          - !Equals
+            - !Ref VpcCidrBlock
+            - '0.0.0.0/16'
+        AssertDescription: The default CIDR block for the VPC must be changed if the VPC creation is requested.
+  BadSubnetsCidrsAssertion:
+    RuleCondition: !Or
+      - !Equals
+        - !Ref Vpc
+        - ''
+      - !Equals
+        - !Ref DatabaseClusterSubnetOne
+        - ''
+      - !Equals
+        - !Ref DatabaseClusterSubnetTwo
+        - ''
+    Assertions:
+      - Assert: !Not
+          - !Equals
+            - !Ref Subnet1CidrBlock
+            - '0.0.0.0/24'
+        AssertDescription: The default CIDR block for the first subnet must be changed if the subnet creation is requested.
+      - Assert: !Not
+          - !Equals
+            - !Ref Subnet2CidrBlock
+            - '0.0.0.0/24'
+        AssertDescription: The default CIDR block for the second subnet must be changed if the subnet creation is requested.
 Resources:
   #
   # Optional Networking
@@ -121,7 +186,7 @@ Resources:
     Type: 'AWS::EC2::VPC'
     Condition: CreateVPC
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: !Ref VpcCidrBlock
       EnableDnsHostnames: true
       EnableDnsSupport: true
       InstanceTenancy: default
@@ -135,8 +200,8 @@ Resources:
     Condition: CreateSubnets
     Properties:
       VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
-      AvailabilityZone: !Sub ${AWS::Region}a
-      CidrBlock: 10.0.128.0/24
+      AvailabilityZone: !Sub '${AWS::Region}a'
+      CidrBlock: !Ref Subnet1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -164,8 +229,8 @@ Resources:
     Condition: CreateSubnets
     Properties:
       VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
-      AvailabilityZone: !Sub ${AWS::Region}b
-      CidrBlock: 10.0.129.0/24
+      AvailabilityZone: !Sub '${AWS::Region}b'
+      CidrBlock:  !Ref Subnet2CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -206,7 +271,7 @@ Resources:
   ServerlessDatabaseClusterSubnetGroup:
     Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
-      DBSubnetGroupDescription: !Sub Subnets for ServerlessDatabaseCluster-${AWS::Region} database
+      DBSubnetGroupDescription: !Sub 'Subnets for ServerlessDatabaseCluster-${AWS::Region} database'
       SubnetIds:
         - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet1, !Ref DatabaseClusterSubnetOne]
         - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
