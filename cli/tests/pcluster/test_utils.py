@@ -14,6 +14,7 @@ import time
 
 import pytest
 from assertpy import assert_that
+from yaml.constructor import ConstructorError
 
 import pcluster.aws.common
 import pcluster.utils as utils
@@ -21,6 +22,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import Cache
 from pcluster.models.cluster import Cluster, ClusterStack
+from pcluster.utils import yaml_load
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_NAME = "cluster-name"
@@ -302,3 +304,20 @@ def test_replace_url_parameters(mocker, url, expected_url):
     mocker.patch("pcluster.utils.get_region", return_value="us-east-1")
     mocker.patch("pcluster.utils.get_url_domain_suffix", return_value="amazonaws.com")
     assert_that(pcluster.utils.replace_url_parameters(url)).is_equal_to(expected_url)
+
+
+@pytest.mark.parametrize(
+    "yaml_string, expected_yaml_dict, expected_error",
+    (
+        ["PropA:\n  PropB: ValueB", {"PropA": {"PropB": "ValueB"}}, None],
+        ["PropA:\n  PropB: ValueB1\n  PropB: ValueB2", None, ConstructorError("Duplicate key found: PropB *")],
+    ),
+)
+def test_yaml_load(yaml_string, expected_yaml_dict, expected_error):
+    if expected_error is not None:
+        with pytest.raises(Exception) as exc:
+            yaml_load(yaml_string)
+        assert_that(str(exc.value)).matches(str(expected_error))
+    else:
+        yaml_dict = yaml_load(yaml_string)
+        assert_that(yaml_dict).is_equal_to(expected_yaml_dict)

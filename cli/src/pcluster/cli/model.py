@@ -15,11 +15,10 @@ import importlib
 import json
 
 import jmespath
-import yaml
 
 from pcluster.api import encoder, openapi
 from pcluster.cli.exceptions import APIOperationException
-from pcluster.utils import to_kebab_case, to_snake_case
+from pcluster.utils import to_kebab_case, to_snake_case, yaml_load
 
 # For importing package resources
 try:
@@ -90,7 +89,7 @@ def _resolve_body(spec, operation):
 def package_spec():
     """Load the OpenAPI specification from the package."""
     with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
-        return yaml.safe_load(spec_file.read())
+        return yaml_load(spec_file.read())
 
 
 def load_model(spec):

@@ -21,7 +21,6 @@ import re
 from typing import List
 from urllib.request import urlopen
 
-import yaml
 from marshmallow import ValidationError, fields, post_load, pre_dump, pre_load, validate, validates, validates_schema
 from yaml import YAMLError
 
@@ -134,6 +133,7 @@ from pcluster.schemas.common_schema import (
     get_field_validator,
     validate_no_reserved_tag,
 )
+from pcluster.utils import yaml_load
 from pcluster.validators.cluster_validators import EFS_MESSAGES, FSX_MESSAGES
 
 # pylint: disable=C0302
@@ -1777,7 +1777,7 @@ class SchedulerPluginSettingsSchema(BaseSchema):
 
         LOGGER.info("Using the following scheduler plugin definition:\n%s", scheduler_definition)
         try:
-            data["SchedulerDefinition"] = yaml.safe_load(scheduler_definition)
+            data["SchedulerDefinition"] = yaml_load(scheduler_definition)
         except YAMLError as e:
             raise ValidationError(
                 f"The retrieved SchedulerDefinition ({original_scheduler_definition}) is not a valid YAML."

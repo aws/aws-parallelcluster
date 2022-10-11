@@ -29,6 +29,7 @@ CHANGELOG
 - Fix `UpdateParallelClusterLambdaRole` in the ParallelCluster API to upload logs to CloudWatch.
 - Fix Cinc not using the local CA certificates bundle when installing packages before any cookbooks are executed.
 - Fix a hang in upgrading ubuntu via `pcluster build-image` when `Build:UpdateOsPackages:Enabled:true` is set.
+- Fix parsing of YAML cluster configuration by failing on duplicate keys.
 
 3.2.1
 -----
