@@ -45,16 +45,16 @@ Parameters:
   AdminPasswordSecretString:
     Description: >-
       Password must be at least 8 characters long and contain at least 1 upper case, 1 lower case, 1 digit, and 1
-      non-alphanumeric character. It must not contain any of the following: / (slash), ' (single quote), " (double quote)
+      non-alphanumeric character. It must not contain any of the following: # (hash), / (slash), ' (single quote), " (double quote)
       or @ (at sign).
     Type: String
     NoEcho: true
     MinLength: 8
     # Only allow 'Medium' or better strength passwords according to https://dev.mysql.com/doc/refman/8.0/en/validate-password.html
-    AllowedPattern: (?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\s])(?!.*[@/'"])^.*
+    AllowedPattern: (?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\s])(?!.*[@/'"#])^.*
     ConstraintDescription: >-
       Password must be at least 8 characters with at least one uppercase letter, one lower case letter, one numeric
-      digit, and one special (non-alphanumeric) character. It can not contain any of the following: / (slash), ' (single quote), " (double quote) and @ (at sign).
+      digit, and one special (non-alphanumeric) character. It can not contain any of the following: # (hash), / (slash), ' (single quote), " (double quote) and @ (at sign).
   ClusterAdmin:
     Description: Administrator user name.
     Type: String
