@@ -177,10 +177,11 @@ def assert_cluster_imds_v2_requirement_status(region, cluster, status):
 
 def assert_instance_has_desired_imds_v2_setting(instance, status):
     instance_id = instance.get("InstanceId")
-    instance_name = instance.get("Tags").get("Name")
+    instance_name = [tag["Value"] for tag in instance.get("Tags") if tag["Key"] == "Name"]
+    instance_name_part = f" ({instance_name[0]})" if instance_name else ""
     imds_v2_status = instance.get("MetadataOptions").get("HttpTokens")
 
-    logging.info(f"Instance {instance_id} ({instance_name}) has IMDSv2 {imds_v2_status}")
+    logging.info(f"Instance {instance_id}{instance_name_part} has IMDSv2 {imds_v2_status}")
 
     assert_that(imds_v2_status).is_equal_to(status)
 
