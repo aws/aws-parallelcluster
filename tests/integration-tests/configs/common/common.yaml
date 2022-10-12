@@ -371,6 +371,10 @@ networking:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+  test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+    dimensions:
+      - regions: [ "us-west-2" ]
+        oss: [ "alinux2" ]
 scaling:
   test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
     dimensions:
