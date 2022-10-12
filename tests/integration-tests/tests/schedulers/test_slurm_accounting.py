@@ -40,6 +40,28 @@ def _is_accounting_enabled(remote_command_executor):
     return remote_command_executor.run_remote_command("sacct", raise_on_error=False).ok
 
 
+def _require_server_identity(remote_command_executor, test_resources_dir, region):
+    ca_url = f"https://truststore.pki.rds.amazonaws.com/{region}/{region}-bundle.pem"
+    remote_command_executor.run_remote_script(
+        str(test_resources_dir / "require_server_identity.sh"),
+        args=[
+            ca_url,
+            f"{region}-bundle.pem",
+        ],
+        run_as_root=True,
+    )
+
+
+@retry(stop_max_attempt_number=3, wait_fixed=10 * 1000)
+def _assert_accounting_is_enabled(remote_command_executor):
+    assert_that(_is_accounting_enabled(remote_command_executor)).is_true()
+
+
+def _test_require_server_identity(remote_command_executor, test_resources_dir, region):
+    _require_server_identity(remote_command_executor, test_resources_dir, region)
+    _assert_accounting_is_enabled(remote_command_executor)
+
+
 def _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir):
     logging.info("Testing Slurm Accounting Users")
     expected_users = _get_expected_users(remote_command_executor, test_resources_dir)
@@ -130,6 +152,7 @@ def test_slurm_accounting(
     _test_successful_startup_in_log(remote_command_executor)
     _test_slurmdbd_log_exists_in_log_group(cluster)
     _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir)
+    _test_require_server_identity(remote_command_executor, test_resources_dir, region)
     _test_jobs_get_recorded(scheduler_commands)
 
 
