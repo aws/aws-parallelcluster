@@ -3431,7 +3431,7 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
 
 
 @pytest.mark.parametrize(
-    "resource, response, expected_instance_metadata_options",
+    "resource, response, http_tokens",
     [
         (
             {
@@ -3454,7 +3454,7 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
                     }
                 ],
             },
-            {"HttpTokens": "required"},
+            "required",
         ),
         (
             {
@@ -3477,7 +3477,7 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
                     }
                 ],
             },
-            None,
+            "optional",
         ),
         (
             {
@@ -3499,11 +3499,11 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
                     }
                 ],
             },
-            None,
+            "optional",
         ),
     ],
 )
-def test_imagebuilder_imds_settings(mocker, resource, response, expected_instance_metadata_options):
+def test_imagebuilder_imds_settings(mocker, resource, response, http_tokens):
     mock_aws_api(mocker)
     mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
@@ -3522,8 +3522,9 @@ def test_imagebuilder_imds_settings(mocker, resource, response, expected_instanc
         generated_template.get("Resources")
         .get("InfrastructureConfiguration")
         .get("Properties")
-        .get("InstanceMetadataOptions", None)
-    ).is_equal_to(expected_instance_metadata_options)
+        .get("InstanceMetadataOptions")
+        .get("HttpTokens")
+    ).is_equal_to(http_tokens)
 
 
 @pytest.mark.parametrize(

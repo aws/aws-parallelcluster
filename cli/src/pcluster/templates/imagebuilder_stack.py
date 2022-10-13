@@ -52,6 +52,7 @@ from pcluster.imagebuilder_utils import (
 )
 from pcluster.models.s3_bucket import S3Bucket, S3FileType, create_s3_presigned_url, parse_bucket_url
 from pcluster.templates.cdk_builder_utils import apply_permissions_boundary, get_assume_role_policy_document
+from pcluster.utils import get_http_tokens_setting
 
 
 class ImageBuilderCdkStack(Stack):
@@ -584,10 +585,8 @@ class ImageBuilderCdkStack(Stack):
             subnet_id=self.config.build.subnet_id,
             sns_topic_arn=Fn.ref("BuildNotificationTopic"),
             instance_metadata_options=imagebuilder.CfnInfrastructureConfiguration.InstanceMetadataOptionsProperty(
-                http_tokens="required"
-            )
-            if self.config.build.imds.imds_support == "v2.0"
-            else None,
+                http_tokens=get_http_tokens_setting(self.config.build.imds.imds_support)
+            ),
         )
         if not self.custom_cleanup_lambda_role:
             self._add_resource_delete_policy(
