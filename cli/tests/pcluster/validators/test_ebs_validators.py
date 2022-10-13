@@ -239,8 +239,58 @@ def test_ebs_volume_kms_key_id_validator(kms_key_id, encrypted, expected_message
     assert_failure_messages(actual_failures, expected_message)
 
 
-def test_ec2_volume_validator(mocker):
+@pytest.mark.parametrize(
+    "head_node_instance_id, volume_state, attached_instance_ids, volume_with_multi_attach, expected_failure",
+    [
+        (
+            None,
+            "available",
+            [],
+            False,
+            None,
+        ),
+        (
+            None,
+            "WHATEVER_NOT_AVAILABLE",
+            [],
+            False,
+            "Volume vol-12345678 is in state 'WHATEVER_NOT_AVAILABLE' not 'available'.",
+        ),
+        (
+            None,
+            "WHATEVER_NOT_AVAILABLE",
+            ["i-WHATEVER"],
+            False,
+            "Volume vol-12345678 is in state 'WHATEVER_NOT_AVAILABLE' not 'available'.",
+        ),
+        (
+            None,
+            "WHATEVER_NOT_AVAILABLE",
+            ["i-WHATEVER"],
+            True,
+            "Volume vol-12345678 is in state 'WHATEVER_NOT_AVAILABLE' not 'available'.",
+        ),
+        (
+            "i-123456789",
+            "WHATEVER_NOT_AVAILABLE",
+            ["i-123456789"],
+            False,
+            None,
+        ),
+        (
+            "i-123456789",
+            "WHATEVER_NOT_AVAILABLE",
+            ["i-WHATEVER"],
+            True,
+            "Volume vol-12345678 is in state 'WHATEVER_NOT_AVAILABLE' not 'available'.",
+        ),
+    ],
+)
+def test_ec2_volume_validator(
+    mocker, head_node_instance_id, volume_state, attached_instance_ids, volume_with_multi_attach, expected_failure
+):
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    volume_id = "vol-12345678"
     describe_volume_mock = mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_volume",
         return_value={
@@ -248,26 +298,30 @@ def test_ec2_volume_validator(mocker):
             "Attachments": [
                 {
                     "AttachTime": "2013-12-18T22:35:00.000Z",
-                    "InstanceId": "i-1234567890abcdef0",
-                    "VolumeId": "vol-12345678",
+                    "InstanceId": attached_instance_id,
+                    "VolumeId": volume_id,
                     "State": "attached",
                     "DeleteOnTermination": True,
                     "Device": "/dev/sda1",
                 }
+                for attached_instance_id in attached_instance_ids
             ],
             "Encrypted": False,
             "VolumeType": "gp2",
-            "VolumeId": "vol-049df61146c4d7901",
-            "State": "available",  # TODO add test with "in-use"
+            "VolumeId": volume_id,
+            "State": volume_state,
             "SnapshotId": "snap-1234567890abcdef0",
             "CreateTime": "2013-12-18T22:35:00.084Z",
             "Size": 8,
+            "MultiAttachEnabled": volume_with_multi_attach,
         },
     )
 
-    actual_failures = SharedEbsVolumeIdValidator().execute(volume_id="vol-12345678")
-    assert_failure_messages(actual_failures, None)
-    describe_volume_mock.assert_called_with("vol-12345678")
+    actual_failures = SharedEbsVolumeIdValidator().execute(
+        volume_id=volume_id, head_node_instance_id=head_node_instance_id
+    )
+    assert_failure_messages(actual_failures, expected_failure)
+    describe_volume_mock.assert_called_with(volume_id)
 
 
 def test_ebs_allowed_values_all_have_volume_size_bounds():

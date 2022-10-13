@@ -17,7 +17,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Set
 
-from pcluster.validators.common import FailureLevel, ValidationResult, Validator
+from pcluster.validators.common import FailureLevel, ValidationResult, Validator, ValidatorContext
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
 from pcluster.validators.s3_validators import UrlValidator
 
@@ -187,24 +187,26 @@ class Resource:
                 nested_resources.extend(item for item in value if isinstance(item, Resource))
         return nested_resources
 
-    def validate(self, suppressors: List[ValidatorSuppressor] = None) -> List[ValidationResult]:
+    def validate(
+        self, suppressors: List[ValidatorSuppressor] = None, context: ValidatorContext = None
+    ) -> List[ValidationResult]:
         """Execute registered validators."""
         # Cleanup failures and validators
         self._validation_failures.clear()
 
         # Call validators for nested resources
         for nested_resource in self._nested_resources():
-            self._validation_failures.extend(nested_resource.validate(suppressors))
+            self._validation_failures.extend(nested_resource.validate(suppressors, context))
 
         # Update validators to be executed according to current status of the model and order by priority
         self._validators.clear()
-        self._register_validators()
+        self._register_validators(context)
         for validator in self._validators:
             self._validation_failures.extend(self._validator_execute(*validator, suppressors))
 
         return self._validation_failures
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):
         """
         Execute validators.
 
@@ -243,7 +245,7 @@ class AdditionalIamPolicy(Resource):
         super().__init__()
         self.policy = Resource.init_param(policy)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):
         self._register_validator(AdditionalIamPolicyValidator, policy=self.policy)
 
 
@@ -255,7 +257,7 @@ class Cookbook(Resource):
         self.chef_cookbook = Resource.init_param(chef_cookbook)
         self.extra_chef_attributes = Resource.init_param(extra_chef_attributes)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):
         if self.chef_cookbook is not None:
             self._register_validator(UrlValidator, url=self.chef_cookbook)
 
@@ -269,7 +271,7 @@ class BaseDevSettings(Resource):
         self.node_package = Resource.init_param(node_package)
         self.aws_batch_cli_package = Resource.init_param(aws_batch_cli_package)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):
         if self.node_package:
             self._register_validator(UrlValidator, url=self.node_package)
         if self.aws_batch_cli_package:

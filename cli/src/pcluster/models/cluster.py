@@ -74,7 +74,7 @@ from pcluster.utils import (
     grouper,
     yaml_load,
 )
-from pcluster.validators.common import FailureLevel, ValidationResult
+from pcluster.validators.common import FailureLevel, ValidationResult, ValidatorContext
 
 # pylint: disable=C0302
 
@@ -406,7 +406,9 @@ class Cluster:
         """Validate a create cluster request."""
         self._validate_no_existing_stack()
         self.config, ignored_validation_failures = self._validate_and_parse_config(
-            validator_suppressors, validation_failure_level
+            validator_suppressors=validator_suppressors,
+            validation_failure_level=validation_failure_level,
+            context=ValidatorContext(),
         )
         if dry_run and isinstance(self.config.scheduling, SchedulerPluginScheduling):
             self._render_and_upload_scheduler_plugin_template(dry_run=dry_run)
@@ -416,7 +418,9 @@ class Cluster:
         if AWSApi.instance().cfn.stack_exists(self.stack_name):
             raise BadRequestClusterActionError(f"Cluster {self.name} already exists.")
 
-    def _validate_and_parse_config(self, validator_suppressors, validation_failure_level, config_text=None):
+    def _validate_and_parse_config(
+        self, validator_suppressors, validation_failure_level, config_text=None, context: ValidatorContext = None
+    ):
         """
         Perform syntactic and semantic validation and return parsed config.
 
@@ -428,7 +432,7 @@ class Cluster:
             LOGGER.info("Validating cluster configuration...")
             Cluster._load_additional_instance_type_data(cluster_config_dict)
             config = self._load_config(cluster_config_dict)
-            validation_failures = config.validate(validator_suppressors)
+            validation_failures = config.validate(validator_suppressors, context)
             if any(f.level.value >= FailureLevel(validation_failure_level).value for f in validation_failures):
                 raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)
             LOGGER.info("Validation succeeded.")
@@ -826,7 +830,10 @@ class Cluster:
         self._validate_cluster_exists()
         self._validate_stack_status_not_in_progress()
         target_config, ignored_validation_failures = self._validate_and_parse_config(
-            validator_suppressors, validation_failure_level, target_source_config
+            validator_suppressors=validator_suppressors,
+            validation_failure_level=validation_failure_level,
+            config_text=target_source_config,
+            context=ValidatorContext(head_node_instance_id=self.head_node_instance.id),
         )
         changes = self._validate_patch(force, target_config)
 

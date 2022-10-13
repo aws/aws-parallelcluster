@@ -29,7 +29,7 @@ from pcluster.validators import (
     s3_validators,
     scheduler_plugin_validators,
 )
-from pcluster.validators.common import Validator
+from pcluster.validators.common import Validator, ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
@@ -65,7 +65,7 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
 def _load_and_validate(config_path):
     input_yaml = load_yaml_dict(config_path)
     cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
-    failures = cluster.validate()
+    failures = cluster.validate(context=ValidatorContext())
     assert_that(failures).is_empty()
 
 

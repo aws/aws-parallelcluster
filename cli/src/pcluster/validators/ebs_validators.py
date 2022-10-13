@@ -194,11 +194,20 @@ class SharedEbsVolumeIdValidator(Validator):
     Validate the volume exist and is available.
     """
 
-    def _validate(self, volume_id: str):
+    def _validate(self, volume_id: str, head_node_instance_id: str = None):
         if volume_id:
             try:
                 respond = AWSApi.instance().ec2.describe_volume(volume_id)
-                if respond.get("State") != "available":
+
+                state = respond.get("State")
+                attached_instances = [attachment.get("InstanceId") for attachment in respond.get("Attachments", [])]
+                is_available = state == "available"
+                is_attached_to_head_node = head_node_instance_id and head_node_instance_id in attached_instances
+                # TODO Mounting and EBS Volume with multi-attach is not officially supported.
+                # As long as it is not officially supported, we should emit the warning when mounting a not available
+                # EBS volume with multi-attach.
+                # is_multi_attach_enabled = respond.get("MultiAttachEnabled", False)
+                if not is_available and not is_attached_to_head_node:
                     self._add_failure(
                         "Volume {0} is in state '{1}' not 'available'.".format(volume_id, respond.get("State")),
                         FailureLevel.WARNING,
