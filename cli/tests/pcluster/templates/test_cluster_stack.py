@@ -538,3 +538,45 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     assert_that(actual_tags.keys()).is_equal_to(expected_tags.keys())
     for key in actual_tags.keys():
         assert_that(actual_tags[key]).matches(expected_tags[key])
+
+
+@freeze_time("2021-01-01T01:01:01")
+@pytest.mark.parametrize(
+    "config_file_name",
+    ["slurm.full.yaml", "awsbatch.full.yaml", "scheduler_plugin.full.yaml"],
+)
+def test_required_imds_v2(mocker, config_file_name):
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    launch_templates = [
+        lt for lt_name, lt in generated_template.get("Resources").items() if "LaunchTemplate" in lt_name
+    ]
+    for launch_template in launch_templates:
+        assert_that(
+            launch_template.get("Properties").get("LaunchTemplateData").get("MetadataOptions").get("HttpTokens")
+        ).is_equal_to("required")
+
+
+@freeze_time("2021-01-01T01:01:01")
+@pytest.mark.parametrize(
+    "config_file_name",
+    ["slurm.required.yaml", "awsbatch.simple.yaml", "scheduler_plugin.required.yaml"],
+)
+def test_without_required_imds_v2(mocker, config_file_name):
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    launch_templates = [
+        lt for lt_name, lt in generated_template.get("Resources").items() if "LaunchTemplate" in lt_name
+    ]
+    for launch_template in launch_templates:
+        assert_that(launch_template.get("Properties").get("LaunchTemplateData")).does_not_contain("MetadataOptions")

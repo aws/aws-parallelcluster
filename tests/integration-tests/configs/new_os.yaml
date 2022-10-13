@@ -1,0 +1,131 @@
+{%- import 'common.jinja2' as common -%}
+{%- set REGION = ["##PLACEHOLDER##"] -%}
+{%- set NEW_OS = ["##PLACEHOLDER##"] -%}
+---
+test-suites:
+  scaling:
+    test_mpi.py::test_mpi:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+  schedulers:
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+    test_awsbatch.py::test_awsbatch:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+  storage:
+    test_fsx_lustre.py::test_fsx_lustre:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+    test_efs.py::test_efs_compute_az:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+    test_ebs.py::test_ebs_single:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+    test_ephemeral.py::test_head_node_stop:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+  dcv:
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        # DCV on GPU enabled instance
+        - regions: {{ REGION }}
+          instances: ["g3.8xlarge"]
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        # DCV on non GPU enabled instance
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+  configure:
+    test_pcluster_configure.py::test_pcluster_configure:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+  networking:
+    test_cluster_networking.py::test_cluster_in_private_subnet:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]
+    # Useful for instances with multiple network interfaces
+    test_multi_cidr.py::test_multi_cidr:
+      dimensions:
+        - regions: {{ REGION }}
+          instances: [ "p4d.24xlarge" ]
+          oss: {{ NEW_OS }}
+          schedulers: [ "slurm" ]

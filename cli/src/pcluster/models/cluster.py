@@ -25,7 +25,6 @@ from typing import List, Optional, Set, Tuple
 from urllib.request import urlopen
 
 import pkg_resources
-import yaml
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from marshmallow import ValidationError
@@ -67,7 +66,14 @@ from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, Com
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url, parse_bucket_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import datetime_to_epoch, generate_random_name_with_prefix, get_attr, get_installed_version, grouper
+from pcluster.utils import (
+    datetime_to_epoch,
+    generate_random_name_with_prefix,
+    get_attr,
+    get_installed_version,
+    grouper,
+    yaml_load,
+)
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 # pylint: disable=C0302
@@ -651,7 +657,7 @@ class Cluster:
     def _get_stack_template(self):
         """Return the template body of the stack."""
         try:
-            return yaml.safe_load(AWSApi.instance().cfn.get_stack_template(self.stack_name))
+            return yaml_load(AWSApi.instance().cfn.get_stack_template(self.stack_name))
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unable to retrieve template for stack {self.stack_name}. {e}")
 

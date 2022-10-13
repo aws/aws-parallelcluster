@@ -20,7 +20,7 @@ import json
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
 from pcluster.config.cluster_config import BaseTag
-from pcluster.config.common import AdditionalIamPolicy, Cookbook
+from pcluster.config.common import AdditionalIamPolicy, Cookbook, Imds
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
 from pcluster.utils import to_pascal_case
@@ -205,3 +205,19 @@ class BaseDevSettingsSchema(BaseSchema):
     cookbook = fields.Nested(CookbookSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     node_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     aws_batch_cli_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+
+class ImdsSchema(BaseSchema):
+    """
+    Represent the Imds schema shared between cluster and build image files.
+
+    It represents the Imds element that can be either at top level in the cluster config file,
+    or in the Build section of the build image config file.
+    """
+
+    require_imds_v2 = fields.Bool(data_key="RequireImdsV2", metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Imds(**data)

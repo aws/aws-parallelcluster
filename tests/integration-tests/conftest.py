@@ -51,7 +51,7 @@ from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
-from troposphere import Ref, Template, ec2
+from troposphere import Ref, Sub, Template, ec2, resourcegroups
 from troposphere.ec2 import PlacementGroup
 from troposphere.efs import FileSystem as EFSFileSystem
 from troposphere.fsx import (
@@ -574,6 +574,9 @@ def inject_additional_image_configs_settings(image_config, request):
     with open(image_config, encoding="utf-8") as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
+    if not dict_has_nested_key(config_content, ("Build", "Imds", "RequireImdsV2")):
+        dict_add_nested_key(config_content, True, ("Build", "Imds", "RequireImdsV2"))
+
     if request.config.getoption("createami_custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")
     ):
@@ -599,6 +602,9 @@ def inject_additional_config_settings(  # noqa: C901
 ):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
+
+    if not dict_has_nested_key(config_content, ("Imds", "RequireImdsV2")):
+        dict_add_nested_key(config_content, True, ("Imds", "RequireImdsV2"))
 
     if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")
@@ -1279,6 +1285,95 @@ def placement_group_stack(cfn_stacks_factory, request, region):
         name=generate_stack_name("integ-tests-placement-group", request.config.getoption("stackname_suffix")),
         region=region,
         template=placement_group_template.to_json(),
+    )
+    cfn_stacks_factory.create_stack(stack)
+
+    yield stack
+
+    cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.fixture(scope="class")
+def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack):
+    logging.info("Setting up the ODCR stack")
+    odcr_template = Template()
+    odcr_template.set_version()
+    odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
+    availability_zone = (
+        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_subnet_id"]).availability_zone
+    )
+    open_odcr = ec2.CapacityReservation(
+        "integTestsOpenOdcr",
+        AvailabilityZone=availability_zone,
+        InstanceCount=4,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="c6gn.xlarge",
+    )
+    target_odcr = ec2.CapacityReservation(
+        "integTestsTargetOdcr",
+        AvailabilityZone=availability_zone,
+        InstanceCount=4,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="c7g.xlarge",
+        InstanceMatchCriteria="targeted",
+    )
+    pg_name = placement_group_stack.cfn_resources["PlacementGroup"]
+    pg_odcr = ec2.CapacityReservation(
+        "integTestsPgOdcr",
+        AvailabilityZone=availability_zone,
+        InstanceCount=2,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="m6g.xlarge",
+        InstanceMatchCriteria="targeted",
+        PlacementGroupArn=boto3.resource("ec2").PlacementGroup(pg_name).group_arn,
+    )
+    odcr_group = resourcegroups.Group(
+        "integTestsOdcrGroup",
+        Name=generate_stack_name("integ-tests-odcr-group", request.config.getoption("stackname_suffix")),
+        Configuration=[
+            resourcegroups.ConfigurationItem(Type="AWS::EC2::CapacityReservationPool"),
+            resourcegroups.ConfigurationItem(
+                Type="AWS::ResourceGroups::Generic",
+                Parameters=[
+                    resourcegroups.ConfigurationParameter(
+                        Name="allowed-resource-types", Values=["AWS::EC2::CapacityReservation"]
+                    )
+                ],
+            ),
+        ],
+        Resources=[
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(open_odcr),
+            ),
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(target_odcr),
+            ),
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(pg_odcr),
+            ),
+        ],
+    )
+    odcr_template.add_resource(open_odcr)
+    odcr_template.add_resource(target_odcr)
+    odcr_template.add_resource(pg_odcr)
+    odcr_template.add_resource(odcr_group)
+
+    stack = CfnStack(
+        name=generate_stack_name("integ-tests-odcr", request.config.getoption("stackname_suffix")),
+        region=region,
+        template=odcr_template.to_json(),
     )
     cfn_stacks_factory.create_stack(stack)
 

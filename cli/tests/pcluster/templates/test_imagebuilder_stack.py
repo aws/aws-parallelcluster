@@ -3431,6 +3431,102 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
 
 
 @pytest.mark.parametrize(
+    "resource, response, expected_instance_metadata_options",
+    [
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "imds": {"require_imds_v2": True},
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            {"HttpTokens": "required"},
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "imds": {"require_imds_v2": False},
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            None,
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            None,
+        ),
+    ],
+)
+def test_imagebuilder_imds_settings(mocker, resource, response, expected_instance_metadata_options):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_image",
+        return_value=ImageInfo(response),
+    )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    imagebuild = imagebuilder_factory(resource).get("imagebuilder")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
+
+    assert_that(
+        generated_template.get("Resources")
+        .get("InfrastructureConfiguration")
+        .get("Properties")
+        .get("InstanceMetadataOptions", None)
+    ).is_equal_to(expected_instance_metadata_options)
+
+
+@pytest.mark.parametrize(
     "url, expect_output",
     [
         (

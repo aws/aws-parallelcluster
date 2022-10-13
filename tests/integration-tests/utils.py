@@ -201,7 +201,7 @@ def get_compute_nodes_instance_ids(stack_name, region, instance_types=None):
 def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None, queue_name=None):
     """Return a list of cluster Instances Id's."""
     try:
-        instances = _describe_cluster_instances(
+        instances = describe_cluster_instances(
             stack_name,
             region,
             filter_by_node_type=node_type,
@@ -214,13 +214,14 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
         raise
 
 
-def _describe_cluster_instances(
+def describe_cluster_instances(
     stack_name,
     region,
     filter_by_node_type=None,
     filter_by_name=None,
     filter_by_instance_types=None,
     filter_by_queue_name=None,
+    filter_by_compute_resource_name=None,
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
@@ -235,6 +236,10 @@ def _describe_cluster_instances(
         filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
     if filter_by_instance_types:
         filters.append({"Name": "instance-type", "Values": filter_by_instance_types})
+    if filter_by_compute_resource_name:
+        filters.append(
+            {"Name": "tag:parallelcluster:compute-resource-name", "Values": [filter_by_compute_resource_name]}
+        )
     instances = []
     for page in paginate_boto3(ec2.describe_instances, Filters=filters):
         instances.extend(page.get("Instances", []))

@@ -583,6 +583,11 @@ class ImageBuilderCdkStack(Stack):
             security_group_ids=self.config.build.security_group_ids,
             subnet_id=self.config.build.subnet_id,
             sns_topic_arn=Fn.ref("BuildNotificationTopic"),
+            instance_metadata_options=imagebuilder.CfnInfrastructureConfiguration.InstanceMetadataOptionsProperty(
+                http_tokens="required"
+            )
+            if self.config.build.imds.require_imds_v2
+            else None,
         )
         if not self.custom_cleanup_lambda_role:
             self._add_resource_delete_policy(

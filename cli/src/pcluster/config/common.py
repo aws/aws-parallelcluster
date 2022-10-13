@@ -276,6 +276,19 @@ class BaseDevSettings(Resource):
             self._register_validator(UrlValidator, url=self.aws_batch_cli_package)
 
 
+class Imds(Resource):
+    """
+    Represent the IMDS configuration shared between the ImageBuilder and Cluster.
+
+    It represents the Imds element that can be either at top level in the cluster config file,
+    or in the Build section of the build image config file.
+    """
+
+    def __init__(self, require_imds_v2: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.require_imds_v2 = Resource.init_param(require_imds_v2, default=False)
+
+
 # ------------ Common attributes class between ImageBuilder an Cluster models ----------- #
 
 
