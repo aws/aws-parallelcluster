@@ -25,7 +25,6 @@ from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfi
 from pcluster.validators.imagebuilder_validators import (
     AMIVolumeSizeValidator,
     ComponentsValidator,
-    RequireImdsV2Validator,
     SecurityGroupsAndSubnetValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
@@ -176,7 +175,6 @@ class Build(Resource):
         self._register_validator(
             SecurityGroupsAndSubnetValidator, security_group_ids=self.security_group_ids, subnet_id=self.subnet_id
         )
-        self._register_validator(RequireImdsV2Validator, require_imds_v2=self.imds.require_imds_v2)
 
 
 # ---------------------- Dev Settings ---------------------- #
