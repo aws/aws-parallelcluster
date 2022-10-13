@@ -371,6 +371,10 @@ networking:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+  test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+    dimensions:
+      - regions: [ "us-west-2" ]
+        oss: [ "alinux2" ]
 scaling:
   test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
     dimensions:
@@ -496,6 +500,18 @@ schedulers:
       - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  test_slurm_accounting.py::test_slurm_accounting:
+    dimensions:
+      - regions: ["us-east-1", "ap-south-1"]
+        instances:  {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2", "ubuntu2004"]
+        schedulers: ["slurm"]
+  test_slurm_accounting.py::test_slurm_accounting_disabled_to_enabled_update:
+    dimensions:
+      - regions: ["us-west-2"]
+        instances:  {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["centos7", "ubuntu1804"]
         schedulers: ["slurm"]
 spot:
   test_spot.py::test_spot_default:

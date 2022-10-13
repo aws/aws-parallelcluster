@@ -7,6 +7,8 @@ Image:
         Encrypted: True
 
 Build:
+    Imds:
+        RequireImdsV2: true
     Iam:
         InstanceRole: {{ instance_role }}
     InstanceType: {{ instance }}

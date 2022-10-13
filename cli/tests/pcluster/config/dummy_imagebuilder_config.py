@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.config.common import BaseTag, Cookbook
+from pcluster.config.common import BaseTag, Cookbook, Imds
 from pcluster.config.imagebuilder_config import (
     AdditionalIamPolicy,
     Build,
@@ -35,6 +35,7 @@ CLASS_DICT = {
     "iam": Iam,
     "additional_iam_policies": AdditionalIamPolicy,
     "update_os_packages": UpdateOsPackages,
+    "imds": Imds,
 }
 
 

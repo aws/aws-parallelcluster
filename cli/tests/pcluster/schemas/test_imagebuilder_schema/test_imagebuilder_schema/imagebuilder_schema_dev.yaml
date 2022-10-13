@@ -12,6 +12,8 @@ Image:
     KmsKeyId: arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
 
 Build:
+  Imds:
+    RequireImdsV2: true
   Iam:
     InstanceRole: arn:aws:iam::111122223333:role/executionServiceEC2Role/parallelcluster-imagebuilder-test-InstanceRole-J7MKRFYF6634
     CleanupLambdaRole: arn:aws:iam::111122223333:role/executionServiceEC2Role/parallelcluster-imagebuilder-test-LambdaRole-J7MKRFYF6634

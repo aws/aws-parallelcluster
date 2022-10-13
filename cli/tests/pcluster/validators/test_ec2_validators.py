@@ -827,7 +827,7 @@ def test_placement_group_capacity_reservation_validator(
                     "TotalGpuMemoryInMiB": 262144,
                 },
             },
-            "The GPU manufacturer 'Habana' for instance type 'dl1.24xlarge' is not supported.",
+            "The accelerator manufacturer 'Habana' for instance type 'dl1.24xlarge' is not supported.",
             "offers native support for NVIDIA manufactured GPUs only.* GPU Info: .*Please "
             "make sure to use a custom AMI",
         ),
@@ -847,7 +847,7 @@ def test_placement_group_capacity_reservation_validator(
                     "TotalGpuMemoryInMiB": 32768,
                 },
             },
-            "The GPU manufacturer 'AMD' for instance type 'g4ad.16xlarge' is not supported.",
+            "The accelerator manufacturer 'AMD' for instance type 'g4ad.16xlarge' is not supported.",
             "offers native support for NVIDIA manufactured GPUs only.* GPU Info: .*Please "
             "make sure to use a custom AMI",
         ),
@@ -878,7 +878,7 @@ def test_placement_group_capacity_reservation_validator(
                     "Accelerators": [{"Count": 8, "Name": "Inferentia", "Manufacturer": "Company"}]
                 },
             },
-            "The inference accelerator manufacturer 'Company' for instance type 'noexist.24xlarge' is not supported.",
+            "The accelerator manufacturer 'Company' for instance type 'noexist.24xlarge' is not supported.",
             "offers native support for 'AWS' manufactured Inference Accelerators only.* accelerator info: .*Please "
             "make sure to use a custom AMI",
         ),

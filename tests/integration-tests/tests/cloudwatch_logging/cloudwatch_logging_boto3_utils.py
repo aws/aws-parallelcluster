@@ -30,15 +30,39 @@ def get_cluster_log_groups_from_boto3(cluster_log_group_prefix):
         raise ClientError
 
 
+def _get_log_stream_pages(log_client, log_group_name):
+    """
+    Get paged list of log streams.
+
+    Raises ClientError if the log group doesn't exist.
+    """
+    next_token = None
+    while True:
+        kwargs = {"logGroupName": log_group_name}
+        if next_token:
+            kwargs.update({"nextToken": next_token})
+        response = log_client.describe_log_streams(**kwargs)
+
+        streams = response.get("logStreams")
+        LOGGER.info("Log streams for {group}:\n{streams}".format(group=log_group_name, streams=_dumps_json(streams)))
+
+        yield streams
+
+        next_token = response.get("nextToken")
+        if next_token is None:
+            break
+
+
 def get_log_streams(log_group_name):
     """
     Get list of log streams.
 
     Raises ClientError if the log group doesn't exist.
     """
-    streams = boto3.client("logs").describe_log_streams(logGroupName=log_group_name).get("logStreams")
-    LOGGER.info("Log streams for {group}:\n{streams}".format(group=log_group_name, streams=_dumps_json(streams)))
-    return streams
+    log_client = boto3.client("logs")
+    for stream_page in _get_log_stream_pages(log_client, log_group_name):
+        for stream in stream_page:
+            yield stream
 
 
 def get_log_events(log_group_name, log_stream_name):

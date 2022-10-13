@@ -23,7 +23,9 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, Resource
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
+from pcluster.config.common import Imds as TopLevelImds
+from pcluster.config.common import Resource
 from pcluster.constants import (
     CIDR_ALL_IPS,
     CW_DASHBOARD_ENABLED_DEFAULT,
@@ -32,6 +34,7 @@ from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
+    DELETE_POLICY,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
@@ -92,6 +95,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RequireImdsV2Validator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -270,7 +274,7 @@ class SharedEbs(Ebs):
         self.snapshot_id = Resource.init_param(snapshot_id)
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
-        self.deletion_policy = Resource.init_param(deletion_policy, default="Delete")
+        self.deletion_policy = Resource.init_param(deletion_policy, default=DELETE_POLICY if not volume_id else None)
 
     def _register_validators(self):
         super()._register_validators()
@@ -312,7 +316,9 @@ class SharedEfs(Resource):
         self.throughput_mode = Resource.init_param(throughput_mode, default="bursting")
         self.provisioned_throughput = Resource.init_param(provisioned_throughput)
         self.file_system_id = Resource.init_param(file_system_id)
-        self.deletion_policy = Resource.init_param(deletion_policy, default="Delete" if not file_system_id else None)
+        self.deletion_policy = Resource.init_param(
+            deletion_policy, default=DELETE_POLICY if not file_system_id else None
+        )
 
     def _register_validators(self):
         self._register_validator(SharedStorageNameValidator, name=self.name)
@@ -395,7 +401,9 @@ class SharedFsxLustre(BaseSharedFsx):
         self.drive_cache_type = Resource.init_param(drive_cache_type)
         self.file_system_type = LUSTRE
         self.file_system_type_version = "2.12" if backup_id is None and file_system_id is None else None
-        self.deletion_policy = Resource.init_param(deletion_policy, default="Delete" if not file_system_id else None)
+        self.deletion_policy = Resource.init_param(
+            deletion_policy, default=DELETE_POLICY if not file_system_id else None
+        )
 
     def _register_validators(self):
         super()._register_validators()
@@ -1120,6 +1128,7 @@ class BaseClusterConfig(Resource):
         directory_service: DirectoryService = None,
         config_region: str = None,
         custom_s3_bucket: str = None,
+        imds: TopLevelImds = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
     ):
@@ -1150,6 +1159,7 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
         self.original_config_version = ""
         self._official_ami = None
+        self.imds = imds or TopLevelImds(implied=False)
 
     def _register_validators(self):
         self._register_validator(RegionValidator, region=self.region)
@@ -1225,6 +1235,7 @@ class BaseClusterConfig(Resource):
             volume_size=root_volume_size,
             volume_iops=root_volume.iops,
         )
+        self._register_validator(RequireImdsV2Validator, require_imds_v2=self.imds.require_imds_v2)
 
     def _register_storage_validators(self):
         if self.shared_storage:

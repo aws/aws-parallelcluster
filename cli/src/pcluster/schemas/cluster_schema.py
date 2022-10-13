@@ -21,7 +21,6 @@ import re
 from typing import List
 from urllib.request import urlopen
 
-import yaml
 from marshmallow import ValidationError, fields, post_load, pre_dump, pre_load, validate, validates, validates_schema
 from yaml import YAMLError
 
@@ -126,14 +125,10 @@ from pcluster.constants import (
     SUPPORTED_OSES,
 )
 from pcluster.models.s3_bucket import parse_bucket_url
-from pcluster.schemas.common_schema import (
-    AdditionalIamPolicySchema,
-    BaseDevSettingsSchema,
-    BaseSchema,
-    TagSchema,
-    get_field_validator,
-    validate_no_reserved_tag,
-)
+from pcluster.schemas.common_schema import AdditionalIamPolicySchema, BaseDevSettingsSchema, BaseSchema
+from pcluster.schemas.common_schema import ImdsSchema as TopLevelImdsSchema
+from pcluster.schemas.common_schema import TagSchema, get_field_validator, validate_no_reserved_tag
+from pcluster.utils import yaml_load
 from pcluster.validators.cluster_validators import EFS_MESSAGES, FSX_MESSAGES
 
 # pylint: disable=C0302
@@ -1777,7 +1772,7 @@ class SchedulerPluginSettingsSchema(BaseSchema):
 
         LOGGER.info("Using the following scheduler plugin definition:\n%s", scheduler_definition)
         try:
-            data["SchedulerDefinition"] = yaml.safe_load(scheduler_definition)
+            data["SchedulerDefinition"] = yaml_load(scheduler_definition)
         except YAMLError as e:
             raise ValidationError(
                 f"The retrieved SchedulerDefinition ({original_scheduler_definition}) is not a valid YAML."
@@ -1973,6 +1968,7 @@ class ClusterSchema(BaseSchema):
         DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
     config_region = fields.Str(data_key="Region", metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    imds = fields.Nested(TopLevelImdsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_s3_bucket = fields.Str(metadata={"update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET})
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})

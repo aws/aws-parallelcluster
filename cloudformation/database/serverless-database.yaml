@@ -17,6 +17,8 @@ Metadata:
           - Vpc
           - DatabaseClusterSubnetOne
           - DatabaseClusterSubnetTwo
+          - Subnet1CidrBlock
+          - Subnet2CidrBlock
     ParameterLabels:
       Vpc:
         default: "The VPC to use for the database cluster."
@@ -32,20 +34,24 @@ Metadata:
         default: "The first subnet to use for the database cluster."
       DatabaseClusterSubnetTwo:
         default: "The second subnet to use for the database cluster."
+      Subnet1CidrBlock:
+        default: "The CIDR block to be used for the first Subnet if its creation is requested."
+      Subnet2CidrBlock:
+        default: "The CIDR block to be used for the second Subnet if its creation is requested."
 Parameters:
   AdminPasswordSecretString:
     Description: >-
       Password must be at least 8 characters long and contain at least 1 upper case, 1 lower case, 1 digit, and 1
-      non-alphanumeric character. It must not contain any of the following: / (slash), ' (single quote), " (double quote)
+      non-alphanumeric character. It must not contain any of the following: # (hash), / (slash), ' (single quote), " (double quote)
       or @ (at sign).
     Type: String
     NoEcho: true
     MinLength: 8
     # Only allow 'Medium' or better strength passwords according to https://dev.mysql.com/doc/refman/8.0/en/validate-password.html
-    AllowedPattern: (?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\s])(?!.*[@/'"])^.*
+    AllowedPattern: (?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\s])(?!.*[@/'"#])^.*
     ConstraintDescription: >-
       Password must be at least 8 characters with at least one uppercase letter, one lower case letter, one numeric
-      digit, and one special (non-alphanumeric) character. It can not contain any of the following: / (slash), ' (single quote), " (double quote) and @ (at sign).
+      digit, and one special (non-alphanumeric) character. It can not contain any of the following: # (hash), / (slash), ' (single quote), " (double quote) and @ (at sign).
   ClusterAdmin:
     Description: Administrator user name.
     Type: String
@@ -53,20 +59,34 @@ Parameters:
     MinLength: 3
     MaxLength: 64
   Vpc:
-    Description: VPC ID (leave BLANK to create a new VPC).
-    Type: String
-    # Type: AWS::EC2::VPC::Id
-    Default: ""
+    Description: VPC ID.
+    Type: AWS::EC2::VPC::Id
   DatabaseClusterSubnetOne:
     Description: First Subnet ID (leave BLANK to create a new subnet).
     Type: String
     # Type: AWS::EC2::Subnet::Id
-    Default: ""
+    Default: ''
   DatabaseClusterSubnetTwo:
     Description: Second subnet ID (leave BLANK to create a new subnet). This subnet must be in different availability zone from the first subnet.
     Type: String
     # Type: AWS::EC2::Subnet::Id
-    Default: ""
+    Default: ''
+  Subnet1CidrBlock:
+    Description: CIDR block for first Subnet (used only if creation is requested - IN THIS CASE THE DEFAULT VALUE MUST BE CHANGED).
+    Type: String
+    Default: '0.0.0.0/24'
+    AllowedPattern: >-
+      ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      The CIDR block must be formatted as W.X.Y.Z/prefix , where prefix must be between 16 and 28.
+  Subnet2CidrBlock:
+    Description: CIDR block for the second Subnet (used only if creation is requested - IN THIS CASE THE DEFAULT VALUE MUST BE CHANGED).
+    Type: String
+    Default: '0.0.0.0/24'
+    AllowedPattern: >-
+      ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      The CIDR block must be formatted as W.X.Y.Z/prefix , where prefix must be between 16 and 28.
   MinCapacity:
     Description: Must be less than or equal to the maximum capacity.
     Type: Number
@@ -97,46 +117,38 @@ Parameters:
       - 256
 Transform: AWS::Serverless-2016-10-31
 Conditions:
-  CreateVPC: !Equals [!Ref Vpc, '']
-  CreateSubnets: !Or [!Condition CreateVPC, !Equals [!Ref DatabaseClusterSubnetOne, ''], !Equals [!Ref DatabaseClusterSubnetTwo, '']]
+  CreateSubnets: !Or [!Equals [!Ref DatabaseClusterSubnetOne, ''], !Equals [!Ref DatabaseClusterSubnetTwo, '']]
 Rules:
-  EmptyVpcAssertions:
-    RuleCondition: !Equals
-      - !Ref Vpc
-      - ''
+  BadSubnetsCidrsAssertion:
+    RuleCondition: !Or
+      - !Equals
+        - !Ref DatabaseClusterSubnetOne
+        - ''
+      - !Equals
+        - !Ref DatabaseClusterSubnetTwo
+        - ''
     Assertions:
-      - Assert: !Equals
-          - !Ref DatabaseClusterSubnetOne
-          - ''
-        AssertDescription: DatabaseClusterSubnetOne must be empty if Vpc is not provided.
-      - Assert: !Equals
-          - !Ref DatabaseClusterSubnetTwo
-          - ''
-        AssertDescription: DatabaseClusterSubnetTwo must be empty if Vpc is not provided.
+      - Assert: !Not
+          - !Equals
+            - !Ref Subnet1CidrBlock
+            - '0.0.0.0/24'
+        AssertDescription: The default CIDR block for the first subnet must be changed if the subnet creation is requested.
+      - Assert: !Not
+          - !Equals
+            - !Ref Subnet2CidrBlock
+            - '0.0.0.0/24'
+        AssertDescription: The default CIDR block for the second subnet must be changed if the subnet creation is requested.
 Resources:
   #
   # Optional Networking
   #
-  ServerlessDatabaseClusterVpc:
-    Type: 'AWS::EC2::VPC'
-    Condition: CreateVPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      InstanceTenancy: default
-      Tags:
-        - Key: Name
-          Value: ServerlessDatabaseClusterVPC
-        - Key: 'parallelcluster:usecase'
-          Value: 'infrastructure'
   ServerlessDatabaseClusterSubnet1:
     Type: 'AWS::EC2::Subnet'
     Condition: CreateSubnets
     Properties:
-      VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
-      AvailabilityZone: !Sub ${AWS::Region}a
-      CidrBlock: 10.0.128.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Sub '${AWS::Region}a'
+      CidrBlock: !Ref Subnet1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -147,7 +159,7 @@ Resources:
     Type: 'AWS::EC2::RouteTable'
     Condition: CreateSubnets
     Properties:
-      VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
+      VpcId: !Ref Vpc
       Tags:
         - Key: Name
           Value: ServerlessDatabaseClusterSubnet1
@@ -163,9 +175,9 @@ Resources:
     Type: 'AWS::EC2::Subnet'
     Condition: CreateSubnets
     Properties:
-      VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
-      AvailabilityZone: !Sub ${AWS::Region}b
-      CidrBlock: 10.0.129.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Sub '${AWS::Region}b'
+      CidrBlock:  !Ref Subnet2CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -176,7 +188,7 @@ Resources:
     Type: 'AWS::EC2::RouteTable'
     Condition: CreateSubnets
     Properties:
-      VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
+      VpcId: !Ref Vpc
       Tags:
         - Key: Name
           Value: ServerlessDatabaseClusterSubnet2
@@ -206,7 +218,7 @@ Resources:
   ServerlessDatabaseClusterSubnetGroup:
     Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
-      DBSubnetGroupDescription: !Sub Subnets for ServerlessDatabaseCluster-${AWS::Region} database
+      DBSubnetGroupDescription: !Sub 'Subnets for ServerlessDatabaseCluster-${AWS::Region} database'
       SubnetIds:
         - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet1, !Ref DatabaseClusterSubnetOne]
         - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
@@ -224,7 +236,7 @@ Resources:
       Tags:
         - Key: 'parallelcluster:usecase'
           Value: 'slurm accounting'
-      VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
+      VpcId: !Ref Vpc
   ServerlessDatabaseClusterSecurityGroupInboundRule:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -283,7 +295,7 @@ Resources:
       Tags:
         - Key: 'parallel-cluster:usecase'
           Value: 'slurm accounting'
-      VpcId: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
+      VpcId: !Ref Vpc
   ServerlessClusterDatabaseClientSecurityGroupOutboundRule:
     Type: 'AWS::EC2::SecurityGroupEgress'
     Properties:
@@ -315,7 +327,7 @@ Outputs:
   DatabaseSecretArn:
     Value: !Ref ServerlessDatabaseClusterAdminSecret
   DatabaseVpcId:
-    Value: !If [CreateVPC, !Ref ServerlessDatabaseClusterVpc, !Ref Vpc]
+    Value: !Ref Vpc
   DatabaseClusterSecurityGroup:
     Value: !GetAtt
       - ServerlessDatabaseClusterSecurityGroup

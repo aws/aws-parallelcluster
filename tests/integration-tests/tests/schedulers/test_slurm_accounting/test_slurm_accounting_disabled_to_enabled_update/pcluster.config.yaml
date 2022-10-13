@@ -1,23 +1,34 @@
-Imds:
-  RequireImdsV2: {{ require_imds_v2 }}
 Image:
   Os: {{ os }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
   Ssh:
     KeyName: {{ key_name }}
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: compute
       ComputeResources:
-        - Name: compute-i1
+        - Name: cit
           InstanceTypeList:
             - InstanceType: {{ instance }}
+          MinCount: 0
+          MaxCount: 10
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14

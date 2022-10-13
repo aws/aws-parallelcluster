@@ -26,7 +26,11 @@ from remote_command_executor import RemoteCommandExecutor
 from troposphere import Template, iam
 from utils import generate_stack_name, get_arn_partition
 
-from tests.common.assertions import assert_head_node_is_running, assert_no_msg_in_logs
+from tests.common.assertions import (
+    assert_head_node_is_running,
+    assert_instance_has_desired_imds_v2_setting,
+    assert_no_msg_in_logs,
+)
 from tests.common.utils import (
     generate_random_string,
     get_installed_parallelcluster_base_version,
@@ -96,7 +100,11 @@ def test_build_image(
     images_factory,
     request,
 ):
-    """Test build image for given region and os"""
+    """
+    Test build image for given region and os.
+
+    Also check that the build instance has the desired IMDSv2 settings (RequireImdsV2: true).
+    """
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
 
     # Get custom instance role
@@ -120,6 +128,7 @@ def test_build_image(
     _test_build_tag(image)
     _test_image_stack_events(image)
     _test_build_image_success(image)
+    _test_build_imds_settings(image, "required", region)
     _test_image_tag_and_volume(image)
     _test_list_image_log_streams(image)
     _test_get_image_log_events(image)
@@ -139,7 +148,11 @@ def test_kernel4_build_image_run_cluster(
     clusters_factory,
     scheduler,
 ):
-    """Test build image for given region and os and run a job in a new cluster created from the new images"""
+    """
+    Test build image for given region and os and run a job in a new cluster created from the new images.
+
+    Also check that the build instance has the desired IMDSv2 settings (RequireImdsV2: false).
+    """
 
     # Get base AMI from kernel4
     base_ami = retrieve_latest_ami(region, os, ami_type="kernel4", architecture=architecture)
@@ -153,6 +166,7 @@ def test_kernel4_build_image_run_cluster(
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
     image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
     _test_build_image_success(image)
+    _test_build_imds_settings(image, "optional", region)
     _test_list_images(image)
 
     cluster_config = pcluster_config_reader(custom_ami=image.ec2_image_id)
@@ -418,6 +432,23 @@ def test_build_image_custom_components(
     image = images_factory(image_id, image_config, region)
 
     _test_build_image_success(image)
+
+
+def _test_build_imds_settings(image, status, region):
+    logging.info(f"Checking that the ImageBuilder instances have IMDSv2 {status}")
+
+    instance_names = [
+        f"Build instance for ParallelClusterImage-{image.image_id}",
+        f"Test instance for ParallelClusterImage-{image.image_id}",
+    ]
+
+    describe_response = boto3.client("ec2", region_name=region).describe_instances(
+        Filters=[{"Name": "tag:Name", "Values": instance_names}]
+    )
+
+    for reservations in describe_response.get("Reservations"):
+        for instance in reservations.get("Instances"):
+            assert_instance_has_desired_imds_v2_setting(instance, status)
 
 
 def _test_build_image_success(image):

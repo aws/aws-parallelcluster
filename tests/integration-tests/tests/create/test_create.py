@@ -18,6 +18,7 @@ from utils import get_username_for_os
 
 from tests.common.assertions import (
     assert_aws_identity_access_is_correct,
+    assert_cluster_imds_v2_requirement_status,
     assert_head_node_is_running,
     assert_lines_in_logs,
 )
@@ -75,32 +76,30 @@ def test_create_wrong_pcluster_version(
 
 @pytest.mark.usefixtures("instance", "scheduler")
 @pytest.mark.parametrize(
-    "imds_secured, users_allow_list",
+    "imds_secured, users_allow_list, require_imds_v2",
     [
-        (
-            True,
-            {"root": True, "pcluster-admin": True, "slurm": False},
-        ),
-        (
-            False,
-            {"root": True, "pcluster-admin": True, "slurm": True},
-        ),
+        (True, {"root": True, "pcluster-admin": True, "slurm": False}, True),
+        (False, {"root": True, "pcluster-admin": True, "slurm": True}, False),
     ],
 )
 def test_create_imds_secured(
-    imds_secured, users_allow_list, region, os, pcluster_config_reader, clusters_factory, architecture
+    imds_secured, users_allow_list, require_imds_v2, region, os, pcluster_config_reader, clusters_factory, architecture
 ):
     """
     Test IMDS access with different configurations.
     In particular, it also verifies that IMDS access is preserved on instance reboot.
+    Also checks that the cluster instances respect the desired RequireImdsV2 setting.
     """
-    cluster_config = pcluster_config_reader(imds_secured=imds_secured)
+    cluster_config = pcluster_config_reader(imds_secured=imds_secured, require_imds_v2=require_imds_v2)
     cluster = clusters_factory(cluster_config, raise_on_error=True)
+    status = "required" if require_imds_v2 else "optional"
 
     assert_head_node_is_running(region, cluster)
     assert_aws_identity_access_is_correct(cluster, users_allow_list)
+    assert_cluster_imds_v2_requirement_status(region, cluster, status)
 
     reboot_head_node(cluster)
 
     assert_head_node_is_running(region, cluster)
     assert_aws_identity_access_is_correct(cluster, users_allow_list)
+    assert_cluster_imds_v2_requirement_status(region, cluster, status)
