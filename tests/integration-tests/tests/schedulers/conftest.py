@@ -9,9 +9,7 @@ from utils import generate_stack_name
 
 
 def _create_database_stack(cfn_stacks_factory, request, region, vpc_stack):
-    database_stack_name = generate_stack_name(
-        "integ-tests-slurm-accounting", request.config.getoption("stackname_suffix")
-    )
+    database_stack_name = generate_stack_name("integ-tests-slurm-db", request.config.getoption("stackname_suffix"))
 
     database_stack_template_path = "../../cloudformation/database/serverless-database.yaml"
     logging.info("Creating stack %s", database_stack_name)
@@ -19,15 +17,17 @@ def _create_database_stack(cfn_stacks_factory, request, region, vpc_stack):
     admin_password = "".join(
         [
             *random.choices(string.ascii_uppercase, k=6),
-            # "&*\\",
             *random.choices("!$%^()_+", k=4),
             *random.choices(string.digits, k=4),
             *random.choices(string.ascii_lowercase, k=6),
         ]
     )
 
+    cluster_name = "".join(["slurm-accounting-", *random.choices(string.ascii_lowercase + string.digits, k=6)])
+
     with open(database_stack_template_path) as database_template:
         stack_parameters = [
+            {"ParameterKey": "ClusterName", "ParameterValue": cluster_name},
             {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
             {"ParameterKey": "AdminPasswordSecretString", "ParameterValue": admin_password},
             {"ParameterKey": "Subnet1CidrBlock", "ParameterValue": "192.168.8.0/23"},

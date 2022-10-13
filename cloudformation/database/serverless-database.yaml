@@ -7,6 +7,7 @@ Metadata:
       - Label:
           default: "Database Cluster Configuration"
         Parameters:
+          - ClusterName
           - ClusterAdmin
           - AdminPasswordSecretString
           - MinCapacity
@@ -22,6 +23,8 @@ Metadata:
     ParameterLabels:
       Vpc:
         default: "The VPC to use for the database cluster."
+      ClusterName:
+        default: "The name of the database cluster"
       ClusterAdmin:
         default: "The database administrator user name."
       AdminPasswordSecretString:
@@ -39,6 +42,16 @@ Metadata:
       Subnet2CidrBlock:
         default: "The CIDR block to be used for the second Subnet if its creation is requested."
 Parameters:
+  ClusterName:
+    Description: Database Cluster Name
+    Type: String
+    Default: "slurm-accounting-cluster"
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: ^[a-z][-a-z0-9]{0,62}$
+    ConstraintDescription: >-
+      Cluster name must be between 1 and 63 characters, start with a lower case character, and be followed by a mix of
+      lower case characters, digits, and - (hyphens).
   AdminPasswordSecretString:
     Description: >-
       Password must be at least 8 characters long and contain at least 1 upper case, 1 lower case, 1 digit, and 1
@@ -88,33 +101,17 @@ Parameters:
     ConstraintDescription: >-
       The CIDR block must be formatted as W.X.Y.Z/prefix , where prefix must be between 16 and 28.
   MinCapacity:
-    Description: Must be less than or equal to the maximum capacity.
+    Description: Must be less than the maximum capacity.
     Type: Number
     Default: 1
-    AllowedValues:
-      - 1
-      - 2
-      - 4
-      - 8
-      - 16
-      - 32
-      - 64
-      - 128
-      - 256
+    MinValue: .5
+    MaxValue: 127.5
   MaxCapacity:
     Description: Must be greater than or equal to the minimum capacity.
     Type: Number
     Default: 4
-    AllowedValues:
-      - 1
-      - 2
-      - 4
-      - 8
-      - 16
-      - 32
-      - 64
-      - 128
-      - 256
+    MinValue: 1
+    MaxValue: 128
 Transform: AWS::Serverless-2016-10-31
 Conditions:
   CreateSubnets: !Or [!Equals [!Ref DatabaseClusterSubnetOne, ''], !Equals [!Ref DatabaseClusterSubnetTwo, '']]
@@ -142,7 +139,7 @@ Resources:
   #
   # Optional Networking
   #
-  ServerlessDatabaseClusterSubnet1:
+  AccountingClusterSubnet1:
     Type: 'AWS::EC2::Subnet'
     Condition: CreateSubnets
     Properties:
@@ -152,26 +149,26 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: ServerlessDatabaseClusterSubnet1
+          Value: AccountingClusterSubnet1
         - Key: 'parallelcluster:infrastructure'
           Value: 'slurm accounting'
-  ServerlessDatabaseClusterSubnet1RouteTable:
+  AccountingClusterSubnet1RouteTable:
     Type: 'AWS::EC2::RouteTable'
     Condition: CreateSubnets
     Properties:
       VpcId: !Ref Vpc
       Tags:
         - Key: Name
-          Value: ServerlessDatabaseClusterSubnet1
+          Value: AccountingClusterSubnet1
         - Key: 'parallelcluster:infrastructure'
           Value: 'slurm accounting'
-  ServerlessDatabaseClusterSubnet1RouteTableAssociation:
+  AccountingClusterSubnet1RouteTableAssociation:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Condition: CreateSubnets
     Properties:
-      RouteTableId: !Ref ServerlessDatabaseClusterSubnet1RouteTable
-      SubnetId: !Ref ServerlessDatabaseClusterSubnet1
-  ServerlessDatabaseClusterSubnet2:
+      RouteTableId: !Ref AccountingClusterSubnet1RouteTable
+      SubnetId: !Ref AccountingClusterSubnet1
+  AccountingClusterSubnet2:
     Type: 'AWS::EC2::Subnet'
     Condition: CreateSubnets
     Properties:
@@ -181,51 +178,52 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: ServerlessDatabaseClusterSubnet2
+          Value: AccountingClusterSubnet2
         - Key: 'parallelcluster:infrastructure'
           Value: 'slurm accounting'
-  ServerlessDatabaseClusterSubnet2RouteTable:
+  AccountingClusterSubnet2RouteTable:
     Type: 'AWS::EC2::RouteTable'
     Condition: CreateSubnets
     Properties:
       VpcId: !Ref Vpc
       Tags:
         - Key: Name
-          Value: ServerlessDatabaseClusterSubnet2
+          Value: AccountingClusterSubnet2
         - Key: 'parallelcluster:infrastructure'
           Value: 'slurm accounting'
-  ServerlessDatabaseClusterSubnet2RouteTableAssociation:
+  AccountingClusterSubnet2RouteTableAssociation:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Condition: CreateSubnets
     Properties:
-      RouteTableId: !Ref ServerlessDatabaseClusterSubnet2RouteTable
-      SubnetId: !Ref ServerlessDatabaseClusterSubnet2
+      RouteTableId: !Ref AccountingClusterSubnet2RouteTable
+      SubnetId: !Ref AccountingClusterSubnet2
 
   #
   # Database Cluster
   #
-  ServerlessDatabaseClusterParameterGroup:
+  AccountingClusterParameterGroup:
     Type: 'AWS::RDS::DBClusterParameterGroup'
     Properties:
-      Description: Cluster parameter group for aurora-mysql5.7
-      Family: aurora-mysql5.7
+      Description: Cluster parameter group for aurora-mysql
+#      Family: aurora-mysql5.7
+      Family: aurora-mysql8.0
       Parameters:
         require_secure_transport: 'ON'
         innodb_lock_wait_timeout: '900'
       Tags:
         - Key: 'parallelcluster:usecase'
           Value: 'slurm accounting'
-  ServerlessDatabaseClusterSubnetGroup:
+  AccountingClusterSubnetGroup:
     Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
-      DBSubnetGroupDescription: !Sub 'Subnets for ServerlessDatabaseCluster-${AWS::Region} database'
+      DBSubnetGroupDescription: !Sub 'Subnets for AccountingCluster-${AWS::Region} database'
       SubnetIds:
-        - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet1, !Ref DatabaseClusterSubnetOne]
-        - !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
+        - !If [CreateSubnets, !Ref AccountingClusterSubnet1, !Ref DatabaseClusterSubnetOne]
+        - !If [CreateSubnets, !Ref AccountingClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
       Tags:
         - Key: 'parallelcluster:usecase'
           Value: 'slurm accounting'
-  ServerlessDatabaseClusterSecurityGroup:
+  AccountingClusterSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
       GroupDescription: RDS security group
@@ -237,24 +235,24 @@ Resources:
         - Key: 'parallelcluster:usecase'
           Value: 'slurm accounting'
       VpcId: !Ref Vpc
-  ServerlessDatabaseClusterSecurityGroupInboundRule:
+  AccountingClusterSecurityGroupInboundRule:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       IpProtocol: tcp
       Description: Allow incoming connections from client security group
       FromPort: !GetAtt
-        - ServerlessDatabaseCluster
+        - AccountingCluster
         - Endpoint.Port
       GroupId: !GetAtt
-        - ServerlessDatabaseClusterSecurityGroup
+        - AccountingClusterSecurityGroup
         - GroupId
       SourceSecurityGroupId: !GetAtt
-        - ServerlessClusterDatabaseClientSecurityGroup
+        - AccountingClusterClientSecurityGroup
         - GroupId
       ToPort: !GetAtt
-        - ServerlessDatabaseCluster
+        - AccountingCluster
         - Endpoint.Port
-  ServerlessDatabaseClusterAdminSecret:
+  AccountingClusterAdminSecret:
     Type: 'AWS::SecretsManager::Secret'
     Properties:
       Description: 'Serverless Database Cluster Administrator Password'
@@ -262,33 +260,52 @@ Resources:
       Tags:
         - Key: 'parallelcluster:usecase'
           Value: 'slurm accounting'
-  ServerlessDatabaseCluster:
+  AccountingCluster:
     Type: 'AWS::RDS::DBCluster'
     Properties:
-      Engine: aurora-mysql
+      DBClusterIdentifier: !Ref ClusterName
+      Engine: "aurora-mysql"
+      EngineVersion: "8.0.mysql_aurora.3.02.1"
       CopyTagsToSnapshot: true
-      DBClusterParameterGroupName: !Ref ServerlessDatabaseClusterParameterGroup
-      DBSubnetGroupName: !Ref ServerlessDatabaseClusterSubnetGroup
+      DBClusterParameterGroupName: !Ref AccountingClusterParameterGroup
+      DBSubnetGroupName: !Ref AccountingClusterSubnetGroup
       EnableHttpEndpoint: false
-      EngineMode: serverless
       MasterUsername: !Ref ClusterAdmin
       MasterUserPassword: !Ref AdminPasswordSecretString
-      ScalingConfiguration:
-        AutoPause: true
+      ServerlessV2ScalingConfiguration:
         MaxCapacity: !Ref MaxCapacity
         MinCapacity: !Ref MinCapacity
-        SecondsUntilAutoPause: 600
       StorageEncrypted: true
       Tags:
         - Key: 'parallelcluster:usecase'
           Value: 'slurm accounting'
       VpcSecurityGroupIds:
         - !GetAtt
-          - ServerlessDatabaseClusterSecurityGroup
+          - AccountingClusterSecurityGroup
           - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  ServerlessClusterDatabaseClientSecurityGroup:
+  AccountingClusterInstance1:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceClass: 'db.serverless'
+      DBClusterIdentifier: !Ref AccountingCluster
+      DBInstanceIdentifier: !Sub '${ClusterName}-instance-1'
+      Engine: "aurora-mysql"
+      PubliclyAccessible: false
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  AccountingClusterInstance2:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceClass: 'db.serverless'
+      DBClusterIdentifier: !Ref AccountingCluster
+      DBInstanceIdentifier: !Sub '${ClusterName}-instance-2'
+      Engine: "aurora-mysql"
+      PubliclyAccessible: false
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  AccountingClusterClientSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
       GroupDescription: Security Group to allow connection to Serverless DB Cluster
@@ -296,47 +313,49 @@ Resources:
         - Key: 'parallel-cluster:usecase'
           Value: 'slurm accounting'
       VpcId: !Ref Vpc
-  ServerlessClusterDatabaseClientSecurityGroupOutboundRule:
+  AccountingClusterClientSecurityGroupOutboundRule:
     Type: 'AWS::EC2::SecurityGroupEgress'
     Properties:
       GroupId: !GetAtt
-        - ServerlessClusterDatabaseClientSecurityGroup
+        - AccountingClusterClientSecurityGroup
         - GroupId
       IpProtocol: tcp
       Description: Allow incoming connections from PCluster
       DestinationSecurityGroupId: !GetAtt
-        - ServerlessDatabaseClusterSecurityGroup
+        - AccountingClusterSecurityGroup
         - GroupId
       FromPort: !GetAtt
-        - ServerlessDatabaseCluster
+        - AccountingCluster
         - Endpoint.Port
       ToPort: !GetAtt
-        - ServerlessDatabaseCluster
+        - AccountingCluster
         - Endpoint.Port
 Outputs:
+  ClusterName:
+    Value: !Ref ClusterName
   DatabaseHost:
     Value: !GetAtt
-      - ServerlessDatabaseCluster
+      - AccountingCluster
       - Endpoint.Address
   DatabasePort:
     Value: !GetAtt
-      - ServerlessDatabaseCluster
+      - AccountingCluster
       - Endpoint.Port
   DatabaseAdminUser:
     Value: !Ref ClusterAdmin
   DatabaseSecretArn:
-    Value: !Ref ServerlessDatabaseClusterAdminSecret
+    Value: !Ref AccountingClusterAdminSecret
   DatabaseVpcId:
     Value: !Ref Vpc
   DatabaseClusterSecurityGroup:
     Value: !GetAtt
-      - ServerlessDatabaseClusterSecurityGroup
+      - AccountingClusterSecurityGroup
       - GroupId
   DatabaseClusterSubnet1:
-    Value: !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet1, !Ref DatabaseClusterSubnetOne]
+    Value: !If [CreateSubnets, !Ref AccountingClusterSubnet1, !Ref DatabaseClusterSubnetOne]
   DatabaseClusterSubnet2:
-    Value: !If [CreateSubnets, !Ref ServerlessDatabaseClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
+    Value: !If [CreateSubnets, !Ref AccountingClusterSubnet2, !Ref DatabaseClusterSubnetTwo]
   DatabaseClientSecurityGroup:
     Value: !GetAtt
-      - ServerlessClusterDatabaseClientSecurityGroup
+      - AccountingClusterClientSecurityGroup
       - GroupId
