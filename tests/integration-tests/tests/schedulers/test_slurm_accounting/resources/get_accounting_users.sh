@@ -13,4 +13,4 @@ getent passwd 0 | cut -d : -f 1
 # Get the configured cluster user name from the dna.json (added to the database during node configuration)
 jq -r '.cluster.cluster_user' < "/etc/chef/dna.json"
 # Get the configured Slurm user from the slurm configuration (added to the database during node configuration)
-get_setting_value "/opt/slurm/etc/slurm.conf" "^SlurmUser\w*="
+get_setting_value "/opt/slurm/etc/slurm.conf" "^SlurmUser="

@@ -43,7 +43,7 @@ def _is_accounting_enabled(remote_command_executor):
 def _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir):
     logging.info("Testing Slurm Accounting Users")
     expected_users = _get_expected_users(remote_command_executor, test_resources_dir)
-    users = list(scheduler_commands.get_users())
+    users = list(scheduler_commands.get_accounting_users())
     assert_that(users).is_length(len(expected_users))
     for user in users:
         logging.info("  User: %s", user)
@@ -86,7 +86,7 @@ def _test_jobs_get_recorded(scheduler_commands):
     job_id = scheduler_commands.assert_job_submitted(job_submission_output)
     logging.info(" Submitted Job ID: %s", job_id)
     scheduler_commands.wait_job_completed(job_id)
-    results = scheduler_commands.get_records_for_job(job_id)
+    results = scheduler_commands.get_accounting_job_records(job_id)
     for row in results:
         logging.info(" Result: %s", row)
         assert_that(row.get("state")).is_equal_to("COMPLETED")
