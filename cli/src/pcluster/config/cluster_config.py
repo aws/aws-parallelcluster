@@ -95,7 +95,6 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
-    RequireImdsV2Validator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -1240,7 +1239,6 @@ class BaseClusterConfig(Resource):
             volume_size=root_volume_size,
             volume_iops=root_volume.iops,
         )
-        self._register_validator(RequireImdsV2Validator, require_imds_v2=self.imds.require_imds_v2)
 
     def _register_storage_validators(self):
         if self.shared_storage:
