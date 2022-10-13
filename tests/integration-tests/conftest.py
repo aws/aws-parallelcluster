@@ -161,6 +161,10 @@ def pytest_addoption(parser):
         help="Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD "
         "integration feature.",
     )
+    parser.addoption(
+        "--slurm-database-stack-name",
+        help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
+    )
 
 
 def pytest_generate_tests(metafunc):
