@@ -545,7 +545,7 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     "config_file_name",
     ["slurm.full.yaml", "awsbatch.full.yaml", "scheduler_plugin.full.yaml"],
 )
-def test_required_imds_v2(mocker, config_file_name):
+def test_with_imds_support_setting(mocker, config_file_name):
     mock_aws_api(mocker)
     mock_bucket(mocker)
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
@@ -567,7 +567,7 @@ def test_required_imds_v2(mocker, config_file_name):
     "config_file_name",
     ["slurm.required.yaml", "awsbatch.simple.yaml", "scheduler_plugin.required.yaml"],
 )
-def test_without_required_imds_v2(mocker, config_file_name):
+def test_without_imds_support_setting(mocker, config_file_name):
     mock_aws_api(mocker)
     mock_bucket(mocker)
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)

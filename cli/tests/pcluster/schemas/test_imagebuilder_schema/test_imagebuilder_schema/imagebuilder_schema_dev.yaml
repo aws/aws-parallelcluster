@@ -13,7 +13,7 @@ Image:
 
 Build:
   Imds:
-    RequireImdsV2: true
+    ImdsSupport: v2.0
   Iam:
     InstanceRole: arn:aws:iam::111122223333:role/executionServiceEC2Role/parallelcluster-imagebuilder-test-InstanceRole-J7MKRFYF6634
     CleanupLambdaRole: arn:aws:iam::111122223333:role/executionServiceEC2Role/parallelcluster-imagebuilder-test-LambdaRole-J7MKRFYF6634

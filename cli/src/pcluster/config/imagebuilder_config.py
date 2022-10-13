@@ -159,7 +159,7 @@ class Build(Resource):
         self.security_group_ids = security_group_ids
         self.components = components
         self.update_os_packages = update_os_packages
-        self.imds = imds or Imds(implied=False)
+        self.imds = imds or Imds(implied="v1.0")
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(

@@ -586,7 +586,7 @@ class ImageBuilderCdkStack(Stack):
             instance_metadata_options=imagebuilder.CfnInfrastructureConfiguration.InstanceMetadataOptionsProperty(
                 http_tokens="required"
             )
-            if self.config.build.imds.require_imds_v2
+            if self.config.build.imds.imds_support == "v2.0"
             else None,
         )
         if not self.custom_cleanup_lambda_role:

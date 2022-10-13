@@ -883,7 +883,7 @@ class ClusterCdkStack(Stack):
                     name=self._head_node_instance_profile
                 ),
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(http_tokens="required")
-                if self.config.imds.require_imds_v2
+                if self.config.imds.imds_support == "v2.0"
                 else None,
                 user_data=Fn.base64(
                     Fn.sub(
@@ -1488,7 +1488,7 @@ class ComputeFleetConstruct(Construct):
                 instance_initiated_shutdown_behavior="terminate",
                 capacity_reservation_specification=capacity_reservation_specification,
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(http_tokens="required")
-                if self._config.imds.require_imds_v2
+                if self._config.imds.imds_support == "v2.0"
                 else None,
                 user_data=Fn.base64(
                     Fn.sub(

@@ -49,7 +49,6 @@ from tests.pcluster.test_utils import FAKE_NAME
                         ],
                     },
                     "build": {
-                        "imds": {"require_imds_v2": True},
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
                     },

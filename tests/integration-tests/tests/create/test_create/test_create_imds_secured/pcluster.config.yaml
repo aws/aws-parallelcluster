@@ -1,5 +1,5 @@
 Imds:
-  RequireImdsV2: {{ require_imds_v2 }}
+  ImdsSupport: {{ imds_support }}
 Image:
   Os: {{ os }}
 HeadNode:

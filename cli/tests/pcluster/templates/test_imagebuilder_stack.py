@@ -3437,7 +3437,7 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
             {
                 "imagebuilder": {
                     "build": {
-                        "imds": {"require_imds_v2": True},
+                        "imds": {"imds_support": "v2.0"},
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
                     },
@@ -3460,7 +3460,7 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
             {
                 "imagebuilder": {
                     "build": {
-                        "imds": {"require_imds_v2": False},
+                        "imds": {"imds_support": "v1.0"},
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
                     },
