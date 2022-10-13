@@ -182,7 +182,7 @@ class AwsBatchConstruct(Construct):
                 instance_role=self._iam_instance_profile.ref,
                 bid_percentage=self.compute_resource.spot_bid_percentage,
                 spot_iam_fleet_role=self._spot_iam_fleet_role.attr_arn if self._spot_iam_fleet_role else None,
-                launch_template=self._launch_template() if self.config.imds.require_imds_v2 else None,
+                launch_template=self._launch_template() if self.config.imds.imds_support == "v2.0" else None,
                 tags={
                     **get_default_instance_tags(
                         self.stack_name,

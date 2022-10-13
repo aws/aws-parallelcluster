@@ -286,9 +286,9 @@ class Imds(Resource):
     or in the Build section of the build image config file.
     """
 
-    def __init__(self, require_imds_v2: bool = None, **kwargs):
+    def __init__(self, imds_support: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.require_imds_v2 = Resource.init_param(require_imds_v2, default=False)
+        self.imds_support = Resource.init_param(imds_support, default="v1.0")
 
 
 # ------------ Common attributes class between ImageBuilder an Cluster models ----------- #

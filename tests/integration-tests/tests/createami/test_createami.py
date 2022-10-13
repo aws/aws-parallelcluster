@@ -103,7 +103,7 @@ def test_build_image(
     """
     Test build image for given region and os.
 
-    Also check that the build instance has the desired IMDSv2 settings (RequireImdsV2: true).
+    Also check that the build instance has the desired ImdsSupport setting (v2.0, so IMDSv2 is required).
     """
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
 
@@ -151,7 +151,7 @@ def test_kernel4_build_image_run_cluster(
     """
     Test build image for given region and os and run a job in a new cluster created from the new images.
 
-    Also check that the build instance has the desired IMDSv2 settings (RequireImdsV2: false).
+    Also check that the build instance has the desired ImdsSupport setting (v1.0, so IMDSv2 is optional).
     """
 
     # Get base AMI from kernel4

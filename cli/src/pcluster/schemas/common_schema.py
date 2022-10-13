@@ -36,6 +36,8 @@ ALLOWED_VALUES = {
     "volume_type": ["standard", "io1", "io2", "gp2", "st1", "sc1", "gp3"],
 }
 
+SUPPORTED_IMDS_VERSIONS = ["v1.0", "v2.0"]
+
 
 def validate_json_format(data):
     """Validate the input data in json format."""
@@ -215,7 +217,11 @@ class ImdsSchema(BaseSchema):
     or in the Build section of the build image config file.
     """
 
-    require_imds_v2 = fields.Bool(data_key="RequireImdsV2", metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    imds_support = fields.Str(
+        data_key="ImdsSupport",
+        validate=validate.OneOf(SUPPORTED_IMDS_VERSIONS),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

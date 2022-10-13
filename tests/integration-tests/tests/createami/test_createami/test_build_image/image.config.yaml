@@ -8,7 +8,7 @@ Image:
 
 Build:
     Imds:
-        RequireImdsV2: true
+        ImdsSupport: v2.0
     Iam:
         InstanceRole: {{ instance_role }}
     InstanceType: {{ instance }}
