@@ -18,6 +18,7 @@ from typing import List
 from pcluster.aws.common import get_region
 from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, ExtraChefAttributes, Imds, Resource
 from pcluster.imagebuilder_utils import ROOT_VOLUME_TYPE
+from pcluster.validators.common import ValidatorContext
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
@@ -43,7 +44,7 @@ class Volume(Resource):
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.kms_key_id:
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
@@ -111,7 +112,7 @@ class Iam(Resource):
             arns.append(policy.policy)
         return arns
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.instance_role:
             self._register_validator(RoleValidator, role_arn=self.instance_role)
         elif self.instance_profile:
@@ -161,7 +162,7 @@ class Build(Resource):
         self.update_os_packages = update_os_packages
         self.imds = imds or Imds(implied=False)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             InstanceTypeBaseAMICompatibleValidator,
             instance_type=self.instance_type,
@@ -227,7 +228,7 @@ class ImageBuilderConfig(Resource):
         self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
         self.source_config = source_config
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         # Volume size validator only validates specified volume size
         if self.image and self.image.root_volume and self.image.root_volume.size:
             self._register_validator(
