@@ -33,6 +33,8 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 from tests.pcluster.utils import load_cluster_model_from_yaml
 
+EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
+
 
 @pytest.mark.parametrize(
     "config_file_name",
@@ -542,13 +544,28 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
 
 @freeze_time("2021-01-01T01:01:01")
 @pytest.mark.parametrize(
-    "config_file_name",
-    ["slurm.full.yaml", "awsbatch.full.yaml", "scheduler_plugin.full.yaml"],
+    "config_file_name, imds_support, http_tokens",
+    [
+        ("slurm.required.yaml", "v1.0", "optional"),
+        ("awsbatch.simple.yaml", "v1.0", "optional"),
+        ("scheduler_plugin.required.yaml", "v1.0", "optional"),
+        ("slurm.required.yaml", None, "optional"),
+        ("awsbatch.simple.yaml", None, "optional"),
+        ("scheduler_plugin.required.yaml", None, "optional"),
+        ("slurm.required.yaml", "v2.0", "required"),
+        ("awsbatch.simple.yaml", "v2.0", "required"),
+        ("scheduler_plugin.required.yaml", "v2.0", "required"),
+    ],
 )
-def test_with_imds_support_setting(mocker, config_file_name):
+def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_tokens):
     mock_aws_api(mocker)
-    mock_bucket(mocker)
-    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+
+    input_yaml = load_yaml_dict(f"{EXAMPLE_CONFIGS_DIR}/{config_file_name}")
+    if imds_support:
+        input_yaml["Imds"] = {"ImdsSupport": imds_support}
+
+    cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
@@ -559,24 +576,4 @@ def test_with_imds_support_setting(mocker, config_file_name):
     for launch_template in launch_templates:
         assert_that(
             launch_template.get("Properties").get("LaunchTemplateData").get("MetadataOptions").get("HttpTokens")
-        ).is_equal_to("required")
-
-
-@freeze_time("2021-01-01T01:01:01")
-@pytest.mark.parametrize(
-    "config_file_name",
-    ["slurm.required.yaml", "awsbatch.simple.yaml", "scheduler_plugin.required.yaml"],
-)
-def test_without_imds_support_setting(mocker, config_file_name):
-    mock_aws_api(mocker)
-    mock_bucket(mocker)
-    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
-    )
-
-    launch_templates = [
-        lt for lt_name, lt in generated_template.get("Resources").items() if "LaunchTemplate" in lt_name
-    ]
-    for launch_template in launch_templates:
-        assert_that(launch_template.get("Properties").get("LaunchTemplateData")).does_not_contain("MetadataOptions")
+        ).is_equal_to(http_tokens)
