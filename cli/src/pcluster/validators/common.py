@@ -64,3 +64,10 @@ class Validator(ABC):
     def _validate(self, *args, **kwargs):
         """Must be implemented with specific validation logic."""
         pass
+
+
+class ValidatorContext:
+    """Context containing information about cluster environment meant to be passed to validators."""
+
+    def __init__(self, head_node_instance_id: str = None):
+        self.head_node_instance_id = head_node_instance_id

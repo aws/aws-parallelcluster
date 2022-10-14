@@ -39,6 +39,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_shared_storage_ids_by_type,
     to_comma_separated_string,
 )
+from pcluster.utils import get_http_tokens_setting
 
 
 class AwsBatchConstruct(Construct):
@@ -151,12 +152,12 @@ class AwsBatchConstruct(Construct):
         self._code_build_notification_rule = self._add_code_build_notification_rule()
         self._manage_docker_images_custom_resource.add_depends_on(self._code_build_notification_rule)
 
-    def _launch_template(self):
+    def _launch_template(self, http_tokens):
         launch_template = ec2.CfnLaunchTemplate(
             self.stack_scope,
             "PclusterComputeEnvironmentLaunchTemplate",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
-                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(http_tokens="required")
+                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(http_tokens=http_tokens)
             ),
         )
         return batch.CfnComputeEnvironment.LaunchTemplateSpecificationProperty(
@@ -182,7 +183,9 @@ class AwsBatchConstruct(Construct):
                 instance_role=self._iam_instance_profile.ref,
                 bid_percentage=self.compute_resource.spot_bid_percentage,
                 spot_iam_fleet_role=self._spot_iam_fleet_role.attr_arn if self._spot_iam_fleet_role else None,
-                launch_template=self._launch_template() if self.config.imds.require_imds_v2 else None,
+                launch_template=self._launch_template(
+                    http_tokens=get_http_tokens_setting(self.config.imds.imds_support)
+                ),
                 tags={
                     **get_default_instance_tags(
                         self.stack_name,

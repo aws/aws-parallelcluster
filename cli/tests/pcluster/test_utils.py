@@ -321,3 +321,8 @@ def test_yaml_load(yaml_string, expected_yaml_dict, expected_error):
     else:
         yaml_dict = yaml_load(yaml_string)
         assert_that(yaml_dict).is_equal_to(expected_yaml_dict)
+
+
+@pytest.mark.parametrize("imds_support, http_tokens", [("v1.0", "optional"), ("v2.0", "required")])
+def test_get_http_token_settings(imds_support, http_tokens):
+    assert_that(utils.get_http_tokens_setting(imds_support)).is_equal_to(http_tokens)

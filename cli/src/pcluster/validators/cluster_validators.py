@@ -100,23 +100,6 @@ class RegionValidator(Validator):
             )
 
 
-class RequireImdsV2Validator(Validator):
-    """IMDSv2 enforcement validator."""
-
-    def _validate(self, require_imds_v2):
-        if not require_imds_v2:
-            self._add_failure(
-                "The current cluster configuration does not disable IMDSv1, "
-                "which we plan to disable by default in future versions. "
-                "If you do not explicitly need to use IMDSv1 enforce IMDSv2 "
-                "usage by setting the RequireImdsV2 configuration parameter "
-                "to true (see documentation at: https://docs.aws.amazon.com/"
-                "parallelcluster/latest/ug/cluster-configuration-file-v3.html"
-                "#cluster-configuration-file-v3.properties)",
-                level=FailureLevel.INFO,
-            )
-
-
 class SchedulerOsValidator(Validator):
     """
     scheduler - os validator.

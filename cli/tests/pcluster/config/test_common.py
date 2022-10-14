@@ -14,7 +14,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.config.common import Resource
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.validators.common import FailureLevel, Validator, ValidatorContext
 
 
 class FakeInfoValidator(Validator):
@@ -62,7 +62,7 @@ def test_resource_validate():
             self.fake_attribute = "fake-value"
             self.other_attribute = "other-value"
 
-        def _register_validators(self):
+        def _register_validators(self, context: ValidatorContext = None):
             self._register_validator(FakeErrorValidator, param=self.fake_attribute)
             self._register_validator(
                 FakeComplexValidator,
@@ -90,7 +90,7 @@ def test_dynamic_property_validate():
             super().__init__()
             self.deps_value = ""
 
-        def _register_validators(self):
+        def _register_validators(self, context: ValidatorContext = None):
             self._register_validator(FakePropertyValidator, property_value=self.dynamic_attribute)
 
         @property
@@ -126,7 +126,7 @@ def test_nested_resource_validate():
             super().__init__()
             self.fake_attribute = fake_value
 
-        def _register_validators(self):
+        def _register_validators(self, context: ValidatorContext = None):
             self._register_validator(FakeErrorValidator, param=self.fake_attribute)
 
     class FakeParentResource(Resource):
@@ -138,7 +138,7 @@ def test_nested_resource_validate():
             self.other_attribute = "other-value"
             self.list_of_resources = list_of_resources
 
-        def _register_validators(self):
+        def _register_validators(self, context: ValidatorContext = None):
             self._register_validator(FakeInfoValidator, param=self.other_attribute)
 
     fake_resource = FakeParentResource(FakeNestedResource("value1"), [FakeNestedResource("value2")])

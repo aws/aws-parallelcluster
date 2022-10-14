@@ -95,7 +95,6 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
-    RequireImdsV2Validator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -103,6 +102,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
 )
+from pcluster.validators.common import ValidatorContext
 from pcluster.validators.database_validators import DatabaseUriValidator
 from pcluster.validators.directory_service_validators import (
     AdditionalSssdConfigsValidator,
@@ -192,7 +192,7 @@ class Ebs(Resource):
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             EbsVolumeThroughputValidator, volume_type=self.volume_type, volume_throughput=self.throughput
         )
@@ -276,8 +276,8 @@ class SharedEbs(Ebs):
         self.raid = raid
         self.deletion_policy = Resource.init_param(deletion_policy, default=DELETE_POLICY if not volume_id else None)
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
         self._register_validator(
             EbsVolumeIopsValidator, volume_type=self.volume_type, volume_size=self.size, volume_iops=self.iops
@@ -286,7 +286,11 @@ class SharedEbs(Ebs):
         if self.kms_key_id:
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
-        self._register_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
+        self._register_validator(
+            SharedEbsVolumeIdValidator,
+            volume_id=self.volume_id,
+            head_node_instance_id=context.head_node_instance_id,
+        )
         self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
@@ -320,7 +324,7 @@ class SharedEfs(Resource):
             deletion_policy, default=DELETE_POLICY if not file_system_id else None
         )
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SharedStorageNameValidator, name=self.name)
         if self.kms_key_id:
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
@@ -338,7 +342,7 @@ class BaseSharedFsx(Resource):
         self.shared_storage_type = SharedStorageType.FSX
         self.__file_system_data = None
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SharedStorageNameValidator, name=self.name)
 
     @property
@@ -405,8 +409,8 @@ class SharedFsxLustre(BaseSharedFsx):
             deletion_policy, default=DELETE_POLICY if not file_system_id else None
         )
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(
             FsxS3Validator,
             import_path=self.import_path,
@@ -538,7 +542,7 @@ class _BaseNetworking(Resource):
         self.security_groups = Resource.init_param(security_groups)
         self.additional_security_groups = Resource.init_param(additional_security_groups)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
@@ -552,8 +556,8 @@ class HeadNodeNetworking(_BaseNetworking):
         self.elastic_ip = Resource.init_param(elastic_ip)
         self.proxy = proxy
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(ElasticIpValidator, elastic_ip=self.elastic_ip)
 
     @property
@@ -571,7 +575,7 @@ class PlacementGroup(Resource):
         self.name = Resource.init_param(name)
         self.id = Resource.init_param(id)  # Duplicate of name
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(PlacementGroupNamingValidator, placement_group=self)
 
     @property
@@ -632,7 +636,7 @@ class Ssh(Resource):
         self.key_name = Resource.init_param(key_name)
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(KeyPairValidator, key_name=self.key_name)
 
 
@@ -719,7 +723,7 @@ class Roles(Resource):
         super().__init__()
         self.lambda_functions_role = Resource.init_param(lambda_functions_role)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.lambda_functions_role:
             self._register_validator(RoleValidator, role_arn=self.lambda_functions_role)
 
@@ -794,7 +798,7 @@ class Iam(Resource):
             instance_role_arns = {}
         return list(instance_role_arns)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.instance_role:
             self._register_validator(RoleValidator, role_arn=self.instance_role)
         elif self.instance_profile:
@@ -836,7 +840,7 @@ class DirectoryService(Resource):
         self.generate_ssh_keys_for_users = Resource.init_param(generate_ssh_keys_for_users, default=True)
         self.additional_sssd_configs = Resource.init_param(additional_sssd_configs, default={})
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.domain_name:
             self._register_validator(DomainNameValidator, domain_name=self.domain_name)
         if self.domain_addr:
@@ -863,7 +867,7 @@ class ClusterIam(Resource):
         self.roles = roles
         self.permissions_boundary = Resource.init_param(permissions_boundary)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.permissions_boundary:
             self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
 
@@ -932,8 +936,8 @@ class ClusterDevSettings(BaseDevSettings):
         self.instance_types_data = Resource.init_param(instance_types_data)
         self.timeouts = Resource.init_param(timeouts)
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         if self.cluster_template:
             self._register_validator(UrlValidator, url=self.cluster_template)
 
@@ -949,7 +953,7 @@ class Image(Resource):
         self.os = Resource.init_param(os)
         self.custom_ami = Resource.init_param(custom_ami)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.custom_ami:
             self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
             self._register_validator(AmiOsCompatibleValidator, os=self.os, image_id=self.custom_ami)
@@ -962,7 +966,7 @@ class HeadNodeImage(Resource):
         super().__init__()
         self.custom_ami = Resource.init_param(custom_ami)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.custom_ami:
             self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
 
@@ -974,7 +978,7 @@ class QueueImage(Resource):
         super().__init__()
         self.custom_ami = Resource.init_param(custom_ami)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.custom_ami:
             self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
 
@@ -987,7 +991,7 @@ class CustomAction(Resource):
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(UrlValidator, url=self.script)
 
 
@@ -1031,7 +1035,7 @@ class HeadNode(Resource):
         self.image = image
         self.__instance_type_info = None
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
 
     @property
@@ -1079,7 +1083,7 @@ class BaseComputeResource(Resource):
         super().__init__()
         self.name = Resource.init_param(name)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
 
 
@@ -1107,7 +1111,7 @@ class BaseQueue(Resource):
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
 
 
@@ -1159,9 +1163,9 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
         self.original_config_version = ""
         self._official_ami = None
-        self.imds = imds or TopLevelImds(implied=False)
+        self.imds = imds or TopLevelImds(implied="v1.0")
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
         self._register_validator(ClusterNameValidator, name=self.cluster_name)
         self._register_validator(
@@ -1235,7 +1239,6 @@ class BaseClusterConfig(Resource):
             volume_size=root_volume_size,
             volume_iops=root_volume.iops,
         )
-        self._register_validator(RequireImdsV2Validator, require_imds_v2=self.imds.require_imds_v2)
 
     def _register_storage_validators(self):
         if self.shared_storage:
@@ -1565,8 +1568,8 @@ class AwsBatchComputeResource(BaseComputeResource):
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=self.min_vcpus)
         self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(
             AwsBatchComputeInstanceTypeValidator, instance_types=self.instance_types, max_vcpus=self.max_vcpus
         )
@@ -1586,8 +1589,8 @@ class AwsBatchQueue(BaseQueue):
         self.compute_resources = compute_resources
         self.networking = networking
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
@@ -1610,7 +1613,7 @@ class AwsBatchScheduling(Resource):
         self.queues = queues
         self.settings = settings
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
@@ -1623,8 +1626,8 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(AwsBatchRegionValidator, region=self.region)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
@@ -1786,8 +1789,8 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         """Return instance type information."""
         return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
             EfaValidator,
@@ -1962,8 +1965,8 @@ class SlurmQueue(_CommonQueue):
             result.update(compute_resource.instance_types_with_instance_storage)
         return result
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
@@ -2025,7 +2028,7 @@ class Database(Resource):
         self.user_name = Resource.init_param(user_name)
         self.password_secret_arn = Resource.init_param(password_secret_arn)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.uri:
             self._register_validator(DatabaseUriValidator, uri=self.uri)
         if self.password_secret_arn:
@@ -2071,7 +2074,7 @@ class SlurmScheduling(Resource):
         self.queues = queues
         self.settings = settings or SlurmSettings(implied=True)
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
@@ -2094,8 +2097,8 @@ class SchedulerPluginQueue(_CommonQueue):
         super().__init__(**kwargs)
         self.custom_settings = custom_settings
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
@@ -2183,7 +2186,7 @@ class SchedulerPluginRequirements(Resource):
         self.supports_cluster_update = Resource.init_param(supports_cluster_update, default=True)
         self.supported_parallel_cluster_versions = supported_parallel_cluster_versions
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.supported_parallel_cluster_versions:
             self._register_validator(
                 SupportedVersionsValidator,
@@ -2201,7 +2204,7 @@ class SchedulerPluginCloudFormationInfrastructure(Resource):
         self.s3_bucket_owner = s3_bucket_owner
         self.checksum = checksum
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             UrlValidator,
             url=self.template,
@@ -2228,7 +2231,7 @@ class SchedulerPluginClusterSharedArtifact(Resource):
         self.s3_bucket_owner = s3_bucket_owner
         self.checksum = checksum
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(UrlValidator, url=self.source, expected_bucket_owner=self.s3_bucket_owner)
 
 
@@ -2331,7 +2334,7 @@ class SchedulerPluginUser(Resource):
         self.enable_imds = Resource.init_param(enable_imds, default=False)
         self.sudoer_configuration = sudoer_configuration
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             UserNameValidator,
             user_name=self.name,
@@ -2365,7 +2368,7 @@ class SchedulerPluginDefinition(Resource):
         self.system_users = system_users
         self.tags = tags
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             PluginInterfaceVersionValidator,
             plugin_version=self.plugin_interface_version,
@@ -2393,7 +2396,7 @@ class SchedulerPluginSettings(Resource):
         self.scheduler_definition_s3_bucket_owner = scheduler_definition_s3_bucket_owner
         self.scheduler_definition_checksum = scheduler_definition_checksum
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             SudoPrivilegesValidator,
             grant_sudo_privileges=self.grant_sudo_privileges,
@@ -2418,7 +2421,7 @@ class SchedulerPluginScheduling(Resource):
         self.queues = queues
         self.settings = settings
 
-    def _register_validators(self):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
@@ -2448,8 +2451,8 @@ class SchedulerPluginScheduling(Resource):
 class CommonSchedulerClusterConfig(BaseClusterConfig):
     """Represent the common Cluster configuration between Slurm Config and Scheduler Plugin Config."""
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         checked_images = []
         for queue in self.scheduling.queues:
             queue_image = self.image_dict[queue.name]
@@ -2593,8 +2596,8 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
             self.scheduling, "settings.scheduler_definition.tags", default=[]
         )
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         scheduler_definition = self.scheduling.settings.scheduler_definition
         self._register_validator(
             SchedulerPluginOsArchitectureValidator,
@@ -2646,8 +2649,8 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     result[instance_type] = instance_type_info.instance_type_data
         return result
 
-    def _register_validators(self):
-        super()._register_validators()
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
         self._register_validator(
             MixedSecurityGroupOverwriteValidator,
             head_node_security_groups=self.head_node.networking.security_groups,

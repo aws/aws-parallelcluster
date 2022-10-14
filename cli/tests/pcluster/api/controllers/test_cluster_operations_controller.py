@@ -1614,6 +1614,10 @@ class TestUpdateCluster:
     ):
         stack_data = cfn_describe_stack_mock_response()
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([{"InstanceId": "i-123456789"}], None),
+        )
 
         response = self._send_test_request(
             client=client,

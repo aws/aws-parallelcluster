@@ -26,7 +26,12 @@ from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_S3_ARTIFACTS_DICT, PCLUSTER_VERSION_TAG
+from pcluster.constants import (
+    PCLUSTER_CLUSTER_NAME_TAG,
+    PCLUSTER_NODE_TYPE_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
+    PCLUSTER_VERSION_TAG,
+)
 from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
@@ -619,6 +624,14 @@ class TestCluster:
             "pcluster.aws.ec2.Ec2Client.describe_image",
             return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
         )
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([{"InstanceId": "i-123456789"}], None),
+            expected_params=[
+                {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": ["WHATEVER-CLUSTER-NAME"]},
+                {"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": ["HeadNode"]},
+            ],
+        )
         cluster = Cluster(
             FAKE_NAME,
             stack=ClusterStack(
@@ -825,6 +838,14 @@ Scheduling:
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_image",
             return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
+        )
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([{"InstanceId": "i-123456789"}], None),
+            expected_params=[
+                {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": ["WHATEVER-CLUSTER-NAME"]},
+                {"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": ["HeadNode"]},
+            ],
         )
 
         try:

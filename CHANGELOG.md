@@ -10,7 +10,7 @@ CHANGELOG
   to support storage retention on deletion.
 - Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 - Add support for on-demand capacity reservations.
-- Add support for requiring IMDSv2 in cluster and build image configurations via the `Imds > RequireImdsV2` property.
+- Add support for specifying the supported IMDS version in cluster and build image configurations via the `Imds > ImdsSettings` property. A value of `v1.0` (the default) means that both IMDSv1 and IMDSv2 are supported, while a value of `v2.0` means that only IMDSv2 is supported.
 - Add support for Slurm Accounting.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
 

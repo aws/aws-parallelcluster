@@ -99,7 +99,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, join_shell_args
+from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -882,9 +882,9 @@ class ClusterCdkStack(Stack):
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=self._head_node_instance_profile
                 ),
-                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(http_tokens="required")
-                if self.config.imds.require_imds_v2
-                else None,
+                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
+                    http_tokens=get_http_tokens_setting(self.config.imds.imds_support)
+                ),
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
@@ -1487,9 +1487,9 @@ class ComputeFleetConstruct(Construct):
                 instance_market_options=instance_market_options,
                 instance_initiated_shutdown_behavior="terminate",
                 capacity_reservation_specification=capacity_reservation_specification,
-                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(http_tokens="required")
-                if self._config.imds.require_imds_v2
-                else None,
+                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
+                    http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
+                ),
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/compute_node/user_data.sh"),

@@ -356,3 +356,8 @@ def yaml_no_duplicates_constructor(loader, node, deep=False):
         mapping[key] = value
 
     return loader.construct_mapping(node, deep)
+
+
+def get_http_tokens_setting(imds_support):
+    """Get http tokens settings for supported IMDS version."""
+    return "required" if imds_support == "v2.0" else "optional"
