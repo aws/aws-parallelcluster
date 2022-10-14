@@ -1073,6 +1073,8 @@ Resources:
           - NonDefaultVpc
           - [!Ref InfrastructureConfigurationSecurityGroup]
           - !Ref AWS::NoValue
+      InstanceMetadataOptions:
+        HttpTokens: required
 
   PrivateEcrRepository:
     Condition: DoNotUseCustomEcrImageUri
