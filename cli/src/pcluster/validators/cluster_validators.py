@@ -171,8 +171,8 @@ class CustomAmiTagValidator(Validator):
         elif PCLUSTER_IMAGE_BUILD_STATUS_TAG not in tags_dict:
             self._add_failure(
                 (
-                    "The custom AMI did not pass the tests in image builder. "
-                    "Cluster created from this AMI may have unexpected behaviors."
+                    "Unable to retrieve custom AMI build status. "
+                    "Please check build-image CloudFormation stack for details."
                 ),
                 FailureLevel.ERROR,
             )
