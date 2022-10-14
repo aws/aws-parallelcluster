@@ -23,9 +23,9 @@ default['pcluster']['instance_types_data_path'] = ENV['PCLUSTER_INSTANCE_TYPES_D
 default['pcluster']['node_type'] = ENV['PCLUSTER_NODE_TYPE']
 default['pcluster']['python_root'] = ENV['PCLUSTER_PYTHON_ROOT']
 
-default['slurm']['version'] = '22-05-4-1'
+default['slurm']['version'] = '22-05-5-1'
 default['slurm']['url'] = "https://github.com/SchedMD/slurm/archive/slurm-#{node['slurm']['version']}.tar.gz"
-default['slurm']['sha1'] = 'd9d03c95c1dec082bfc33424ac9c3e788dc98187'
+default['slurm']['sha1'] = 'afc0b304755718655f523b973401b243f98f0062'
 default['slurm']['user'] = 'slurm-user'
 default['slurm']['group'] = node['slurm']['user']
 default['slurm']['install_dir'] = "#{node['pcluster']['shared_dir']}/slurm"

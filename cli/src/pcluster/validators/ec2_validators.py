@@ -337,8 +337,8 @@ class PlacementGroupCapacityReservationValidator(Validator):
                         open_or_targeted = True
             if not (pg_match or open_or_targeted):
                 self._add_failure(
-                    f"The placement group provided '{chosen_pg}' does not match any placement group in the set of "
-                    f"target PG/ODCRs and there are no open or targeted '{instance_type}' ODCRs included.",
+                    f"The placement group provided '{chosen_pg}' targets the '{instance_type}' instance type but there "
+                    f"are no ODCRs included in the resource group that target that instance type.",
                     FailureLevel.ERROR,
                 )
             elif open_or_targeted:

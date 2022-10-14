@@ -755,8 +755,8 @@ mock_odcrs = [
             "mock-subnet-3",
             ["mock-type"],
             mock_odcrs[1:2],
-            "The placement group provided 'test' does not match any placement group in the set of target PG/ODCRs and "
-            "there are no open or targeted 'mock-type' ODCRs included.",
+            "The placement group provided 'test' targets the 'mock-type' instance type but there "
+            "are no ODCRs included in the resource group that target that instance type.",
         ),
         (
             "test-2",
@@ -764,8 +764,8 @@ mock_odcrs = [
             "mock-subnet-3",
             ["mock-type"],
             mock_odcrs[1:2],
-            "The placement group provided 'test-2' does not match any placement group in the set of target PG/ODCRs "
-            "and there are no open or targeted 'mock-type' ODCRs included.",
+            "The placement group provided 'test-2' targets the 'mock-type' instance type but there "
+            "are no ODCRs included in the resource group that target that instance type.",
         ),
     ],
 )
