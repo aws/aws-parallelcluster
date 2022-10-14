@@ -465,12 +465,13 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
-{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
-      - regions: ["eu-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["slurm_plugin"]
-{%- endif %}
+# Temporarily disable test_protected_mode for the Slurm scheduler plugin
+#{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
+#      - regions: ["eu-west-2"]
+#        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#        oss: ["alinux2"]
+#        schedulers: ["slurm_plugin"]
+#{%- endif %}
   test_slurm.py::test_fast_capacity_failover:
     dimensions:
       - regions: ["ap-east-1"]
