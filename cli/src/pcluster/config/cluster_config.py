@@ -1288,7 +1288,7 @@ class BaseClusterConfig(Resource):
                         self._register_validator(
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
-                            avail_zones=self.availability_zones,
+                            avail_zones_mapping=self.availability_zones_subnets_mapping,
                             are_all_security_groups_customized=self.are_all_security_groups_customized,
                         )
                     else:
@@ -1424,12 +1424,12 @@ class BaseClusterConfig(Resource):
         )
 
     @property
-    def availability_zones(self):
-        """Return the list of all availability zones in the cluster."""
-        result = set(self.head_node.networking.availability_zone)
+    def availability_zones_subnets_mapping(self):
+        """Retrieve the mapping of availability zone and cluster subnets."""
+        mapping = {self.head_node.networking.availability_zone: {self.head_node.networking.subnet_id}}
         for subnet_id in self.compute_subnet_ids:
-            result.add(AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id))
-        return result
+            mapping.setdefault(AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id), set()).add(subnet_id)
+        return mapping
 
     @property
     def compute_security_groups(self):

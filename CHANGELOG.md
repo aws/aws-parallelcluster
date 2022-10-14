@@ -12,6 +12,7 @@ CHANGELOG
 - Add support for on-demand capacity reservations.
 - Add support for requiring IMDSv2 in cluster and build image configurations via the `Imds > RequireImdsV2` property.
 - Add support for Slurm Accounting.
+- Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
