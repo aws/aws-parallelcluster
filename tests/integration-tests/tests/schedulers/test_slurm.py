@@ -1975,7 +1975,7 @@ def _test_memory_based_scheduling_enabled_true(
         }
     )
     slurm_commands.wait_job_completed(job_id_1)
-    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("OUT_OF_MEMORY")
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("FAILED")
     slurm_commands.wait_job_completed(job_id_2)
     assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("COMPLETED")
 
