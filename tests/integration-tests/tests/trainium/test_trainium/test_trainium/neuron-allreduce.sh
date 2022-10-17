@@ -24,7 +24,7 @@ import os
 import torch_xla.core.xla_model as xm
 import torch
 import torch.distributed as dist
-from torch_xla.neuron.distributed import xla_backend
+from torch_xla.distributed import xla_backend
 
 #os.environ["NEURON_RT_LOG_LEVEL"] = "INFO"
 #os.environ["NEURON_RT_LOG_LOCATION"] = "syslog"

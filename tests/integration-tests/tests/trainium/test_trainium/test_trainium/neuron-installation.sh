@@ -33,9 +33,13 @@ TEMPORARY_ARTIFACTS_BUCKET_PATH=s3://aws-parallelcluster-beta/neuron/
 
 _ubuntu_installation() {
   # Configure Linux for Neuron repository updates
-  sudo tee /etc/apt/sources.list.d/neuron.list > /dev/null <<EOF
+  sudo tee /etc/apt/sources.list.d/neuron-private.list > /dev/null <<EOF
 deb https://${REPO_USER}:${REPO_SECRET}@apt.${REPO_SUFFIX} focal main
 EOF
+
+  sudo apt-get update -y
+  sudo apt-get install -y aws-neuronx-runtime-lib=2.* aws-neuronx-collectives=2.*
+
   wget -qO - https://${REPO_USER}:${REPO_SECRET}@apt.${REPO_SUFFIX}/GPG-PUB-KEY-AMAZON-AWS-NEURON.PUB | sudo apt-key add -
 
   # Install packages from S3 --> FIXME they should be installed from configured repository
@@ -61,13 +65,14 @@ EOF
 }
 
 _rhel_installation() {
-  # Install dkms driver. This is not required, installation is performed at AMI creation time
-  sudo tee /etc/yum.repos.d/neuron.repo > /dev/null <<EOF
-[neuron]
+  sudo tee /etc/yum.repos.d/neuron-private.repo > /dev/null <<EOF
+[neuron-private]
 name=Neuron YUM Repository
 baseurl=https://${REPO_USER}:${REPO_SECRET}@yum.${REPO_SUFFIX}
 enabled=1
 EOF
+  sudo yum install -y aws-neuronx-runtime-lib-2.* aws-neuronx-collectives-2.*
+
   sudo rpm --import https://${REPO_USER}:${REPO_SECRET}@yum.${REPO_SUFFIX}/GPG-PUB-KEY-AMAZON-AWS-NEURON.PUB
 
   # Install packages from S3 --> FIXME they should be installed from configured repository
@@ -79,7 +84,6 @@ EOF
 
 
 _dkms_ubuntu_installation() {
-  # Install dkms driver. This is not required, installation is performed at AMI creation time
   sudo tee /etc/apt/sources.list.d/neuron.list > /dev/null <<EOF
 deb https://apt.repos.neuron.amazonaws.com focal main
 EOF
@@ -91,7 +95,6 @@ EOF
 
 
 _dkms_rhel_installation() {
-  # Install dkms driver. This is not required, installation is performed at AMI creation time
   sudo tee /etc/yum.repos.d/neuron.repo > /dev/null <<EOF
 [neuron]
 name=Neuron YUM Repository
@@ -111,12 +114,12 @@ function main() {
   local OS="$(grep "^ID=" /etc/os-release | cut -d"=" -f 2 | xargs)"
   case ${OS} in
     ubuntu)
-      _dkms_ubuntu_installation  # not needed, installed at AMI creation time
+      _dkms_ubuntu_installation
       _ubuntu_installation
       USER=ubuntu
       ;;
     amzn)
-      _dkms_rhel_installation  # not needed, installed at AMI creation time
+      _dkms_rhel_installation
       _rhel_installation
       USER=ec2-user
       ;;
@@ -131,9 +134,8 @@ function main() {
   pip3 install -U pip
   pip3 install pytest
 
-  # Install packages from beta repo --> FIXME they should be installed from official PyPI
-  python3 -m pip config set global.extra-index-url "https://${REPO_USER}:${REPO_SECRET}@pip.${REPO_SUFFIX}"
-  PIPS=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-1:447714826191:secret:TrainiumPreviewRepository --region us-east-1 --query 'SecretString' --output text | jq -r '.pips')
+  python3 -m pip config set global.extra-index-url "https://pip.repos.neuron.amazonaws.com"
+  PIPS='torch-neuronx==1.11.0.1.* neuronx-cc==2.* transformers'
   pip3 install ${PIPS}
 }
 

@@ -9,7 +9,6 @@ CHANGELOG
 - Add support for adding and removing shared storages at cluster update by updating `SharedStorage` configuration.
 - Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage
   to support storage retention on deletion.
-- Add support for AWS Trainium instances.
 - Add support for Slurm Accounting.
 - Add support for on-demand capacity reservations.
 - Add support for specifying the supported IMDS version in cluster and build image configurations via the `Imds/ImdsSettings` property.
