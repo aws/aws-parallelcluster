@@ -425,7 +425,7 @@ class TestListClusterLogStreams:
             ),
             (
                 ["Name=private-dns-name,Values=ip-10-0-0-101,ip-10-0-0-102", "Name=node-type,Value=HeadNode"],
-                "filters parameter must be in the form",
+                "provided filters parameter 'Name=node-type,Value=HeadNode' must be in the form",
             ),
         ],
     )

@@ -26,6 +26,7 @@ CHANGELOG
 - SlurmQueues.Networking.PlacementGroup.Enabled alone will now create a unique managed placement for each compute resource instead of a single managed placement group for all compute resources
 
 **BUG FIXES**
+- Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified
   along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
 - Fix cluster update when changing the order of SharedStorage together with other changes in the configuration.
