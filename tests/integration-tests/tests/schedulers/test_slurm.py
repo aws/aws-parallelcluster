@@ -35,10 +35,10 @@ from tests.common.hit_common import (
     assert_compute_node_states,
     assert_initial_conditions,
     assert_num_nodes_in_scheduler,
-    submit_initial_job,
-    wait_for_num_nodes_in_scheduler,
-    wait_for_compute_nodes_states,
     get_partition_nodes,
+    submit_initial_job,
+    wait_for_compute_nodes_states,
+    wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands, get_scheduler_commands
@@ -255,9 +255,9 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_scontrol_reboot
 def test_scontrol_reboot(
-        pcluster_config_reader,
-        clusters_factory,
-        test_datadir,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -1141,9 +1141,9 @@ def _wait_for_computefleet_changed(cluster, desired_status):
 
 
 def _test_scontrol_reboot_nodes(
-        remote_command_executor,
-        slurm_commands,
-        nodes_state,
+    remote_command_executor,
+    slurm_commands,
+    nodes_state,
 ):
     """Test scontrol reboot with idle nodes."""
 
@@ -1187,9 +1187,9 @@ def _test_scontrol_reboot_nodes(
 
 
 def _test_scontrol_reboot_powerdown_reboot_requested_node(
-        remote_command_executor,
-        slurm_commands,
-        node,
+    remote_command_executor,
+    slurm_commands,
+    node,
 ):
     """
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
@@ -1232,9 +1232,9 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
 
 
 def _test_scontrol_reboot_powerdown_reboot_issued_node(
-        remote_command_executor,
-        slurm_commands,
-        node,
+    remote_command_executor,
+    slurm_commands,
+    node,
 ):
     """
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
