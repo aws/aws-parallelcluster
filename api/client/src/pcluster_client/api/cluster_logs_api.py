@@ -271,7 +271,7 @@ class ClusterLogsApi(object):
                     'next_token': 'query',
                 },
                 'collection_format_map': {
-                    'filters': 'multi',
+                    'filters': 'ssv',
                 }
             },
             headers_map={

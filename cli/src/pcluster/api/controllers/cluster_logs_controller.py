@@ -24,40 +24,19 @@ from pcluster.models.cluster_resources import FiltersParserError
 from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
-def join_filters(accepted_filters, filters):
-    combined = []
-    current = None
-    state = None
-
+def validate_filters(accepted_filters, filters):
     filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
-    pattern = re.compile(rf"^({filter_regex})(\s+{filter_regex})*$")
+    pattern = re.compile(rf"^({filter_regex})$")
 
-    def fail():
-        raise BadRequestException(f"filters parameter must be in the form {pattern.pattern}.")
+    def fail(provided):
+        raise BadRequestException(f"provided filters parameter '{provided}' must be in the form {pattern.pattern}.")
 
-    def add_filter(filter_):
-        if not pattern.match(filter_):
-            fail()
-        combined.append(current)
-
-    # State-machine that combines filters that were separated at the comma by url parsing
+    # Check each filter with the regex
     for f in filters:
-        if state is None and f.startswith("Name"):
-            current, state = f, "v"
-        elif state == "v" and f.startswith("Values"):
-            current, state = current + f",{f}", "v+"
-        elif state == "v+" and f.startswith("Name"):
-            add_filter(current)
-            current, state = f, "v"
-        elif state == "v+" and not f.startswith("Values"):
-            current += f",{f}"
-        else:
-            fail()
+        if not pattern.match(f):
+            fail(f)
 
-    if current:
-        add_filter(current)
-
-    return combined
+    return filters
 
 
 @configure_aws_region()
@@ -180,7 +159,7 @@ def list_cluster_log_streams(cluster_name, region=None, filters=None, next_token
     :rtype: ListClusterLogStreamsResponseContent
     """
     accepted_filters = ["private-dns-name", "node-type"]
-    filters = join_filters(accepted_filters, filters) if filters else None
+    filters = validate_filters(accepted_filters, filters) if filters else None
     cluster = Cluster(cluster_name)
     validate_cluster(cluster)
 

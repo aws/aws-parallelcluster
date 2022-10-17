@@ -721,7 +721,7 @@ paths:
             Accepted filters are:
             private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).
             node-type - The node type, the only accepted value for this filter is HeadNode.
-          style: form
+          style: spaceDelimited
           schema:
             type: array
             items:
