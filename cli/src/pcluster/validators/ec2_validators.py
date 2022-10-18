@@ -21,6 +21,26 @@ from pcluster.validators.common import FailureLevel, Validator
 LOGGER = logging.getLogger(__name__)
 
 
+class InstanceTypePlacementGroupValidator(Validator):
+    """
+    EC2 Instance Type Placement Group validator.
+
+    Not all EC2 Instance Type can be launched in a Placement Group.
+    """
+
+    def _validate(self, instance_type: str, instance_type_data: dict, placement_group_enabled: bool):
+        if placement_group_enabled:
+            placement_group_supported_strategies = instance_type_data.get("PlacementGroupInfo", {}).get(
+                "SupportedStrategies", []
+            )
+            if "cluster" not in placement_group_supported_strategies:
+                self._add_failure(
+                    f"The instance type '{instance_type}' doesn't support being launched in a cluster placement group. "
+                    f"Please either disable the placement group or remove the instance type from the compute resource.",
+                    FailureLevel.ERROR,
+                )
+
+
 class InstanceTypeAcceleratorManufacturerValidator(Validator):
     """
     EC2 Instance Type Accelerator Manufacturer validator.
