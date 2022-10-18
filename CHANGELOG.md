@@ -13,6 +13,7 @@ CHANGELOG
 - Add support for specifying the supported IMDS version in cluster and build image configurations via the `Imds > ImdsSettings` property. A value of `v1.0` (the default) means that both IMDSv1 and IMDSv2 are supported, while a value of `v2.0` means that only IMDSv2 is supported.
 - Add support for Slurm Accounting.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
+- Improve support for EC2 instances with several NICs.
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
