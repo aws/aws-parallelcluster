@@ -280,7 +280,7 @@ class TestBaseClusterConfig:
                     compute_resources=mock_compute_resources,
                 ),
                 [
-                    {"key": None, "is_managed": None},
+                    {"key": None, "is_managed": False},
                     {"key": "queue-test2", "is_managed": True},
                     {"key": None, "is_managed": False},
                     {"key": "test", "is_managed": False},
@@ -322,7 +322,7 @@ class TestBaseClusterConfig:
                     compute_resources=mock_compute_resources,
                 ),
                 [
-                    {"key": None, "is_managed": None},
+                    {"key": None, "is_managed": False},
                     {"key": "queue-test2", "is_managed": True},
                     {"key": None, "is_managed": False},
                     {"key": "test", "is_managed": False},

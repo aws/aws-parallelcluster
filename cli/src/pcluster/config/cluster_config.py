@@ -580,11 +580,6 @@ class PlacementGroup(Resource):
         self._register_validator(PlacementGroupNamingValidator, placement_group=self)
 
     @property
-    def is_enabled_and_unassigned(self) -> bool:
-        """Check if the PlacementGroup is enabled without a name or id."""
-        return not (self.id or self.name) and self.enabled
-
-    @property
     def assignment(self) -> str:
         """Check if the placement group has a name or id and get it, preferring the name if it exists."""
         return self.name or self.id
@@ -1889,31 +1884,22 @@ class _CommonQueue(BaseQueue):
 
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []
-        for resource in self.compute_resources:
-            chosen_pg = (
-                resource.networking.placement_group
-                if not resource.networking.placement_group.implied
-                else self.networking.placement_group
-            )
-            if chosen_pg.is_enabled_and_unassigned:
-                managed_placement_group_keys.append(f"{self.name}-{resource.name}")
+        for compute_resource in self.compute_resources:
+            placement_group_setting = self.get_placement_group_settings_for_compute_resource(compute_resource)
+            if placement_group_setting.get("is_managed"):
+                managed_placement_group_keys.append(placement_group_setting.get("key"))
         return managed_placement_group_keys
 
     def get_placement_group_settings_for_compute_resource(
         self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
     ) -> Dict[str, bool]:
+        # Placement Group key is None and not managed by default
+        placement_group_key, managed = None, False
         # prefer compute level groups over queue level groups
-        placement_group_key, managed = None, None
-        cr_pg = compute_resource.networking.placement_group
-        if cr_pg.assignment:
-            placement_group_key, managed = cr_pg.assignment, False
-        elif cr_pg.enabled:
-            placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
-        elif cr_pg.enabled is False:
-            placement_group_key, managed = None, False
-        elif self.networking.placement_group.assignment:
-            placement_group_key, managed = self.networking.placement_group.assignment, False
-        elif self.networking.placement_group.enabled:
+        chosen_pg = self.get_chosen_placement_group_setting_for_compute_resource(compute_resource)
+        if chosen_pg.assignment:
+            placement_group_key, managed = chosen_pg.assignment, False
+        elif chosen_pg.enabled:
             placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
         return {"key": placement_group_key, "is_managed": managed}
 
@@ -1927,6 +1913,16 @@ class _CommonQueue(BaseQueue):
             compute_resource_pg_enabled is False
             or self.networking.placement_group.enabled is False
             and compute_resource_pg_enabled is None
+        )
+
+    def get_chosen_placement_group_setting_for_compute_resource(
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+    ) -> PlacementGroup:
+        """Handle logic that the Placement Group on compute resource level overrides queue level."""
+        return (
+            compute_resource.networking.placement_group
+            if not compute_resource.networking.placement_group.implied
+            else self.networking.placement_group
         )
 
 
