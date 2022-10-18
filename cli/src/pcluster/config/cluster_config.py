@@ -1917,6 +1917,11 @@ class _CommonQueue(BaseQueue):
             placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
         return {"key": placement_group_key, "is_managed": managed}
 
+    def is_placement_group_enabled_for_compute_resource(
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+    ) -> bool:
+        return self.get_placement_group_settings_for_compute_resource(compute_resource).get("key") is not None
+
     def is_placement_group_disabled_for_compute_resource(self, compute_resource_pg_enabled: bool) -> bool:
         return (
             compute_resource_pg_enabled is False
@@ -2687,10 +2692,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         InstanceTypePlacementGroupValidator,
                         instance_type=instance_type,
                         instance_type_data=instance_types_data[instance_type],
-                        placement_group_enabled=(
-                            queue.get_placement_group_settings_for_compute_resource(compute_resource).get("key")
-                            is not None
-                        ),
+                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
                     )
                 if isinstance(compute_resource, SlurmFlexibleComputeResource):
                     validator_args = dict(
@@ -2701,9 +2703,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         instance_types_info=compute_resource.instance_type_info_map,
                         disable_simultaneous_multithreading=compute_resource.disable_simultaneous_multithreading,
                         efa_enabled=compute_resource.efa and compute_resource.efa.enabled,
-                        placement_group_enabled=(
-                            queue.networking.placement_group and queue.networking.placement_group.enabled
-                        ),
+                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
                         memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
                     )
                     flexible_instance_types_validators = [
