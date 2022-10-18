@@ -23,7 +23,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
           MinCount: 3 # Set min_count larger than bootstrap failure threshold (which is 2) to test pcluster stop and start don't treat static nodes as bootstrap failure nodes and not set into protected node
@@ -40,14 +40,14 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
         - Name: working-static
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
       Iam:
@@ -63,7 +63,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
       Iam:

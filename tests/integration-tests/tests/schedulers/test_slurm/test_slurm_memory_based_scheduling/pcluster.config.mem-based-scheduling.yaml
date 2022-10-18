@@ -21,14 +21,14 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: ondemand1-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large
           MinCount: 1
         - Name: ondemand1-i2
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
         - Name: ondemand1-i3
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.4xlarge
           MinCount: 0
           SchedulableMemory: 31400

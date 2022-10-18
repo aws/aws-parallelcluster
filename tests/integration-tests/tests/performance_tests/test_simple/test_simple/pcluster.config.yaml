@@ -25,7 +25,7 @@ Scheduling:
     - Name: compute
       ComputeResources:
         - Name: res-1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ compute_instance_type }}
           MinCount: 0
           MaxCount: {{ num_compute_nodes }}

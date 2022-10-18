@@ -23,7 +23,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
       Iam:
@@ -39,14 +39,14 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
         - Name: working-static
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
       Iam:
@@ -62,7 +62,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
       Iam:

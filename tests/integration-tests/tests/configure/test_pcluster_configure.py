@@ -362,7 +362,7 @@ def assert_config_contains_expected_values(
                     0,
                     "ComputeResources",
                     0,
-                    "InstanceTypeList",
+                    "Instances",
                     0,
                     "InstanceType",
                 ],

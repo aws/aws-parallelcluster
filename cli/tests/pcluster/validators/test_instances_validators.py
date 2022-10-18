@@ -15,13 +15,13 @@ import pytest
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config.cluster_config import AllocationStrategy, CapacityType
-from pcluster.validators.instance_type_list_validators import (
-    InstanceTypeListAcceleratorsValidator,
-    InstanceTypeListAllocationStrategyValidator,
-    InstanceTypeListCPUValidator,
-    InstanceTypeListEFAValidator,
-    InstanceTypeListMemorySchedulingValidator,
-    InstanceTypeListNetworkingValidator,
+from pcluster.validators.instances_validators import (
+    InstancesAcceleratorsValidator,
+    InstancesAllocationStrategyValidator,
+    InstancesCPUValidator,
+    InstancesEFAValidator,
+    InstancesMemorySchedulingValidator,
+    InstancesNetworkingValidator,
 )
 from tests.pcluster.validators.utils import assert_failure_messages
 
@@ -83,13 +83,13 @@ from tests.pcluster.validators.utils import assert_failure_messages
         ),
     ],
 )
-def test_instance_type_list_cpu_validator(
+def test_instances_cpu_validator(
     compute_resource_name,
     instance_types_info,
     disable_simultaneous_multithreading,
     expected_message,
 ):
-    actual_failures = InstanceTypeListCPUValidator().execute(
+    actual_failures = InstancesCPUValidator().execute(
         compute_resource_name,
         instance_types_info,
         disable_simultaneous_multithreading,
@@ -322,8 +322,8 @@ def test_instance_type_list_cpu_validator(
         ),
     ],
 )
-def test_instance_type_list_accelerators_validator(compute_resource_name, instance_types_info, expected_message):
-    actual_failures = InstanceTypeListAcceleratorsValidator().execute(
+def test_instances_accelerators_validator(compute_resource_name, instance_types_info, expected_message):
+    actual_failures = InstancesAcceleratorsValidator().execute(
         compute_resource_name,
         instance_types_info,
     )
@@ -382,13 +382,13 @@ def test_instance_type_list_accelerators_validator(compute_resource_name, instan
         ),
     ],
 )
-def test_instance_type_list_efa_validator(
+def test_instances_efa_validator(
     compute_resource_name,
     instance_types_info,
     efa_enabled,
     expected_message,
 ):
-    actual_failures = InstanceTypeListEFAValidator().execute(compute_resource_name, instance_types_info, efa_enabled)
+    actual_failures = InstancesEFAValidator().execute(compute_resource_name, instance_types_info, efa_enabled)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -430,14 +430,14 @@ def test_instance_type_list_efa_validator(
         ),
     ],
 )
-def test_instance_type_list_networking_validator(
+def test_instances_networking_validator(
     queue_name: str,
     compute_resource_name: str,
     instance_types_info: Dict[str, InstanceTypeInfo],
     placement_group_enabled: bool,
     expected_message: str,
 ):
-    actual_failures = InstanceTypeListNetworkingValidator().execute(
+    actual_failures = InstancesNetworkingValidator().execute(
         queue_name, compute_resource_name, instance_types_info, placement_group_enabled
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -458,10 +458,10 @@ def test_instance_type_list_networking_validator(
         ("TestComputeResource", CapacityType.ONDEMAND, AllocationStrategy.LOWEST_PRICE, ""),
     ],
 )
-def test_instance_type_list_allocation_strategy_validator(
+def test_instances_allocation_strategy_validator(
     compute_resource_name: str, capacity_type: Enum, allocation_strategy: Enum, expected_message: str
 ):
-    actual_failures = InstanceTypeListAllocationStrategyValidator().execute(
+    actual_failures = InstancesAllocationStrategyValidator().execute(
         compute_resource_name, capacity_type, allocation_strategy
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -471,7 +471,7 @@ def test_instance_type_list_allocation_strategy_validator(
     "compute_resource_name, instance_types_info, memory_scheduling_enabled, expected_message",
     [
         # Memory-based scheduling is supported for Compute Resource that use either 'InstanceType' or have a single
-        # instance type under 'InstanceTypeList'
+        # instance type under 'Instances'
         (
             "TestComputeResource",
             {
@@ -480,7 +480,7 @@ def test_instance_type_list_allocation_strategy_validator(
             },
             True,
             "Memory-based scheduling is only supported for Compute Resources using either 'InstanceType' or "
-            "'InstanceTypeList' with one instance type. Compute Resource TestComputeResource has more than one "
+            "'Instances' with one instance type. Compute Resource TestComputeResource has more than one "
             "instance type specified.",
         ),
         (
@@ -493,13 +493,13 @@ def test_instance_type_list_allocation_strategy_validator(
         ),
     ],
 )
-def test_instance_type_list_memory_scheduling_validator(
+def test_instances_memory_scheduling_validator(
     compute_resource_name: str,
     instance_types_info: List[InstanceTypeInfo],
     memory_scheduling_enabled: bool,
     expected_message: str,
 ):
-    actual_failures = InstanceTypeListMemorySchedulingValidator().execute(
+    actual_failures = InstancesMemorySchedulingValidator().execute(
         compute_resource_name, instance_types_info, memory_scheduling_enabled
     )
     assert_failure_messages(actual_failures, expected_message)

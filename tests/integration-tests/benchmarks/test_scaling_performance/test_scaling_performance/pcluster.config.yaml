@@ -14,7 +14,7 @@ Scheduling:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MaxCount: {{ scaling_target }}
       Networking:

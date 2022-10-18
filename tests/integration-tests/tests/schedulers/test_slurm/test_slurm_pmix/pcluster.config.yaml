@@ -16,7 +16,7 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: ondemand-1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: {{ queue_size }}
 SharedStorage:

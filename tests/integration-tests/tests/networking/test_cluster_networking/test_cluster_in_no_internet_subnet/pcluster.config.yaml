@@ -32,7 +32,7 @@ Scheduling:
   - Name: queue-0
     ComputeResources:
       - Name: compute-resource-0
-        InstanceTypeList:
+        Instances:
           - InstanceType: {{ instance }}
         MinCount: 1
         MaxCount: 2

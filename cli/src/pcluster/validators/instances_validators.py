@@ -42,7 +42,7 @@ class _FlexibleInstanceTypesValidatorMixin:
             instance_type = current_instance_type
 
 
-class InstanceTypeListCPUValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+class InstancesCPUValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Confirm CPU requirements for Flexible Instance Types."""
 
     def _validate(
@@ -74,7 +74,7 @@ class InstanceTypeListCPUValidator(Validator, _FlexibleInstanceTypesValidatorMix
             )
 
 
-class InstanceTypeListAcceleratorsValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+class InstancesAcceleratorsValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Confirm Accelerator requirements for Flexible Instance Types."""
 
     def _validate(
@@ -116,7 +116,7 @@ class InstanceTypeListAcceleratorsValidator(Validator, _FlexibleInstanceTypesVal
         )
 
 
-class InstanceTypeListEFAValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+class InstancesEFAValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Validate EFA requirements for Flexible Instance Types."""
 
     def _validate(
@@ -175,7 +175,7 @@ class InstanceTypeListEFAValidator(Validator, _FlexibleInstanceTypesValidatorMix
                 )
 
 
-class InstanceTypeListNetworkingValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+class InstancesNetworkingValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Confirm Networking requirements for Flexible Instance Types."""
 
     def _validate(
@@ -215,7 +215,7 @@ class InstanceTypeListNetworkingValidator(Validator, _FlexibleInstanceTypesValid
             )
 
 
-class InstanceTypeListAllocationStrategyValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Confirm Allocation Strategy matches with the Capacity Type."""
 
     def _validate(self, compute_resource_name: str, capacity_type: Enum, allocation_strategy: Enum, **kwargs):
@@ -232,7 +232,7 @@ class InstanceTypeListAllocationStrategyValidator(Validator, _FlexibleInstanceTy
             )
 
 
-class InstanceTypeListMemorySchedulingValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
+class InstancesMemorySchedulingValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     """Validate support for Memory-based Scheduling when using Flexible Instance Types."""
 
     def _validate(
@@ -246,7 +246,7 @@ class InstanceTypeListMemorySchedulingValidator(Validator, _FlexibleInstanceType
         if memory_scheduling_enabled and len(instance_types_info.items()) > 1:
             self._add_failure(
                 "Memory-based scheduling is only supported for Compute Resources using either 'InstanceType' or "
-                f"'InstanceTypeList' with one instance type. Compute Resource {compute_resource_name} has more than "
+                f"'Instances' with one instance type. Compute Resource {compute_resource_name} has more than "
                 "one instance type specified.",
                 FailureLevel.ERROR,
             )

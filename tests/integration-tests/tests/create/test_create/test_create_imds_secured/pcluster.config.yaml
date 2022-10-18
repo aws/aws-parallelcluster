@@ -16,7 +16,7 @@ Scheduling:
     - Name: compute
       ComputeResources:
         - Name: compute-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
       Networking:
         SubnetIds:

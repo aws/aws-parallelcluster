@@ -20,7 +20,7 @@ Scheduling:
           MinvCpus: 1
           DesiredvCpus: 1
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           {% endif %}
       Networking:

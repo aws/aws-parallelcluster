@@ -18,7 +18,7 @@ Scheduling:
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 1

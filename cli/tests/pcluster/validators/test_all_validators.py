@@ -23,7 +23,7 @@ from pcluster.validators import (
     ec2_validators,
     fsx_validators,
     iam_validators,
-    instance_type_list_validators,
+    instances_validators,
     kms_validators,
     networking_validators,
     s3_validators,
@@ -42,7 +42,7 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
         fsx_validators,
         kms_validators,
         iam_validators,
-        instance_type_list_validators,
+        instances_validators,
         networking_validators,
         s3_validators,
     ]
@@ -72,15 +72,13 @@ def _load_and_validate(config_path):
 def _assert_instance_architecture(expected_instance_architecture_validator_input, validator):
     for call_index, validator_call in enumerate(validator.call_args_list):
         args, kwargs = validator_call
-        instance_type_list = [
-            instance_type_info.instance_type() for instance_type_info in kwargs.get("instance_type_info_list")
-        ]
+        instances = [instance_type_info.instance_type() for instance_type_info in kwargs.get("instance_type_info_list")]
         architecture = kwargs.get("architecture")
-        expected_instance_type_list = expected_instance_architecture_validator_input[call_index].get("instance_types")
+        expected_instances = expected_instance_architecture_validator_input[call_index].get("instance_types")
         expected_architecture = expected_instance_architecture_validator_input[call_index].get("architecture")
 
-        assert_that(instance_type_list).is_length(len(expected_instance_type_list))
-        assert_that(set(instance_type_list) - set(expected_instance_type_list)).is_length(0)
+        assert_that(instances).is_length(len(expected_instances))
+        assert_that(set(instances) - set(expected_instances)).is_length(0)
         assert_that(architecture).is_equal_to(expected_architecture)
 
 
@@ -364,12 +362,12 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
 
     # FlexibleInstanceTypes Only supported in Slurm
     flexible_instance_types_validators = [
-        "InstanceTypeListCPUValidator",
-        "InstanceTypeListAcceleratorsValidator",
-        "InstanceTypeListEFAValidator",
-        "InstanceTypeListNetworkingValidator",
-        "InstanceTypeListAllocationStrategyValidator",
-        "InstanceTypeListMemorySchedulingValidator",
+        "InstancesCPUValidator",
+        "InstancesAcceleratorsValidator",
+        "InstancesEFAValidator",
+        "InstancesNetworkingValidator",
+        "InstancesAllocationStrategyValidator",
+        "InstancesMemorySchedulingValidator",
     ]
 
     # Assert validators are called

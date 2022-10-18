@@ -20,7 +20,7 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: efa-enabled-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ max_queue_size }}

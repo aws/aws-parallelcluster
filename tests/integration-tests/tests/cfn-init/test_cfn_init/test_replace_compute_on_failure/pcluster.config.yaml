@@ -22,7 +22,7 @@ Scheduling:
           Script: s3://{{ bucket_name }}/failing_post_install.sh
       ComputeResources:
         - Name: compute-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
       Networking:
         SubnetIds:

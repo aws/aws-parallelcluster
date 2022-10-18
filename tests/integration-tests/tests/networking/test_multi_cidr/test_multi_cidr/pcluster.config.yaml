@@ -20,7 +20,7 @@ Scheduling:
           MinvCpus: 4
           MaxvCpus: 4
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 1
