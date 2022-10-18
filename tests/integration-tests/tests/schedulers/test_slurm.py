@@ -1146,7 +1146,6 @@ def _test_scontrol_reboot_nodes(
     nodes_state,
 ):
     """Test scontrol reboot with idle nodes."""
-
     jiff = 2
 
     # Get nodes and check that they are in the expected state
@@ -1195,7 +1194,6 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
     (either manually or by a parameter update strategy).
     """
-
     jiff = 2
 
     # Submit a job on the node to have it allocated
@@ -1240,7 +1238,6 @@ def _test_scontrol_reboot_powerdown_reboot_issued_node(
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
     (either manually or by a parameter update strategy).
     """
-
     jiff = 2
 
     assert_compute_node_states(slurm_commands, [node], ["idle"])
