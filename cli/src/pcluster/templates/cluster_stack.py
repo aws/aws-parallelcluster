@@ -1382,7 +1382,9 @@ class ComputeFleetConstruct(Construct):
 
     @staticmethod
     def _get_placement_group_for_compute_resource(queue, managed_placement_groups, compute_resource) -> str:
-        placement_group_key, managed = queue.get_placement_group_key_for_compute_resource(compute_resource)
+        placement_group_settings = queue.get_placement_group_settings_for_compute_resource(compute_resource)
+        placement_group_key = placement_group_settings.get("key")
+        managed = placement_group_settings.get("is_managed")
         return managed_placement_groups[placement_group_key].ref if managed else placement_group_key
 
     def _add_launch_templates(self, managed_placement_groups, instance_profiles):

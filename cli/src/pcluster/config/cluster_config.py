@@ -1899,9 +1899,9 @@ class _CommonQueue(BaseQueue):
                 managed_placement_group_keys.append(f"{self.name}-{resource.name}")
         return managed_placement_group_keys
 
-    def get_placement_group_key_for_compute_resource(
+    def get_placement_group_settings_for_compute_resource(
         self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
-    ) -> (str, bool):
+    ) -> Dict[str, bool]:
         # prefer compute level groups over queue level groups
         placement_group_key, managed = None, None
         cr_pg = compute_resource.networking.placement_group
@@ -1915,7 +1915,7 @@ class _CommonQueue(BaseQueue):
             placement_group_key, managed = self.networking.placement_group.assignment, False
         elif self.networking.placement_group.enabled:
             placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
-        return placement_group_key, managed
+        return {"key": placement_group_key, "is_managed": managed}
 
     def is_placement_group_disabled_for_compute_resource(self, compute_resource_pg_enabled: bool) -> bool:
         return (
@@ -1989,7 +1989,7 @@ class SlurmQueue(_CommonQueue):
             self._register_validator(
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
-                placement_group_key=self.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                placement_group_key=self.get_placement_group_settings_for_compute_resource(compute_resource).get("key"),
                 placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
                     compute_resource.networking.placement_group.enabled
                 ),
@@ -2118,7 +2118,7 @@ class SchedulerPluginQueue(_CommonQueue):
             self._register_validator(
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
-                placement_group_key=self.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                placement_group_key=self.get_placement_group_settings_for_compute_resource(compute_resource).get("key"),
                 placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
                     compute_resource.networking.placement_group.enabled
                 ),
@@ -2521,7 +2521,9 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     )
                     self._register_validator(
                         PlacementGroupCapacityReservationValidator,
-                        placement_group=queue.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                        placement_group=queue.get_placement_group_settings_for_compute_resource(compute_resource).get(
+                            "key"
+                        ),
                         odcr=cr_target,
                         subnet=queue.networking.subnet_ids[0],
                         instance_types=compute_resource.instance_types,
@@ -2686,7 +2688,8 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         instance_type=instance_type,
                         instance_type_data=instance_types_data[instance_type],
                         placement_group_enabled=(
-                            queue.get_placement_group_key_for_compute_resource(compute_resource)[0] is not None
+                            queue.get_placement_group_settings_for_compute_resource(compute_resource).get("key")
+                            is not None
                         ),
                     )
                 if isinstance(compute_resource, SlurmFlexibleComputeResource):
