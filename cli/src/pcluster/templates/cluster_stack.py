@@ -1433,7 +1433,7 @@ class ComputeFleetConstruct(Construct):
         for network_interface_index in range(1, compute_resource.max_network_interface_count):
             compute_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=1,
+                    device_index=0,
                     network_card_index=network_interface_index,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                     groups=queue_lt_security_groups,
