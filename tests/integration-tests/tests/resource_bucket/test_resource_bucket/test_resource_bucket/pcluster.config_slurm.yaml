@@ -16,7 +16,7 @@ Scheduling:
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: compute-resource-0
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
       Networking:

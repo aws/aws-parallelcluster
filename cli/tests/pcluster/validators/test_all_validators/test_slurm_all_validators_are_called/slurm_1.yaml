@@ -115,7 +115,7 @@ Scheduling:
         - Name: compute_resource_1
           InstanceType: c4.2xlarge
         - Name: compute_resource_2
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.2xlarge
           MinCount: 1
           MaxCount: 15

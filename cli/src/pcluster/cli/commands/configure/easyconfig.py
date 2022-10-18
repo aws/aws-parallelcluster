@@ -212,7 +212,7 @@ def configure(args):  # noqa: C901
                     if compute_instance_type not in [
                         instances["InstanceType"]
                         for compute_resource in compute_resources
-                        for instances in compute_resource["InstanceTypeList"]
+                        for instances in compute_resource["Instances"]
                     ]:
                         break
                     print(
@@ -247,7 +247,7 @@ def configure(args):  # noqa: C901
             else:
                 compute_resource = {
                     "Name": compute_resource_name,
-                    "InstanceTypeList": [{"InstanceType": compute_instance_type}],
+                    "Instances": [{"InstanceType": compute_instance_type}],
                     "MinCount": min_cluster_size,
                     "MaxCount": max_cluster_size,
                 }

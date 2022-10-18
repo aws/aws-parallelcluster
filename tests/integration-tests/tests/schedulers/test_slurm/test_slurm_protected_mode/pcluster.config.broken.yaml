@@ -27,7 +27,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
           MinCount: 2
@@ -49,7 +49,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
           MaxCount: 250
@@ -57,7 +57,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
           MinCount: 1
@@ -79,7 +79,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
           MinCount: 1

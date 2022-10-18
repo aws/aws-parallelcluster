@@ -1146,7 +1146,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
     instance_type = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    instance_type_list = fields.Nested(
+    instances = fields.Nested(
         InstanceTypeSchema,
         many=True,
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "InstanceType"},
@@ -1168,24 +1168,24 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
 
     @validates_schema
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
-        """Validate that 'instance_type' and 'instance_type_list' do not co-exist."""
+        """Validate that 'instance_type' and 'instances' do not co-exist."""
         if self.fields_coexist(
             data,
-            ["instance_type", "instance_type_list"],
+            ["instance_type", "instances"],
             one_required=True,
             **kwargs,
         ):
-            raise ValidationError("A Compute Resource needs to specify either InstanceType or InstanceTypeList.")
+            raise ValidationError("A Compute Resource needs to specify either InstanceType or Instances.")
 
-    @validates("instance_type_list")
+    @validates("instances")
     def no_duplicate_instance_types(self, flexible_instance_types: List[FlexibleInstanceType]):
-        """Verify that there are no duplicates in an InstanceTypeList."""
+        """Verify that there are no duplicates in Instances."""
         instance_types = set()
         for flexible_instance_type in flexible_instance_types:
             instance_type_name = flexible_instance_type.instance_type
             if instance_type_name in instance_types:
                 raise ValidationError(
-                    f"Duplicate instance type ({instance_type_name}) detected. An InstanceTypeList should not have "
+                    f"Duplicate instance type ({instance_type_name}) detected. Instances should not have "
                     f"duplicate instance types. "
                 )
             instance_types.add(instance_type_name)
@@ -1193,7 +1193,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        if data.get("instance_type_list"):
+        if data.get("instances"):
             return SlurmFlexibleComputeResource(**data)
         return SlurmComputeResource(**data)
 

@@ -17,10 +17,10 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: ondemand-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large
         - Name: same-name-diff-queue
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge
           MaxCount: 5
     - Name: gpu
@@ -30,7 +30,7 @@ Scheduling:
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: same-name-diff-queue
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ gpu_instance_type }}
           MaxCount: 5
 SharedStorage:

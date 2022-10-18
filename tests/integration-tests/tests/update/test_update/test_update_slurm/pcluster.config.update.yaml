@@ -40,16 +40,16 @@ Scheduling:
       CapacityType: SPOT
       ComputeResources:
         - Name: queue1-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge
           MinCount: 2
           MaxCount: 4
         - Name: queue1-i2
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.2xlarge
           SpotPrice: 2.1
         - Name: queue1-i3
-          InstanceTypeList:
+          Instances:
             - InstanceType: t2.micro
       Iam:
         S3Access:
@@ -82,7 +82,7 @@ Scheduling:
             - DEF
       ComputeResources:
         - Name: queue2-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5n.18xlarge
           MaxCount: 1
           DisableSimultaneousMultithreading: true
@@ -115,13 +115,13 @@ Scheduling:
             - DEF
       ComputeResources:
         - Name: queue3-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5n.18xlarge
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
         - Name: queue3-i2
-          InstanceTypeList:
+          Instances:
             - InstanceType: t2.xlarge
           DisableSimultaneousMultithreading: true
           Efa:

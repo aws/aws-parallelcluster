@@ -17,6 +17,6 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MaxCount: {{ max_count_cr1 }}

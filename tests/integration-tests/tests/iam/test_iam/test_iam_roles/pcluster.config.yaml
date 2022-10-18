@@ -27,7 +27,7 @@ Scheduling:
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: {{ min_count }}
           Efa:
@@ -43,7 +43,7 @@ Scheduling:
         InstanceRole: {{ compute_instance_role }}
       ComputeResources:
         - Name: compute-resource-0
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: {{ min_count }}
           Efa:

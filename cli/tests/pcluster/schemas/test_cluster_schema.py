@@ -341,7 +341,7 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                 "ComputeResources": [
                     {
                         "Name": "compute_resource1",
-                        "InstanceTypeList": [{"InstanceType": "c5.2xlarge"}],
+                        "Instances": [{"InstanceType": "c5.2xlarge"}],
                     }
                 ],
             },
@@ -356,14 +356,14 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                 "ComputeResources": [
                     {
                         "Name": "compute_resource1",
-                        "InstanceTypeList": [{"InstanceType": "c5.2xlarge"}, {"InstanceType": "c4.2xlarge"}],
+                        "Instances": [{"InstanceType": "c5.2xlarge"}, {"InstanceType": "c4.2xlarge"}],
                     },
                     {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
                 ],
             },
             "",
         ),
-        # Failing to specify either InstanceType or InstanceTypeList should return a validation error
+        # Failing to specify either InstanceType or Instances should return a validation error
         (
             {
                 "Name": "Flex-Queue",
@@ -375,9 +375,9 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                     }
                 ],
             },
-            "A Compute Resource needs to specify either InstanceType or InstanceTypeList.",
+            "A Compute Resource needs to specify either InstanceType or Instances.",
         ),
-        # Mixing InstanceType and InstanceTypeList in a Compute Resource should return a validation error
+        # Mixing InstanceType and Instances in a Compute Resource should return a validation error
         (
             {
                 "Name": "Mixed-Instance-Types",
@@ -387,20 +387,20 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                     {
                         "Name": "compute_resource1",
                         "InstanceType": "c5.2xlarge",
-                        "InstanceTypeList": [{"InstanceType": "c4.2xlarge"}],
+                        "Instances": [{"InstanceType": "c4.2xlarge"}],
                     },
                 ],
             },
-            "A Compute Resource needs to specify either InstanceType or InstanceTypeList.",
+            "A Compute Resource needs to specify either InstanceType or Instances.",
         ),
-        # InstanceTypeList in a Compute Resource should not have duplicate instance types
+        # Instances in a Compute Resource should not have duplicate instance types
         (
             {
                 "Name": "DuplicateInstanceTypes",
                 "ComputeResources": [
                     {
                         "Name": "compute_resource1",
-                        "InstanceTypeList": [
+                        "Instances": [
                             {"InstanceType": "c4.2xlarge"},
                             {"InstanceType": "c5.xlarge"},
                             {"InstanceType": "c5a.xlarge"},

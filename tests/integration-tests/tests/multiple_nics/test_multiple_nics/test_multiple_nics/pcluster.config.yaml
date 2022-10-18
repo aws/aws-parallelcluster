@@ -32,7 +32,7 @@ Scheduling:
             - {{ instance }}
           MinvCpus: 4
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           Efa:

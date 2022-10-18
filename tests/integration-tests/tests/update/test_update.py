@@ -66,7 +66,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue1": {
             "compute_resources": {
                 "queue1-i1": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "c5.xlarge",
                         }
@@ -77,7 +77,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "disable_hyperthreading": False,
                 },
                 "queue1-i2": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "t2.micro",
                         }
@@ -93,7 +93,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue2": {
             "compute_resources": {
                 "queue2-i1": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "c5n.18xlarge",
                         }
@@ -140,7 +140,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue1": {
             "compute_resources": {
                 "queue1-i1": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "c5.xlarge",
                         }
@@ -151,7 +151,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "enable_efa": False,
                 },
                 "queue1-i2": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "c5.2xlarge",
                         }
@@ -162,7 +162,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "enable_efa": False,
                 },
                 "queue1-i3": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "t2.micro",
                         }
@@ -178,7 +178,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue2": {
             "compute_resources": {
                 "queue2-i1": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "c5n.18xlarge",
                         }
@@ -195,7 +195,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "queue3": {
             "compute_resources": {
                 "queue3-i1": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "c5n.18xlarge",
                         }
@@ -206,7 +206,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "enable_efa": True,
                 },
                 "queue3-i2": {
-                    "instance_type_list": [
+                    "instances": [
                         {
                             "instance_type": "t2.xlarge",
                         }

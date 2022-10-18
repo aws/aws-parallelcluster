@@ -18,11 +18,11 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: ondemand1-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large
           MinCount: 0
         - Name: ondemand1-i2
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
 SharedStorage:
   - MountDir: /shared

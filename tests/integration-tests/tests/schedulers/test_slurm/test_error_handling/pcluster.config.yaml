@@ -25,14 +25,14 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large
           {% endif %}
         - Name: ondemand1-i1
           {% if scheduler == "plugin" %}
           InstanceType: {{ instance }}
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           {% endif %}
           MinCount: 1

@@ -19,7 +19,7 @@ Scheduling:
             - {{ instance }}
           MinvCpus: 1
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 2
           {% endif %}

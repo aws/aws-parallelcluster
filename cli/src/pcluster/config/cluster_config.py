@@ -142,13 +142,13 @@ from pcluster.validators.fsx_validators import (
     FsxStorageTypeOptionsValidator,
 )
 from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
-from pcluster.validators.instance_type_list_validators import (
-    InstanceTypeListAcceleratorsValidator,
-    InstanceTypeListAllocationStrategyValidator,
-    InstanceTypeListCPUValidator,
-    InstanceTypeListEFAValidator,
-    InstanceTypeListMemorySchedulingValidator,
-    InstanceTypeListNetworkingValidator,
+from pcluster.validators.instances_validators import (
+    InstancesAcceleratorsValidator,
+    InstancesAllocationStrategyValidator,
+    InstancesCPUValidator,
+    InstancesEFAValidator,
+    InstancesMemorySchedulingValidator,
+    InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
@@ -1730,7 +1730,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
 
 
 class FlexibleInstanceType(Resource):
-    """Represent an instance type listed in the InstanceTypeList of a ComputeResources."""
+    """Represent an instance type listed in the Instances of a ComputeResources."""
 
     def __init__(self, instance_type: str, **kwargs):
         super().__init__(**kwargs)
@@ -1740,14 +1740,14 @@ class FlexibleInstanceType(Resource):
 class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
-    def __init__(self, instance_type_list: List[FlexibleInstanceType], **kwargs):
+    def __init__(self, instances: List[FlexibleInstanceType], **kwargs):
         super().__init__(**kwargs)
-        self.instance_type_list = Resource.init_param(instance_type_list)
+        self.instances = Resource.init_param(instances)
 
     @property
     def instance_types(self) -> List[str]:
         """Return list of instance type names in this compute resource."""
-        return [flexible_instance_type.instance_type for flexible_instance_type in self.instance_type_list]
+        return [flexible_instance_type.instance_type for flexible_instance_type in self.instances]
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
@@ -2695,12 +2695,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
                     )
                     flexible_instance_types_validators = [
-                        InstanceTypeListCPUValidator,
-                        InstanceTypeListAcceleratorsValidator,
-                        InstanceTypeListEFAValidator,
-                        InstanceTypeListNetworkingValidator,
-                        InstanceTypeListAllocationStrategyValidator,
-                        InstanceTypeListMemorySchedulingValidator,
+                        InstancesCPUValidator,
+                        InstancesAcceleratorsValidator,
+                        InstancesEFAValidator,
+                        InstancesNetworkingValidator,
+                        InstancesAllocationStrategyValidator,
+                        InstancesMemorySchedulingValidator,
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)

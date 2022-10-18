@@ -15,7 +15,7 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: t2micro
-          InstanceTypeList:
+          Instances:
             - InstanceType: t2.micro
           MinCount: 2
           MaxCount: 4

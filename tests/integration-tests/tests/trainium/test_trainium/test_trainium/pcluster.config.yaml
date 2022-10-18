@@ -20,7 +20,7 @@ Scheduling:
     - Name: queue-trn32
       ComputeResources:
         - Name: compute-resource-trn32
-          InstanceTypeList:
+          Instances:
             - InstanceType: trn1.32xlarge
           MinCount: 2
           Efa:
@@ -45,7 +45,7 @@ Scheduling:
     - Name: queue-trn2
       ComputeResources:
         - Name: compute-resource-trn2
-          InstanceTypeList:
+          Instances:
             - InstanceType: trn1.2xlarge
           MinCount: 0  # TODO change to 1 once allreduce test is passing
       Networking:

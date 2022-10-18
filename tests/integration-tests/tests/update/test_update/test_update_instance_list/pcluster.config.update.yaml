@@ -12,7 +12,7 @@ Scheduling:
     - Name: queue1
       ComputeResources:
         - Name: queue1-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge
             - InstanceType: c5a.xlarge
           MinCount: 1

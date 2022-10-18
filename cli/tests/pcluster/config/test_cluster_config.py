@@ -127,7 +127,7 @@ class TestBaseClusterConfig:
         cluster_config._register_validators()
         assert_that(cluster_config._validators).is_not_empty()
 
-    def test_instance_type_list_in_slurm_queue(self):
+    def test_instances_in_slurm_queue(self):
         queue = SlurmQueue(
             name="queue0",
             networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
@@ -136,7 +136,7 @@ class TestBaseClusterConfig:
                 SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
                 SlurmFlexibleComputeResource(
                     name="compute_resource_3",
-                    instance_type_list=[
+                    instances=[
                         FlexibleInstanceType(instance_type="c5n.4xlarge"),
                         FlexibleInstanceType(instance_type="c5n.9xlarge"),
                         FlexibleInstanceType(instance_type="c5n.18xlarge"),
@@ -144,7 +144,7 @@ class TestBaseClusterConfig:
                 ),
                 SlurmFlexibleComputeResource(
                     name="compute_resource_4",
-                    instance_type_list=[
+                    instances=[
                         FlexibleInstanceType(instance_type="c5n.4xlarge"),
                     ],
                 ),
