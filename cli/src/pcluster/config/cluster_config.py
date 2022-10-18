@@ -127,6 +127,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeAcceleratorManufacturerValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
+    InstanceTypePlacementGroupValidator,
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
@@ -2679,6 +2680,14 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         InstanceTypeAcceleratorManufacturerValidator,
                         instance_type=instance_type,
                         instance_type_data=instance_types_data[instance_type],
+                    )
+                    self._register_validator(
+                        InstanceTypePlacementGroupValidator,
+                        instance_type=instance_type,
+                        instance_type_data=instance_types_data[instance_type],
+                        placement_group_enabled=(
+                            queue.get_placement_group_key_for_compute_resource(compute_resource)[0] is not None
+                        ),
                     )
                 if isinstance(compute_resource, SlurmFlexibleComputeResource):
                     validator_args = dict(

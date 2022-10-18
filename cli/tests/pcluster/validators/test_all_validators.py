@@ -162,6 +162,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     instance_type_accelerator_manufacturer_validator = mocker.patch(
         ec2_validators + ".InstanceTypeAcceleratorManufacturerValidator._validate", return_value=[]
     )
+    instance_type_placement_group_validator = mocker.patch(
+        ec2_validators + ".InstanceTypePlacementGroupValidator._validate", return_value=[]
+    )
 
     networking_validators = validators_path + ".networking_validators"
     security_groups_validator = mocker.patch(
@@ -323,6 +326,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     fsx_persistent_options_validator.assert_called()
     deletion_policy_validator.assert_called()
     instance_type_accelerator_manufacturer_validator.assert_called()
+    instance_type_placement_group_validator.assert_called()
 
 
 def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
@@ -386,6 +390,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
                 "CapacityReservationValidator",
                 "CapacityReservationResourceGroupValidator",
                 "DatabaseUriValidator",
+                "InstanceTypePlacementGroupValidator",
             ]
             + flexible_instance_types_validators
         ):

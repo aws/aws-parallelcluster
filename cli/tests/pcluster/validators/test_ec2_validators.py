@@ -23,6 +23,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeAcceleratorManufacturerValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
+    InstanceTypePlacementGroupValidator,
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
@@ -894,3 +895,78 @@ def test_instance_type_accelerator_manufacturer_validator(
     assert_failure_messages(actual_failures, expected_message)
     if logger_message:
         assert_that(caplog.text).matches(logger_message)
+
+
+@pytest.mark.parametrize(
+    "instance_type, instance_type_data, placement_group_enabled, expected_message",
+    [
+        (
+            "t3.large",
+            {
+                "InstanceType": "t3.large",
+                "PlacementGroupInfo": {"SupportedStrategies": ["partition", "spread"]},
+            },
+            True,
+            "The instance type 't3.large' doesn't support being launched in a cluster placement group.",
+        ),
+        (
+            "t3.large",
+            {
+                "InstanceType": "t3.large",
+                "PlacementGroupInfo": {"SupportedStrategies": ["partition", "spread"]},
+            },
+            False,
+            "",
+        ),
+        (
+            "c5.large",
+            {
+                "InstanceType": "c5.large",
+                "PlacementGroupInfo": {"SupportedStrategies": ["cluster", "partition", "spread"]},
+            },
+            True,
+            "",
+        ),
+        (
+            "t3.large",
+            {
+                "InstanceType": "t3.large",
+                "PlacementGroupInfo": {"SupportedStrategies": ["cluster", "partition", "spread"]},
+            },
+            False,
+            "",
+        ),
+        (
+            "noexist.24xlarge",
+            {
+                "InstanceType": "noexist.24xlarge",
+                "PlacementGroupInfo": {},
+            },
+            True,
+            "The instance type 'noexist.24xlarge' doesn't support being launched in a cluster placement group.",
+        ),
+        (
+            "noexist.24xlarge",
+            {
+                "InstanceType": "noexist.24xlarge",
+                "PlacementGroupInfo": {},
+            },
+            False,
+            "",
+        ),
+    ],
+)
+def test_instance_type_placement_group_validator(
+    mocker,
+    instance_type,
+    instance_type_data,
+    placement_group_enabled,
+    expected_message,
+):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=[instance_type])
+
+    actual_failures = InstanceTypePlacementGroupValidator().execute(
+        instance_type, instance_type_data, placement_group_enabled
+    )
+    assert_failure_messages(actual_failures, expected_message)

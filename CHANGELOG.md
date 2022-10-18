@@ -14,6 +14,7 @@ CHANGELOG
 - Add support for Slurm Accounting.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
 - Improve support for EC2 instances with several NICs.
+- Add validator for instances being launched in a cluster placement group when the instance type does not support it. 
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
