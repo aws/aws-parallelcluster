@@ -68,6 +68,11 @@ def assert_compute_node_states(scheduler_commands, compute_nodes, expected_state
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def wait_for_compute_nodes_states(scheduler_commands, compute_nodes, expected_states):
+    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states)
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def wait_for_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition=None):
     assert_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition)
 
@@ -77,3 +82,15 @@ def assert_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partiti
         assert_that(len(scheduler_commands.get_compute_nodes(filter_by_partition))).is_equal_to(desired)
     else:
         assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)
+
+
+def get_partition_nodes(nodes_in_scheduler):
+    """Get static nodes and dynamic nodes."""
+    static_nodes = []
+    dynamic_nodes = []
+    for node in nodes_in_scheduler:
+        if "-st-" in node:
+            static_nodes.append(node)
+        if "-dy-" in node:
+            dynamic_nodes.append(node)
+    return static_nodes, dynamic_nodes
