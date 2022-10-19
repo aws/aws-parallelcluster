@@ -29,13 +29,12 @@ def test_trainium(
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "neuron-installation.sh"), "neuron-installation.sh")
 
-    # FIXME remove suppress_validators after GA
     cluster_config = pcluster_config_reader(bucket_name=bucket_name)
-    cluster = clusters_factory(cluster_config, suppress_validators="type:InstanceTypeBaseAMICompatibleValidator")
+    cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    # TODO uncomment allreduce test
+    # TODO uncomment allreduce test when bug fix in collective library
     # _test_allreduce_single_node(test_datadir, remote_command_executor, scheduler_commands)
     _test_ccl_two_nodes(test_datadir, remote_command_executor, scheduler_commands)
 
