@@ -18,8 +18,11 @@ import pytest
 import utils
 import yaml
 from assertpy import assert_that
+from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
+from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
+from time_utils import minutes, seconds
 from troposphere.fsx import LustreConfiguration
 from utils import wait_for_computefleet_changed
 
@@ -923,6 +926,20 @@ def test_dynamic_file_systems_update(
         cluster_nodes,
     )
 
+    _test_shared_storage_rollback(
+        cluster,
+        existing_ebs_volume_id,
+        existing_ebs_mount_dir,
+        bucket_name,
+        new_ebs_mount_dir,
+        new_lustre_mount_dir,
+        new_efs_mount_dir,
+        remote_command_executor,
+        pcluster_config_reader,
+        scheduler_commands,
+        region,
+    )
+
 
 def _create_shared_storages_resources(
     snapshots_factory,
@@ -1052,3 +1069,90 @@ def _test_shared_storages_mount_on_headnode(
         bucket_name,
         headnode_only=True,
     )
+
+
+def _test_shared_storage_rollback(
+    cluster,
+    existing_ebs_volume_id,
+    existing_ebs_mount_dir,
+    bucket_name,
+    new_ebs_mount_dir,
+    new_lustre_mount_dir,
+    new_efs_mount_dir,
+    remote_command_executor,
+    pcluster_config_reader,
+    scheduler_commands,
+    region,
+):
+    # update cluster with adding non-existing ebs and skip validator
+    problematic_volume_id = "vol-00000000000000000"
+    problematic_ebs_mount_dir = "/problematic_ebs_mount_dir"
+    problematic_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update_rollback.yaml",
+        volume_id=existing_ebs_volume_id,
+        problematic_volume_id=problematic_volume_id,
+        problematic_ebs_mount_dir=problematic_ebs_mount_dir,
+        existing_ebs_mount_dir=existing_ebs_mount_dir,
+        bucket_name=bucket_name,
+        new_ebs_mount_dir=new_ebs_mount_dir,
+        new_lustre_mount_dir=new_lustre_mount_dir,
+        new_efs_mount_dir=new_efs_mount_dir,
+    )
+    # remove logs from chef-client log in order to test cluster rollback behavior
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/chef-client.log")
+    response = cluster.update(
+        str(problematic_cluster_config),
+        force_update="true",
+        raise_on_error=False,
+        suppress_validators="type:SharedEbsVolumeIdValidator",
+    )
+    assert_that(response["clusterStatus"]).is_equal_to("UPDATE_FAILED")
+    # Test rollback update recipe run finished
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/chef-client.log"],
+        ["Cinc Client finished"],
+    )
+
+    # Check shared storages are not on headnode
+    ebs_mount_dirs = [existing_ebs_mount_dir, new_ebs_mount_dir, problematic_ebs_mount_dir]
+    fs_mount_dirs = [new_lustre_mount_dir, new_efs_mount_dir]
+    _test_ebs_not_mounted(remote_command_executor, ebs_mount_dirs)
+    _test_directory_not_mounted(remote_command_executor, fs_mount_dirs)
+
+    # check storages are not on compute nodes
+    cluster_nodes = scheduler_commands.get_compute_nodes()
+    for node_name in cluster_nodes:
+        _test_directory_not_mounted(
+            remote_command_executor, ebs_mount_dirs + fs_mount_dirs, node_type="compute", node_name=node_name
+        )
+    # retrieve shared storages id
+    failed_share_storages_data = remote_command_executor.run_remote_command(
+        "sudo cat /etc/parallelcluster/previous_shared_storages_data.yaml"
+    ).stdout
+    assert_that(failed_share_storages_data).is_not_empty()
+    failed_share_storages = yaml.safe_load(failed_share_storages_data)
+    managed_ebs = [
+        volume.get("volume_id")
+        for volume in failed_share_storages.get("ebs")
+        if volume.get("mount_dir") == new_ebs_mount_dir
+    ]
+    managed_efs = [
+        fs.get("efs_fs_id") for fs in failed_share_storages.get("efs") if fs.get("mount_dir") == new_efs_mount_dir
+    ]
+    managed_fsx = [
+        fs.get("fsx_fs_id") for fs in failed_share_storages.get("fsx") if fs.get("mount_dir") == new_lustre_mount_dir
+    ]
+
+    # assert the managed EBS is clean up
+    logging.info("Checking managed EBS is deleted after stack rollback")
+    with pytest.raises(ClientError, match="InvalidVolume.NotFound"):
+        boto3.client("ec2", region).describe_volumes(VolumeIds=managed_ebs).get("Volumes")
+    # assert the managed EFS is clean up
+    logging.info("Checking managed EBS is deleted after stack rollback")
+    with pytest.raises(ClientError, match="FileSystemNotFound"):
+        boto3.client("efs", region).describe_file_systems(FileSystemId=managed_efs[0])
+    # assert the managed FSX is clean up
+    logging.info("Checking managed FSX is deleted after stack rollback")
+    with pytest.raises(ClientError, match="FileSystemNotFound"):
+        boto3.client("fsx", region).describe_file_systems(FileSystemIds=managed_fsx)
