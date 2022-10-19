@@ -206,7 +206,7 @@ class InstancesNetworkingValidator(Validator, _FlexibleInstanceTypesValidatorMix
                 FailureLevel.WARNING,
             )
 
-        if placement_group_enabled:
+        if placement_group_enabled and len(instance_types_info.keys()) > 1:
             self._add_failure(
                 f"Enabling placement groups for queue: {queue_name} may result in Insufficient Capacity Errors due to "
                 f"the use of multiple instance types for Compute Resource: {compute_resource_name} ("
