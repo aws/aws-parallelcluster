@@ -214,6 +214,20 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
         raise
 
 
+def get_compute_nodes_instance_ips(stack_name, region):
+    """Return a list of compute Instances Ip's."""
+    try:
+        instances = describe_cluster_instances(
+            stack_name,
+            region,
+            filter_by_node_type="Compute",
+        )
+        return [instance["PrivateIpAddress"] for instance in instances]
+    except Exception as e:
+        logging.error("Failed retrieving instance ips for stack %s in region %s", stack_name, region)
+        raise e
+
+
 def describe_cluster_instances(
     stack_name,
     region,
