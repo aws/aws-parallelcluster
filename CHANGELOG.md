@@ -5,27 +5,38 @@ CHANGELOG
 -----
 
 **ENHANCEMENTS**
-- Add support for updating `SharedStorage` configuration.
+- Add possibility to specify multiple instance types for the same compute resource.
+- Add support for adding and removing shared storages at cluster update by updating `SharedStorage` configuration.
 - Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage
   to support storage retention on deletion.
-- Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
-- Add support for on-demand capacity reservations.
-- Add support for specifying the supported IMDS version in cluster and build image configurations via the `Imds > ImdsSettings` property. A value of `v1.0` (the default) means that both IMDSv1 and IMDSv2 are supported, while a value of `v2.0` means that only IMDSv2 is supported.
+- Add support for AWS Trainium instances.
 - Add support for Slurm Accounting.
+- Add support for on-demand capacity reservations.
+- Add support for specifying the supported IMDS version in cluster and build image configurations via the `Imds/ImdsSettings` property.
+- Add support for instances with multiple network interfaces that allows only one ENI per device.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
-- Improve support for EC2 instances with several NICs.
-- Add validator for instances being launched in a cluster placement group when the instance type does not support it. 
+- Add validator for instances being launched in a cluster placement group when the instance type does not support it.
+- Configure NFS threads to be `min(256, max(8, num_cores * 4))` to ensure better stability and performance.
+- Move NFS installation at build time to reduce configuration time.
+- Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
-- Upgrade Python and NodeJS versions in API infrastructure, API Docker container and cluster Lambda resources.
+- Upgrade Python to version 3.9 and NodeJS to version 16 in API infrastructure, API Docker container and cluster Lambda resources.
 - Move head node tags from Launch Template to instance definition to avoid head node replacement on tags updates.
 - Disable Multithreading through script executed by cloud-init and not through CpuOptions set into Launch Template.
-- Add support for multiple instance types in the same Compute Resource.
-- Add support for a Name field in PlacementGroup as the preferred naming method.
-- Add support for Networking.PlacementGroup in the SlurmQueues.ComputeResources section
+- Add support for `PlacementGroup/Name` as the preferred naming method.
+- Add support for `Networking/PlacementGroup` in the `SlurmQueues/ComputeResources` section.
+- Change behaviour of `SlurmQueues/Networking/PlacementGroup/Enabled`: now it creates a unique managed placement
+  group for each compute resource instead of a single managed placement group for all compute resources.
 - Upgrade Slurm to version 22.05.5.
-- SlurmQueues.Networking.PlacementGroup.Enabled alone will now create a unique managed placement for each compute resource instead of a single managed placement group for all compute resources
+- Upgrade NVIDIA driver to version 470.141.03.
+- Upgrade NVIDIA Fabric Manager to version 470.141.03.
+- Upgrade NVIDIA CUDA Toolkit to version 11.7.1.
+- Upgrade Python used in ParallelCluster virtualenvs from 3.7.13 to 3.9.15.
+- Upgrade Slurm to version 22.05.5.
+- Upgrade EFA installer to version 1.18.0.
+- Upgrade NICE DCV to version 2022.1-13300.
 
 **BUG FIXES**
 - Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.
