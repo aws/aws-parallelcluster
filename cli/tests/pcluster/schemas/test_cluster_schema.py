@@ -274,23 +274,6 @@ def dummy_slurm_compute_resource(name, instance_type):
             },
             None,
         ),
-        (
-            {
-                "Scheduler": "slurm",
-                "SlurmQueues": [
-                    dummy_slurm_queue(),
-                    {
-                        "Name": "queue2",
-                        "Networking": {"SubnetIds": ["subnet-00000000"]},
-                        "ComputeResources": [
-                            {"Name": "compute_resource3", "InstanceType": "c5.2xlarge", "MaxCount": 5},
-                            {"Name": "compute_resource4", "InstanceType": "c4.2xlarge"},
-                        ],
-                    },
-                ],
-            },
-            "The SubnetIds used for all of the queues should be the same",
-        ),
         (  # maximum slurm queue length
             {
                 "Scheduler": "slurm",
