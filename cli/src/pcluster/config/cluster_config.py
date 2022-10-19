@@ -152,7 +152,12 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
+from pcluster.validators.networking_validators import (
+    ElasticIpValidator,
+    SecurityGroupsValidator,
+    SingleSubnetValidator,
+    SubnetsValidator,
+)
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
     S3BucketUriValidator,
@@ -2080,6 +2085,10 @@ class SlurmScheduling(Resource):
             max_length=MAX_NUMBER_OF_QUEUES,
             resource_name="SlurmQueues",
         )
+        self._register_validator(
+            SingleSubnetValidator,
+            queues=self.queues,
+        )
 
 
 class SchedulerPluginQueue(_CommonQueue):
@@ -2431,6 +2440,10 @@ class SchedulerPluginScheduling(Resource):
                 default=MAX_NUMBER_OF_QUEUES,
             ),
             resource_name="SchedulerQueues",
+        )
+        self._register_validator(
+            SingleSubnetValidator,
+            queues=self.queues,
         )
         for queue in self.queues:
             self._register_validator(

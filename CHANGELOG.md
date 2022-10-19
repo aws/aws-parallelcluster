@@ -36,6 +36,7 @@ CHANGELOG
 - Upgrade Slurm to version 22.05.5.
 - Upgrade EFA installer to version 1.18.0.
 - Upgrade NICE DCV to version 2022.1-13300.
+- Allow for suppressing the `SingleSubnetValidator` for `Queues`.
 
 **BUG FIXES**
 - Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.

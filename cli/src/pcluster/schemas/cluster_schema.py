@@ -1873,19 +1873,6 @@ class SchedulingSchema(BaseSchema):
                     f"Scheduling > *Queues section is not appropriate to the Scheduler: {configured_scheduler}."
                 )
 
-    @validates_schema
-    def same_subnet_in_different_queues(self, data, **kwargs):
-        """Validate subnet_ids configured in different queues are the same."""
-        if "slurm_queues" in data or "scheduler_queues" in data:
-            queues = "slurm_queues" if "slurm_queues" in data else "scheduler_queues"
-
-            def _queue_has_subnet_ids(queue):
-                return queue.networking and queue.networking.subnet_ids
-
-            subnet_ids = {tuple(set(q.networking.subnet_ids)) for q in data[queues] if _queue_has_subnet_ids(q)}
-            if len(subnet_ids) > 1:
-                raise ValidationError("The SubnetIds used for all of the queues should be the same.")
-
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate the right type of scheduling according to the child type (Slurm vs AwsBatch vs Custom)."""
