@@ -17,8 +17,7 @@ Scheduling:
     - Name: compute
       ComputeResources:
         - Name: cit
-          Instances:
-            - InstanceType: {{ instance }}
+          InstanceType: {{ instance }}
           MinCount: 0
           MaxCount: 10
       Networking:
