@@ -248,9 +248,9 @@ class EBSSnapshotsFactory:
     def release_all(self):
         """Release all resources"""
         self._release_instance()
+        self._release_security_group()
         self._release_volume()
         self._release_snapshot()
-        self._release_security_group()
 
     @retry(stop_max_attempt_number=5, wait_fixed=5000)
     def _release_snapshot(self):
