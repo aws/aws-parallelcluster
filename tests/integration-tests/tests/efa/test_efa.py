@@ -12,6 +12,7 @@
 import logging
 import re
 
+import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
@@ -22,6 +23,7 @@ from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
+@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_efa(
     os,
     region,

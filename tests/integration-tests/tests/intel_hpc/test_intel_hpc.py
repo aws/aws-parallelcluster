@@ -21,6 +21,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 
 
 @pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_intel_hpc(
     region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
 ):
