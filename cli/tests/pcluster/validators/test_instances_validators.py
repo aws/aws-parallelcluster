@@ -422,11 +422,23 @@ def test_instances_efa_validator(
         (
             "TestQueue11",
             "TestComputeResource",
-            {},
+            {
+                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
+                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
+            },
             True,
             "Enabling placement groups for queue: TestQueue11 may result in Insufficient Capacity Errors due to the "
             "use of multiple instance types for Compute Resource: TestComputeResource ("
             "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html#placement-groups-cluster).",
+        ),
+        (
+            "TestQueue11",
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
+            },
+            True,
+            "",
         ),
     ],
 )
