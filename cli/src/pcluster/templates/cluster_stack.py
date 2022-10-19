@@ -861,7 +861,7 @@ class ClusterCdkStack(Stack):
         for network_interface_index in range(1, head_node.max_network_interface_count):
             head_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=0,
+                    device_index=1,
                     network_card_index=network_interface_index,
                     groups=head_lt_security_groups,
                     subnet_id=head_node.networking.subnet_id,
