@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2.11.8
+**CHANGES**
+Upgrade Python runtime used by Lambda functions to python3.9.
+
 2.11.7
 -----
 
