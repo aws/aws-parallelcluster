@@ -1223,6 +1223,24 @@ def pytest_runtest_makereport(item, call):
             logging.error("Failed when generating config for failed tests: %s", e, exc_info=True)
 
 
+@pytest.fixture(scope="class")
+def serial_execution_by_instance(request, instance):
+    """Enforce serial execution of tests, according to the adopted instance."""
+    if instance in ["c5n.18xlarge", "p4d.24xlarge"]:
+        logging.info("Enforcing serial execution for instance %s", instance)
+        outdir = request.config.getoption("output_dir")
+        lock_file = f"{outdir}/{instance}.lock"
+        lock = FileLock(lock_file=lock_file)
+        logging.info("Acquiring lock file %s", lock.lock_file)
+        with lock.acquire(poll_interval=15, timeout=7200):
+            yield
+        logging.info("Releasing lock file %s", lock.lock_file)
+        lock.release()
+    else:
+        logging.info("Ignoring serial execution for instance %s", instance)
+        yield
+
+
 def update_failed_tests_config(item):
     out_dir = Path(item.config.getoption("output_dir"))
     if not str(out_dir).endswith(".out"):

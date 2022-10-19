@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 
+import pytest
 import xmltodict
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -24,6 +25,7 @@ FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
 FABTESTS_GDRCOPY_TESTS = ["runt"]
 
 
+@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_fabric(
     os,
     region,
