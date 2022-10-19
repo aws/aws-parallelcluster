@@ -257,6 +257,7 @@ class EBSSnapshotsFactory:
         if self.snapshot:
             logging.info("Deleting snapshot %s" % self.snapshot.id)
             self.snapshot.delete()
+            logging.info("Snapshot %s deleted" % self.snapshot.id)
 
     @retry(stop_max_attempt_number=5, wait_fixed=5000)
     def _release_instance(self):
@@ -274,10 +275,12 @@ class EBSSnapshotsFactory:
         if self.volume:
             logging.info("Deleting volume %s" % self.volume.id)
             self.volume.delete()
+            logging.info("Volume %s deleted" % self.volume.id)
         self.volume = None
 
     def _release_security_group(self):
         if self.security_group_id:
             logging.info("Deleting security group %s" % self.security_group_id)
             self.boto_client.delete_security_group(GroupId=self.security_group_id)
+            logging.info("Security group %s deleted" % self.security_group_id)
         self.security_group_id = None
