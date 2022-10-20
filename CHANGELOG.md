@@ -18,6 +18,7 @@ CHANGELOG
 - Configure NFS threads to be `min(256, max(8, num_cores * 4))` to ensure better stability and performance.
 - Move NFS installation at build time to reduce configuration time.
 - Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
+- Add `amazon-efs-utils` package on Amazon Linux 2 AMIs.
 
 **CHANGES**
 - Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
