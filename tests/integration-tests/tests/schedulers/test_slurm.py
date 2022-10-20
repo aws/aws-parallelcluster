@@ -443,6 +443,7 @@ def test_scontrol_reboot(
         slurm_commands,
         ["queue1-dy-t2micro-1", "queue1-dy-t2micro-2"],
         "idle",
+        stop_max_delay_secs=330,
     )
 
     # Test that idle static and dynamic nodes can be rebooted
@@ -2039,13 +2040,15 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
     jiff = 2
 
     # Submit a job on the node to have it allocated
-    slurm_commands.submit_command(
-        command="sleep 120",
-        nodes=1,
-        slots=1,
-        other_options=f"-w {node}",
+    job_id = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 120",
+            "nodes": 1,
+            "slots": 1,
+            "other_options": f"-w {node}",
+        },
     )
-    time.sleep(jiff)
+    slurm_commands.wait_job_running(job_id)
     assert_compute_node_states(slurm_commands, [node], ["allocated", "mixed"])
 
     # Request node reboot
