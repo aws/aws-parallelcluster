@@ -2087,7 +2087,7 @@ class SlurmScheduling(Resource):
         )
         self._register_validator(
             SingleSubnetValidator,
-            queues=self.queues,
+            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
         )
 
 
@@ -2443,7 +2443,7 @@ class SchedulerPluginScheduling(Resource):
         )
         self._register_validator(
             SingleSubnetValidator,
-            queues=self.queues,
+            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
         )
         for queue in self.queues:
             self._register_validator(
