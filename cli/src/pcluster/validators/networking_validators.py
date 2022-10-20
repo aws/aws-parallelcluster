@@ -66,3 +66,15 @@ class ElasticIpValidator(Validator):
                 AWSApi.instance().ec2.get_eip_allocation_id(elastic_ip)
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class SingleSubnetValidator(Validator):
+    """Validate all queues reference the same subnet."""
+
+    def _validate(self, queues):
+        def _queue_has_subnet_ids(queue):
+            return queue.networking and queue.networking.subnet_ids
+
+        subnet_ids = {tuple(set(q.networking.subnet_ids)) for q in queues if _queue_has_subnet_ids(q)}
+        if len(subnet_ids) > 1:
+            self._add_failure("The SubnetId used for all of the queues should be the same.", FailureLevel.ERROR)

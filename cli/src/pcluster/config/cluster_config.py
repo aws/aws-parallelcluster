@@ -152,7 +152,12 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
+from pcluster.validators.networking_validators import (
+    ElasticIpValidator,
+    SecurityGroupsValidator,
+    SingleSubnetValidator,
+    SubnetsValidator,
+)
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
     S3BucketUriValidator,
@@ -1908,13 +1913,6 @@ class _CommonQueue(BaseQueue):
     ) -> bool:
         return self.get_placement_group_settings_for_compute_resource(compute_resource).get("key") is not None
 
-    def is_placement_group_disabled_for_compute_resource(self, compute_resource_pg_enabled: bool) -> bool:
-        return (
-            compute_resource_pg_enabled is False
-            or self.networking.placement_group.enabled is False
-            and compute_resource_pg_enabled is None
-        )
-
     def get_chosen_placement_group_setting_for_compute_resource(
         self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
     ) -> PlacementGroup:
@@ -1991,9 +1989,10 @@ class SlurmQueue(_CommonQueue):
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
                 placement_group_key=self.get_placement_group_settings_for_compute_resource(compute_resource).get("key"),
-                placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
-                    compute_resource.networking.placement_group.enabled
-                ),
+                placement_group_disabled=self.get_chosen_placement_group_setting_for_compute_resource(
+                    compute_resource
+                ).enabled
+                is False,
             )
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
@@ -2086,6 +2085,10 @@ class SlurmScheduling(Resource):
             max_length=MAX_NUMBER_OF_QUEUES,
             resource_name="SlurmQueues",
         )
+        self._register_validator(
+            SingleSubnetValidator,
+            queues=self.queues,
+        )
 
 
 class SchedulerPluginQueue(_CommonQueue):
@@ -2120,9 +2123,10 @@ class SchedulerPluginQueue(_CommonQueue):
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
                 placement_group_key=self.get_placement_group_settings_for_compute_resource(compute_resource).get("key"),
-                placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
-                    compute_resource.networking.placement_group.enabled
-                ),
+                placement_group_disabled=self.get_chosen_placement_group_setting_for_compute_resource(
+                    compute_resource
+                ).enabled
+                is False,
             )
 
     @property
@@ -2436,6 +2440,10 @@ class SchedulerPluginScheduling(Resource):
                 default=MAX_NUMBER_OF_QUEUES,
             ),
             resource_name="SchedulerQueues",
+        )
+        self._register_validator(
+            SingleSubnetValidator,
+            queues=self.queues,
         )
         for queue in self.queues:
             self._register_validator(
