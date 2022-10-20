@@ -71,10 +71,7 @@ class ElasticIpValidator(Validator):
 class SingleSubnetValidator(Validator):
     """Validate all queues reference the same subnet."""
 
-    def _validate(self, queues):
-        def _queue_has_subnet_ids(queue):
-            return queue.networking and queue.networking.subnet_ids
-
-        subnet_ids = {tuple(set(q.networking.subnet_ids)) for q in queues if _queue_has_subnet_ids(q)}
+    def _validate(self, queues_subnets):
+        subnet_ids = {tuple(set(queue_subnets)) for queue_subnets in queues_subnets}
         if len(subnet_ids) > 1:
             self._add_failure("The SubnetId used for all of the queues should be the same.", FailureLevel.ERROR)

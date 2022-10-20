@@ -171,6 +171,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         networking_validators + ".SecurityGroupsValidator._validate", return_value=[]
     )
     subnets_validator = mocker.patch(networking_validators + ".SubnetsValidator._validate", return_value=[])
+    single_subnet_validator = mocker.patch(networking_validators + ".SingleSubnetValidator._validate", return_value=[])
 
     fsx_validators = validators_path + ".fsx_validators"
     fsx_s3_validator = mocker.patch(fsx_validators + ".FsxS3Validator._validate", return_value=[])
@@ -262,6 +263,16 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         any_order=True,
     )
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-23456789", "subnet-12345678"])])
+    single_subnet_validator.assert_has_calls(
+        [
+            call(
+                queues_subnets=[
+                    ["subnet-23456789"],
+                    ["subnet-23456789"],
+                ]
+            )
+        ]
+    )
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
@@ -441,6 +452,7 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
         networking_validators + ".SecurityGroupsValidator._validate", return_value=[]
     )
     subnets_validator = mocker.patch(networking_validators + ".SubnetsValidator._validate", return_value=[])
+    single_subnet_validator = mocker.patch(networking_validators + ".SingleSubnetValidator._validate", return_value=[])
 
     fsx_validators = validators_path + ".fsx_validators"
     fsx_s3_validator = mocker.patch(fsx_validators + ".FsxS3Validator._validate", return_value=[])
@@ -551,6 +563,16 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
         any_order=True,
     )
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-12345678", "subnet-23456789"])])
+    single_subnet_validator.assert_has_calls(
+        [
+            call(
+                queues_subnets=[
+                    ["subnet-12345678"],
+                    ["subnet-12345678"],
+                ]
+            )
+        ]
+    )
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
