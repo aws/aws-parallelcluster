@@ -941,16 +941,17 @@ class MixedSecurityGroupOverwriteValidator(Validator):
 class _LaunchTemplateValidator(Validator):
     """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
 
+    @staticmethod
     def _build_launch_network_interfaces(
-        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
+        network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
     ):
         """Build the needed NetworkInterfaces to launch an instance."""
         network_interfaces = []
-        for device_index in range(network_interfaces_count):
+        for network_interface_index in range(network_interfaces_count):
             network_interfaces.append(
                 {
-                    "DeviceIndex": device_index,
-                    "NetworkCardIndex": device_index,
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": network_interface_index,
                     "InterfaceType": "efa" if use_efa else "interface",
                     "Groups": security_group_ids,
                     "SubnetId": subnet,
