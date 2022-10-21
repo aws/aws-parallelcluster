@@ -7,8 +7,8 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add possibility to specify multiple EC2 instance types for the same compute resource.
 - Add support for adding and removing shared storages at cluster update by updating `SharedStorage` configuration.
-- Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage to support storage retention on deletion.
-- Add new configuration to enable accounting functionality in Slurm.
+- Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage to support storage retention.
+- Add new configuration section `Scheduling/SlurmSettings/Database` to enable accounting functionality in Slurm.
 - Add support for On-Demand Capacity Reservations and Capacity Reservations Resource Groups.
 - Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure. 
 - Add support for `Networking/PlacementGroup` in the `SlurmQueues/ComputeResources` section.
