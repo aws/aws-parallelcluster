@@ -1117,6 +1117,75 @@ def test_generate_tag_specifications(input_tags):
 
 
 @pytest.mark.parametrize(
+    "network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips, expected_result",
+    [
+        [
+            1,
+            False,
+            "sg-1",
+            "subnet-1",
+            False,
+            [
+                {
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": 0,
+                    "InterfaceType": "interface",
+                    "Groups": "sg-1",
+                    "SubnetId": "subnet-1",
+                }
+            ],
+        ],
+        [
+            4,
+            True,
+            "sg-2",
+            "subnet-2",
+            True,
+            [
+                {
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": 0,
+                    "InterfaceType": "efa",
+                    "Groups": "sg-2",
+                    "SubnetId": "subnet-2",
+                    "AssociatePublicIpAddress": True,
+                },
+                {
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": 1,
+                    "InterfaceType": "efa",
+                    "Groups": "sg-2",
+                    "SubnetId": "subnet-2",
+                },
+                {
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": 2,
+                    "InterfaceType": "efa",
+                    "Groups": "sg-2",
+                    "SubnetId": "subnet-2",
+                },
+                {
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": 3,
+                    "InterfaceType": "efa",
+                    "Groups": "sg-2",
+                    "SubnetId": "subnet-2",
+                },
+            ],
+        ],
+    ],
+)
+def test_build_launch_network_interfaces(
+    network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips, expected_result
+):
+    """Verify function to build network interfaces for dry runs of RunInstances works as expected."""
+    lt_network_interfaces = _LaunchTemplateValidator._build_launch_network_interfaces(
+        network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips
+    )
+    assert_that(lt_network_interfaces).is_equal_to(expected_result)
+
+
+@pytest.mark.parametrize(
     "head_node_security_groups, queues, expect_warning",
     [
         [None, [{"networking": {"security_groups": None}}, {"networking": {"security_groups": None}}], False],
