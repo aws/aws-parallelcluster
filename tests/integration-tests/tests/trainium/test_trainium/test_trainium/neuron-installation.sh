@@ -44,7 +44,10 @@ EOF
 
   # Install packages from S3 --> FIXME they should be installed from configured repository
   DEBS=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-1:447714826191:secret:TrainiumPreviewRepository --region us-east-1 --query 'SecretString' --output text | jq -r '.debs')
-  sudo dpkg -i ${DEBS}
+  for DEB in $DEBS
+  do
+    sudo dpkg -i $DEB
+  done
 
   # Install Python venv and activate Python virtual environment to install Neuron pip packages.
   local OS_VERSION="$(grep "^VERSION_ID=" /etc/os-release | cut -d"=" -f 2 | xargs)"
@@ -77,7 +80,10 @@ EOF
 
   # Install packages from S3 --> FIXME they should be installed from configured repository
   RPMS=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-1:447714826191:secret:TrainiumPreviewRepository --region us-east-1 --query 'SecretString' --output text | jq -r '.rpms')
-  sudo rpm -i ${RPMS}
+  for RPM in $RPMS
+  do
+    sudo rpm -i $RPM
+  done
 
   python3 -m venv /home/ec2-user/aws_neuron_venv_pytorch
 }
