@@ -22,7 +22,7 @@ import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.aws.common import get_region
+from pcluster.aws.common import AWSClientError, get_region
 from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
@@ -2087,7 +2087,7 @@ class SlurmScheduling(Resource):
         )
         self._register_validator(
             SingleSubnetValidator,
-            queues=self.queues,
+            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
         )
 
 
@@ -2443,7 +2443,7 @@ class SchedulerPluginScheduling(Resource):
         )
         self._register_validator(
             SingleSubnetValidator,
-            queues=self.queues,
+            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
         )
         for queue in self.queues:
             self._register_validator(
@@ -2588,8 +2588,14 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls
-        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        # Cache capacity reservations information together to reduce number of boto3 calls.
+        # Since this cache is only used for validation, if AWSClientError happens
+        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
+        # blocking CLI execution if the user want to suppress the validation.
+        try:
+            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""
@@ -2646,8 +2652,14 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls
-        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        # Cache capacity reservations information together to reduce number of boto3 calls.
+        # Since this cache is only used for validation, if AWSClientError happens
+        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
+        # blocking CLI execution if the user want to suppress the validation.
+        try:
+            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""

@@ -12,7 +12,6 @@ import os
 
 import pytest
 
-from pcluster.config.cluster_config import SlurmComputeResource, SlurmQueue, SlurmQueueNetworking
 from pcluster.validators.networking_validators import SecurityGroupsValidator, SingleSubnetValidator, SubnetsValidator
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -73,51 +72,15 @@ def test_ec2_subnet_id_validator(mocker):
     [
         (
             [
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=["subnet-11111111"]),
-                    compute_resources=[
-                        SlurmComputeResource(
-                            instance_type="test",
-                            name="test1",
-                        )
-                    ],
-                ),
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=["subnet-00000000"]),
-                    compute_resources=[
-                        SlurmComputeResource(
-                            instance_type="test",
-                            name="test1",
-                        )
-                    ],
-                ),
+                ["subnet-11111111"],
+                ["subnet-00000000"],
             ],
             "The SubnetId used for all of the queues should be the same",
         ),
         (
             [
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=["subnet-00000000"]),
-                    compute_resources=[
-                        SlurmComputeResource(
-                            instance_type="test",
-                            name="test1",
-                        )
-                    ],
-                ),
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=["subnet-00000000"]),
-                    compute_resources=[
-                        SlurmComputeResource(
-                            instance_type="test",
-                            name="test1",
-                        )
-                    ],
-                ),
+                ["subnet-00000000"],
+                ["subnet-00000000"],
             ],
             None,
         ),
