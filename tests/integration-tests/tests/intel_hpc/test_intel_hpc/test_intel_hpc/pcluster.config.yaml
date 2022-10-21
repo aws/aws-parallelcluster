@@ -30,6 +30,7 @@ Scheduling:
             - {{ instance }}
           {% else %}
           Instances:
+            - InstanceType: c5.18xlarge
             - InstanceType: c5n.18xlarge
             - InstanceType: c5n.metal
           {% endif %}

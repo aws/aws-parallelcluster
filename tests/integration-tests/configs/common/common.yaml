@@ -265,7 +265,7 @@ efa:
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
-      - regions: [ "us-west-2" ]
+      - regions: [ "us-east-2" ]
         instances: [{{ common.instance("instance_type_1") }}]
         oss: [ "alinux2", "centos7", "ubuntu2004" ]
         schedulers: [ "slurm" ]
@@ -296,8 +296,8 @@ iam:
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
-      - regions: ["us-west-2"]
-        instances: ["c5n.18xlarge"]
+      - regions: ["us-east-2"]
+        instances: ["c5.18xlarge"]
         oss: ["centos7"]
         schedulers: ["slurm"]
 networking:
