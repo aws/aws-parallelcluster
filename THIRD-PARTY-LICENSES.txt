@@ -1,5 +1,4 @@
-** boto3; version 1.24.22 -- https://pypi.org/project/boto3/
-
+** boto3; version 1.24.96 -- https://pypi.org/project/boto3/
 
 
 =======================================================================
@@ -433,7 +432,7 @@ Creative Commons may be contacted at creativecommons.org.
 
 ------
 
-** aws-cdk; version 1.162.0 -- https://github.com/aws/aws-cdk
+** aws-cdk; version 1.178.0 -- https://github.com/aws/aws-cdk
 
                               Apache License
                            Version 2.0, January 2004
@@ -643,16 +642,16 @@ Creative Commons may be contacted at creativecommons.org.
 
 ------
 
-** botocore; version 1.27.22 -- https://github.com/boto/botocore
 ** clickclick; version 20.10.2 -- https://codeberg.org/hjacobs/python-clickclick
 ** connexion; version 2.13.1 -- https://github.com/zalando/connexion
-** constructs; version 3.4.39 -- https://github.com/aws/constructs
-** importlib-metadata; version 4.12.0 -- https://github.com/python/importlib_metadata
-** importlib-resources; version 5.8.0 -- https://github.com/python/importlib_resources
-** jsii; version 1.61.0 -- https://github.com/aws/jsii
 ** python-dateutil; version 2.8.2 -- https://github.com/dateutil/dateutil
 ** requests; version 2.28.1 -- https://github.com/psf/requests
 ** s3transfer; version 0.6.0 -- https://github.com/boto/s3transfer
+** botocore; version 1.27.96 -- https://github.com/boto/botocore
+** constructs; version 3.4.133 -- https://github.com/aws/constructs
+** importlib-metadata; version 5.0.0 -- https://github.com/python/importlib_metadata
+** importlib-resources; version 5.10.0 -- https://github.com/python/importlib_resources
+** jsii; version 1.70.0 -- https://github.com/aws/jsii
 
 Apache License
 Version 2.0, January 2004
@@ -837,12 +836,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-* For botocore see also this required NOTICE:
-    Copyright 2012-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 * For clickclick see also this required NOTICE:
     Copyright (c) 2015-2019 Zalando SE
 * For connexion see also this required NOTICE:
     Copyright 2015 Zalando SE
+* For python-dateutil see also this required NOTICE:
+    Copyright 2017- Paul Ganssle <paul@ganssle.io>
+    Copyright 2017- dateutil contributors (see AUTHORS file)
+* For requests see also this required NOTICE:
+    N/A
+* For s3transfer see also this required NOTICE:
+    Copyright 2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* For botocore see also this required NOTICE:
+    Copyright 2012-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 * For constructs see also this required NOTICE:
     Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 * For importlib-metadata see also this required NOTICE:
@@ -851,13 +857,6 @@ limitations under the License.
     N/A
 * For jsii see also this required NOTICE:
     Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-* For python-dateutil see also this required NOTICE:
-    Copyright 2017- Paul Ganssle <paul@ganssle.io>
-    Copyright 2017- dateutil contributors (see AUTHORS file)
-* For requests see also this required NOTICE:
-    N/A
-* For s3transfer see also this required NOTICE:
-    Copyright 2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 ------
 
@@ -1102,7 +1101,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ------
 
-** idna; version 3.3 -- https://github.com/kjd/idna
+** idna; version 3.4 -- https://github.com/kjd/idna
 Copyright (c) 2013-2021, Kim Davies All rights reserved.
 
 BSD 3-Clause License
@@ -1177,11 +1176,11 @@ Blog
 
 ------
 
-** Flask; version 2.1.2 -- https://palletsprojects.com/p/flask
-Copyright 2010 Pallets
 ** jinja2; version 3.1.2 -- https://palletsprojects.com/p/jinja
 Copyright 2007 Pallets
-** Werkzeug; version 2.1.2 -- https://pypi.org/project/Werkzeug/
+** Flask; version 2.2.2 -- https://palletsprojects.com/p/flask
+Copyright 2010 Pallets
+** Werkzeug; version 2.2.2 -- https://pypi.org/project/Werkzeug/
 Copyright 2007 Pallets
 
 Redistribution and use in source and binary forms, with or without
@@ -1242,14 +1241,90 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ------
 
-** cattrs; version 22.1.0 -- https://github.com/python-attrs/cattrs
-Copyright (c) 2016, Tin Tvrtković
-** charset-normalizer; version 2.1.0 -- https://github.com/ousret/charset_normalizer
-Copyright (c) 2019 TAHRI Ahmed R.
-** exceptiongroup; version 1.0.0rc8 -- N/A
-N/A
-** jsonschema; version 4.6.1 -- https://github.com/python-jsonschema/jsonschema
-N/A
+** pkgutil_resolve_name; version 1.3.10 -- https://github.com/graingert/pkgutil-resolve-name
+Copyright (c) 2020 Thomas Grainger.
+
+The MIT License (MIT)
+
+Copyright (c) 2020 Thomas Grainger.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+Portions of this pkgutil-resolve-name Software may utilize the following
+copyrighted material, the use of which is hereby acknowledged.
+
+cpython:
+https://github.com/python/cpython/tree/1ed61617a4a6632905ad6a0b440cd2cafb8b6414
+
+
+PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+--------------------------------------------
+
+1. This LICENSE AGREEMENT is between the Python Software Foundation
+("PSF"), and the Individual or Organization ("Licensee") accessing and
+otherwise using this software ("Python") in source or binary form and
+its associated documentation.
+
+2. Subject to the terms and conditions of this License Agreement, PSF hereby
+grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
+analyze, test, perform and/or display publicly, prepare derivative works,
+distribute, and otherwise use Python alone or in any derivative version,
+provided, however, that PSF's License Agreement and PSF's notice of copyright,
+i.e., "Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Python Software
+Foundation;
+All Rights Reserved" are retained in Python alone or in any derivative version
+prepared by Licensee.
+
+3. In the event Licensee prepares a derivative work that is based on
+or incorporates Python or any part thereof, and wants to make
+the derivative work available to others as provided herein, then
+Licensee hereby agrees to include in any such work a brief summary of
+the changes made to Python.
+
+4. PSF is making Python available to Licensee on an "AS IS"
+basis.  PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND
+DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
+INFRINGE ANY THIRD PARTY RIGHTS.
+
+5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
+A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON,
+OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+6. This License Agreement will automatically terminate upon a material
+breach of its terms and conditions.
+
+7. Nothing in this License Agreement shall be deemed to create any
+relationship of agency, partnership, or joint venture between PSF and
+Licensee.  This License Agreement does not grant permission to use PSF
+trademarks or trade name in a trademark sense to endorse or promote
+products or services of Licensee, or any third party.
+
+8. By copying, installing or otherwise using Python, Licensee
+agrees to be bound by the terms and conditions of this License
+Agreement.
+
+------
+
 ** publication; version 0.0.3 -- https://github.com/glyph/publication
 The MIT License (MIT)
 
@@ -1276,10 +1351,14 @@ THE SOFTWARE.
 N/A
 ** six; version 1.16.0 -- https://github.com/benjaminp/six
 Copyright (c) 2010-2020 Benjamin Peterson
-** urllib3; version 1.26.9 -- https://urllib3.readthedocs.io/
-Copyright (c) 2008-2020 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-** zipp; version 3.8.0 -- https://github.com/jaraco/zipp
-Copyright Jason R. Coombs
+** cattrs; version 22.2.0 -- https://github.com/python-attrs/cattrs
+Copyright (c) 2016, Tin Tvrtković
+** charset-normalizer; version 2.1.1 -- https://github.com/ousret/charset_normalizer
+Copyright (c) 2019 TAHRI Ahmed R.
+** exceptiongroup; version 1.0.0rc9 -- N/A
+N/A
+** jsonschema; version 4.16.0 -- https://github.com/python-jsonschema/jsonschema
+N/A
 
 MIT License
 
@@ -1383,7 +1462,42 @@ SOFTWARE.
 
 ------
 
-** tabulate; version 0.8.10 -- https://github.com/astanin/python-tabulate
+** typeguard; version 2.13.3 -- https://github.com/agronholm/typeguard
+Copyright (c) Alex Grönholm
+
+This is the MIT license: http://www.opensource.org/licenses/mit-license.php
+
+Copyright (c) Alex Grönholm
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this
+software and associated documentation files (the "Software"), to deal in the
+Software
+without restriction, including without limitation the rights to use, copy,
+modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to
+permit persons
+to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER
+DEALINGS IN THE SOFTWARE.
+
+------
+
+** tabulate; version 0.9.0 -- https://github.com/astanin/python-tabulate
 Copyright (c) 2011-2020 Sergey Astanin and contributors
 
 Copyright (c) 2011-2020 Sergey Astanin and contributors
@@ -1608,10 +1722,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------
 
+** urllib3; version 1.26.12 -- https://urllib3.readthedocs.io/
+Copyright (c) 2008-2020 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+
+MIT License
+
+Copyright (c) 2008-2020 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+------
+
 ** pyyaml; version 5.4.1 -- http://pyyaml.org/
 Copyright (c) 2017-2021 Ingy döt Net
 Copyright (c) 2006-2016 Kirill Simonov
-** marshmallow; version 3.17.0 -- https://marshmallow.readthedocs.io/
+** marshmallow; version 3.18.0 -- https://marshmallow.readthedocs.io/
 Copyright 2021 Steven Loria and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -1634,7 +1775,7 @@ SOFTWARE.
 
 ------
 
-** attrs; version 21.4.0 -- https://www.attrs.org/
+** attrs; version 22.1.0 -- https://www.attrs.org/
 Copyright (c) 2015 Hynek Schlawack
 
 The MIT License (MIT)
@@ -1661,7 +1802,32 @@ SOFTWARE.
 
 ------
 
-** certifi; version 2022.6.15 -- https://github.com/certifi/python-certifi
+** zipp; version 3.10.0 -- https://github.com/jaraco/zipp
+Copyright Jason R. Coombs
+
+Copyright Jason R. Coombs
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+------
+
+** certifi; version 2022.9.24 -- https://github.com/certifi/python-certifi
 N/A
 
 
@@ -1690,7 +1856,7 @@ one at http://mozilla.org/MPL/2.0/.
 
 ------
 
-** typing-extensions; version 4.3.0 -- https://github.com/python/typing_extensions
+** typing-extensions; version 4.4.0 -- https://github.com/python/typing_extensions
 N/A
 
 A. HISTORY OF THE SOFTWARE
