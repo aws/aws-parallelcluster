@@ -9,18 +9,6 @@ HeadNode:
     KeyName: {{ key_name }}
   Imds:
     Secured: {{ imds_secured }}
-{% if instance == "p4d.24xlarge" %}
-  Iam:
-    # Needed to use the p4d capacity reservation
-    AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonEC2FullAccess
-    S3Access:
-      - BucketName: {{ bucket_name }}
-        EnableWriteAccess: false
-  CustomActions:
-    OnNodeConfigured:
-      Script: s3://{{ bucket_name }}/run_instance_override.sh
-{% endif %}
 Scheduling:
   Scheduler: {{ scheduler }}
   {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
@@ -37,6 +25,10 @@ Scheduling:
           MinCount: 1
           Efa:
             Enabled: true
+          {% if instance == "p4d.24xlarge" %}
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:447714826191:group/EC2CRGroup
+          {% endif %}
           {% endif %}
       Networking:
         SubnetIds:
