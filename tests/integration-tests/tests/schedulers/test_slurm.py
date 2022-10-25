@@ -277,7 +277,7 @@ def test_scontrol_reboot(
         slurm_commands,
         ["queue1-dy-t2micro-1", "queue1-dy-t2micro-2"],
         "idle",
-        stop_max_delay_secs=330,
+        stop_max_delay=minutes(6),
     )
 
     # Test that idle static and dynamic nodes can be rebooted
