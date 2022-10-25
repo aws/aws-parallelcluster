@@ -34,7 +34,7 @@ from yaml.constructor import ConstructorError
 from yaml.resolver import BaseResolver
 
 from pcluster.aws.common import get_region
-from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
+from pcluster.constants import OS_MAPPING, SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
 
 LOGGER = logging.getLogger(__name__)
 
@@ -361,3 +361,58 @@ def yaml_no_duplicates_constructor(loader, node, deep=False):
 def get_http_tokens_setting(imds_support):
     """Get http tokens settings for supported IMDS version."""
     return "required" if imds_support == "v2.0" else "optional"
+
+
+def get_block_device_mappings(root_volume, image_os):
+    """Return block device mapping."""
+    block_device_mappings = []
+    for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
+        device_name = "/dev/xvdb{0}".format(device_name_index)
+        virtual_name = "ephemeral{0}".format(virtual_name_index)
+        block_device_mappings.append({"DeviceName": device_name, "VirtualName": virtual_name})
+
+    block_device_mappings.append(
+        {
+            "DeviceName": OS_MAPPING[image_os]["root-device"],
+            "Ebs": {
+                "VolumeSize": root_volume.size,
+                "Encrypted": root_volume.encrypted,
+                "VolumeType": root_volume.volume_type,
+                "Iops": root_volume.iops,
+                "Throughput": root_volume.throughput,
+                "DeleteOnTermination": root_volume.delete_on_termination,
+            },
+        }
+    )
+    return block_device_mappings
+
+
+def get_instance_market_options(queue, compute_resource):
+    """Return instance market options for spot instances."""
+    return (
+        {
+            "MarketType": "spot",
+            "SpotOptions": {
+                "SpotInstanceType": "one-time",
+                "InstanceInterruptionBehavior": "terminate",
+                "MaxPrice": str(compute_resource.spot_price) if compute_resource.spot_price else None,
+            },
+        }
+        if queue.capacity_type.value == "SPOT"
+        else None
+    )
+
+
+def get_capacity_reservation_specification(queue, compute_resource):
+    """Return capacity reservation specification for the capacity reservation target."""
+    target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+    return (
+        {
+            "CapacityReservationTarget": {
+                "CapacityReservationId": target.capacity_reservation_id,
+                "CapacityReservationResourceGroupArn": target.capacity_reservation_resource_group_arn,
+            }
+        }
+        if target
+        else None
+    )

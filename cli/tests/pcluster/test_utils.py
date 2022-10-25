@@ -21,6 +21,13 @@ import pcluster.utils as utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import Cache
+from pcluster.config.cluster_config import (
+    BaseQueue,
+    CapacityReservationTarget,
+    RootVolume,
+    SlurmComputeResource,
+    SlurmQueue,
+)
 from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import yaml_load
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -326,3 +333,141 @@ def test_yaml_load(yaml_string, expected_yaml_dict, expected_error):
 @pytest.mark.parametrize("imds_support, http_tokens", [("v1.0", "optional"), ("v2.0", "required")])
 def test_get_http_token_settings(imds_support, http_tokens):
     assert_that(utils.get_http_tokens_setting(imds_support)).is_equal_to(http_tokens)
+
+
+@pytest.mark.parametrize(
+    "root_volume, image_os, expected_response",
+    [
+        (
+            RootVolume(
+                size=10,
+                encrypted=True,
+                volume_type="mockVolumeType",
+                iops=15,
+                throughput=20,
+                delete_on_termination=True,
+            ),
+            "centos7",
+            [
+                {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
+                {"DeviceName": "/dev/xvdbb", "VirtualName": "ephemeral1"},
+                {"DeviceName": "/dev/xvdbc", "VirtualName": "ephemeral2"},
+                {"DeviceName": "/dev/xvdbd", "VirtualName": "ephemeral3"},
+                {"DeviceName": "/dev/xvdbe", "VirtualName": "ephemeral4"},
+                {"DeviceName": "/dev/xvdbf", "VirtualName": "ephemeral5"},
+                {"DeviceName": "/dev/xvdbg", "VirtualName": "ephemeral6"},
+                {"DeviceName": "/dev/xvdbh", "VirtualName": "ephemeral7"},
+                {"DeviceName": "/dev/xvdbi", "VirtualName": "ephemeral8"},
+                {"DeviceName": "/dev/xvdbj", "VirtualName": "ephemeral9"},
+                {"DeviceName": "/dev/xvdbk", "VirtualName": "ephemeral10"},
+                {"DeviceName": "/dev/xvdbl", "VirtualName": "ephemeral11"},
+                {"DeviceName": "/dev/xvdbm", "VirtualName": "ephemeral12"},
+                {"DeviceName": "/dev/xvdbn", "VirtualName": "ephemeral13"},
+                {"DeviceName": "/dev/xvdbo", "VirtualName": "ephemeral14"},
+                {"DeviceName": "/dev/xvdbp", "VirtualName": "ephemeral15"},
+                {"DeviceName": "/dev/xvdbq", "VirtualName": "ephemeral16"},
+                {"DeviceName": "/dev/xvdbr", "VirtualName": "ephemeral17"},
+                {"DeviceName": "/dev/xvdbs", "VirtualName": "ephemeral18"},
+                {"DeviceName": "/dev/xvdbt", "VirtualName": "ephemeral19"},
+                {"DeviceName": "/dev/xvdbu", "VirtualName": "ephemeral20"},
+                {"DeviceName": "/dev/xvdbv", "VirtualName": "ephemeral21"},
+                {"DeviceName": "/dev/xvdbw", "VirtualName": "ephemeral22"},
+                {"DeviceName": "/dev/xvdbx", "VirtualName": "ephemeral23"},
+                {
+                    "DeviceName": "/dev/sda1",
+                    "Ebs": {
+                        "VolumeSize": 10,
+                        "Encrypted": True,
+                        "VolumeType": "mockVolumeType",
+                        "Iops": 15,
+                        "Throughput": 20,
+                        "DeleteOnTermination": True,
+                    },
+                },
+            ],
+        ),
+    ],
+)
+def test_get_block_device_mappings(root_volume, image_os, expected_response):
+    assert_that(utils.get_block_device_mappings(root_volume, image_os)).is_equal_to(expected_response)
+
+
+@pytest.mark.parametrize(
+    "queue, compute_resource, expected_response",
+    [
+        (
+            BaseQueue(name="queue1", capacity_type="spot"),
+            SlurmComputeResource(name="compute1", instance_type="t2.medium", spot_price=10),
+            {
+                "MarketType": "spot",
+                "SpotOptions": {
+                    "SpotInstanceType": "one-time",
+                    "InstanceInterruptionBehavior": "terminate",
+                    "MaxPrice": "10",
+                },
+            },
+        ),
+        (
+            BaseQueue(name="queue2", capacity_type="ondemand"),
+            SlurmComputeResource(name="compute2", instance_type="t2.medium", spot_price=10),
+            None,
+        ),
+    ],
+)
+def test_get_instance_market_options(queue, compute_resource, expected_response):
+    assert_that(utils.get_instance_market_options(queue, compute_resource)).is_equal_to(expected_response)
+
+
+@pytest.mark.parametrize(
+    "queue, compute_resource, expected_response",
+    [
+        (
+            SlurmQueue(
+                name="queue1",
+                capacity_reservation_target=CapacityReservationTarget(
+                    capacity_reservation_id="queue_capacity_reservation_id",
+                    capacity_reservation_resource_group_arn="queue_capacity_reservation_resource_group_arn",
+                ),
+                compute_resources=[],
+                networking=None,
+            ),
+            SlurmComputeResource(
+                name="compute1",
+                instance_type="t2.medium",
+                capacity_reservation_target=CapacityReservationTarget(
+                    capacity_reservation_id="compute_resource_capacity_reservation_id",
+                    capacity_reservation_resource_group_arn="compute_resource_capacity_reservation_resource_group_arn",
+                ),
+            ),
+            {
+                "CapacityReservationTarget": {
+                    "CapacityReservationId": "compute_resource_capacity_reservation_id",
+                    "CapacityReservationResourceGroupArn": "compute_resource_capacity_reservation_resource_group_arn",
+                }
+            },
+        ),
+        (
+            SlurmQueue(
+                name="queue1",
+                capacity_reservation_target=CapacityReservationTarget(
+                    capacity_reservation_id="queue_capacity_reservation_id",
+                    capacity_reservation_resource_group_arn="queue_capacity_reservation_resource_group_arn",
+                ),
+                compute_resources=[],
+                networking=None,
+            ),
+            SlurmComputeResource(
+                name="compute1",
+                instance_type="t2.medium",
+            ),
+            {
+                "CapacityReservationTarget": {
+                    "CapacityReservationId": "queue_capacity_reservation_id",
+                    "CapacityReservationResourceGroupArn": "queue_capacity_reservation_resource_group_arn",
+                }
+            },
+        ),
+    ],
+)
+def test_get_capacity_reservation_specification(queue, compute_resource, expected_response):
+    assert_that(utils.get_capacity_reservation_specification(queue, compute_resource)).is_equal_to(expected_response)

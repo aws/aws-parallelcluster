@@ -35,7 +35,14 @@ from pcluster.constants import (
     SUPPORTED_REGIONS,
     SUPPORTED_SCHEDULERS,
 )
-from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
+from pcluster.utils import (
+    get_block_device_mappings,
+    get_capacity_reservation_specification,
+    get_installed_version,
+    get_instance_market_options,
+    get_supported_os_for_architecture,
+    get_supported_os_for_scheduler,
+)
 from pcluster.validators.common import FailureLevel, Validator
 
 # pylint: disable=C0302
@@ -1032,7 +1039,7 @@ class _LaunchTemplateValidator(Validator):
 class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, head_node, ami_id, tags):
+    def _validate(self, head_node, os, ami_id, tags):
         try:
             head_node_security_groups = []
             if head_node.networking.security_groups:
@@ -1057,6 +1064,8 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 NetworkInterfaces=head_node_network_interfaces,
                 DryRun=True,
                 TagSpecifications=self._generate_tag_specifications(tags),
+                KeyName=head_node.ssh.key_name,
+                BlockDeviceMappings=get_block_device_mappings(head_node.local_storage.root_volume, os),
             )
         except Exception as e:
             self._add_failure(
@@ -1087,7 +1096,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, ami_id, tags):
+    def _validate(self, queue, os, ami_id, tags):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1109,7 +1118,9 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
             # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
             self._test_compute_resource(
+                queue=queue,
                 compute_resource=dry_run_compute_resource,
+                os=os,
                 use_public_ips=bool(queue.networking.assign_public_ip),
                 ami_id=ami_id,
                 subnet_id=queue_subnet_id,
@@ -1123,7 +1134,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
     def _test_compute_resource(
-        self, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
+        self, queue, compute_resource, os, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
@@ -1143,6 +1154,9 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             NetworkInterfaces=network_interfaces,
             DryRun=True,
             TagSpecifications=self._generate_tag_specifications(tags),
+            BlockDeviceMappings=get_block_device_mappings(queue.compute_settings.local_storage.root_volume, os),
+            InstanceMarketOptions=get_instance_market_options(queue, compute_resource),
+            CapacityReservationSpecification=get_capacity_reservation_specification(queue, compute_resource),
         )
 
 

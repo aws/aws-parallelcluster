@@ -26,7 +26,6 @@ from pcluster.config.cluster_config import (
     BaseComputeResource,
     BaseQueue,
     HeadNode,
-    LocalStorage,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmQueue,
@@ -35,7 +34,6 @@ from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
     IAM_ROLE_PATH,
-    OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
@@ -52,32 +50,51 @@ from pcluster.utils import (
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
 
 
-def get_block_device_mappings(local_storage: LocalStorage, os: str):
-    """Return block device mapping."""
-    block_device_mappings = []
-    for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
-        device_name = "/dev/xvdb{0}".format(device_name_index)
-        virtual_name = "ephemeral{0}".format(virtual_name_index)
-        block_device_mappings.append(
-            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
-        )
+def dict_to_cdk_block_device_mappings(block_device_mappings: list):
+    """Convert a list of dicts with the device mappings to a list of Cdk block device mappings."""
+    if block_device_mappings is None:
+        return None
 
-    root_volume = local_storage.root_volume
-
-    block_device_mappings.append(
+    return [
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
-            device_name=OS_MAPPING[os]["root-device"],
-            ebs=ec2.CfnLaunchTemplate.EbsProperty(
-                volume_size=root_volume.size,
-                encrypted=root_volume.encrypted,
-                volume_type=root_volume.volume_type,
-                iops=root_volume.iops,
-                throughput=root_volume.throughput,
-                delete_on_termination=root_volume.delete_on_termination,
-            ),
+            device_name=device_mapping.get("DeviceName"),
+            virtual_name=device_mapping.get("VirtualName"),
+            ebs=device_mapping.get("Ebs"),
+        )
+        for device_mapping in block_device_mappings
+    ]
+
+
+def dict_to_cdk_instance_market_options(instance_market_options: dict):
+    """Convert a dict with the instance market options to a Cdk object."""
+    if not instance_market_options or "SpotOptions" not in instance_market_options:
+        return None
+
+    spot_options = instance_market_options.get("SpotOptions")
+
+    return ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
+        market_type=instance_market_options.get("MarketType"),
+        spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
+            spot_instance_type=spot_options.get("SpotInstanceType"),
+            instance_interruption_behavior=spot_options.get("InstanceInterruptionBehavior"),
+            max_price=spot_options.get("MaxPrice"),
+        ),
+    )
+
+
+def dict_to_cdk_capacity_reservation_specification(capacity_reservation_specification: dict):
+    """Convert a dict with the capacity reservation specification to a Cdk object."""
+    if not capacity_reservation_specification or "CapacityReservationTarget" not in capacity_reservation_specification:
+        return None
+
+    target = capacity_reservation_specification.get("CapacityReservationTarget")
+
+    return ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
+        capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
+            capacity_reservation_id=target.get("CapacityReservationId"),
+            capacity_reservation_resource_group_arn=target.get("CapacityReservationResourceGroupArn"),
         )
     )
-    return block_device_mappings
 
 
 def create_hash_suffix(string_to_hash: str):

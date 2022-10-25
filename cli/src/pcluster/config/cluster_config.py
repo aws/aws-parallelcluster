@@ -1193,6 +1193,7 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
             head_node=self.head_node,
+            os=self.image.os,
             ami_id=self.head_node_ami,
             tags=self.get_cluster_tags(),
         )
@@ -2469,6 +2470,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
             self._register_validator(
                 ComputeResourceLaunchTemplateValidator,
                 queue=queue,
+                os=self.image.os,
                 ami_id=queue_image,
                 tags=self.get_cluster_tags(),
             )
