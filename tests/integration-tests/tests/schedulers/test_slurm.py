@@ -1205,7 +1205,6 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
         other_options=f"-w {node}",
     )
     slurm_commands.wait_job_running(job_id)
-    time.sleep(jiff)
     assert_compute_node_states(slurm_commands, [node], ["allocated", "mixed"])
 
     # Request node reboot
