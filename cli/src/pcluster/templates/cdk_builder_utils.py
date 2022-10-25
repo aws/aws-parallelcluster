@@ -26,7 +26,6 @@ from pcluster.config.cluster_config import (
     BaseComputeResource,
     BaseQueue,
     HeadNode,
-    LocalStorage,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmQueue,
@@ -35,11 +34,11 @@ from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
     IAM_ROLE_PATH,
-    OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
 )
+from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
 from pcluster.utils import (
     get_attr,
@@ -50,34 +49,6 @@ from pcluster.utils import (
 )
 
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
-
-
-def get_block_device_mappings(local_storage: LocalStorage, os: str):
-    """Return block device mapping."""
-    block_device_mappings = []
-    for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
-        device_name = "/dev/xvdb{0}".format(device_name_index)
-        virtual_name = "ephemeral{0}".format(virtual_name_index)
-        block_device_mappings.append(
-            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
-        )
-
-    root_volume = local_storage.root_volume
-
-    block_device_mappings.append(
-        ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
-            device_name=OS_MAPPING[os]["root-device"],
-            ebs=ec2.CfnLaunchTemplate.EbsProperty(
-                volume_size=root_volume.size,
-                encrypted=root_volume.encrypted,
-                volume_type=root_volume.volume_type,
-                iops=root_volume.iops,
-                throughput=root_volume.throughput,
-                delete_on_termination=root_volume.delete_on_termination,
-            ),
-        )
-    )
-    return block_device_mappings
 
 
 def create_hash_suffix(string_to_hash: str):
@@ -814,3 +785,41 @@ class PclusterLambdaConstruct(Construct):
 
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
+
+
+class CdkLaunchTemplateBuilder(_LaunchTemplateBuilder):
+    """Concrete class for building a CDK launch template."""
+
+    def _block_device_mapping_for_ebs(self, device_name, volume):
+        return ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
+            device_name=device_name,
+            ebs=ec2.CfnLaunchTemplate.EbsProperty(
+                volume_size=volume.size,
+                encrypted=volume.encrypted,
+                volume_type=volume.volume_type,
+                iops=volume.iops,
+                throughput=volume.throughput,
+                delete_on_termination=volume.delete_on_termination,
+            ),
+        )
+
+    def _block_device_mapping_for_virt(self, device_name, virtual_name):
+        return ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
+
+    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+        return ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
+            market_type=market_type,
+            spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
+                spot_instance_type=spot_instance_type,
+                instance_interruption_behavior=instance_interruption_behavior,
+                max_price=max_price,
+            ),
+        )
+
+    def _capacity_reservation(self, cr_target):
+        return ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
+            capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
+                capacity_reservation_id=cr_target.capacity_reservation_id,
+                capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
+            )
+        )
