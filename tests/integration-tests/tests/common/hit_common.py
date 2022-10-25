@@ -68,11 +68,11 @@ def assert_compute_node_states(scheduler_commands, compute_nodes, expected_state
 
 
 def wait_for_compute_nodes_states(
-        scheduler_commands,
-        compute_nodes,
-        expected_states,
-        wait_fixed_secs=20,
-        stop_max_delay_secs=300,
+    scheduler_commands,
+    compute_nodes,
+    expected_states,
+    wait_fixed_secs=20,
+    stop_max_delay_secs=300,
 ):
     retry(wait_fixed=seconds(wait_fixed_secs), stop_max_delay=seconds(stop_max_delay_secs))(assert_compute_node_states)(
         scheduler_commands, compute_nodes, expected_states
