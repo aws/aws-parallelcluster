@@ -45,7 +45,6 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     BaseSharedFsx,
-    CapacityType,
     ExistingFsxOntap,
     ExistingFsxOpenZfs,
     SchedulerPluginQueue,
@@ -73,6 +72,7 @@ from pcluster.constants import (
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
+    CdkLaunchTemplateBuilder,
     ComputeNodeIamResources,
     HeadNodeIamResources,
     PclusterLambdaConstruct,
@@ -81,7 +81,6 @@ from pcluster.templates.cdk_builder_utils import (
     convert_deletion_policy,
     create_hash_suffix,
     generate_launch_template_version_cfn_parameter_hash,
-    get_block_device_mappings,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
     get_common_user_data_env,
@@ -119,6 +118,7 @@ class ClusterCdkStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self._stack_name = stack_name
+        self._launch_template_builder = CdkLaunchTemplateBuilder()
         self.config = cluster_config
         self.bucket = bucket
         self.timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
@@ -874,7 +874,9 @@ class ClusterCdkStack(Stack):
             "HeadNodeLaunchTemplate",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=head_node.instance_type,
-                block_device_mappings=get_block_device_mappings(head_node.local_storage, self.config.image.os),
+                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
+                    head_node.local_storage.root_volume, self.config.image.os
+                ),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self.config.head_node_ami,
@@ -1317,6 +1319,7 @@ class ComputeFleetConstruct(Construct):
         self._dynamodb_table = dynamodb_table
         self._compute_node_instance_profiles = compute_node_instance_profiles
         self._head_eni = head_eni
+        self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._add_resources()
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
@@ -1443,41 +1446,19 @@ class ComputeFleetConstruct(Construct):
                 )
             )
 
-        instance_market_options = None
-        if queue.capacity_type == CapacityType.SPOT:
-            instance_market_options = ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
-                market_type="spot",
-                spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
-                    spot_instance_type="one-time",
-                    instance_interruption_behavior="terminate",
-                    max_price=None if compute_resource.spot_price is None else str(compute_resource.spot_price),
-                ),
-            )
-
         conditional_template_properties = {}
-
         if compute_resource.is_ebs_optimized:
             conditional_template_properties.update({"ebs_optimized": True})
         if isinstance(compute_resource, SlurmComputeResource):
             conditional_template_properties.update({"instance_type": compute_resource.instance_type})
-
-        capacity_reservation_specification = None
-        cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
-        if cr_target:
-            capacity_reservation_specification = ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
-                capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
-                    capacity_reservation_id=cr_target.capacity_reservation_id,
-                    capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
-                )
-            )
 
         return ec2.CfnLaunchTemplate(
             self,
             f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}",
             launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.name}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
-                block_device_mappings=get_block_device_mappings(
-                    queue.compute_settings.local_storage, self._config.image.os
+                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
+                    queue.compute_settings.local_storage.root_volume, self._config.image.os
                 ),
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
@@ -1486,9 +1467,14 @@ class ComputeFleetConstruct(Construct):
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=instance_profiles[queue.name]
                 ),
-                instance_market_options=instance_market_options,
+                instance_market_options=self._launch_template_builder.get_instance_market_options(
+                    queue, compute_resource
+                ),
                 instance_initiated_shutdown_behavior="terminate",
-                capacity_reservation_specification=capacity_reservation_specification,
+                capacity_reservation_specification=self._launch_template_builder.get_capacity_reservation(
+                    queue,
+                    compute_resource,
+                ),
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
                     http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
                 ),
