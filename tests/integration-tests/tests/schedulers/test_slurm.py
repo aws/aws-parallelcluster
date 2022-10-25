@@ -272,12 +272,12 @@ def test_scontrol_reboot(
         nodes=2,
         slots=2,
         constraint="dynamic",
-        stop_max_delay_secs=330,
     )
     wait_for_compute_nodes_states(
         slurm_commands,
         ["queue1-dy-t2micro-1", "queue1-dy-t2micro-2"],
         "idle",
+        stop_max_delay_secs=330,
     )
 
     # Test that idle static and dynamic nodes can be rebooted
