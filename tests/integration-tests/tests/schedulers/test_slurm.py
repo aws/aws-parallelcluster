@@ -272,6 +272,7 @@ def test_scontrol_reboot(
         nodes=2,
         slots=2,
         constraint="dynamic",
+        stop_max_delay_secs=330,
     )
     wait_for_compute_nodes_states(
         slurm_commands,
@@ -1197,13 +1198,13 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
     jiff = 2
 
     # Submit a job on the node to have it allocated
-    slurm_commands.submit_command(
+    job_id = slurm_commands.submit_command(
         command="sleep 120",
         nodes=1,
         slots=1,
         other_options=f"-w {node}",
     )
-    time.sleep(jiff)
+    slurm_commands.wait_job_running(job_id)
     assert_compute_node_states(slurm_commands, [node], ["allocated", "mixed"])
 
     # Request node reboot
