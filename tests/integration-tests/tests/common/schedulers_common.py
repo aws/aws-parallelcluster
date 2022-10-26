@@ -179,6 +179,12 @@ class SlurmCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(13))
+    def wait_job_running(self, job_id):
+        """Wait till job starts running."""
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        assert_that(result.stdout).contains("JobState=RUNNING")
+
     @retry(
         retry_on_result=lambda result: "JobState" not in result
         or any(
