@@ -288,7 +288,7 @@ def test_scontrol_reboot(
     )
 
     # Run job to allocate all nodes and test that allocated nodes can be rebooted
-    job_id_1 = slurm_commands.submit_command(
+    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
         command="sleep 150",
         nodes=4,
         slots=4,
