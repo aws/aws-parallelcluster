@@ -108,7 +108,7 @@ configure:
           schedulers: ["slurm"]
   test_pcluster_configure.py::test_efa_and_placement_group:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_EFA_SUPPORTED_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
