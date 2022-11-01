@@ -56,6 +56,15 @@ class JsonParam(Param):
         # No conversion is applied at base level
         return config_parser.get(section_name, self.key)
 
+    def refresh(self):
+        """
+        Refresh the parameter's value.
+
+        Does nothing by default. Subclasses can implement this method by updating parameter's value based on
+        PClusterConfig status.
+        """
+        pass
+
 
 class IntJsonParam(JsonParam):
     """Base JsonParam to manage int parameters."""
@@ -85,6 +94,15 @@ class BooleanJsonParam(JsonParam):
     def get_string_value(self):
         """Convert internal representation into string."""
         return self.get_default_value().lower() if self.value is None else str(bool(self.value)).lower()
+
+    def refresh(self):
+        """
+        Refresh the parameter's value.
+
+        Does nothing by default. Subclasses can implement this method by updating parameter's value based on
+        PClusterConfig status.
+        """
+        pass
 
 
 class FloatJsonParam(JsonParam):
