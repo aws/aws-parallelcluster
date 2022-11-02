@@ -34,8 +34,8 @@ class TestParallelClusterApiUtil:
                 util._assert_node_version()
             check_output_mock.assert_has_calls(
                 [
-                    mocker.call((["nvm", "current"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False),
                     mocker.call((["node", "--version"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False),
+                    mocker.call((["nvm", "current"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False),
                 ]
             )
             assert_that(str(exc.value)).matches(expected_message)
@@ -48,20 +48,28 @@ class TestParallelClusterApiUtil:
             else:
                 util._assert_node_version()
             check_output_mock.assert_called_once_with(
-                (["nvm", "current"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False
+                (["node", "--version"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False
             )
 
-    def test_assert_node_version_no_nvm(self, mocker, caplog):
-        version = "v18.12.0"
+    @pytest.mark.parametrize(
+        "version, expected_message",
+        [
+            ("v18.12.0", "Node.js version v18.12.0 may not work on this platform."),
+            ("v16.16.0", "Unable to invoke Node.js version v16.16.0"),
+        ],
+    )
+    def test_assert_node_version_no_nvm(self, mocker, caplog, version, expected_message):
         check_output_mock = mocker.patch("pcluster.api.util.subprocess.check_output")
         check_output_mock.side_effect = [Exception, version]
-        util._assert_node_version()
+        with pytest.raises(Exception) as exc:
+            util._assert_node_version()
+        assert_that(str(exc.value)).starts_with(expected_message)
         check_output_mock.assert_has_calls(
             [
-                mocker.call((["nvm", "current"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False),
                 mocker.call((["node", "--version"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False),
+                mocker.call((["nvm", "current"]), stderr=subprocess.STDOUT, encoding="utf-8", shell=False),
             ]
         )
-        warnings = [record for record in caplog.records if record.levelno == logging.WARN]
+        warnings = [record for record in caplog.records if record.levelno == logging.CRITICAL]
         assert_that(warnings).is_length(1)
-        assert_that(warnings[0].message).starts_with(f"Node.js version {version} may not work on some platforms")
+        assert_that(warnings[0].message).starts_with(expected_message)

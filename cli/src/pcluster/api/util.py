@@ -182,10 +182,11 @@ def _assert_node_version():
         # [B603:subprocess_without_shell_equals_true] Is suppressed because input of check_output is not coming from
         #   untrusted source
         node_version_string = subprocess.check_output(  # nosec
-            ["nvm", "current"], stderr=subprocess.STDOUT, shell=False, encoding="utf-8"
+            ["node", "--version"], stderr=subprocess.STDOUT, shell=False, encoding="utf-8"
         )
+        LOGGER.debug("Found Node.js version (%s)", node_version_string)
     except Exception:
-        LOGGER.debug("Unable to determine current Node.js version from Node Version Manager")
+        LOGGER.debug("Unable to determine current Node.js version from node")
         try:
             # A nosec comment is appended to the following line in order to disable the B607 and B603 checks.
             # [B607:start_process_with_partial_path] Is suppressed because location of executable is retrieved from env
@@ -193,13 +194,25 @@ def _assert_node_version():
             # [B603:subprocess_without_shell_equals_true] Is suppressed because input of check_output is not coming from
             #   untrusted source
             node_version_string = subprocess.check_output(  # nosec
-                ["node", "--version"], stderr=subprocess.STDOUT, shell=False, encoding="utf-8"
+                ["nvm", "current"], stderr=subprocess.STDOUT, shell=False, encoding="utf-8"
             )
-            LOGGER.debug("Found Node.js version (%s)", node_version_string)
+            LOGGER.debug("Found Node.js version (%s) in use", node_version_string)
+            node_version = packaging.version.parse(node_version_string)
         except Exception:
             message = "Unable to check Node.js version"
             LOGGER.critical(message)
             raise Exception(message)
+        if node_version.major > packaging.version.parse(NODEJS_MAX_MAJOR_VERSION).major:
+            message = (
+                f"Node.js version {node_version_string} may not work on this platform. Use the Node"
+                f" Version Manager (nvm) to install and use the latest release of Node.js version"
+                f" {NODEJS_MAX_MAJOR_VERSION}."
+            )
+            LOGGER.critical(message)
+            raise Exception(message)
+        message = f"Unable to invoke Node.js version {node_version_string}"
+        LOGGER.critical(message)
+        raise Exception(message)
 
     node_version = packaging.version.parse(node_version_string)
 
@@ -222,10 +235,3 @@ def _assert_node_version():
         )
         LOGGER.critical(message)
         raise Exception(message)
-    if node_version.major > packaging.version.parse(NODEJS_MAX_MAJOR_VERSION).major:
-        message = (
-            f"Node.js version {node_version_string} may not work on some platforms. Use the Node Version Manager (nvm)"
-            f" to install and use the latest release of Node.js version {NODEJS_MAX_MAJOR_VERSION} if you have issues"
-            f" running version {node_version_string}"
-        )
-        LOGGER.warning(message)
