@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
-from abc import ABC
 from enum import Enum
 
 from pcluster.aws.aws_api import AWSApi
@@ -745,7 +744,7 @@ class MixedSecurityGroupOverwriteValidator(Validator):
 # --------------- Instance settings validators --------------- #
 
 
-class _LaunchTemplateValidator(Validator, ABC):
+class _LaunchTemplateValidator(Validator):
     """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
 
     def _build_launch_network_interfaces(

@@ -14,7 +14,6 @@ import logging
 import os
 import threading
 import time
-from abc import ABC
 from enum import Enum
 from typing import Dict
 
@@ -137,7 +136,7 @@ def _log_boto3_calls(params, **kwargs):
     )
 
 
-class Boto3Client(ABC):
+class Boto3Client:
     """Abstract Boto3 client."""
 
     def __init__(self, client_name: str, botocore_config_kwargs: Dict = None):
@@ -160,7 +159,7 @@ class Boto3Client(ABC):
                 yield result
 
 
-class Boto3Resource(ABC):
+class Boto3Resource:
     """Abstract Boto3 resource."""
 
     def __init__(self, resource_name: str):
