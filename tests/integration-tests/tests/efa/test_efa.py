@@ -303,24 +303,34 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
     logging.info(output)
     # Check avg latency for all packet sizes
     failures = 0
-    for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
-        with open(str(test_datadir / "osu_benchmarks" / "results" / instance / mpi_version / benchmark_name)) as result:
+    for packet_size, value in re.findall(r"(\d+)\s+(\d+)\.", output):
+        with open(
+            str(test_datadir / "osu_benchmarks" / "results" / instance / mpi_version / benchmark_name), encoding="utf-8"
+        ) as result:
             previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
 
-            # Use a tolerance of 10us for 2 digits values.
-            # For 3+ digits values use a 20% tolerance, except for the higher-variance latency benchmark.
-            if len(previous_result) <= 2:
-                accepted_tolerance = 10
+            if benchmark_name == "osu_bibw":
+                # Invert logic because osu_bibw is in MB/s
+                tolerated_value = float(previous_result) - (float(previous_result) * 0.2)
+                is_failure = int(value) < tolerated_value
             else:
-                multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
-                accepted_tolerance = float(previous_result) * multiplier
-            tolerated_latency = float(previous_result) + accepted_tolerance
+                # Use a tolerance of 10us for 2 digits values.
+                # For 3+ digits values use a 20% tolerance, except for the higher-variance latency benchmark.
+                if len(previous_result) <= 2:
+                    accepted_tolerance = 10
+                else:
+                    multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
+                    accepted_tolerance = float(previous_result) * multiplier
+                tolerated_value = float(previous_result) + accepted_tolerance
+
+                is_failure = int(value) > tolerated_value
 
             message = (
                 f"{mpi_version} - {benchmark_name} - packet size {packet_size}: "
-                f"tolerated: {tolerated_latency}, current: {latency}"
+                f"tolerated: {tolerated_value}, current: {value}"
             )
-            if int(latency) > tolerated_latency:
+
+            if is_failure:
                 failures = failures + 1
                 logging.error(message)
             else:
