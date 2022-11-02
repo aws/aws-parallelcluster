@@ -949,7 +949,7 @@ CLUSTER_COMMON_PARAMS = [
         # There is no cfn_param_mapping because it's not converted to a CFN Input parameter
         "type": TagsParam,
         "validators": [tags_validator],
-        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("custom_chef_cookbook", {
         "cfn_param_mapping": "CustomChefCookbook",

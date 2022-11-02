@@ -20,11 +20,11 @@ def readme():
         return f.read()
 
 
-VERSION = "2.11.7"
+VERSION = "2.11.8"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "tabulate>=0.8.2,<0.8.10",
+    "tabulate>=0.8.8,<=0.8.10",
     "ipaddress>=1.0.22",
     "PyYAML>=5.3.1",
     "jinja2>=2.11.0",

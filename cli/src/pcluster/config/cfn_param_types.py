@@ -88,6 +88,15 @@ class CfnParam(Param):
         """
         return str(self.value if self.value is not None else self.definition.get("default", "NONE"))
 
+    def refresh(self):
+        """
+        Refresh the parameter's value.
+
+        Does nothing by default. Subclasses can implement this method by updating parameter's value based on
+        PClusterConfig status.
+        """
+        pass
+
 
 class CommaSeparatedCfnParam(CfnParam):
     """Class to manage comma separated parameters. E.g. additional_iam_policies."""

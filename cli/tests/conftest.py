@@ -78,7 +78,7 @@ def convert_to_date_mock(request, mocker):
         # executes convert_to_date but overrides arguments so that timezone is enforced to utc
         if "timezone" in kwargs:
             del kwargs["timezone"]
-        return convert_to_date(timezone=tz.tzutc(), *args, **kwargs)
+        return convert_to_date(timezone=tz.tzutc(), *args, **kwargs)  # noqa: B026
 
     return mocker.patch("awsbatch." + module_under_test + ".convert_to_date", wraps=_convert_to_date_utc)
 
