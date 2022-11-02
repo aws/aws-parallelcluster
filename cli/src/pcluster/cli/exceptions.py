@@ -13,10 +13,9 @@
 # limitations under the License.
 
 import json
-from abc import ABC
 
 
-class CLIException(Exception, ABC):
+class CLIException(Exception):
     """Base CLI Exception class."""
 
     def __init__(self, data):
