@@ -222,6 +222,7 @@ class Param(ABC):
         """Reset parameter to default value."""
         self.value = self.get_default_value()
 
+    @abc.abstractmethod
     def refresh(self):
         """
         Refresh the parameter's value.

@@ -2236,7 +2236,7 @@ def make_pcluster_config_mock(mocker, config_dict):
     section_to_mocks = {}
     for section_key, section_dict in config_dict.items():
         section_mock = mocker.MagicMock()
-        section_mock.get_param_value.side_effect = lambda param: section_dict.get(param)
+        section_mock.get_param_value.side_effect = lambda param, section=section_dict: section.get(param)
         section_to_mocks[section_key] = section_mock
 
     pcluster_config_mock = mocker.MagicMock()

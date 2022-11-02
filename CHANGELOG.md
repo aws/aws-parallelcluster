@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+2.11.8
+-----
+
+**CHANGES**
+- Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.9.
+
+**BUG FIXES**
+- Prevent cluster tags to be changed during an update because not supported.
+
 2.11.7
 -----
 
