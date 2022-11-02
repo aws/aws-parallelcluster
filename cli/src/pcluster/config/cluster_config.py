@@ -22,7 +22,7 @@ import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.aws.common import get_region
+from pcluster.aws.common import AWSClientError, get_region
 from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
@@ -1112,6 +1112,10 @@ class BaseQueue(Resource):
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
+    def is_spot(self):
+        """Return True if the queue has SPOT capacity."""
+        return self.capacity_type == CapacityType.SPOT
+
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
 
@@ -1193,6 +1197,7 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
             head_node=self.head_node,
+            os=self.image.os,
             ami_id=self.head_node_ami,
             tags=self.get_cluster_tags(),
         )
@@ -2470,6 +2475,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 ComputeResourceLaunchTemplateValidator,
                 queue=queue,
                 ami_id=queue_image,
+                os=self.image.os,
                 tags=self.get_cluster_tags(),
             )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
@@ -2588,8 +2594,14 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls
-        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        # Cache capacity reservations information together to reduce number of boto3 calls.
+        # Since this cache is only used for validation, if AWSClientError happens
+        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
+        # blocking CLI execution if the user want to suppress the validation.
+        try:
+            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""
@@ -2646,8 +2658,14 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls
-        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        # Cache capacity reservations information together to reduce number of boto3 calls.
+        # Since this cache is only used for validation, if AWSClientError happens
+        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
+        # blocking CLI execution if the user want to suppress the validation.
+        try:
+            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""

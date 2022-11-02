@@ -96,10 +96,21 @@ class ClusterUser:
         """Wrapper around SchedulerCommand's assert_job_succeded method."""
         self._personalized_scheduler_commands.assert_job_succeeded(job_id)
 
+    def list_home(self):
+        """List home directory for this user"""
+        logging.info("Listing home directory for user %s (%s)", self.alias, self.home_dir)
+        self._default_user_remote_command_executor.run_remote_command(f"sudo ls -lart {self.home_dir}", log_output=True)
+
     def cleanup(self):
         """Cleanup resources associated with this user."""
+        self.list_home()
         logging.info("Removing home directory for user %s (%s)", self.alias, self.home_dir)
-        self._default_user_remote_command_executor.run_remote_command(f"sudo rm -rf {self.home_dir}")
+        try:
+            self._default_user_remote_command_executor.run_remote_command(f"sudo rm -rfv {self.home_dir}")
+        except Exception as e:
+            logging.error("Cannot remove home directory for user %s (%s): %s", self.alias, self.home_dir, e)
+            self.list_home()
+            raise e
 
     def ssh_connect(self, port=22, pkey=None):
         """Establish a SSH connection to the cluster head node with the current user."""
