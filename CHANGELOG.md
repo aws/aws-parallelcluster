@@ -5,6 +5,14 @@ CHANGELOG
 -----
 
 **CHANGES**
+- Upgrade Intel MPI Library to 2021.6.0.602.
+- Upgrade EFA installer to `1.19.0`
+  - Efa-driver: `efa-1.16.0-1`
+  - Efa-config: `efa-config-1.11-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.0-1`
+  - Rdma-core: `rdma-core-41.0-2`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
 - Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.9.
 
 **BUG FIXES**
