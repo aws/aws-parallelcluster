@@ -24,9 +24,11 @@ from pcluster.aws.common import AWSClientError
 from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
+    HeadNodeCustomActionsSchema,
     HeadNodeIamSchema,
     HeadNodeRootVolumeSchema,
     ImageSchema,
+    QueueCustomActionsSchema,
     QueueIamSchema,
     SchedulerPluginCloudFormationClusterInfrastructureSchema,
     SchedulerPluginClusterSharedArtifactSchema,
@@ -210,6 +212,107 @@ DUMMY_AWSBATCH_QUEUE = {
     "Networking": {"SubnetIds": ["subnet-12345678"]},
     "ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}],
 }
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"OnNodeUpdating": "test"}, "Unknown field"),
+        ({"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"}, "Invalid input type."),
+        # Successes
+        (
+            {
+                "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+                "OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {
+                    "Script": "test",
+                },
+                "OnNodeConfigured": {
+                    "Script": "test2",
+                },
+                "OnNodeUpdated": {
+                    "Script": "test3",
+                },
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {
+                    "Script": "test",
+                },
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+    ],
+)
+def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            HeadNodeCustomActionsSchema().load(config_dict)
+    else:
+        HeadNodeCustomActionsSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"OnNodeUpdated": "test"}, "Unknown field"),
+        (
+            {
+                "OnNodeStart": "test",
+                "OnNodeConfigured": "test",
+            },
+            "Invalid input type.",
+        ),
+        ({"OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]}}, "Unknown field"),
+        # Successes
+        (
+            {
+                "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {
+                    "Script": "test",
+                },
+                "OnNodeConfigured": {
+                    "Script": "test2",
+                },
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {
+                    "Script": "test",
+                },
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+    ],
+)
+def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            QueueCustomActionsSchema().load(config_dict)
+    else:
+        QueueCustomActionsSchema().load(config_dict)
 
 
 def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):
