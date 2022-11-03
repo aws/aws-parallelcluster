@@ -1071,6 +1071,7 @@ class HeadNodeCustomActionsSchema(BaseSchema):
 
     on_node_start = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     on_node_configured = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_updated = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
