@@ -1042,10 +1042,16 @@ class CustomAction(Resource):
 class CustomActions(Resource):
     """Represent a custom action resource."""
 
-    def __init__(self, on_node_start: CustomAction = None, on_node_configured: CustomAction = None):
+    def __init__(
+        self,
+        on_node_start: CustomAction = None,
+        on_node_configured: CustomAction = None,
+        on_node_updated: CustomAction = None,
+    ):
         super().__init__()
         self.on_node_start = Resource.init_param(on_node_start)
         self.on_node_configured = Resource.init_param(on_node_configured)
+        self.on_node_updated = Resource.init_param(on_node_updated)
 
 
 class HeadNode(Resource):
