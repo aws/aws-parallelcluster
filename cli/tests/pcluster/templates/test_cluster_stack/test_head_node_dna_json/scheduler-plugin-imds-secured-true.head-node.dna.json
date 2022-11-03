@@ -33,6 +33,8 @@
     "postinstall_args": "NONE",
     "preinstall": "NONE",
     "preinstall_args": "NONE",
+    "postupdate": "NONE",
+    "postupdate_args": "NONE",
     "proxy": "NONE",
     "raid_shared_dir": "",
     "raid_type": "",

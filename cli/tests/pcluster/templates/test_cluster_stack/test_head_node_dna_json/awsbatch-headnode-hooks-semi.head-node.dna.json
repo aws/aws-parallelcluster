@@ -15,8 +15,6 @@
     "ebs_shared_dirs": "",
     "efs_fs_ids": "",
     "efs_shared_dirs": "",
-    "efs_encryption_in_transits": "",
-    "efs_iam_authorizations": "",
     "enable_intel_hpc_platform": "false",
     "ephemeral_dir": "/scratch",
     "fsx_dns_names": "",
@@ -25,15 +23,15 @@
     "fsx_shared_dirs": "",
     "fsx_fs_types": "",
     "fsx_volume_junction_paths": "",
-    "head_node_imds_secured": "false",
+    "head_node_imds_secured": "true",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",
     "log_group_name": "/aws/parallelcluster/clustername-202101010101",
     "node_type": "HeadNode",
     "postinstall": "NONE",
     "postinstall_args": "NONE",
-    "preinstall": "NONE",
-    "preinstall_args": "NONE",
-    "postupdate": "NONE",
+    "preinstall": "https://test.tgz",
+    "preinstall_args": "arg1 arg2",
+    "postupdate": "https://test2.tgz",
     "postupdate_args": "NONE",
     "proxy": "NONE",
     "raid_shared_dir": "",
@@ -45,6 +43,6 @@
     "volume": "",
     "scheduler_plugin_substack_arn": "",
     "stack_arn": "{'Ref': 'AWS::StackId'}",
-    "compute_node_bootstrap_timeout": 1201
+    "compute_node_bootstrap_timeout": 1800
   }
 }
