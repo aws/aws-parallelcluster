@@ -380,6 +380,9 @@ def test_compute_launch_template_properties(
         ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
         ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
         ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
+        ("scheduler-plugin-headnode-hooks-semi.yaml", "scheduler-plugin-headnode-hooks-semi.head-node.dna.json"),
+        ("awsbatch-headnode-hooks-semi.yaml", "awsbatch-headnode-hooks-semi.head-node.dna.json"),
+        ("slurm-headnode-hooks-full.yaml", "slurm-headnode-hooks-full.head-node.dna.json"),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value
