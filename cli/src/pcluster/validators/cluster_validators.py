@@ -546,9 +546,9 @@ class ExistingFsxNetworkingValidator(Validator):
 
 class FsxArchitectureOsValidator(Validator):
     """
-    FSx networking validator.
+    FSx architecture and OS validator.
 
-    Validate file system mount point according to the head node subnet.
+    Validate that OS and architecture are compatible with FSx.
     """
 
     def _validate(self, architecture: str, os):
