@@ -103,6 +103,19 @@ phases:
                 update-grub
               fi
 
+      - name: InstallEfiBootManager
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              ARCH=$(uname -m)
+              if [[ `echo ${!ARCH}` == 'aarch64' ]] && [[ ${!PLATFORM} == DEBIAN ]]; then
+                # temporary workaround to solve https://bugs.launchpad.net/ubuntu/+source/grub2-signed/+bug/1936857
+                apt-get -y install efibootmgr
+              fi
+
       - name: UpdateOS
         action: ExecuteBash
         inputs:
