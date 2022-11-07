@@ -14,7 +14,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu1804", "ubuntu2004"]
+          oss: ["ubuntu2004"] # disable the ubuntu18 test because ubuntu18.04 DLAMI is not available in GovCloud
           schedulers: ["slurm"]
 #        - regions: ["us-east-1"]
 #          instances: {{ common.INSTANCES_DEFAULT_ARM }}
