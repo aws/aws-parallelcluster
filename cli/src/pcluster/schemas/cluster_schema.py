@@ -830,7 +830,7 @@ class ClusterIamSchema(BaseSchema):
     )
 
     resource_prefix = fields.Str(
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(IAM_RESOURCE_PREFIX_FINAL_REGEX)
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(IAM_RESOURCE_PREFIX_FINAL_REGEX)
     )
 
     @post_load
