@@ -122,7 +122,7 @@ from pcluster.constants import (
     ONTAP,
     OPENZFS,
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
-    SUPPORTED_OSES,
+    SUPPORTED_OSES, IAM_RESOURCE_PREFIX_FINAL_REGEX,
 )
 from pcluster.models.s3_bucket import parse_bucket_url
 from pcluster.schemas.common_schema import AdditionalIamPolicySchema, BaseDevSettingsSchema, BaseSchema
@@ -827,6 +827,10 @@ class ClusterIamSchema(BaseSchema):
     roles = fields.Nested(RolesSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     permissions_boundary = fields.Str(
         metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
+    )
+
+    resource_prefix = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(IAM_RESOURCE_PREFIX_FINAL_REGEX)
     )
 
     @post_load
