@@ -271,7 +271,7 @@ iam:
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
-      - regions: ["sa-east-1"]
+      - regions: ["us-west-2"]
         instances: ["c5n.18xlarge"]
         oss: ["centos7"]
         schedulers: ["slurm"]
