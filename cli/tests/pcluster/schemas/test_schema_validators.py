@@ -17,6 +17,7 @@ from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
     AwsBatchQueueSchema,
     CloudWatchLogsSchema,
+    ClusterIamSchema,
     ClusterSchema,
     DcvSchema,
     DirectoryServiceSchema,
@@ -589,6 +590,7 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
                     contain = True
         assert_that(contain).is_true()
     else:
+        print(section_dict)
         schema.validate(section_dict, partial=partial)
 
 
@@ -604,6 +606,57 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
 def test_instance_role_validator(instance_role, expected_message):
     """Verify that instance role behaves as expected when parsed in a config file."""
     _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "resource_prefix, expected_message",
+    [
+        ("/pathprefix/parallelcluster/", None),
+        ("/parallelcluster/pathprefix/", None),
+        ("/pathprefix/", None),
+        ("role-prefix", None),
+        ("@roleprefix", None),
+        ("role-prefix", None),
+        ("+roleprefix", None),
+        ("=roleprefix", None),
+        ("role.prefix", None),
+        ("role_prefix", None),
+        ("role,prefix", None),
+        ("/pathprefix/@roleprefix", None),
+        ("/pathprefix/role-prefix", None),
+        ("/pathprefix/+roleprefix", None),
+        ("/pathprefix/=roleprefix", None),
+        ("/pathprefix/role.prefix", None),
+        ("/pathprefix/role_prefix", None),
+        ("/pathprefix/role,prefix", None),
+        ("/path_prefix/@roleprefix/", None),
+        ("/path-prefix/role-prefix", None),
+        ("/path@prefix/+roleprefix/", None),
+        ("/path+prefix/=roleprefix", None),
+        ("/path=prefix/role.prefix/", None),
+        ("/path,prefix/role_prefix", None),
+        ("/path/prefix/role,prefix/", None),
+        ("p", None),
+        ("/", None),
+        ("//", None),
+        ("", "does not match expected pattern"),
+        ("\pathprefix\\", "does not match expected pattern"),
+        (",./pathprefix/", "String does not match expected pattern."),
+        (";)*/anything/pathprefix/", "String does not match expected pattern."),
+        ("#$/pathprefix/anything/", "String does not match expected pattern."),
+        ("&&&roleprefix", "String does not match expected pattern."),
+        ("@@/pathprefix/roleprefix", "String does not match expected pattern."),
+        ("+/anything/pathprefix/roleprefix", "String does not match expected pattern."),
+        ("=/pathprefix/anything/roleprefix", "String does not match expected pattern."),
+        (
+            "/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random/pathprefix_random",
+            "String does not match expected pattern.",
+        ),
+    ],
+)
+def test_resource_prefix_validator(resource_prefix, expected_message):
+    """Verify that the resource prefix behaves as expected when parsed in a config file."""
+    _validate_and_assert_error(ClusterIamSchema(), {"ResourcePrefix": resource_prefix}, expected_message)
 
 
 @pytest.mark.parametrize(
