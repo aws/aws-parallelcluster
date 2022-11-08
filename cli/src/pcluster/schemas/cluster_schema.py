@@ -122,7 +122,7 @@ from pcluster.constants import (
     ONTAP,
     OPENZFS,
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
-    SUPPORTED_OSES, IAM_RESOURCE_PREFIX_FINAL_REGEX,
+    SUPPORTED_OSES,
 )
 from pcluster.models.s3_bucket import parse_bucket_url
 from pcluster.schemas.common_schema import AdditionalIamPolicySchema, BaseDevSettingsSchema, BaseSchema
@@ -829,9 +829,7 @@ class ClusterIamSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
     )
 
-    resource_prefix = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(IAM_RESOURCE_PREFIX_FINAL_REGEX)
-    )
+    resource_prefix = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
