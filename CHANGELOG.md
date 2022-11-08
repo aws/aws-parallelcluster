@@ -5,7 +5,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Fix [Slurm issue](https://github.com/aws/aws-parallelcluster/wiki/(3.1.x)-Termination-of-idle-dynamic-compute-nodes-potentially-broken-after-performing-a-cluster-update) that prevents idle nodes termination.
+- Fix Slurm issue that prevents idle nodes termination.
 - Upgrade EFA installer to `1.18.0`
   - Efa-driver: `efa-1.16.0-1`
   - Efa-config: `efa-config-1.11-1`
