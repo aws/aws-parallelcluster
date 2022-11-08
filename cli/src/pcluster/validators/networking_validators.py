@@ -75,3 +75,51 @@ class SingleSubnetValidator(Validator):
         subnet_ids = {tuple(set(queue_subnets)) for queue_subnets in queues_subnets}
         if len(subnet_ids) > 1:
             self._add_failure("The SubnetId used for all of the queues should be the same.", FailureLevel.ERROR)
+
+
+class LambdaVpcConfigValidator(Validator):
+    """Validator of a Lambda function's VPC configuration."""
+
+    def _validate(self, security_group_ids: List[str], subnet_ids: List[str]):
+        existing_security_groups = AWSApi.instance().ec2.describe_security_groups(security_group_ids)
+        existing_subnets = AWSApi.instance().ec2.describe_subnets(subnet_ids)
+
+        self._validate_all_security_groups_exist(existing_security_groups, security_group_ids)
+        self._validate_all_subnets_exist(existing_subnets, subnet_ids)
+        self._validate_all_resources_belong_to_the_same_vpc(existing_security_groups, existing_subnets)
+
+    def _validate_all_resources_belong_to_the_same_vpc(self, existing_security_groups, existing_subnets):
+        group_vpc_ids = {group["VpcId"] for group in existing_security_groups}
+        subnet_vpc_ids = {subnet["VpcId"] for subnet in existing_subnets}
+        if len(group_vpc_ids) > 1:
+            self._add_failure(
+                "The security groups associated to the Lambda are required to be in the same VPC.", FailureLevel.ERROR
+            )
+        if len(subnet_vpc_ids) > 1:
+            self._add_failure(
+                "The subnets associated to the Lambda are required to be in the same VPC.", FailureLevel.ERROR
+            )
+        if group_vpc_ids != subnet_vpc_ids:
+            self._add_failure(
+                "The security groups and subnets associated to the Lambda are required to be in the same VPC.",
+                FailureLevel.ERROR,
+            )
+
+    def _validate_all_security_groups_exist(self, existing_security_groups, expected_security_group_ids):
+        missing_security_group_ids = set(expected_security_group_ids) - {
+            group["GroupId"] for group in existing_security_groups
+        }
+        if missing_security_group_ids:
+            self._add_failure(
+                "Some security groups associated to the Lambda are not present "
+                f"in the account: {sorted(missing_security_group_ids)}.",
+                FailureLevel.ERROR,
+            )
+
+    def _validate_all_subnets_exist(self, existing_subnets, expected_subnet_ids):
+        missing_subnet_ids = set(expected_subnet_ids) - {subnet["SubnetId"] for subnet in existing_subnets}
+        if missing_subnet_ids:
+            self._add_failure(
+                f"Some subnets associated to the Lambda are not present in the account: {sorted(missing_subnet_ids)}.",
+                FailureLevel.ERROR,
+            )
