@@ -142,7 +142,12 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
-from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
+from pcluster.validators.iam_validators import (
+    IamPolicyValidator,
+    IamResourcePrefixValidator,
+    InstanceProfileValidator,
+    RoleValidator,
+)
 from pcluster.validators.instances_validators import (
     InstancesAcceleratorsValidator,
     InstancesAllocationStrategyValidator,
@@ -863,14 +868,17 @@ class DirectoryService(Resource):
 class ClusterIam(Resource):
     """Represent the IAM configuration for Cluster."""
 
-    def __init__(self, roles: Roles = None, permissions_boundary: str = None):
+    def __init__(self, roles: Roles = None, permissions_boundary: str = None, resource_prefix: str = None):
         super().__init__()
         self.roles = roles
         self.permissions_boundary = Resource.init_param(permissions_boundary)
+        self.resource_prefix = Resource.init_param(resource_prefix)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.permissions_boundary:
             self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
+        if self.resource_prefix:
+            self._register_validator(IamResourcePrefixValidator, resource_prefix=self.resource_prefix)
 
 
 class IntelSoftware(Resource):

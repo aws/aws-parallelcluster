@@ -13,14 +13,16 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
+from pcluster.validators.common import FailureLevel
 from pcluster.validators.iam_validators import (
     AdditionalIamPolicyValidator,
+    IamResourcePrefixValidator,
     InstanceProfileValidator,
     RoleValidator,
     get_resource_name_from_resource_arn,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.validators.utils import assert_failure_messages
+from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 
 
 @pytest.mark.parametrize(
@@ -113,3 +115,130 @@ def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy
     mocker.patch("pcluster.aws.iam.IamClient.get_policy", side_effect=expected_get_policy_side_effect)
     actual_failures = AdditionalIamPolicyValidator().execute(policy=policy_arn)
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "resource_prefix, expected_message,expected_failure_level",
+    [
+        (
+            r"\pathprefix\\",
+            " provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "",
+            "Resource Prefix  provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "/",
+            "Resource Prefix / provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "//",
+            "Resource Prefix // provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "///////",
+            "Resource Prefix /////// provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            None,
+            "Resource Prefix None provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "/prefix",  # This is not pathprefix ---- Need to check
+            "Resource Prefix /prefix provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            ",./pathprefix/",
+            "Resource Prefix ,./pathprefix/ provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            ";)*/anything/pathprefix/",
+            " provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "#$/pathprefix/anything/",
+            "Resource Prefix #$/pathprefix/anything/ provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "&&&roleprefix",
+            "Resource Prefix &&&roleprefix provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "@@/pathprefix/roleprefix",
+            "Resource Prefix @@/pathprefix/roleprefix provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "+/anything/pathprefix/roleprefix",
+            "Resource Prefix +/anything/pathprefix/roleprefix provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        (
+            "=/pathprefix/anything/roleprefix",
+            "Resource Prefix =/pathprefix/anything/roleprefix provided does not fall under the accepted pattern",
+            FailureLevel.ERROR,
+        ),
+        ("/prefix/", None, None),
+        ("/somepath/pathprefix/roleprefix", None, None),
+        ("/prefix/", None, None),
+        ("roleprefix", None, None),
+        ("/pathprefix/parallelcluster/", None, None),
+        ("/parallelcluster/pathprefix/", None, None),
+        ("/pathprefix/", None, None),
+        ("role-prefix", None, None),
+        ("@roleprefix", None, None),
+        ("role-prefix", None, None),
+        ("+roleprefix", None, None),
+        ("=roleprefix", None, None),
+        ("role.prefix", None, None),
+        ("role_prefix", None, None),
+        ("role,prefix", None, None),
+        ("/pathprefix/@roleprefix", None, None),
+        ("/pathprefix/role-prefix", None, None),
+        ("/pathprefix/+roleprefix", None, None),
+        ("/pathprefix/=roleprefix", None, None),
+        ("/pathprefix/role.prefix", None, None),
+        ("/pathprefix/role_prefix", None, None),
+        ("/pathprefix/role,prefix", None, None),
+        ("/path_prefix/@roleprefix/", None, None),
+        ("/path-prefix/role-prefix", None, None),
+        ("/path@prefix/+roleprefix/", None, None),
+        (
+            "/path+prefix/=roleprefix",
+            None,
+            None,
+        ),
+        (
+            "/path=prefix/role.prefix/",
+            None,
+            None,
+        ),
+        (
+            "/path,prefix/role_prefix",
+            None,
+            None,
+        ),
+        (
+            "/path/prefix/role,prefix/",
+            None,
+            None,
+        ),
+        ("p", None, None),
+    ],
+)
+def test_iam_resource_prefix_validator(resource_prefix, expected_message, expected_failure_level):
+    actual_failures = IamResourcePrefixValidator().execute(resource_prefix=resource_prefix)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, expected_failure_level)
