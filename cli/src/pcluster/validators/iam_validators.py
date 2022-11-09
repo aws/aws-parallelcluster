@@ -63,25 +63,21 @@ class IamResourcePrefixValidator(Validator):
     """
     Iam Resource Prefix Validator.
 
-    Verify if the Resource Prefix belongs in the permission boundary if given.
+    Verify if the Resource Prefix is compliant with IAM naming conventions
     """
 
     IAM_PATH_NAME_REGEX = r"^((/[a-zA-Z0-9_.,+@=-]+)+)/"
     IAM_ROLE_NAME_PREFIX = r"^[a-zA-Z0-9_.,+@=-]+$"
 
     def _validate(self, resource_prefix: str):
-        try:
-            if not (
-                re.match(IamResourcePrefixValidator.IAM_PATH_NAME_REGEX, resource_prefix)
-                or re.match(IamResourcePrefixValidator.IAM_ROLE_NAME_PREFIX, resource_prefix)
-            ):
-                self._add_failure(
-                    f"Resource Prefix {resource_prefix} provided does not fall under the accepted pattern",
-                    FailureLevel.ERROR,
-                )
-        except Exception as e:
+        if not (
+            re.match(IamResourcePrefixValidator.IAM_PATH_NAME_REGEX, resource_prefix)
+            or re.match(IamResourcePrefixValidator.IAM_ROLE_NAME_PREFIX, resource_prefix)
+        ):
             self._add_failure(
-                f"Resource Prefix {resource_prefix} provided does not fall under the accepted pattern",
+                f"Unsupported format for ResourcePrefix {resource_prefix} "
+                f"The string must be alphanumeric, we allow only following common characters: "
+                f"forward slash(/), plus (+), equal (=), comma (,), period (.), at (@), underscore (_), and hyphen (-)",
                 FailureLevel.ERROR,
             )
 
