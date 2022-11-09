@@ -76,8 +76,7 @@ class IamResourcePrefixValidator(Validator):
         ):
             self._add_failure(
                 f"Unsupported format for ResourcePrefix {resource_prefix} "
-                f"The string must be alphanumeric, we allow only following common characters: "
-                f"forward slash(/), plus (+), equal (=), comma (,), period (.), at (@), underscore (_), and hyphen (-)",
+                f"Please, refer to our public docs for further details.",
                 FailureLevel.ERROR,
             )
 
