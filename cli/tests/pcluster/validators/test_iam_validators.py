@@ -122,72 +122,67 @@ def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy
     [
         (
             r"\pathprefix\\",
-            " provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix",
             FailureLevel.ERROR,
         ),
         (
             "",
-            "Resource Prefix  provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix ",
             FailureLevel.ERROR,
         ),
         (
             "/",
-            "Resource Prefix / provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix /",
             FailureLevel.ERROR,
         ),
         (
             "//",
-            "Resource Prefix // provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix //",
             FailureLevel.ERROR,
         ),
         (
             "///////",
-            "Resource Prefix /////// provided does not fall under the accepted pattern",
-            FailureLevel.ERROR,
-        ),
-        (
-            None,
-            "Resource Prefix None provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix ///////",
             FailureLevel.ERROR,
         ),
         (
             "/prefix",  # This is not pathprefix ---- Need to check
-            "Resource Prefix /prefix provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix /prefix",
             FailureLevel.ERROR,
         ),
         (
             ",./pathprefix/",
-            "Resource Prefix ,./pathprefix/ provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix ,./pathprefix/",
             FailureLevel.ERROR,
         ),
         (
             ";)*/anything/pathprefix/",
-            " provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix",
             FailureLevel.ERROR,
         ),
         (
             "#$/pathprefix/anything/",
-            "Resource Prefix #$/pathprefix/anything/ provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix ",
             FailureLevel.ERROR,
         ),
         (
             "&&&roleprefix",
-            "Resource Prefix &&&roleprefix provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix &&&roleprefix",
             FailureLevel.ERROR,
         ),
         (
             "@@/pathprefix/roleprefix",
-            "Resource Prefix @@/pathprefix/roleprefix provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix @@/pathprefix/roleprefix",
             FailureLevel.ERROR,
         ),
         (
             "+/anything/pathprefix/roleprefix",
-            "Resource Prefix +/anything/pathprefix/roleprefix provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix ",
             FailureLevel.ERROR,
         ),
         (
             "=/pathprefix/anything/roleprefix",
-            "Resource Prefix =/pathprefix/anything/roleprefix provided does not fall under the accepted pattern",
+            "Unsupported format for ResourcePrefix =/pathprefix/anything/roleprefix",
             FailureLevel.ERROR,
         ),
         ("/prefix/", None, None),

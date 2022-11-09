@@ -589,7 +589,6 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
                     contain = True
         assert_that(contain).is_true()
     else:
-        print(section_dict)
         schema.validate(section_dict, partial=partial)
 
 
