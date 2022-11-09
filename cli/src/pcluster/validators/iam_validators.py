@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import re
+
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.iam import IamClient
@@ -55,6 +57,33 @@ class IamPolicyValidator(Validator):
             IamClient().get_policy(policy)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class IamResourcePrefixValidator(Validator):
+    """
+    Iam Resource Prefix Validator.
+
+    Verify if the Resource Prefix belongs in the permission boundary if given.
+    """
+
+    IAM_PATH_NAME_REGEX = r"^((/[a-zA-Z0-9_.,+@=-]+)+)/"
+    IAM_ROLE_NAME_PREFIX = r"^[a-zA-Z0-9_.,+@=-]+$"
+
+    def _validate(self, resource_prefix: str):
+        try:
+            if not (
+                re.match(IamResourcePrefixValidator.IAM_PATH_NAME_REGEX, resource_prefix)
+                or re.match(IamResourcePrefixValidator.IAM_ROLE_NAME_PREFIX, resource_prefix)
+            ):
+                self._add_failure(
+                    f"Resource Prefix {resource_prefix} provided does not fall under the accepted pattern",
+                    FailureLevel.ERROR,
+                )
+        except Exception as e:
+            self._add_failure(
+                f"Resource Prefix {resource_prefix} provided does not fall under the accepted pattern",
+                FailureLevel.ERROR,
+            )
 
 
 class AdditionalIamPolicyValidator(IamPolicyValidator):

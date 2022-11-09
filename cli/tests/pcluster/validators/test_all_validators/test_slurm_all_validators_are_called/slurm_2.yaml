@@ -39,3 +39,5 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       FileSystemId: fs-12345678123456789
+Iam:
+  ResourcePrefix: /prefix/
