@@ -18,3 +18,10 @@ Build:
           Value: dummyBuildTag
 
 CustomS3Bucket: {{ bucket_name }}
+
+DeploymentSettings:
+    LambdaFunctionsVpcConfig:
+        SubnetIds:
+        - {{ subnet_id }}
+        SecurityGroupIds:
+        - {{ security_group_id }}

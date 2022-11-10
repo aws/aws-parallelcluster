@@ -5,9 +5,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add new configuration parameter in `Iam/ResourcePrefix` to specify a prefix for path and name of IAM resources created by ParallelCluster
-
-3.4.0
------
+- Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
 
 **CHANGES**
 - Remove creation of EFS mount targets for existing FS.

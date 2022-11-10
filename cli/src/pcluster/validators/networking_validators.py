@@ -77,8 +77,8 @@ class SingleSubnetValidator(Validator):
             self._add_failure("The SubnetId used for all of the queues should be the same.", FailureLevel.ERROR)
 
 
-class LambdaVpcConfigValidator(Validator):
-    """Validator of a Lambda function's VPC configuration."""
+class LambdaFunctionsVpcConfigValidator(Validator):
+    """Validator of Pcluster Lambda functions' VPC configuration."""
 
     def _validate(self, security_group_ids: List[str], subnet_ids: List[str]):
         existing_security_groups = AWSApi.instance().ec2.describe_security_groups(security_group_ids)

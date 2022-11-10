@@ -32,7 +32,10 @@ from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
-from tests.pcluster.utils import load_cluster_model_from_yaml
+from tests.pcluster.utils import (
+    assert_lambdas_have_expected_vpc_config_and_managed_policy,
+    load_cluster_model_from_yaml,
+)
 
 EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
 
@@ -613,3 +616,34 @@ def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_toke
         assert_that(
             launch_template.get("Properties").get("LaunchTemplateData").get("MetadataOptions").get("HttpTokens")
         ).is_equal_to(http_tokens)
+
+
+@pytest.mark.parametrize(
+    "config_file_name, vpc_config",
+    [
+        ("slurm.required.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
+        ("awsbatch.simple.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
+        (
+            "scheduler_plugin.required.yaml",
+            {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]},
+        ),
+        ("slurm.required.yaml", None),
+        ("awsbatch.simple.yaml", None),
+        ("scheduler_plugin.required.yaml", None),
+    ],
+)
+def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_config):
+    mock_aws_api(mocker)
+
+    input_yaml = load_yaml_dict(f"{EXAMPLE_CONFIGS_DIR}/{config_file_name}")
+    if vpc_config:
+        input_yaml["DeploymentSettings"] = input_yaml.get("DeploymentSettings", {})
+        input_yaml["DeploymentSettings"]["LambdaFunctionsVpcConfig"] = vpc_config
+
+    cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, vpc_config)

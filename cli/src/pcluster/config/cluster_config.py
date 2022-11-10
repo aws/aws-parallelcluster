@@ -23,7 +23,7 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, DeploymentSettings
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -1148,6 +1148,7 @@ class BaseClusterConfig(Resource):
         imds: TopLevelImds = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
+        deployment_settings: DeploymentSettings = None,
     ):
         super().__init__()
         self.__region = None
@@ -1177,6 +1178,7 @@ class BaseClusterConfig(Resource):
         self.original_config_version = ""
         self._official_ami = None
         self.imds = imds or TopLevelImds(implied="v1.0")
+        self.deployment_settings = deployment_settings
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1557,6 +1559,11 @@ class BaseClusterConfig(Resource):
                 self.image.os, self.head_node.architecture, ami_filters
             )
         return self._official_ami
+
+    @property
+    def lambda_functions_vpc_config(self):
+        """Return the vpc config of the PCluster Lambda Functions or None."""
+        return self.deployment_settings.lambda_functions_vpc_config if self.deployment_settings else None
 
     def get_cluster_tags(self):
         """Return tags configured in the cluster configuration."""

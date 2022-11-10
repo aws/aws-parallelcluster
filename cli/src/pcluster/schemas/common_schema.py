@@ -20,7 +20,7 @@ import json
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
 from pcluster.config.cluster_config import BaseTag
-from pcluster.config.common import AdditionalIamPolicy, Cookbook, Imds
+from pcluster.config.common import AdditionalIamPolicy, Cookbook, DeploymentSettings, Imds, LambdaFunctionsVpcConfig
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
 from pcluster.utils import to_pascal_case
@@ -199,6 +199,41 @@ class CookbookSchema(BaseSchema):
         # TODO: double check the allowed pattern for extra chef attribute
         if value and not validate_json_format(value):
             raise ValidationError(message="'{0}' is invalid".format(value))
+
+
+class LambdaFunctionsVpcConfigSchema(BaseSchema):
+    """Represent the VPC configuration schema of PCluster Lambdas, used both by build image and cluster files."""
+
+    security_group_ids = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.Length(min=1, max=5),
+        required=True,
+    )
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.Length(min=1, max=16),
+        required=True,
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LambdaFunctionsVpcConfig(**data)
+
+
+class DeploymentSettingsSchema(BaseSchema):
+    """Represent the common schema of DeploymentSettings for ImageBuilder and Cluster."""
+
+    lambda_functions_vpc_config = fields.Nested(
+        LambdaFunctionsVpcConfigSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return DeploymentSettings(**data)
 
 
 class BaseDevSettingsSchema(BaseSchema):

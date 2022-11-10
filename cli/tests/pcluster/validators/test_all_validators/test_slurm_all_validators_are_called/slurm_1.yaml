@@ -192,3 +192,7 @@ DevSettings:
       {"cluster": {"scheduler_slots": "cores"}}
   AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds: ["sg-028d73ae220157d96"]
+    SubnetIds: ["subnet-8e482ce8"]

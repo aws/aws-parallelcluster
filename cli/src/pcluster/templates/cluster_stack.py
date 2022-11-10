@@ -399,6 +399,7 @@ class ClusterCdkStack(Stack):
                         )
                     ),
                 ],
+                has_vpc_config=self.config.lambda_functions_vpc_config,
             )
 
         cleanup_resources_lambda = PclusterLambdaConstruct(

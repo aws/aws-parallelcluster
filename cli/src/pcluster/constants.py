@@ -197,3 +197,5 @@ SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
 
 DEFAULT_EPHEMERAL_DIR = "/scratch"
+
+LAMBDA_VPC_ACCESS_MANAGED_POLICY = "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
