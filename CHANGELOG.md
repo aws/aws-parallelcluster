@@ -1,5 +1,10 @@
 CHANGELOG
 =========
+3.4.0
+-----
+
+**ENHANCEMENTS**
+- Add new configuration parameter `ResourcePrefix` in `Iam` to specify a Path prefix and Name prefix for IAM resources.
 
 3.3.0
 -----

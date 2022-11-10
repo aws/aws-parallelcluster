@@ -67,16 +67,16 @@ class IamResourcePrefixValidator(Validator):
     """
 
     IAM_PATH_NAME_REGEX = r"^((/[a-zA-Z0-9_.,+@=-]+)+)/"
-    IAM_ROLE_NAME_PREFIX = r"^[a-zA-Z0-9_.,+@=-]+$"
+    IAM_NAME_PREFIX_REGEX = r"^[a-zA-Z0-9_.,+@=-]+$"
 
     def _validate(self, resource_prefix: str):
         if not (
             re.match(IamResourcePrefixValidator.IAM_PATH_NAME_REGEX, resource_prefix)
-            or re.match(IamResourcePrefixValidator.IAM_ROLE_NAME_PREFIX, resource_prefix)
+            or re.match(IamResourcePrefixValidator.IAM_NAME_PREFIX_REGEX, resource_prefix)
         ):
             self._add_failure(
-                f"Unsupported format for ResourcePrefix {resource_prefix} "
-                f"Please, refer to our public docs for further details.",
+                f"Unsupported format for ResourcePrefix {resource_prefix}. "
+                f"Please refer to our official documentation for further details.",
                 FailureLevel.ERROR,
             )
 

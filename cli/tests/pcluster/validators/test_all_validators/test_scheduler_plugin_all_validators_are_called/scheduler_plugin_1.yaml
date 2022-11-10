@@ -235,7 +235,7 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   PermissionsBoundary: arn:aws:iam::aws:policy/boundary
-  ResourcePrefix: /boundary/role-prefix
+  ResourcePrefix: /path-prefix/name-prefix
   Roles:
     LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
