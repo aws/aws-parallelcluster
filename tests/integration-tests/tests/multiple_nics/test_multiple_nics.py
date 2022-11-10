@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -21,8 +22,17 @@ from tests.common.schedulers_common import get_scheduler_commands
 @pytest.mark.instances(["p4d.24xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_multiple_nics(scheduler, region, pcluster_config_reader, clusters_factory):
-    cluster_config = pcluster_config_reader()
+def test_multiple_nics(
+    scheduler, region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir, instance
+):
+    # Post-install script to use P4d targeted ODCR
+    bucket_name = ""
+    if instance == "p4d.24xlarge":
+        bucket_name = s3_bucket_factory()
+        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+        bucket.upload_file(str(test_datadir / "run_instance_override.sh"), "run_instance_override.sh")
+
+    cluster_config = pcluster_config_reader(bucket_name=bucket_name)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
