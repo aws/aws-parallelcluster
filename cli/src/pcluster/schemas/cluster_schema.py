@@ -318,6 +318,8 @@ class EfsSettingsSchema(BaseSchema):
     deletion_policy = fields.Str(
         validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
+    encryption_in_transit = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    iam_authorization = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @validates_schema
     def validate_file_system_id_ignored_parameters(self, data, **kwargs):
