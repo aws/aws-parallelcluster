@@ -121,8 +121,26 @@ def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy
     "resource_prefix, expected_message,expected_failure_level",
     [
         (
-            r"\pathprefix\\",
-            "Unsupported format for ResourcePrefix",
+            # TO DO: Analyze
+            r"\path-prefix\\",
+            "Unsupported format for ResourcePrefix ",
+            FailureLevel.ERROR,
+        ),
+        (
+            "/path-prefix",  # This is not pathprefix
+            "Unsupported format for ResourcePrefix /path-prefix",
+            FailureLevel.ERROR,
+        ),
+        (
+            "/,+.;!^%()*#$@=path-prefix/",
+            "Unsupported format for ResourcePrefix /,+.;!^%()*#$@=path-prefix/. "
+            "Please refer to our official documentation for further details.",
+            FailureLevel.ERROR,
+        ),
+        (
+            "*^%!&:$#()name-prefix",
+            "Unsupported format for ResourcePrefix *^%!&:$#()name-prefix. "
+            "Please refer to our official documentation for further details.",
             FailureLevel.ERROR,
         ),
         (
@@ -131,106 +149,14 @@ def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy
             FailureLevel.ERROR,
         ),
         (
-            "/",
-            "Unsupported format for ResourcePrefix /",
-            FailureLevel.ERROR,
-        ),
-        (
             "//",
             "Unsupported format for ResourcePrefix //",
             FailureLevel.ERROR,
         ),
-        (
-            "///////",
-            "Unsupported format for ResourcePrefix ///////",
-            FailureLevel.ERROR,
-        ),
-        (
-            "/prefix",  # This is not pathprefix ---- Need to check
-            "Unsupported format for ResourcePrefix /prefix",
-            FailureLevel.ERROR,
-        ),
-        (
-            ",./pathprefix/",
-            "Unsupported format for ResourcePrefix ,./pathprefix/",
-            FailureLevel.ERROR,
-        ),
-        (
-            ";)*/anything/pathprefix/",
-            "Unsupported format for ResourcePrefix",
-            FailureLevel.ERROR,
-        ),
-        (
-            "#$/pathprefix/anything/",
-            "Unsupported format for ResourcePrefix ",
-            FailureLevel.ERROR,
-        ),
-        (
-            "&&&roleprefix",
-            "Unsupported format for ResourcePrefix &&&roleprefix",
-            FailureLevel.ERROR,
-        ),
-        (
-            "@@/pathprefix/roleprefix",
-            "Unsupported format for ResourcePrefix @@/pathprefix/roleprefix",
-            FailureLevel.ERROR,
-        ),
-        (
-            "+/anything/pathprefix/roleprefix",
-            "Unsupported format for ResourcePrefix ",
-            FailureLevel.ERROR,
-        ),
-        (
-            "=/pathprefix/anything/roleprefix",
-            "Unsupported format for ResourcePrefix =/pathprefix/anything/roleprefix",
-            FailureLevel.ERROR,
-        ),
-        ("/prefix/", None, None),
-        ("/somepath/pathprefix/roleprefix", None, None),
-        ("/prefix/", None, None),
-        ("roleprefix", None, None),
-        ("/pathprefix/parallelcluster/", None, None),
-        ("/parallelcluster/pathprefix/", None, None),
-        ("/pathprefix/", None, None),
-        ("role-prefix", None, None),
-        ("@roleprefix", None, None),
-        ("role-prefix", None, None),
-        ("+roleprefix", None, None),
-        ("=roleprefix", None, None),
-        ("role.prefix", None, None),
-        ("role_prefix", None, None),
-        ("role,prefix", None, None),
-        ("/pathprefix/@roleprefix", None, None),
-        ("/pathprefix/role-prefix", None, None),
-        ("/pathprefix/+roleprefix", None, None),
-        ("/pathprefix/=roleprefix", None, None),
-        ("/pathprefix/role.prefix", None, None),
-        ("/pathprefix/role_prefix", None, None),
-        ("/pathprefix/role,prefix", None, None),
-        ("/path_prefix/@roleprefix/", None, None),
-        ("/path-prefix/role-prefix", None, None),
-        ("/path@prefix/+roleprefix/", None, None),
-        (
-            "/path+prefix/=roleprefix",
-            None,
-            None,
-        ),
-        (
-            "/path=prefix/role.prefix/",
-            None,
-            None,
-        ),
-        (
-            "/path,prefix/role_prefix",
-            None,
-            None,
-        ),
-        (
-            "/path/prefix/role,prefix/",
-            None,
-            None,
-        ),
-        ("p", None, None),
+        ("/path-prefix/", None, None),
+        ("/path-prefix/name-prefix", None, None),
+        ("_.,+@=-name-prefix", None, None),
+        ("/path_.,+@=-prefix/name_.,+@=-prefix", None, None),
     ],
 )
 def test_iam_resource_prefix_validator(resource_prefix, expected_message, expected_failure_level):
