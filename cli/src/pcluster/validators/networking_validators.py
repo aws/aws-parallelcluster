@@ -28,7 +28,13 @@ class SecurityGroupsValidator(Validator):
 
 
 class SubnetsValidator(Validator):
-    """Subnets validator."""
+    """
+    Subnets validator.
+
+    Check that all subnets in the input list belong to the same VPC.
+    Also, check that said VPC supports DNS resolution via the Amazon DNS server and assigning DNS hostnames to
+    instances.
+    """
 
     def _validate(self, subnet_ids: List[str]):
         try:

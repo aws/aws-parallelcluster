@@ -1241,6 +1241,7 @@ class BaseClusterConfig(Resource):
             self._register_validator(
                 AmiOsCompatibleValidator, os=self.image.os, image_id=self.head_node.image.custom_ami
             )
+        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
         self._register_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
