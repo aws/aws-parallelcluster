@@ -13,7 +13,7 @@ import os
 import pytest
 
 from pcluster.validators.networking_validators import (
-    LambdaVpcConfigValidator,
+    LambdaFunctionsVpcConfigValidator,
     SecurityGroupsValidator,
     SingleSubnetValidator,
     SubnetsValidator,
@@ -148,11 +148,11 @@ def test_single_subnet_validator(queues, failure_message):
         ),
     ],
 )
-def test_vpc_config_validator(
+def test_lambda_functions_vpc_config_validator(
     aws_api_mock, security_group_ids, subnet_ids, existing_security_groups, existing_subnets, expected_response
 ):
     aws_api_mock.ec2.describe_security_groups.return_value = existing_security_groups
     aws_api_mock.ec2.describe_subnets.return_value = existing_subnets
 
-    actual_response = LambdaVpcConfigValidator().execute(security_group_ids, subnet_ids)
+    actual_response = LambdaFunctionsVpcConfigValidator().execute(security_group_ids, subnet_ids)
     assert_failure_messages(actual_response, expected_response)

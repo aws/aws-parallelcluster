@@ -19,6 +19,7 @@ from typing import List, Set
 
 from pcluster.validators.common import FailureLevel, ValidationResult, Validator, ValidatorContext
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
+from pcluster.validators.networking_validators import LambdaFunctionsVpcConfigValidator
 from pcluster.validators.s3_validators import UrlValidator
 
 LOGGER = logging.getLogger(__name__)
@@ -262,10 +263,24 @@ class Cookbook(Resource):
             self._register_validator(UrlValidator, url=self.chef_cookbook)
 
 
+class LambdaFunctionsVpcConfig(Resource):
+    """Represent the VPC configuration schema of PCluster Lambdas, used both by build image and cluster files."""
+
+    def __init__(self, security_group_ids: List[str] = None, subnet_ids: List[str] = None, **kwargs):
+        super().__init__(**kwargs)
+        self.security_group_ids = Resource.init_param(security_group_ids)
+        self.subnet_ids = Resource.init_param(subnet_ids)
+
+
 class BaseDevSettings(Resource):
     """Represent the common dev settings configuration between the ImageBuilder and Cluster."""
 
-    def __init__(self, cookbook: Cookbook = None, node_package: str = None, aws_batch_cli_package: str = None):
+    def __init__(
+        self,
+        cookbook: Cookbook = None,
+        node_package: str = None,
+        aws_batch_cli_package: str = None,
+    ):
         super().__init__()
         self.cookbook = cookbook
         self.node_package = Resource.init_param(node_package)
@@ -289,6 +304,27 @@ class Imds(Resource):
     def __init__(self, imds_support: str = None, **kwargs):
         super().__init__(**kwargs)
         self.imds_support = Resource.init_param(imds_support, default="v1.0")
+
+
+class DeploymentSettings(Resource):
+    """
+    Represent the settings related to PCluster deployment, i.e. Lambda Functions for custom resources.
+
+    This structure is common to both the cluster and build image configuration files, as the build image
+    configuration file deploys some Cfn infrastructure as well.
+    """
+
+    def __init__(self, lambda_functions_vpc_config: LambdaFunctionsVpcConfig = None, **kwargs):
+        super().__init__(**kwargs)
+        self.lambda_functions_vpc_config = Resource.init_param(lambda_functions_vpc_config)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        if self.lambda_functions_vpc_config:
+            self._register_validator(
+                LambdaFunctionsVpcConfigValidator,
+                security_group_ids=self.lambda_functions_vpc_config.security_group_ids,
+                subnet_ids=self.lambda_functions_vpc_config.subnet_ids,
+            )
 
 
 # ------------ Common attributes class between ImageBuilder an Cluster models ----------- #

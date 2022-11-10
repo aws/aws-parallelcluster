@@ -34,6 +34,7 @@ from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
     IAM_ROLE_PATH,
+    LAMBDA_VPC_ACCESS_MANAGED_POLICY,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
@@ -249,7 +250,7 @@ def get_queue_security_groups_full(managed_compute_security_group: ec2.CfnSecuri
     return queue_security_groups
 
 
-def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement]):
+def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement], has_vpc_config: bool):
     """Return a CfnRole to be used for a Lambda function."""
     return iam.CfnRole(
         scope,
@@ -262,6 +263,7 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
                 policy_name="LambdaPolicy",
             ),
         ],
+        managed_policy_arns=[Fn.sub(LAMBDA_VPC_ACCESS_MANAGED_POLICY)] if has_vpc_config else None,
     )
 
 
@@ -778,6 +780,12 @@ class PclusterLambdaConstruct(Construct):
             role=execution_role,
             runtime="python3.9",
             timeout=timeout,
+            vpc_config=awslambda.CfnFunction.VpcConfigProperty(
+                security_group_ids=config.lambda_functions_vpc_config.security_group_ids,
+                subnet_ids=config.lambda_functions_vpc_config.subnet_ids,
+            )
+            if config.lambda_functions_vpc_config
+            else None,
         )
 
     def _stack_unique_id(self):

@@ -16,7 +16,15 @@
 from typing import List
 
 from pcluster.aws.common import get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, ExtraChefAttributes, Imds, Resource
+from pcluster.config.common import (
+    AdditionalIamPolicy,
+    BaseDevSettings,
+    BaseTag,
+    DeploymentSettings,
+    ExtraChefAttributes,
+    Imds,
+    Resource,
+)
 from pcluster.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster.validators.common import ValidatorContext
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
@@ -212,6 +220,7 @@ class ImageBuilderConfig(Resource):
         config_region: str = None,
         custom_s3_bucket: str = None,
         source_config: str = None,
+        deployment_settings: DeploymentSettings = None,
     ):
         super().__init__()
         self.image = image
@@ -225,6 +234,7 @@ class ImageBuilderConfig(Resource):
         self.config_region = config_region
         self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
         self.source_config = source_config
+        self.deployment_settings = deployment_settings
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         # Volume size validator only validates specified volume size
@@ -243,6 +253,11 @@ class ImageBuilderConfig(Resource):
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=get_region())
+
+    @property
+    def lambda_functions_vpc_config(self):
+        """Return the vpc config of the PCluster Lambda Functions or None."""
+        return self.deployment_settings.lambda_functions_vpc_config if self.deployment_settings else None
 
 
 # ------------ Attributes class used in imagebuilder resources ----------- #
