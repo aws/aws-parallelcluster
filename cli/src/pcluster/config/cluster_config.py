@@ -165,6 +165,7 @@ from pcluster.validators.monitoring_validators import ComputeConsoleLoggingValid
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     MultiAzPlacementGroupValidator,
+    QueueSubnetsValidator,
     SecurityGroupsValidator,
     SingleSubnetValidator,
     SubnetsValidator,
@@ -2087,6 +2088,11 @@ class SlurmQueue(_CommonQueue):
             max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES,
             resource_name="ComputeResources",
         )
+        self._register_validator(
+            QueueSubnetsValidator,
+            queue_name=self.name,
+            subnet_ids=self.networking.subnet_ids,
+        )
         for compute_resource in self.compute_resources:
             self._register_validator(
                 EfaSecurityGroupValidator,
@@ -2218,6 +2224,11 @@ class SchedulerPluginQueue(_CommonQueue):
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
+        )
+        self._register_validator(
+            QueueSubnetsValidator,
+            queue_name=self.name,
+            subnet_ids=self.networking.subnet_ids,
         )
         for compute_resource in self.compute_resources:
             self._register_validator(

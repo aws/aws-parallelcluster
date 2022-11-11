@@ -15,6 +15,7 @@ import pytest
 from pcluster.validators.networking_validators import (
     LambdaFunctionsVpcConfigValidator,
     MultiAzPlacementGroupValidator,
+    QueueSubnetsValidator,
     SecurityGroupsValidator,
     SingleSubnetValidator,
     SubnetsValidator,
@@ -59,6 +60,57 @@ def test_ec2_subnet_id_validator(mocker):
     # TODO test with invalid key
     actual_failures = SubnetsValidator().execute(["subnet-12345678", "subnet-23456789"])
     assert_failure_messages(actual_failures, None)
+
+
+@pytest.mark.parametrize(
+    "queue_name, queue_subnets, queue_subnets_dicts, failure_message",
+    [
+        (
+            "good-queue",
+            [
+                "subnet-00000000",
+                "subnet-11111111",
+            ],
+            [
+                {
+                    "AvailabilityZone": "us-east-1a",
+                },
+                {
+                    "AvailabilityZone": "us-east-1b",
+                },
+            ],
+            None,
+        ),
+        (
+            "bad-queue",
+            [
+                "subnet-00000000",
+                "subnet-11111111",
+            ],
+            [
+                {
+                    "AvailabilityZone": "us-east-1a",
+                },
+                {
+                    "AvailabilityZone": "us-east-1a",
+                },
+            ],
+            "Some of the subnet ids specified in queue bad-queue are in the same AZ."
+                " Please make sure all subnets are in different AZs.",
+        ),
+    ],
+)
+def test_queue_subnet_id_validator(mocker, queue_name, queue_subnets, queue_subnets_dicts, failure_message):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    describe_subnets_mock = mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_subnets",
+        return_value=queue_subnets_dicts,
+    )
+    actual_failure = QueueSubnetsValidator().execute(
+        queue_name,
+        queue_subnets,
+    )
+    assert_failure_messages(actual_failure, failure_message)
 
 
 @pytest.mark.parametrize(

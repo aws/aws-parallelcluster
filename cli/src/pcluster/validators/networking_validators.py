@@ -63,6 +63,33 @@ class SubnetsValidator(Validator):
             self._add_failure(str(e), FailureLevel.ERROR)
 
 
+class QueueSubnetsValidator(Validator):
+    """
+    Queue Subnets validator.
+
+    Check that subnets in a queue belong to different AZs (EC2 Fleet requests do not support multiple subnets
+    in the same AZ).
+    """
+
+    def _validate(self, queue_name, subnet_ids: List[str]):
+        try:
+            subnets = AWSApi.instance().ec2.describe_subnets(subnet_ids=subnet_ids)
+
+            az_set = set()
+            for subnet in subnets:
+                az_set.add(subnet["AvailabilityZone"])
+
+            if len(az_set) < len(subnet_ids):
+                self._add_failure(
+                    "Some of the subnet ids specified in queue {0} are in the same AZ. Please make sure all subnets "
+                    "are in different AZs.".format(queue_name),
+                    FailureLevel.ERROR,
+                )
+
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
+
+
 class ElasticIpValidator(Validator):
     """Elastic Ip validator."""
 
