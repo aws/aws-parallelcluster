@@ -4,7 +4,7 @@ CHANGELOG
 -----
 
 **ENHANCEMENTS**
-- Add new configuration parameter `ResourcePrefix` in `Iam` to specify a Path prefix and Name prefix for IAM resources.
+- Add new configuration parameter in `Iam/ResourcePrefix` to specify a prefix for path and name of IAM resources created by ParallelCluster
 
 3.3.0
 -----
