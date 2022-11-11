@@ -67,11 +67,21 @@ class QueueSubnetsValidator(Validator):
     """
     Queue Subnets validator.
 
+    Check that there is no duplicate subnet id in the subnet_ids list.
     Check that subnets in a queue belong to different AZs (EC2 Fleet requests do not support multiple subnets
     in the same AZ).
     """
 
     def _validate(self, queue_name, subnet_ids: List[str]):
+
+        # Test if there are duplicate IDs in subnet_ids
+        if len(set(subnet_ids)) < len(subnet_ids):
+            self._add_failure(
+                "The list of subnet IDs specified in queue {0} contains duplicate IDs.".format(queue_name),
+                FailureLevel.ERROR,
+            )
+
+        # Test if the subnets are all in different AZs
         try:
             subnets = AWSApi.instance().ec2.describe_subnets(subnet_ids=subnet_ids)
 
@@ -81,7 +91,7 @@ class QueueSubnetsValidator(Validator):
 
             if len(az_set) < len(subnet_ids):
                 self._add_failure(
-                    "Some of the subnet ids specified in queue {0} are in the same AZ. Please make sure all subnets "
+                    "Some of the subnet IDs specified in queue {0} are in the same AZ. Please make sure all subnets "
                     "are in different AZs.".format(queue_name),
                     FailureLevel.ERROR,
                 )

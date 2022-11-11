@@ -82,7 +82,7 @@ def test_ec2_subnet_id_validator(mocker):
             None,
         ),
         (
-            "bad-queue",
+            "subnets-in-common-az-queue",
             [
                 "subnet-00000000",
                 "subnet-11111111",
@@ -95,14 +95,30 @@ def test_ec2_subnet_id_validator(mocker):
                     "AvailabilityZone": "us-east-1a",
                 },
             ],
-            "Some of the subnet ids specified in queue bad-queue are in the same AZ."
-                " Please make sure all subnets are in different AZs.",
+            "Some of the subnet IDs specified in queue subnets-in-common-az-queue are in the same AZ."
+            " Please make sure all subnets are in different AZs.",
+        ),
+        (
+            "duplicate-subnets-queue",
+            [
+                "subnet-00000000",
+                "subnet-00000000",
+            ],
+            [
+                {
+                    "AvailabilityZone": "us-east-1a",
+                },
+                {
+                    "AvailabilityZone": "us-east-1a",
+                },
+            ],
+            "The list of subnet IDs specified in queue duplicate-subnets-queue contains duplicate IDs.",
         ),
     ],
 )
 def test_queue_subnet_id_validator(mocker, queue_name, queue_subnets, queue_subnets_dicts, failure_message):
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-    describe_subnets_mock = mocker.patch(
+    mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_subnets",
         return_value=queue_subnets_dicts,
     )
