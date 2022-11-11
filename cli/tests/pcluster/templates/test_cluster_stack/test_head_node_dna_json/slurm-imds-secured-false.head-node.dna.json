@@ -17,6 +17,8 @@
     "ebs_shared_dirs": "",
     "efs_fs_ids": "",
     "efs_shared_dirs": "",
+    "efs_encryption_in_transits": "",
+    "efs_iam_authorizations": "",
     "enable_intel_hpc_platform": "false",
     "ephemeral_dir": "/scratch",
     "fsx_dns_names": "",
