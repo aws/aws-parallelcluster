@@ -341,7 +341,7 @@ class SharedEfs(Resource):
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
-        self._register_validator(EfsMountOptionsValidator, encryption_in_tranist=self.encryption_in_tranist)
+        self._register_validator(EfsMountOptionsValidator, encryption_in_tranist=self.encryption_in_tranist, iam_authorization=self.iam_authorization)
 
 
 class BaseSharedFsx(Resource):
