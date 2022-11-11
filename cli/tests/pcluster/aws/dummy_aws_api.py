@@ -15,6 +15,7 @@ from pcluster.aws.aws_resources import FsxFileSystemInfo, InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
+from pcluster.aws.efs import EfsClient
 from pcluster.aws.fsx import FSxClient
 from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
@@ -143,7 +144,7 @@ class _DummyEc2Client(Ec2Client):
         return "eipalloc-123"
 
 
-class _DummyEfsClient(Ec2Client):
+class _DummyEfsClient(EfsClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
