@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.4.0
+-----
+
+**CHANGES**
+- Remove creation of EFS mount targets for existing FS.
+
 3.3.0
 -----
 

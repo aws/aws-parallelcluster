@@ -55,3 +55,28 @@ class EfsClient(Boto3Client):
     def get_efs_mount_target_security_groups(self, target_id):
         """Return list of security groups associated to the given target id."""
         return self._client.describe_mount_target_security_groups(MountTargetId=target_id).get("SecurityGroups")
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def is_efs_standard(self, efs_fs_id):
+        """
+        Return true if EFS storage class is Standard, otherwise false (OneZone).
+
+        :param efs_fs_id: EFS file system Id
+        :return: true if EFS storage class is Standard
+        """
+        availability_zone_name = (
+            self.describe_file_system(efs_fs_id).get("FileSystems")[0].get("AvailabilityZoneName", None)
+        )
+        return availability_zone_name is None
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def describe_file_system(self, efs_fs_id):
+        """
+        Describe file system for the given EFS file system id.
+
+        :param efs_fs_id: EFS file system Id
+        :return: the mount_target_ids
+        """
+        return self._client.describe_file_systems(FileSystemId=efs_fs_id)

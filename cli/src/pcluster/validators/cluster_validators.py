@@ -668,7 +668,7 @@ class EfsIdValidator(Validator):  # TODO add tests
     """
     EFS id validator.
 
-    Validate if there are existing mount target in the head node availability zone
+    Validate if there are existing mount target in the cluster (head and computes) availability zone
     """
 
     def _validate(self, efs_id, avail_zones_mapping: dict, are_all_security_groups_customized):
@@ -689,6 +689,14 @@ class EfsIdValidator(Validator):  # TODO add tests
                     )
                 if not are_all_security_groups_customized:
                     self._check_cidrs_cover_subnets(head_node_target_id, avail_zone, sg_ids, efs_id, subnets)
+            else:
+                # TODO: handle EFS OneZone case
+                if AWSApi.instance().efs.is_efs_standard(efs_id):
+                    self._add_failure(
+                        "There is no existing Mount Target in the Availability Zone {0} for EFS {1}. "
+                        "Please create an EFS Mount Target for the Availability Zone {0}.".format(avail_zone, efs_id),
+                        FailureLevel.ERROR,
+                    )
 
     def _check_subnet_access(self, security_groups_ids, subnet_cidr, access_type):
         permission = "IpPermissions" if access_type == "in" else "IpPermissionsEgress"

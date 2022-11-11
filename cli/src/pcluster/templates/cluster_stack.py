@@ -787,7 +787,7 @@ class ClusterCdkStack(Stack):
         """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
         availability_zone = AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id)
         if availability_zone not in checked_availability_zones:
-            if new_file_system or not AWSApi.instance().efs.get_efs_mount_target_id(file_system_id, availability_zone):
+            if new_file_system:
                 efs_resource = efs.CfnMountTarget(
                     self,
                     "{0}MT{1}".format(efs_cfn_resource_id, availability_zone),
