@@ -445,7 +445,7 @@ class SlurmCommands(SchedulerCommands):
             else current_node_states
         )
 
-    @retry(wait_fixed=seconds(15), stop_max_delay=minutes(5))
+    @retry(wait_fixed=seconds(15), stop_max_delay=minutes(6))
     def wait_nodes_status(self, status, filter_by_nodes=None):
         """Wait nodes to reach the status specified"""
         nodes_status = self.get_nodes_status(filter_by_nodes)

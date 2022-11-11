@@ -11,6 +11,7 @@
 import json
 import os
 import re
+from abc import ABC, abstractmethod
 from datetime import datetime
 
 import pytest
@@ -279,31 +280,78 @@ def _mock_instance_type_info(instance_type):
     return instance_types_info[instance_type]
 
 
+def get_launch_template_data_property(lt_property, template, lt_name):
+    return (
+        template["Resources"]
+        .get(lt_name, {})
+        .get("Properties", {})
+        .get("LaunchTemplateData", {})
+        .get(lt_property, None)
+    )
+
+
+class LTPropertyAssertion(ABC):
+    def __init__(self, **assertion_params):
+        self.assertion_params = assertion_params
+
+    @abstractmethod
+    def assert_lt_properties(self, generated_template, lt_name):
+        pass
+
+
+class NetworkInterfaceLTAssertion(LTPropertyAssertion):
+    def assert_lt_properties(self, generated_template, lt_name):
+        network_interfaces = get_launch_template_data_property("NetworkInterfaces", generated_template, lt_name)
+        assert_that(network_interfaces).is_length(self.assertion_params.get("no_of_network_interfaces"))
+        for network_interface in network_interfaces:
+            assert_that(network_interface.get("SubnetId")).is_equal_to(self.assertion_params.get("subnet_id"))
+
+
+class InstanceTypeLTAssertion(LTPropertyAssertion):
+    def assert_lt_properties(self, generated_template, lt_name):
+        instance_type = get_launch_template_data_property("InstanceType", generated_template, lt_name)
+        if self.assertion_params.get("has_instance_type"):
+            assert_that(instance_type).is_not_none()
+        else:
+            assert_that(instance_type).is_none()
+
+
+class EbsLTAssertion(LTPropertyAssertion):
+    def assert_lt_properties(self, generated_template, lt_name):
+        ebs_optimized = get_launch_template_data_property("EbsOptimized", generated_template, lt_name)
+        if self.assertion_params.get("includes_ebs_optimized"):
+            assert_that(ebs_optimized).is_equal_to(self.assertion_params.get("is_ebs_optimized"))
+        else:
+            assert_that(ebs_optimized).is_none()
+
+
 @pytest.mark.parametrize(
-    "config_file_name, has_instance_type, no_of_network_interfaces, includes_ebs_optimized, is_ebs_optimized",
+    "config_file_name, lt_assertions",
     [
-        ("cluster-using-flexible-instance-types.yaml", False, 2, False, None),
-        ("cluster-using-single-instance-type.yaml", True, 3, True, True),
+        (
+            "cluster-using-flexible-instance-types.yaml",
+            [
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=2, subnet_id=None),
+                InstanceTypeLTAssertion(has_instance_type=False),
+                EbsLTAssertion(includes_ebs_optimized=False, is_ebs_optimized=None),
+            ],
+        ),
+        (
+            "cluster-using-single-instance-type.yaml",
+            [
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+                EbsLTAssertion(includes_ebs_optimized=True, is_ebs_optimized=True),
+            ],
+        ),
     ],
 )
 def test_compute_launch_template_properties(
     mocker,
     config_file_name,
-    has_instance_type,
-    no_of_network_interfaces,
-    includes_ebs_optimized,
-    is_ebs_optimized,
+    lt_assertions,
     test_datadir,
 ):
-    def get_launch_template_data_property(lt_property):
-        return (
-            generated_template["Resources"]
-            .get("ComputeFleetLaunchTemplate64e1c3597ca4c32652225395", {})
-            .get("Properties", {})
-            .get("LaunchTemplateData", {})
-            .get(lt_property, None)
-        )
-
     mock_aws_api(mocker, mock_instance_type_info=False)
 
     mocker.patch(
@@ -318,20 +366,8 @@ def test_compute_launch_template_properties(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
-    instance_type = get_launch_template_data_property("InstanceType")
-    if has_instance_type:
-        assert_that(instance_type).is_not_none()
-    else:
-        assert_that(instance_type).is_none()
-
-    network_interfaces = get_launch_template_data_property("NetworkInterfaces")
-    assert_that(network_interfaces).is_length(no_of_network_interfaces)
-
-    ebs_optimized = get_launch_template_data_property("EbsOptimized")
-    if includes_ebs_optimized:
-        assert_that(ebs_optimized).is_equal_to(is_ebs_optimized)
-    else:
-        assert_that(ebs_optimized).is_none()
+    for lt_assertion in lt_assertions:
+        lt_assertion.assert_lt_properties(generated_template, "ComputeFleetLaunchTemplate64e1c3597ca4c32652225395")
 
 
 @pytest.mark.parametrize(
