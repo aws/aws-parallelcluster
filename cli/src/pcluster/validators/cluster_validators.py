@@ -1262,8 +1262,10 @@ class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
 
     def _capacity_reservation(self, cr_target):
         return {
-            "CapacityReservationTarget": {
-                "CapacityReservationId": cr_target.capacity_reservation_id,
-                "CapacityReservationResourceGroupArn": cr_target.capacity_reservation_resource_group_arn,
-            }
+            "CapacityReservationTarget": remove_none_values(
+                {
+                    "CapacityReservationId": cr_target.capacity_reservation_id,
+                    "CapacityReservationResourceGroupArn": cr_target.capacity_reservation_resource_group_arn,
+                }
+            )
         }
