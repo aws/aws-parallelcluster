@@ -772,7 +772,9 @@ class ClusterCdkStack(Stack):
             deletion_policy,
         )
 
-        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"].append(shared_efs.encryption_in_transit)
+        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"].append(
+            shared_efs.encryption_in_transit
+        )
         self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"].append(shared_efs.iam_authorization)
 
         return efs_id

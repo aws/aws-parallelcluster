@@ -133,6 +133,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
+from pcluster.validators.efs_validators import EfsMountOptionsValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
@@ -173,7 +174,6 @@ from pcluster.validators.scheduler_plugin_validators import (
     SupportedVersionsValidator,
     UserNameValidator,
 )
-from pcluster.validators.efs_validators import EfsMountOptionsValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -341,7 +341,11 @@ class SharedEfs(Resource):
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
-        self._register_validator(EfsMountOptionsValidator, encryption_in_transit=self.encryption_in_transit, iam_authorization=self.iam_authorization)
+        self._register_validator(
+            EfsMountOptionsValidator,
+            encryption_in_transit=self.encryption_in_transit,
+            iam_authorization=self.iam_authorization,
+        )
 
 
 class BaseSharedFsx(Resource):

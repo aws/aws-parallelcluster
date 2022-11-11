@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import pytest
+
 from pcluster.validators.efs_validators import EfsMountOptionsValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
