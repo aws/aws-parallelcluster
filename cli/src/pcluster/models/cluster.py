@@ -365,9 +365,11 @@ class Cluster:
 
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
+                LOGGER.info("Generating CDK template...")
                 self.template_body = CDKTemplateBuilder().build_cluster_template(
                     cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
                 )
+                LOGGER.info("CDK template generated correctly.")
 
             # upload cluster artifacts and generated template
             self._upload_artifacts()
@@ -504,6 +506,7 @@ class Cluster:
         All files contained in root dir will be uploaded to
         {bucket_name}/parallelcluster/{version}/clusters/{cluster_name}/{resource_dir}/artifact.
         """
+        LOGGER.info("Uploading cluster artifacts to S3...")
         self._check_bucket_existence()
         try:
             resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
@@ -530,6 +533,7 @@ class Cluster:
 
             if isinstance(self.config.scheduling, SchedulerPluginScheduling):
                 self._render_and_upload_scheduler_plugin_template()
+            LOGGER.info("Cluster artifacts uploaded correctly.")
         except BadRequestClusterActionError:
             raise
         except Exception as e:

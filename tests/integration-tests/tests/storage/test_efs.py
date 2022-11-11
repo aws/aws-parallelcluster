@@ -20,8 +20,8 @@ from troposphere import Ref, Template, ec2
 from troposphere.efs import MountTarget
 from utils import generate_stack_name, get_compute_nodes_instance_ips, get_vpc_snakecase_value
 
+from tests.common.utils import reboot_head_node
 from tests.storage.storage_common import (
-    get_efs_ids,
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
     write_file_into_efs,
@@ -95,6 +95,7 @@ def test_multiple_efs(
         num_existing_efs = 20
     else:
         num_existing_efs = 2
+    # TODO: create an additional EFS with file system policy to prevent anonymous access
     existing_efs_ids = efs_stack_factory(num_existing_efs)
     if request.config.getoption("benchmarks"):
         mount_target_stack_factory(existing_efs_ids)
@@ -109,7 +110,7 @@ def test_multiple_efs(
     new_efs_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
 
     _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
-
+    # TODO: change cluster configuration file to test different tls and iam settings to EFS.
     cluster_config = pcluster_config_reader(
         existing_efs_mount_dirs=existing_efs_mount_dirs,
         existing_efs_ids=existing_efs_ids,
@@ -119,24 +120,37 @@ def test_multiple_efs(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    all_mount_dirs = existing_efs_mount_dirs + new_efs_mount_dirs
-    for mount_dir in all_mount_dirs:
-        logging.info("Testing efs {0} is correctly mounted".format(mount_dir))
-        result = remote_command_executor.run_remote_command("df | grep '{0}'".format(mount_dir))
-        assert_that(result.stdout).contains(mount_dir)
-
-        test_efs_correctly_mounted(remote_command_executor, mount_dir)
-        _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
     for i in range(num_existing_efs):
         remote_command_executor.run_remote_command(f"cat {existing_efs_mount_dirs[i]}/{existing_efs_filenames[i]}")
 
+    all_mount_dirs = existing_efs_mount_dirs + new_efs_mount_dirs
+    _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands)
+
+    if scheduler == "slurm":  # Only Slurm supports compute nodes reboot
+        remote_command_executor, scheduler_commands = _check_efs_after_nodes_reboot(
+            all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory
+        )
+
     run_benchmarks(remote_command_executor, scheduler_commands)
 
-    if os == "alinux2" and scheduler == "slurm":
-        logging.info("Checking EFS utils on Amazon linux 2")
-        _test_efs_utils(
-            remote_command_executor, scheduler_commands, cluster, region, all_mount_dirs, get_efs_ids(cluster, region)
-        )
+
+def _check_efs_after_nodes_reboot(all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory):
+    reboot_head_node(cluster, remote_command_executor)
+    # Re-establish connection after head node reboot
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    compute_nodes = scheduler_commands.get_compute_nodes("queue-0")
+    for compute_node in compute_nodes:
+        scheduler_commands.reboot_compute_node(compute_node)
+    scheduler_commands.wait_nodes_status("idle", compute_nodes)
+    _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands)
+    return remote_command_executor, scheduler_commands
+
+
+def _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands):
+    for mount_dir in all_mount_dirs:
+        test_efs_correctly_mounted(remote_command_executor, mount_dir)
+        _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
 def _add_mount_targets(subnet_ids, efs_ids, security_group, template):
