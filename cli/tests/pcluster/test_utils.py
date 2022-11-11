@@ -326,3 +326,11 @@ def test_yaml_load(yaml_string, expected_yaml_dict, expected_error):
 @pytest.mark.parametrize("imds_support, http_tokens", [("v1.0", "optional"), ("v2.0", "required")])
 def test_get_http_token_settings(imds_support, http_tokens):
     assert_that(utils.get_http_tokens_setting(imds_support)).is_equal_to(http_tokens)
+
+
+@pytest.mark.parametrize(
+    "original, response",
+    [({"test1": None, "test2": 2}, {"test2": 2}), ({"test1": 1, "test2": 2}, {"test1": 1, "test2": 2})],
+)
+def test_remove_none_values(original, response):
+    assert_that(utils.remove_none_values(original)).is_equal_to(response)

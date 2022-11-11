@@ -13,7 +13,14 @@ from assertpy import assert_that
 from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.config.cluster_config import Tag
+from pcluster.config.cluster_config import (
+    BaseQueue,
+    CapacityReservationTarget,
+    RootVolume,
+    SlurmComputeResource,
+    SlurmQueue,
+    Tag,
+)
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -23,6 +30,7 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     DcvValidator,
     DeletionPolicyValidator,
+    DictLaunchTemplateBuilder,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
@@ -1458,3 +1466,223 @@ def test_efs_id_validator(
     actual_failures = EfsIdValidator().execute(efs_id, avail_zones_mapping, are_all_security_groups_customized)
     assert_failure_messages(actual_failures, expected_message)
     assert_failure_level(actual_failures, failure_level)
+
+
+class TestDictLaunchTemplateBuilder:
+    @pytest.mark.parametrize(
+        "root_volume, image_os, expected_response",
+        [
+            pytest.param(
+                RootVolume(
+                    size=10,
+                    encrypted=False,
+                    volume_type="mockVolumeType",
+                    iops=13,
+                    throughput=30,
+                    delete_on_termination=False,
+                ),
+                "centos7",
+                [
+                    {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
+                    {"DeviceName": "/dev/xvdbb", "VirtualName": "ephemeral1"},
+                    {"DeviceName": "/dev/xvdbc", "VirtualName": "ephemeral2"},
+                    {"DeviceName": "/dev/xvdbd", "VirtualName": "ephemeral3"},
+                    {"DeviceName": "/dev/xvdbe", "VirtualName": "ephemeral4"},
+                    {"DeviceName": "/dev/xvdbf", "VirtualName": "ephemeral5"},
+                    {"DeviceName": "/dev/xvdbg", "VirtualName": "ephemeral6"},
+                    {"DeviceName": "/dev/xvdbh", "VirtualName": "ephemeral7"},
+                    {"DeviceName": "/dev/xvdbi", "VirtualName": "ephemeral8"},
+                    {"DeviceName": "/dev/xvdbj", "VirtualName": "ephemeral9"},
+                    {"DeviceName": "/dev/xvdbk", "VirtualName": "ephemeral10"},
+                    {"DeviceName": "/dev/xvdbl", "VirtualName": "ephemeral11"},
+                    {"DeviceName": "/dev/xvdbm", "VirtualName": "ephemeral12"},
+                    {"DeviceName": "/dev/xvdbn", "VirtualName": "ephemeral13"},
+                    {"DeviceName": "/dev/xvdbo", "VirtualName": "ephemeral14"},
+                    {"DeviceName": "/dev/xvdbp", "VirtualName": "ephemeral15"},
+                    {"DeviceName": "/dev/xvdbq", "VirtualName": "ephemeral16"},
+                    {"DeviceName": "/dev/xvdbr", "VirtualName": "ephemeral17"},
+                    {"DeviceName": "/dev/xvdbs", "VirtualName": "ephemeral18"},
+                    {"DeviceName": "/dev/xvdbt", "VirtualName": "ephemeral19"},
+                    {"DeviceName": "/dev/xvdbu", "VirtualName": "ephemeral20"},
+                    {"DeviceName": "/dev/xvdbv", "VirtualName": "ephemeral21"},
+                    {"DeviceName": "/dev/xvdbw", "VirtualName": "ephemeral22"},
+                    {"DeviceName": "/dev/xvdbx", "VirtualName": "ephemeral23"},
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeSize": 10,
+                            "Encrypted": False,
+                            "VolumeType": "mockVolumeType",
+                            "Iops": 13,
+                            "Throughput": 30,
+                            "DeleteOnTermination": False,
+                        },
+                    },
+                ],
+                id="test with all root volume fields populated",
+            ),
+            pytest.param(
+                RootVolume(
+                    encrypted=True,
+                    volume_type="mockVolumeType",
+                    iops=15,
+                    throughput=20,
+                    delete_on_termination=True,
+                ),
+                "alinux2",
+                [
+                    {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
+                    {"DeviceName": "/dev/xvdbb", "VirtualName": "ephemeral1"},
+                    {"DeviceName": "/dev/xvdbc", "VirtualName": "ephemeral2"},
+                    {"DeviceName": "/dev/xvdbd", "VirtualName": "ephemeral3"},
+                    {"DeviceName": "/dev/xvdbe", "VirtualName": "ephemeral4"},
+                    {"DeviceName": "/dev/xvdbf", "VirtualName": "ephemeral5"},
+                    {"DeviceName": "/dev/xvdbg", "VirtualName": "ephemeral6"},
+                    {"DeviceName": "/dev/xvdbh", "VirtualName": "ephemeral7"},
+                    {"DeviceName": "/dev/xvdbi", "VirtualName": "ephemeral8"},
+                    {"DeviceName": "/dev/xvdbj", "VirtualName": "ephemeral9"},
+                    {"DeviceName": "/dev/xvdbk", "VirtualName": "ephemeral10"},
+                    {"DeviceName": "/dev/xvdbl", "VirtualName": "ephemeral11"},
+                    {"DeviceName": "/dev/xvdbm", "VirtualName": "ephemeral12"},
+                    {"DeviceName": "/dev/xvdbn", "VirtualName": "ephemeral13"},
+                    {"DeviceName": "/dev/xvdbo", "VirtualName": "ephemeral14"},
+                    {"DeviceName": "/dev/xvdbp", "VirtualName": "ephemeral15"},
+                    {"DeviceName": "/dev/xvdbq", "VirtualName": "ephemeral16"},
+                    {"DeviceName": "/dev/xvdbr", "VirtualName": "ephemeral17"},
+                    {"DeviceName": "/dev/xvdbs", "VirtualName": "ephemeral18"},
+                    {"DeviceName": "/dev/xvdbt", "VirtualName": "ephemeral19"},
+                    {"DeviceName": "/dev/xvdbu", "VirtualName": "ephemeral20"},
+                    {"DeviceName": "/dev/xvdbv", "VirtualName": "ephemeral21"},
+                    {"DeviceName": "/dev/xvdbw", "VirtualName": "ephemeral22"},
+                    {"DeviceName": "/dev/xvdbx", "VirtualName": "ephemeral23"},
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "Encrypted": True,
+                            "VolumeType": "mockVolumeType",
+                            "Iops": 15,
+                            "Throughput": 20,
+                            "DeleteOnTermination": True,
+                        },
+                    },
+                ],
+                id="test with missing volume size",
+            ),
+        ],
+    )
+    def test_get_block_device_mappings(self, root_volume, image_os, expected_response):
+        assert_that(DictLaunchTemplateBuilder().get_block_device_mappings(root_volume, image_os)).is_equal_to(
+            expected_response
+        )
+
+    @pytest.mark.parametrize(
+        "queue, compute_resource, expected_response",
+        [
+            pytest.param(
+                BaseQueue(name="queue1", capacity_type="spot"),
+                SlurmComputeResource(name="compute1", instance_type="t2.medium", spot_price=10.0),
+                {
+                    "MarketType": "spot",
+                    "SpotOptions": {
+                        "SpotInstanceType": "one-time",
+                        "InstanceInterruptionBehavior": "terminate",
+                        "MaxPrice": "10.0",
+                    },
+                },
+                id="test with spot capacity",
+            ),
+            pytest.param(
+                BaseQueue(name="queue2", capacity_type="spot"),
+                SlurmComputeResource(name="compute2", instance_type="t2.medium"),
+                {
+                    "MarketType": "spot",
+                    "SpotOptions": {
+                        "SpotInstanceType": "one-time",
+                        "InstanceInterruptionBehavior": "terminate",
+                    },
+                },
+                id="test with spot capacity but no spot price",
+            ),
+            pytest.param(
+                BaseQueue(name="queue2", capacity_type="ondemand"),
+                SlurmComputeResource(name="compute2", instance_type="t2.medium", spot_price=10.0),
+                None,
+                id="test without spot capacity",
+            ),
+        ],
+    )
+    def test_get_instance_market_options(self, queue, compute_resource, expected_response):
+        assert_that(DictLaunchTemplateBuilder().get_instance_market_options(queue, compute_resource)).is_equal_to(
+            expected_response
+        )
+
+    @pytest.mark.parametrize(
+        "queue, compute_resource, expected_response",
+        [
+            pytest.param(
+                SlurmQueue(
+                    name="queue1",
+                    capacity_reservation_target=CapacityReservationTarget(
+                        capacity_reservation_id="queue_cr_id",
+                        capacity_reservation_resource_group_arn="queue_cr_rg_arn",
+                    ),
+                    compute_resources=[],
+                    networking=None,
+                ),
+                SlurmComputeResource(
+                    name="compute1",
+                    instance_type="t2.medium",
+                    capacity_reservation_target=CapacityReservationTarget(
+                        capacity_reservation_id="comp_res_cr_id",
+                        capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
+                    ),
+                ),
+                {
+                    "CapacityReservationTarget": {
+                        "CapacityReservationId": "comp_res_cr_id",
+                        "CapacityReservationResourceGroupArn": "comp_res_cr_rg_arn",
+                    }
+                },
+                id="test with queue and compute resource capacity reservation",
+            ),
+            pytest.param(
+                SlurmQueue(
+                    name="queue1",
+                    capacity_reservation_target=CapacityReservationTarget(
+                        capacity_reservation_id="queue_cr_id",
+                        capacity_reservation_resource_group_arn="queue_cr_rg_arn",
+                    ),
+                    compute_resources=[],
+                    networking=None,
+                ),
+                SlurmComputeResource(
+                    name="compute1",
+                    instance_type="t2.medium",
+                ),
+                {
+                    "CapacityReservationTarget": {
+                        "CapacityReservationId": "queue_cr_id",
+                        "CapacityReservationResourceGroupArn": "queue_cr_rg_arn",
+                    }
+                },
+                id="test with only queue capacity reservation",
+            ),
+            pytest.param(
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=None,
+                ),
+                SlurmComputeResource(
+                    name="compute1",
+                    instance_type="t2.medium",
+                ),
+                None,
+                id="test with no capacity reservation",
+            ),
+        ],
+    )
+    def test_get_capacity_reservation(self, queue, compute_resource, expected_response):
+        assert_that(DictLaunchTemplateBuilder().get_capacity_reservation(queue, compute_resource)).is_equal_to(
+            expected_response
+        )

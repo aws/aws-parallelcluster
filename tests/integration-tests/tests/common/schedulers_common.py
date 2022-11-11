@@ -445,6 +445,13 @@ class SlurmCommands(SchedulerCommands):
             else current_node_states
         )
 
+    @retry(wait_fixed=seconds(15), stop_max_delay=minutes(6))
+    def wait_nodes_status(self, status, filter_by_nodes=None):
+        """Wait nodes to reach the status specified"""
+        nodes_status = self.get_nodes_status(filter_by_nodes)
+        for node_status in nodes_status.values():
+            assert_that(node_status).is_equal_to(status)
+
     def get_node_addr_host(self):
         """Return a list of nodename, nodeaddr, nodehostname entries."""
         # q1-dy-c5xlarge-1 172.31.4.241 q1-dy-c5xlarge-1

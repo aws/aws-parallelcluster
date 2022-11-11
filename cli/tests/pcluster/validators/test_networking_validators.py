@@ -46,21 +46,9 @@ def test_ec2_security_group_validator(mocker):
 
 
 def test_ec2_subnet_id_validator(mocker):
-    describe_subnets_response = [
-        {
-            "SubnetId": "subnet-12345678",
-            "VpcId": "vpc-06e4ab6c6cEXAMPLE",
-        },
-        {
-            "SubnetId": "subnet-23456789",
-            "VpcId": "vpc-06e4ab6c6cEXAMPLE",
-        },
-    ]
-
     mock_aws_api(mocker)
-    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_subnets", return_value=describe_subnets_response)
     mocker.patch("pcluster.aws.ec2.Ec2Client.is_enable_dns_support", return_value=True)
-    mocker.patch("pcluster.aws.ec2.Ec2Client.is_enable_dns_hostnames", return_value=describe_subnets_response)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.is_enable_dns_hostnames", return_value=True)
 
     # TODO test with invalid key
     actual_failures = SubnetsValidator().execute(["subnet-12345678", "subnet-23456789"])

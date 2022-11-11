@@ -361,3 +361,8 @@ def yaml_no_duplicates_constructor(loader, node, deep=False):
 def get_http_tokens_setting(imds_support):
     """Get http tokens settings for supported IMDS version."""
     return "required" if imds_support == "v2.0" else "optional"
+
+
+def remove_none_values(original_dictionary):
+    """Return a dictionary without entries with None value."""
+    return {key: value for key, value in original_dictionary.items() if value is not None}
