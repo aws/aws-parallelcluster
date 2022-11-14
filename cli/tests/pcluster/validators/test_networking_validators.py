@@ -149,26 +149,29 @@ def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_en
 
 
 @pytest.mark.parametrize(
-    "queues, failure_message",
+    "queue_name, subnet_ids, failure_message",
     [
         (
+            "multi-subnet-queue",
             [
-                ["subnet-11111111"],
                 ["subnet-00000000"],
+                ["subnet-11111111"],
             ],
-            "The SubnetId used for all of the queues should be the same",
+            "At least one compute resource in queue multi-subnet-queue use a single instance type. "
+            "Multi AZ configuration does not support single instance type. "
+            "Please make sure to use the multiple instance type allocation.",
         ),
         (
+            "multi-subnet-queue",
             [
-                ["subnet-00000000"],
                 ["subnet-00000000"],
             ],
             None,
         ),
     ],
 )
-def test_single_subnet_validator(queues, failure_message):
-    actual_failure = SingleSubnetValidator().execute(queues)
+def test_single_subnet_validator(queue_name, subnet_ids, failure_message):
+    actual_failure = SingleSubnetValidator().execute(queue_name, subnet_ids)
 
     assert_failure_messages(actual_failure, failure_message)
 

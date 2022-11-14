@@ -2093,6 +2093,12 @@ class SlurmQueue(_CommonQueue):
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
         )
+        if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
+            self._register_validator(
+                SingleSubnetValidator,
+                queue_name=self.name,
+                subnet_ids=self.networking.subnet_ids,
+            )
         for compute_resource in self.compute_resources:
             self._register_validator(
                 EfaSecurityGroupValidator,
@@ -2201,10 +2207,6 @@ class SlurmScheduling(Resource):
             max_length=MAX_NUMBER_OF_QUEUES,
             resource_name="SlurmQueues",
         )
-        self._register_validator(
-            SingleSubnetValidator,
-            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
-        )
 
 
 class SchedulerPluginQueue(_CommonQueue):
@@ -2230,6 +2232,12 @@ class SchedulerPluginQueue(_CommonQueue):
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
         )
+        if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
+            self._register_validator(
+                SingleSubnetValidator,
+                queue_name=self.name,
+                subnet_ids=self.networking.subnet_ids,
+            )
         for compute_resource in self.compute_resources:
             self._register_validator(
                 CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
@@ -2562,10 +2570,6 @@ class SchedulerPluginScheduling(Resource):
                 default=MAX_NUMBER_OF_QUEUES,
             ),
             resource_name="SchedulerQueues",
-        )
-        self._register_validator(
-            SingleSubnetValidator,
-            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
         )
         for queue in self.queues:
             self._register_validator(

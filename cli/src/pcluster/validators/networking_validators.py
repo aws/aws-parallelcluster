@@ -112,12 +112,16 @@ class ElasticIpValidator(Validator):
 
 
 class SingleSubnetValidator(Validator):
-    """Validate all queues reference the same subnet."""
+    """Validate only one subnet is used for compute resources with single instance type."""
 
-    def _validate(self, queues_subnets):
-        subnet_ids = {tuple(set(queue_subnets)) for queue_subnets in queues_subnets}
+    def _validate(self, queue_name, subnet_ids):
         if len(subnet_ids) > 1:
-            self._add_failure("The SubnetId used for all of the queues should be the same.", FailureLevel.ERROR)
+            self._add_failure(
+                "At least one compute resource in queue {0} use a single instance type. "
+                "Multi AZ configuration does not support single instance type. "
+                "Please make sure to use the multiple instance type allocation.".format(queue_name),
+                FailureLevel.ERROR,
+            )
 
 
 class MultiAzPlacementGroupValidator(Validator):
