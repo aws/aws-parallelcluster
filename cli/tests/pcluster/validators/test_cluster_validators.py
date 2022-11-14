@@ -19,6 +19,7 @@ from pcluster.config.cluster_config import (
     RootVolume,
     SlurmComputeResource,
     SlurmQueue,
+    SlurmQueueNetworking,
     Tag,
 )
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
@@ -44,6 +45,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
     NameValidator,
@@ -1504,6 +1506,182 @@ def test_efs_id_validator(
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_security_groups", return_value=security_groups)
 
     actual_failures = EfsIdValidator().execute(efs_id, avail_zones_mapping, are_all_security_groups_customized)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "queues, new_storage_count, failure_level, expected_message",
+    [
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 1},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 1, "fsx": 1, "raid": 1},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 1, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 1, "raid": 0},
+            FailureLevel.ERROR,
+            "Multiple subnets configuration does not support FSx 'managed' storage. Found 1 'managed' FSx storage. "
+            "Please make sure to provide an existing shared storage, "
+            "properly configured to work across the target subnets.",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 1, "fsx": 3, "raid": 0},
+            FailureLevel.ERROR,
+            "Multiple subnets configuration does not support FSx 'managed' storage. "
+            "Found 3 'managed' FSx storage. Please make sure to provide "
+            "an existing shared storage, properly configured to work across the target subnets.",
+        ),
+    ],
+)
+def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failure_level, expected_message):
+    actual_failures = ManagedFsxMultiAzValidator().execute(queues, new_storage_count)
     assert_failure_messages(actual_failures, expected_message)
     assert_failure_level(actual_failures, failure_level)
 
