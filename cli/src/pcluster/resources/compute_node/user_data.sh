@@ -77,6 +77,8 @@ write_files:
           "region": "${AWS::Region}",
           "efs_fs_ids": "${EFSIds}",
           "efs_shared_dirs": "${EFSSharedDirs}",
+          "efs_encryption_in_transits": "${EFSEncryptionInTransits}",
+          "efs_iam_authorizations": "${EFSIamAuthorizations}",
           "fsx_fs_ids": "${FSXIds}",
           "fsx_mount_names": "${FSXMountNames}",
           "fsx_dns_names": "${FSXDNSNames}",
