@@ -1478,15 +1478,12 @@ class BaseClusterConfig(Resource):
     @property
     def compute_subnet_ids(self):
         """Return the list of all compute subnet ids in the cluster."""
-        return list(
-            {
-                subnet_id
-                for queue in self.scheduling.queues
-                if queue.networking.subnet_ids
-                for subnet_id in queue.networking.subnet_ids
-                if queue.networking.subnet_ids
-            }
-        )
+        subnet_ids_list = []
+        for queue in self.scheduling.queues:
+            for subnet_id in queue.networking.subnet_ids:
+                if subnet_id not in subnet_ids_list:
+                    subnet_ids_list.append(subnet_id)
+        return subnet_ids_list
 
     @property
     def availability_zones_subnets_mapping(self):
