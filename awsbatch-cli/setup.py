@@ -24,7 +24,7 @@ VERSION = "1.0.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "tabulate~=0.8",
+    "tabulate>=0.8.8,<=0.8.10",
 ]
 
 setup(

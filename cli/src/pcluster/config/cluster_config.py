@@ -1122,6 +1122,10 @@ class BaseQueue(Resource):
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
+    def is_spot(self):
+        """Return True if the queue has SPOT capacity."""
+        return self.capacity_type == CapacityType.SPOT
+
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
 
@@ -1203,6 +1207,7 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
             head_node=self.head_node,
+            os=self.image.os,
             ami_id=self.head_node_ami,
             tags=self.get_cluster_tags(),
         )
@@ -2480,6 +2485,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 ComputeResourceLaunchTemplateValidator,
                 queue=queue,
                 ami_id=queue_image,
+                os=self.image.os,
                 tags=self.get_cluster_tags(),
             )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size

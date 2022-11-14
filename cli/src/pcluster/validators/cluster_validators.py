@@ -35,7 +35,13 @@ from pcluster.constants import (
     SUPPORTED_REGIONS,
     SUPPORTED_SCHEDULERS,
 )
-from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
+from pcluster.launch_template_utils import _LaunchTemplateBuilder
+from pcluster.utils import (
+    get_installed_version,
+    get_supported_os_for_architecture,
+    get_supported_os_for_scheduler,
+    remove_none_values,
+)
 from pcluster.validators.common import FailureLevel, Validator
 
 # pylint: disable=C0302
@@ -540,9 +546,9 @@ class ExistingFsxNetworkingValidator(Validator):
 
 class FsxArchitectureOsValidator(Validator):
     """
-    FSx networking validator.
+    FSx architecture and OS validator.
 
-    Validate file system mount point according to the head node subnet.
+    Validate that OS and architecture are compatible with FSx.
     """
 
     def _validate(self, architecture: str, os):
@@ -941,6 +947,10 @@ class MixedSecurityGroupOverwriteValidator(Validator):
 class _LaunchTemplateValidator(Validator):
     """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
 
+    def __init__(self):
+        super().__init__()
+        self._launch_template_builder = DictLaunchTemplateBuilder()
+
     @staticmethod
     def _build_launch_network_interfaces(
         network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
@@ -966,7 +976,7 @@ class _LaunchTemplateValidator(Validator):
     def _ec2_run_instance(self, availability_zone: str, **kwargs):  # noqa: C901 FIXME!!!
         """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
         try:
-            AWSApi.instance().ec2.run_instances(**kwargs)
+            AWSApi.instance().ec2.run_instances(**remove_none_values(kwargs))
         except AWSClientError as e:
             code = e.error_code
             message = str(e)
@@ -1032,7 +1042,7 @@ class _LaunchTemplateValidator(Validator):
 class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, head_node, ami_id, tags):
+    def _validate(self, head_node, os, ami_id, tags):
         try:
             head_node_security_groups = []
             if head_node.networking.security_groups:
@@ -1057,6 +1067,10 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 NetworkInterfaces=head_node_network_interfaces,
                 DryRun=True,
                 TagSpecifications=self._generate_tag_specifications(tags),
+                KeyName=head_node.ssh.key_name,
+                BlockDeviceMappings=(
+                    self._launch_template_builder.get_block_device_mappings(head_node.local_storage.root_volume, os)
+                ),
             )
         except Exception as e:
             self._add_failure(
@@ -1087,7 +1101,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, ami_id, tags):
+    def _validate(self, queue, os, ami_id, tags):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1109,6 +1123,8 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
             # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
             self._test_compute_resource(
+                queue=queue,
+                os=os,
                 compute_resource=dry_run_compute_resource,
                 use_public_ips=bool(queue.networking.assign_public_ip),
                 ami_id=ami_id,
@@ -1123,7 +1139,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
     def _test_compute_resource(
-        self, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
+        self, queue, os, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
@@ -1143,6 +1159,13 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             NetworkInterfaces=network_interfaces,
             DryRun=True,
             TagSpecifications=self._generate_tag_specifications(tags),
+            InstanceMarketOptions=self._launch_template_builder.get_instance_market_options(queue, compute_resource),
+            CapacityReservationSpecification=self._launch_template_builder.get_capacity_reservation(
+                queue, compute_resource
+            ),
+            BlockDeviceMappings=self._launch_template_builder.get_block_device_mappings(
+                queue.compute_settings.local_storage.root_volume, os
+            ),
         )
 
 
@@ -1202,3 +1225,45 @@ class SchedulerValidator(Validator):
                 f"{scheduler} scheduler is not supported. Supported schedulers are: {', '.join(SUPPORTED_SCHEDULERS)}.",
                 FailureLevel.ERROR,
             )
+
+
+class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
+    """Concrete class to build a dict with EC2 run instance properties to simulate our launch templates."""
+
+    def _block_device_mapping_for_ebs(self, device_name, volume):
+        return {
+            "DeviceName": device_name,
+            "Ebs": remove_none_values(
+                {
+                    "Encrypted": volume.encrypted,
+                    "VolumeType": volume.volume_type,
+                    "Iops": volume.iops,
+                    "Throughput": volume.throughput,
+                    "DeleteOnTermination": volume.delete_on_termination,
+                    "VolumeSize": volume.size,
+                }
+            ),
+        }
+
+    def _block_device_mapping_for_virt(self, device_name, virtual_name):
+        return {"DeviceName": device_name, "VirtualName": virtual_name}
+
+    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+        return {
+            "MarketType": market_type,
+            "SpotOptions": remove_none_values(
+                {
+                    "SpotInstanceType": spot_instance_type,
+                    "InstanceInterruptionBehavior": instance_interruption_behavior,
+                    "MaxPrice": max_price,
+                }
+            ),
+        }
+
+    def _capacity_reservation(self, cr_target):
+        return {
+            "CapacityReservationTarget": {
+                "CapacityReservationId": cr_target.capacity_reservation_id,
+                "CapacityReservationResourceGroupArn": cr_target.capacity_reservation_resource_group_arn,
+            }
+        }
