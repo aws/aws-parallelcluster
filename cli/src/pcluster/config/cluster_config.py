@@ -89,6 +89,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
     NameValidator,
@@ -1315,6 +1316,7 @@ class BaseClusterConfig(Resource):
             )
 
             self._validate_max_storage_count(ebs_count, existing_storage_count, new_storage_count)
+            self._validate_new_storage_multiple_subnets(self.scheduling.queues, new_storage_count)
 
         self._validate_mount_dirs()
 
@@ -1328,6 +1330,13 @@ class BaseClusterConfig(Resource):
             OverlappingMountDirValidator,
             shared_mount_dir_list=[mount_dir for mount_dir, _ in self.shared_storage_name_mount_dir_tuple_list],
             local_mount_dir_list=list(self.local_mount_dir_instance_types_dict.keys()),
+        )
+
+    def _validate_new_storage_multiple_subnets(self, queues, new_storage_count):
+        self._register_validator(
+            ManagedFsxMultiAzValidator,
+            queues=queues,
+            new_storage_count=new_storage_count,
         )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
