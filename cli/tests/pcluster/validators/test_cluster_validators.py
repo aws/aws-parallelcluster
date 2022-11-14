@@ -1623,7 +1623,6 @@ class TestDictLaunchTemplateBuilder:
                 SlurmQueue(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
-                        capacity_reservation_id="queue_cr_id",
                         capacity_reservation_resource_group_arn="queue_cr_rg_arn",
                     ),
                     compute_resources=[],
@@ -1633,13 +1632,11 @@ class TestDictLaunchTemplateBuilder:
                     name="compute1",
                     instance_type="t2.medium",
                     capacity_reservation_target=CapacityReservationTarget(
-                        capacity_reservation_id="comp_res_cr_id",
                         capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
                     ),
                 ),
                 {
                     "CapacityReservationTarget": {
-                        "CapacityReservationId": "comp_res_cr_id",
                         "CapacityReservationResourceGroupArn": "comp_res_cr_rg_arn",
                     }
                 },
@@ -1650,7 +1647,6 @@ class TestDictLaunchTemplateBuilder:
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_id="queue_cr_id",
-                        capacity_reservation_resource_group_arn="queue_cr_rg_arn",
                     ),
                     compute_resources=[],
                     networking=None,
@@ -1662,7 +1658,6 @@ class TestDictLaunchTemplateBuilder:
                 {
                     "CapacityReservationTarget": {
                         "CapacityReservationId": "queue_cr_id",
-                        "CapacityReservationResourceGroupArn": "queue_cr_rg_arn",
                     }
                 },
                 id="test with only queue capacity reservation",
