@@ -690,6 +690,9 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     ),
                 ]
             )
+
+            self._add_compute_console_output_policy_statement(policy)
+
             capacity_reservation_ids = self._config.capacity_reservation_ids
 
             if capacity_reservation_ids:
@@ -769,6 +772,25 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             )
 
         return policy
+
+    def _add_compute_console_output_policy_statement(self, policy):
+        if self._config.monitoring.compute_console_logging_enabled:
+            queue_names = [queue.name for queue in self._config.scheduling.queues]
+            policy.append(
+                iam.PolicyStatement(
+                    sid="EC2GetComputeConsoleOutput",
+                    actions=["ec2:GetConsoleOutput"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._format_arn(service="ec2", resource="instance/*")],
+                    conditions={
+                        "StringEquals": {
+                            "aws:ResourceTag/parallelcluster:queue-name": queue_names,
+                            "aws:ResourceTag/parallelcluster:node-type": "Compute",
+                            "aws:ResourceTag/parallelcluster:cluster-name": Stack.of(self).stack_name,
+                        }
+                    },
+                )
+            )
 
     def _generate_head_node_pass_role_resources(self):
         """Return a unique list of ARNs that the head node should be able to use when calling PassRole."""
