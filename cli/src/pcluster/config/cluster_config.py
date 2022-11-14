@@ -31,6 +31,7 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE,
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
@@ -159,6 +160,7 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
+from pcluster.validators.monitoring_validators import ComputeConsoleLoggingValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     SecurityGroupsValidator,
@@ -716,11 +718,26 @@ class Dashboards(Resource):
 class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
-    def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
+    def __init__(
+        self,
+        detailed_monitoring: bool = None,
+        logs: Logs = None,
+        dashboards: Dashboards = None,
+        compute_console_logging_enabled: bool = None,
+        compute_console_logging_max_sample_size: int = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
+        self.compute_console_logging_enabled = Resource.init_param(compute_console_logging_enabled, default=True)
+        self.compute_console_logging_max_sample_size = Resource.init_param(
+            compute_console_logging_max_sample_size, default=DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE
+        )
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(ComputeConsoleLoggingValidator, monitoring=self)
 
 
 # ---------------------- Others ---------------------- #
