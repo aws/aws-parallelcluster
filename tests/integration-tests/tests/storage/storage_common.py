@@ -172,7 +172,7 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False):
         assert_that(result.stdout).contains("127.0.0.1:/")
     logging.info("Checking efs {0} is successfully mounted in efs mount log".format(mount_dir))
     result = remote_command_executor.run_remote_command(
-        f'grep -E "Successfully mounted.*{mount_dir}" /var/log/amazon/efs/mount.log'
+        f'sudo grep -E "Successfully mounted.*{mount_dir}" /var/log/amazon/efs/mount.log'
     )
     assert_that(result.stdout).contains(mount_dir)
     # Check fstab content according to https://docs.aws.amazon.com/efs/latest/ug/automount-with-efs-mount-helper.html

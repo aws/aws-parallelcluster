@@ -829,6 +829,8 @@ class ClusterIamSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
     )
 
+    resource_prefix = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""

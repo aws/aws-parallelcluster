@@ -336,7 +336,6 @@ class TestCdkLaunchTemplateBuilder:
                 SlurmQueue(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
-                        capacity_reservation_id="queue_cr_id",
                         capacity_reservation_resource_group_arn="queue_cr_rg_arn",
                     ),
                     compute_resources=[],
@@ -346,13 +345,12 @@ class TestCdkLaunchTemplateBuilder:
                     name="compute1",
                     instance_type="t2.medium",
                     capacity_reservation_target=CapacityReservationTarget(
-                        capacity_reservation_id="comp_res_cr_id",
                         capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
                     ),
                 ),
                 ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
                     capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
-                        capacity_reservation_id="comp_res_cr_id",
+                        capacity_reservation_id=None,
                         capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
                     )
                 ),
@@ -363,7 +361,6 @@ class TestCdkLaunchTemplateBuilder:
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_id="queue_cr_id",
-                        capacity_reservation_resource_group_arn="queue_cr_rg_arn",
                     ),
                     compute_resources=[],
                     networking=None,
@@ -375,7 +372,7 @@ class TestCdkLaunchTemplateBuilder:
                 ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
                     capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
                         capacity_reservation_id="queue_cr_id",
-                        capacity_reservation_resource_group_arn="queue_cr_rg_arn",
+                        capacity_reservation_resource_group_arn=None,
                     )
                 ),
                 id="test with only queue capacity reservation",

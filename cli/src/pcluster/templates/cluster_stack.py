@@ -1431,7 +1431,9 @@ class ComputeFleetConstruct(Construct):
                 else None,  # parameter not supported for instance types with multiple network interfaces
                 interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                 groups=queue_lt_security_groups,
-                subnet_id=queue.networking.subnet_ids[0],
+                subnet_id=queue.networking.subnet_ids[0]
+                if isinstance(compute_resource, SlurmComputeResource)
+                else None,
             )
         ]
 
@@ -1442,7 +1444,9 @@ class ComputeFleetConstruct(Construct):
                     network_card_index=network_interface_index,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                     groups=queue_lt_security_groups,
-                    subnet_id=queue.networking.subnet_ids[0],
+                    subnet_id=queue.networking.subnet_ids[0]
+                    if isinstance(compute_resource, SlurmComputeResource)
+                    else None,
                 )
             )
 
