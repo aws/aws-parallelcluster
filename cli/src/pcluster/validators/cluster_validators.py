@@ -380,6 +380,23 @@ class EfaSecurityGroupValidator(Validator):
         return False
 
 
+class EfaMultiAzValidator(Validator):
+    """Validate MultiAZ if EFA is enabled."""
+
+    def _validate(
+        self, queue_name: str, multi_az_enabled: bool, compute_resource_name: str, compute_resource_efa_enabled: bool
+    ):
+        if multi_az_enabled and compute_resource_efa_enabled:
+            message = (
+                f"Elastic Fabric Adapter (EFA) was enabled on ComputeResource '{compute_resource_name}' in Queue "
+                f"'{queue_name}' but enhanced networking cannot be leveraged across multiple AZs. "
+            )
+            self._add_failure(
+                message,
+                FailureLevel.ERROR,
+            )
+
+
 # --------------- Storage validators --------------- #
 
 

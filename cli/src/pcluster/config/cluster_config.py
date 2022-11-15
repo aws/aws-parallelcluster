@@ -77,6 +77,7 @@ from pcluster.validators.cluster_validators import (
     DeletionPolicyValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
+    EfaMultiAzValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -1929,6 +1930,7 @@ class _CommonQueue(BaseQueue):
         self.capacity_reservation_target = capacity_reservation_target
         self.compute_resources = compute_resources
         self.networking = networking
+        self.__az_list = None
 
     @property
     def instance_role(self):
@@ -1947,6 +1949,24 @@ class _CommonQueue(BaseQueue):
             return self.image.custom_ami
         else:
             return None
+
+    @property
+    def az_list(self):
+        """Return the list of unique AvailabilityZoneID associated to the subnets defined in the Networking section."""
+        # initialize the hidden property just once
+        if self.__az_list is None:
+            az_set = set()
+            for _key, val in self.networking.subnet_id_az_mapping.items():
+                az_set.add(val)
+
+            self.__az_list = list(az_set)
+
+        return self.__az_list
+
+    @property
+    def multi_az_enabled(self):
+        """Return true if more than one AZ are defined in the queue Networking section."""
+        return len(self.az_list) > 1
 
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []
@@ -1983,6 +2003,17 @@ class _CommonQueue(BaseQueue):
             if not compute_resource.networking.placement_group.implied
             else self.networking.placement_group
         )
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        for compute_resource in self.compute_resources:
+            self._register_validator(
+                EfaMultiAzValidator,
+                queue_name=self.name,
+                multi_az_enabled=self.multi_az_enabled,
+                compute_resource_name=compute_resource.name,
+                compute_resource_efa_enabled=compute_resource.efa.enabled,
+            )
 
 
 class AllocationStrategy(Enum):
