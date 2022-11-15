@@ -33,6 +33,7 @@ from pcluster.validators.cluster_validators import (
     DeletionPolicyValidator,
     DictLaunchTemplateBuilder,
     DuplicateMountDirValidator,
+    EfaMultiAzValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -426,6 +427,25 @@ def test_efa_security_group_validator(
 )
 def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
     actual_failures = EfaOsArchitectureValidator().execute(efa_enabled, os, architecture)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "multi_az_enabled, efa_enabled, expected_message",
+    [
+        (True, False, None),
+        (False, True, None),
+        (False, False, None),
+        (
+            True,
+            True,
+            "Elastic Fabric Adapter (EFA) was enabled on ComputeResource 'compute' in Queue 'queue' "
+            "but enhanced networking cannot be leveraged across multiple AZs. ",
+        ),
+    ],
+)
+def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message):
+    actual_failures = EfaMultiAzValidator().execute("queue", multi_az_enabled, "compute", efa_enabled)
     assert_failure_messages(actual_failures, expected_message)
 
 
