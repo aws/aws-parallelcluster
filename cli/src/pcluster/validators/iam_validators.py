@@ -79,6 +79,12 @@ class IamResourcePrefixValidator(Validator):
                 f"Please refer to our official documentation for further details.",
                 FailureLevel.ERROR,
             )
+        if not (len(resource_prefix) <= 30):
+            self._add_failure(
+                f"Length of ResourcePrefix {resource_prefix} should be less than 30 characters. "
+                f"Please refer to our official documentation for further details.",
+                FailureLevel.ERROR,
+            )
 
 
 class AdditionalIamPolicyValidator(IamPolicyValidator):
