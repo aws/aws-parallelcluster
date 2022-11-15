@@ -154,12 +154,14 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
     "config_file_name",
     [
         "resourcePrefix.both_path_n_role_prefix.yaml",
+        "resourcePrefix.both_path_n_role_prefix_with_s3.yaml",
         "resourcePrefix.no_prefix.yaml",
         "resourcePrefix.only_path_prefix.yaml",
         "resourcePrefix.only_role_prefix.yaml",
     ],
 )
 def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name):
+    """Verify the Path and Role Name for IAM Resources."""
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
@@ -205,7 +207,35 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     else:
         assert_that(generated_template["Resources"][role_name_ref]["Properties"]).does_not_contain_key("RoleName")
         assert_that(generated_template["Resources"][role_name_hn_ref]["Properties"]).does_not_contain_key("RoleName")
+
     # Instance Profiles---> Checking Instance Profile Names and Instance profiles Path
+    _check_instance_profiles(generated_template, iam_path_prefix, iam_name_prefix)
+    # PC Policies
+    _check_parallel_cluster_policies(generated_template, role_name_ref, role_name_hn_ref, iam_name_prefix)
+    #  Slurm Policies
+    _check_slurm_policies(generated_template, iam_name_prefix, role_name_ref, role_name_hn_ref)
+    #     CleanupResources
+    _check_cleanup_role(
+        generated_template,
+        iam_name_prefix,
+        iam_path_prefix,
+        "CleanupResourcesRole",
+        "CleanupResourcesFunctionExecutionRole",
+    )
+    #     CleanupRoute53FunctionExecutionRole
+    _check_cleanup_role(
+        generated_template,
+        iam_name_prefix,
+        iam_path_prefix,
+        "CleanupRoute53Role",
+        "CleanupRoute53FunctionExecutionRole",
+    )
+    # S3AccessPolicies
+    _check_s3_access_policies(cluster_config, generated_template, iam_name_prefix)
+
+
+def _check_instance_profiles(generated_template, iam_path_prefix, iam_name_prefix):
+    """Verify the Path and Role Name for instance Profiles on Head Node and Queue."""
     if iam_path_prefix:
         assert_that(
             iam_path_prefix in generated_template["Resources"]["InstanceProfileHeadNode"]["Properties"]["Path"]
@@ -255,7 +285,9 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
         in generated_template["Resources"]["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0]["Ref"]
     ).is_true()
 
-    # PC Policies
+
+def _check_parallel_cluster_policies(generated_template, role_name_ref, role_name_hn_ref, iam_name_prefix):
+    """Verify the Path and Role Name for Parallel Cluster Policies on Head Node and Queue."""
     assert_that(
         role_name_ref
         in generated_template["Resources"]["ParallelClusterPolicies15b342af42246b70"]["Properties"]["Roles"][0]["Ref"]
@@ -301,7 +333,9 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
             in generated_template["Resources"]["ParallelClusterSlurmRoute53Policies"]["Properties"]["PolicyName"]
         ).is_true()
 
-    # # Slurm Policies
+
+def _check_slurm_policies(generated_template, iam_name_prefix, role_name_ref, role_name_hn_ref):
+    """Verify the Path and Role Name for Slurm Policies on Head Node and Queue."""
     assert_that(
         role_name_ref
         in generated_template["Resources"]["SlurmPolicies15b342af42246b70"]["Properties"]["Roles"][0]["Ref"]
@@ -330,60 +364,60 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
             in generated_template["Resources"]["SlurmPoliciesHeadNode"]["Properties"]["PolicyName"]
         ).is_true()
 
-    #     CleanupResources
+
+def _check_cleanup_role(generated_template, iam_name_prefix, iam_path_prefix, cleanupresourcenew, cleanupresourceold):
+    """Verify the Path and Role Name for Cleanup Lambda Role."""
     if iam_name_prefix and iam_path_prefix:
         assert_that(
-            iam_path_prefix in generated_template["Resources"]["CleanupResourcesRole"]["Properties"]["Path"]
+            iam_path_prefix in generated_template["Resources"][cleanupresourcenew]["Properties"]["Path"]
         ).is_true()
     elif iam_path_prefix:
         assert_that(
-            iam_path_prefix
-            in generated_template["Resources"]["CleanupResourcesFunctionExecutionRole"]["Properties"]["Path"]
+            iam_path_prefix in generated_template["Resources"][cleanupresourceold]["Properties"]["Path"]
         ).is_true()
     elif iam_name_prefix:
         assert_that(
-            "/parallelcluster/" in generated_template["Resources"]["CleanupResourcesRole"]["Properties"]["Path"]
+            "/parallelcluster/" in generated_template["Resources"][cleanupresourcenew]["Properties"]["Path"]
         ).is_true()
     else:
         assert_that(
-            "/parallelcluster/"
-            in generated_template["Resources"]["CleanupResourcesFunctionExecutionRole"]["Properties"]["Path"]
+            "/parallelcluster/" in generated_template["Resources"][cleanupresourceold]["Properties"]["Path"]
         ).is_true()
 
     if iam_name_prefix:
         assert_that(
-            iam_name_prefix in generated_template["Resources"]["CleanupResourcesRole"]["Properties"]["RoleName"]
+            iam_name_prefix in generated_template["Resources"][cleanupresourcenew]["Properties"]["RoleName"]
         ).is_true()
     else:
-        assert_that(
-            generated_template["Resources"]["CleanupResourcesFunctionExecutionRole"]["Properties"]
-        ).does_not_contain_key("RoleName")
+        assert_that(generated_template["Resources"][cleanupresourceold]["Properties"]).does_not_contain_key("RoleName")
 
-    #     CleanupRoute53FunctionExecutionRole
-    if iam_name_prefix and iam_path_prefix:
-        assert_that(
-            iam_path_prefix in generated_template["Resources"]["CleanupRoute53Role"]["Properties"]["Path"]
-        ).is_true()
-    elif iam_path_prefix:
-        assert_that(
-            iam_path_prefix
-            in generated_template["Resources"]["CleanupRoute53FunctionExecutionRole"]["Properties"]["Path"]
-        ).is_true()
-    elif iam_name_prefix:
-        assert_that(
-            "/parallelcluster/" in generated_template["Resources"]["CleanupRoute53Role"]["Properties"]["Path"]
-        ).is_true()
-    else:
-        assert_that(
-            "/parallelcluster/"
-            in generated_template["Resources"]["CleanupRoute53FunctionExecutionRole"]["Properties"]["Path"]
-        ).is_true()
 
-    if iam_name_prefix:
-        assert_that(
-            iam_name_prefix in generated_template["Resources"]["CleanupRoute53Role"]["Properties"]["RoleName"]
-        ).is_true()
-    else:
-        assert_that(
-            generated_template["Resources"]["CleanupRoute53FunctionExecutionRole"]["Properties"]
-        ).does_not_contain_key("RoleName")
+def _check_s3_access_policies(cluster_config, generated_template, iam_name_prefix):
+    """Verify S3 Policies attached to Head Node or Queue Role."""
+    if cluster_config.head_node and cluster_config.head_node.iam and cluster_config.head_node.iam.s3_access:
+        if iam_name_prefix:
+            assert_that(
+                iam_name_prefix
+                in generated_template["Resources"]["S3AccessPoliciesHeadNode"]["Properties"]["PolicyName"]
+            ).is_true()
+        else:
+            assert_that(
+                "S3Access" in generated_template["Resources"]["S3AccessPoliciesHeadNode"]["Properties"]["PolicyName"]
+            ).is_true()
+
+    if (
+        cluster_config.scheduling
+        and cluster_config.scheduling.queues[0]
+        and cluster_config.scheduling.queues[0].iam
+        and cluster_config.scheduling.queues[0].iam.s3_access
+    ):
+        if iam_name_prefix:
+            assert_that(
+                iam_name_prefix
+                in generated_template["Resources"]["S3AccessPolicies15b342af42246b70"]["Properties"]["PolicyName"]
+            ).is_true()
+        else:
+            assert_that(
+                "S3Access"
+                in generated_template["Resources"]["S3AccessPolicies15b342af42246b70"]["Properties"]["PolicyName"]
+            ).is_true()

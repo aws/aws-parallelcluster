@@ -263,7 +263,7 @@ def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str
                 # Add a region for making the hash and Name Unique Globally
                 full_resource_name = (
                     full_resource_name
-                    + sha1((full_resource_name + stack_name + iam_type + config.region).encode("utf-8"))
+                    + hashlib.sha256((full_resource_name + stack_name + iam_type + config.region).encode("utf-8"))
                     .hexdigest()[:12]
                     .capitalize()
                 )
