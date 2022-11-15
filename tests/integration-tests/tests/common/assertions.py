@@ -16,7 +16,7 @@ from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_count, get_compute_nodes_instance_ids
+from utils import get_cfn_resources, get_compute_nodes_count, get_compute_nodes_instance_ids
 
 from tests.common.scaling_common import get_compute_nodes_allocation
 
@@ -199,3 +199,27 @@ def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_comm
         logging.info(f"user={user} and result.failed={result.failed}")
         logging.info(f"user={user} and result.stdout={result.stdout}")
         assert_that(result.failed).is_equal_to(not allowed)
+
+
+def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_ids, subnet_ids):
+    logging.info("Checking the cleanup lambda VPC config")
+
+    lambda_client = boto3.client("lambda", region_name=region)
+    iam_client = boto3.client("iam", region_name=region)
+
+    lambda_functions = [
+        res for res in get_cfn_resources(stack_name, region) if res["ResourceType"] == "AWS::Lambda::Function"
+    ]
+
+    for lambda_function in lambda_functions:
+        function = lambda_client.get_function(FunctionName=lambda_function["PhysicalResourceId"])["Configuration"]
+        policies = {
+            policy["PolicyName"]
+            for policy in iam_client.list_attached_role_policies(RoleName=function["Role"].split("/")[-1])[
+                "AttachedPolicies"
+            ]
+        }
+
+        assert_that(function["VpcConfig"]["SecurityGroupIds"]).is_equal_to(security_group_ids)
+        assert_that(function["VpcConfig"]["SubnetIds"]).is_equal_to(subnet_ids)
+        assert_that(policies).contains("AWSLambdaVPCAccessExecutionRole")
