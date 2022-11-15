@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
 from unittest.mock import PropertyMock
 
 import pytest
@@ -17,7 +18,7 @@ from assertpy import assert_that
 from pcluster.config.cluster_config import SharedStorageType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import load_yaml_dict
+from pcluster.utils import get_path_n_name_prefix_from_iam_resource_prefix, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
@@ -147,3 +148,242 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
     assert_that(output_yaml).contains("chef-client")
     assert_that(output_yaml).contains("cloud-init")
     assert_that(output_yaml).contains("supervisord")
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "resourcePrefix.both_path_n_role_prefix.yaml",
+        "resourcePrefix.no_prefix.yaml",
+        "resourcePrefix.only_path_prefix.yaml",
+        "resourcePrefix.only_role_prefix.yaml",
+    ],
+)
+def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
+        new_callable=PropertyMock(return_value="us-east-1a"),
+    )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    # print("cluster_config",cluster_config)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    iam_path_prefix, iam_name_prefix = None, None
+    if cluster_config.iam and cluster_config.iam.resource_prefix:
+        iam_path_prefix, iam_name_prefix = get_path_n_name_prefix_from_iam_resource_prefix(
+            cluster_config.iam.resource_prefix
+        )
+
+    role_name_ref = generated_template["Resources"]["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0][
+        "Ref"
+    ]  # Role15b342af42246b70
+    role_name_hn_ref = generated_template["Resources"]["InstanceProfileHeadNode"]["Properties"]["Roles"][0][
+        "Ref"
+    ]  # RoleHeadNode
+
+    # Checking their Path
+    if iam_path_prefix:
+        assert_that(iam_path_prefix in generated_template["Resources"][role_name_ref]["Properties"]["Path"]).is_true()
+        assert_that(
+            iam_path_prefix in generated_template["Resources"][role_name_hn_ref]["Properties"]["Path"]
+        ).is_true()
+    # Checking their role Name
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix in generated_template["Resources"][role_name_ref]["Properties"]["RoleName"]
+        ).is_true()
+        assert_that(
+            iam_name_prefix in generated_template["Resources"][role_name_hn_ref]["Properties"]["RoleName"]
+        ).is_true()
+    else:
+        assert_that(generated_template["Resources"][role_name_ref]["Properties"]).does_not_contain_key("RoleName")
+        assert_that(generated_template["Resources"][role_name_hn_ref]["Properties"]).does_not_contain_key("RoleName")
+    # Instance Profiles---> Checking Instance Profile Names and Instance profiles Path
+    if iam_path_prefix:
+        assert_that(
+            iam_path_prefix in generated_template["Resources"]["InstanceProfileHeadNode"]["Properties"]["Path"]
+        ).is_true()
+    else:
+        assert_that(
+            "/parallelcluster/clustername/"
+            in generated_template["Resources"]["InstanceProfileHeadNode"]["Properties"]["Path"]
+        ).is_true()
+
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix
+            in generated_template["Resources"]["InstanceProfileHeadNode"]["Properties"]["InstanceProfileName"]
+        ).is_true()
+    else:
+        assert_that(generated_template["Resources"]["InstanceProfileHeadNode"]["Properties"]).does_not_contain_key(
+            "InstanceProfileName"
+        )
+
+    assert_that(
+        "RoleHeadNode" in generated_template["Resources"]["InstanceProfileHeadNode"]["Properties"]["Roles"][0]["Ref"]
+    ).is_true()
+
+    if iam_path_prefix:
+        assert_that(
+            iam_path_prefix in generated_template["Resources"]["InstanceProfile15b342af42246b70"]["Properties"]["Path"]
+        ).is_true()
+    else:
+        assert_that(
+            "/parallelcluster/clustername/"
+            in generated_template["Resources"]["InstanceProfile15b342af42246b70"]["Properties"]["Path"]
+        ).is_true()
+
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix
+            in generated_template["Resources"]["InstanceProfile15b342af42246b70"]["Properties"]["InstanceProfileName"]
+        ).is_true()
+    else:
+        assert_that(
+            generated_template["Resources"]["InstanceProfile15b342af42246b70"]["Properties"]
+        ).does_not_contain_key("InstanceProfileName")
+
+    assert_that(
+        "Role15b342af42246b70"
+        in generated_template["Resources"]["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0]["Ref"]
+    ).is_true()
+
+    # PC Policies
+    assert_that(
+        role_name_ref
+        in generated_template["Resources"]["ParallelClusterPolicies15b342af42246b70"]["Properties"]["Roles"][0]["Ref"]
+    ).is_true()
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix
+            in generated_template["Resources"]["ParallelClusterPolicies15b342af42246b70"]["Properties"]["PolicyName"]
+        ).is_true()
+    else:
+        assert_that(
+            "parallelcluster"
+            in generated_template["Resources"]["ParallelClusterPolicies15b342af42246b70"]["Properties"]["PolicyName"]
+        ).is_true()
+
+    assert_that(
+        role_name_hn_ref
+        in generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["Roles"][0]["Ref"]
+    ).is_true()
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix
+            in generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyName"]
+        ).is_true()
+    else:
+        assert_that(
+            "parallelcluster"
+            in generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyName"]
+        ).is_true()
+
+    assert_that(
+        role_name_hn_ref
+        in generated_template["Resources"]["ParallelClusterSlurmRoute53Policies"]["Properties"]["Roles"][0]["Ref"]
+    ).is_true()
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix
+            in generated_template["Resources"]["ParallelClusterSlurmRoute53Policies"]["Properties"]["PolicyName"]
+        ).is_true()
+    else:
+        assert_that(
+            "parallelcluster-slurm-route53"
+            in generated_template["Resources"]["ParallelClusterSlurmRoute53Policies"]["Properties"]["PolicyName"]
+        ).is_true()
+
+    # # Slurm Policies
+    assert_that(
+        role_name_ref
+        in generated_template["Resources"]["SlurmPolicies15b342af42246b70"]["Properties"]["Roles"][0]["Ref"]
+    ).is_true()
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix
+            in generated_template["Resources"]["SlurmPolicies15b342af42246b70"]["Properties"]["PolicyName"]
+        ).is_true()
+    else:
+        assert_that(
+            "parallelcluster-slurm-compute"
+            in generated_template["Resources"]["SlurmPolicies15b342af42246b70"]["Properties"]["PolicyName"]
+        ).is_true()
+
+    assert_that(
+        role_name_hn_ref in generated_template["Resources"]["SlurmPoliciesHeadNode"]["Properties"]["Roles"][0]["Ref"]
+    ).is_true()
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix in generated_template["Resources"]["SlurmPoliciesHeadNode"]["Properties"]["PolicyName"]
+        ).is_true()
+    else:
+        assert_that(
+            "parallelcluster-slurm-head-node"
+            in generated_template["Resources"]["SlurmPoliciesHeadNode"]["Properties"]["PolicyName"]
+        ).is_true()
+
+    #     CleanupResources
+    if iam_name_prefix and iam_path_prefix:
+        assert_that(
+            iam_path_prefix in generated_template["Resources"]["CleanupResourcesRole"]["Properties"]["Path"]
+        ).is_true()
+    elif iam_path_prefix:
+        assert_that(
+            iam_path_prefix
+            in generated_template["Resources"]["CleanupResourcesFunctionExecutionRole"]["Properties"]["Path"]
+        ).is_true()
+    elif iam_name_prefix:
+        assert_that(
+            "/parallelcluster/" in generated_template["Resources"]["CleanupResourcesRole"]["Properties"]["Path"]
+        ).is_true()
+    else:
+        assert_that(
+            "/parallelcluster/"
+            in generated_template["Resources"]["CleanupResourcesFunctionExecutionRole"]["Properties"]["Path"]
+        ).is_true()
+
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix in generated_template["Resources"]["CleanupResourcesRole"]["Properties"]["RoleName"]
+        ).is_true()
+    else:
+        assert_that(
+            generated_template["Resources"]["CleanupResourcesFunctionExecutionRole"]["Properties"]
+        ).does_not_contain_key("RoleName")
+
+    #     CleanupRoute53FunctionExecutionRole
+    if iam_name_prefix and iam_path_prefix:
+        assert_that(
+            iam_path_prefix in generated_template["Resources"]["CleanupRoute53Role"]["Properties"]["Path"]
+        ).is_true()
+    elif iam_path_prefix:
+        assert_that(
+            iam_path_prefix
+            in generated_template["Resources"]["CleanupRoute53FunctionExecutionRole"]["Properties"]["Path"]
+        ).is_true()
+    elif iam_name_prefix:
+        assert_that(
+            "/parallelcluster/" in generated_template["Resources"]["CleanupRoute53Role"]["Properties"]["Path"]
+        ).is_true()
+    else:
+        assert_that(
+            "/parallelcluster/"
+            in generated_template["Resources"]["CleanupRoute53FunctionExecutionRole"]["Properties"]["Path"]
+        ).is_true()
+
+    if iam_name_prefix:
+        assert_that(
+            iam_name_prefix in generated_template["Resources"]["CleanupRoute53Role"]["Properties"]["RoleName"]
+        ).is_true()
+    else:
+        assert_that(
+            generated_template["Resources"]["CleanupRoute53FunctionExecutionRole"]["Properties"]
+        ).does_not_contain_key("RoleName")
