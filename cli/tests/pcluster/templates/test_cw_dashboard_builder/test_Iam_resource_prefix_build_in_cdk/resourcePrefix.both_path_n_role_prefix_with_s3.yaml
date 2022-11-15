@@ -1,5 +1,7 @@
 Image:
   Os: alinux2
+Iam:
+  ResourcePrefix: /path-prefix/name-prefix
 HeadNode:
   InstanceType: String
   Ssh:
@@ -24,4 +26,3 @@ Scheduling:
         S3Access:
           - BucketName: testbucketpball
             EnableWriteAccess: True
- 
