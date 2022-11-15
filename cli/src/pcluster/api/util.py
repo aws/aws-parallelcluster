@@ -17,7 +17,7 @@ import six
 from pkg_resources import packaging
 
 from pcluster.api import typing_utils
-from pcluster.constants import NODEJS_INCOMPATIBLE_VERSION_RANGE, NODEJS_MAX_MAJOR_VERSION, NODEJS_MIN_VERSION
+from pcluster.constants import NODEJS_INCOMPATIBLE_VERSION_RANGE, NODEJS_MIN_VERSION
 
 LOGGER = logging.getLogger(__name__)
 
@@ -196,21 +196,22 @@ def _assert_node_version():
             node_version_string = subprocess.check_output(  # nosec
                 ["nvm", "current"], stderr=subprocess.STDOUT, shell=False, encoding="utf-8"
             )
-            LOGGER.debug("Found Node.js version (%s) in use", node_version_string)
-            node_version = packaging.version.parse(node_version_string)
+            LOGGER.debug("Found Node.js version '%s' in use", node_version_string)
         except Exception:
             message = "Unable to check Node.js version"
             LOGGER.critical(message)
             raise Exception(message)
-        if node_version.major > packaging.version.parse(NODEJS_MAX_MAJOR_VERSION).major:
+        if node_version_string == "none":
             message = (
-                f"Node.js version {node_version_string} may not work on this platform. Use the Node"
-                f" Version Manager (nvm) to install and use the latest release of Node.js version"
-                f" {NODEJS_MAX_MAJOR_VERSION}."
+                "Node.js does not appear to be installed. Please use the Node Version Manager (nvm) to install a"
+                " version of Node.js compatible with this platform."
             )
-            LOGGER.critical(message)
-            raise Exception(message)
-        message = f"Unable to invoke Node.js version {node_version_string}"
+        else:
+            message = (
+                f"Unable to invoke Node.js for the installed version {node_version_string}. This version may not be"
+                " compatible with this platform. Please use the Node Version Manager (nvm) to install and use a"
+                " compatible version of Node.js compatible with this platform."
+            )
         LOGGER.critical(message)
         raise Exception(message)
 

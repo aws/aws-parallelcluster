@@ -54,8 +54,9 @@ class TestParallelClusterApiUtil:
     @pytest.mark.parametrize(
         "version, expected_message",
         [
-            ("v18.12.0", "Node.js version v18.12.0 may not work on this platform."),
-            ("v16.16.0", "Unable to invoke Node.js version v16.16.0"),
+            ("v18.12.0", "Unable to invoke Node.js for the installed version v18.12.0."),
+            ("v16.16.0", "Unable to invoke Node.js for the installed version v16.16.0."),
+            ("none", "Node.js does not appear to be installed."),
         ],
     )
     def test_assert_node_version_no_nvm(self, mocker, caplog, version, expected_message):
