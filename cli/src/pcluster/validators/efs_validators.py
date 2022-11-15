@@ -12,6 +12,12 @@ from pcluster.validators.common import FailureLevel, Validator
 
 
 class EfsMountOptionsValidator(Validator):
+    """
+    EFS Mount Options validator.
+
+    IAM Authorization requires Encryption in Transit.
+    """
+
     def _validate(self, encryption_in_transit: bool, iam_authorization: bool):
         if iam_authorization and not encryption_in_transit:
             self._add_failure(
