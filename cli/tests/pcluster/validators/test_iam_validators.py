@@ -153,10 +153,21 @@ def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy
             "Unsupported format for ResourcePrefix //",
             FailureLevel.ERROR,
         ),
+        (
+            "/path_.,+@=-prefix/name_.,+@=-prefix",
+            "Length of ResourcePrefix /path_.,+@=-prefix/name_.,+@=-prefix should be less than 30 characters."
+            " Please refer to our official documentation for further details.",
+            FailureLevel.ERROR,
+        ),
+        (
+            "/longerPath/pathprefix/nameprefix",
+            "Length of ResourcePrefix /longerPath/pathprefix/nameprefix should be less than 30 characters",
+            FailureLevel.ERROR,
+        ),
+        ("longernameprefixlongnameprefix", None, None),
         ("/path-prefix/", None, None),
         ("/path-prefix/name-prefix", None, None),
         ("_.,+@=-name-prefix", None, None),
-        ("/path_.,+@=-prefix/name_.,+@=-prefix", None, None),
     ],
 )
 def test_iam_resource_prefix_validator(resource_prefix, expected_message, expected_failure_level):
