@@ -334,10 +334,14 @@ def test_run_instances_dryrun(boto3_stubber, error_code, raise_exception):
         Ec2Client().run_instances(**kwargs)
 
 
-def get_describe_subnets_mocked_request(subnets, state):
+def get_describe_subnets_mocked_request(subnets, state, avail_zones: dict):
     return MockedBoto3Request(
         method="describe_subnets",
-        response={"Subnets": [{"SubnetId": subnet, "State": state} for subnet in subnets]},
+        response={
+            "Subnets": [
+                {"SubnetId": subnet, "State": state, "AvailabilityZone": avail_zones[subnet]} for subnet in subnets
+            ]
+        },
         expected_params={"SubnetIds": subnets},
     )
 
@@ -346,12 +350,13 @@ def test_describe_subnets_cache(boto3_stubber):
     # First boto3 call. Nothing has been cached
     subnet = "subnet-123"
     additional_subnet = "subnet-234"
+    avail_zones = {"subnet-123": "us-east-1a", "subnet-234": "us-east-1b"}
     # The first mocked request and the third are about the same subnet. However, the state of the subnet changes
     # from pending to available. The second mocked request is about another subnet
     mocked_requests = [
-        get_describe_subnets_mocked_request([subnet], "pending"),
-        get_describe_subnets_mocked_request([additional_subnet], "pending"),
-        get_describe_subnets_mocked_request([subnet], "available"),
+        get_describe_subnets_mocked_request([subnet], "pending", avail_zones),
+        get_describe_subnets_mocked_request([additional_subnet], "pending", avail_zones),
+        get_describe_subnets_mocked_request([subnet], "available", avail_zones),
     ]
     boto3_stubber("ec2", mocked_requests)
     assert_that(AWSApi.instance().ec2.describe_subnets([subnet])[0]["State"]).is_equal_to("pending")
@@ -366,6 +371,18 @@ def test_describe_subnets_cache(boto3_stubber):
     # Fourth boto3 call after resetting the AWSApi instance. The latest subnet state should be retrieved from boto3
     AWSApi.reset()
     assert_that(AWSApi.instance().ec2.describe_subnets([subnet])[0]["State"]).is_equal_to("available")
+
+
+def test_get_subnet_ids_az_mapping(boto3_stubber):
+    subnet_ids = ["subnet-123", "subnet-456"]
+    avail_zones = {"subnet-123": "us-east-1a", "subnet-456": "us-east-1b"}
+    mocked_requests = [
+        get_describe_subnets_mocked_request([subnet_id], "available", avail_zones) for subnet_id in subnet_ids
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    response = AWSApi.instance().ec2.get_subnets_az_mapping(subnet_ids)
+    assert_that(response["subnet-123"]).is_equal_to("us-east-1a")
+    assert_that(response["subnet-456"]).is_equal_to("us-east-1b")
 
 
 def get_describe_capacity_reservation_mocked_request(capacity_reservations, state):

@@ -117,6 +117,10 @@ class Ec2Client(Boto3Client):
             return subnets[0].get("AvailabilityZone")
         raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
 
+    def get_subnets_az_mapping(self, subnet_ids):
+        """Return a dictionary mapping the input subnet_ids to their respective availability zones."""
+        return {subnet_id: self.get_subnet_avail_zone(subnet_id) for subnet_id in subnet_ids}
+
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def get_subnet_vpc(self, subnet_id):
