@@ -77,7 +77,7 @@ class QueueSubnetsValidator(Validator):
         # Test if there are duplicate IDs in subnet_ids
         if len(set(subnet_ids)) < len(subnet_ids):
             self._add_failure(
-                "The list of subnet IDs specified in queue {0} contains duplicate IDs.".format(queue_name),
+                "SubnetIds specified in queue {0} contains duplicate subnet IDs.".format(queue_name),
                 FailureLevel.ERROR,
             )
 
@@ -91,8 +91,8 @@ class QueueSubnetsValidator(Validator):
 
             if len(az_set) < len(subnet_ids):
                 self._add_failure(
-                    "Some of the subnet IDs specified in queue {0} are in the same AZ. Please make sure all subnets "
-                    "are in different AZs.".format(queue_name),
+                    "SubnetIds specified in queue {0} contains multiple subnets in the same AZ. "
+                    "Please make sure all subnets are in different AZs.".format(queue_name),
                     FailureLevel.ERROR,
                 )
 
@@ -117,9 +117,10 @@ class SingleSubnetValidator(Validator):
     def _validate(self, queue_name, subnet_ids):
         if len(subnet_ids) > 1:
             self._add_failure(
-                "At least one compute resource in queue {0} use a single instance type. "
-                "Multi AZ configuration does not support single instance type. "
-                "Please make sure to use the multiple instance type allocation.".format(queue_name),
+                "At least one compute resource in queue {0} uses a single instance type. "
+                "Multiple subnets configuration is not supported for single instance type, "
+                "please use the Instances configuration parameter for multiple instance type "
+                "allocation.".format(queue_name),
                 FailureLevel.ERROR,
             )
 

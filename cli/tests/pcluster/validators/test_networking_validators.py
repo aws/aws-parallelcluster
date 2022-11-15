@@ -95,8 +95,8 @@ def test_ec2_subnet_id_validator(mocker):
                     "AvailabilityZone": "us-east-1a",
                 },
             ],
-            "Some of the subnet IDs specified in queue subnets-in-common-az-queue are in the same AZ."
-            " Please make sure all subnets are in different AZs.",
+            "SubnetIds specified in queue subnets-in-common-az-queue contains multiple subnets in the same AZ. "
+            "Please make sure all subnets are in different AZs.",
         ),
         (
             "duplicate-subnets-queue",
@@ -112,11 +112,11 @@ def test_ec2_subnet_id_validator(mocker):
                     "AvailabilityZone": "us-east-1a",
                 },
             ],
-            "The list of subnet IDs specified in queue duplicate-subnets-queue contains duplicate IDs.",
+            "SubnetIds specified in queue duplicate-subnets-queue contains duplicate subnet IDs.",
         ),
     ],
 )
-def test_queue_subnet_id_validator(mocker, queue_name, queue_subnets, queue_subnets_dicts, failure_message):
+def test_queue_subnets_validator(mocker, queue_name, queue_subnets, queue_subnets_dicts, failure_message):
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_subnets",
@@ -157,12 +157,13 @@ def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_en
                 ["subnet-00000000"],
                 ["subnet-11111111"],
             ],
-            "At least one compute resource in queue multi-subnet-queue use a single instance type. "
-            "Multi AZ configuration does not support single instance type. "
-            "Please make sure to use the multiple instance type allocation.",
+            "At least one compute resource in queue multi-subnet-queue uses a single instance type. "
+            "Multiple subnets configuration is not supported for single instance type, "
+            "please use the Instances configuration parameter for multiple instance type "
+            "allocation.",
         ),
         (
-            "multi-subnet-queue",
+            "single-subnet-queue",
             [
                 ["subnet-00000000"],
             ],
