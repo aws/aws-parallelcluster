@@ -773,6 +773,11 @@ class ClusterCdkStack(Stack):
             deletion_policy,
         )
 
+        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"].append(
+            shared_efs.encryption_in_transit
+        )
+        self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"].append(shared_efs.iam_authorization)
+
         return efs_id
 
     def _add_efs_mount_target(
@@ -945,6 +950,12 @@ class ClusterCdkStack(Stack):
                     "region": self.region,
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
+                    "efs_encryption_in_transits": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"]
+                    ),
+                    "efs_iam_authorizations": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"]
+                    ),
                     "fsx_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.FSX),
                     "fsx_mount_names": to_comma_separated_string(
                         self.shared_storage_attributes[SharedStorageType.FSX]["MountNames"]
@@ -1516,6 +1527,12 @@ class ComputeFleetConstruct(Construct):
                                 ),
                                 "EFSSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.EFS]
+                                ),
+                                "EFSEncryptionInTransits": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"]
+                                ),
+                                "EFSIamAuthorizations": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"]
                                 ),
                                 "FSXIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.FSX

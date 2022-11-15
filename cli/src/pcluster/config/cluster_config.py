@@ -134,6 +134,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
+from pcluster.validators.efs_validators import EfsMountOptionsValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
@@ -321,6 +322,8 @@ class SharedEfs(Resource):
         provisioned_throughput: int = None,
         file_system_id: str = None,
         deletion_policy: str = None,
+        encryption_in_transit: bool = None,
+        iam_authorization: bool = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
@@ -335,6 +338,8 @@ class SharedEfs(Resource):
         self.deletion_policy = Resource.init_param(
             deletion_policy, default=DELETE_POLICY if not file_system_id else None
         )
+        self.encryption_in_transit = Resource.init_param(encryption_in_transit, default=False)
+        self.iam_authorization = Resource.init_param(iam_authorization, default=False)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SharedStorageNameValidator, name=self.name)
@@ -342,6 +347,11 @@ class SharedEfs(Resource):
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
+        self._register_validator(
+            EfsMountOptionsValidator,
+            encryption_in_transit=self.encryption_in_transit,
+            iam_authorization=self.iam_authorization,
+        )
 
 
 class BaseSharedFsx(Resource):

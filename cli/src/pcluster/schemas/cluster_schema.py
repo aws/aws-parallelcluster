@@ -323,6 +323,8 @@ class EfsSettingsSchema(BaseSchema):
     deletion_policy = fields.Str(
         validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
+    encryption_in_transit = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    iam_authorization = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @validates_schema
     def validate_file_system_id_ignored_parameters(self, data, **kwargs):
@@ -331,7 +333,7 @@ class EfsSettingsSchema(BaseSchema):
         messages = []
         if data.get("file_system_id") is not None:
             for key in data:
-                if key is not None and key != "file_system_id":
+                if key is not None and key not in ["encryption_in_transit", "iam_authorization", "file_system_id"]:
                     messages.append(EFS_MESSAGES["errors"]["ignored_param_with_efs_fs_id"].format(efs_param=key))
             if messages:
                 raise ValidationError(message=messages)
