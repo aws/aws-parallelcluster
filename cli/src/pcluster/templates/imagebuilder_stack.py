@@ -36,6 +36,7 @@ from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilder
 from pcluster.constants import (
     IAM_ROLE_PATH,
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+    LAMBDA_VPC_ACCESS_MANAGED_POLICY,
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_TAG,
@@ -736,6 +737,9 @@ class ImageBuilderCdkStack(Stack):
                 Fn.sub("arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"),
             ]
 
+            if self.config.lambda_functions_vpc_config:
+                managed_lambda_policy.append(Fn.sub(LAMBDA_VPC_ACCESS_MANAGED_POLICY))
+
             # LambdaCleanupExecutionRole
             lambda_cleanup_execution_role = iam.CfnRole(
                 self,
@@ -782,6 +786,12 @@ class ImageBuilderCdkStack(Stack):
             timeout=900,
             environment=lambda_env,
             tags=build_tags,
+            vpc_config=awslambda.CfnFunction.VpcConfigProperty(
+                security_group_ids=self.config.lambda_functions_vpc_config.security_group_ids,
+                subnet_ids=self.config.lambda_functions_vpc_config.subnet_ids,
+            )
+            if self.config.lambda_functions_vpc_config
+            else None,
         )
         permission = awslambda.CfnPermission(
             self,

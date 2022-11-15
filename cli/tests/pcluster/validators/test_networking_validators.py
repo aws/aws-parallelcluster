@@ -12,7 +12,12 @@ import os
 
 import pytest
 
-from pcluster.validators.networking_validators import SecurityGroupsValidator, SingleSubnetValidator, SubnetsValidator
+from pcluster.validators.networking_validators import (
+    LambdaFunctionsVpcConfigValidator,
+    SecurityGroupsValidator,
+    SingleSubnetValidator,
+    SubnetsValidator,
+)
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 
@@ -78,3 +83,76 @@ def test_single_subnet_validator(queues, failure_message):
     actual_failure = SingleSubnetValidator().execute(queues)
 
     assert_failure_messages(actual_failure, failure_message)
+
+
+@pytest.mark.parametrize(
+    "security_group_ids, subnet_ids, existing_security_groups, existing_subnets, expected_response",
+    [
+        pytest.param(
+            ["sg-test"],
+            ["subnet-test"],
+            [{"GroupId": "sg-test", "VpcId": "vpc-test"}],
+            [{"SubnetId": "subnet-test", "VpcId": "vpc-test"}],
+            "",
+            id="successful case",
+        ),
+        pytest.param(
+            ["sg-test1", "sg-test2"],
+            ["subnet-test"],
+            [{"GroupId": "sg-test1", "VpcId": "vpc-test1"}, {"GroupId": "sg-test2", "VpcId": "vpc-test2"}],
+            [{"SubnetId": "subnet-test", "VpcId": "vpc-test"}],
+            "The security groups associated to the Lambda are required to be in the same VPC.",
+            id="security groups with different VPCs",
+        ),
+        pytest.param(
+            ["sg-test"],
+            ["subnet-test1", "subnet-test2"],
+            [{"GroupId": "sg-test", "VpcId": "vpc-test"}],
+            [{"SubnetId": "subnet-test1", "VpcId": "vpc-test1"}, {"SubnetId": "subnet-test2", "VpcId": "vpc-test2"}],
+            "The subnets associated to the Lambda are required to be in the same VPC.",
+            id="subnets with different VPCs",
+        ),
+        pytest.param(
+            ["sg-test"],
+            ["subnet-test"],
+            [{"GroupId": "sg-test", "VpcId": "vpc-test1"}],
+            [{"SubnetId": "subnet-test", "VpcId": "vpc-test2"}],
+            "The security groups and subnets associated to the Lambda are required to be in the same VPC.",
+            id="security groups and subnets with different VPCs",
+        ),
+        pytest.param(
+            ["sg-test2", "sg-test3", "sg-test1"],
+            ["subnet-test"],
+            [
+                {"GroupId": "sg-test2", "VpcId": "vpc-test"},
+                {"GroupId": "sg-test4", "VpcId": "vpc-test"},
+                {"GroupId": "sg-test5", "VpcId": "vpc-test"},
+                {"GroupId": "sg-test6", "VpcId": "vpc-test"},
+            ],
+            [{"SubnetId": "subnet-test", "VpcId": "vpc-test"}],
+            "Some security groups associated to the Lambda are not present in the account: ['sg-test1', 'sg-test3'].",
+            id="missing security groups",
+        ),
+        pytest.param(
+            ["sg-test"],
+            ["subnet-test2", "subnet-test3", "subnet-test1"],
+            [{"GroupId": "sg-test", "VpcId": "vpc-test"}],
+            [
+                {"SubnetId": "subnet-test2", "VpcId": "vpc-test"},
+                {"SubnetId": "subnet-test4", "VpcId": "vpc-test"},
+                {"SubnetId": "subnet-test5", "VpcId": "vpc-test"},
+                {"SubnetId": "subnet-test6", "VpcId": "vpc-test"},
+            ],
+            "Some subnets associated to the Lambda are not present in the account: ['subnet-test1', 'subnet-test3'].",
+            id="missing subnets",
+        ),
+    ],
+)
+def test_lambda_functions_vpc_config_validator(
+    aws_api_mock, security_group_ids, subnet_ids, existing_security_groups, existing_subnets, expected_response
+):
+    aws_api_mock.ec2.describe_security_groups.return_value = existing_security_groups
+    aws_api_mock.ec2.describe_subnets.return_value = existing_subnets
+
+    actual_response = LambdaFunctionsVpcConfigValidator().execute(security_group_ids, subnet_ids)
+    assert_failure_messages(actual_response, expected_response)

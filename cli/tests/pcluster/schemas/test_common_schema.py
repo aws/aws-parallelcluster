@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that
 from marshmallow import ValidationError
 
-from pcluster.schemas.common_schema import ImdsSchema, validate_json_format
+from pcluster.schemas.common_schema import ImdsSchema, LambdaFunctionsVpcConfigSchema, validate_json_format
 
 
 @pytest.mark.parametrize(
@@ -46,3 +46,40 @@ def test_imds_schema(imds_support, failure_message):
     else:
         imds = ImdsSchema().load(imds_schema)
         assert_that(imds.imds_support).is_equal_to(imds_support)
+
+
+@pytest.mark.parametrize(
+    "lambda_functions_vpc_config, failure_message",
+    [
+        ({"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}, None),
+        ({"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": []}, "Length must be between"),
+        ({"SubnetIds": [], "SecurityGroupIds": ["sg-028d73ae220157d96"]}, "Length must be between"),
+        (
+            {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": [f"sg-028d73ae220157d9{i}" for i in range(7)]},
+            "Length must be between",
+        ),
+        (
+            {"SubnetIds": [f"subnet-8e482c{i}" for i in range(10, 27)], "SecurityGroupIds": ["sg-028d73ae220157d96"]},
+            "Length must be between",
+        ),
+        (
+            {"SubnetIds": ["invalid"], "SecurityGroupIds": ["sg-028d73ae220157d96"]},
+            "String does not match expected pattern.",
+        ),
+        (
+            {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["invalid"]},
+            "String does not match expected pattern.",
+        ),
+        ({}, "Missing data for required field"),
+        ({"SecurityGroupIds": []}, "Missing data for required field"),
+        ({"SubnetIds": ["subnet-8e482ce8"]}, "Missing data for required field"),
+    ],
+)
+def test_lambda_functions_vpc_config_schema(lambda_functions_vpc_config, failure_message):
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            LambdaFunctionsVpcConfigSchema().load(lambda_functions_vpc_config)
+    else:
+        config = LambdaFunctionsVpcConfigSchema().load(lambda_functions_vpc_config)
+        assert_that(config.security_group_ids).is_equal_to(lambda_functions_vpc_config.get("SecurityGroupIds"))
+        assert_that(config.subnet_ids).is_equal_to(lambda_functions_vpc_config.get("SubnetIds"))

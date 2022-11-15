@@ -140,6 +140,13 @@ class NetworkTemplateBuilder:
             )
         )
         self.__template.add_output(Output("VpcId", Value=Ref(vpc), Description="The Vpc Id"))
+        self.__template.add_output(
+            Output(
+                "DefaultVpcSecurityGroupId",
+                Value=GetAtt(vpc, "DefaultSecurityGroup"),
+                Description="The Vpc default security group ID",
+            )
+        )
 
         additional_vpc_cidr_blocks = []
         for idx, cidr_block in enumerate(self.__vpc_config.additional_cidr_blocks):

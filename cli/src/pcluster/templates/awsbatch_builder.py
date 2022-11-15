@@ -617,6 +617,7 @@ class AwsBatchConstruct(Construct):
                         )
                     ),
                 ],
+                has_vpc_config=self.config.lambda_functions_vpc_config,
             )
 
         return PclusterLambdaConstruct(
@@ -680,6 +681,7 @@ class AwsBatchConstruct(Construct):
                         )
                     )
                 ],
+                has_vpc_config=self.config.lambda_functions_vpc_config,
             )
 
         return PclusterLambdaConstruct(

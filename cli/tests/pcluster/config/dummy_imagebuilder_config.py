@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.config.common import BaseTag, Cookbook, Imds
+from pcluster.config.common import BaseTag, Cookbook, DeploymentSettings, Imds, LambdaFunctionsVpcConfig
 from pcluster.config.imagebuilder_config import (
     AdditionalIamPolicy,
     Build,
@@ -27,6 +27,8 @@ CLASS_DICT = {
     "image": Image,
     "build": Build,
     "dev_settings": ImagebuilderDevSettings,
+    "lambda_functions_vpc_config": LambdaFunctionsVpcConfig,
+    "deployment_settings": DeploymentSettings,
     "root_volume": Volume,
     "tags": BaseTag,
     "components": Component,
