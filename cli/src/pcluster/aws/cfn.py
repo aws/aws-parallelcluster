@@ -77,12 +77,12 @@ class CfnClient(Boto3Client):
             return self._client.update_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
-                Capabilities=["CAPABILITY_IAM","CAPABILITY_NAMED_IAM"],
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             )
         return self._client.update_stack(
             StackName=stack_name,
             TemplateURL=template_url,
-            Capabilities=["CAPABILITY_IAM","CAPABILITY_NAMED_IAM"],
+            Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             Tags=tags,
         )
 
