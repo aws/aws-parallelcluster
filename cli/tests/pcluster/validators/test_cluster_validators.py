@@ -243,30 +243,38 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group_key, placement_group_disabled, expected_message",
+    "efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, expected_message",
     [
         # Efa disabled
-        (False, "test", False, None),
-        (False, "test", True, None),
-        (False, None, False, None),
-        (False, None, True, None),
+        (False, "test", False, False, None),
+        (False, "test", True, False, None),
+        (False, None, False, False, None),
+        (False, None, True, False, None),
         # Efa enabled
         (
             True,
             None,
+            False,
             False,
             "The placement group for EFA-enabled compute resources must be explicit. "
             "You may see better performance using a placement group, "
             "but if you don't wish to use one please add "
             "'Enabled: false' to the compute resource's configuration section.",
         ),
-        (True, None, True, "You may see better performance using a placement group for the queue."),
-        (True, "test", False, None),
-        (True, "test", True, "You may see better performance using a placement group for the queue."),
+        (True, None, True, False, "You may see better performance using a placement group for the queue."),
+        (True, "test", False, False, None),
+        (True, "test", True, False, "You may see better performance using a placement group for the queue."),
+        # EFA and MultiAZ enabled
+        (True, "test", False, True, None),
+        (True, "test", True, True, None),
     ],
 )
-def test_efa_placement_group_validator(efa_enabled, placement_group_key, placement_group_disabled, expected_message):
-    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group_key, placement_group_disabled)
+def test_efa_placement_group_validator(
+    efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, expected_message
+):
+    actual_failures = EfaPlacementGroupValidator().execute(
+        efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled
+    )
 
     assert_failure_messages(actual_failures, expected_message)
 

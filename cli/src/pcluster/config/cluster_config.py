@@ -2085,6 +2085,7 @@ class SlurmQueue(_CommonQueue):
                     compute_resource
                 ).enabled
                 is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
@@ -2219,6 +2220,7 @@ class SchedulerPluginQueue(_CommonQueue):
                     compute_resource
                 ).enabled
                 is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
 
     @property
