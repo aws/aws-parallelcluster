@@ -36,6 +36,8 @@ CHANGELOG
 - Upgrade EFA installer to version 1.18.0.
 - Upgrade NICE DCV to version 2022.1-13300.
 - Allow for suppressing the `SingleSubnetValidator` for `Queues`.
+- Mount EFS file systems using amazon-efs-utils. EFS files systems can be mounted using in-transit encryption and IAM identity.
+- Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
 
 **BUG FIXES**
 - Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.
