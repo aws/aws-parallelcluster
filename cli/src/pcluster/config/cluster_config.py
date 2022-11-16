@@ -164,6 +164,7 @@ from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKe
 from pcluster.validators.monitoring_validators import ComputeConsoleLoggingValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
+    MultiAzPlacementGroupValidator,
     SecurityGroupsValidator,
     SingleSubnetValidator,
     SubnetsValidator,
@@ -608,6 +609,11 @@ class PlacementGroup(Resource):
     def assignment(self) -> str:
         """Check if the placement group has a name or id and get it, preferring the name if it exists."""
         return self.name or self.id
+
+    @property
+    def enabled_or_assigned(self):
+        """Check if a placement group was enabled or passed as parameter."""
+        return self.enabled or self.assignment is not None
 
 
 class SlurmComputeResourceNetworking(Resource):
@@ -2018,6 +2024,12 @@ class _CommonQueue(BaseQueue):
                     gdr_support=compute_resource.efa.gdr_support,
                     multiaz_enabled=self.multi_az_enabled,
                 )
+            placement_group = self.get_chosen_placement_group_setting_for_compute_resource(compute_resource)
+            self._register_validator(
+                MultiAzPlacementGroupValidator,
+                multi_az_enabled=self.multi_az_enabled,
+                placement_group_enabled=placement_group.enabled_or_assigned,
+            )
 
 
 class AllocationStrategy(Enum):
