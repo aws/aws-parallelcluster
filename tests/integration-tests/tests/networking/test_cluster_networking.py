@@ -26,7 +26,12 @@ from troposphere import GetAtt, Output, Ref, Template, ec2
 from troposphere.ec2 import EIP, VPCEndpoint
 from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os, render_jinja_template
 
-from tests.common.assertions import assert_no_errors_in_logs, assert_no_msg_in_logs, wait_for_num_instances_in_cluster
+from tests.common.assertions import (
+    assert_lambda_vpc_settings_are_correct,
+    assert_no_errors_in_logs,
+    assert_no_msg_in_logs,
+    wait_for_num_instances_in_cluster,
+)
 from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
@@ -48,6 +53,11 @@ def test_cluster_in_private_subnet(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     _test_fsx_in_private_subnet(
         cluster, region, fsx_mount_dir, bastion_instance, remote_command_executor, scheduler_commands
+    )
+
+    lambda_vpc_config = cluster.config["DeploymentSettings"]["LambdaFunctionsVpcConfig"]
+    assert_lambda_vpc_settings_are_correct(
+        cluster.cfn_name, region, lambda_vpc_config["SecurityGroupIds"], lambda_vpc_config["SubnetIds"]
     )
 
 
@@ -140,6 +150,11 @@ def test_cluster_in_no_internet_subnet(
     assert_no_errors_in_logs(remote_command_executor, scheduler)
     logging.info("Checking compute node is scaled down after scaledown idle time")
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)
+
+    lambda_vpc_config = cluster.config["DeploymentSettings"]["LambdaFunctionsVpcConfig"]
+    assert_lambda_vpc_settings_are_correct(
+        cluster.cfn_name, region, lambda_vpc_config["SecurityGroupIds"], lambda_vpc_config["SubnetIds"]
+    )
 
 
 def _upload_pre_install_script(bucket_name, test_datadir):
