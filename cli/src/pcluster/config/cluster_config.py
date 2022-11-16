@@ -625,7 +625,7 @@ class _QueueNetworking(_BaseNetworking):
         self.subnet_ids = Resource.init_param(subnet_ids)
 
     @property
-    def queue_subnet_id_az_mapping(self):
+    def subnet_id_az_mapping(self):
         """Map queue subnet ids to availability zones."""
         return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
 
