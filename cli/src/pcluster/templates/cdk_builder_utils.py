@@ -774,7 +774,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         return policy
 
     def _add_compute_console_output_policy_statement(self, policy):
-        if self._config.monitoring.compute_console_logging_enabled:
+        if self._config.monitoring.logs.cloud_watch.enabled:
             queue_names = [queue.name for queue in self._config.scheduling.queues]
             policy.append(
                 iam.PolicyStatement(
