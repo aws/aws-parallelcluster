@@ -540,7 +540,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_p
     The config can be written by using Jinja2 template engine.
     The current renderer already replaces placeholders for current keys:
         {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
-        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
+        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}, {{ default_vpc_security_group_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
     Also sanity_check is set to true by default unless explicitly set in config.

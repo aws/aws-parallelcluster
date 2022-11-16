@@ -29,6 +29,7 @@ from utils import generate_stack_name, get_arn_partition
 from tests.common.assertions import (
     assert_head_node_is_running,
     assert_instance_has_desired_imds_v2_setting,
+    assert_lambda_vpc_settings_are_correct,
     assert_no_msg_in_logs,
 )
 from tests.common.utils import (
@@ -134,6 +135,11 @@ def test_build_image(
     _test_get_image_log_events(image)
     _test_list_images(image)
     _test_export_logs(s3_bucket_factory, image, region)
+
+    lamda_vpc_config = image.config["DeploymentSettings"]["LambdaFunctionsVpcConfig"]
+    assert_lambda_vpc_settings_are_correct(
+        image.image_id, region, lamda_vpc_config["SecurityGroupIds"], lamda_vpc_config["SubnetIds"]
+    )
 
 
 @pytest.mark.usefixtures("instance")
