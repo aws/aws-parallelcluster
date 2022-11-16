@@ -63,68 +63,34 @@ def test_ec2_subnet_id_validator(mocker):
 
 
 @pytest.mark.parametrize(
-    "queue_name, queue_subnets, queue_subnets_dicts, failure_message",
+    "queue_name, queue_subnets, subnet_id_az_mapping, failure_message",
     [
         (
             "good-queue",
-            [
-                "subnet-00000000",
-                "subnet-11111111",
-            ],
-            [
-                {
-                    "AvailabilityZone": "us-east-1a",
-                },
-                {
-                    "AvailabilityZone": "us-east-1b",
-                },
-            ],
+            ["subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1b"},
             None,
         ),
         (
             "subnets-in-common-az-queue",
-            [
-                "subnet-00000000",
-                "subnet-11111111",
-            ],
-            [
-                {
-                    "AvailabilityZone": "us-east-1a",
-                },
-                {
-                    "AvailabilityZone": "us-east-1a",
-                },
-            ],
+            ["subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
             "SubnetIds specified in queue subnets-in-common-az-queue contains multiple subnets in the same AZ. "
-            "Please make sure all subnets are in different AZs.",
+            "Please make sure all subnets in the queue are in different AZs.",
         ),
         (
             "duplicate-subnets-queue",
-            [
-                "subnet-00000000",
-                "subnet-00000000",
-            ],
-            [
-                {
-                    "AvailabilityZone": "us-east-1a",
-                },
-                {
-                    "AvailabilityZone": "us-east-1a",
-                },
-            ],
+            ["subnet-00000000", "subnet-00000000"],
+            {"subnet-00000000": "us-east-1a"},
             "SubnetIds specified in queue duplicate-subnets-queue contains duplicate subnet IDs.",
         ),
     ],
 )
-def test_queue_subnets_validator(mocker, queue_name, queue_subnets, queue_subnets_dicts, failure_message):
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.describe_subnets",
-        return_value=queue_subnets_dicts,
-    )
+def test_queue_subnets_validator(mocker, queue_name, queue_subnets, subnet_id_az_mapping, failure_message):
     actual_failure = QueueSubnetsValidator().execute(
         queue_name,
         queue_subnets,
+        subnet_id_az_mapping,
     )
     assert_failure_messages(actual_failure, failure_message)
 

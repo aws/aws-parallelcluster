@@ -2089,6 +2089,7 @@ class SlurmQueue(_CommonQueue):
             QueueSubnetsValidator,
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
+            subnet_id_az_mapping=self.networking.subnet_id_az_mapping,
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(
@@ -2228,6 +2229,7 @@ class SchedulerPluginQueue(_CommonQueue):
             QueueSubnetsValidator,
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
+            subnet_id_az_mapping=self.networking.subnet_id_az_mapping,
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(

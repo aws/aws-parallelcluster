@@ -72,7 +72,7 @@ class QueueSubnetsValidator(Validator):
     in the same AZ).
     """
 
-    def _validate(self, queue_name, subnet_ids: List[str]):
+    def _validate(self, queue_name, subnet_ids: List[str], subnet_id_az_mapping: dict):
 
         # Test if there are duplicate IDs in subnet_ids
         if len(set(subnet_ids)) < len(subnet_ids):
@@ -83,16 +83,12 @@ class QueueSubnetsValidator(Validator):
 
         # Test if the subnets are all in different AZs
         try:
-            subnets = AWSApi.instance().ec2.describe_subnets(subnet_ids=subnet_ids)
-
-            az_set = set()
-            for subnet in subnets:
-                az_set.add(subnet["AvailabilityZone"])
+            az_set = {subnet_id_az_mapping[subnet_id] for subnet_id in subnet_ids}
 
             if len(az_set) < len(subnet_ids):
                 self._add_failure(
                     "SubnetIds specified in queue {0} contains multiple subnets in the same AZ. "
-                    "Please make sure all subnets are in different AZs.".format(queue_name),
+                    "Please make sure all subnets in the queue are in different AZs.".format(queue_name),
                     FailureLevel.ERROR,
                 )
 
