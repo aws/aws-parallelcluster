@@ -18,7 +18,7 @@ from assertpy import assert_that
 from pcluster.config.cluster_config import SharedStorageType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import get_path_n_name_prefix_from_iam_resource_prefix, load_yaml_dict
+from pcluster.utils import load_yaml_dict, split_resource_prefix
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
@@ -179,9 +179,7 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
 
     iam_path_prefix, iam_name_prefix = None, None
     if cluster_config.iam and cluster_config.iam.resource_prefix:
-        iam_path_prefix, iam_name_prefix = get_path_n_name_prefix_from_iam_resource_prefix(
-            cluster_config.iam.resource_prefix
-        )
+        iam_path_prefix, iam_name_prefix = split_resource_prefix(cluster_config.iam.resource_prefix)
     generated_template = generated_template["Resources"]
     role_name_ref = generated_template["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0][
         "Ref"

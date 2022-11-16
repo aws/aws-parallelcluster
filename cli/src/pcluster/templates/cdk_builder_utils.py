@@ -44,10 +44,10 @@ from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
 from pcluster.utils import (
     get_attr,
     get_installed_version,
-    get_path_n_name_prefix_from_iam_resource_prefix,
     get_resource_name_from_resource_arn,
     get_url_scheme,
     policy_name_to_arn,
+    split_resource_prefix,
 )
 
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
@@ -256,20 +256,15 @@ def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str
     full_resource_path = None
     full_resource_name = None
     if config.iam and config.iam.resource_prefix:
-        iam_path, iam_name_prefix = get_path_n_name_prefix_from_iam_resource_prefix(config.iam.resource_prefix)
+        iam_path, iam_name_prefix = split_resource_prefix(config.iam.resource_prefix)
         if iam_name_prefix:
-            if iam_type in ["AWS::IAM::Role", "AWS::IAM::InstanceProfile"]:
-                full_resource_name = iam_name_prefix + name + "-"
-                # Add a region for making the hash and Name Unique Globally
-                full_resource_name = (
-                    full_resource_name
-                    + hashlib.sha256((full_resource_name + stack_name + iam_type + config.region).encode("utf-8"))
-                    .hexdigest()[:12]
-                    .capitalize()
-                )
-
-            elif iam_type == "AWS::IAM::Policy":
-                full_resource_name = iam_name_prefix
+            # Creating a Globally Unique Hash using Region, Type, Name and stack name
+            resource_hash = (
+                hashlib.sha256((name + stack_name + iam_type + config.region).encode("utf-8"))
+                .hexdigest()[:12]
+                .capitalize()
+            )
+            full_resource_name = iam_name_prefix + name + "-" + resource_hash
         if iam_path:
             full_resource_path = iam_path
 
@@ -278,22 +273,24 @@ def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str
 
 def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement], has_vpc_config: bool):
     """Return a CfnRole to be used for a Lambda function."""
-    role_id = f"{function_id}FunctionExecutionRole"
-    lambda_path = IAM_ROLE_PATH
-    policy_name = "LambdaPolicy"
-    # Need to reduce calls to this function
     role_path, role_name = add_cluster_iam_resource_prefix(
         scope.config.cluster_name, scope.config, name=f"{function_id}Role", iam_type="AWS::IAM::Role"
     )
     _, policy_name_prefix = add_cluster_iam_resource_prefix(
-        scope.config.cluster_name, scope.config, None, iam_type="AWS::IAM::Policy"
+        scope.config.cluster_name, scope.config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
     )
     if role_path:
         lambda_path = role_path
+    else:
+        lambda_path = IAM_ROLE_PATH
     if policy_name_prefix:
-        policy_name = policy_name_prefix + "-" + policy_name
+        policy_name = policy_name_prefix
+    else:
+        policy_name = "LambdaPolicy"
     if role_name:
         role_id = f"{function_id}Role"
+    else:
+        role_id = f"{function_id}FunctionExecutionRole"
     return iam.CfnRole(
         scope,
         role_id,
@@ -395,12 +392,15 @@ class NodeIamResourcesBase(Construct):
         )
 
     def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
-        policy_name = "parallelcluster"
         _, policy_name_prefix = add_cluster_iam_resource_prefix(
-            self._config.cluster_name, self._config, name, iam_type="AWS::IAM::Policy"
+            self._config.cluster_name, self._config, "parallelcluster", iam_type="AWS::IAM::Policy"
         )
         if policy_name_prefix:
-            policy_name = policy_name_prefix + "-" + policy_name
+            # policy_name = policy_name_prefix + "-" + "parallelcluster"
+            policy_name = policy_name_prefix
+        else:
+            policy_name = "parallelcluster"
+
         iam.CfnPolicy(
             Stack.of(self),
             name,
@@ -458,14 +458,13 @@ class NodeIamResourcesBase(Construct):
                     read_write_s3_resources.append(arn)
                 else:
                     read_only_s3_resources.append(arn)
-
-        policy_name = "S3Access"
         _, policy_name_prefix = add_cluster_iam_resource_prefix(
-            self._config.cluster_name, self._config, name, iam_type="AWS::IAM::Policy"
+            self._config.cluster_name, self._config, "S3Access", iam_type="AWS::IAM::Policy"
         )
         if policy_name_prefix:
-            policy_name = policy_name_prefix + "-" + policy_name
-
+            policy_name = policy_name_prefix
+        else:
+            policy_name = "S3Access"
         s3_access_policy = iam.CfnPolicy(
             Stack.of(self),
             name,
@@ -492,7 +491,7 @@ class NodeIamResourcesBase(Construct):
             )
 
     def _cluster_scoped_iam_path(self, iam_path=None):
-        """Return a path to be associated IAM roles and instance profiles."""
+        """Return a path to be associated with IAM roles and instance profiles."""
         if iam_path:
             return f"{iam_path}{Stack.of(self).stack_name}/"
         return f"{IAM_ROLE_PATH}{Stack.of(self).stack_name}/"
