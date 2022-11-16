@@ -277,18 +277,11 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
     _, policy_name_prefix = add_cluster_iam_resource_prefix(
         scope.config.cluster_name, scope.config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
     )
-    if role_path:
-        lambda_path = role_path
-    else:
-        lambda_path = IAM_ROLE_PATH
-    if policy_name_prefix:
-        policy_name = policy_name_prefix
-    else:
-        policy_name = "LambdaPolicy"
-    if role_name:
-        role_id = f"{function_id}Role"
-    else:
-        role_id = f"{function_id}FunctionExecutionRole"
+
+    lambda_path = role_path or IAM_ROLE_PATH
+    policy_name = policy_name_prefix or "LambdaPolicy"
+    role_id = f"{function_id}Role" if role_name else f"{function_id}FunctionExecutionRole"
+
     return iam.CfnRole(
         scope,
         role_id,
@@ -393,12 +386,7 @@ class NodeIamResourcesBase(Construct):
         _, policy_name_prefix = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, "parallelcluster", iam_type="AWS::IAM::Policy"
         )
-        if policy_name_prefix:
-            # policy_name = policy_name_prefix + "-" + "parallelcluster"
-            policy_name = policy_name_prefix
-        else:
-            policy_name = "parallelcluster"
-
+        policy_name = policy_name_prefix or "parallelcluster"
         iam.CfnPolicy(
             Stack.of(self),
             name,
@@ -459,10 +447,8 @@ class NodeIamResourcesBase(Construct):
         _, policy_name_prefix = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, "S3Access", iam_type="AWS::IAM::Policy"
         )
-        if policy_name_prefix:
-            policy_name = policy_name_prefix
-        else:
-            policy_name = "S3Access"
+
+        policy_name = policy_name_prefix or "S3Access"
         s3_access_policy = iam.CfnPolicy(
             Stack.of(self),
             name,
