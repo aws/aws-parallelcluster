@@ -13,6 +13,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
+from pcluster.constants import IAM_NAME_PREFIX_LENGTH_LIMIT
 from pcluster.validators.common import FailureLevel
 from pcluster.validators.iam_validators import (
     AdditionalIamPolicyValidator,
@@ -154,16 +155,13 @@ def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy
             FailureLevel.ERROR,
         ),
         (
-            "/path_.,+@=-prefix/name_.,+@=-prefix",
-            "Length of ResourcePrefix /path_.,+@=-prefix/name_.,+@=-prefix should be less than 30 characters."
+            "/path_.,+@=-prefix/longernameprefix-longernameprefixlongernameprefix-longernameprefix",
+            f"Length of Name Prefix longernameprefix-longernameprefixlongernameprefix-longernameprefix "
+            f"should be upto {IAM_NAME_PREFIX_LENGTH_LIMIT} characters."
             " Please refer to our official documentation for further details.",
             FailureLevel.ERROR,
         ),
-        (
-            "/longerPath/pathprefix/nameprefix",
-            "Length of ResourcePrefix /longerPath/pathprefix/nameprefix should be less than 30 characters",
-            FailureLevel.ERROR,
-        ),
+        ("/longerPath/pathprefix/nameprefix", None, None),
         ("longernameprefixlongnameprefix", None, None),
         ("/path-prefix/", None, None),
         ("/path-prefix/name-prefix", None, None),
