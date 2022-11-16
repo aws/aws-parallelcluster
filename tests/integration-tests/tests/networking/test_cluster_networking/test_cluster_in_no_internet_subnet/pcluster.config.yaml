@@ -77,3 +77,9 @@ Tags:
     Value: String
   - Key: two
     Value: two22
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds:
+    - {{ default_vpc_security_group_id }}
+    SubnetIds:
+    - {{ no_internet_subnet_id }}

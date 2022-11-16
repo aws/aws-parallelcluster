@@ -33,3 +33,9 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 1200
       DeploymentType: SCRATCH_2
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds:
+    - {{ default_vpc_security_group_id }}
+    SubnetIds:
+    - {{ private_subnet_id }}
