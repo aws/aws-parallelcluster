@@ -31,6 +31,7 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE,
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
@@ -134,6 +135,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
+from pcluster.validators.efs_validators import EfsMountOptionsValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
@@ -158,6 +160,7 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
+from pcluster.validators.monitoring_validators import ComputeConsoleLoggingValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     SecurityGroupsValidator,
@@ -321,6 +324,8 @@ class SharedEfs(Resource):
         provisioned_throughput: int = None,
         file_system_id: str = None,
         deletion_policy: str = None,
+        encryption_in_transit: bool = None,
+        iam_authorization: bool = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
@@ -335,6 +340,8 @@ class SharedEfs(Resource):
         self.deletion_policy = Resource.init_param(
             deletion_policy, default=DELETE_POLICY if not file_system_id else None
         )
+        self.encryption_in_transit = Resource.init_param(encryption_in_transit, default=False)
+        self.iam_authorization = Resource.init_param(iam_authorization, default=False)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SharedStorageNameValidator, name=self.name)
@@ -342,6 +349,11 @@ class SharedEfs(Resource):
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
+        self._register_validator(
+            EfsMountOptionsValidator,
+            encryption_in_transit=self.encryption_in_transit,
+            iam_authorization=self.iam_authorization,
+        )
 
 
 class BaseSharedFsx(Resource):
@@ -706,11 +718,26 @@ class Dashboards(Resource):
 class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
-    def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
+    def __init__(
+        self,
+        detailed_monitoring: bool = None,
+        logs: Logs = None,
+        dashboards: Dashboards = None,
+        compute_console_logging_enabled: bool = None,
+        compute_console_logging_max_sample_size: int = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
+        self.compute_console_logging_enabled = Resource.init_param(compute_console_logging_enabled, default=True)
+        self.compute_console_logging_max_sample_size = Resource.init_param(
+            compute_console_logging_max_sample_size, default=DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE
+        )
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(ComputeConsoleLoggingValidator, monitoring=self)
 
 
 # ---------------------- Others ---------------------- #

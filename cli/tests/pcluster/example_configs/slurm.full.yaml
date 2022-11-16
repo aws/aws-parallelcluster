@@ -154,6 +154,8 @@ SharedStorage:
     EfsSettings:
       ThroughputMode: provisioned  # bursting | provisioned
       ProvisionedThroughput: 1024
+      EncryptionInTransit: false
+      IamAuthorization: false
   - MountDir: /my/mount/point3
     Name: name3
     StorageType: FsxLustre
@@ -198,6 +200,8 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: true  # true
+  ComputeConsoleLoggingEnabled: True
+  ComputeConsoleLoggingMaxSampleSize: 150 # 100
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
