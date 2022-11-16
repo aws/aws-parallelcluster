@@ -624,6 +624,11 @@ class _QueueNetworking(_BaseNetworking):
         self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
 
+    @property
+    def subnet_id_az_mapping(self):
+        """Map queue subnet ids to availability zones."""
+        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
 
 class SlurmQueueNetworking(_QueueNetworking):
     """Represent the networking configuration for the slurm Queue."""
