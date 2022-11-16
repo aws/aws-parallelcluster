@@ -278,20 +278,18 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
         scope.config.cluster_name, scope.config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
     )
 
-    lambda_path = role_path or IAM_ROLE_PATH
-    policy_name = policy_name_prefix or "LambdaPolicy"
     role_id = f"{function_id}Role" if role_name else f"{function_id}FunctionExecutionRole"
 
     return iam.CfnRole(
         scope,
         role_id,
-        path=lambda_path,
+        path=role_path or IAM_ROLE_PATH,
         role_name=role_name,
         assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
         policies=[
             iam.CfnRole.PolicyProperty(
                 policy_document=iam.PolicyDocument(statements=statements),
-                policy_name=policy_name,
+                policy_name=policy_name_prefix or "LambdaPolicy",
             ),
         ],
         managed_policy_arns=[Fn.sub(LAMBDA_VPC_ACCESS_MANAGED_POLICY)] if has_vpc_config else None,
@@ -448,13 +446,12 @@ class NodeIamResourcesBase(Construct):
             self._config.cluster_name, self._config, "S3Access", iam_type="AWS::IAM::Policy"
         )
 
-        policy_name = policy_name_prefix or "S3Access"
         s3_access_policy = iam.CfnPolicy(
             Stack.of(self),
             name,
             policy_document=iam.PolicyDocument(statements=[]),
             roles=[role_ref],
-            policy_name=policy_name,
+            policy_name=policy_name_prefix or "S3Access",
         )
 
         if read_only_s3_resources:

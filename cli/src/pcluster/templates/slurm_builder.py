@@ -133,11 +133,11 @@ class SlurmConstruct(Construct):
                 ],
             },
         ]
-        policy_name = policy_name_prefix or "parallelcluster-slurm-compute"
+
         iam.CfnPolicy(
             self.stack_scope,
             f"SlurmPolicies{suffix}",
-            policy_name=policy_name,
+            policy_name=policy_name_prefix or "parallelcluster-slurm-compute",
             policy_document=iam.PolicyDocument(
                 statements=[iam.PolicyStatement(**statement) for statement in policy_statements]
             ),
@@ -166,11 +166,10 @@ class SlurmConstruct(Construct):
                 ],
             },
         ]
-        policy_name = policy_name_prefix or "parallelcluster-slurm-head-node"
         iam.CfnPolicy(
             self.stack_scope,
             f"SlurmPolicies{suffix}",
-            policy_name=policy_name,
+            policy_name=policy_name_prefix or "parallelcluster-slurm-head-node",
             policy_document=iam.PolicyDocument(
                 statements=[iam.PolicyStatement(**statement) for statement in policy_statements]
             ),
@@ -217,11 +216,10 @@ class SlurmConstruct(Construct):
             _, policy_name_prefix = add_cluster_iam_resource_prefix(
                 self.config.cluster_name, self.config, "parallelcluster-slurm-route53", iam_type="AWS::IAM::Policy"
             )
-            policy_name = policy_name_prefix or "parallelcluster-slurm-route53"
             iam.CfnPolicy(
                 self.stack_scope,
                 "ParallelClusterSlurmRoute53Policies",
-                policy_name=policy_name,
+                policy_name=policy_name_prefix or "parallelcluster-slurm-route53",
                 policy_document=iam.PolicyDocument(
                     statements=[
                         iam.PolicyStatement(
