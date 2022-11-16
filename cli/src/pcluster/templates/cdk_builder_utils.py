@@ -260,9 +260,7 @@ def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str
         if iam_name_prefix:
             # Creating a Globally Unique Hash using Region, Type, Name and stack name
             resource_hash = (
-                hashlib.sha256((name + stack_name + iam_type + config.region).encode("utf-8"))
-                .hexdigest()[:12]
-                .capitalize()
+                hashlib.sha256((name + stack_name + iam_type + config.region).encode("utf-8")).hexdigest()[:12].upper()
             )
             full_resource_name = iam_name_prefix + name + "-" + resource_hash
         if iam_path:
@@ -494,7 +492,8 @@ class NodeIamResourcesBase(Construct):
         """Return a path to be associated with IAM roles and instance profiles."""
         if iam_path:
             return f"{iam_path}{Stack.of(self).stack_name}/"
-        return f"{IAM_ROLE_PATH}{Stack.of(self).stack_name}/"
+        else:
+            return f"{IAM_ROLE_PATH}{Stack.of(self).stack_name}/"
 
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
