@@ -105,14 +105,16 @@ def test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size)
 # for EFS
 
 
-def write_file_into_efs(region, vpc_stack, efs_ids, request, key_name, cfn_stacks_factory, mount_target_stack_factory):
+def write_file_into_efs(
+    region, vpc_stack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
+):
     """Write file stack contains an instance to write an empty file with random name into each of the efs in efs_ids."""
     write_file_template = Template()
     write_file_template.set_version("2010-09-09")
     write_file_template.set_description("Stack to write a file to the existing EFS")
 
     # Create mount targets so the instance can communicate with the file system
-    mount_target_stack_name = mount_target_stack_factory(efs_ids)
+    mount_target_stack_name = efs_mount_target_stack_factory(efs_ids)
 
     random_file_names = []
     write_file_user_data = ""

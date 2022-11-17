@@ -1814,7 +1814,7 @@ def efs_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
 
 
 @pytest.fixture(scope="class")
-def mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
+def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
     """
     EFS mount target stack.
 

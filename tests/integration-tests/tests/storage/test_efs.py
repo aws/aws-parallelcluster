@@ -69,7 +69,7 @@ def test_multiple_efs(
     region,
     scheduler,
     efs_stack_factory,
-    mount_target_stack_factory,
+    efs_mount_target_stack_factory,
     pcluster_config_reader,
     clusters_factory,
     vpc_stack,
@@ -94,10 +94,10 @@ def test_multiple_efs(
         num_existing_efs = 2
     # TODO: create an additional EFS with file system policy to prevent anonymous access
     existing_efs_ids = efs_stack_factory(num_existing_efs)
-    mount_target_stack_factory(existing_efs_ids)
+    efs_mount_target_stack_factory(existing_efs_ids)
     existing_efs_filenames.extend(
         write_file_into_efs(
-            region, vpc_stack, existing_efs_ids, request, key_name, cfn_stacks_factory, mount_target_stack_factory
+            region, vpc_stack, existing_efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
         )
     )
     for i in range(num_existing_efs):
