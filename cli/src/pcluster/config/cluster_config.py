@@ -354,6 +354,7 @@ class SharedEfs(Resource):
             EfsMountOptionsValidator,
             encryption_in_transit=self.encryption_in_transit,
             iam_authorization=self.iam_authorization,
+            name=self.name,
         )
 
 
