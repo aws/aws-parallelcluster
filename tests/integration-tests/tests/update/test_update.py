@@ -777,7 +777,7 @@ def test_dynamic_file_systems_update(
     request,
     snapshots_factory,
     efs_stack_factory,
-    mount_target_stack_factory,
+    efs_mount_target_stack_factory,
     vpc_stack,
     key_name,
     s3_bucket_factory,
@@ -816,7 +816,7 @@ def test_dynamic_file_systems_update(
         vpc_stack,
         region,
         efs_stack_factory,
-        mount_target_stack_factory,
+        efs_mount_target_stack_factory,
         fsx_factory,
         svm_factory,
         open_zfs_volume_factory,
@@ -949,7 +949,7 @@ def _create_shared_storages_resources(
     vpc_stack,
     region,
     efs_stack_factory,
-    mount_target_stack_factory,
+    efs_mount_target_stack_factory,
     fsx_factory,
     svm_factory,
     open_zfs_volume_factory,
@@ -961,7 +961,7 @@ def _create_shared_storages_resources(
 
     # create 1 efs
     existing_efs_ids = efs_stack_factory(1)
-    mount_target_stack_factory(existing_efs_ids)
+    efs_mount_target_stack_factory(existing_efs_ids)
     existing_efs_id = existing_efs_ids[0]
 
     # create 1 fsx lustre
