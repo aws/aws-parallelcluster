@@ -30,7 +30,8 @@ SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.s
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
-    "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"]},
+    # TODO: use marketplace AMI if possible
+    "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"], "includeDeprecated": True},
     "ubuntu1804": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
@@ -95,6 +96,7 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", 
             Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
             + additional_filters,
             Owners=AMI_TYPE_DICT.get(ami_type).get(os).get("owners"),
+            IncludeDeprecated=AMI_TYPE_DICT.get(ami_type).get(os).get("includeDeprecated", False),
         )
         # Sort on Creation date Desc
         amis = sorted(response.get("Images", []), key=lambda x: x["CreationDate"], reverse=True)
