@@ -331,7 +331,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
 
 
 @pytest.mark.parametrize(
-    "compute_resource_name, instance_types_info, efa_enabled, expected_message",
+    "compute_resource_name, instance_types_info, efa_enabled, multiaz_queue, expected_message",
     [
         # Instance Types should have the same EFA support status if EFA is enabled
         (
@@ -342,6 +342,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
                 "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
             },
             True,
+            False,
             "Instance type(s) (t2.micro,t3.micro) do not support EFA and cannot be launched when EFA is enabled in "
             "Compute Resource: TestComputeResource.",
         ),
@@ -352,6 +353,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
                 "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
             },
             True,
+            False,
             "",
         ),
         # If EFA is NOT enabled and one or more instance types supports EFA, a WARNING message should be printed
@@ -363,11 +365,25 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
                 "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
             },
             False,
+            False,
             "The EC2 instance type(s) selected (c5n.18xlarge) for the Compute Resource TestComputeResource support "
             "enhanced networking capabilities using Elastic Fabric Adapter (EFA). EFA enables you to run applications "
             "requiring high levels of inter-node communications at scale on AWS at no additional charge. You can "
             "update the cluster's configuration to enable EFA ("
             "https://docs.aws.amazon.com/parallelcluster/latest/ug/efa-v3.html).",
+        ),
+        # If EFA is NOT enabled and one or more instance types supports EFA, but MultiAZ is defined in the queue
+        # no WARNING message should be printed
+        (
+            "TestComputeResource",
+            {
+                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
+                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
+                "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
+            },
+            False,
+            True,
+            "",
         ),
         # If EFA is enabled and NONE of the instance types supports EFA, an ERROR message should be printed
         (
@@ -377,6 +393,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
                 "t2.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
             },
             True,
+            False,
             "Instance type(s) (t2.micro,t3.micro) do not support EFA and cannot be launched when EFA is enabled in "
             "Compute Resource: TestComputeResource.",
         ),
@@ -386,9 +403,12 @@ def test_instances_efa_validator(
     compute_resource_name,
     instance_types_info,
     efa_enabled,
+    multiaz_queue,
     expected_message,
 ):
-    actual_failures = InstancesEFAValidator().execute(compute_resource_name, instance_types_info, efa_enabled)
+    actual_failures = InstancesEFAValidator().execute(
+        compute_resource_name, instance_types_info, efa_enabled, multiaz_queue
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 

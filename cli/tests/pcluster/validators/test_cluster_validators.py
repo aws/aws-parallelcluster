@@ -208,22 +208,32 @@ def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_ty
 
 
 @pytest.mark.parametrize(
-    "instance_type, efa_enabled, gdr_support, efa_supported, expected_message",
+    "instance_type, efa_enabled, gdr_support, efa_supported, multiaz_enabled, expected_message",
     [
         # EFAGDR without EFA
-        ("c5n.18xlarge", False, True, True, "GDR Support can be used only if EFA is enabled"),
+        ("c5n.18xlarge", False, True, True, False, "GDR Support can be used only if EFA is enabled"),
         # EFAGDR with EFA
-        ("c5n.18xlarge", True, True, True, None),
+        ("c5n.18xlarge", True, True, True, False, None),
         # EFA without EFAGDR
-        ("c5n.18xlarge", True, False, True, None),
+        ("c5n.18xlarge", True, False, True, False, None),
         # Unsupported instance type
-        ("t2.large", True, False, False, "does not support EFA"),
-        ("t2.large", False, False, False, None),
+        ("t2.large", True, False, False, False, "does not support EFA"),
+        ("t2.large", False, False, False, False, None),
         # EFA not enabled for instance type that supports it
-        ("c5n.18xlarge", False, False, True, "supports enhanced networking capabilities using Elastic Fabric Adapter"),
+        (
+            "c5n.18xlarge",
+            False,
+            False,
+            True,
+            False,
+            "supports enhanced networking capabilities using Elastic Fabric Adapter",
+        ),
+        ("c5n.18xlarge", False, False, True, True, None),
     ],
 )
-def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
+def test_efa_validator(
+    mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, multiaz_enabled, expected_message
+):
     mock_aws_api(mocker)
     get_instance_type_info_mock = mocker.patch(
         "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
@@ -236,7 +246,7 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
         ),
     )
 
-    actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support)
+    actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support, multiaz_enabled)
     assert_failure_messages(actual_failures, expected_message)
     if efa_enabled:
         get_instance_type_info_mock.assert_called_with(instance_type)
