@@ -26,8 +26,8 @@ from tests.pcluster.validators.utils import assert_failure_messages
         (
             False,
             True,
-            "EFS IAM authorization cannot be enabled when encryption in-transit is disabled."
-            "Please either disable IAM authorization or enable encryption in-transit for file system"
+            "EFS IAM authorization cannot be enabled when encryption in-transit is disabled. "
+            "Please either disable IAM authorization or enable encryption in-transit for file system "
             "<name-of-the-file-system>",
         ),
         (

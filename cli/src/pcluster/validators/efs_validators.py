@@ -21,7 +21,7 @@ class EfsMountOptionsValidator(Validator):
     def _validate(self, encryption_in_transit: bool, iam_authorization: bool, name: str):
         if iam_authorization and not encryption_in_transit:
             self._add_failure(
-                "EFS IAM authorization cannot be enabled when encryption in-transit is disabled."
+                "EFS IAM authorization cannot be enabled when encryption in-transit is disabled. "
                 "Please either disable IAM authorization or enable encryption in-transit for file system " + name,
                 FailureLevel.ERROR,
             )
