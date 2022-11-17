@@ -114,7 +114,7 @@ class SlurmConstruct(Construct):
 
     def _add_policies_to_compute_node_role(self, node_name, role):
         suffix = create_hash_suffix(node_name)
-        _, policy_name_prefix = add_cluster_iam_resource_prefix(
+        _, policy_name = add_cluster_iam_resource_prefix(
             self.config.cluster_name, self.config, "parallelcluster-slurm-compute", iam_type="AWS::IAM::Policy"
         )
         policy_statements = [
@@ -137,7 +137,7 @@ class SlurmConstruct(Construct):
         iam.CfnPolicy(
             self.stack_scope,
             f"SlurmPolicies{suffix}",
-            policy_name=policy_name_prefix or "parallelcluster-slurm-compute",
+            policy_name=policy_name or "parallelcluster-slurm-compute",
             policy_document=iam.PolicyDocument(
                 statements=[iam.PolicyStatement(**statement) for statement in policy_statements]
             ),
@@ -147,7 +147,7 @@ class SlurmConstruct(Construct):
     def _add_policies_to_head_node_role(self, node_name, role):
         suffix = create_hash_suffix(node_name)
 
-        _, policy_name_prefix = add_cluster_iam_resource_prefix(
+        _, policy_name = add_cluster_iam_resource_prefix(
             self.config.cluster_name, self.config, "parallelcluster-slurm-head-node", iam_type="AWS::IAM::Policy"
         )
         policy_statements = [
@@ -169,7 +169,7 @@ class SlurmConstruct(Construct):
         iam.CfnPolicy(
             self.stack_scope,
             f"SlurmPolicies{suffix}",
-            policy_name=policy_name_prefix or "parallelcluster-slurm-head-node",
+            policy_name=policy_name or "parallelcluster-slurm-head-node",
             policy_document=iam.PolicyDocument(
                 statements=[iam.PolicyStatement(**statement) for statement in policy_statements]
             ),
@@ -213,13 +213,13 @@ class SlurmConstruct(Construct):
 
         # If Headnode InstanceRole is created by ParallelCluster, add Route53 policy for InstanceRole
         if self.managed_head_node_instance_role:
-            _, policy_name_prefix = add_cluster_iam_resource_prefix(
+            _, policy_name = add_cluster_iam_resource_prefix(
                 self.config.cluster_name, self.config, "parallelcluster-slurm-route53", iam_type="AWS::IAM::Policy"
             )
             iam.CfnPolicy(
                 self.stack_scope,
                 "ParallelClusterSlurmRoute53Policies",
-                policy_name=policy_name_prefix or "parallelcluster-slurm-route53",
+                policy_name=policy_name or "parallelcluster-slurm-route53",
                 policy_document=iam.PolicyDocument(
                     statements=[
                         iam.PolicyStatement(

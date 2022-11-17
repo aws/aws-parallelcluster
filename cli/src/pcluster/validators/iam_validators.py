@@ -13,7 +13,7 @@ import re
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.iam import IamClient
-from pcluster.constants import IAM_NAME_PREFIX_LENGTH_LIMIT
+from pcluster.constants import IAM_NAME_PREFIX_LENGTH_LIMIT, IAM_PATH_LENGTH_LIMIT
 from pcluster.utils import get_resource_name_from_resource_arn, policy_name_to_arn, split_resource_prefix
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -80,10 +80,16 @@ class IamResourcePrefixValidator(Validator):
                 f"Please refer to our official documentation for further details.",
                 FailureLevel.ERROR,
             )
-        _, iam_name_prefix = split_resource_prefix(resource_prefix)
+        iam_path, iam_name_prefix = split_resource_prefix(resource_prefix)
         if iam_name_prefix and (len(iam_name_prefix) > IAM_NAME_PREFIX_LENGTH_LIMIT):
             self._add_failure(
-                f"Length of Name Prefix {iam_name_prefix} should be upto {IAM_NAME_PREFIX_LENGTH_LIMIT} characters. "
+                f"Length of Name Prefix {iam_name_prefix} must be less than {IAM_NAME_PREFIX_LENGTH_LIMIT} characters. "
+                f"Please refer to our official documentation for further details.",
+                FailureLevel.ERROR,
+            )
+        if iam_path and (len(iam_path) > IAM_PATH_LENGTH_LIMIT):
+            self._add_failure(
+                f"Length of Path {iam_path} must be less than {IAM_PATH_LENGTH_LIMIT} characters. "
                 f"Please refer to our official documentation for further details.",
                 FailureLevel.ERROR,
             )

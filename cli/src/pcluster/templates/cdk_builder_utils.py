@@ -274,7 +274,7 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
     role_path, role_name = add_cluster_iam_resource_prefix(
         scope.config.cluster_name, scope.config, name=f"{function_id}Role", iam_type="AWS::IAM::Role"
     )
-    _, policy_name_prefix = add_cluster_iam_resource_prefix(
+    _, policy_name = add_cluster_iam_resource_prefix(
         scope.config.cluster_name, scope.config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
     )
 
@@ -289,7 +289,7 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
         policies=[
             iam.CfnRole.PolicyProperty(
                 policy_document=iam.PolicyDocument(statements=statements),
-                policy_name=policy_name_prefix or "LambdaPolicy",
+                policy_name=policy_name or "LambdaPolicy",
             ),
         ],
         managed_policy_arns=[Fn.sub(LAMBDA_VPC_ACCESS_MANAGED_POLICY)] if has_vpc_config else None,
@@ -381,14 +381,13 @@ class NodeIamResourcesBase(Construct):
         )
 
     def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
-        _, policy_name_prefix = add_cluster_iam_resource_prefix(
+        _, policy_name = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, "parallelcluster", iam_type="AWS::IAM::Policy"
         )
-        policy_name = policy_name_prefix or "parallelcluster"
         iam.CfnPolicy(
             Stack.of(self),
             name,
-            policy_name=policy_name,
+            policy_name=policy_name or "parallelcluster",
             policy_document=iam.PolicyDocument(statements=self._build_policy()),
             roles=[role_ref],
         )
@@ -442,7 +441,7 @@ class NodeIamResourcesBase(Construct):
                     read_write_s3_resources.append(arn)
                 else:
                     read_only_s3_resources.append(arn)
-        _, policy_name_prefix = add_cluster_iam_resource_prefix(
+        _, policy_name = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, "S3Access", iam_type="AWS::IAM::Policy"
         )
 
@@ -451,7 +450,7 @@ class NodeIamResourcesBase(Construct):
             name,
             policy_document=iam.PolicyDocument(statements=[]),
             roles=[role_ref],
-            policy_name=policy_name_prefix or "S3Access",
+            policy_name=policy_name or "S3Access",
         )
 
         if read_only_s3_resources:
