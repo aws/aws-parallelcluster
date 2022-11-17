@@ -72,17 +72,33 @@ def test_ec2_subnet_id_validator(mocker):
             None,
         ),
         (
-            "subnets-in-common-az-queue",
+            "subnets-in-common-az-queue-1",
             ["subnet-00000000", "subnet-11111111"],
             {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
-            "SubnetIds specified in queue subnets-in-common-az-queue contains multiple subnets in the same AZ. "
+            "SubnetIds specified in queue subnets-in-common-az-queue-1 contains multiple subnets in the same AZs: "
+            "us-east-1a: subnet-00000000, subnet-11111111. "
+            "Please make sure all subnets in the queue are in different AZs.",
+        ),
+        (
+            "subnets-in-common-az-queue-2",
+            ["subnet-1", "subnet-2", "subnet-3", "subnet-4", "subnet-5"],
+            {
+                "subnet-1": "us-east-1a",
+                "subnet-2": "us-east-1a",
+                "subnet-3": "us-east-1b",
+                "subnet-4": "us-east-1b",
+                "subnet-5": "us-east-1b",
+            },
+            "SubnetIds specified in queue subnets-in-common-az-queue-2 contains multiple subnets in the same AZs: "
+            "us-east-1a: subnet-1, subnet-2; us-east-1b: subnet-3, subnet-4, subnet-5. "
             "Please make sure all subnets in the queue are in different AZs.",
         ),
         (
             "duplicate-subnets-queue",
-            ["subnet-00000000", "subnet-00000000"],
-            {"subnet-00000000": "us-east-1a"},
-            "SubnetIds specified in queue duplicate-subnets-queue contains duplicate subnet IDs.",
+            ["subnet-00000000", "subnet-00000000", "subnet-11111111", "subnet-11111111", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1b"},
+            "The following subnet ids are specified multiple times in queue duplicate-subnets-queue: "
+            "subnet-00000000, subnet-11111111.",
         ),
     ],
 )

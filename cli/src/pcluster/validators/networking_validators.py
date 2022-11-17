@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import Counter
 from typing import List, Union
 
 from pcluster.aws.aws_api import AWSApi
@@ -76,24 +77,43 @@ class QueueSubnetsValidator(Validator):
 
         # Test if there are duplicate IDs in subnet_ids
         if len(set(subnet_ids)) < len(subnet_ids):
+            duplicate_ids = [key for key, value in Counter(subnet_ids).items() if value > 1]
             self._add_failure(
-                "SubnetIds specified in queue {0} contains duplicate subnet IDs.".format(queue_name),
+                "The following subnet ids are specified multiple times "
+                "in queue {0}: {1}.".format(
+                    queue_name,
+                    ", ".join(duplicate_ids),
+                ),
                 FailureLevel.ERROR,
             )
 
         # Test if the subnets are all in different AZs
-        try:
-            az_set = {subnet_id_az_mapping[subnet_id] for subnet_id in subnet_ids}
+        else:
+            try:
+                az_set = {subnet_id_az_mapping[subnet_id] for subnet_id in subnet_ids}
+                if len(az_set) < len(subnet_ids):
 
-            if len(az_set) < len(subnet_ids):
-                self._add_failure(
-                    "SubnetIds specified in queue {0} contains multiple subnets in the same AZ. "
-                    "Please make sure all subnets in the queue are in different AZs.".format(queue_name),
-                    FailureLevel.ERROR,
-                )
+                    # Find the AZs with multiple subnets
+                    azs_with_multiple_subnets = {}
+                    for _az in az_set:
+                        subnets = [subnet_id for subnet_id in subnet_ids if subnet_id_az_mapping[subnet_id] == _az]
+                        if len(subnets) > 1:
+                            azs_with_multiple_subnets[_az] = subnets
 
-        except AWSClientError as e:
-            self._add_failure(str(e), FailureLevel.ERROR)
+                    self._add_failure(
+                        "SubnetIds specified in queue {0} contains multiple subnets in the same AZs: {1}. "
+                        "Please make sure all subnets in the queue are in different AZs.".format(
+                            queue_name,
+                            "; ".join(
+                                f"{az}: {', '.join(subnets)}"
+                                for az, subnets in sorted(azs_with_multiple_subnets.items())
+                            ),
+                        ),
+                        FailureLevel.ERROR,
+                    )
+
+            except AWSClientError as e:
+                self._add_failure(str(e), FailureLevel.ERROR)
 
 
 class ElasticIpValidator(Validator):
