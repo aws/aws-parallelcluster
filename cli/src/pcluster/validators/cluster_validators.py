@@ -303,12 +303,12 @@ class MaxCountValidator(Validator):
 class EfaValidator(Validator):
     """Check if EFA and EFA GDR are supported features in the given instance type."""
 
-    def _validate(self, instance_type, efa_enabled, gdr_support):
+    def _validate(self, instance_type, efa_enabled, gdr_support, multiaz_enabled):
 
         instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
         if efa_enabled and not instance_type_supports_efa:
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
-        if instance_type_supports_efa and not efa_enabled:
+        if instance_type_supports_efa and not efa_enabled and not multiaz_enabled:
             self._add_failure(
                 f"The EC2 instance selected ({instance_type}) supports enhanced networking capabilities using "
                 "Elastic Fabric Adapter (EFA). EFA enables you to run applications requiring high levels of "
