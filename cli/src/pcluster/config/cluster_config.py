@@ -1856,12 +1856,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         super()._register_validators(context)
         self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
-            EfaValidator,
-            instance_type=self.instance_type,
-            efa_enabled=self.efa.enabled,
-            gdr_support=self.efa.gdr_support,
-        )
-        self._register_validator(
             SchedulableMemoryValidator,
             schedulable_memory=self.schedulable_memory,
             ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
@@ -2014,6 +2008,15 @@ class _CommonQueue(BaseQueue):
                 compute_resource_name=compute_resource.name,
                 compute_resource_efa_enabled=compute_resource.efa.enabled,
             )
+            # SlurmFlexibleComputeResource are managed in SlurmClusterConfig since they have a different validator
+            if isinstance(compute_resource, SlurmComputeResource):
+                self._register_validator(
+                    EfaValidator,
+                    instance_type=compute_resource.instance_type,
+                    efa_enabled=compute_resource.efa.enabled,
+                    gdr_support=compute_resource.efa.gdr_support,
+                    multiaz_enabled=self.multi_az_enabled,
+                )
 
 
 class AllocationStrategy(Enum):
@@ -2808,6 +2811,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                 if isinstance(compute_resource, SlurmFlexibleComputeResource):
                     validator_args = dict(
                         queue_name=queue.name,
+                        multiaz_queue=queue.multi_az_enabled,
                         capacity_type=queue.capacity_type,
                         allocation_strategy=queue.allocation_strategy,
                         compute_resource_name=compute_resource.name,
