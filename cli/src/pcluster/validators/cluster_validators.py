@@ -323,12 +323,15 @@ class EfaValidator(Validator):
 class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
-    def _validate(self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool):
-        if efa_enabled and placement_group_disabled:
+    def _validate(
+        self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool, multi_az_enabled: bool
+    ):
+        # if multi_az is enabled suggestions about PlacementGroups will be suppressed
+        if efa_enabled and placement_group_disabled and not multi_az_enabled:
             self._add_failure(
                 "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
             )
-        elif efa_enabled and placement_group_key is None:
+        elif efa_enabled and placement_group_key is None and not multi_az_enabled:
             self._add_failure(
                 "The placement group for EFA-enabled compute resources must be explicit. "
                 "You may see better performance using a placement group, but if you don't wish to use one please add "
@@ -378,6 +381,23 @@ class EfaSecurityGroupValidator(Validator):
                     if group.get("GroupId") == security_group_id:
                         return True
         return False
+
+
+class EfaMultiAzValidator(Validator):
+    """Validate MultiAZ if EFA is enabled."""
+
+    def _validate(
+        self, queue_name: str, multi_az_enabled: bool, compute_resource_name: str, compute_resource_efa_enabled: bool
+    ):
+        if multi_az_enabled and compute_resource_efa_enabled:
+            message = (
+                f"Elastic Fabric Adapter (EFA) was enabled on ComputeResource '{compute_resource_name}' in Queue "
+                f"'{queue_name}' but enhanced networking cannot be leveraged across multiple AZs. "
+            )
+            self._add_failure(
+                message,
+                FailureLevel.ERROR,
+            )
 
 
 # --------------- Storage validators --------------- #
