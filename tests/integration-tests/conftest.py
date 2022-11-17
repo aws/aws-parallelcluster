@@ -54,6 +54,7 @@ from retrying import retry
 from troposphere import Ref, Sub, Template, ec2, resourcegroups
 from troposphere.ec2 import PlacementGroup
 from troposphere.efs import FileSystem as EFSFileSystem
+from troposphere.efs import MountTarget
 from troposphere.fsx import (
     ClientConfigurations,
     FileSystem,
@@ -540,7 +541,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_p
     The config can be written by using Jinja2 template engine.
     The current renderer already replaces placeholders for current keys:
         {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
-        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
+        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}, {{ default_vpc_security_group_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
     Also sanity_check is set to true by default unless explicitly set in config.
@@ -1810,3 +1811,87 @@ def efs_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
     if not request.config.getoption("no_delete"):
         for stack in created_stacks:
             cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.fixture(scope="class")
+def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
+    """
+    EFS mount target stack.
+
+    Create mount targets in all availability zones of vpc_stack
+    """
+    created_stacks = []
+
+    def create_mount_targets(efs_ids):
+        template = Template()
+        template.set_version("2010-09-09")
+        template.set_description("Mount targets stack")
+
+        # Create a security group that allows all communication between the mount targets and instances in the VPC
+        vpc_id = vpc_stack.cfn_outputs["VpcId"]
+        security_group = template.add_resource(
+            ec2.SecurityGroup(
+                "SecurityGroupResource",
+                GroupDescription="custom security group for EFS mount targets",
+                VpcId=vpc_id,
+            )
+        )
+        # Allow inbound connection though NFS port within the VPC
+        cidr_block_association_set = boto3.client("ec2").describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0][
+            "CidrBlockAssociationSet"
+        ]
+        for index, cidr_block_association in enumerate(cidr_block_association_set):
+            vpc_cidr = cidr_block_association["CidrBlock"]
+            template.add_resource(
+                ec2.SecurityGroupIngress(
+                    f"SecurityGroupIngressResource{index}",
+                    IpProtocol="-1",
+                    FromPort=2049,
+                    ToPort=2049,
+                    CidrIp=vpc_cidr,
+                    GroupId=Ref(security_group),
+                )
+            )
+
+        # Create mount targets
+        subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
+        _add_mount_targets(subnet_ids, efs_ids, security_group, template)
+
+        stack_name = generate_stack_name("integ-tests-mount-targets", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(name=stack_name, region=region, template=template.to_json())
+        cfn_stacks_factory.create_stack(stack)
+        created_stacks.append(stack)
+        return stack.name
+
+    yield create_mount_targets
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+def _add_mount_targets(subnet_ids, efs_ids, security_group, template):
+    subnet_response = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
+    for efs_index, efs_id in enumerate(efs_ids):
+        availability_zones_with_mount_target = set()
+        for mount_target in boto3.client("efs").describe_mount_targets(FileSystemId=efs_id)["MountTargets"]:
+            availability_zones_with_mount_target.add(mount_target["AvailabilityZoneName"])
+        for subnet_index, subnet in enumerate(subnet_response):
+            if subnet["AvailabilityZone"] not in availability_zones_with_mount_target:
+                # One and only one mount target should be created in each availability zone.
+                depends_on_arg = {}
+                resources = list(template.resources.keys())
+                max_concurrency = 10
+                if len(resources) >= max_concurrency:
+                    # Create at most 10 resources in parallel.
+                    depends_on_arg = {"DependsOn": [resources[-max_concurrency]]}
+                template.add_resource(
+                    MountTarget(
+                        f"MountTargetResourceEfs{efs_index}Subnet{subnet_index}",
+                        FileSystemId=efs_id,
+                        SubnetId=subnet["SubnetId"],
+                        SecurityGroups=[Ref(security_group)],
+                        **depends_on_arg,
+                    )
+                )
+                availability_zones_with_mount_target.add(subnet["AvailabilityZone"])

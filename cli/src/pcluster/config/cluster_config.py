@@ -31,6 +31,7 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE,
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
@@ -76,6 +77,7 @@ from pcluster.validators.cluster_validators import (
     DeletionPolicyValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
+    EfaMultiAzValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -159,6 +161,7 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
+from pcluster.validators.monitoring_validators import ComputeConsoleLoggingValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     SecurityGroupsValidator,
@@ -622,6 +625,11 @@ class _QueueNetworking(_BaseNetworking):
         self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
 
+    @property
+    def subnet_id_az_mapping(self):
+        """Map queue subnet ids to availability zones."""
+        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
 
 class SlurmQueueNetworking(_QueueNetworking):
     """Represent the networking configuration for the slurm Queue."""
@@ -716,11 +724,26 @@ class Dashboards(Resource):
 class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
-    def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
+    def __init__(
+        self,
+        detailed_monitoring: bool = None,
+        logs: Logs = None,
+        dashboards: Dashboards = None,
+        compute_console_logging_enabled: bool = None,
+        compute_console_logging_max_sample_size: int = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
+        self.compute_console_logging_enabled = Resource.init_param(compute_console_logging_enabled, default=True)
+        self.compute_console_logging_max_sample_size = Resource.init_param(
+            compute_console_logging_max_sample_size, default=DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE
+        )
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(ComputeConsoleLoggingValidator, monitoring=self)
 
 
 # ---------------------- Others ---------------------- #
@@ -1907,6 +1930,7 @@ class _CommonQueue(BaseQueue):
         self.capacity_reservation_target = capacity_reservation_target
         self.compute_resources = compute_resources
         self.networking = networking
+        self.__az_list = None
 
     @property
     def instance_role(self):
@@ -1925,6 +1949,24 @@ class _CommonQueue(BaseQueue):
             return self.image.custom_ami
         else:
             return None
+
+    @property
+    def az_list(self):
+        """Return the list of unique AvailabilityZoneID associated to the subnets defined in the Networking section."""
+        # initialize the hidden property just once
+        if self.__az_list is None:
+            az_set = set()
+            for _key, val in self.networking.subnet_id_az_mapping.items():
+                az_set.add(val)
+
+            self.__az_list = list(az_set)
+
+        return self.__az_list
+
+    @property
+    def multi_az_enabled(self):
+        """Return true if more than one AZ are defined in the queue Networking section."""
+        return len(self.az_list) > 1
 
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []
@@ -1961,6 +2003,17 @@ class _CommonQueue(BaseQueue):
             if not compute_resource.networking.placement_group.implied
             else self.networking.placement_group
         )
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        for compute_resource in self.compute_resources:
+            self._register_validator(
+                EfaMultiAzValidator,
+                queue_name=self.name,
+                multi_az_enabled=self.multi_az_enabled,
+                compute_resource_name=compute_resource.name,
+                compute_resource_efa_enabled=compute_resource.efa.enabled,
+            )
 
 
 class AllocationStrategy(Enum):
@@ -2032,6 +2085,7 @@ class SlurmQueue(_CommonQueue):
                     compute_resource
                 ).enabled
                 is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
@@ -2166,6 +2220,7 @@ class SchedulerPluginQueue(_CommonQueue):
                     compute_resource
                 ).enabled
                 is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
 
     @property
