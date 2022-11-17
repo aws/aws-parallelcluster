@@ -664,11 +664,28 @@ class NumberOfStorageValidator(Validator):
             )
 
 
+class ManagedFsxMultiAzValidator(Validator):
+    """
+    Managed FSx Storage Vs Multiple Subnets validator.
+
+    Validate if managed storage of type FSx is set when using multiple subnets in queues configuration.
+    """
+
+    def _validate(self, queues, new_storage_count):
+        if any(len(queue.networking.subnet_ids) > 1 for queue in queues) and new_storage_count.get("fsx") > 0:
+            self._add_failure(
+                "Multiple subnets configuration does not support FSx 'managed' storage. Found {0} 'managed' "
+                "FSx storage. Please make sure to provide an existing shared storage, properly configured to work "
+                "across the target subnets.".format(new_storage_count.get("fsx")),
+                FailureLevel.ERROR,
+            )
+
+
 class EfsIdValidator(Validator):  # TODO add tests
     """
     EFS id validator.
 
-    Validate if there are existing mount target in the head node availability zone
+    Validate if there are existing mount target in the cluster (head and computes) availability zone
     """
 
     def _validate(self, efs_id, avail_zones_mapping: dict, are_all_security_groups_customized):
@@ -689,6 +706,14 @@ class EfsIdValidator(Validator):  # TODO add tests
                     )
                 if not are_all_security_groups_customized:
                     self._check_cidrs_cover_subnets(head_node_target_id, avail_zone, sg_ids, efs_id, subnets)
+            else:
+                # TODO: handle EFS OneZone case
+                if AWSApi.instance().efs.is_efs_standard(efs_id):
+                    self._add_failure(
+                        "There is no existing Mount Target in the Availability Zone {0} for EFS {1}. "
+                        "Please create an EFS Mount Target for the Availability Zone {0}.".format(avail_zone, efs_id),
+                        FailureLevel.ERROR,
+                    )
 
     def _check_subnet_access(self, security_groups_ids, subnet_cidr, access_type):
         permission = "IpPermissions" if access_type == "in" else "IpPermissionsEgress"
@@ -1262,8 +1287,10 @@ class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
 
     def _capacity_reservation(self, cr_target):
         return {
-            "CapacityReservationTarget": {
-                "CapacityReservationId": cr_target.capacity_reservation_id,
-                "CapacityReservationResourceGroupArn": cr_target.capacity_reservation_resource_group_arn,
-            }
+            "CapacityReservationTarget": remove_none_values(
+                {
+                    "CapacityReservationId": cr_target.capacity_reservation_id,
+                    "CapacityReservationResourceGroupArn": cr_target.capacity_reservation_resource_group_arn,
+                }
+            )
         }

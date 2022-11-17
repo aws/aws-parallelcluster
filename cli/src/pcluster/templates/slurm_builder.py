@@ -261,6 +261,7 @@ class SlurmConstruct(Construct):
                         )
                     ),
                 ],
+                has_vpc_config=self.config.lambda_functions_vpc_config,
             )
 
         cleanup_route53_lambda = PclusterLambdaConstruct(

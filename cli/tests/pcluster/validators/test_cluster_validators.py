@@ -19,6 +19,7 @@ from pcluster.config.cluster_config import (
     RootVolume,
     SlurmComputeResource,
     SlurmQueue,
+    SlurmQueueNetworking,
     Tag,
 )
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
@@ -44,6 +45,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
     NameValidator,
@@ -1271,9 +1273,42 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
 
 
 @pytest.mark.parametrize(
-    "avail_zones_mapping, cluster_subnet_cidr, are_all_security_groups_customized, security_groups, expected_message, "
-    "failure_level",
+    "avail_zones_mapping, cluster_subnet_cidr, are_all_security_groups_customized, security_groups, file_system_info, "
+    "failure_level, expected_message",
     [
+        (
+            {"dummy-az-3": {"subnet-3"}},
+            "",
+            False,
+            {},
+            {
+                "FileSystems": [
+                    {
+                        "FileSystemId": "fs-084a3b173fb101f9b",
+                    }
+                ]
+            },
+            FailureLevel.ERROR,
+            "There is no existing Mount Target in the Availability Zone dummy-az-3 for EFS dummy-efs-1. "
+            "Please create an EFS Mount Target for the Availability Zone dummy-az-3.",
+        ),
+        (
+            {"dummy-az-3": {"subnet-3"}},
+            "",
+            False,
+            {},
+            {
+                "FileSystems": [
+                    {
+                        "FileSystemId": "fs-084a3b173fb101f9b",
+                        "AvailabilityZoneName": "eu-west-1c",
+                        "AvailabilityZoneId": "euw1-az3",
+                    }
+                ]
+            },
+            None,
+            "",
+        ),
         (
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
             "0.0.0.0/16",
@@ -1304,6 +1339,7 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                     "VpcId": "vpc-12345678",
                 },
             ],
+            {},
             None,
             None,
         ),
@@ -1337,10 +1373,11 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                     "VpcId": "vpc-12345678",
                 },
             ],
+            {},
+            FailureLevel.WARNING,
             "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
             "but it does not have a security group that allows inbound and outbound rules to allow traffic of subnet "
             "subnet-2. Please modify the Mount Target's security group, to allow traffic on subnet.",
-            FailureLevel.WARNING,
         ),
         (
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
@@ -1372,6 +1409,7 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                     "VpcId": "vpc-12345678",
                 },
             ],
+            {},
             None,
             None,
         ),
@@ -1405,10 +1443,11 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                     "VpcId": "vpc-12345678",
                 },
             ],
+            {},
+            FailureLevel.ERROR,
             "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
             "but it does not have a security group that allows inbound and outbound rules to support NFS. Please "
             "modify the Mount Target's security group, to allow traffic on port 2049.",
-            FailureLevel.ERROR,
         ),
         (
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
@@ -1440,10 +1479,11 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                     "VpcId": "vpc-12345678",
                 },
             ],
+            {},
+            FailureLevel.WARNING,
             "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
             "but it does not have a security group that allows inbound and outbound rules to allow traffic of subnet "
             "subnet-2. Please modify the Mount Target's security group, to allow traffic on subnet.",
-            FailureLevel.WARNING,
         ),
     ],
 )
@@ -1454,16 +1494,194 @@ def test_efs_id_validator(
     are_all_security_groups_customized,
     security_groups,
     cluster_subnet_cidr,
-    expected_message,
+    file_system_info,
     failure_level,
+    expected_message,
 ):
     mock_aws_api(mocker)
     efs_id = "dummy-efs-1"
 
+    mocker.patch("pcluster.aws.efs.EfsClient.describe_file_system", return_value=file_system_info)
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_cidr", return_value=cluster_subnet_cidr)
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_security_groups", return_value=security_groups)
 
     actual_failures = EfsIdValidator().execute(efs_id, avail_zones_mapping, are_all_security_groups_customized)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "queues, new_storage_count, failure_level, expected_message",
+    [
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 0, "raid": 1},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 1, "fsx": 1, "raid": 1},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 1, "fsx": 0, "raid": 0},
+            None,
+            "",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 0, "fsx": 1, "raid": 0},
+            FailureLevel.ERROR,
+            "Multiple subnets configuration does not support FSx 'managed' storage. Found 1 'managed' FSx storage. "
+            "Please make sure to provide an existing shared storage, "
+            "properly configured to work across the target subnets.",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 1, "fsx": 3, "raid": 0},
+            FailureLevel.ERROR,
+            "Multiple subnets configuration does not support FSx 'managed' storage. "
+            "Found 3 'managed' FSx storage. Please make sure to provide "
+            "an existing shared storage, properly configured to work across the target subnets.",
+        ),
+    ],
+)
+def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failure_level, expected_message):
+    actual_failures = ManagedFsxMultiAzValidator().execute(queues, new_storage_count)
     assert_failure_messages(actual_failures, expected_message)
     assert_failure_level(actual_failures, failure_level)
 
@@ -1623,7 +1841,6 @@ class TestDictLaunchTemplateBuilder:
                 SlurmQueue(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
-                        capacity_reservation_id="queue_cr_id",
                         capacity_reservation_resource_group_arn="queue_cr_rg_arn",
                     ),
                     compute_resources=[],
@@ -1633,13 +1850,11 @@ class TestDictLaunchTemplateBuilder:
                     name="compute1",
                     instance_type="t2.medium",
                     capacity_reservation_target=CapacityReservationTarget(
-                        capacity_reservation_id="comp_res_cr_id",
                         capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
                     ),
                 ),
                 {
                     "CapacityReservationTarget": {
-                        "CapacityReservationId": "comp_res_cr_id",
                         "CapacityReservationResourceGroupArn": "comp_res_cr_rg_arn",
                     }
                 },
@@ -1650,7 +1865,6 @@ class TestDictLaunchTemplateBuilder:
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_id="queue_cr_id",
-                        capacity_reservation_resource_group_arn="queue_cr_rg_arn",
                     ),
                     compute_resources=[],
                     networking=None,
@@ -1662,7 +1876,6 @@ class TestDictLaunchTemplateBuilder:
                 {
                     "CapacityReservationTarget": {
                         "CapacityReservationId": "queue_cr_id",
-                        "CapacityReservationResourceGroupArn": "queue_cr_rg_arn",
                     }
                 },
                 id="test with only queue capacity reservation",

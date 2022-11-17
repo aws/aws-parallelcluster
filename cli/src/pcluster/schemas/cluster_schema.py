@@ -125,7 +125,12 @@ from pcluster.constants import (
     SUPPORTED_OSES,
 )
 from pcluster.models.s3_bucket import parse_bucket_url
-from pcluster.schemas.common_schema import AdditionalIamPolicySchema, BaseDevSettingsSchema, BaseSchema
+from pcluster.schemas.common_schema import (
+    AdditionalIamPolicySchema,
+    BaseDevSettingsSchema,
+    BaseSchema,
+    DeploymentSettingsSchema,
+)
 from pcluster.schemas.common_schema import ImdsSchema as TopLevelImdsSchema
 from pcluster.schemas.common_schema import TagSchema, get_field_validator, validate_no_reserved_tag
 from pcluster.utils import yaml_load
@@ -830,6 +835,8 @@ class ClusterIamSchema(BaseSchema):
     permissions_boundary = fields.Str(
         metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
     )
+
+    resource_prefix = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1961,6 +1968,7 @@ class ClusterSchema(BaseSchema):
     custom_s3_bucket = fields.Str(metadata={"update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET})
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    deployment_settings = fields.Nested(DeploymentSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     def __init__(self, cluster_name: str):
         super().__init__()

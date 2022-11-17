@@ -235,6 +235,7 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   PermissionsBoundary: arn:aws:iam::aws:policy/boundary
+  ResourcePrefix: /path-prefix/name-prefix
   Roles:
     LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
@@ -267,3 +268,7 @@ DevSettings:
   Timeouts:
     HeadNodeBootstrapTimeout: 1201  # Default 1800 (seconds)
     ComputeNodeBootstrapTimeout: 1001  # Default 1800 (seconds)
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds: ["sg-028d73ae220157d96"]
+    SubnetIds: ["subnet-8e482ce8"]

@@ -23,7 +23,7 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, DeploymentSettings
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -89,6 +89,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
     NameValidator,
@@ -143,7 +144,12 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
-from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
+from pcluster.validators.iam_validators import (
+    IamPolicyValidator,
+    IamResourcePrefixValidator,
+    InstanceProfileValidator,
+    RoleValidator,
+)
 from pcluster.validators.instances_validators import (
     InstancesAcceleratorsValidator,
     InstancesAllocationStrategyValidator,
@@ -873,14 +879,17 @@ class DirectoryService(Resource):
 class ClusterIam(Resource):
     """Represent the IAM configuration for Cluster."""
 
-    def __init__(self, roles: Roles = None, permissions_boundary: str = None):
+    def __init__(self, roles: Roles = None, permissions_boundary: str = None, resource_prefix: str = None):
         super().__init__()
         self.roles = roles
         self.permissions_boundary = Resource.init_param(permissions_boundary)
+        self.resource_prefix = Resource.init_param(resource_prefix)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.permissions_boundary:
             self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
+        if self.resource_prefix:
+            self._register_validator(IamResourcePrefixValidator, resource_prefix=self.resource_prefix)
 
 
 class IntelSoftware(Resource):
@@ -1150,6 +1159,7 @@ class BaseClusterConfig(Resource):
         imds: TopLevelImds = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
+        deployment_settings: DeploymentSettings = None,
     ):
         super().__init__()
         self.__region = None
@@ -1179,6 +1189,7 @@ class BaseClusterConfig(Resource):
         self.original_config_version = ""
         self._official_ami = None
         self.imds = imds or TopLevelImds(implied="v1.0")
+        self.deployment_settings = deployment_settings
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1315,6 +1326,7 @@ class BaseClusterConfig(Resource):
             )
 
             self._validate_max_storage_count(ebs_count, existing_storage_count, new_storage_count)
+            self._validate_new_storage_multiple_subnets(self.scheduling.queues, new_storage_count)
 
         self._validate_mount_dirs()
 
@@ -1328,6 +1340,13 @@ class BaseClusterConfig(Resource):
             OverlappingMountDirValidator,
             shared_mount_dir_list=[mount_dir for mount_dir, _ in self.shared_storage_name_mount_dir_tuple_list],
             local_mount_dir_list=list(self.local_mount_dir_instance_types_dict.keys()),
+        )
+
+    def _validate_new_storage_multiple_subnets(self, queues, new_storage_count):
+        self._register_validator(
+            ManagedFsxMultiAzValidator,
+            queues=queues,
+            new_storage_count=new_storage_count,
         )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
@@ -1559,6 +1578,11 @@ class BaseClusterConfig(Resource):
                 self.image.os, self.head_node.architecture, ami_filters
             )
         return self._official_ami
+
+    @property
+    def lambda_functions_vpc_config(self):
+        """Return the vpc config of the PCluster Lambda Functions or None."""
+        return self.deployment_settings.lambda_functions_vpc_config if self.deployment_settings else None
 
     def get_cluster_tags(self):
         """Return tags configured in the cluster configuration."""
