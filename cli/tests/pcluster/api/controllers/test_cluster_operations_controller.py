@@ -723,6 +723,7 @@ class TestDescribeCluster:
                     ],
                     "version": get_installed_version(),
                     "scheduler": {"type": "plugin", "metadata": {"name": "plugin", "version": "1.0.0"}},
+                    "failureReason": "some errors",
                 },
             ),
             (
@@ -790,6 +791,27 @@ class TestDescribeCluster:
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_instances",
             return_value=([head_node_data], "") if head_node_data else ([], ""),
+        )
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_events",
+            return_value={
+                "StackEvents": [
+                    {
+                        "StackId": "fake-id",
+                        "StackName": "fake-name",
+                        "LogicalResourceId": "fake-id",
+                        "ResourceType": "AWS::CloudFormation::Stack",
+                        "ResourceStatus": "CREATE_COMPLETE",
+                    },
+                    {
+                        "StackId": "fake-id",
+                        "StackName": "fake-name",
+                        "ResourceType": "AWS::CloudFormation::WaitCondition",
+                        "ResourceStatus": "CREATE_FAILED",
+                        "ResourceStatusReason": "some errors",
+                    },
+                ]
+            },
         )
         mocker.patch(
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
@@ -866,6 +888,138 @@ class TestDescribeCluster:
                     " version."
                 }
             )
+
+    @pytest.mark.parametrize(
+        "cfn_stack_status, get_stack_events_response, expected_failure_reason",
+        [
+            (
+                "ROLLBACK_COMPLETE",
+                [
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "LogicalResourceId": "fake-id",
+                            "ResourceType": "AWS::CloudFormation::Stack",
+                            "ResourceStatus": "CREATE_COMPLETE",
+                        },
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition received failed message: 'This AMI was created with "
+                            "aws-parallelcluster-cookbook-3.3.0, but is trying to be used with "
+                            "aws-parallelcluster-cookbook-3.4.0b1. Please either use an AMI "
+                            "created with aws-parallelcluster-cookbook-3.4.0b1 or change your "
+                            "ParallelCluster to aws-parallelcluster-cookbook-3.3.0' for "
+                            "uniqueId: i-01fdb3c2b73182693",
+                        },
+                    ]
+                ],
+                "WaitCondition received failed message: 'This AMI was created with aws-parallelcluster-cookbook-3.3.0, "
+                "but is trying to be used with aws-parallelcluster-cookbook-3.4.0b1. Please either use an AMI created "
+                "with aws-parallelcluster-cookbook-3.4.0b1 or change your ParallelCluster to "
+                "aws-parallelcluster-cookbook-3.3.0' for uniqueId: i-01fdb3c2b73182693",
+            ),
+            (
+                "ROLLBACK_IN_PROGRESS",
+                [
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "LogicalResourceId": "fake-id",
+                            "ResourceType": "AWS::CloudFormation::Stack",
+                            "ResourceStatus": "CREATE_COMPLETE",
+                        },
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition received failed message: Fail to run preinstall",
+                        },
+                    ],
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "LogicalResourceId": "fake-id",
+                            "ResourceType": "AWS::CloudFormation::Stack",
+                            "ResourceStatus": "CREATE_COMPLETE",
+                        },
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "second error",
+                        },
+                    ],
+                ],
+                "WaitCondition received failed message: Fail to run preinstall",
+            ),
+            ("CREATE_FAILED", [], None),
+        ],
+        ids=["get_stack_events_without_next_token", "get_stack_events_with_next_token", "no_stack_event"],
+    )
+    def test_cluster_creation_failed(
+        self, client, mocker, cfn_stack_status, get_stack_events_response, expected_failure_reason
+    ):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(
+                {
+                    "StackStatus": cfn_stack_status,
+                }
+            ),
+        )
+        mocker.patch(
+            "pcluster.models.cluster_resources.get_all_stack_events",
+            return_value=get_stack_events_response,
+        )
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([], None),
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
+        ).return_value = ComputeFleetStatus.RUNNING
+
+        expected_response = {
+            "cloudFormationStackStatus": cfn_stack_status,
+            "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+            "clusterConfiguration": {"url": "NOT_AVAILABLE"},
+            "clusterName": "clustername",
+            "clusterStatus": "CREATE_FAILED",
+            "computeFleetStatus": "RUNNING",
+            "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+            "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+            "region": "us-east-1",
+            "tags": [
+                {"key": "parallelcluster:version", "value": get_installed_version()},
+                {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                {
+                    "key": "parallelcluster:cluster_dir",
+                    "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                },
+            ],
+            "version": get_installed_version(),
+            "scheduler": {"type": "slurm"},
+        }
+        if expected_failure_reason:
+            expected_response["failureReason"] = expected_failure_reason
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
+        ).side_effect = ClusterActionError("failed")
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock
+        ).side_effect = ClusterActionError("failed")
+        response = self._send_test_request(client)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
         "error_type, error_code, http_code",
