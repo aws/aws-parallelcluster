@@ -9,12 +9,14 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from collections import defaultdict
 
 import pytest
 
 from pcluster.validators.networking_validators import (
     LambdaFunctionsVpcConfigValidator,
     MultiAzPlacementGroupValidator,
+    QueueSubnetsValidator,
     SecurityGroupsValidator,
     SingleSubnetValidator,
     SubnetsValidator,
@@ -62,6 +64,75 @@ def test_ec2_subnet_id_validator(mocker):
 
 
 @pytest.mark.parametrize(
+    "queue_name, queue_subnets, subnet_id_az_mapping, failure_message",
+    [
+        (
+            "good-queue",
+            ["subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1b"},
+            None,
+        ),
+        (
+            "subnets-in-common-az-queue-1",
+            ["subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
+            "SubnetIds specified in queue subnets-in-common-az-queue-1 contains multiple subnets in the same AZs: "
+            "us-east-1a: subnet-00000000, subnet-11111111. "
+            "Please make sure all subnets in the queue are in different AZs.",
+        ),
+        (
+            "subnets-in-common-az-queue-2",
+            ["subnet-1", "subnet-2", "subnet-3", "subnet-4", "subnet-5"],
+            {
+                "subnet-1": "us-east-1a",
+                "subnet-2": "us-east-1a",
+                "subnet-3": "us-east-1b",
+                "subnet-4": "us-east-1b",
+                "subnet-5": "us-east-1b",
+            },
+            "SubnetIds specified in queue subnets-in-common-az-queue-2 contains multiple subnets in the same AZs: "
+            "us-east-1a: subnet-1, subnet-2; us-east-1b: subnet-3, subnet-4, subnet-5. "
+            "Please make sure all subnets in the queue are in different AZs.",
+        ),
+        (
+            "duplicate-subnets-queue",
+            ["subnet-00000000", "subnet-00000000", "subnet-11111111", "subnet-11111111", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1b"},
+            "The following subnet ids are specified multiple times in queue duplicate-subnets-queue: "
+            "subnet-00000000, subnet-11111111.",
+        ),
+        # This test should trigger both validation errors for duplicate subnet ids and multiple subnets
+        # in the same AZ, that's why it's repeated twice below.
+        (
+            "duplicate-subnets-queue-1",
+            ["subnet-00000000", "subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
+            "The following subnet ids are specified multiple times in queue duplicate-subnets-queue-1: "
+            "subnet-00000000.",
+        ),
+        (
+            "duplicate-subnets-queue-2",
+            ["subnet-00000000", "subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
+            "SubnetIds specified in queue duplicate-subnets-queue-2 contains multiple subnets in the same AZs: "
+            "us-east-1a: subnet-00000000, subnet-11111111. "
+            "Please make sure all subnets in the queue are in different AZs.",
+        ),
+    ],
+)
+def test_queue_subnets_validator(mocker, queue_name, queue_subnets, subnet_id_az_mapping, failure_message):
+    az_subnet_ids_mapping = defaultdict(list)
+    for subnet_id, _az in subnet_id_az_mapping.items():
+        az_subnet_ids_mapping[_az].append(subnet_id)
+    actual_failure = QueueSubnetsValidator().execute(
+        queue_name,
+        queue_subnets,
+        az_subnet_ids_mapping,
+    )
+    assert_failure_messages(actual_failure, failure_message)
+
+
+@pytest.mark.parametrize(
     "multi_az_enabled, placement_group_enabled, expected_message",
     [
         (True, False, None),
@@ -81,26 +152,30 @@ def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_en
 
 
 @pytest.mark.parametrize(
-    "queues, failure_message",
+    "queue_name, subnet_ids, failure_message",
     [
         (
+            "multi-subnet-queue",
             [
-                ["subnet-11111111"],
                 ["subnet-00000000"],
+                ["subnet-11111111"],
             ],
-            "The SubnetId used for all of the queues should be the same",
+            "At least one compute resource in queue multi-subnet-queue uses a single instance type. "
+            "Multiple subnets configuration is not supported for single instance type, "
+            "please use the Instances configuration parameter for multiple instance type "
+            "allocation.",
         ),
         (
+            "single-subnet-queue",
             [
-                ["subnet-00000000"],
                 ["subnet-00000000"],
             ],
             None,
         ),
     ],
 )
-def test_single_subnet_validator(queues, failure_message):
-    actual_failure = SingleSubnetValidator().execute(queues)
+def test_single_subnet_validator(queue_name, subnet_ids, failure_message):
+    actual_failure = SingleSubnetValidator().execute(queue_name, subnet_ids)
 
     assert_failure_messages(actual_failure, failure_message)
 
