@@ -66,7 +66,8 @@ function error_exit
 {
   # wait logs flush before signaling the failure
   sleep 10
-  reason=$(cat /var/log/parallelcluster/headnode_bootstrap_error_msg 2>/dev/null) || reason="$1"
+  cutoff=$(expr 4096 - $(stat --printf="%s" /tmp/wait_condition_handle.txt))
+  reason=$(head --bytes=${!cutoff} /var/log/parallelcluster/headnode_bootstrap_error_msg 2>/dev/null) || reason="$1"
   cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}"
   exit 1
 }
