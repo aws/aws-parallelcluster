@@ -128,6 +128,7 @@ CHANGELOG
 - Remove the trailing dot when configuring the compute node FQDN.
 
 **BUG FIXES**
+- Fix Slurm issue that prevents idle nodes termination.
 - Fix the default behavior to skip the ParallelCluster validation and test steps when building a custom AMI.
 - Fix file handle leak in `computemgtd`.
 - Fix race condition that was sporadically causing launched instances to be immediately terminated because not available yet in EC2 DescribeInstances response
