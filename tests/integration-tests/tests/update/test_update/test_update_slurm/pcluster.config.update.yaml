@@ -14,10 +14,16 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     S3Access:
+      - BucketName: {{ bucket }}
       - BucketName: {{ resource_bucket }}
         EnableWriteAccess: true
     AdditionalIamPolicies:
       - Policy: {{ additional_policy_arn }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ bucket }}/scripts/updated_postupdate.sh
+      Args:
+        - UPDATE-ARG2
 Scheduling:
   Scheduler: slurm
   SlurmSettings:

@@ -12,6 +12,14 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ bucket }}/scripts/postupdate.sh
+      Args:
+        - UPDATE-ARG1
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket }}
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
