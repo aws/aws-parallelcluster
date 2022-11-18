@@ -2662,7 +2662,9 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                         CapacityReservationResourceGroupValidator,
                         capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
                         instance_types=compute_resource.instance_types,
-                        subnet=queue.networking.subnet_ids[0],
+                        subnet_ids=queue.networking.subnet_ids,
+                        queue_name=queue.name,
+                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
                     self._register_validator(
                         PlacementGroupCapacityReservationValidator,
