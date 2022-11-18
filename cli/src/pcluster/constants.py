@@ -199,3 +199,6 @@ DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
 DEFAULT_EPHEMERAL_DIR = "/scratch"
 
 LAMBDA_VPC_ACCESS_MANAGED_POLICY = "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+
+IAM_NAME_PREFIX_LENGTH_LIMIT = 30
+IAM_PATH_LENGTH_LIMIT = 512

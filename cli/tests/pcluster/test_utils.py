@@ -334,3 +334,19 @@ def test_get_http_token_settings(imds_support, http_tokens):
 )
 def test_remove_none_values(original, response):
     assert_that(utils.remove_none_values(original)).is_equal_to(response)
+
+
+@pytest.mark.parametrize(
+    "resource_prefix, expected_output",
+    [
+        ("/path-prefix/", ["/path-prefix/", None]),
+        ("/path-prefix/name-prefix", ["/path-prefix/", "name-prefix"]),
+        ("name-prefix", [None, "name-prefix"]),
+        ("/longerpath/path-prefix/name-prefix", ["/longerpath/path-prefix/", "name-prefix"]),
+        (None, [None, None]),
+    ],
+)
+def test_split_resource_prefix(resource_prefix, expected_output):
+    iam_path_prefix, iam_role_prefix = utils.split_resource_prefix(resource_prefix=resource_prefix)
+    assert_that(iam_path_prefix).is_equal_to(expected_output[0])
+    assert_that(iam_role_prefix).is_equal_to(expected_output[1])

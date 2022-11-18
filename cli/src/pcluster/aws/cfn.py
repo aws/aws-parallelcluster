@@ -32,7 +32,7 @@ class CfnClient(Boto3Client):
         return self._client.create_stack(
             StackName=stack_name,
             TemplateBody=template_body,
-            Capabilities=["CAPABILITY_IAM"],
+            Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
             Tags=tags,
         )
@@ -50,7 +50,7 @@ class CfnClient(Boto3Client):
         return self._client.create_stack(
             StackName=stack_name,
             TemplateURL=template_url,
-            Capabilities=[capabilities],
+            Capabilities=[capabilities, "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
             Tags=tags,
         )
@@ -67,7 +67,7 @@ class CfnClient(Boto3Client):
             StackName=stack_name,
             TemplateBody=json.dumps(updated_template, indent=2),  # Indent so it looks nice in the console
             Parameters=params,
-            Capabilities=["CAPABILITY_IAM"],
+            Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
         )
 
     @AWSExceptionHandler.handle_client_exception
@@ -77,12 +77,12 @@ class CfnClient(Boto3Client):
             return self._client.update_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
-                Capabilities=["CAPABILITY_IAM"],
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             )
         return self._client.update_stack(
             StackName=stack_name,
             TemplateURL=template_url,
-            Capabilities=["CAPABILITY_IAM"],
+            Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             Tags=tags,
         )
 

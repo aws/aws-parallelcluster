@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from unittest.mock import PropertyMock
+
 import pytest
 from assertpy import assert_that
 from aws_cdk import aws_ec2 as ec2
@@ -21,12 +23,17 @@ from pcluster.config.cluster_config import (
     SlurmQueue,
 )
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG
+from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     dict_to_cfn_tags,
     get_cluster_tags,
     get_default_volume_tags,
 )
+from pcluster.utils import load_yaml_dict, split_resource_prefix
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
 
 @pytest.mark.parametrize(
@@ -396,3 +403,155 @@ class TestCdkLaunchTemplateBuilder:
         assert_that(CdkLaunchTemplateBuilder().get_capacity_reservation(queue, compute_resource)).is_equal_to(
             expected_response
         )
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "resourcePrefix.both_path_n_role_prefix.yaml",
+        "resourcePrefix.both_path_n_role_prefix_with_s3.yaml",
+        "resourcePrefix.no_prefix.yaml",
+        "resourcePrefix.only_path_prefix.yaml",
+        "resourcePrefix.only_role_prefix.yaml",
+    ],
+)
+def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name):
+    """Verify the Path and Role Name for IAM Resources."""
+    mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
+        new_callable=PropertyMock(return_value="us-east-1a"),
+    )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    # print("cluster_config",cluster_config)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    iam_path_prefix, iam_name_prefix = None, None
+    if cluster_config.iam and cluster_config.iam.resource_prefix:
+        iam_path_prefix, iam_name_prefix = split_resource_prefix(cluster_config.iam.resource_prefix)
+    generated_template = generated_template["Resources"]
+    role_name_ref = generated_template["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0][
+        "Ref"
+    ]  # Role15b342af42246b70
+    role_name_hn_ref = generated_template["InstanceProfileHeadNode"]["Properties"]["Roles"][0]["Ref"]  # RoleHeadNode
+
+    # Checking their Path
+    _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, role_name_ref, "RoleName")
+    _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, role_name_hn_ref, "RoleName")
+
+    # Instance Profiles---> Checking Instance Profile Names and Instance profiles Path
+    _check_instance_roles_n_profiles(
+        generated_template, iam_path_prefix, iam_name_prefix, "InstanceProfileHeadNode", "InstanceProfileName"
+    )
+    _check_instance_roles_n_profiles(
+        generated_template, iam_path_prefix, iam_name_prefix, "InstanceProfile15b342af42246b70", "InstanceProfileName"
+    )
+    # PC Policies
+    _check_policies(
+        generated_template, iam_name_prefix, "ParallelClusterPolicies15b342af42246b70", "parallelcluster", role_name_ref
+    )
+    _check_policies(
+        generated_template, iam_name_prefix, "ParallelClusterPoliciesHeadNode", "parallelcluster", role_name_hn_ref
+    )
+    _check_policies(
+        generated_template,
+        iam_name_prefix,
+        "ParallelClusterSlurmRoute53Policies",
+        "parallelcluster-slurm-route53",
+        role_name_hn_ref,
+    )
+    #  Slurm Policies
+    _check_policies(
+        generated_template,
+        iam_name_prefix,
+        "SlurmPolicies15b342af42246b70",
+        "parallelcluster-slurm-compute",
+        role_name_ref,
+    )
+    _check_policies(
+        generated_template,
+        iam_name_prefix,
+        "SlurmPoliciesHeadNode",
+        "parallelcluster-slurm-head-node",
+        role_name_hn_ref,
+    )
+
+    #     CleanupResources
+    _check_cleanup_role(
+        generated_template,
+        iam_name_prefix,
+        iam_path_prefix,
+        "CleanupResourcesRole",
+        "CleanupResourcesFunctionExecutionRole",
+    )
+    #     CleanupRoute53FunctionExecutionRole
+    _check_cleanup_role(
+        generated_template,
+        iam_name_prefix,
+        iam_path_prefix,
+        "CleanupRoute53Role",
+        "CleanupRoute53FunctionExecutionRole",
+    )
+    # S3AccessPolicies
+    if cluster_config.head_node and cluster_config.head_node.iam and cluster_config.head_node.iam.s3_access:
+        _check_policies(generated_template, iam_name_prefix, "S3AccessPoliciesHeadNode", "S3Access", role_name_hn_ref)
+    if (
+        cluster_config.scheduling
+        and cluster_config.scheduling.queues[0]
+        and cluster_config.scheduling.queues[0].iam
+        and cluster_config.scheduling.queues[0].iam.s3_access
+    ):
+        _check_policies(
+            generated_template, iam_name_prefix, "S3AccessPolicies15b342af42246b70", "S3Access", role_name_ref
+        )
+
+
+def _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, resource_name, key_name):
+    """Verify the Path and Key Name(RoleName or ProfileName) for instance Profiles and Roles on Head Node and Queue."""
+    if iam_path_prefix:
+        assert_that(iam_path_prefix in generated_template[resource_name]["Properties"]["Path"]).is_true()
+    else:
+        assert_that(
+            "/parallelcluster/clustername/" in generated_template[resource_name]["Properties"]["Path"]
+        ).is_true()
+
+    if iam_name_prefix:
+        assert_that(iam_name_prefix in generated_template[resource_name]["Properties"][key_name]).is_true()
+    else:
+        assert_that(generated_template[resource_name]["Properties"]).does_not_contain_key(key_name)
+
+
+def _check_policies(generated_template, iam_name_prefix, resource_name, policy_name, role_name):
+    """Verify the Policy Name and Role Name for Policies on Head Node and Queue."""
+    assert_that(role_name in generated_template[resource_name]["Properties"]["Roles"][0]["Ref"]).is_true()
+    if iam_name_prefix:
+        assert_that(iam_name_prefix in generated_template[resource_name]["Properties"]["PolicyName"]).is_true()
+    else:
+        assert_that(policy_name in generated_template[resource_name]["Properties"]["PolicyName"]).is_true()
+
+
+def _check_cleanup_role(
+    generated_template, iam_name_prefix, iam_path_prefix, cleanup_resource_new, cleanup_resource_old
+):
+    """Verify the Path and Role Name for Cleanup Lambda Role."""
+    if iam_name_prefix and iam_path_prefix:
+        assert_that(iam_path_prefix in generated_template[cleanup_resource_new]["Properties"]["Path"]).is_true()
+
+        assert_that(iam_name_prefix in generated_template[cleanup_resource_new]["Properties"]["RoleName"]).is_true()
+
+    elif iam_path_prefix:
+        assert_that(iam_path_prefix in generated_template[cleanup_resource_old]["Properties"]["Path"]).is_true()
+    elif iam_name_prefix:
+        assert_that(iam_name_prefix in generated_template[cleanup_resource_new]["Properties"]["RoleName"]).is_true()
+
+        assert_that("/parallelcluster/" in generated_template[cleanup_resource_new]["Properties"]["Path"]).is_true()
+    else:
+        assert_that("/parallelcluster/" in generated_template[cleanup_resource_old]["Properties"]["Path"]).is_true()
+
+        assert_that(generated_template[cleanup_resource_old]["Properties"]).does_not_contain_key("RoleName")

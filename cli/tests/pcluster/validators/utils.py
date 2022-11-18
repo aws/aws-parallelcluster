@@ -26,6 +26,10 @@ def assert_failure_messages(actual_failures, expected_messages):
             res = any(re.search(expected_message, actual_failure.message) for actual_failure in actual_failures) or any(
                 expected_message == actual_failure.message for actual_failure in actual_failures
             )
+            # PyTest truncates the full expected & failure messages if there is an error
+            # These print statements ensure the full message is shown in the console if there is an assertion error
+            print(f"Expected Message: {expected_message}")
+            print(f"Actual Failures: {actual_failures}")
             assert_that(res).is_true()
     else:
         print(actual_failures)
