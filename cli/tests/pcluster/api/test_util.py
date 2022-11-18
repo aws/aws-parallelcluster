@@ -59,7 +59,7 @@ class TestParallelClusterApiUtil:
             ("none", "Node.js does not appear to be installed."),
         ],
     )
-    def test_assert_node_version_no_nvm(self, mocker, caplog, version, expected_message):
+    def test_assert_node_version_fallback_to_nvm(self, mocker, caplog, version, expected_message):
         check_output_mock = mocker.patch("pcluster.api.util.subprocess.check_output")
         check_output_mock.side_effect = [Exception, version]
         with pytest.raises(Exception) as exc:

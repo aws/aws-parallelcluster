@@ -201,6 +201,7 @@ def _assert_node_version():
             message = "Unable to check Node.js version"
             LOGGER.critical(message)
             raise Exception(message)
+        # `nvm current` will return `none` if no versions of Node.js are currently installed.
         if node_version_string == "none":
             message = (
                 "Node.js does not appear to be installed. Please use the Node Version Manager (nvm) to install a"
