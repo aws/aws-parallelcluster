@@ -77,6 +77,18 @@ class SingleSubnetValidator(Validator):
             self._add_failure("The SubnetId used for all of the queues should be the same.", FailureLevel.ERROR)
 
 
+class MultiAzPlacementGroupValidator(Validator):
+    """Validate a PlacementGroup is not specified when MultiAZ is enabled."""
+
+    def _validate(self, multi_az_enabled: bool, placement_group_enabled: bool):
+        if multi_az_enabled and placement_group_enabled:
+            self._add_failure(
+                "Multiple subnets configuration does not support specifying Placement Group. "
+                "Either specify a single subnet or remove the Placement Group configuration.",
+                FailureLevel.ERROR,
+            )
+
+
 class LambdaFunctionsVpcConfigValidator(Validator):
     """Validator of Pcluster Lambda functions' VPC configuration."""
 

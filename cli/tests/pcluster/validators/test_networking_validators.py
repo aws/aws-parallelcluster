@@ -14,6 +14,7 @@ import pytest
 
 from pcluster.validators.networking_validators import (
     LambdaFunctionsVpcConfigValidator,
+    MultiAzPlacementGroupValidator,
     SecurityGroupsValidator,
     SingleSubnetValidator,
     SubnetsValidator,
@@ -58,6 +59,25 @@ def test_ec2_subnet_id_validator(mocker):
     # TODO test with invalid key
     actual_failures = SubnetsValidator().execute(["subnet-12345678", "subnet-23456789"])
     assert_failure_messages(actual_failures, None)
+
+
+@pytest.mark.parametrize(
+    "multi_az_enabled, placement_group_enabled, expected_message",
+    [
+        (True, False, None),
+        (False, True, None),
+        (False, False, None),
+        (
+            True,
+            True,
+            "Multiple subnets configuration does not support specifying Placement Group. "
+            "Either specify a single subnet or remove the Placement Group configuration.",
+        ),
+    ],
+)
+def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_enabled, expected_message):
+    actual_failures = MultiAzPlacementGroupValidator().execute(multi_az_enabled, placement_group_enabled)
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(
