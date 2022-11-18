@@ -28,7 +28,6 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeRootVolumeSchema,
     IamSchema,
     ImageSchema,
-    MonitoringSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
@@ -616,20 +615,3 @@ def test_instance_role_validator(instance_role, expected_message):
 )
 def test_password_secret_arn_validator(password_secret_arn, expected_message):
     _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)
-
-
-@pytest.mark.parametrize(
-    "compute_console_logging_max_sample_size, expected_message",
-    [
-        (-5, None),
-        (0, "Invalid input"),
-        (150, None),
-        ("wrong_value", "Not a valid integer"),
-    ],
-)
-def test_compute_console_logging_max_sample_size_validator(compute_console_logging_max_sample_size, expected_message):
-    _validate_and_assert_error(
-        MonitoringSchema(),
-        {"ComputeConsoleLoggingMaxSampleSize": compute_console_logging_max_sample_size},
-        expected_message,
-    )

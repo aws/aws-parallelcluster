@@ -790,10 +790,6 @@ class MonitoringSchema(BaseSchema):
     detailed_monitoring = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     logs = fields.Nested(LogsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     dashboards = fields.Nested(DashboardsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    compute_console_logging_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    compute_console_logging_max_sample_size = fields.Int(
-        validate=validate.NoneOf([0]), metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
 
     @post_load
     def make_resource(self, data, **kwargs):

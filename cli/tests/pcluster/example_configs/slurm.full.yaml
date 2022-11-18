@@ -200,8 +200,6 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: true  # true
-  ComputeConsoleLoggingEnabled: True
-  ComputeConsoleLoggingMaxSampleSize: 150 # 100
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
