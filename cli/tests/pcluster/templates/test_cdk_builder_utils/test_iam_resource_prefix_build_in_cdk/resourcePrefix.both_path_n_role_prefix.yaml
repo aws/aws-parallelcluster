@@ -1,0 +1,20 @@
+Image:
+  Os: alinux2
+Iam:
+  ResourcePrefix: /path-prefix/name-prefix
+HeadNode:
+  InstanceType: String
+  Ssh:
+    KeyName: String
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: t2.micro
+      Networking:
+        SubnetIds:
+          - subnet-12345678
