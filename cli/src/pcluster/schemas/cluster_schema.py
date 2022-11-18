@@ -1066,12 +1066,26 @@ class HeadNodeCustomActionSchema(BaseSchema):
         return CustomAction(**data)
 
 
+class HeadNodeUpdatableCustomActionSchema(BaseSchema):
+    """Represent the schema of an updatable custom action."""
+
+    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomAction(**data)
+
+
 class HeadNodeCustomActionsSchema(BaseSchema):
     """Represent the schema for all available custom actions."""
 
     on_node_start = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     on_node_configured = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    on_node_updated = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    on_node_updated = fields.Nested(
+        HeadNodeUpdatableCustomActionSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1129,7 +1143,7 @@ class HeadNodeSchema(BaseSchema):
     ssh = fields.Nested(SshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     iam = fields.Nested(HeadNodeIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     imds = fields.Nested(ImdsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     image = fields.Nested(HeadNodeImageSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1991,11 +2005,14 @@ class ClusterSchema(BaseSchema):
     def no_settings_for_batch(self, data, **kwargs):
         """Ensure IntelSoftware and DirectoryService section is not included when AWS Batch is the scheduler."""
         scheduling = data.get("scheduling")
+        head_node = data.get("head_node")
         if scheduling and scheduling.scheduler == "awsbatch":
             error_message = "The use of the {} configuration is not supported when using awsbatch as the scheduler."
             additional_packages = data.get("additional_packages")
             if additional_packages and additional_packages.intel_software.intel_hpc_platform:
                 raise ValidationError(error_message.format("IntelSoftware"))
+            if head_node.custom_actions.on_node_updated:
+                raise ValidationError(error_message.format("OnNodeUpdated"))
             if data.get("directory_service"):
                 raise ValidationError(error_message.format("DirectoryService"))
 

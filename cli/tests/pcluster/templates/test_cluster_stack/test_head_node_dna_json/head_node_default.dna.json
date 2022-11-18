@@ -25,7 +25,7 @@
     "fsx_shared_dirs": "",
     "fsx_fs_types": "",
     "fsx_volume_junction_paths": "",
-    "head_node_imds_secured": "false",
+    "head_node_imds_secured": "true",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",
     "log_group_name": "/aws/parallelcluster/clustername-202101010101",
     "node_type": "HeadNode",
@@ -40,11 +40,10 @@
     "raid_type": "",
     "raid_vol_ids": "",
     "region": "{'Ref': 'AWS::Region'}",
-    "scheduler": "awsbatch",
     "stack_name": "clustername",
     "volume": "",
     "scheduler_plugin_substack_arn": "",
     "stack_arn": "{'Ref': 'AWS::StackId'}",
-    "compute_node_bootstrap_timeout": 1201
+    "compute_node_bootstrap_timeout": 1800
   }
 }

@@ -220,6 +220,7 @@ DUMMY_AWSBATCH_QUEUE = {
         # Failures
         ({"OnNodeUpdating": "test"}, "Unknown field"),
         ({"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"}, "Invalid input type."),
+        ({"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}}, "Unknown field"),
         # Successes
         (
             {
@@ -231,23 +232,15 @@ DUMMY_AWSBATCH_QUEUE = {
         ),
         (
             {
-                "OnNodeStart": {
-                    "Script": "test",
-                },
-                "OnNodeConfigured": {
-                    "Script": "test2",
-                },
-                "OnNodeUpdated": {
-                    "Script": "test3",
-                },
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2"},
+                "OnNodeUpdated": {"Script": "test3"},
             },
             None,
         ),
         (
             {
-                "OnNodeStart": {
-                    "Script": "test",
-                },
+                "OnNodeStart": {"Script": "test"},
                 "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
             },
             None,
@@ -286,20 +279,14 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
         ),
         (
             {
-                "OnNodeStart": {
-                    "Script": "test",
-                },
-                "OnNodeConfigured": {
-                    "Script": "test2",
-                },
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2"},
             },
             None,
         ),
         (
             {
-                "OnNodeStart": {
-                    "Script": "test",
-                },
+                "OnNodeStart": {"Script": "test"},
                 "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
             },
             None,
