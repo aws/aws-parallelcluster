@@ -643,9 +643,9 @@ class _QueueNetworking(_BaseNetworking):
     def az_subnet_ids_mapping(self):
         """Map queue subnet ids to availability zones."""
         if not self._az_subnet_ids_mapping:
-            self._az_subnet_ids_mapping = defaultdict(list)
+            self._az_subnet_ids_mapping = defaultdict(set)
             for subnet_id, _az in self.subnet_id_az_mapping.items():
-                self._az_subnet_ids_mapping[_az].append(subnet_id)
+                self._az_subnet_ids_mapping[_az].add(subnet_id)
         return self._az_subnet_ids_mapping
 
 

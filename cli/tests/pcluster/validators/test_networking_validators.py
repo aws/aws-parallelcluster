@@ -101,6 +101,23 @@ def test_ec2_subnet_id_validator(mocker):
             "The following subnet ids are specified multiple times in queue duplicate-subnets-queue: "
             "subnet-00000000, subnet-11111111.",
         ),
+        # This test should trigger both validation errors for duplicate subnet ids and multiple subnets
+        # in the same AZ, that's why it's repeated twice below.
+        (
+            "duplicate-subnets-queue-1",
+            ["subnet-00000000", "subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
+            "The following subnet ids are specified multiple times in queue duplicate-subnets-queue-1: "
+            "subnet-00000000.",
+        ),
+        (
+            "duplicate-subnets-queue-2",
+            ["subnet-00000000", "subnet-00000000", "subnet-11111111"],
+            {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
+            "SubnetIds specified in queue duplicate-subnets-queue-2 contains multiple subnets in the same AZs: "
+            "us-east-1a: subnet-00000000, subnet-11111111. "
+            "Please make sure all subnets in the queue are in different AZs.",
+        ),
     ],
 )
 def test_queue_subnets_validator(mocker, queue_name, queue_subnets, subnet_id_az_mapping, failure_message):

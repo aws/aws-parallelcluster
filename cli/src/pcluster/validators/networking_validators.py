@@ -92,25 +92,23 @@ class QueueSubnetsValidator(Validator):
             )
 
         # Test if the subnets are all in different AZs
-        else:
-            try:
-                azs_with_multiple_subnets = self._find_azs_with_multiple_subnets(az_subnet_ids_mapping)
-                if len(azs_with_multiple_subnets) > 0:
+        try:
+            azs_with_multiple_subnets = self._find_azs_with_multiple_subnets(az_subnet_ids_mapping)
+            if len(azs_with_multiple_subnets) > 0:
 
-                    self._add_failure(
-                        "SubnetIds specified in queue {0} contains multiple subnets in the same AZs: {1}. "
-                        "Please make sure all subnets in the queue are in different AZs.".format(
-                            queue_name,
-                            "; ".join(
-                                f"{az}: {', '.join(subnets)}"
-                                for az, subnets in sorted(azs_with_multiple_subnets.items())
-                            ),
+                self._add_failure(
+                    "SubnetIds specified in queue {0} contains multiple subnets in the same AZs: {1}. "
+                    "Please make sure all subnets in the queue are in different AZs.".format(
+                        queue_name,
+                        "; ".join(
+                            f"{az}: {', '.join(subnets)}" for az, subnets in sorted(azs_with_multiple_subnets.items())
                         ),
-                        FailureLevel.ERROR,
-                    )
+                    ),
+                    FailureLevel.ERROR,
+                )
 
-            except AWSClientError as e:
-                self._add_failure(str(e), FailureLevel.ERROR)
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
 
 
 class ElasticIpValidator(Validator):
