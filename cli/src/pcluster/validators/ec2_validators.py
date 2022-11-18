@@ -290,10 +290,12 @@ def get_capacity_reservations(capacity_reservation_resource_group_arn):
     return AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
 
 
-def capacity_reservation_matches_instance(capacity_reservation: Dict, instance_type: str, subnet: str) -> bool:
-    return capacity_reservation["InstanceType"] == instance_type and capacity_reservation[
-        "AvailabilityZone"
-    ] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet)
+def capacity_reservation_matches_instance(capacity_reservation: Dict, instance_type: str) -> bool:
+    return capacity_reservation["InstanceType"] == instance_type
+
+
+def capacity_reservation_matches_subnet(capacity_reservation: Dict, subnet_id: str) -> bool:
+    return capacity_reservation["AvailabilityZone"] == AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id)
 
 
 def capacity_reservation_resource_group_is_service_linked_group(capacity_reservation_resource_group_arn: str):
@@ -311,32 +313,107 @@ def capacity_reservation_resource_group_is_service_linked_group(capacity_reserva
 
 
 class CapacityReservationResourceGroupValidator(Validator):
-    """Validate at least one capacity reservation in the resource group can be used with the instance and subnet."""
+    """Validate capacity reservation group is can be used with existing instance types and subnets.
 
-    def _validate(self, capacity_reservation_resource_group_arn: str, instance_types: List[str], subnet: str):
+    - When using multiple instance types:
+        - At least one capacity reservation in the resource group can be used with one of the instances
+    - When using multiple subnets
+        - At least one capacity reservation in the resource group can be used with one of the subnets
+    """
+
+    def _validate(
+        self,
+        capacity_reservation_resource_group_arn: str,
+        instance_types: List[str],
+        subnet_ids: List[str],
+        queue_name: str,
+        subnet_id_az_mapping: Dict[str, str],
+    ):
         if capacity_reservation_resource_group_arn:
             if not capacity_reservation_resource_group_is_service_linked_group(capacity_reservation_resource_group_arn):
                 self._add_failure(
-                    f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must be a "
+                    f"Capacity reservation resource group ({capacity_reservation_resource_group_arn}) must be a "
                     f"Service Linked Group created from the AWS CLI.  See "
                     f"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
                     FailureLevel.ERROR,
                 )
             else:
                 capacity_reservations = get_capacity_reservations(capacity_reservation_resource_group_arn)
-                for instance_type in instance_types:
-                    found_qualified_capacity_reservation = False
-                    for capacity_reservation in capacity_reservations:
-                        if capacity_reservation_matches_instance(capacity_reservation, instance_type, subnet):
-                            found_qualified_capacity_reservation = True
-                            break
-                    if not found_qualified_capacity_reservation:
-                        self._add_failure(
-                            f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have "
-                            f"at least one capacity reservation for {instance_type} in the same availability zone as "
-                            f"subnet {subnet}.",
-                            FailureLevel.ERROR,
-                        )
+                self._validate_with_instance_types(
+                    instance_types, capacity_reservations, capacity_reservation_resource_group_arn
+                )
+                self._validate_with_subnets(
+                    queue_name,
+                    capacity_reservation_resource_group_arn,
+                    capacity_reservations,
+                    subnet_ids,
+                    subnet_id_az_mapping,
+                )
+
+    def _validate_with_instance_types(
+        self, instance_types, capacity_reservations, capacity_reservation_resource_group_arn
+    ):
+        for instance_type in instance_types:
+            found_qualified_capacity_reservation = False
+            for capacity_reservation in capacity_reservations:
+                if capacity_reservation_matches_instance(capacity_reservation, instance_type):
+                    found_qualified_capacity_reservation = True
+                    break
+            if not found_qualified_capacity_reservation:
+                self._add_failure(
+                    f"Capacity reservation resource group {capacity_reservation_resource_group_arn} must have "
+                    f"at least one capacity reservation for {instance_type}.",
+                    FailureLevel.ERROR,
+                )
+
+    def _validate_with_subnets(
+        self, queue_name, cr_group_arn, capacity_reservations, subnet_ids, subnet_id_az_mapping: Dict[str, str]
+    ):
+        subnets_without_reservations = []
+        found_qualified_capacity_reservation = False
+
+        capacity_reservation_availability_zones = [
+            capacity_reservation["AvailabilityZone"] for capacity_reservation in capacity_reservations
+        ]
+        for subnet_id in subnet_ids:
+            subnet_az = subnet_id_az_mapping[subnet_id]
+            if subnet_az not in capacity_reservation_availability_zones:
+                subnets_without_reservations.append(subnet_id)
+            else:
+                found_qualified_capacity_reservation = True
+
+        if not found_qualified_capacity_reservation:
+            self._add_failure(
+                "Queue {queue} uses subnets in these availability zones: {subnet_azs_without_reservations} but the "
+                "Capacity Reservation Resource Group ({cr_group_arn}) has reservations in these "
+                "availability zones: {cr_azs}. You can either add a capacity reservation in the "
+                "availability zones that the subnets are in or remove the Capacity Reservation from the "
+                "Cluster Configuration.".format(
+                    queue=queue_name,
+                    subnet_azs_without_reservations=", ".join(
+                        f"({subnet_id}: {subnet_id_az_mapping[subnet_id]})"
+                        for subnet_id in subnets_without_reservations
+                    ),
+                    cr_group_arn=cr_group_arn,
+                    cr_azs=", ".join(capacity_reservation_availability_zones),
+                ),
+                FailureLevel.ERROR,
+            )
+        if found_qualified_capacity_reservation and subnets_without_reservations:
+            self._add_failure(
+                "Queue {queue} may launch nodes in these availability zones: {subnet_azs_without_reservations} but the "
+                "Capacity Reservation Group ({cr_group_arn}) reserves capacity in these availability zones: "
+                "{cr_azs}. Consider adding capacity reservations in all the availability zones covered "
+                "by the queue.".format(
+                    queue=queue_name,
+                    subnet_azs_without_reservations=", ".join(
+                        [subnet_id_az_mapping[subnet_id] for subnet_id in subnets_without_reservations]
+                    ),
+                    cr_group_arn=cr_group_arn,
+                    cr_azs=", ".join(capacity_reservation_availability_zones),
+                ),
+                FailureLevel.WARNING,
+            )
 
 
 class PlacementGroupCapacityReservationValidator(Validator):
@@ -347,8 +424,8 @@ class PlacementGroupCapacityReservationValidator(Validator):
         for instance_type in instance_types:
             for odcr in odcr_list:
                 if capacity_reservation_matches_instance(
-                    capacity_reservation=odcr, instance_type=instance_type, subnet=subnet
-                ):
+                    capacity_reservation=odcr, instance_type=instance_type
+                ) and capacity_reservation_matches_subnet(capacity_reservation=odcr, subnet_id=subnet):
                     odcr_pg = get_resource_name_from_resource_arn(odcr.get("PlacementGroupArn", None))
                     if odcr_pg:
                         if odcr_pg == chosen_pg:
@@ -371,13 +448,14 @@ class PlacementGroupCapacityReservationValidator(Validator):
                     FailureLevel.WARNING,
                 )
 
-    def _validate_no_pg(self, subnet, instance_types, odcr_list):
+    def _validate_no_pg(self, instance_types, odcr_list, subnet):
         for instance_type in instance_types:
             odcr_without_pg = False
             for odcr in odcr_list:
                 odcr_pg = get_resource_name_from_resource_arn(getattr(odcr, "PlacementGroupArn", None))
-                if not odcr_pg and capacity_reservation_matches_instance(
-                    capacity_reservation=odcr, instance_type=instance_type, subnet=subnet
+                if not odcr_pg and (
+                    capacity_reservation_matches_instance(capacity_reservation=odcr, instance_type=instance_type)
+                    and capacity_reservation_matches_subnet(capacity_reservation=odcr, subnet_id=subnet)
                 ):
                     odcr_without_pg = True
             if not odcr_without_pg:

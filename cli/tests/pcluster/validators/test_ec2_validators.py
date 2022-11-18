@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import namedtuple
 
 import pytest
 from assertpy import assert_that
@@ -603,45 +604,129 @@ mock_good_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2:
 mock_bad_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::MockService"}]}}
 
 at_least_one_capacity_reservation_error_message = (
-    "Capacity reservation resource group .* must have at least "
-    "one capacity reservation for c5.xlarge in the same availability "
-    "zone as subnet subnet-123."
+    "Capacity reservation resource group .* must have at least one capacity reservation for c5.xlarge."
 )
+capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
 
 
 @pytest.mark.parametrize(
-    "capacity_reservations_in_resource_group, group_configuration, expected_message",
+    "capacity_reservations_in_resource_group, group_configuration, desired_instance_type, subnet_az_map, "
+    "expected_message",
     [
-        (["cr-good"], mock_good_config, None),
-        (["cr-bad-1", "cr-good", "cr-bad-2"], mock_good_config, None),
+        (
+            [capacity_reservation(id="cr-good", instance_type="c5.xlarge", az="us-east-1b")],
+            mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b"},
+            None,
+        ),
+        (
+            [
+                capacity_reservation(id="cr-bad-1", instance_type="c5.xlarge", az="us-east-1b"),
+                capacity_reservation(id="cr-good", instance_type="c5.xlarge", az="us-east-1b"),
+                capacity_reservation(id="cr-bad-2", instance_type="c5.xlarge", az="us-east-1b"),
+            ],
+            mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b"},
+            None,
+        ),
         (
             [],
             mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b"},
             at_least_one_capacity_reservation_error_message,
         ),
         (
-            ["cr-bad-1"],
+            [capacity_reservation(id="cr-bad-1", instance_type="m5.xlarge", az="us-east-1b")],
             mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b"},
             at_least_one_capacity_reservation_error_message,
         ),
         (
-            ["cr-bad-1", "cr-bad-2"],
+            [
+                capacity_reservation(id="cr-bad-1", instance_type="m5.xlarge", az="us-east-1b"),
+                capacity_reservation(id="cr-bad-2", instance_type="m5.xlarge", az="us-east-1b"),
+            ],
             mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b"},
             at_least_one_capacity_reservation_error_message,
         ),
         (
-            ["cr-good"],
+            [
+                capacity_reservation(id="cr-good", instance_type="c5.xlarge", az="us-east-1b"),
+            ],
             mock_bad_config,
-            "Capacity reservation resource group skip_dummy must be a "
-            "Service Linked Group created from the AWS CLI.  See "
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b"},
+            "Capacity reservation resource group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) must be "
+            "a Service Linked Group created from the AWS CLI.  See "
             "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
         ),
         (
-            ["cr-good"],
+            [
+                capacity_reservation(id="cr-good", instance_type="c5.xlarge", az="us-east-1b"),
+            ],
             "AWSClientError",
-            "Capacity reservation resource group skip_dummy must be a "
-            "Service Linked Group created from the AWS CLI.  See "
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b"},
+            "Capacity reservation resource group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) must be"
+            " a Service Linked Group created from the AWS CLI.  See "
             "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-cr-group.html for more details.",
+        ),
+        (
+            [
+                capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
+            ],
+            mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b", "subnet-456": "us-east-1a"},
+            "Queue TestQueue may launch nodes in these availability zones: us-east-1a but the "
+            "Capacity Reservation Group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) "
+            "reserves capacity in these availability zones: us-east-1b. "
+            "Consider adding capacity reservations in all the availability zones covered by the queue.",
+        ),
+        (
+            [
+                capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
+            ],
+            mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1c", "subnet-456": "us-east-1a"},
+            "Queue TestQueue uses subnets in these availability zones: (subnet-123: us-east-1c), "
+            "(subnet-456: us-east-1a) but the Capacity Reservation Resource Group "
+            "(arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) has reservations "
+            "in these availability zones: us-east-1b. You can either add a capacity reservation in the "
+            "availability zones that the subnets are in or remove the Capacity Reservation from the "
+            "Cluster Configuration.",
+        ),
+        (
+            [
+                capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
+                capacity_reservation(id="cr-test-2", instance_type="c5.xlarge", az="us-east-1d"),
+            ],
+            mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1c", "subnet-456": "us-east-1a"},
+            "Queue TestQueue uses subnets in these availability zones: (subnet-123: us-east-1c), "
+            "(subnet-456: us-east-1a) but the Capacity Reservation Resource Group "
+            "(arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) has reservations "
+            "in these availability zones: us-east-1b, us-east-1d. You can either add a capacity reservation in the "
+            "availability zones that the subnets are in or remove the Capacity Reservation from the "
+            "Cluster Configuration.",
+        ),
+        (
+            [
+                capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
+                capacity_reservation(id="cr-test-2", instance_type="c5.xlarge", az="us-east-1d"),
+            ],
+            mock_good_config,
+            "c5.xlarge",
+            {"subnet-123": "us-east-1b", "subnet-456": "us-east-1d"},
+            "",
         ),
     ],
 )
@@ -649,12 +734,14 @@ def test_capacity_reservation_resource_group_validator(
     mocker,
     capacity_reservations_in_resource_group,
     group_configuration,
+    desired_instance_type,
+    subnet_az_map,
     expected_message,
 ):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.aws.resource_groups.ResourceGroupsClient.get_capacity_reservation_ids_from_group_resources",
-        side_effect=lambda group: capacity_reservations_in_resource_group,
+        side_effect=lambda group: [cr.id for cr in capacity_reservations_in_resource_group],
     )
     mocker.patch(
         "pcluster.aws.resource_groups.ResourceGroupsClient.get_group_configuration",
@@ -662,27 +749,24 @@ def test_capacity_reservation_resource_group_validator(
         if group_configuration == "AWSClientError"
         else lambda group: group_configuration,
     )
-    desired_instance_type = "c5.xlarge"
-    desired_availability_zone = "us-east-1b"
+
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
         side_effect=lambda capacity_reservation_ids: [
-            {
-                "CapacityReservationId": capacity_reservation_id,
-                "InstanceType": desired_instance_type if "good" in capacity_reservation_id else "m5.xlarge",
-                "AvailabilityZone": desired_availability_zone,
-            }
-            for capacity_reservation_id in capacity_reservation_ids
+            {"CapacityReservationId": cr.id, "InstanceType": cr.instance_type, "AvailabilityZone": cr.az}
+            for cr in capacity_reservations_in_resource_group
         ],
     )
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
-        return_value=desired_availability_zone,
+        side_effect=lambda subnet_id: subnet_az_map.get(subnet_id),
     )
     actual_failures = CapacityReservationResourceGroupValidator().execute(
-        capacity_reservation_resource_group_arn="skip_dummy",
+        capacity_reservation_resource_group_arn="arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy",
         instance_types=[desired_instance_type],
-        subnet="subnet-123",
+        subnet_ids=subnet_az_map.keys(),
+        queue_name="TestQueue",
+        subnet_id_az_mapping=subnet_az_map,
     )
     assert_failure_messages(actual_failures, expected_message)
 
