@@ -391,6 +391,96 @@ def _test_queues(base_conf, target_conf):
     )
 
 
+def _test_no_updatable_custom_actions(base_conf, target_conf):
+    base_conf["HeadNode"].update(
+        {
+            "CustomActions": {
+                "OnNodeStart": {"Script": "test-to-remove.sh"},
+                "OnNodeConfigured": {"Script": "test-to-edit.sh", "Args": ["1", "2"]},
+            }
+        }
+    )
+    target_conf["HeadNode"].update(
+        {"CustomActions": {"OnNodeConfigured": {"Script": "test-to-edit.sh", "Args": ["2"]}}}
+    )
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions"],
+                "OnNodeStart",
+                {"Script": "test-to-remove.sh"},
+                "-",
+                UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
+            Change(
+                ["HeadNode", "CustomActions", "OnNodeConfigured"],
+                "Args",
+                ["1", "2"],
+                ["2"],
+                UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.UNSUPPORTED,
+    )
+
+
+def _test_updatable_custom_actions_attributes(base_conf, target_conf):
+    base_conf["HeadNode"].update(
+        {"CustomActions": {"OnNodeUpdated": {"Script": "test-to-edit.sh", "Args": ["1", "2"]}}}
+    )
+
+    target_conf["HeadNode"].update({"CustomActions": {"OnNodeUpdated": {"Script": "test-edited.sh", "Args": ["1"]}}})
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions", "OnNodeUpdated"],
+                "Script",
+                "test-to-edit.sh",
+                "test-edited.sh",
+                UpdatePolicy.SUPPORTED,
+                is_list=False,
+            ),
+            Change(
+                ["HeadNode", "CustomActions", "OnNodeUpdated"],
+                "Args",
+                ["1", "2"],
+                ["1"],
+                UpdatePolicy.SUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
+def _test_updatable_custom_actions(base_conf, target_conf):
+    base_conf["HeadNode"].update({"CustomActions": {"OnNodeUpdated": {"Script": "test-to-remove.sh"}}})
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions"],
+                "OnNodeUpdated",
+                {"Script": "test-to-remove.sh"},
+                "-",
+                UpdatePolicy.SUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
 def _test_less_target_sections(base_conf, target_conf):
     # Remove an ebs section in the target conf
     assert_that(_get_storage_by_name(target_conf, "ebs1")).is_not_none()
@@ -765,6 +855,9 @@ def _test_storage(base_conf, target_conf):
         _test_different_names,
         _test_compute_resources,
         _test_queues,
+        _test_no_updatable_custom_actions,
+        _test_updatable_custom_actions,
+        _test_updatable_custom_actions_attributes,
         _test_storage,
     ],
 )
