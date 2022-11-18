@@ -73,11 +73,15 @@ class QueueSubnetsValidator(Validator):
     in the same AZ).
     """
 
-    def _validate(self, queue_name, subnet_ids: List[str], subnet_id_az_mapping: dict):
+    @staticmethod
+    def _find_azs_with_multiple_subnets(az_subnet_ids_mapping):
+        return {az: subnet_ids for az, subnet_ids in az_subnet_ids_mapping.items() if len(subnet_ids) > 1}
+
+    def _validate(self, queue_name, subnet_ids: List[str], az_subnet_ids_mapping: dict):
 
         # Test if there are duplicate IDs in subnet_ids
         if len(set(subnet_ids)) < len(subnet_ids):
-            duplicate_ids = [key for key, value in Counter(subnet_ids).items() if value > 1]
+            duplicate_ids = [subnet_id for subnet_id, count in Counter(subnet_ids).items() if count > 1]
             self._add_failure(
                 "The following subnet ids are specified multiple times "
                 "in queue {0}: {1}.".format(
@@ -90,15 +94,8 @@ class QueueSubnetsValidator(Validator):
         # Test if the subnets are all in different AZs
         else:
             try:
-                az_set = {subnet_id_az_mapping[subnet_id] for subnet_id in subnet_ids}
-                if len(az_set) < len(subnet_ids):
-
-                    # Find the AZs with multiple subnets
-                    azs_with_multiple_subnets = {}
-                    for _az in az_set:
-                        subnets = [subnet_id for subnet_id in subnet_ids if subnet_id_az_mapping[subnet_id] == _az]
-                        if len(subnets) > 1:
-                            azs_with_multiple_subnets[_az] = subnets
+                azs_with_multiple_subnets = self._find_azs_with_multiple_subnets(az_subnet_ids_mapping)
+                if len(azs_with_multiple_subnets) > 0:
 
                     self._add_failure(
                         "SubnetIds specified in queue {0} contains multiple subnets in the same AZs: {1}. "

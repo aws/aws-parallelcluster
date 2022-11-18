@@ -632,11 +632,21 @@ class _QueueNetworking(_BaseNetworking):
         super().__init__(**kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
+        self._az_subnet_ids_mapping = None
 
     @property
     def subnet_id_az_mapping(self):
         """Map queue subnet ids to availability zones."""
         return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
+    @property
+    def az_subnet_ids_mapping(self):
+        """Map queue subnet ids to availability zones."""
+        if not self._az_subnet_ids_mapping:
+            self._az_subnet_ids_mapping = defaultdict(list)
+            for subnet_id, _az in self.subnet_id_az_mapping.items():
+                self._az_subnet_ids_mapping[_az].append(subnet_id)
+        return self._az_subnet_ids_mapping
 
 
 class SlurmQueueNetworking(_QueueNetworking):
@@ -2089,7 +2099,7 @@ class SlurmQueue(_CommonQueue):
             QueueSubnetsValidator,
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
-            subnet_id_az_mapping=self.networking.subnet_id_az_mapping,
+            az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(
@@ -2229,7 +2239,7 @@ class SchedulerPluginQueue(_CommonQueue):
             QueueSubnetsValidator,
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
-            subnet_id_az_mapping=self.networking.subnet_id_az_mapping,
+            az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(

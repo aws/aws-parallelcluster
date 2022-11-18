@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from collections import defaultdict
 
 import pytest
 
@@ -103,10 +104,13 @@ def test_ec2_subnet_id_validator(mocker):
     ],
 )
 def test_queue_subnets_validator(mocker, queue_name, queue_subnets, subnet_id_az_mapping, failure_message):
+    az_subnet_ids_mapping = defaultdict(list)
+    for subnet_id, _az in subnet_id_az_mapping.items():
+        az_subnet_ids_mapping[_az].append(subnet_id)
     actual_failure = QueueSubnetsValidator().execute(
         queue_name,
         queue_subnets,
-        subnet_id_az_mapping,
+        az_subnet_ids_mapping,
     )
     assert_failure_messages(actual_failure, failure_message)
 
