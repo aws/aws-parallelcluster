@@ -6,6 +6,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add new configuration parameter in `Iam/ResourcePrefix` to specify a prefix for path and name of IAM resources created by ParallelCluster
 - Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
+- Add `failureReason` to `describe-cluster` output when cluster creation fails with headnode wait condition.
 
 **CHANGES**
 - Remove creation of EFS mount targets for existing FS.
