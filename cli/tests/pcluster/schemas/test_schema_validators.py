@@ -15,6 +15,7 @@ from assertpy import assert_that
 
 from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
+    AwsBatchQueueNetworkingSchema,
     AwsBatchQueueSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
@@ -32,8 +33,10 @@ from pcluster.schemas.cluster_schema import (
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
     RaidSchema,
+    SchedulerPluginQueueNetworkingSchema,
     SharedStorageSchema,
     SlurmComputeResourceSchema,
+    SlurmQueueNetworkingSchema,
     SlurmQueueSchema,
     SshSchema,
 )
@@ -55,13 +58,14 @@ from pcluster.schemas.cluster_schema import (
         ("/test/.test2/test3", "does not match expected pattern"),
         ("/test//test2", "does not match expected pattern"),
         ("/test\\test2", "does not match expected pattern"),
-        ("NONE", None),  # NONE is evaluated as a valid path
+        ("NONE", "NONE cannot be used as a shared directory"),  # NONE is not valid path for SharedStorageSchema
     ],
 )
 def test_mount_dir_validator(mount_dir, expected_message):
     _validate_and_assert_error(SharedStorageSchema(), {"MountDir": mount_dir}, expected_message)
-    _validate_and_assert_error(HeadNodeEphemeralVolumeSchema(), {"MountDir": mount_dir}, expected_message)
-    _validate_and_assert_error(QueueEphemeralVolumeSchema(), {"MountDir": mount_dir}, expected_message)
+    if mount_dir != "NONE":
+        _validate_and_assert_error(HeadNodeEphemeralVolumeSchema(), {"MountDir": mount_dir}, expected_message)
+        _validate_and_assert_error(QueueEphemeralVolumeSchema(), {"MountDir": mount_dir}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -484,7 +488,7 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"StorageType": "INVALID_VALUE"}, "Must be one of"),
         ({"DriveCacheType": "READ"}, None),
         ({"DriveCacheType": "INVALID_VALUE"}, "Must be one of"),
-        ({"DataCompressionType": None}, None),
+        ({"DataCompressionType": None}, "Field may not be null"),
         ({"DataCompressionType": "LZ4"}, None),
         ({"DataCompressionType": "INVALID_VALUE"}, "Must be one of"),
         ({"invalid_key": "fake_value"}, "Unknown field"),
@@ -553,12 +557,49 @@ def test_base_networking_validator(section_dict, expected_message):
         ("NONE", "does not match expected pattern"),
         ("subnet-12345678", None),
         ("subnet-12345678901234567", None),
+        (["subnet-12345678901234567"], "Not a valid string"),
     ],
 )
-def test_subnet_id_validator(subnet_id, expected_message):
+def test_subnet_id_validator_head_node(subnet_id, expected_message):
     """Verify that subnet ids behaves as expected when parsed in a config file."""
     _validate_and_assert_error(HeadNodeNetworkingSchema(), {"SubnetId": subnet_id}, expected_message)
-    _validate_and_assert_error(QueueNetworkingSchema(), {"SubnetIds": [subnet_id]}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "subnet_ids, expected_message",
+    [
+        ([""], "does not match expected pattern"),
+        (["subnet-12345"], "does not match expected pattern"),
+        (["subnet-123456789"], "does not match expected pattern"),
+        (["NONE"], "does not match expected pattern"),
+        (["subnet-12345678"], None),
+        (["subnet-12345678901234567"], None),
+        (["subnet-1234", "subnet-5678"], "does not match expected pattern"),
+    ],
+)
+def test_subnet_id_validator_aws_batch(subnet_ids, expected_message):
+    """Verify that subnet ids behaves as expected when parsed in a config file."""
+    _validate_and_assert_error(AwsBatchQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "subnet_ids, expected_message",
+    [
+        ([""], "does not match expected pattern"),
+        (["subnet-12345"], "does not match expected pattern"),
+        (["subnet-123456789"], "does not match expected pattern"),
+        (["NONE"], "does not match expected pattern"),
+        (["subnet-12345678"], None),
+        (["subnet-12345678901234567"], None),
+        (["subnet-123456789012345678"], "does not match expected pattern"),
+        (["subnet-1234", "subnet-5678"], "does not match expected pattern"),
+        (["subnet-12345678", "subnet-87654321"], None),
+    ],
+)
+def test_subnet_id_validator_slurm_and_scheduler_plugin(subnet_ids, expected_message):
+    """Verify that subnet ids behaves as expected when parsed in a config file."""
+    _validate_and_assert_error(SlurmQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
+    _validate_and_assert_error(SchedulerPluginQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -589,7 +630,8 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
                     contain = True
         assert_that(contain).is_true()
     else:
-        schema.validate(section_dict, partial=partial)
+        messages = schema.validate(section_dict, partial=partial)
+        assert_that(len(messages)).is_equal_to(0)
 
 
 @pytest.mark.parametrize(
