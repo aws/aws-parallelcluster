@@ -87,7 +87,7 @@ class BaseSchema(Schema):
         """
         if kwargs.get("partial"):
             # If the schema is to be loaded partially, do not check existence constrain.
-            return True
+            return False
         num_of_fields = len([data.get(field_name) for field_name in field_list if data.get(field_name)])
         return num_of_fields != 1 if one_required else num_of_fields > 1
 
