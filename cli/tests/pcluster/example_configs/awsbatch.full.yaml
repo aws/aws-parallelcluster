@@ -26,11 +26,6 @@ HeadNode:
       Args:
         - arg1
         - arg2
-    OnNodeUpdated:
-      Script: https://test.tgz  # s3:// | https://
-      Args:
-        - arg1
-        - arg2
   Ssh:
     KeyName: ec2-key-name
     AllowedIps: 1.2.3.4/32

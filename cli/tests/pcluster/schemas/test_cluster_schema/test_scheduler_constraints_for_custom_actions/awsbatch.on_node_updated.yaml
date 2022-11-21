@@ -7,7 +7,7 @@ HeadNode:
   Ssh:
     KeyName: ec2-key-name
   CustomActions:
-    OnNodeStart:
+    OnNodeUpdated:
       Script: https://test.tgz  # s3:// | https://
       Args:
         - arg1

@@ -6,12 +6,6 @@ HeadNode:
     SubnetId: subnet-12345678
   Ssh:
     KeyName: ec2-key-name
-  CustomActions:
-    OnNodeStart:
-      Script: https://test.tgz  # s3:// | https://
-      Args:
-        - arg1
-        - arg2
 Scheduling:
   Scheduler: awsbatch
   AwsBatchQueues:

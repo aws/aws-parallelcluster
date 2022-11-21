@@ -13,14 +13,14 @@ HeadNode:
         - arg1
         - arg2
 Scheduling:
-  Scheduler: awsbatch
-  AwsBatchQueues:
+  Scheduler: slurm
+  SlurmQueues:
     - Name: queue1
       Networking:
         SubnetIds:
           - subnet-12345678
       ComputeResources:
         - Name: compute_resource1
-          InstanceTypes:
-            - c5.xlarge
-          MaxvCpus: 10
+          InstanceType: c5.2xlarge
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
