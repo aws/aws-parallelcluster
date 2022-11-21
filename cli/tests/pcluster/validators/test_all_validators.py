@@ -212,10 +212,6 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     kms_key_id_encrypted_validator = mocker.patch(
         kms_validators + ".KmsKeyIdEncryptedValidator._validate", return_value=[]
     )
-    monitoring_validators = validators_path + ".monitoring_validators"
-    compute_console_logging_validator = mocker.patch(
-        monitoring_validators + ".ComputeConsoleLoggingValidator._validate", return_value=[]
-    )
 
     mocker.patch(
         "pcluster.config.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
@@ -270,11 +266,13 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     single_subnet_validator.assert_has_calls(
         [
             call(
-                queues_subnets=[
-                    ["subnet-23456789"],
-                    ["subnet-23456789"],
-                ]
-            )
+                queue_name="queue1",
+                subnet_ids=["subnet-23456789"],
+            ),
+            call(
+                queue_name="queue2",
+                subnet_ids=["subnet-23456789"],
+            ),
         ]
     )
     security_groups_validator.assert_has_calls(
@@ -342,7 +340,6 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     deletion_policy_validator.assert_called()
     instance_type_accelerator_manufacturer_validator.assert_called()
     instance_type_placement_group_validator.assert_called()
-    compute_console_logging_validator.assert_called()
 
 
 def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
@@ -571,11 +568,13 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
     single_subnet_validator.assert_has_calls(
         [
             call(
-                queues_subnets=[
-                    ["subnet-12345678"],
-                    ["subnet-12345678"],
-                ]
-            )
+                queue_name="queue1",
+                subnet_ids=["subnet-12345678"],
+            ),
+            call(
+                queue_name="queue2",
+                subnet_ids=["subnet-12345678"],
+            ),
         ]
     )
     security_groups_validator.assert_has_calls(

@@ -124,6 +124,7 @@ class InstancesEFAValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
         compute_resource_name: str,
         instance_types_info: Dict[str, InstanceTypeInfo],
         efa_enabled: bool,
+        multiaz_queue: bool,
         **kwargs,
     ):
         """Check if EFA requirements are met.
@@ -159,7 +160,7 @@ class InstancesEFAValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
                 for instance_type_name, instance_type_info in instance_types_info.items()
                 if instance_type_info.is_efa_supported()
             }
-            if instance_types_with_efa_support:
+            if instance_types_with_efa_support and not multiaz_queue:
                 self._add_failure(
                     (
                         "The EC2 instance type(s) selected ({0}) for the Compute Resource {1} support enhanced "

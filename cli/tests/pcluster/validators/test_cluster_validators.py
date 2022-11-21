@@ -33,6 +33,7 @@ from pcluster.validators.cluster_validators import (
     DeletionPolicyValidator,
     DictLaunchTemplateBuilder,
     DuplicateMountDirValidator,
+    EfaMultiAzValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -207,22 +208,32 @@ def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_ty
 
 
 @pytest.mark.parametrize(
-    "instance_type, efa_enabled, gdr_support, efa_supported, expected_message",
+    "instance_type, efa_enabled, gdr_support, efa_supported, multiaz_enabled, expected_message",
     [
         # EFAGDR without EFA
-        ("c5n.18xlarge", False, True, True, "GDR Support can be used only if EFA is enabled"),
+        ("c5n.18xlarge", False, True, True, False, "GDR Support can be used only if EFA is enabled"),
         # EFAGDR with EFA
-        ("c5n.18xlarge", True, True, True, None),
+        ("c5n.18xlarge", True, True, True, False, None),
         # EFA without EFAGDR
-        ("c5n.18xlarge", True, False, True, None),
+        ("c5n.18xlarge", True, False, True, False, None),
         # Unsupported instance type
-        ("t2.large", True, False, False, "does not support EFA"),
-        ("t2.large", False, False, False, None),
+        ("t2.large", True, False, False, False, "does not support EFA"),
+        ("t2.large", False, False, False, False, None),
         # EFA not enabled for instance type that supports it
-        ("c5n.18xlarge", False, False, True, "supports enhanced networking capabilities using Elastic Fabric Adapter"),
+        (
+            "c5n.18xlarge",
+            False,
+            False,
+            True,
+            False,
+            "supports enhanced networking capabilities using Elastic Fabric Adapter",
+        ),
+        ("c5n.18xlarge", False, False, True, True, None),
     ],
 )
-def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
+def test_efa_validator(
+    mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, multiaz_enabled, expected_message
+):
     mock_aws_api(mocker)
     get_instance_type_info_mock = mocker.patch(
         "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
@@ -235,37 +246,45 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
         ),
     )
 
-    actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support)
+    actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support, multiaz_enabled)
     assert_failure_messages(actual_failures, expected_message)
     if efa_enabled:
         get_instance_type_info_mock.assert_called_with(instance_type)
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group_key, placement_group_disabled, expected_message",
+    "efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, expected_message",
     [
         # Efa disabled
-        (False, "test", False, None),
-        (False, "test", True, None),
-        (False, None, False, None),
-        (False, None, True, None),
+        (False, "test", False, False, None),
+        (False, "test", True, False, None),
+        (False, None, False, False, None),
+        (False, None, True, False, None),
         # Efa enabled
         (
             True,
             None,
+            False,
             False,
             "The placement group for EFA-enabled compute resources must be explicit. "
             "You may see better performance using a placement group, "
             "but if you don't wish to use one please add "
             "'Enabled: false' to the compute resource's configuration section.",
         ),
-        (True, None, True, "You may see better performance using a placement group for the queue."),
-        (True, "test", False, None),
-        (True, "test", True, "You may see better performance using a placement group for the queue."),
+        (True, None, True, False, "You may see better performance using a placement group for the queue."),
+        (True, "test", False, False, None),
+        (True, "test", True, False, "You may see better performance using a placement group for the queue."),
+        # EFA and MultiAZ enabled
+        (True, "test", False, True, None),
+        (True, "test", True, True, None),
     ],
 )
-def test_efa_placement_group_validator(efa_enabled, placement_group_key, placement_group_disabled, expected_message):
-    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group_key, placement_group_disabled)
+def test_efa_placement_group_validator(
+    efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, expected_message
+):
+    actual_failures = EfaPlacementGroupValidator().execute(
+        efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled
+    )
 
     assert_failure_messages(actual_failures, expected_message)
 
@@ -426,6 +445,25 @@ def test_efa_security_group_validator(
 )
 def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
     actual_failures = EfaOsArchitectureValidator().execute(efa_enabled, os, architecture)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "multi_az_enabled, efa_enabled, expected_message",
+    [
+        (True, False, None),
+        (False, True, None),
+        (False, False, None),
+        (
+            True,
+            True,
+            "Elastic Fabric Adapter (EFA) was enabled on ComputeResource 'compute' in Queue 'queue' "
+            "but enhanced networking cannot be leveraged across multiple AZs. ",
+        ),
+    ],
+)
+def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message):
+    actual_failures = EfaMultiAzValidator().execute("queue", multi_az_enabled, "compute", efa_enabled)
     assert_failure_messages(actual_failures, expected_message)
 
 

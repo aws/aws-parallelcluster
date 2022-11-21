@@ -31,7 +31,6 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
-    DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE,
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
@@ -77,6 +76,7 @@ from pcluster.validators.cluster_validators import (
     DeletionPolicyValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
+    EfaMultiAzValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -160,9 +160,10 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.monitoring_validators import ComputeConsoleLoggingValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
+    MultiAzPlacementGroupValidator,
+    QueueSubnetsValidator,
     SecurityGroupsValidator,
     SingleSubnetValidator,
     SubnetsValidator,
@@ -353,6 +354,7 @@ class SharedEfs(Resource):
             EfsMountOptionsValidator,
             encryption_in_transit=self.encryption_in_transit,
             iam_authorization=self.iam_authorization,
+            name=self.name,
         )
 
 
@@ -607,6 +609,11 @@ class PlacementGroup(Resource):
         """Check if the placement group has a name or id and get it, preferring the name if it exists."""
         return self.name or self.id
 
+    @property
+    def enabled_or_assigned(self):
+        """Check if a placement group was enabled or passed as parameter."""
+        return self.enabled or self.assignment is not None
+
 
 class SlurmComputeResourceNetworking(Resource):
     """Represent the networking configuration for the compute resource."""
@@ -623,11 +630,21 @@ class _QueueNetworking(_BaseNetworking):
         super().__init__(**kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
+        self._az_subnet_ids_mapping = None
 
     @property
     def subnet_id_az_mapping(self):
         """Map queue subnet ids to availability zones."""
         return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
+    @property
+    def az_subnet_ids_mapping(self):
+        """Map queue subnet ids to availability zones."""
+        if not self._az_subnet_ids_mapping:
+            self._az_subnet_ids_mapping = defaultdict(set)
+            for subnet_id, _az in self.subnet_id_az_mapping.items():
+                self._az_subnet_ids_mapping[_az].add(subnet_id)
+        return self._az_subnet_ids_mapping
 
 
 class SlurmQueueNetworking(_QueueNetworking):
@@ -723,26 +740,11 @@ class Dashboards(Resource):
 class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
-    def __init__(
-        self,
-        detailed_monitoring: bool = None,
-        logs: Logs = None,
-        dashboards: Dashboards = None,
-        compute_console_logging_enabled: bool = None,
-        compute_console_logging_max_sample_size: int = None,
-        **kwargs,
-    ):
+    def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
         super().__init__(**kwargs)
         self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
-        self.compute_console_logging_enabled = Resource.init_param(compute_console_logging_enabled, default=True)
-        self.compute_console_logging_max_sample_size = Resource.init_param(
-            compute_console_logging_max_sample_size, default=DEFAULT_COMPUTE_CONSOLE_LOGGING_MAX_SAMPLE_SIZE
-        )
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(ComputeConsoleLoggingValidator, monitoring=self)
 
 
 # ---------------------- Others ---------------------- #
@@ -1233,6 +1235,7 @@ class BaseClusterConfig(Resource):
             self._register_validator(
                 AmiOsCompatibleValidator, os=self.image.os, image_id=self.head_node.image.custom_ami
             )
+        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
         self._register_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
@@ -1468,15 +1471,12 @@ class BaseClusterConfig(Resource):
     @property
     def compute_subnet_ids(self):
         """Return the list of all compute subnet ids in the cluster."""
-        return list(
-            {
-                subnet_id
-                for queue in self.scheduling.queues
-                if queue.networking.subnet_ids
-                for subnet_id in queue.networking.subnet_ids
-                if queue.networking.subnet_ids
-            }
-        )
+        subnet_ids_list = []
+        for queue in self.scheduling.queues:
+            for subnet_id in queue.networking.subnet_ids:
+                if subnet_id not in subnet_ids_list:
+                    subnet_ids_list.append(subnet_id)
+        return subnet_ids_list
 
     @property
     def availability_zones_subnets_mapping(self):
@@ -1855,12 +1855,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         super()._register_validators(context)
         self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
-            EfaValidator,
-            instance_type=self.instance_type,
-            efa_enabled=self.efa.enabled,
-            gdr_support=self.efa.gdr_support,
-        )
-        self._register_validator(
             SchedulableMemoryValidator,
             schedulable_memory=self.schedulable_memory,
             ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
@@ -1929,6 +1923,7 @@ class _CommonQueue(BaseQueue):
         self.capacity_reservation_target = capacity_reservation_target
         self.compute_resources = compute_resources
         self.networking = networking
+        self.__az_list = None
 
     @property
     def instance_role(self):
@@ -1947,6 +1942,24 @@ class _CommonQueue(BaseQueue):
             return self.image.custom_ami
         else:
             return None
+
+    @property
+    def az_list(self):
+        """Return the list of unique AvailabilityZoneID associated to the subnets defined in the Networking section."""
+        # initialize the hidden property just once
+        if self.__az_list is None:
+            az_set = set()
+            for _key, val in self.networking.subnet_id_az_mapping.items():
+                az_set.add(val)
+
+            self.__az_list = list(az_set)
+
+        return self.__az_list
+
+    @property
+    def multi_az_enabled(self):
+        """Return true if more than one AZ are defined in the queue Networking section."""
+        return len(self.az_list) > 1
 
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []
@@ -1983,6 +1996,32 @@ class _CommonQueue(BaseQueue):
             if not compute_resource.networking.placement_group.implied
             else self.networking.placement_group
         )
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        for compute_resource in self.compute_resources:
+            self._register_validator(
+                EfaMultiAzValidator,
+                queue_name=self.name,
+                multi_az_enabled=self.multi_az_enabled,
+                compute_resource_name=compute_resource.name,
+                compute_resource_efa_enabled=compute_resource.efa.enabled,
+            )
+            # SlurmFlexibleComputeResource are managed in SlurmClusterConfig since they have a different validator
+            if isinstance(compute_resource, SlurmComputeResource):
+                self._register_validator(
+                    EfaValidator,
+                    instance_type=compute_resource.instance_type,
+                    efa_enabled=compute_resource.efa.enabled,
+                    gdr_support=compute_resource.efa.gdr_support,
+                    multiaz_enabled=self.multi_az_enabled,
+                )
+            placement_group = self.get_chosen_placement_group_setting_for_compute_resource(compute_resource)
+            self._register_validator(
+                MultiAzPlacementGroupValidator,
+                multi_az_enabled=self.multi_az_enabled,
+                placement_group_enabled=placement_group.enabled_or_assigned,
+            )
 
 
 class AllocationStrategy(Enum):
@@ -2039,6 +2078,18 @@ class SlurmQueue(_CommonQueue):
             max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES,
             resource_name="ComputeResources",
         )
+        self._register_validator(
+            QueueSubnetsValidator,
+            queue_name=self.name,
+            subnet_ids=self.networking.subnet_ids,
+            az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
+        )
+        if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
+            self._register_validator(
+                SingleSubnetValidator,
+                queue_name=self.name,
+                subnet_ids=self.networking.subnet_ids,
+            )
         for compute_resource in self.compute_resources:
             self._register_validator(
                 EfaSecurityGroupValidator,
@@ -2054,6 +2105,7 @@ class SlurmQueue(_CommonQueue):
                     compute_resource
                 ).enabled
                 is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
@@ -2146,10 +2198,6 @@ class SlurmScheduling(Resource):
             max_length=MAX_NUMBER_OF_QUEUES,
             resource_name="SlurmQueues",
         )
-        self._register_validator(
-            SingleSubnetValidator,
-            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
-        )
 
 
 class SchedulerPluginQueue(_CommonQueue):
@@ -2170,6 +2218,18 @@ class SchedulerPluginQueue(_CommonQueue):
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
         )
+        self._register_validator(
+            QueueSubnetsValidator,
+            queue_name=self.name,
+            subnet_ids=self.networking.subnet_ids,
+            az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
+        )
+        if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
+            self._register_validator(
+                SingleSubnetValidator,
+                queue_name=self.name,
+                subnet_ids=self.networking.subnet_ids,
+            )
         for compute_resource in self.compute_resources:
             self._register_validator(
                 CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
@@ -2188,6 +2248,7 @@ class SchedulerPluginQueue(_CommonQueue):
                     compute_resource
                 ).enabled
                 is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
 
     @property
@@ -2502,10 +2563,6 @@ class SchedulerPluginScheduling(Resource):
             ),
             resource_name="SchedulerQueues",
         )
-        self._register_validator(
-            SingleSubnetValidator,
-            queues_subnets=[q.networking.subnet_ids for q in self.queues if q.networking and q.networking.subnet_ids],
-        )
         for queue in self.queues:
             self._register_validator(
                 MaxCountValidator,
@@ -2588,7 +2645,9 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                         CapacityReservationResourceGroupValidator,
                         capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
                         instance_types=compute_resource.instance_types,
-                        subnet=queue.networking.subnet_ids[0],
+                        subnet_ids=queue.networking.subnet_ids,
+                        queue_name=queue.name,
+                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
                     self._register_validator(
                         PlacementGroupCapacityReservationValidator,
@@ -2775,6 +2834,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                 if isinstance(compute_resource, SlurmFlexibleComputeResource):
                     validator_args = dict(
                         queue_name=queue.name,
+                        multiaz_queue=queue.multi_az_enabled,
                         capacity_type=queue.capacity_type,
                         allocation_strategy=queue.allocation_strategy,
                         compute_resource_name=compute_resource.name,

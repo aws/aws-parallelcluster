@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import Counter
 from typing import List, Union
 
 from pcluster.aws.aws_api import AWSApi
@@ -28,7 +29,13 @@ class SecurityGroupsValidator(Validator):
 
 
 class SubnetsValidator(Validator):
-    """Subnets validator."""
+    """
+    Subnets validator.
+
+    Check that all subnets in the input list belong to the same VPC.
+    Also, check that said VPC supports DNS resolution via the Amazon DNS server and assigning DNS hostnames to
+    instances.
+    """
 
     def _validate(self, subnet_ids: List[str]):
         try:
@@ -57,6 +64,53 @@ class SubnetsValidator(Validator):
             self._add_failure(str(e), FailureLevel.ERROR)
 
 
+class QueueSubnetsValidator(Validator):
+    """
+    Queue Subnets validator.
+
+    Check that there is no duplicate subnet id in the subnet_ids list.
+    Check that subnets in a queue belong to different AZs (EC2 Fleet requests do not support multiple subnets
+    in the same AZ).
+    """
+
+    @staticmethod
+    def _find_azs_with_multiple_subnets(az_subnet_ids_mapping):
+        return {az: subnet_ids for az, subnet_ids in az_subnet_ids_mapping.items() if len(subnet_ids) > 1}
+
+    def _validate(self, queue_name, subnet_ids: List[str], az_subnet_ids_mapping: dict):
+
+        # Test if there are duplicate IDs in subnet_ids
+        if len(set(subnet_ids)) < len(subnet_ids):
+            duplicate_ids = [subnet_id for subnet_id, count in Counter(subnet_ids).items() if count > 1]
+            self._add_failure(
+                "The following subnet ids are specified multiple times "
+                "in queue {0}: {1}.".format(
+                    queue_name,
+                    ", ".join(duplicate_ids),
+                ),
+                FailureLevel.ERROR,
+            )
+
+        # Test if the subnets are all in different AZs
+        try:
+            azs_with_multiple_subnets = self._find_azs_with_multiple_subnets(az_subnet_ids_mapping)
+            if len(azs_with_multiple_subnets) > 0:
+
+                self._add_failure(
+                    "SubnetIds specified in queue {0} contains multiple subnets in the same AZs: {1}. "
+                    "Please make sure all subnets in the queue are in different AZs.".format(
+                        queue_name,
+                        "; ".join(
+                            f"{az}: {', '.join(subnets)}" for az, subnets in sorted(azs_with_multiple_subnets.items())
+                        ),
+                    ),
+                    FailureLevel.ERROR,
+                )
+
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
+
+
 class ElasticIpValidator(Validator):
     """Elastic Ip validator."""
 
@@ -69,12 +123,29 @@ class ElasticIpValidator(Validator):
 
 
 class SingleSubnetValidator(Validator):
-    """Validate all queues reference the same subnet."""
+    """Validate only one subnet is used for compute resources with single instance type."""
 
-    def _validate(self, queues_subnets):
-        subnet_ids = {tuple(set(queue_subnets)) for queue_subnets in queues_subnets}
+    def _validate(self, queue_name, subnet_ids):
         if len(subnet_ids) > 1:
-            self._add_failure("The SubnetId used for all of the queues should be the same.", FailureLevel.ERROR)
+            self._add_failure(
+                "At least one compute resource in queue {0} uses a single instance type. "
+                "Multiple subnets configuration is not supported for single instance type, "
+                "please use the Instances configuration parameter for multiple instance type "
+                "allocation.".format(queue_name),
+                FailureLevel.ERROR,
+            )
+
+
+class MultiAzPlacementGroupValidator(Validator):
+    """Validate a PlacementGroup is not specified when MultiAZ is enabled."""
+
+    def _validate(self, multi_az_enabled: bool, placement_group_enabled: bool):
+        if multi_az_enabled and placement_group_enabled:
+            self._add_failure(
+                "Multiple subnets configuration does not support specifying Placement Group. "
+                "Either specify a single subnet or remove the Placement Group configuration.",
+                FailureLevel.ERROR,
+            )
 
 
 class LambdaFunctionsVpcConfigValidator(Validator):

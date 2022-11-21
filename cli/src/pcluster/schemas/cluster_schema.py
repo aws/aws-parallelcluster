@@ -652,18 +652,18 @@ class PlacementGroupSchema(BaseSchema):
 class QueueNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of Queue."""
 
-    subnet_ids = fields.List(
-        fields.Str(validate=get_field_validator("subnet_id")),
-        required=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
-    )
     assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
 class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of slurm Queue."""
 
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(min=1),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
     placement_group = fields.Nested(
         PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
@@ -677,6 +677,13 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
 
 class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of aws batch Queue."""
+
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(equal=1),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -790,10 +797,6 @@ class MonitoringSchema(BaseSchema):
     detailed_monitoring = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     logs = fields.Nested(LogsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     dashboards = fields.Nested(DashboardsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    compute_console_logging_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    compute_console_logging_max_sample_size = fields.Int(
-        validate=validate.NoneOf([0]), metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
 
     @post_load
     def make_resource(self, data, **kwargs):

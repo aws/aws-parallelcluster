@@ -13,6 +13,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
+from pcluster.constants import IAM_NAME_PREFIX_LENGTH_LIMIT, IAM_PATH_LENGTH_LIMIT
 from pcluster.validators.common import FailureLevel
 from pcluster.validators.iam_validators import (
     AdditionalIamPolicyValidator,
@@ -153,10 +154,24 @@ def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy
             "Unsupported format for ResourcePrefix //",
             FailureLevel.ERROR,
         ),
+        (
+            "/path_.,+@=-prefix/longernameprefix-longernameprefixlongernameprefix-longernameprefix",
+            f"Length of Name Prefix longernameprefix-longernameprefixlongernameprefix-longernameprefix "
+            f"must be less than {IAM_NAME_PREFIX_LENGTH_LIMIT} characters."
+            " Please refer to our official documentation for further details.",
+            FailureLevel.ERROR,
+        ),
+        (
+            "/" + "path/" * ((IAM_PATH_LENGTH_LIMIT // len("path/")) + 1),
+            f"must be less than {IAM_PATH_LENGTH_LIMIT} characters."
+            " Please refer to our official documentation for further details.",
+            FailureLevel.ERROR,
+        ),
+        ("/longerPath/pathprefix/nameprefix", None, None),
+        ("longernameprefixlongnameprefix", None, None),
         ("/path-prefix/", None, None),
         ("/path-prefix/name-prefix", None, None),
         ("_.,+@=-name-prefix", None, None),
-        ("/path_.,+@=-prefix/name_.,+@=-prefix", None, None),
     ],
 )
 def test_iam_resource_prefix_validator(resource_prefix, expected_message, expected_failure_level):

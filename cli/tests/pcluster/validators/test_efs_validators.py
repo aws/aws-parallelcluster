@@ -26,7 +26,9 @@ from tests.pcluster.validators.utils import assert_failure_messages
         (
             False,
             True,
-            "IAM Authorization requires Encryption in Transit",
+            "EFS IAM authorization cannot be enabled when encryption in-transit is disabled. "
+            "Please either disable IAM authorization or enable encryption in-transit for file system "
+            "<name-of-the-file-system>",
         ),
         (
             True,
@@ -41,5 +43,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
     ],
 )
 def test_efs_mount_options_validator(encryption_in_transit, iam_authorization, expected_message):
-    actual_failures = EfsMountOptionsValidator().execute(encryption_in_transit, iam_authorization)
+    actual_failures = EfsMountOptionsValidator().execute(
+        encryption_in_transit, iam_authorization, "<name-of-the-file-system>"
+    )
     assert_failure_messages(actual_failures, expected_message)
