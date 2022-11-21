@@ -9,13 +9,14 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import itertools
 import re
 from typing import List
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
-from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser
+from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser, get_all_stack_events
 
 
 class ClusterStack(StackInfo):
@@ -78,6 +79,21 @@ class ClusterStack(StackInfo):
     def batch_compute_environment(self):
         """Return Batch compute environment."""
         return self._get_output("BatchComputeEnvironmentArn")
+
+    def get_failure_reason(self):
+        """Reason of the failure when the cluster_status is in CREATE_FAILED."""
+
+        def _is_failed_wait(event):
+            if (
+                event.get("ResourceType") == "AWS::CloudFormation::WaitCondition"
+                and event.get("ResourceStatus") == "CREATE_FAILED"
+            ):
+                return True
+            return False
+
+        stack_events = list(itertools.chain.from_iterable(get_all_stack_events(self.name)))
+        failure_event = next(filter(_is_failed_wait, stack_events), None)
+        return failure_event.get("ResourceStatusReason") if failure_event else None
 
 
 class ClusterInstance(InstanceInfo):

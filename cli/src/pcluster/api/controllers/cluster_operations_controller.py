@@ -36,6 +36,7 @@ from pcluster.api.models import (
     CloudFormationStackStatus,
     ClusterConfigurationStructure,
     ClusterInfoSummary,
+    ClusterStatus,
     CreateClusterBadRequestExceptionResponseContent,
     CreateClusterRequestContent,
     CreateClusterResponseContent,
@@ -220,6 +221,7 @@ def describe_cluster(cluster_name, region=None):
         # Do not fail request when S3 bucket is not available
         LOGGER.error(e)
 
+    cluster_status = cloud_formation_status_to_cluster_status(cfn_stack.status)
     response = DescribeClusterResponseContent(
         creation_time=to_utc_datetime(cfn_stack.creation_time),
         version=cfn_stack.version,
@@ -231,8 +233,9 @@ def describe_cluster(cluster_name, region=None):
         cloudformation_stack_arn=cfn_stack.id,
         last_updated_time=to_utc_datetime(cfn_stack.last_updated_time),
         region=os.environ.get("AWS_DEFAULT_REGION"),
-        cluster_status=cloud_formation_status_to_cluster_status(cfn_stack.status),
+        cluster_status=cluster_status,
         scheduler=Scheduler(type=cluster.stack.scheduler, metadata=cluster.get_plugin_metadata()),
+        failure_reason=cfn_stack.get_failure_reason() if cluster_status == ClusterStatus.CREATE_FAILED else None,
     )
 
     try:
