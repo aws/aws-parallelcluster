@@ -15,6 +15,7 @@ from assertpy import assert_that
 
 from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
+    AwsBatchQueueNetworkingSchema,
     AwsBatchQueueSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
@@ -32,8 +33,10 @@ from pcluster.schemas.cluster_schema import (
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
     RaidSchema,
+    SchedulerPluginQueueNetworkingSchema,
     SharedStorageSchema,
     SlurmComputeResourceSchema,
+    SlurmQueueNetworkingSchema,
     SlurmQueueSchema,
     SshSchema,
 )
@@ -553,12 +556,47 @@ def test_base_networking_validator(section_dict, expected_message):
         ("NONE", "does not match expected pattern"),
         ("subnet-12345678", None),
         ("subnet-12345678901234567", None),
+        (["subnet-12345678901234567"], "Not a valid string"),
     ],
 )
-def test_subnet_id_validator(subnet_id, expected_message):
+def test_subnet_id_validator_head_node(subnet_id, expected_message):
     """Verify that subnet ids behaves as expected when parsed in a config file."""
     _validate_and_assert_error(HeadNodeNetworkingSchema(), {"SubnetId": subnet_id}, expected_message)
-    _validate_and_assert_error(QueueNetworkingSchema(), {"SubnetIds": [subnet_id]}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "subnet_ids, expected_message",
+    [
+        ([""], "does not match expected pattern"),
+        (["subnet-12345"], "does not match expected pattern"),
+        (["subnet-123456789"], "does not match expected pattern"),
+        (["NONE"], "does not match expected pattern"),
+        (["subnet-12345678"], None),
+        (["subnet-12345678901234567"], None),
+        (["subnet-1234", "subnet-5678"], "does not match expected pattern"),
+    ],
+)
+def test_subnet_id_validator_aws_batch(subnet_ids, expected_message):
+    """Verify that subnet ids behaves as expected when parsed in a config file."""
+    _validate_and_assert_error(AwsBatchQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "subnet_ids, expected_message",
+    [
+        ([""], "does not match expected pattern"),
+        (["subnet-12345"], "does not match expected pattern"),
+        (["subnet-123456789"], "does not match expected pattern"),
+        (["NONE"], "does not match expected pattern"),
+        (["subnet-12345678"], None),
+        (["subnet-12345678901234567"], None),
+        (["subnet-1234", "subnet-5678"], None),
+    ],
+)
+def test_subnet_id_validator_slurm_and_scheduler_plugin(subnet_ids, expected_message):
+    """Verify that subnet ids behaves as expected when parsed in a config file."""
+    _validate_and_assert_error(SlurmQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
+    _validate_and_assert_error(SchedulerPluginQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
 
 
 @pytest.mark.parametrize(
