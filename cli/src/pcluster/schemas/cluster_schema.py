@@ -2009,9 +2009,13 @@ class ClusterSchema(BaseSchema):
         if scheduling and scheduling.scheduler == "awsbatch":
             error_message = "The use of the {} configuration is not supported when using awsbatch as the scheduler."
             additional_packages = data.get("additional_packages")
-            if additional_packages and additional_packages.intel_software.intel_hpc_platform:
+            if (
+                additional_packages
+                and additional_packages.intel_software
+                and additional_packages.intel_software.intel_hpc_platform
+            ):
                 raise ValidationError(error_message.format("IntelSoftware"))
-            if head_node.custom_actions.on_node_updated:
+            if head_node.custom_actions and head_node.custom_actions.on_node_updated:
                 raise ValidationError(error_message.format("OnNodeUpdated"))
             if data.get("directory_service"):
                 raise ValidationError(error_message.format("DirectoryService"))

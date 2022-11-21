@@ -387,7 +387,7 @@ def test_compute_launch_template_properties(
         ),
         ("scheduler-plugin-imds-secured-true.yaml", {"scheduler": "plugin", "head_node_imds_secured": "true"}),
         (
-            "scheduler-plugin-headnode-hooks-semi.yaml",
+            "scheduler-plugin-headnode-hooks-partial.yaml",
             {
                 "scheduler": "plugin",
                 "postinstall": "https://test.tgz",
@@ -399,14 +399,14 @@ def test_compute_launch_template_properties(
             },
         ),
         (
-            "awsbatch-headnode-hooks-semi.yaml",
+            "awsbatch-headnode-hooks-partial.yaml",
             {
                 "scheduler": "awsbatch",
                 "postinstall": "NONE",
                 "postinstall_args": "NONE",
                 "preinstall": "https://test.tgz",
                 "preinstall_args": "arg1 arg2",
-                "postupdate": "https://test2.tgz",
+                "postupdate": "NONE",
                 "postupdate_args": "NONE",
             },
         ),
