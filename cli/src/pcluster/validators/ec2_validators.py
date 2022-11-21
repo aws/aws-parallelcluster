@@ -262,7 +262,9 @@ class CapacityReservationValidator(Validator):
         if capacity_reservation_id:
             if not instance_type:  # If the instance type doesn't exist, this is an invalid config
                 self._add_failure(
-                    "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+                    "The CapacityReservationId parameter can only be used with the InstanceType parameter "
+                    "(https://docs.aws.amazon.com/parallelcluster/latest/ug/Scheduling-v3.html#yaml-"
+                    "Scheduling-SlurmQueues-ComputeResources-InstanceType).",
                     FailureLevel.ERROR,
                 )
             else:
