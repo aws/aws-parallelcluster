@@ -701,6 +701,28 @@ class ManagedFsxMultiAzValidator(Validator):
             )
 
 
+class UnmanagedFsxMultiAzValidator(Validator):
+    """
+    Unmanaged FSx Storage Vs Multiple Subnets validator.
+
+    Unmanaged FSx volumes can exist in AZ that are different from the ones defined in queues configuration.
+    In these cases we notify customers that they may incur in increased latency and costs.
+    """
+
+    def _validate(self, queues, fsx_az_list):
+        for queue in queues:
+            queue_az_set = set(queue.networking.az_list)
+            fs_az_set = set(fsx_az_list)
+            # we want to ensure that all the az defined in the queue are supported by the FS
+            if not queue_az_set.issubset(fs_az_set):
+                self._add_failure(
+                    "Your configuration for Queue '{0}' includes multiple subnets and external shared storage "
+                    "configuration. Accessing a shared storage from different AZs can lead to increased "
+                    "latency and costs.".format(queue.name),
+                    FailureLevel.INFO,
+                )
+
+
 class EfsIdValidator(Validator):  # TODO add tests
     """
     EFS id validator.
