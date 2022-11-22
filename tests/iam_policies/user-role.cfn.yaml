@@ -465,6 +465,8 @@ Resources:
               - logs:PutRetentionPolicy
               - logs:DescribeLogGroups
               - logs:CreateLogGroup
+              - logs:TagResource
+              - logs:UntagResource
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -527,6 +529,8 @@ Resources:
             Effect: Allow
             Action:
               - logs:CreateLogGroup
+              - logs:TagResource
+              - logs:UntagResource
             Resource:
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
           - Sid: CloudFormation
@@ -1004,6 +1008,8 @@ Resources:
               - logs:CreateLogStream
               - logs:CreateLogGroup
               - logs:PutLogEvents
+              - logs:TagResource
+              - logs:UntagResource
             Resource: !Sub arn:${AWS::Partition}:logs:*:*:log-group:/aws/imagebuilder/*
 
 Outputs:
