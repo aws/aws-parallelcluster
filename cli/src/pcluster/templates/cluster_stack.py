@@ -918,10 +918,11 @@ class ClusterCdkStack(Stack):
         # Metadata
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
-        pre_install_action, post_install_action = (None, None)
+        pre_install_action, post_install_action, post_update_action = (None, None, None)
         if head_node.custom_actions:
             pre_install_action = head_node.custom_actions.on_node_start
             post_install_action = head_node.custom_actions.on_node_configured
+            post_update_action = head_node.custom_actions.on_node_updated
 
         dna_json = json.dumps(
             {
@@ -946,6 +947,10 @@ class ClusterCdkStack(Stack):
                     "postinstall": post_install_action.script if post_install_action else "NONE",
                     "postinstall_args": join_shell_args(post_install_action.args)
                     if post_install_action and post_install_action.args
+                    else "NONE",
+                    "postupdate": post_update_action.script if post_update_action else "NONE",
+                    "postupdate_args": join_shell_args(post_update_action.args)
+                    if post_update_action and post_update_action.args
                     else "NONE",
                     "region": self.region,
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
@@ -1024,7 +1029,7 @@ class ClusterCdkStack(Stack):
                     "shellRunPostInstall",
                     "chefFinalize",
                 ],
-                "update": ["deployConfigFiles", "chefUpdate"],
+                "update": ["deployConfigFiles", "chefUpdate", "shellRunOnPostUpdate"],
             },
             "deployConfigFiles": {
                 "files": {
@@ -1147,6 +1152,9 @@ class ClusterCdkStack(Stack):
                         )  # TODO check
                     },
                 }
+            },
+            "shellRunOnPostUpdate": {
+                "commands": {"runpostupdate": {"command": "/opt/parallelcluster/scripts/fetch_and_run -postupdate"}}
             },
             "chefUpdate": {
                 "commands": {

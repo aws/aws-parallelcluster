@@ -42,6 +42,11 @@ HeadNode:
       Args:
         - arg1
         - arg2
+    OnNodeUpdated:
+      Script: https://test.tgz  # s3:// | https://
+      Args:
+        - arg1
+        - arg2
   Iam:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
   Imds:

@@ -374,17 +374,61 @@ def test_compute_launch_template_properties(
 
 
 @pytest.mark.parametrize(
-    "config_file_name, expected_head_node_dna_json_file_name",
+    "config_file_name, expected_head_node_dna_json_fields",
     [
-        ("slurm-imds-secured-true.yaml", "slurm-imds-secured-true.head-node.dna.json"),
-        ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
-        ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
-        ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
+        ("slurm-imds-secured-true.yaml", {"scheduler": "slurm", "head_node_imds_secured": "true"}),
+        (
+            "slurm-imds-secured-false.yaml",
+            {"scheduler": "slurm", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1000},
+        ),
+        (
+            "awsbatch-imds-secured-false.yaml",
+            {"scheduler": "awsbatch", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1201},
+        ),
+        ("scheduler-plugin-imds-secured-true.yaml", {"scheduler": "plugin", "head_node_imds_secured": "true"}),
+        (
+            "scheduler-plugin-headnode-hooks-partial.yaml",
+            {
+                "scheduler": "plugin",
+                "postinstall": "https://test.tgz",
+                "postinstall_args": "arg1 arg2",
+                "preinstall": "NONE",
+                "preinstall_args": "NONE",
+                "postupdate": "https://test2.tgz",
+                "postupdate_args": "arg3 arg4",
+            },
+        ),
+        (
+            "awsbatch-headnode-hooks-partial.yaml",
+            {
+                "scheduler": "awsbatch",
+                "postinstall": "NONE",
+                "postinstall_args": "NONE",
+                "preinstall": "https://test.tgz",
+                "preinstall_args": "arg1 arg2",
+                "postupdate": "NONE",
+                "postupdate_args": "NONE",
+            },
+        ),
+        (
+            "slurm-headnode-hooks-full.yaml",
+            {
+                "scheduler": "slurm",
+                "postinstall": "https://test2.tgz",
+                "postinstall_args": "arg3 arg4",
+                "preinstall": "https://test.tgz",
+                "preinstall_args": "arg1 arg2",
+                "postupdate": "https://test3.tgz",
+                "postupdate_args": "arg5 arg6",
+            },
+        ),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value
 @freeze_time("2021-01-01T01:01:01")
-def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_head_node_dna_json_file_name):
+def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_head_node_dna_json_fields):
+    default_head_node_dna_json = load_json_dict(test_datadir / "head_node_default.dna.json")
+
     mock_aws_api(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
@@ -398,9 +442,26 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     generated_head_node_dna_json = json.loads(
         _get_cfn_init_file_content(template=generated_template, resource="HeadNodeLaunchTemplate", file="/tmp/dna.json")
     )
-    expected_head_node_dna_json = load_json_dict(test_datadir / expected_head_node_dna_json_file_name)
+    plugin__specific_settings = {
+        "scheduler_plugin_substack_arn": "{'Ref': 'SchedulerPluginStack'}",
+        "ddb_table": "{'Ref': 'DynamoDBTable'}",
+    }
+    slurm_specific_settings = {
+        "ddb_table": "{'Ref': 'DynamoDBTable'}",
+        "dns_domain": "{'Ref': 'ClusterDNSDomain'}",
+        "hosted_zone": "{'Ref': 'Route53HostedZone'}",
+        "slurm_ddb_table": "{'Ref': 'SlurmDynamoDBTable'}",
+        "use_private_hostname": "false",
+    }
 
-    assert_that(generated_head_node_dna_json).is_equal_to(expected_head_node_dna_json)
+    if expected_head_node_dna_json_fields["scheduler"] == "slurm":
+        default_head_node_dna_json["cluster"].update(slurm_specific_settings)
+    elif expected_head_node_dna_json_fields["scheduler"] == "plugin":
+        default_head_node_dna_json["cluster"].update(plugin__specific_settings)
+
+    default_head_node_dna_json["cluster"].update(expected_head_node_dna_json_fields)
+
+    assert_that(generated_head_node_dna_json).is_equal_to(default_head_node_dna_json)
 
 
 @freeze_time("2021-01-01T01:01:01")
