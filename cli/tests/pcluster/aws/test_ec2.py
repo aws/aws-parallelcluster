@@ -133,12 +133,31 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
             None,
             {
                 "Images": [
-                    {"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"},
-                    {"Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other"},
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-earlier",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-deprecated",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2020-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
                 ]
             },
             [
-                ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}),
+                ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later"}),
                 ImageInfo({"Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other"}),
             ],
             None,
@@ -147,15 +166,38 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
         pytest.param(
             "alinux2",
             None,
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
-            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            {
+                "Images": [
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-earlier",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2020-10-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2020-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later"})],
             None,
             id="test with os",
         ),
         pytest.param(
             None,
             "x86_64",
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            {
+                "Images": [
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
             [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
             None,
             id="test with architecture",
@@ -163,7 +205,15 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
         pytest.param(
             "alinux2",
             "x86_64",
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            {
+                "Images": [
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
             [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
             None,
             id="test with os and architecture",
@@ -179,8 +229,8 @@ def test_get_official_images(boto3_stubber, os, architecture, boto3_response, ex
         "Filters": [
             {"Name": "name", "Values": [f"aws-parallelcluster-{filter_version}-{filter_os}-{filter_arch}*"]},
         ],
-        "ImageIds": [],
         "Owners": ["amazon"],
+        "IncludeDeprecated": True,
     }
     mocked_requests = [
         MockedBoto3Request(
