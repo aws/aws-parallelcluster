@@ -46,6 +46,7 @@ def test_shared_storage_ebs(mocker, test_datadir, config_file_name, storage_name
 
     volume = next(iter(volumes.values()))
     assert_that(volume["DeletionPolicy"]).is_equal_to(deletion_policy)
+    assert_that(volume["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
 
 @pytest.mark.parametrize(
@@ -77,6 +78,7 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
     file_system_name = next(iter(file_systems.keys()))
     file_system = file_systems[file_system_name]
     assert_that(file_system["DeletionPolicy"]).is_equal_to(deletion_policy)
+    assert_that(file_system["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
     mount_targets = get_resources(
         generated_template, type="AWS::EFS::MountTarget", properties={"FileSystemId": {"Ref": file_system_name}}
@@ -86,10 +88,12 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
 
     mount_target = next(iter(mount_targets.values()))
     assert_that(mount_target["DeletionPolicy"]).is_equal_to(deletion_policy)
+    assert_that(mount_target["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
     mount_target_sg_name = mount_target["Properties"]["SecurityGroups"][0]["Ref"]
     mount_target_sg = generated_template["Resources"][mount_target_sg_name]
     assert_that(mount_target_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
+    assert_that(mount_target_sg["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", mount_target_sg_name]:
         rule_deletion_policy = deletion_policy if sg == mount_target_sg_name else None
@@ -140,10 +144,12 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
     file_system = next(iter(file_systems.values()))
     assert_that(file_system["Properties"]["FileSystemType"]).is_equal_to(fs_type)
     assert_that(file_system["DeletionPolicy"]).is_equal_to(deletion_policy)
+    assert_that(file_system["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
     file_system_sg_name = file_system["Properties"]["SecurityGroupIds"][0]["Ref"]
     file_system_sg = generated_template["Resources"][file_system_sg_name]
     assert_that(file_system_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
+    assert_that(file_system_sg["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", file_system_sg_name]:
         rule_deletion_policy = deletion_policy if sg == file_system_sg_name else None
