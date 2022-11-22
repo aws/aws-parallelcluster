@@ -4,7 +4,7 @@ CHANGELOG
 3.3.1
 -----
 **CHANGES**
-- Allow to identify a deprecated AMI as the official one.
+- Allow usage of deprecated official AMIs.
 
 3.3.0
 -----
