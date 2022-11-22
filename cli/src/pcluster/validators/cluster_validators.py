@@ -709,6 +709,14 @@ class EfsIdValidator(Validator):  # TODO add tests
     """
 
     def _validate(self, efs_id, avail_zones_mapping: dict, are_all_security_groups_customized):
+        availability_zones = avail_zones_mapping.keys()
+        if len(availability_zones) > 1 and not AWSApi.instance().efs.is_efs_standard(efs_id):
+            self._add_failure(
+                f"Cluster has subnets located in different availability zones but EFS ({efs_id}) uses OneZone EFS "
+                "storage class which works within a single Availability Zone. Please use subnets located in one "
+                "Availability Zone or use a standard storage class EFS.",
+                FailureLevel.ERROR,
+            )
         for avail_zone, subnets in avail_zones_mapping.items():
             head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, avail_zone)
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
@@ -727,7 +735,6 @@ class EfsIdValidator(Validator):  # TODO add tests
                 if not are_all_security_groups_customized:
                     self._check_cidrs_cover_subnets(head_node_target_id, avail_zone, sg_ids, efs_id, subnets)
             else:
-                # TODO: handle EFS OneZone case
                 if AWSApi.instance().efs.is_efs_standard(efs_id):
                     self._add_failure(
                         "There is no existing Mount Target in the Availability Zone {0} for EFS {1}. "
