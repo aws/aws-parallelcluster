@@ -1,0 +1,16 @@
+{%- import 'common.jinja2' as common with context -%}
+{%- set SCHEDULER_PLUGIN_TESTS = false -%}
+---
+test-suites:
+  pcluster_api:
+    test_api.py::test_cluster_slurm:
+      dimensions:
+        - regions: {{ common.REGIONS_ALL }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_api.py::test_custom_image:
+      dimensions:
+        - regions: ["sa-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
