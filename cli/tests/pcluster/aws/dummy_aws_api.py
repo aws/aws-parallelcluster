@@ -204,6 +204,7 @@ class _DummyFSxClient(FSxClient):
                         "FileSystemType": "LUSTRE",
                         "LustreConfiguration": {"MountName": "abcdef"},
                         "FileSystemId": file_system_id,
+                        "SubnetIds": ["subnet-1"],
                     }
                 )
             )
