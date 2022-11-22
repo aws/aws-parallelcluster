@@ -105,6 +105,8 @@
     {
       "Action": [
         "logs:CreateLogGroup",
+        "logs:TagResource",
+        "logs:UntagResource",
         "logs:CreateLogStream"
       ],
       "Resource": [
