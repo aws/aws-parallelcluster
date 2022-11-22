@@ -61,11 +61,11 @@ jobs:
             toxdir: cli
             toxenv: code-linters
           - name: CloudFormation Templates Checks
-            python: 3.6
+            python: 3.7
             toxdir: cli
             toxenv: cfn-format-check,cfn-lint,cfn-tests
           - name: Integration Tests Config Checks
-            python: 3.6
+            python: 3.7
             toxdir: tests/integration-tests
             toxenv: validate-test-configs
 
