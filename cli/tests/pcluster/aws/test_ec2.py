@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import os as os_lib
+from datetime import datetime, timedelta
 
 import pytest
 from assertpy import assert_that, soft_assertions
@@ -19,7 +20,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.config.cluster_config import AmiSearchFilters, Tag
 from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, to_iso_timestr
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
@@ -251,6 +252,7 @@ def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_r
             {"Name": "name", "Values": [f"aws-parallelcluster-{get_installed_version()}-amzn2-hvm-{architecture}*"]},
         ],
         "Owners": [filters.owner if filters and filters.owner else "amazon"],
+        "IncludeDeprecated": True,
     }
     if filters and filters.tags:
         expected_params["Filters"].extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in filters.tags])
@@ -270,6 +272,83 @@ def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_r
     else:
         ami_id = Ec2Client().get_official_image_id(os, architecture, filters)
         assert_that(ami_id).is_equal_to(expected_ami_id)
+
+
+@pytest.mark.parametrize(
+    "boto3_response, expected_ami_id",
+    [
+        (
+            {
+                "Images": [
+                    {
+                        "ImageId": "A",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "ImageId": "B",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
+            "B",
+        ),
+        (
+            {
+                "Images": [
+                    {
+                        "ImageId": "A",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "ImageId": "B",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
+            "A",
+        ),
+        (
+            {
+                "Images": [
+                    {
+                        "ImageId": "A",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "ImageId": "B",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                        "DeprecationTime": to_iso_timestr(datetime.now() + timedelta(minutes=5)),
+                    },
+                ]
+            },
+            "B",
+        ),
+    ],
+    ids=["both deprecated", "one deprecated", "deprecation in the future"],
+)
+def test_get_official_image_id_with_deprecation(boto3_stubber, boto3_response, expected_ami_id):
+    expected_params = {
+        "Filters": [
+            {"Name": "name", "Values": [f"aws-parallelcluster-{get_installed_version()}-amzn2-hvm-arm64*"]},
+        ],
+        "Owners": ["amazon"],
+        "IncludeDeprecated": True,
+    }
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_images",
+            expected_params=expected_params,
+            response=boto3_response,
+            generate_error=False,
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+
+    ami_id = Ec2Client().get_official_image_id("alinux2", "arm64", None)
+    assert_that(ami_id).is_equal_to(expected_ami_id)
 
 
 @pytest.mark.parametrize(
