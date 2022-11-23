@@ -188,11 +188,6 @@ def is_managed_placement_group_deletion(change, patch):
     ) and not is_placement_group_managed_for_compute_resource(target_q_networking, target_cr_networking)
 
 
-def is_subnet_update(change):
-    """Check if the update involves SubnetIds."""
-    return any(path.startswith("Networking") and change.key == "SubnetIds" for path in change.path)
-
-
 def get_managed_fsx_from_config(config):
     """Extract managed Fsx for Lustre shared storage entries in a cluster configuration."""
     managed_fsx_storage = [
@@ -203,16 +198,11 @@ def get_managed_fsx_from_config(config):
     return managed_fsx_storage
 
 
-def unchanged_managed_fsx_lustre_names(patch):
+def unchanged_managed_fsx_lustre_names(_, patch):
     """Get list of managed Fsx for Lustre Shared Storage that hasn't changed between cluster configuration updates."""
     fsx_names_before_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.base_config)}
     fsx_names_after_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.target_config)}
     return fsx_names_before_update.intersection(fsx_names_after_update)
-
-
-def subnet_updated_in_cluster_with_managed_fsx_lustre(change, patch):
-    """Check if the update targets SubnetIds and the cluster has managed Fsx for Lustre Shared Storage."""
-    return is_subnet_update(change) and unchanged_managed_fsx_lustre_names(patch)
 
 
 def is_slurm_scheduler(patch):
@@ -265,12 +255,12 @@ def fail_reason_managed_placement_group(change, patch):
     return reason
 
 
-def fail_reason_subnet_update_policy(change, patch):
-    if subnet_updated_in_cluster_with_managed_fsx_lustre(change, patch):
-        fsx_lustre_names = unchanged_managed_fsx_lustre_names(patch)
+def fail_reason_managed_fsx(change, patch):
+    fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
+    if fsx_lustre_names:
         reason = (
-            "Updating the compute fleet subnet will cause these FSx for Lustre file system(s) to be replaced: "
-            f"{fsx_lustre_names}."
+            f"Updating the {change.key} parameter will cause these FSx for Lustre file system(s) to be replaced: "
+            f"{fsx_lustre_names}"
         )
     else:
         reason = fail_reason_queue_update_strategy(change, patch)
@@ -300,8 +290,8 @@ def condition_checker_managed_placement_group(change, patch):
     return result
 
 
-def condition_checker_subnet_update(change, patch):
-    if subnet_updated_in_cluster_with_managed_fsx_lustre(change, patch):
+def condition_checker_managed_fsx(change, patch):
+    if unchanged_managed_fsx_lustre_names(change, patch):
         result = False
     else:
         result = condition_checker_queue_update_strategy(change, patch)
@@ -323,9 +313,9 @@ def actions_needed_shared_storage_update(change, patch):
     return actions
 
 
-def actions_needed_subnet_update(change, patch):
-    if subnet_updated_in_cluster_with_managed_fsx_lustre(change, patch):
-        fsx_lustre_names = unchanged_managed_fsx_lustre_names(patch)
+def actions_needed_managed_fsx(change, patch):
+    fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
+    if fsx_lustre_names:
         return (
             "If you intend to proceed with the update, please make sure to back-up your data and explicitly replace the"
             f" file system(s) ({fsx_lustre_names}) with a new one(s) in the cluster configuration."
@@ -378,7 +368,7 @@ UpdatePolicy.ACTIONS_NEEDED = {
     "pcluster_stop_conditional": actions_needed_queue_update_strategy,
     "managed_placement_group": actions_needed_managed_placement_group,
     "shared_storage_update_conditional": actions_needed_shared_storage_update,
-    "subnet_update": actions_needed_subnet_update,
+    "managed_fsx": actions_needed_managed_fsx,
 }
 
 # Base policies
@@ -515,10 +505,10 @@ UpdatePolicy.UNSUPPORTED = UpdatePolicy(
     + ". If you need this change, please consider creating a new cluster instead of updating the existing one.",
 )
 
-UpdatePolicy.SUBNET_UPDATE_POLICY = UpdatePolicy(
-    name="SUBNET_UPDATE_POLICY",
+UpdatePolicy.MANAGED_FSX_WITH_QUEUE_UPDATE_STRATEGY = UpdatePolicy(
+    name="MANAGED_FSX_WITH_QUEUE_UPDATE_STRATEGY",
     level=5,
-    fail_reason=fail_reason_subnet_update_policy,
-    action_needed=UpdatePolicy.ACTIONS_NEEDED["subnet_update"],
-    condition_checker=condition_checker_subnet_update,
+    fail_reason=fail_reason_managed_fsx,
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["managed_fsx"],
+    condition_checker=condition_checker_managed_fsx,
 )
