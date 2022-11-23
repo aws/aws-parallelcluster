@@ -703,7 +703,7 @@ class ClusterCdkStack(Stack):
                 kms_key_id=shared_fsx.kms_key_id,
                 file_system_type=LUSTRE,
                 storage_type=shared_fsx.fsx_storage_type,
-                subnet_ids=self.config.compute_subnet_ids,
+                subnet_ids=self.config.compute_subnet_ids[0:1],
                 security_group_ids=[sg.ref for sg in file_system_security_groups],
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
