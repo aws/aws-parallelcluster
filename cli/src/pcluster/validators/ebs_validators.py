@@ -210,7 +210,7 @@ class SharedEbsVolumeIdValidator(Validator):
                 if not is_available and not is_attached_to_head_node:
                     self._add_failure(
                         "Volume {0} is in state '{1}' not 'available'.".format(volume_id, respond.get("State")),
-                        FailureLevel.WARNING,
+                        FailureLevel.ERROR,
                     )
             except AWSClientError as e:
                 if str(e).endswith("parameter volumes is invalid. Expected: 'vol-...'."):
