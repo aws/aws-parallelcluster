@@ -147,6 +147,9 @@ def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster
     cluster_compute_fleet_client = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
     cluster_instances_client = cluster_instances_api.ClusterInstancesApi(api_client)
 
+    # Dummy operation to warm-up the Lambda
+    cluster_operations_client.list_clusters(region=region)
+
     cluster = _test_create_cluster(cluster_operations_client, create_cluster, cluster_name, initial_config_file)
 
     _test_list_clusters(region, cluster_operations_client, cluster_name, "CREATE_IN_PROGRESS")
