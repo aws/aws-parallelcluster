@@ -15,11 +15,11 @@ from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import (
     UpdatePolicy,
-    actions_needed_subnet_update,
+    actions_needed_managed_fsx,
+    condition_checker_managed_fsx,
     condition_checker_managed_placement_group,
-    condition_checker_subnet_update,
+    fail_reason_managed_fsx,
     fail_reason_managed_placement_group,
-    fail_reason_subnet_update_policy,
     is_managed_placement_group_deletion,
 )
 from pcluster.models.cluster import Cluster
@@ -1327,8 +1327,8 @@ def test_condition_checker_managed_placement_group(
                 is_list=False,
             ),
             False,
-            "Updating the compute fleet subnet will cause these FSx for Lustre file system(s) to be replaced: "
-            "{'test-fsx-lustre'}.",
+            "Updating the SubnetIds parameter will cause these FSx for Lustre file system(s) to be replaced: "
+            "{'test-fsx-lustre'}",
             "If you intend to proceed with the update, please make sure to back-up your data and explicitly replace "
             "the file system(s) ({'test-fsx-lustre'}) with a new one(s) in the cluster configuration.",
         ),
@@ -1390,7 +1390,7 @@ def test_condition_checker_managed_placement_group(
         ),
     ],
 )
-def test_condition_checker_subnet_ids_updated(
+def test_condition_checker_managed_fsx(
     mocker,
     base_config,
     target_config,
@@ -1402,6 +1402,6 @@ def test_condition_checker_subnet_ids_updated(
     cluster = Cluster(name="mock-name", stack="mock-stack")
     mocker.patch.object(cluster, "has_running_capacity", return_value=True)
     patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
-    assert_that(condition_checker_subnet_update(change, patch)).is_equal_to(expected_subnet_updated)
-    assert_that(fail_reason_subnet_update_policy(change, patch)).is_equal_to(expected_fail_reason)
-    assert_that(actions_needed_subnet_update(change, patch)).is_equal_to(expected_action_needed)
+    assert_that(condition_checker_managed_fsx(change, patch)).is_equal_to(expected_subnet_updated)
+    assert_that(fail_reason_managed_fsx(change, patch)).is_equal_to(expected_fail_reason)
+    assert_that(actions_needed_managed_fsx(change, patch)).is_equal_to(expected_action_needed)
