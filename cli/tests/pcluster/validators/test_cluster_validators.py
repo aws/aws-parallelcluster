@@ -1523,6 +1523,49 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
             "but it does not have a security group that allows inbound and outbound rules to allow traffic of subnet "
             "subnet-2. Please modify the Mount Target's security group, to allow traffic on subnet.",
         ),
+        (
+            {"dummy-az-1": {"subnet-1"}, "dummy-az-2": {"subnet-2"}},
+            "0.0.0.0/16",
+            False,
+            [
+                {
+                    "IpPermissions": [
+                        {
+                            "FromPort": 2049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "GroupId": "sg-041b924ce46b2dc0b",
+                    "IpPermissionsEgress": [
+                        {
+                            "IpProtocol": "-1",
+                            "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [],
+                        }
+                    ],
+                    "VpcId": "vpc-12345678",
+                },
+            ],
+            {
+                "FileSystems": [
+                    {
+                        "FileSystemId": "fs-084a3b173fb101f9b",
+                        "AvailabilityZoneName": "us-east-1",
+                    }
+                ]
+            },
+            FailureLevel.ERROR,
+            "Cluster has subnets located in different availability zones but EFS (dummy-efs-1) uses OneZone EFS "
+            "storage class which works within a single Availability Zone. Please use subnets located in one "
+            "Availability Zone or use a standard storage class EFS.",
+        ),
     ],
 )
 def test_efs_id_validator(
