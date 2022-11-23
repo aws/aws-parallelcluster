@@ -691,8 +691,8 @@ class ManagedFsxMultiAzValidator(Validator):
     Validate if managed storage of type FSx is set when using multiple subnets in queues configuration.
     """
 
-    def _validate(self, queues, new_storage_count):
-        if any(len(queue.networking.subnet_ids) > 1 for queue in queues) and new_storage_count.get("fsx") > 0:
+    def _validate(self, compute_subnet_ids, new_storage_count):
+        if len(compute_subnet_ids) > 1 and new_storage_count.get("fsx") > 0:
             self._add_failure(
                 "Multiple subnets configuration does not support FSx 'managed' storage. Found {0} 'managed' "
                 "FSx storage. Please make sure to provide an existing shared storage, properly configured to work "

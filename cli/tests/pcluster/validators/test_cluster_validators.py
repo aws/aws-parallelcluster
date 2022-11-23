@@ -1663,6 +1663,29 @@ def test_efs_id_validator(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+            ],
+            {"efs": 1, "fsx": 1, "raid": 1},
+            FailureLevel.ERROR,
+            "Multiple subnets configuration does not support FSx 'managed' storage. "
+            "Found 1 'managed' FSx storage. Please make sure to provide "
+            "an existing shared storage, properly configured to work across the target subnets.",
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="queue1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1", "subnet-2"],
                     ),
                 ),
@@ -1688,7 +1711,7 @@ def test_efs_id_validator(
                     ),
                 ),
             ],
-            {"efs": 1, "fsx": 1, "raid": 1},
+            {"efs": 1, "fsx": 0, "raid": 1},
             None,
             "",
         ),
