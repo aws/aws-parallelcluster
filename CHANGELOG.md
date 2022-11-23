@@ -15,6 +15,11 @@ CHANGELOG
 - Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
 - Allow usage of deprecated official AMIs.
 
+3.3.1
+-----
+**BUG FIXES**
+- Block updating ComputeFleet `SubnetIds` when a Cluster has managed Fsx for Lustre FileSystem. This prevents the Fsx FileSystem from being deleted due to the Replacement update behaviour by CloudFormation.
+
 3.3.0
 -----
 
