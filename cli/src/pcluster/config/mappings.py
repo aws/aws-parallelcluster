@@ -303,7 +303,7 @@ VPC = {
             "cfn_param_mapping": "VPCSecurityGroupId",
             "allowed_values": ALLOWED_VALUES["security_group_id"],
             "validators": [ec2_security_group_validator],
-            "update_policy": UpdatePolicy.SUPPORTED
+            "update_policy": UpdatePolicy.MANAGED_FSX
         }),
         ("master_availability_zone", {
             # NOTE: this is not exposed as a configuration parameter

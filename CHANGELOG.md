@@ -5,7 +5,7 @@ CHANGELOG
 -----
 
 **CHANGES**
-- TODO
+- Block cluster update when using a managed FSx for Lustre file system and updating VPC Security Group Id, to avoid data loss.
 
 2.11.8
 -----
