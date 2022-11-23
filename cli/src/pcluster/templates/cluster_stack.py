@@ -1082,7 +1082,10 @@ class ClusterCdkStack(Stack):
                                 "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
                                 ". /etc/profile.d/pcluster.sh; "
                                 "cfn-init -v --stack ${StackName} "
-                                "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
+                                "--resource HeadNodeLaunchTemplate --configsets update --region ${Region} || "
+                                "cfn-signal --exit-code=1 "
+                                "--reason='Failed to run cfn-init. Check the CloudWatch logs.' "
+                                "$(cat /tmp/wait_condition_handle.txt)\n"
                                 "runas=root\n"
                             ),
                             {"StackName": self._stack_name, "Region": self.region},
