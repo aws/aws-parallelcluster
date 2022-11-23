@@ -165,7 +165,7 @@ from pcluster.validators.networking_validators import (
     MultiAzPlacementGroupValidator,
     QueueSubnetsValidator,
     SecurityGroupsValidator,
-    SingleSubnetValidator,
+    SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
 )
 from pcluster.validators.s3_validators import (
@@ -2092,7 +2092,7 @@ class SlurmQueue(_CommonQueue):
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(
-                SingleSubnetValidator,
+                SingleInstanceTypeSubnetValidator,
                 queue_name=self.name,
                 subnet_ids=self.networking.subnet_ids,
             )
@@ -2232,7 +2232,7 @@ class SchedulerPluginQueue(_CommonQueue):
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(
-                SingleSubnetValidator,
+                SingleInstanceTypeSubnetValidator,
                 queue_name=self.name,
                 subnet_ids=self.networking.subnet_ids,
             )
