@@ -657,6 +657,12 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
 class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of slurm Queue."""
 
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(min=1),
+        metadata={"update_policy": UpdatePolicy.SUBNET_UPDATE_POLICY},
+    )
     placement_group = fields.Nested(
         PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
@@ -670,6 +676,13 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
 
 class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of aws batch Queue."""
+
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(equal=1),
+        metadata={"update_policy": UpdatePolicy.SUBNET_UPDATE_POLICY},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
