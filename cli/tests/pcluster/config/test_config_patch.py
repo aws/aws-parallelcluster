@@ -15,7 +15,7 @@ from assertpy import assert_that
 
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.pcluster_config import PclusterConfig
-from pcluster.config.update_policy import UpdatePolicy
+from pcluster.config.update_policy import UpdatePolicy, _check_unmanaged_fsx
 from pcluster.utils import InstanceTypeInfo
 from tests.pcluster.config.utils import duplicate_config_file
 
@@ -73,6 +73,7 @@ def test_config_patch(mocker):
     [
         ("vpc", "default", "master_subnet_id", "subnet-12345678", "subnet-1234567a", UpdatePolicy.UNSUPPORTED),
         ("vpc", "default", "additional_sg", "sg-12345678", "sg-1234567a", UpdatePolicy.SUPPORTED),
+        ("vpc", "default", "vpc_security_group_id", "sg-12345678", "sg-1234567a", UpdatePolicy.MANAGED_FSX),
         ("cluster", "default", "initial_queue_size", 0, 1, UpdatePolicy.SUPPORTED),
         ("cluster", "default", "max_queue_size", 0, 1, UpdatePolicy.MAX_QUEUE_SIZE),
         ("cluster", "default", "maintain_initial_size", 0, 1, UpdatePolicy.SUPPORTED),
@@ -385,3 +386,130 @@ def test_patch_check_cluster_resource_bucket(
         line = ["{0}".format(element) if isinstance(element, str) else element for element in line]
         assert_that(expected_message_rows).contains(line)
     assert_that(patch_allowed).is_equal_to(not expected_error_row)
+
+
+@pytest.mark.parametrize(
+    "fsx_options, is_unmanaged_fsx",
+    [
+        ("NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE", False),
+        (
+            "shared_dir,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            False,
+        ),
+        (
+            "shared_dir,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
+            "NONE,NONE,NONE,NONE,fsx_backup_id,NONE,NONE,NONE,NONE,NONE,NONE",
+            False,
+        ),
+        (
+            "shared_dir,fsx_fs_id,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
+            "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            True,
+        ),
+        (
+            "shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,"
+            "import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,"
+            "daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,"
+            "fsx_backup_id,auto_import_policy,storage_type,drive_cache_type,existing_mount_name,"
+            "existing_dns_name,data_compression_type",
+            True,
+        ),
+        (
+            "shared_dir,NONE,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,"
+            "import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,"
+            "daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,"
+            "fsx_backup_id,auto_import_policy,storage_type,drive_cache_type,existing_mount_name,"
+            "existing_dns_name,data_compression_type",
+            False,
+        ),
+    ],
+)
+def test_check_unmanaged_fsx(fsx_options, is_unmanaged_fsx, pcluster_config_reader, mocker):
+    mocked_cfn_params = {"Parameters": [{"ParameterKey": "FSXOptions", "ParameterValue": fsx_options}]}
+    get_stack_mock = mocker.patch("pcluster.utils.get_stack", return_value=mocked_cfn_params)
+
+    patch_mock = mocker.MagicMock()
+    patch_mock.stack_name = "stack_name"
+
+    assert_that(_check_unmanaged_fsx(None, patch_mock)).is_equal_to(is_unmanaged_fsx)
+    get_stack_mock.assert_called_with("stack_name")
+
+
+@pytest.mark.parametrize(
+    "src_value, dst_value, is_managed_fsx, expected_update_policy, expected_patch_allowed",
+    [
+        # no changes in vpc_security_group_id
+        (None, None, True, UpdatePolicy.SUPPORTED, True),
+        (None, None, False, UpdatePolicy.SUPPORTED, True),
+        ("sg-12345678", "sg-12345678", True, UpdatePolicy.SUPPORTED, True),
+        ("sg-12345678", "sg-12345678", False, UpdatePolicy.SUPPORTED, True),
+        # changes in vpc_security_group_id
+        (None, "sg-12345678", True, UpdatePolicy.MANAGED_FSX, False),
+        (None, "sg-12345678", False, UpdatePolicy.MANAGED_FSX, True),
+        ("sg-12345678", "sg-23456789", True, UpdatePolicy.MANAGED_FSX, False),
+        ("sg-12345678", "sg-23456789", False, UpdatePolicy.MANAGED_FSX, True),
+        ("sg-12345678", None, True, UpdatePolicy.MANAGED_FSX, False),
+        ("sg-12345678", None, False, UpdatePolicy.MANAGED_FSX, True),
+    ],
+)
+def test_vpc_security_id_changes(
+    mocker,
+    pcluster_config_reader,
+    test_datadir,
+    src_value,
+    dst_value,
+    is_managed_fsx,
+    expected_update_policy,
+    expected_patch_allowed,
+):
+    _do_mocking_for_tests(mocker)
+    fsx_options = ["shared_dir", "NONE", "..."] if is_managed_fsx else ["shared_dir", "fsx_fs_id", "..."]
+    mocker.patch("pcluster.config.update_policy._get_fsx_options", return_value=fsx_options)
+
+    dst_config_file = "pcluster.config.dst.ini"
+    duplicate_config_file(dst_config_file, test_datadir)
+
+    src_config_file = pcluster_config_reader(**{"vpc_security_group_id": src_value})
+    src_conf = PclusterConfig(config_file=src_config_file, fail_on_file_absence=True)
+
+    dst_config_file = pcluster_config_reader(dst_config_file, **{"vpc_security_group_id": dst_value})
+    dst_conf = PclusterConfig(config_file=dst_config_file, fail_on_file_absence=True)
+
+    expected_changes = []
+    expected_message_rows = [["section", "parameter", "old value", "new value", "check", "reason", "action_needed"]]
+    if src_value != dst_value:
+        expected_changes.append(
+            Change("vpc", "default", "vpc_security_group_id", src_value, dst_value, UpdatePolicy.MANAGED_FSX),
+        )
+        if expected_patch_allowed:
+            check = "SUCCEDED"
+            reason = "-"
+            action_needed = None
+        else:
+            check = "ACTION NEEDED"
+            reason = (
+                "'vpc_security_group_id' parameter cannot be updated because the cluster was created with a "
+                "managed FSx. The change in the 'vpc_security_group_id' will trigger a creation of a new file system "
+                "to replace the old one, without preserving the existing data. If you force the update you'll lose "
+                "your data. Make sure to back up the data from the existing FSx for Lustre file system "
+                "if you want to preserve them. For more information, see "
+                "https://docs.aws.amazon.com/fsx/latest/LustreGuide/using-backups-fsx.html"
+            )
+            action_needed = (
+                f"Restore the value of parameter 'vpc_security_group_id' to '{src_value}'"
+                if src_value
+                else "Remove the parameter 'vpc_security_group_id'"
+            )
+
+        expected_message_rows.append(
+            ["vpc default", "vpc_security_group_id", src_value, dst_value, check, reason, action_needed]
+        )
+
+    _check_patch(src_conf, dst_conf, expected_changes, expected_update_policy)
+    is_patch_allowed, rows = ConfigPatch(base_config=src_conf, target_config=dst_conf).check()
+    assert_that(expected_patch_allowed).is_equal_to(is_patch_allowed)
+
+    for line in rows:
+        # Handle unicode string
+        line = ["{0}".format(element) if isinstance(element, str) else element for element in line]
+        assert_that(expected_message_rows).contains(line)

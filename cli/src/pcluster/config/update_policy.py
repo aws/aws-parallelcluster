@@ -247,6 +247,48 @@ UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
     print_succeeded=False,
 )
 
+
+def _get_fsx_options(stack_name):
+    params = utils.get_stack(stack_name).get("Parameters")
+    return utils.get_cfn_param(params, "FSXOptions").split(",")
+
+
+def _check_unmanaged_fsx(_, patch):
+    """
+    Return true if the cluster does not have a managed FSx.
+
+    We have an unmanaged FSx if both shared_dir and fsx_fs_id are specified.
+    """
+    # FSXOptions is a comma separated string of the following items: shared_dir,fsx_fs_id,... (see CFN template)
+    fsx_options = _get_fsx_options(patch.stack_name)
+    fsx_shared_dir = fsx_options[0]
+    fsx_fs_id = fsx_options[1]
+
+    return fsx_shared_dir != "NONE" and fsx_fs_id != "NONE"
+
+
+# Expected Behavior:
+# There is a managed FSx specified at cluster creation time, vpc security group is modified when updating: block update
+# For all other cases the change is supported.
+UpdatePolicy.MANAGED_FSX = UpdatePolicy(
+    level=40,
+    fail_reason=lambda change, patch: (
+        "'{0}' parameter cannot be updated because the cluster was created with a managed FSx. "
+        "The change in the '{0}' will trigger a creation of a new file system to replace the old one, "
+        "without preserving the existing data. If you force the update you'll lose your data. "
+        "Make sure to back up the data from the existing FSx for Lustre file system if you want to preserve them. "
+        "For more information, see https://docs.aws.amazon.com/fsx/latest/LustreGuide/using-backups-fsx.html"
+    ).format(change.param_key),
+    action_needed=lambda change, patch: (
+        "Restore the value of parameter '{0}' to '{1}'".format(change.param_key, change.old_value)
+        if change.old_value is not None
+        else "Remove the parameter '{0}'".format(change.param_key)
+    ),
+    condition_checker=_check_unmanaged_fsx,
+    # We don't want to show the change if allowed (e.g local value is empty)
+    print_succeeded=False,
+)
+
 # Update effects are unknown.
 # WARNING: This is the default value for all new configuration parameters. All parameters must be linked to a specific
 # update policy instead of UNKNOWN to pass unit tests.
