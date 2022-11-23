@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import os.path
 import re
 import time
 
@@ -48,12 +49,22 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    for script in ["preinstall.sh", "postinstall.sh", "updated_preinstall.sh", "updated_postinstall.sh"]:
+    for script in [
+        "preinstall.sh",
+        "postinstall.sh",
+        "updated_preinstall.sh",
+        "updated_postinstall.sh",
+        "postupdate.sh",
+        "updated_postupdate.sh",
+    ]:
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name, bucket=bucket_name)
+    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
+
+    # Check update hook is NOT executed at cluster creation time
+    assert_that(os.path.exists("/tmp/postupdate_out.txt")).is_false()
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
     cluster.update(str(init_config_file), force_update="true")
@@ -61,6 +72,9 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(command_executor)
+
+    # Check update hook is executed at cluster update time
+    _check_head_node_script(command_executor, "postupdate", "UPDATE-ARG1")
 
     # Create shared dir for script results
     command_executor.run_remote_command("mkdir -p /shared/script_results")
@@ -127,7 +141,6 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     additional_policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
-        bucket=bucket_name,
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
     )
@@ -252,8 +265,20 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_preinstall", "ABC")
     _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_postinstall", "DEF")
 
+    # Check the new update hook with new args is executed at cluster update time
+    _check_head_node_script(command_executor, "updated_postupdate", "UPDATE-ARG2")
+
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
+
+
+def _check_head_node_script(command_executor, script_name, script_arg):
+    """Verify that update hook script is executed with the right arguments."""
+    logging.info(f"Checking {script_name} script")
+    output_file_path = f"/tmp/{script_name}_out.txt"
+
+    result = command_executor.run_remote_command(f"cat {output_file_path}")
+    assert_that(result.stdout).matches(rf"{script_name}-{script_arg}")
 
 
 def _assert_launch_templates_config(queues_config, cluster_name, region):

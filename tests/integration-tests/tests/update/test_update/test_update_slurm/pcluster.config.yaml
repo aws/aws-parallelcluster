@@ -12,6 +12,14 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ resource_bucket }}/scripts/postupdate.sh
+      Args:
+        - UPDATE-ARG1
+  Iam:
+    S3Access:
+      - BucketName: {{ resource_bucket }}
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
@@ -24,11 +32,11 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/preinstall.sh
           Args:
             - QWE
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/postinstall.sh
           Args:
             - RTY
       CapacityType: ONDEMAND
