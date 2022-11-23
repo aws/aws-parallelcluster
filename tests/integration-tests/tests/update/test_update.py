@@ -60,7 +60,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name, bucket=bucket_name)
+    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
 
     # Check update hook is NOT executed at cluster creation time
@@ -141,7 +141,6 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     additional_policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
-        bucket=bucket_name,
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
     )

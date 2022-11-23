@@ -14,14 +14,13 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     S3Access:
-      - BucketName: {{ bucket }}
       - BucketName: {{ resource_bucket }}
         EnableWriteAccess: true
     AdditionalIamPolicies:
       - Policy: {{ additional_policy_arn }}
   CustomActions:
     OnNodeUpdated:
-      Script: s3://{{ bucket }}/scripts/updated_postupdate.sh
+      Script: s3://{{ resource_bucket }}/scripts/updated_postupdate.sh
       Args:
         - UPDATE-ARG2
 Scheduling:
@@ -36,11 +35,11 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       CapacityType: SPOT
@@ -79,11 +78,11 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       ComputeResources:
@@ -112,11 +111,11 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       ComputeResources:
