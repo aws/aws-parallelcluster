@@ -10,6 +10,7 @@ CHANGELOG
 
 **CHANGES**
 - Allow usage of deprecated official AMIs.
+- Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
 3.3.0
 -----
