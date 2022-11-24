@@ -103,6 +103,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
+    UnmanagedFsxMultiAzValidator,
 )
 from pcluster.validators.common import ValidatorContext
 from pcluster.validators.database_validators import DatabaseUriValidator
@@ -372,16 +373,37 @@ class BaseSharedFsx(Resource):
         self._register_validator(SharedStorageNameValidator, name=self.name)
 
     @property
+    def is_unmanaged(self):
+        """Return true if using existing FSx."""
+        return self.file_system_id is not None
+
+    @property
     def file_system_data(self):
         """Return filesystem information if using existing FSx."""
-        if not self.__file_system_data and self.file_system_id:
+        if not self.__file_system_data and self.is_unmanaged:
             self.__file_system_data = AWSApi.instance().fsx.get_file_systems_info([self.file_system_id])[0]
         return self.__file_system_data
 
     @property
+    def file_system_subnets(self):
+        """Return list of subnets associated to existing FSx."""
+        return self.file_system_data.subnet_ids if self.is_unmanaged else []
+
+    @property
+    def file_system_availability_zones(self):
+        """Return list of AZ associated to existing FSx."""
+        availability_zones = []
+        if self.is_unmanaged:
+            mapping = AWSApi.instance().ec2.get_subnets_az_mapping(self.file_system_subnets)
+            for availability_zone in mapping.values():
+                availability_zones.append(availability_zone)
+
+        return availability_zones
+
+    @property
     def existing_dns_name(self):
         """Return DNSName if using existing FSx filesystem."""
-        return self.file_system_data.dns_name if self.file_system_id else ""
+        return self.file_system_data.dns_name if self.is_unmanaged else ""
 
 
 class SharedFsxLustre(BaseSharedFsx):
@@ -645,6 +667,10 @@ class _QueueNetworking(_BaseNetworking):
             for subnet_id, _az in self.subnet_id_az_mapping.items():
                 self._az_subnet_ids_mapping[_az].add(subnet_id)
         return self._az_subnet_ids_mapping
+
+    @property
+    def az_list(self):
+        return list(self.az_subnet_ids_mapping.keys())
 
 
 class SlurmQueueNetworking(_QueueNetworking):
@@ -1357,7 +1383,9 @@ class BaseClusterConfig(Resource):
             )
 
             self._validate_max_storage_count(ebs_count, existing_storage_count, new_storage_count)
-            self._validate_new_storage_multiple_subnets(self.compute_subnet_ids, new_storage_count)
+            self._validate_new_storage_multiple_subnets(
+                self.scheduling.queues, self.compute_subnet_ids, new_storage_count
+            )
 
         self._validate_mount_dirs()
 
@@ -1373,12 +1401,19 @@ class BaseClusterConfig(Resource):
             local_mount_dir_list=list(self.local_mount_dir_instance_types_dict.keys()),
         )
 
-    def _validate_new_storage_multiple_subnets(self, compute_subnet_ids, new_storage_count):
+    def _validate_new_storage_multiple_subnets(self, queues, compute_subnet_ids, new_storage_count):
         self._register_validator(
             ManagedFsxMultiAzValidator,
             compute_subnet_ids=compute_subnet_ids,
             new_storage_count=new_storage_count,
         )
+        for storage in self.shared_storage:
+            if isinstance(storage, (SharedFsxLustre, ExistingFsxOpenZfs, ExistingFsxOntap)) and storage.is_unmanaged:
+                self._register_validator(
+                    UnmanagedFsxMultiAzValidator,
+                    queues=queues,
+                    fsx_az_list=storage.file_system_availability_zones,
+                )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
         for storage_type in ["EFS", "FSx", "RAID"]:
@@ -1929,7 +1964,6 @@ class _CommonQueue(BaseQueue):
         self.capacity_reservation_target = capacity_reservation_target
         self.compute_resources = compute_resources
         self.networking = networking
-        self.__az_list = None
 
     @property
     def instance_role(self):
@@ -1950,22 +1984,9 @@ class _CommonQueue(BaseQueue):
             return None
 
     @property
-    def az_list(self):
-        """Return the list of unique AvailabilityZoneID associated to the subnets defined in the Networking section."""
-        # initialize the hidden property just once
-        if self.__az_list is None:
-            az_set = set()
-            for _key, val in self.networking.subnet_id_az_mapping.items():
-                az_set.add(val)
-
-            self.__az_list = list(az_set)
-
-        return self.__az_list
-
-    @property
     def multi_az_enabled(self):
         """Return true if more than one AZ are defined in the queue Networking section."""
-        return len(self.az_list) > 1
+        return len(self.networking.az_list) > 1
 
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []

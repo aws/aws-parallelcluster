@@ -17,6 +17,7 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     CapacityReservationTarget,
     RootVolume,
+    SchedulerPluginQueueNetworking,
     SlurmComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
@@ -58,6 +59,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerOsValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
+    UnmanagedFsxMultiAzValidator,
     _LaunchTemplateValidator,
 )
 from pcluster.validators.common import FailureLevel
@@ -1787,6 +1789,200 @@ def test_efs_id_validator(
 def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failure_level, expected_message):
     actual_failures = ManagedFsxMultiAzValidator().execute(queues, new_storage_count)
     assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "queues, subnet_az_mappings, fsx_az_list, failure_level, expected_messages",
+    [
+        (
+            [
+                SlurmQueue(
+                    name="different-az-queue",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="single-az-same-subnet-queue",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            [{"subnet-2": "us-east-1b"}, {"subnet-1": "us-east-1a"}],
+            ["us-east-1a"],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queue 'different-az-queue' includes multiple subnets and external "
+                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
+                "latency and costs."
+            ],
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="same-az-same-subnet-queue",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="same-az-other-subnet-queue",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-3"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a"}, {"subnet-3": "us-east-1a"}],
+            ["us-east-1a"],
+            None,
+            [],
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="one-az-match-queue",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="full-az-match-queue",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}],
+            ["us-east-1a", "us-east-1b"],
+            None,
+            [],
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="multi-az-queue-match",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="multi-az-queue-match",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-4", "subnet-5"],
+                    ),
+                ),
+            ],
+            [
+                {"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"},
+                {"subnet-4": "us-east-1a", "subnet-5": "us-east-1b"},
+            ],
+            ["us-east-1a", "us-east-1b"],
+            None,
+            [],
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="multi-az-queue-mismatch",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2", "subnet-3"],
+                    ),
+                ),
+            ],
+            [{"subnet-2": "us-east-1b", "subnet-3": "us-east-1c"}],
+            ["us-east-1a", "us-east-1b"],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queue 'multi-az-queue-mismatch' includes multiple subnets and external "
+                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
+                "latency and costs."
+            ],
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="multi-az-queue-partial-match",
+                    compute_resources=[],
+                    networking=SchedulerPluginQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}],
+            ["us-east-1b"],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queue 'multi-az-queue-partial-match' includes multiple subnets and external "
+                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
+                "latency and costs."
+            ],
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="multi-az-queue-match",
+                    compute_resources=[],
+                    networking=SchedulerPluginQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}],
+            ["us-east-1a", "us-east-1b"],
+            None,
+            [],
+        ),
+        (
+            [
+                SlurmQueue(
+                    name="different-az-queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="different-az-queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a"}],
+            ["us-east-1b"],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queue 'different-az-queue-1' includes multiple subnets and external "
+                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
+                "latency and costs.",
+                "Your configuration for Queue 'different-az-queue-2' includes multiple subnets and external "
+                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
+                "latency and costs.",
+            ],
+        ),
+    ],
+)
+def test_unmanaged_fsx_multiple_az_validator(
+    mocker, queues, subnet_az_mappings, fsx_az_list, failure_level, expected_messages
+):
+    mock_aws_api(mocker)
+
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
+
+    actual_failures = UnmanagedFsxMultiAzValidator().execute(queues, fsx_az_list)
+    assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
 
 
