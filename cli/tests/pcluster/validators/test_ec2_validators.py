@@ -793,41 +793,50 @@ mock_odcrs = [
 
 
 @pytest.mark.parametrize(
-    "placement_group, odcr, subnet, instance_types, odcr_list, expected_message",
+    "placement_group, odcr, subnets, instance_types, odcr_list, "
+    "multi_az_enabled, subnet_id_az_mapping, expected_message",
     [
-        (None, None, "mock-subnet-1", ["mock-type"], mock_odcrs[:2], None),
+        (None, None, "mock-subnet-1", ["mock-type"], mock_odcrs[:2], False, {"mock-subnet-1": "us-east-1"}, None),
         (
             None,
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-1",
+            ["mock-subnet-1"],
             ["mock-type"],
             mock_odcrs[:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
             None,
             CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
-            "mock-subnet-1",
+            ["mock-subnet-1"],
             ["mock-type", "mock-type-2"],
             mock_odcrs[:3],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
             None,
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-1",
+            ["mock-subnet-1"],
             ["mock-type", "mock-type-2"],
             mock_odcrs[:2],
-            "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' "
-            "and no placement group provided. Please either provide a placement group or add an ODCR that "
-            "does not target a placement group and targets the instance type.",
+            False,
+            {"mock-subnet-1": "us-east-1"},
+            "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' in 'us-east-1' and "
+            "no placement group provided. Please either provide a placement group or add an ODCR that does not target "
+            "a placement group and targets the instance type.",
         ),
         (
             "mock-placement",
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-2",
+            ["mock-subnet-2"],
             ["mock-type"],
             mock_odcrs[:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             "When using an open or targeted capacity reservation with an unrelated placement group, "
             "insufficient capacity errors may occur due to placement constraints outside of the "
             "reservation even if the capacity reservation has remaining capacity. Please consider either "
@@ -837,20 +846,44 @@ mock_odcrs = [
         (
             "test",
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-3",
+            ["mock-subnet-3"],
             ["mock-type"],
             mock_odcrs[1:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test' targets the 'mock-type' instance type but there "
             "are no ODCRs included in the resource group that target that instance type.",
         ),
         (
             "test-2",
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-3",
+            ["mock-subnet-3"],
             ["mock-type"],
             mock_odcrs[1:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test-2' targets the 'mock-type' instance type but there "
             "are no ODCRs included in the resource group that target that instance type.",
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
+            ["mock-subnet-1", "mock-subnet-2"],
+            ["mock-type", "mock-type-2"],
+            mock_odcrs[:3],
+            True,
+            {"mock-subnet-1": "us-east-1"},
+            None,
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
+            ["mock-subnet-1", "mock-subnet-2"],
+            ["mock-type"],
+            mock_odcrs[:3],
+            True,
+            {"mock-subnet-1": "us-east-1"},
+            None,
         ),
     ],
 )
@@ -858,9 +891,11 @@ def test_placement_group_capacity_reservation_validator(
     mocker,
     placement_group,
     odcr,
-    subnet,
+    subnets,
     instance_types,
     odcr_list,
+    multi_az_enabled,
+    subnet_id_az_mapping,
     expected_message,
 ):
     mock_aws_api(mocker)
@@ -874,7 +909,12 @@ def test_placement_group_capacity_reservation_validator(
         return_value=desired_availability_zone,
     )
     actual_failure = PlacementGroupCapacityReservationValidator().execute(
-        placement_group=placement_group, odcr=odcr, subnet=subnet, instance_types=instance_types
+        placement_group=placement_group,
+        odcr=odcr,
+        subnet=subnets[0],
+        instance_types=instance_types,
+        multi_az_enabled=multi_az_enabled,
+        subnet_id_az_mapping=subnet_id_az_mapping,
     )
     assert_failure_messages(actual_failure, expected_message)
 
