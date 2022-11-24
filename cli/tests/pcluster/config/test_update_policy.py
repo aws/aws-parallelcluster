@@ -1338,7 +1338,11 @@ def test_condition_checker_managed_placement_group(
             {
                 "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
                 "SharedStorage": [
-                    {"MountDir": "/test-fsx-lustre", "FileSystemId": "test-fsx-lustre-id", "StorageType": "FsxLustre"}
+                    {
+                        "MountDir": "/test-fsx-lustre",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    }
                 ],
             },
             {
