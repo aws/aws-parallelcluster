@@ -546,7 +546,9 @@ class ClusterCdkStack(Stack):
             vpc_id=self.config.vpc_id,
         )
         storage_deletion_policy = convert_deletion_policy(storage.deletion_policy)
-        storage_security_group.cfn_options.deletion_policy = storage_deletion_policy
+        storage_security_group.cfn_options.deletion_policy = (
+            storage_security_group.cfn_options.update_replace_policy
+        ) = storage_deletion_policy
 
         target_security_groups = {
             "Head": self._get_head_node_security_groups(),
@@ -569,8 +571,12 @@ class ClusterCdkStack(Stack):
                 )
 
                 if sg_type == "Storage":
-                    ingress_rule.cfn_options.deletion_policy = storage_deletion_policy
-                    egress_rule.cfn_options.deletion_policy = storage_deletion_policy
+                    ingress_rule.cfn_options.deletion_policy = (
+                        ingress_rule.cfn_options.update_replace_policy
+                    ) = storage_deletion_policy
+                    egress_rule.cfn_options.deletion_policy = (
+                        egress_rule.cfn_options.update_replace_policy
+                    ) = storage_deletion_policy
 
         return storage_security_group
 
@@ -707,7 +713,9 @@ class ClusterCdkStack(Stack):
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
-            fsx_resource.cfn_options.deletion_policy = convert_deletion_policy(shared_fsx.deletion_policy)
+            fsx_resource.cfn_options.deletion_policy = (
+                fsx_resource.cfn_options.update_replace_policy
+            ) = convert_deletion_policy(shared_fsx.deletion_policy)
 
             fsx_id = fsx_resource.ref
             # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
@@ -741,7 +749,7 @@ class ClusterCdkStack(Stack):
                 throughput_mode=shared_efs.throughput_mode,
             )
             efs_resource.tags.set_tag(key="Name", value=shared_efs.name)
-            efs_resource.cfn_options.deletion_policy = deletion_policy
+            efs_resource.cfn_options.deletion_policy = efs_resource.cfn_options.update_replace_policy = deletion_policy
             efs_id = efs_resource.ref
 
         checked_availability_zones = []
@@ -795,7 +803,9 @@ class ClusterCdkStack(Stack):
                     security_groups=[sg.ref for sg in security_groups],
                     subnet_id=subnet_id,
                 )
-                efs_resource.cfn_options.deletion_policy = deletion_policy
+                efs_resource.cfn_options.deletion_policy = (
+                    efs_resource.cfn_options.update_replace_policy
+                ) = deletion_policy
             checked_availability_zones.append(availability_zone)
 
     def _add_raid_volume(self, id_prefix: str, shared_ebs: SharedEbs):
@@ -829,7 +839,9 @@ class ClusterCdkStack(Stack):
             volume_type=shared_ebs.volume_type,
             tags=[CfnTag(key="Name", value=shared_ebs.name)],
         )
-        volume.cfn_options.deletion_policy = convert_deletion_policy(shared_ebs.deletion_policy)
+        volume.cfn_options.deletion_policy = volume.cfn_options.update_replace_policy = convert_deletion_policy(
+            shared_ebs.deletion_policy
+        )
         return volume.ref
 
     def _add_wait_condition(self):
