@@ -8,13 +8,13 @@ CHANGELOG
 - Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
 - Add `failureReason` to `describe-cluster` output when cluster creation fails with headnode wait condition.
 - Add possibility to specify a custom script to be executed in the head node during the update of the cluster. The script can be specified with `OnNodeUpdated` parameter when using Slurm as scheduler.
-- Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
 **CHANGES**
 - Remove creation of EFS mount targets for existing FS.
 - Mount EFS file systems using amazon-efs-utils. EFS files systems can be mounted using in-transit encryption and IAM identity.
 - Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
 - Allow usage of deprecated official AMIs.
+- Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
 3.3.0
 -----
