@@ -2663,6 +2663,8 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                         odcr=cr_target,
                         subnet=queue.networking.subnet_ids[0],
                         instance_types=compute_resource.instance_types,
+                        multi_az_enabled=queue.multi_az_enabled,
+                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
 
     @property

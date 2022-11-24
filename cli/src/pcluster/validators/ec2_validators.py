@@ -450,7 +450,7 @@ class PlacementGroupCapacityReservationValidator(Validator):
                     FailureLevel.WARNING,
                 )
 
-    def _validate_no_pg(self, instance_types, odcr_list, subnet):
+    def _validate_no_pg(self, instance_types, odcr_list, subnet, subnet_id_az_mapping):
         for instance_type in instance_types:
             odcr_without_pg = False
             for odcr in odcr_list:
@@ -462,25 +462,32 @@ class PlacementGroupCapacityReservationValidator(Validator):
                     odcr_without_pg = True
             if not odcr_without_pg:
                 self._add_failure(
-                    f"There are no open or targeted ODCRs that match the instance_type '{instance_type}' "
-                    f"and no placement group provided. Please either provide a placement group or add an ODCR that "
-                    f"does not target a placement group and targets the instance type.",
+                    f"There are no open or targeted ODCRs that match the instance_type '{instance_type}' in "
+                    f"'{subnet_id_az_mapping[subnet]}' and no placement group provided. Please either provide a "
+                    f"placement group or add an ODCR that does not target a placement group and targets the "
+                    f"instance type.",
                     FailureLevel.ERROR,
                 )
 
-    def _validate(self, placement_group, odcr, subnet, instance_types):
-        odcr_id = getattr(odcr, "capacity_reservation_id", None)
-        odcr_arn = getattr(odcr, "capacity_reservation_resource_group_arn", None)
-        if odcr_id:
-            odcr_list = AWSApi.instance().ec2.describe_capacity_reservations([odcr_id])
-        elif odcr_arn:
-            odcr_list = get_capacity_reservations(odcr_arn)
-        else:
-            odcr_list = None
-        if odcr_list:
-            if placement_group:
-                self._validate_chosen_pg(
-                    subnet=subnet, instance_types=instance_types, odcr_list=odcr_list, chosen_pg=placement_group
-                )
+    def _validate(self, placement_group, odcr, subnet, instance_types, multi_az_enabled, subnet_id_az_mapping):
+        if not multi_az_enabled:
+            odcr_id = getattr(odcr, "capacity_reservation_id", None)
+            odcr_arn = getattr(odcr, "capacity_reservation_resource_group_arn", None)
+            if odcr_id:
+                odcr_list = AWSApi.instance().ec2.describe_capacity_reservations([odcr_id])
+            elif odcr_arn:
+                odcr_list = get_capacity_reservations(odcr_arn)
             else:
-                self._validate_no_pg(subnet=subnet, instance_types=instance_types, odcr_list=odcr_list)
+                odcr_list = None
+            if odcr_list:
+                if placement_group:
+                    self._validate_chosen_pg(
+                        subnet=subnet, instance_types=instance_types, odcr_list=odcr_list, chosen_pg=placement_group
+                    )
+                else:
+                    self._validate_no_pg(
+                        subnet=subnet,
+                        instance_types=instance_types,
+                        odcr_list=odcr_list,
+                        subnet_id_az_mapping=subnet_id_az_mapping,
+                    )
