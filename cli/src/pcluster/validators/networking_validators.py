@@ -122,7 +122,7 @@ class ElasticIpValidator(Validator):
                 self._add_failure(str(e), FailureLevel.ERROR)
 
 
-class SingleSubnetValidator(Validator):
+class SingleInstanceTypeSubnetValidator(Validator):
     """Validate only one subnet is used for compute resources with single instance type."""
 
     def _validate(self, queue_name, subnet_ids):

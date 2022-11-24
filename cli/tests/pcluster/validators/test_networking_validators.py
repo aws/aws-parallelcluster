@@ -18,7 +18,7 @@ from pcluster.validators.networking_validators import (
     MultiAzPlacementGroupValidator,
     QueueSubnetsValidator,
     SecurityGroupsValidator,
-    SingleSubnetValidator,
+    SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -174,8 +174,8 @@ def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_en
         ),
     ],
 )
-def test_single_subnet_validator(queue_name, subnet_ids, failure_message):
-    actual_failure = SingleSubnetValidator().execute(queue_name, subnet_ids)
+def test_single_instance_type_subnet_validator(queue_name, subnet_ids, failure_message):
+    actual_failure = SingleInstanceTypeSubnetValidator().execute(queue_name, subnet_ids)
 
     assert_failure_messages(actual_failure, failure_message)
 
