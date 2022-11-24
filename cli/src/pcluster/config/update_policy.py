@@ -200,9 +200,9 @@ def get_managed_fsx_from_config(config):
 
 def unchanged_managed_fsx_lustre_names(_, patch):
     """Get list of managed Fsx for Lustre Shared Storage that hasn't changed between cluster configuration updates."""
-    fsx_names_before_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.base_config)}
-    fsx_names_after_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.target_config)}
-    return fsx_names_before_update.intersection(fsx_names_after_update)
+    managed_fsx_names_before_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.base_config)}
+    managed_fsx_names_after_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.target_config)}
+    return managed_fsx_names_before_update.intersection(managed_fsx_names_after_update)
 
 
 def is_slurm_scheduler(patch):
@@ -256,11 +256,11 @@ def fail_reason_managed_placement_group(change, patch):
 
 
 def fail_reason_managed_fsx(change, patch):
-    fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
-    if fsx_lustre_names:
+    managed_fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
+    if managed_fsx_lustre_names:
         reason = (
             f"Updating the {change.key} parameter will cause these FSx for Lustre file system(s) to be replaced: "
-            f"{fsx_lustre_names}"
+            f"{managed_fsx_lustre_names}"
         )
     else:
         reason = fail_reason_queue_update_strategy(change, patch)
@@ -508,7 +508,7 @@ UpdatePolicy.UNSUPPORTED = UpdatePolicy(
 # Block update if cluster has a managed Fsx for Lustre FileSystem, otherwise fallback to QueueUpdateStrategy
 UpdatePolicy.MANAGED_FSX = UpdatePolicy(
     name="MANAGED_FSX",
-    level=5,
+    level=6,
     fail_reason=fail_reason_managed_fsx,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["managed_fsx"],
     condition_checker=condition_checker_managed_fsx,
