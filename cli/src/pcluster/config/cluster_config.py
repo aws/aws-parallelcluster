@@ -1669,6 +1669,10 @@ class BaseClusterConfig(Resource):
             )
         return self._official_ami
 
+    @official_ami.setter
+    def official_ami(self, value):
+        self._official_ami = value
+
     @property
     def lambda_functions_vpc_config(self):
         """Return the vpc config of the PCluster Lambda Functions or None."""

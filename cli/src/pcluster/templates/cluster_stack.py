@@ -210,6 +210,7 @@ class ClusterCdkStack(Stack):
             default=self.bucket.artifact_directory,
         )
         CfnParameter(self, "Scheduler", default=self.config.scheduling.scheduler)
+        CfnParameter(self, "OfficialAmi", default=self.config.official_ami)
         CfnParameter(
             self,
             "ConfigVersion",
