@@ -1,13 +1,21 @@
 [flake8]
 ignore =
-    D105, # Missing docstring in magic method
-    D100, # Missing docstring in public module
-    D104, # Missing docstring in public package
-    D107, # Missing docstring in __init__
-    D103, # Missing docstring in public function
-    W503, # line break before binary operator => Conflicts with black style.
-    D413, # Missing blank line after last section
-    F821, # undefined name
+    # D105: Missing docstring in magic method
+    D105,
+    # D100: Missing docstring in public module
+    D100,
+    # D104: Missing docstring in public package
+    D104,
+    # D107: Missing docstring in __init__
+    D107,
+    # D103: Missing docstring in public function
+    D103,
+    # W503: line break before binary operator => Conflicts with black style.
+    W503,
+    # D413: Missing blank line after last section
+    D413,
+    # F821: undefined name
+    F821
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method
 per-file-ignores =

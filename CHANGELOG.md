@@ -8,6 +8,7 @@ CHANGELOG
 - Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
 - Add `failureReason` to `describe-cluster` output when cluster creation fails with headnode wait condition.
 - Add possibility to specify a custom script to be executed in the head node during the update of the cluster. The script can be specified with `OnNodeUpdated` parameter when using Slurm as scheduler.
+- Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
 **CHANGES**
 - Remove creation of EFS mount targets for existing FS.
