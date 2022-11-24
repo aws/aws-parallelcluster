@@ -104,6 +104,11 @@ class InstanceInfo:
         return self._instance_data.get("InstanceId")
 
     @property
+    def image_id(self) -> str:
+        """Return instance id."""
+        return self._instance_data.get("ImageId")
+
+    @property
     def state(self) -> str:
         """Return instance state."""
         return self._instance_data.get("State").get("Name")

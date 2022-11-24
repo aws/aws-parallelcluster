@@ -69,5 +69,6 @@ class Validator(ABC):
 class ValidatorContext:
     """Context containing information about cluster environment meant to be passed to validators."""
 
-    def __init__(self, head_node_instance_id: str = None):
+    def __init__(self, head_node_instance_id: str = None, head_node_ami: str = None):
         self.head_node_instance_id = head_node_instance_id
+        self.head_node_ami = head_node_ami

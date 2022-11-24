@@ -837,7 +837,8 @@ class Cluster:
             validator_suppressors=validator_suppressors,
             validation_failure_level=validation_failure_level,
             config_text=target_source_config,
-            context=ValidatorContext(head_node_instance_id=self.head_node_instance.id),
+            context=ValidatorContext(head_node_instance_id=self.head_node_instance.id,
+                                     head_node_ami=self.head_node_instance.image_id),
         )
         changes = self._validate_patch(force, target_config)
 

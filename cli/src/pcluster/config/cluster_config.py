@@ -1231,11 +1231,12 @@ class BaseClusterConfig(Resource):
             custom_ami=self.image.custom_ami,
             ami_search_filters=self.dev_settings.ami_search_filters if self.dev_settings else None,
         )
-        if self.head_node_ami:
+        head_node_ami = context.head_node_ami or self.head_node_ami
+        if head_node_ami:
             self._register_validator(
                 InstanceTypeBaseAMICompatibleValidator,
                 instance_type=self.head_node.instance_type,
-                image=self.head_node_ami,
+                image=head_node_ami,
             )
         if self.head_node.image and self.head_node.image.custom_ami:
             self._register_validator(
@@ -1250,7 +1251,7 @@ class BaseClusterConfig(Resource):
             HeadNodeLaunchTemplateValidator,
             head_node=self.head_node,
             os=self.image.os,
-            ami_id=self.head_node_ami,
+            ami_id=head_node_ami,
             tags=self.get_cluster_tags(),
         )
         if self.head_node.dcv:
@@ -1278,7 +1279,7 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
         )
-        ami_volume_size = AWSApi.instance().ec2.describe_image(self.head_node_ami).volume_size
+        ami_volume_size = AWSApi.instance().ec2.describe_image(head_node_ami).volume_size
         root_volume = self.head_node.local_storage.root_volume
         root_volume_size = root_volume.size
         if root_volume_size is None:  # If root volume size is not specified, it will be the size of the AMI.
@@ -2589,7 +2590,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
         super()._register_validators(context)
         checked_images = []
         for queue in self.scheduling.queues:
-            queue_image = self.image_dict[queue.name]
+            queue_image = context.head_node_ami or self.image_dict[queue.name]
             self._register_validator(
                 ComputeResourceLaunchTemplateValidator,
                 queue=queue,
