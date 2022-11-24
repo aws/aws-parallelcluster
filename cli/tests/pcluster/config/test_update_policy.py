@@ -1319,7 +1319,7 @@ def test_condition_checker_managed_placement_group(
                 ],
             },
             Change(
-                path=["Queues[mock-q]", "Networking"],
+                path=["SlurmQueues[mock-q]", "Networking"],
                 key="SubnetIds",
                 old_value=["subnet-12345678"],
                 new_value=["subnet-87654321"],
@@ -1348,7 +1348,7 @@ def test_condition_checker_managed_placement_group(
                 ],
             },
             Change(
-                path=["Queues[mock-q]", "Networking"],
+                path=["SlurmQueues[mock-q]", "Networking"],
                 key="SubnetIds",
                 old_value=["subnet-12345678"],
                 new_value=["subnet-87654321"],
@@ -1356,8 +1356,9 @@ def test_condition_checker_managed_placement_group(
                 is_list=False,
             ),
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
+            "configuration used for the 'update-cluster' operation",
         ),
         # If change includes SubnetIds and existing + new cluster configuration does not have an Fsx FileSystem
         #   - Fall back to QueueUpdateStrategy Update Policy failure message
@@ -1377,7 +1378,7 @@ def test_condition_checker_managed_placement_group(
                 ],
             },
             Change(
-                path=["Queues[mock-q]", "Networking"],
+                path=["SlurmQueues[mock-q]", "Networking"],
                 key="SubnetIds",
                 old_value=["subnet-12345678"],
                 new_value=["subnet-87654321"],
@@ -1385,8 +1386,9 @@ def test_condition_checker_managed_placement_group(
                 is_list=False,
             ),
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
+            "configuration used for the 'update-cluster' operation",
         ),
     ],
 )

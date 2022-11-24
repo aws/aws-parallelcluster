@@ -505,8 +505,9 @@ UpdatePolicy.UNSUPPORTED = UpdatePolicy(
     + ". If you need this change, please consider creating a new cluster instead of updating the existing one.",
 )
 
-UpdatePolicy.MANAGED_FSX_WITH_QUEUE_UPDATE_STRATEGY = UpdatePolicy(
-    name="MANAGED_FSX_WITH_QUEUE_UPDATE_STRATEGY",
+# Block update if cluster has a managed Fsx for Lustre FileSystem, otherwise fallback to QueueUpdateStrategy
+UpdatePolicy.MANAGED_FSX = UpdatePolicy(
+    name="MANAGED_FSX",
     level=5,
     fail_reason=fail_reason_managed_fsx,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["managed_fsx"],
