@@ -193,7 +193,7 @@ def get_managed_fsx_from_config(config):
     managed_fsx_storage = [
         storage
         for storage in config.get("SharedStorage", [])
-        if storage.get("StorageType") == "FsxLustre" and "FileSystemId" not in storage
+        if storage.get("StorageType") == "FsxLustre" and "FileSystemId" not in storage.get("FsxLustreSettings", {})
     ]
     return managed_fsx_storage
 
