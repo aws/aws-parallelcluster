@@ -1029,7 +1029,7 @@ class ClusterCdkStack(Stack):
                     "shellRunPostInstall",
                     "chefFinalize",
                 ],
-                "update": ["deployConfigFiles", "chefUpdate", "shellRunOnPostUpdate"],
+                "update": ["deployConfigFiles", "chefUpdate"],
             },
             "deployConfigFiles": {
                 "files": {
@@ -1153,9 +1153,6 @@ class ClusterCdkStack(Stack):
                     },
                 }
             },
-            "shellRunOnPostUpdate": {
-                "commands": {"runpostupdate": {"command": "/opt/parallelcluster/scripts/fetch_and_run -postupdate"}}
-            },
             "chefUpdate": {
                 "commands": {
                     "chef": {
@@ -1165,6 +1162,7 @@ class ClusterCdkStack(Stack):
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
                             " --override-runlist aws-parallelcluster::update &&"
+                            " /opt/parallelcluster/scripts/fetch_and_run -postupdate &&"
                             " cfn-signal --exit-code=0 --reason='Update complete'"
                             f" '{self.wait_condition_handle.ref}' ||"
                             " cfn-signal --exit-code=1 --reason='Update failed'"
