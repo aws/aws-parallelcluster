@@ -10,6 +10,7 @@ CHANGELOG
 
 **CHANGES**
 - Allow usage of deprecated official AMIs.
+- Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
 **BUG FIXES**
 - Block updating ComputeFleet `SubnetIds` when a Cluster has managed Fsx for Lustre FileSystem. This prevents the Fsx FileSystem from being deleted due to the Replacement update behaviour by CloudFormation.
