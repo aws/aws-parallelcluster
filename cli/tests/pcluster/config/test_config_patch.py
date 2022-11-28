@@ -482,7 +482,7 @@ def test_vpc_security_id_changes(
             Change("vpc", "default", "vpc_security_group_id", src_value, dst_value, UpdatePolicy.MANAGED_FSX),
         )
         if expected_patch_allowed:
-            check = "SUCCEDED"
+            check = "SUCCEEDED"
             reason = "-"
             action_needed = None
         else:
@@ -509,7 +509,7 @@ def test_vpc_security_id_changes(
     is_patch_allowed, rows = ConfigPatch(base_config=src_conf, target_config=dst_conf).check()
     assert_that(expected_patch_allowed).is_equal_to(is_patch_allowed)
 
-    for line in rows:
+    for line in expected_message_rows:
         # Handle unicode string
         line = ["{0}".format(element) if isinstance(element, str) else element for element in line]
-        assert_that(expected_message_rows).contains(line)
+        assert_that(rows).contains(line)
