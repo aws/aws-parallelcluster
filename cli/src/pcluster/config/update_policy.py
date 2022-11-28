@@ -285,8 +285,7 @@ UpdatePolicy.MANAGED_FSX = UpdatePolicy(
         else "Remove the parameter '{0}'".format(change.param_key)
     ),
     condition_checker=_check_unmanaged_fsx,
-    # We don't want to show the change if allowed (e.g local value is empty)
-    print_succeeded=False,
+    print_succeeded=True,
 )
 
 # Update effects are unknown.
