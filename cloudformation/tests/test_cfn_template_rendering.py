@@ -27,6 +27,12 @@ def substack_rendering(tmp_path, template_name, test_config):
 
     # Run cfn-lint
     cfn_lint_args = ["--info", str(rendered_file)]  # TODO "-i", "W2001" could be added to ignore unused vars
+
+    if "cw-dashboard-substack.cfn" in template_name:
+        # Ignore W8003 "Fn::Equals element will always return false"
+        # because this mechanism is used to enable/disable CW logging through a condition in the rendered template
+        cfn_lint_args.extend(["-i", "W8003"])
+
     with patch.object(sys, "argv", cfn_lint_args):
         assert cfnlint() == 0
 
