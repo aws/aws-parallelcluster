@@ -259,8 +259,8 @@ def fail_reason_managed_fsx(change, patch):
     managed_fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
     if managed_fsx_lustre_names:
         reason = (
-            f"Updating the {change.key} parameter will cause these FSx for Lustre file system(s) to be replaced: "
-            f"{managed_fsx_lustre_names}"
+            f"{change.key} configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss"
         )
     else:
         reason = fail_reason_queue_update_strategy(change, patch)
@@ -317,8 +317,8 @@ def actions_needed_managed_fsx(change, patch):
     fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
     if fsx_lustre_names:
         return (
-            "If you intend to proceed with the update, please make sure to back-up your data and explicitly replace the"
-            f" file system(s) ({fsx_lustre_names}) with a new one(s) in the cluster configuration."
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide."
         )
     else:
         return actions_needed_queue_update_strategy(change, patch)

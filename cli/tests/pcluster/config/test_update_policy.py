@@ -1327,10 +1327,10 @@ def test_condition_checker_managed_placement_group(
                 is_list=False,
             ),
             False,
-            "Updating the SubnetIds parameter will cause these FSx for Lustre file system(s) to be replaced: "
-            "{'test-fsx-lustre'}",
-            "If you intend to proceed with the update, please make sure to back-up your data and explicitly replace "
-            "the file system(s) ({'test-fsx-lustre'}) with a new one(s) in the cluster configuration.",
+            "SubnetIds configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss",
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide.",
         ),
         # If update includes SubnetIds and existing cluster configuration uses an External Fsx for Lustre FS
         #   - Fall back to QueueUpdateStrategy Update Policy failure message
@@ -1460,10 +1460,10 @@ def test_condition_checker_managed_placement_group(
                 is_list=False,
             ),
             False,
-            "Updating the SubnetIds parameter will cause these FSx for Lustre file system(s) to be replaced: "
-            "{'test-fsx-lustre'}",
-            "If you intend to proceed with the update, please make sure to back-up your data and explicitly replace "
-            "the file system(s) ({'test-fsx-lustre'}) with a new one(s) in the cluster configuration.",
+            "SubnetIds configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss",
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide.",
         ),
     ],
 )
