@@ -4,8 +4,9 @@ CHANGELOG
 2.11.9
 -----
 
-**CHANGES**
-- Block cluster update when using a managed FSx for Lustre file system and updating VPC Security Group Id, to avoid data loss.
+**BUG FIXES**
+- Prevent updating `vpc_security_group_id` when a managed FSx for Lustre file system is configured in the cluster.
+  Doing so would result in file system deletion and potential data loss.
 
 2.11.8
 -----

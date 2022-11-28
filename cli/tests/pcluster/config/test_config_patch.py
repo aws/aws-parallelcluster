@@ -488,12 +488,9 @@ def test_vpc_security_id_changes(
         else:
             check = "ACTION NEEDED"
             reason = (
-                "'vpc_security_group_id' parameter cannot be updated because the cluster was created with a "
-                "managed FSx. The change in the 'vpc_security_group_id' will trigger a creation of a new file system "
-                "to replace the old one, without preserving the existing data. If you force the update you'll lose "
-                "your data. Make sure to back up the data from the existing FSx for Lustre file system "
-                "if you want to preserve them. For more information, see "
-                "https://docs.aws.amazon.com/fsx/latest/LustreGuide/using-backups-fsx.html"
+                "'vpc_security_group_id' parameter cannot be updated when a managed FSx for Lustre file "
+                "system is configured. Do not force the update or the file system will be deleted "
+                "and the cluster enter an unrecoverable state."
             )
             action_needed = (
                 f"Restore the value of parameter 'vpc_security_group_id' to '{src_value}'"
