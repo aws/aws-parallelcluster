@@ -25,7 +25,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        # To run Python 3.6 we can only use up to Ubuntu 20: https://github.com/actions/setup-python/issues/544
+        os: [ubuntu-20.04]
         name:
           - Python 3.6 Tests
           - Python 3.7 Tests
