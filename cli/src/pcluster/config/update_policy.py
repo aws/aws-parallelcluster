@@ -273,11 +273,8 @@ def _check_unmanaged_fsx(_, patch):
 UpdatePolicy.MANAGED_FSX = UpdatePolicy(
     level=40,
     fail_reason=lambda change, patch: (
-        "'{0}' parameter cannot be updated because the cluster was created with a managed FSx. "
-        "The change in the '{0}' will trigger a creation of a new file system to replace the old one, "
-        "without preserving the existing data. If you force the update you'll lose your data. "
-        "Make sure to back up the data from the existing FSx for Lustre file system if you want to preserve them. "
-        "For more information, see https://docs.aws.amazon.com/fsx/latest/LustreGuide/using-backups-fsx.html"
+        "'{0}' parameter cannot be updated when a managed FSx for Lustre file system is configured. "
+        "Do not force the update or the file system will be deleted and the cluster enter an unrecoverable state."
     ).format(change.param_key),
     action_needed=lambda change, patch: (
         "Restore the value of parameter '{0}' to '{1}'".format(change.param_key, change.old_value)
