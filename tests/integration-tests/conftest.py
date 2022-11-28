@@ -1330,14 +1330,14 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
         AvailabilityZone=availability_zone,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
-        InstanceType="c6gn.xlarge",
+        InstanceType="c5.xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
         AvailabilityZone=availability_zone,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
-        InstanceType="c7g.xlarge",
+        InstanceType="r5.xlarge",
         InstanceMatchCriteria="targeted",
     )
     pg_name = placement_group_stack.cfn_resources["PlacementGroup"]
@@ -1346,7 +1346,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
         AvailabilityZone=availability_zone,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
-        InstanceType="m6g.xlarge",
+        InstanceType="m5.xlarge",
         InstanceMatchCriteria="targeted",
         PlacementGroupArn=boto3.resource("ec2").PlacementGroup(pg_name).group_arn,
     )

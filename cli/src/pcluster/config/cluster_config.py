@@ -2611,13 +2611,6 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
         checked_images = []
         for queue in self.scheduling.queues:
             queue_image = self.image_dict[queue.name]
-            self._register_validator(
-                ComputeResourceLaunchTemplateValidator,
-                queue=queue,
-                ami_id=queue_image,
-                os=self.image.os,
-                tags=self.get_cluster_tags(),
-            )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
             root_volume = queue.compute_settings.local_storage.root_volume
             root_volume_size = root_volume.size
@@ -2641,6 +2634,14 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 checked_images.append(queue_image)
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
+                self._register_validator(
+                    ComputeResourceLaunchTemplateValidator,
+                    queue=queue,
+                    compute_resource=compute_resource,
+                    ami_id=queue_image,
+                    os=self.image.os,
+                    tags=self.get_cluster_tags(),
+                )
                 for instance_type in compute_resource.instance_types:
                     self._register_validator(
                         InstanceTypeBaseAMICompatibleValidator,

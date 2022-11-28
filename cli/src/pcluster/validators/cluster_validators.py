@@ -1175,7 +1175,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, os, ami_id, tags):
+    def _validate(self, queue, compute_resource, os, ami_id, tags):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1185,8 +1185,10 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             if queue.networking.additional_security_groups:
                 queue_security_groups.extend(queue.networking.additional_security_groups)
 
-            queue_placement_group_id = queue.networking.placement_group.id if queue.networking.placement_group else None
-            queue_placement_group = {"GroupName": queue_placement_group_id} if queue_placement_group_id else {}
+            compute_resource_placement_group = (
+                compute_resource.networking.placement_group or queue.networking.placement_group
+            )
+            placement_group_name = compute_resource_placement_group.assignment
 
             # Select the "best" compute resource to run dryrun tests against.
             # Resources with multiple NICs are preferred among others.
@@ -1204,7 +1206,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 ami_id=ami_id,
                 subnet_id=queue_subnet_id,
                 security_groups_ids=queue_security_groups,
-                placement_group=queue_placement_group,
+                placement_group={"GroupName": placement_group_name} if placement_group_name else {},
                 tags=tags,
             )
         except Exception as e:
