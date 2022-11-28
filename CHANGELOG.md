@@ -16,6 +16,14 @@ CHANGELOG
 - Allow usage of deprecated official AMIs.
 - Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
+
+3.3.1
+-----
+
+**ENHANCEMENTS**
+- When setting DeletionPolicy to Retain, the file system configured in the SharedStorage section is now preserved
+  also during a cluster update operation.
+
 3.3.0
 -----
 
