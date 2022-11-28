@@ -267,16 +267,35 @@ def fail_reason_managed_fsx(change, patch):
     return reason
 
 
+def is_queue_update_strategy_set(patch):
+    return (
+        patch.target_config.get("Scheduling")
+        .get("SlurmSettings", {})
+        .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
+        != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+    )
+
+
 def condition_checker_queue_update_strategy(change, patch):
     result = not patch.cluster.has_running_capacity()
     # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
     if is_slurm_queues_change(change):
+        result = result or is_queue_update_strategy_set(patch)
+
+    return result
+
+
+def condition_checker_queue_update_strategy_on_remove(change, patch):
+    result = not patch.cluster.has_running_capacity()
+    # Update of list element value is possible if one of the following is verified:
+    # - fleet is stopped
+    # - queue update strategy is set (different from default)
+    # - new list element is added
+    if is_slurm_queues_change(change):
         result = (
             result
-            or patch.target_config.get("Scheduling")
-            .get("SlurmSettings", {})
-            .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
-            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+            or is_queue_update_strategy_set(patch)
+            or (isinstance(change.old_value, list) and all(value in change.new_value for value in change.old_value))
         )
 
     return result
@@ -294,7 +313,7 @@ def condition_checker_managed_fsx(change, patch):
     if unchanged_managed_fsx_lustre_names(change, patch):
         result = False
     else:
-        result = condition_checker_queue_update_strategy(change, patch)
+        result = condition_checker_queue_update_strategy_on_remove(change, patch)
     return result
 
 
@@ -336,13 +355,7 @@ def condition_checker_shared_storage_update_policy(change, patch):
         return False
     result = not patch.cluster.has_running_capacity()
     if is_slurm_scheduler(patch) and not is_stop_required_for_shared_storage(change):
-        result = (
-            result
-            or patch.target_config.get("Scheduling")
-            .get("SlurmSettings", {})
-            .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
-            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
-        )
+        result = result or is_queue_update_strategy_set(patch)
 
     return result
 
