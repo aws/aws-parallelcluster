@@ -13,7 +13,7 @@ CHANGELOG
 - Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
 **BUG FIXES**
-- Block updating ComputeFleet `SubnetIds` when a Cluster has managed Fsx for Lustre FileSystem. This prevents the Fsx FileSystem from being deleted due to the Replacement update behaviour by CloudFormation.
+- Block updating ComputeFleet SubnetIds when a Cluster has a managed FSx for Lustre FileSystem. This prevents the FSx FileSystem from being recreated in case of a cluster update.
 
 3.3.0
 -----
