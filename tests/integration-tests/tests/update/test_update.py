@@ -56,6 +56,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         "updated_postinstall.sh",
         "postupdate.sh",
         "updated_postupdate.sh",
+        "failed_postupdate.sh",
     ]:
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
@@ -141,8 +142,10 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     additional_policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update.successful.yaml",
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
+        postupdate_script="updated_postupdate.sh",
     )
     cluster.update(str(updated_config_file), force_update="true")
 
@@ -261,15 +264,56 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Add a new dynamic node t2.micro to queue1-i3
     new_compute_node = _add_compute_nodes(slurm_commands, "queue1", "t2.micro")
 
-    assert_that(len(new_compute_node)).is_equal_to(1)
+    logging.info(f"New compute node: {new_compute_node}")
+
+    assert_that(len(new_compute_node), description="There should be only one new compute node").is_equal_to(1)
     _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_preinstall", "ABC")
     _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_postinstall", "DEF")
 
     # Check the new update hook with new args is executed at cluster update time
     _check_head_node_script(command_executor, "updated_postupdate", "UPDATE-ARG2")
 
+    # Same as previous update, but with a post update script that fails
+    failed_update_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update.failed.yaml",
+        resource_bucket=bucket_name,
+        additional_policy_arn=additional_policy_arn,
+        postupdate_script="failed_postupdate.sh",
+    )
+    cluster.update(str(failed_update_config_file), raise_on_error=False, log_error=False)
+
+    _check_rollback_with_expected_error_message(region, cluster)
+
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
+
+
+def _check_rollback_with_expected_error_message(region, cluster):
+    """Verify that the update has been rolled back with the expected error message."""
+    logging.info("Checking rollback with expected error message")
+    client = boto3.client("cloudformation", region_name=region)
+
+    stack_status = client.describe_stacks(StackName=cluster.name)["Stacks"][0]["StackStatus"]
+    error_message = _get_update_failure_reason(client, cluster)
+
+    assert_that(stack_status).is_equal_to("UPDATE_ROLLBACK_COMPLETE")
+    assert_that(error_message).starts_with("WaitCondition received failed message: 'Update failed'")
+
+
+def _get_update_failure_reason(client, cluster):
+    """
+    Return the error message of the event triggering the rolled back update.
+
+    In case of update rollback, we expect a single resource to be in `CREATE_FAILED` state, namely
+    the head node wait condition. This resource has the status reason with the expected error message.
+    """
+    paginator = client.get_paginator("describe_stack_events")
+    for events in paginator.paginate(StackName=cluster.name):
+        for event in events["StackEvents"]:
+            if event["ResourceStatus"] == "CREATE_FAILED":
+                return event["ResourceStatusReason"]
+    return ""
 
 
 def _check_head_node_script(command_executor, script_name, script_arg):
