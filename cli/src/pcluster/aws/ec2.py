@@ -474,6 +474,7 @@ class Ec2Client(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_volume(self, volume_id):
         """Describe a volume."""
         return self._client.describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
