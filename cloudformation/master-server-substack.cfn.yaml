@@ -283,6 +283,9 @@ Resources:
             - DisableMasterHyperthreadingViaCpuOptions
             - 1
             - !Ref 'AWS::NoValue'
+        CapacityReservationSpecification:
+          CapacityReservationTarget:
+            CapacityReservationId: cr-0fa65fcdbd597f551
         BlockDeviceMappings:
           - DeviceName: /dev/xvdba
             VirtualName: ephemeral0
