@@ -4,16 +4,13 @@ CHANGELOG
 3.3.1
 -----
 
-**ENHANCEMENTS**
-- When setting `DeletionPolicy` to `Retain`, the file system configured in the SharedStorage section is now preserved 
-  also during a cluster update operation.
-
 **CHANGES**
-- Allow usage of deprecated official AMIs.
+- Allow to use official product AMIs even after the two years EC2 deprecation time.
 - Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
 
 **BUG FIXES**
-- Block updating ComputeFleet SubnetIds when a Cluster has a managed FSx for Lustre FileSystem. This prevents the FSx FileSystem from being recreated in case of a cluster update.
+- Prevent managed FSx for Lustre file systems to be replaced during a cluster update avoiding to support changes on the compute fleet subnet id.
+- Apply the `DeletionPolicy` defined on shared storages also during the cluster update operations.
 
 3.3.0
 -----
