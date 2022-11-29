@@ -124,6 +124,12 @@ class _DummyEc2Client(Ec2Client):
         }
         self.security_groups_cache = {}
 
+    @property
+    def _client(self):
+        # Required to mock calls like
+        # AWSApi.instance().ec2._client.describe_volumes()
+        return self
+
     def get_official_image_id(self, os, architecture, filters=None):
         return "dummy-ami-id"
 
@@ -136,6 +142,38 @@ class _DummyEc2Client(Ec2Client):
                 "VpcId": "vpc-123",
             },
         ]
+
+    def describe_volumes(self, volume_ids):
+        return {
+            "Volumes": [
+                {
+                    "Attachments": [
+                        {
+                            "Device": "dev-01",
+                            "InstanceId": "instance-01",
+                            "State": "attached",
+                            "VolumeId": "vol-01",
+                            "DeleteOnTermination": True,
+                        },
+                    ],
+                    "AvailabilityZone": "az-1",
+                    "Encrypted": False,
+                    "KmsKeyId": "kms-key",
+                    "Size": 123,
+                    "SnapshotId": "snapshot-123",
+                    "State": "available",
+                    "VolumeId": "vol-123",
+                    "Iops": 123,
+                    "Tags": [
+                        {"Key": "string", "Value": "string"},
+                    ],
+                    "VolumeType": "gp3",
+                    "MultiAttachEnabled": False,
+                    "Throughput": 123,
+                },
+            ],
+            "NextToken": "next",
+        }
 
     def get_subnet_vpc(self, subnet_id):
         return "vpc-123"

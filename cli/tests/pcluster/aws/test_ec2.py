@@ -599,3 +599,25 @@ def test_describe_security_groups_cache(boto3_stubber):
     # The latest security group ip permission should be retrieved from boto3
     AWSApi.reset()
     assert_that(AWSApi.instance().ec2.describe_security_groups([security_group])[0]["IpPermissions"]).is_not_empty()
+
+
+def get_describe_volumes_mocked_request(volume_ids, az):
+    return MockedBoto3Request(
+        method="describe_volumes",
+        response={"Volumes": [{"VolumeId": volume_id, "AvailabilityZone": az} for volume_id in volume_ids]},
+        expected_params={"VolumeIds": volume_ids},
+    )
+
+
+def test_describe_volumes(boto3_stubber):
+    volume_ids = ["vol-1", "vol-2"]
+    az = "az-1"
+    mocked_requests = [
+        get_describe_volumes_mocked_request(volume_ids, az),
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    response = AWSApi.instance().ec2.describe_volumes(volume_ids)
+
+    assert_that(response).is_length(2)
+    assert_that(response[0]["AvailabilityZone"] == az).is_true()
+    assert_that(response[1]["AvailabilityZone"] == az).is_true()

@@ -187,6 +187,32 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                     )
 
 
+class MultiAzEbsVolumeValidator(Validator):
+    """
+    MultiAz Ebs Volume Validator.
+
+    Validate that the EBS volume, HeanNode and ComputeFleet are in the same AZ.
+    If they aren't inform the customers about possible increases of latency or costs.
+    """
+
+    def _validate(self, ebs_az: str, head_node_az: str, queues):
+        if ebs_az != head_node_az:
+            self._add_failure(
+                "Your configuration includes an EBS volume created in a different availability zone than the "
+                "Head Node. The volume and instance must be in the same Availability Zone.",
+                FailureLevel.ERROR,
+            )
+        for queue in queues:
+            queue_az_set = set(queue.networking.az_list)
+            if len(queue_az_set) > 1 or (set(ebs_az) != queue_az_set):
+                self._add_failure(
+                    "Your configuration for Queue '{0}' includes multiple subnets and external shared storage "
+                    "configuration. Accessing a shared storage from different AZs can lead to increased "
+                    "latency and costs.".format(queue.name),
+                    FailureLevel.INFO,
+                )
+
+
 class SharedEbsVolumeIdValidator(Validator):
     """
     SharedEBS volume id validator.

@@ -120,6 +120,7 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
+    MultiAzEbsVolumeValidator,
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
@@ -310,6 +311,19 @@ class SharedEbs(Ebs):
         )
         self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
+
+    @property
+    def is_managed(self):
+        """Return True if the volume is managed."""
+        return self.volume_id is None
+
+    @property
+    def availability_zone(self):
+        """Return the availability zone of an existing EBS volume."""
+        if not self.is_managed:
+            return AWSApi.instance().ec2.describe_volume(self.volume_id)["AvailabilityZone"]
+        else:
+            return ""
 
 
 class SharedEfs(Resource):
@@ -1413,6 +1427,19 @@ class BaseClusterConfig(Resource):
                     UnmanagedFsxMultiAzValidator,
                     queues=queues,
                     fsx_az_list=storage.file_system_availability_zones,
+                )
+            if isinstance(storage, (RootVolume, SharedEbs)):
+                head_node_az = self.head_node.networking.availability_zone
+                ebs_az = head_node_az
+                # if the EBS volume is managed we set the AZ == to the HeadNode AZ otherwise we ask EC2 about
+                # the AZ where the existing volume is created
+                if isinstance(storage, SharedEbs) and not storage.is_managed:
+                    ebs_az = storage.availability_zone
+                self._register_validator(
+                    MultiAzEbsVolumeValidator,
+                    ebs_az=ebs_az,
+                    head_node_az=head_node_az,
+                    queues=queues,
                 )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
