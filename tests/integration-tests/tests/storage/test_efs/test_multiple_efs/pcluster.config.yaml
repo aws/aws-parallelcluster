@@ -40,9 +40,21 @@ SharedStorage:
       ThroughputMode: provisioned
       ProvisionedThroughput: 200
   {% for efs_fs_id in existing_efs_ids %}
+  {% if efs_fs_id != existing_efs_ids[-1]}
   - MountDir: {{ existing_efs_mount_dirs[loop.index-1] }}
     Name: existing_efs{{ loop.index-1 }}
     StorageType: Efs
     EfsSettings:
       FileSystemId: {{ efs_fs_id }}
+  {% else %}
+  {% for i in range(4)}
+  - MountDir: {{ existing_efs_mount_dirs[ loop.index-1 ] }}
+    Name: existing_efs{{ loop.index-1+i }}
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: {{ efs_fs_id }}
+      IAMAuthorization: {2&i}
+      EncryptionInTransit: {1&i}
+  {% endfor %}
+  {% endif %}
   {% endfor %}

@@ -9,17 +9,20 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 import re
 
 import boto3
 from assertpy import assert_that
+from troposphere.iam import Role, Policy, InstanceProfile
+
 from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from troposphere import Base64, Sub, Template
-from troposphere.ec2 import Instance
+from troposphere import Base64, Sub, Template, Ref
+from troposphere.ec2 import Instance, IamInstanceProfile
 from troposphere.fsx import (
     ClientConfigurations,
     NfsExports,
@@ -128,9 +131,23 @@ def write_file_into_efs(
         package_upgrade: true
         runcmd:
         - yum install -y nfs-utils
+        - yum install -y amazon-efs-utils
         {write_file_user_data}
         - opt/aws/bin/cfn-signal -e $? --stack ${{AWS::StackName}} --resource InstanceToWriteEFS --region ${{AWS::Region}}
         """  # noqa: E501
+    role = write_file_template.add_resource(Role("blank",AssumeRolePolicyDocument={
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "ec2.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+            }
+        ]
+    }))
+    iam_instance_profile = write_file_template.add_resource(InstanceProfile("BlankProfile",Roles=[Ref(role)]))
     write_file_template.add_resource(
         Instance(
             "InstanceToWriteEFS",
@@ -140,10 +157,11 @@ def write_file_into_efs(
             SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
+            IamInstanceProfile=Ref(iam_instance_profile)
         )
     )
     stack_name = generate_stack_name("integ-tests-efs-write-file", request.config.getoption("stackname_suffix"))
-    write_file_stack = CfnStack(name=stack_name, region=region, template=write_file_template.to_json())
+    write_file_stack = CfnStack(name=stack_name, region=region, template=write_file_template.to_json(), capabilities=["CAPABILITY_IAM"])
     cfn_stacks_factory.create_stack(write_file_stack)
 
     # Delete created stacks so the instance and mount targets are deleted.
@@ -157,7 +175,7 @@ def _write_user_data(efs_id, random_file_name):
     mount_dir = "/mnt/efs/fs"
     return f"""
         - mkdir -p {mount_dir}
-        - mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev "{efs_id}.efs.${{AWS::Region}}.${{AWS::URLSuffix}}:/" {mount_dir}
+        - mount -t efs -o tls,iam {efs_id}:/ {mount_dir}
         - touch {mount_dir}/{random_file_name}
         - umount {mount_dir}
         """  # noqa: E501
