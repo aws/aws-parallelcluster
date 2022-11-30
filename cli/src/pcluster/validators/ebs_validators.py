@@ -214,9 +214,9 @@ class MultiAzEbsVolumeValidator(Validator):
 
         if cross_az_queues:
             self._add_failure(
-                "Your configuration for Queues '{0}' includes compute resources in an availability zone different from "
-                "where one external shared storage resides. Accessing a shared storage from different AZs can lead to "
-                "increased latency and costs.".format(", ".join(sorted(cross_az_queues))),
+                "Your configuration for Queues '{0}' includes multiple subnets and external shared storage "
+                "configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
                 FailureLevel.INFO,
             )
 
@@ -239,9 +239,9 @@ class MultiAzRootVolumeValidator(Validator):
 
         if cross_az_queues:
             self._add_failure(
-                "Your configuration for Queues '{0}' includes compute resources in an availability zone different "
-                "from the HeadNode. Accessing a shared storage from different AZs can lead to increased latency "
-                "and costs.".format(", ".join(sorted(cross_az_queues))),
+                "Your configuration for Queues '{0}' includes multiple subnets different from where HeadNode is "
+                "located. Accessing a shared storage from different AZs can lead to increased storage "
+                "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
                 FailureLevel.INFO,
             )
 
