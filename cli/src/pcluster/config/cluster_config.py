@@ -2088,6 +2088,8 @@ class _CommonQueue(BaseQueue):
                 MultiAzPlacementGroupValidator,
                 multi_az_enabled=self.multi_az_enabled,
                 placement_group_enabled=placement_group.enabled_or_assigned,
+                compute_resource_name=compute_resource.name,
+                queue_name=self.name,
             )
 
 

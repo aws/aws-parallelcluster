@@ -463,8 +463,9 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
         (
             True,
             True,
-            "Elastic Fabric Adapter (EFA) was enabled on ComputeResource 'compute' in Queue 'queue' "
-            "but enhanced networking cannot be leveraged across multiple AZs. ",
+            "You have enabled the Elastic Fabric Adapter (EFA) for the 'compute' Compute Resource on the 'queue' queue."
+            " EFA is not supported across Availability zones. Either disable EFA to use multiple subnets on the queue "
+            "or specify only one subnet to enable EFA on the compute resources.",
         ),
     ],
 )
@@ -1333,8 +1334,8 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                 ]
             },
             FailureLevel.ERROR,
-            "There is no existing Mount Target in the Availability Zone dummy-az-3 for EFS dummy-efs-1. "
-            "Please create an EFS Mount Target for the Availability Zone dummy-az-3.",
+            "There is no existing Mount Target for EFS 'dummy-efs-1' in these Availability Zones: '\\['dummy-az-3'\\]'."
+            " Please create an EFS Mount Target for those availability zones.",
         ),
         (
             {"dummy-az-3": {"subnet-3"}},
@@ -1675,9 +1676,10 @@ def test_efs_id_validator(
             ],
             {"efs": 1, "fsx": 1, "raid": 1},
             FailureLevel.ERROR,
-            "Multiple subnets configuration does not support FSx 'managed' storage. "
-            "Found 1 'managed' FSx storage. Please make sure to provide "
-            "an existing shared storage, properly configured to work across the target subnets.",
+            "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids under "
+            "the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared storage, "
+            "properly configured to work across the target subnets or remove the managed FSx storage to use multiple "
+            "subnets for a queue.",
         ),
         (
             [
@@ -1761,9 +1763,10 @@ def test_efs_id_validator(
             ],
             {"efs": 0, "fsx": 1, "raid": 0},
             FailureLevel.ERROR,
-            "Multiple subnets configuration does not support FSx 'managed' storage. Found 1 'managed' FSx storage. "
-            "Please make sure to provide an existing shared storage, "
-            "properly configured to work across the target subnets.",
+            "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids under "
+            "the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared storage, "
+            "properly configured to work across the target subnets or remove the managed FSx storage to use multiple "
+            "subnets for a queue.",
         ),
         (
             [
@@ -1784,9 +1787,10 @@ def test_efs_id_validator(
             ],
             {"efs": 1, "fsx": 3, "raid": 0},
             FailureLevel.ERROR,
-            "Multiple subnets configuration does not support FSx 'managed' storage. "
-            "Found 3 'managed' FSx storage. Please make sure to provide "
-            "an existing shared storage, properly configured to work across the target subnets.",
+            "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids under "
+            "the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared storage, "
+            "properly configured to work across the target subnets or remove the managed FSx storage to use multiple "
+            "subnets for a queue.",
         ),
     ],
 )
@@ -1820,9 +1824,9 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             ["us-east-1a"],
             FailureLevel.INFO,
             [
-                "Your configuration for Queue 'different-az-queue' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs."
+                "Your configuration for Queue 'different-az-queue' includes multiple subnets and external shared "
+                "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "networking latency and added inter-AZ data transfer costs."
             ],
         ),
         (
@@ -1908,9 +1912,9 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             ["us-east-1a", "us-east-1b"],
             FailureLevel.INFO,
             [
-                "Your configuration for Queue 'multi-az-queue-mismatch' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs."
+                "Your configuration for Queue 'multi-az-queue-mismatch' includes multiple subnets and external shared "
+                "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "networking latency and added inter-AZ data transfer costs."
             ],
         ),
         (
@@ -1929,7 +1933,7 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             [
                 "Your configuration for Queue 'multi-az-queue-partial-match' includes multiple subnets and external "
                 "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs."
+                "storage networking latency and added inter-AZ data transfer costs."
             ],
         ),
         (
@@ -1968,12 +1972,12 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             ["us-east-1b"],
             FailureLevel.INFO,
             [
-                "Your configuration for Queue 'different-az-queue-1' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs.",
-                "Your configuration for Queue 'different-az-queue-2' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs.",
+                "Your configuration for Queue 'different-az-queue-1' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "networking latency and added inter-AZ data transfer costs.",
+                "Your configuration for Queue 'different-az-queue-2' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "networking latency and added inter-AZ data transfer costs.",
             ],
         ),
     ],
@@ -2058,9 +2062,9 @@ def test_shared_ebs_properties(
             [{"subnet-2": "us-east-1b"}, {"subnet-2": "us-east-1b"}],
             FailureLevel.INFO,
             [
-                "Your configuration for Queues 'different-az-queue-1, different-az-queue-2' includes compute resources "
-                + "in an availability zone different from where one external shared storage resides. Accessing a "
-                + "shared storage from different AZs can lead to increased latency and costs.",
+                "Your configuration for Queues 'different-az-queue-1, different-az-queue-2' includes multiple subnets "
+                "and external shared storage configuration. Accessing a shared storage from different AZs can lead to "
+                "increased storage network latency and inter-AZ data transfer costs.",
             ],
         ),
         (
@@ -2119,9 +2123,9 @@ def test_shared_ebs_properties(
                 + "the Head Node. The volume and instance must be in the same availability zone",
                 "Your configuration includes an EBS volume 'vol-3' created in a different availability zone than "
                 + "the Head Node. The volume and instance must be in the same availability zone",
-                "Your configuration for Queues 'queue-1, queue-2' includes compute resources in an availability "
-                + "zone different from where one external shared storage resides. Accessing a shared storage from "
-                + "different AZs can lead to increased latency and costs.",
+                "Your configuration for Queues 'queue-1, queue-2' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "network latency and inter-AZ data transfer costs.",
             ],
         ),
         (
@@ -2157,9 +2161,9 @@ def test_shared_ebs_properties(
             ],
             FailureLevel.INFO,
             [
-                "Your configuration for Queues 'queue-1, queue-3' includes compute resources in an availability "
-                + "zone different from where one external shared storage resides. Accessing a shared storage from "
-                + "different AZs can lead to increased latency and costs.",
+                "Your configuration for Queues 'queue-1, queue-3' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "network latency and inter-AZ data transfer costs."
             ],
         ),
     ],
@@ -2205,9 +2209,9 @@ def test_multi_az_shared_ebs_validator(
             [{"subnet-1": "us-east-1a"}, {"subnet-2": "us-east-1b"}],
             FailureLevel.INFO,
             [
-                "Your configuration for Queues 'different-az-queue-2' includes compute resources in an availability "
-                + "zone different from the HeadNode. Accessing a shared storage from different AZs can lead to "
-                + "increased latency and costs.",
+                "Your configuration for Queues 'different-az-queue-2' includes multiple subnets "
+                "different from where HeadNode is located. Accessing a shared storage from different AZs can lead to "
+                "increased storage network latency and inter-AZ data transfer costs.",
             ],
         ),
         (
@@ -2231,9 +2235,9 @@ def test_multi_az_shared_ebs_validator(
             [{"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}, {"subnet-2": "us-east-1b"}],
             FailureLevel.INFO,
             [
-                "Your configuration for Queues 'different-az-queue-2, multi-az-queue-1' includes compute resources in "
-                + "an availability zone different from the HeadNode. Accessing a shared storage from different AZs can "
-                + "lead to increased latency and costs.",
+                "Your configuration for Queues 'different-az-queue-2, multi-az-queue-1' includes multiple subnets "
+                "different from where HeadNode is located. Accessing a shared storage from different AZs can lead to "
+                "increased storage network latency and inter-AZ data transfer costs.",
             ],
         ),
     ],

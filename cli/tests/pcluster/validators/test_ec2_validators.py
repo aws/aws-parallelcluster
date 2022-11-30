@@ -684,10 +684,10 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
             mock_good_config,
             ["c5.xlarge"],
             {"subnet-123": "us-east-1b", "subnet-456": "us-east-1a"},
-            "Queue TestQueue may launch nodes in these availability zones: us-east-1a but the "
-            "Capacity Reservation Group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) "
-            "reserves capacity in these availability zones: us-east-1b. "
-            "Consider adding capacity reservations in all the availability zones covered by the queue.",
+            "Queue 'TestQueue' has a subnet configuration mapping to the following availability zones: 'us-east-1a' "
+            "but the Capacity Reservation Group 'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' "
+            "reserves capacity in these availability zones: 'us-east-1b'. Consider adding capacity reservations in "
+            "all the availability zones covered by the queue.",
         ),
         (
             [
@@ -696,12 +696,11 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
             mock_good_config,
             ["c5.xlarge"],
             {"subnet-123": "us-east-1c", "subnet-456": "us-east-1a"},
-            "Queue TestQueue uses subnets in these availability zones: (subnet-123: us-east-1c), "
-            "(subnet-456: us-east-1a) but the Capacity Reservation Resource Group "
-            "(arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) has reservations "
-            "in these availability zones: us-east-1b. You can either add a capacity reservation in the "
-            "availability zones that the subnets are in or remove the Capacity Reservation from the "
-            "Cluster Configuration.",
+            "Queue 'TestQueue' has a subnet configuration mapping to the following availability zones: "
+            "'(subnet-123: us-east-1c), (subnet-456: us-east-1a)' but the Capacity Reservation Resource Group "
+            "'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' has reservations in these availability "
+            "zones: 'us-east-1b'. You can either add a capacity reservation in the availability zones that the subnets "
+            "are in or remove the Capacity Reservation from the Cluster Configuration.",
         ),
         (
             [
@@ -711,12 +710,11 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
             mock_good_config,
             ["c5.xlarge"],
             {"subnet-123": "us-east-1c", "subnet-456": "us-east-1a"},
-            "Queue TestQueue uses subnets in these availability zones: (subnet-123: us-east-1c), "
-            "(subnet-456: us-east-1a) but the Capacity Reservation Resource Group "
-            "(arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) has reservations "
-            "in these availability zones: us-east-1b, us-east-1d. You can either add a capacity reservation in the "
-            "availability zones that the subnets are in or remove the Capacity Reservation from the "
-            "Cluster Configuration.",
+            "Queue 'TestQueue' has a subnet configuration mapping to the following availability zones: "
+            "'(subnet-123: us-east-1c), (subnet-456: us-east-1a)' but the Capacity Reservation Resource Group "
+            "'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' has reservations in these availability "
+            "zones: 'us-east-1b, us-east-1d'. You can either add a capacity reservation in the availability zones "
+            "that the subnets are in or remove the Capacity Reservation from the Cluster Configuration.",
         ),
         (
             [
@@ -737,11 +735,11 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
             mock_good_config,
             ["c5.xlarge", "c5n.xlarge"],
             {"subnet-123": "us-east-1b", "subnet-456": "us-east-1d"},
-            "The Capacity Reservation Resource Group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) "
-            "has reservations for these InstanceTypes and Availability Zones: (c5.xlarge: us-east-1b), "
-            "(c5n.xlarge: us-east-1d). Please consider that the cluster can launch instances in these Availability "
-            "Zones that have no reserved capacity for the given instance types: {us-east-1b: ['c5n.xlarge']}, "
-            "{us-east-1d: ['c5.xlarge']}.",
+            "The Capacity Reservation Resource Group 'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' "
+            "has reservations for these InstanceTypes and Availability Zones: '(c5.xlarge: us-east-1b), "
+            "(c5n.xlarge: us-east-1d)'. Please consider that the cluster can launch instances in these "
+            "Availability Zones that have no capacity reservations in the Resource Group for the given instance types: "
+            "'{us-east-1b: ['c5n.xlarge']}, {us-east-1d: ['c5.xlarge']}'.",
         ),
         # Include CRs with instance types that have reservations in SOME of the AZs
         # and one of the Subnets/AZs in NOT covered by any of the CRs
@@ -753,11 +751,11 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
             mock_good_config,
             ["c5.xlarge", "c5n.xlarge"],
             {"subnet-123": "us-east-1b", "subnet-456": "us-east-1d", "subnet-789": "us-east-1c"},
-            "The Capacity Reservation Resource Group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) "
-            "has reservations for these InstanceTypes and Availability Zones: (c5.xlarge: us-east-1b), "
-            "(c5n.xlarge: us-east-1d). Please consider that the cluster can launch instances in these Availability "
-            "Zones that have no reserved capacity for the given instance types: {us-east-1b: ['c5n.xlarge']}, "
-            "{us-east-1c: ['c5.xlarge', 'c5n.xlarge']}, {us-east-1d: ['c5.xlarge']}.",
+            "The Capacity Reservation Resource Group 'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' "
+            "has reservations for these InstanceTypes and Availability Zones: '(c5.xlarge: us-east-1b), "
+            "(c5n.xlarge: us-east-1d)'. Please consider that the cluster can launch instances in these "
+            "Availability Zones that have no capacity reservations in the Resource Group for the given instance types: "
+            "'{us-east-1b: ['c5n.xlarge']}, {us-east-1c: ['c5.xlarge', 'c5n.xlarge']}, {us-east-1d: ['c5.xlarge']}'.",
         ),
     ],
 )
