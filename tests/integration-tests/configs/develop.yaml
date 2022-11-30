@@ -13,7 +13,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: ["us-west-2"]
+        - regions: ["eu-west-1"]
           instances: ["c5n.18xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
