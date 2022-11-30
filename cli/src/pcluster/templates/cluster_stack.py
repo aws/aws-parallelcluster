@@ -42,6 +42,7 @@ from aws_cdk.core import (
 )
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     BaseSharedFsx,
@@ -210,7 +211,14 @@ class ClusterCdkStack(Stack):
             default=self.bucket.artifact_directory,
         )
         CfnParameter(self, "Scheduler", default=self.config.scheduling.scheduler)
-        CfnParameter(self, "OfficialAmi", default=self.config.official_ami)
+
+        try:
+            CfnParameter(self, "OfficialAmi", default=self.config.official_ami)
+        except AWSClientError:
+            # This might happen if there is no official AMI
+            # and custom AMIs are defined for the head node and compute nodes
+            pass
+
         CfnParameter(
             self,
             "ConfigVersion",
