@@ -66,7 +66,7 @@ from pcluster.validators.cluster_validators import (
     _LaunchTemplateValidator,
 )
 from pcluster.validators.common import FailureLevel
-from pcluster.validators.ebs_validators import MultiAzEbsVolumeValidator
+from pcluster.validators.ebs_validators import MultiAzEbsVolumeValidator, MultiAzRootVolumeValidator
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 from tests.utils import MockedBoto3Request
@@ -2034,41 +2034,38 @@ def test_shared_ebs_properties(
 
 
 @pytest.mark.parametrize(
-    "ebs_az, head_node_az, queues, subnet_az_mappings, failure_level, expected_messages",
+    "head_node_az, ebs_volumes, queues, subnet_az_mappings, failure_level, expected_messages",
     [
         (
-            "us-east-1b",
-            "us-east-1b",
+            "us-east-1a",
+            [{"name": "vol-1", "az": "us-east-1a"}],
             [
                 SlurmQueue(
                     name="different-az-queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
-                        subnet_ids=["subnet-1"],
+                        subnet_ids=["subnet-2"],
                     ),
                 ),
                 SlurmQueue(
                     name="different-az-queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
-                        subnet_ids=["subnet-1"],
+                        subnet_ids=["subnet-2"],
                     ),
                 ),
             ],
-            [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a"}],
+            [{"subnet-2": "us-east-1b"}, {"subnet-2": "us-east-1b"}],
             FailureLevel.INFO,
             [
-                "Your configuration for Queue 'different-az-queue-1' includes multiple subnets and external "
-                + "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                + "latency and costs.",
-                "Your configuration for Queue 'different-az-queue-2' includes multiple subnets and external "
-                + "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                + "latency and costs.",
+                "Your configuration for Queues 'different-az-queue-1, different-az-queue-2' includes compute resources "
+                + "in an availability zone different from where one external shared storage resides. Accessing a "
+                + "shared storage from different AZs can lead to increased latency and costs.",
             ],
         ),
         (
-            "us-east-1a",
             "us-east-1b",
+            [{"name": "vol-1", "az": "us-east-1a"}],
             [
                 SlurmQueue(
                     name="same-az-queue-1",
@@ -2088,13 +2085,107 @@ def test_shared_ebs_properties(
             [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a"}],
             FailureLevel.ERROR,
             [
-                "Your configuration includes an EBS volume created in a different availability zone than the "
-                + "Head Node. The volume and instance must be in the same Availability Zone.",
+                "Your configuration includes an EBS volume 'vol-1' created in a different availability zone than "
+                + "the Head Node. The volume and instance must be in the same availability zone",
+            ],
+        ),
+        (
+            "us-east-1b",
+            [
+                {"name": "vol-1", "az": "us-east-1a"},
+                {"name": "vol-2", "az": "us-east-1b"},
+                {"name": "vol-3", "az": "us-east-1c"},
+            ],
+            [
+                SlurmQueue(
+                    name="queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a"}],
+            FailureLevel.ERROR,
+            [
+                "Your configuration includes an EBS volume 'vol-1' created in a different availability zone than "
+                + "the Head Node. The volume and instance must be in the same availability zone",
+                "Your configuration includes an EBS volume 'vol-3' created in a different availability zone than "
+                + "the Head Node. The volume and instance must be in the same availability zone",
+                "Your configuration for Queues 'queue-1, queue-2' includes compute resources in an availability "
+                + "zone different from where one external shared storage resides. Accessing a shared storage from "
+                + "different AZs can lead to increased latency and costs.",
             ],
         ),
         (
             "us-east-1a",
-            "us-east-1b",
+            [{"name": "vol-1", "az": "us-east-1a"}],
+            [
+                SlurmQueue(
+                    name="queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue-3",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2", "subnet-3"],
+                    ),
+                ),
+            ],
+            [
+                {"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"},
+                {"subnet-1": "us-east-1a"},
+                {"subnet-2": "us-east-1b", "subnet-3": "us-east-1c"},
+            ],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queues 'queue-1, queue-3' includes compute resources in an availability "
+                + "zone different from where one external shared storage resides. Accessing a shared storage from "
+                + "different AZs can lead to increased latency and costs.",
+            ],
+        ),
+    ],
+)
+def test_multi_az_shared_ebs_validator(
+    mocker,
+    head_node_az,
+    ebs_volumes,
+    queues,
+    subnet_az_mappings,
+    failure_level,
+    expected_messages,
+):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
+
+    actual_failures = MultiAzEbsVolumeValidator().execute(head_node_az, ebs_volumes, queues)
+    assert_failure_messages(actual_failures, expected_messages)
+    assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "head_node_az, queues, subnet_az_mappings, failure_level, expected_messages",
+    [
+        (
+            "us-east-1a",
             [
                 SlurmQueue(
                     name="same-az-queue-1",
@@ -2112,49 +2203,43 @@ def test_shared_ebs_properties(
                 ),
             ],
             [{"subnet-1": "us-east-1a"}, {"subnet-2": "us-east-1b"}],
-            FailureLevel.ERROR,
+            FailureLevel.INFO,
             [
-                "Your configuration includes an EBS volume created in a different availability zone than the "
-                + "Head Node. The volume and instance must be in the same Availability Zone.",
-                "Your configuration for Queue 'different-az-queue-2' includes multiple subnets and external "
-                + "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                + "latency and costs.",
+                "Your configuration for Queues 'different-az-queue-2' includes compute resources in an availability "
+                + "zone different from the HeadNode. Accessing a shared storage from different AZs can lead to "
+                + "increased latency and costs.",
             ],
         ),
         (
             "us-east-1a",
-            "us-east-1b",
             [
                 SlurmQueue(
-                    name="same-az-queue-1",
-                    compute_resources=[],
-                    networking=SlurmQueueNetworking(
-                        subnet_ids=["subnet-1"],
-                    ),
-                ),
-                SlurmQueue(
-                    name="multi-az-queue-2",
+                    name="multi-az-queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1", "subnet-2"],
                     ),
                 ),
+                SlurmQueue(
+                    name="different-az-queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
             ],
-            [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}],
-            FailureLevel.ERROR,
+            [{"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}, {"subnet-2": "us-east-1b"}],
+            FailureLevel.INFO,
             [
-                "Your configuration includes an EBS volume created in a different availability zone than the "
-                + "Head Node. The volume and instance must be in the same Availability Zone.",
-                "Your configuration for Queue 'multi-az-queue-2' includes multiple subnets and external "
-                + "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                + "latency and costs.",
+                "Your configuration for Queues 'different-az-queue-2, multi-az-queue-1' includes compute resources in "
+                + "an availability zone different from the HeadNode. Accessing a shared storage from different AZs can "
+                + "lead to increased latency and costs.",
             ],
         ),
     ],
 )
-def test_multi_az_shared_ebs_validator(
+def test_multi_az_root_volume_validator(
     mocker,
-    ebs_az,
     head_node_az,
     queues,
     subnet_az_mappings,
@@ -2164,7 +2249,7 @@ def test_multi_az_shared_ebs_validator(
     mock_aws_api(mocker)
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
 
-    actual_failures = MultiAzEbsVolumeValidator().execute(ebs_az, head_node_az, queues)
+    actual_failures = MultiAzRootVolumeValidator().execute(head_node_az, queues)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
 
