@@ -405,6 +405,20 @@ class TestCdkLaunchTemplateBuilder:
         )
 
 
+def _check_policy_statement(list_policy_statement, iam_path, cluster_name):
+    for statement in list_policy_statement:
+        for key, value in statement.items():
+            if key == "Sid" and value == "PassRole":
+                if iam_path:
+                    assert_that(
+                        ":role" + iam_path + cluster_name + "/*" in statement["Resource"]["Fn::Join"][1]
+                    ).is_true()
+                else:
+                    assert_that(
+                        ":role/parallelcluster/" + cluster_name + "/*" in statement["Resource"]["Fn::Join"][1]
+                    ).is_true()
+
+
 @pytest.mark.parametrize(
     "config_file_name",
     [
@@ -427,7 +441,6 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
-    # print("cluster_config",cluster_config)
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
@@ -459,6 +472,14 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     _check_policies(
         generated_template, iam_name_prefix, "ParallelClusterPoliciesHeadNode", "parallelcluster", role_name_hn_ref
     )
+
+    # ParallelClusterPoliciesHeadNode has an inline Policy for PassRole where the path is generated
+    _check_policy_statement(
+        generated_template["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyDocument"]["Statement"],
+        iam_path_prefix,
+        cluster_config.cluster_name,
+    )
+
     _check_policies(
         generated_template,
         iam_name_prefix,

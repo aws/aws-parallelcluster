@@ -768,10 +768,13 @@ class HeadNodeIamResources(NodeIamResourcesBase):
 
     def _generate_head_node_pass_role_resources(self):
         """Return a unique list of ARNs that the head node should be able to use when calling PassRole."""
+        resource_iam_path, _ = add_cluster_iam_resource_prefix(
+            self._config.cluster_name, self._config, "", iam_type="AWS::IAM::Role"
+        )
         default_pass_role_resource = self._format_arn(
             service="iam",
             region="",
-            resource=f"role{self._cluster_scoped_iam_path()}*",
+            resource=f"role{self._cluster_scoped_iam_path(iam_path=resource_iam_path)}*",
         )
 
         # If there are any queues where a custom instance role was specified,
