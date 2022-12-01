@@ -922,7 +922,9 @@ class ClusterCdkStack(Stack):
                 )
                 if head_node.instance_type == "p4d.24xlarge"
                 else None,
-                block_device_mappings=get_block_device_mappings(head_node.local_storage, self.config.image.os),
+                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
+                    head_node.local_storage.root_volume, self.config.image.os
+                ),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self.config.head_node_ami,

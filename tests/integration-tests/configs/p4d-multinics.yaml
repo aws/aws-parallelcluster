@@ -1,11 +1,11 @@
 {%- import 'common.jinja2' as common -%}
-{%- set regions = ["us-east-1"] -%}
-{%- set instances = ["p4d.24xlarge"] -%}
+  {%- set regions = ["us-east-1"] -%}
+  {%- set instances = ["p4d.24xlarge"] -%}
 
 ---
 test-suites:
-  efa:
-    test_efa.py::test_efa:
+  multiple_nics:
+    test_multiple_nics.py::test_multiple_nics:
       dimensions:
         - regions: {{ regions }}
           instances: {{ instances }}
