@@ -15,6 +15,7 @@ from assertpy import assert_that
 from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     BaseQueue,
     CapacityReservationTarget,
@@ -66,7 +67,11 @@ from pcluster.validators.cluster_validators import (
     _LaunchTemplateValidator,
 )
 from pcluster.validators.common import FailureLevel
-from pcluster.validators.ebs_validators import MultiAzEbsVolumeValidator, MultiAzRootVolumeValidator
+from pcluster.validators.ebs_validators import (
+    MultiAzEbsVolumeValidator,
+    MultiAzRootVolumeValidator,
+    SharedEbsVolumeIdValidator,
+)
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 from tests.utils import MockedBoto3Request
@@ -2037,12 +2042,19 @@ def test_shared_ebs_properties(
     assert_that(storage.availability_zone == availability_zone).is_true()
 
 
+class DummySharedEbs:
+    def __init__(self, name: str, availability_zone: str):
+        self.name = name
+        self.availability_zone = availability_zone
+        self.is_managed = False
+
+
 @pytest.mark.parametrize(
     "head_node_az, ebs_volumes, queues, subnet_az_mappings, failure_level, expected_messages",
     [
         (
             "us-east-1a",
-            [{"name": "vol-1", "az": "us-east-1a"}],
+            [DummySharedEbs("vol-1", "us-east-1a")],
             [
                 SlurmQueue(
                     name="different-az-queue-1",
@@ -2069,7 +2081,7 @@ def test_shared_ebs_properties(
         ),
         (
             "us-east-1b",
-            [{"name": "vol-1", "az": "us-east-1a"}],
+            [DummySharedEbs("vol-1", "us-east-1a")],
             [
                 SlurmQueue(
                     name="same-az-queue-1",
@@ -2096,9 +2108,9 @@ def test_shared_ebs_properties(
         (
             "us-east-1b",
             [
-                {"name": "vol-1", "az": "us-east-1a"},
-                {"name": "vol-2", "az": "us-east-1b"},
-                {"name": "vol-3", "az": "us-east-1c"},
+                DummySharedEbs("vol-1", "us-east-1a"),
+                DummySharedEbs("vol-2", "us-east-1b"),
+                DummySharedEbs("vol-3", "us-east-1c"),
             ],
             [
                 SlurmQueue(
@@ -2130,7 +2142,7 @@ def test_shared_ebs_properties(
         ),
         (
             "us-east-1a",
-            [{"name": "vol-1", "az": "us-east-1a"}],
+            [DummySharedEbs("vol-1", "us-east-1a")],
             [
                 SlurmQueue(
                     name="queue-1",
@@ -2183,6 +2195,27 @@ def test_multi_az_shared_ebs_validator(
     actual_failures = MultiAzEbsVolumeValidator().execute(head_node_az, ebs_volumes, queues)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
+
+
+def test_ec2_volume_validator(mocker):
+    # Test both SharedEbsVolumeIdValidator and MultiAzEbsVolumeValidator can produce good error
+    # when a volume does not exist.
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    volume_id = "vol-12345678"
+    aws_error_message = f"Value ({volume_id}) for parameter volumes is invalid. Expected: 'vol-...'."
+    pcluster_error_message = f"Volume '{volume_id}' does not exist."
+
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_volume",
+        side_effect=AWSClientError("dummy_function_name", aws_error_message),
+    )
+    actual_failures = SharedEbsVolumeIdValidator().execute(volume_id=volume_id, head_node_instance_id="i-123")
+    assert_failure_messages(actual_failures, pcluster_error_message)
+
+    actual_failures = MultiAzEbsVolumeValidator().execute(
+        "us-east-1a", [SharedEbs(mount_dir="test", name="test", volume_id=volume_id)], []
+    )
+    assert_failure_messages(actual_failures, pcluster_error_message)
 
 
 @pytest.mark.parametrize(
