@@ -1432,12 +1432,7 @@ class BaseClusterConfig(Resource):
                     fsx_az_list=storage.file_system_availability_zones,
                 )
             if isinstance(storage, SharedEbs):
-                ebs_az = head_node_az
-                # if the EBS volume is managed we set the AZ == to the HeadNode AZ otherwise we ask EC2 about
-                # the AZ where the existing volume is created
-                if not storage.is_managed:
-                    ebs_az = storage.availability_zone
-                ebs_volumes.append({"name": storage.name, "az": ebs_az})
+                ebs_volumes.append(storage)
 
         self._register_validator(
             MultiAzEbsVolumeValidator,

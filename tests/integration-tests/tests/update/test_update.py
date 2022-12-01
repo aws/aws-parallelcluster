@@ -1178,7 +1178,7 @@ def _test_shared_storage_rollback(
         str(problematic_cluster_config),
         force_update="true",
         raise_on_error=False,
-        suppress_validators="type:SharedEbsVolumeIdValidator",
+        suppress_validators="ALL",
     )
     assert_that(response["clusterStatus"]).is_equal_to("UPDATE_FAILED")
     # Test rollback update recipe run finished
