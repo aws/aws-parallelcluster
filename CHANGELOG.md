@@ -12,6 +12,13 @@ CHANGELOG
 - Remove creation of EFS mount targets for existing FS.
 - Mount EFS file systems using amazon-efs-utils. EFS files systems can be mounted using in-transit encryption and IAM identity.
 - Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
+- Upgrade EFA installer to `1.20.0`
+  - Efa-driver: `efa-2.1`
+  - Efa-config: `efa-config-1.11-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1`
+  - Rdma-core: `rdma-core-43.0-2`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
 
 3.3.1
 -----
