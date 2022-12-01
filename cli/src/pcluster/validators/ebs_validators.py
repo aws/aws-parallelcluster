@@ -193,24 +193,57 @@ class MultiAzEbsVolumeValidator(Validator):
 
     Validate that the EBS volume, HeanNode and ComputeFleet are in the same AZ.
     If they aren't inform the customers about possible increases of latency or costs.
+    If the volume is in a different az w.r.t the HeadNode raises an error.
     """
 
-    def _validate(self, ebs_az: str, head_node_az: str, queues):
-        if ebs_az != head_node_az:
+    def _validate(self, head_node_az: str, ebs_volumes, queues):
+        cross_az_queues = set()
+        for volume in ebs_volumes:
+            if volume["az"] != head_node_az:
+                self._add_failure(
+                    "Your configuration includes an EBS volume '{0}' created in a different availability zone than "
+                    "the Head Node. The volume and instance must be in the same availability "
+                    "zone.".format(volume["name"]),
+                    FailureLevel.ERROR,
+                )
+
+            for queue in queues:
+                queue_az_set = set(queue.networking.az_list)
+                if len(queue_az_set) > 1 or (set([volume["az"]]) != queue_az_set):
+                    cross_az_queues.add(queue.name)
+
+        if cross_az_queues:
             self._add_failure(
-                "Your configuration includes an EBS volume created in a different availability zone than the "
-                "Head Node. The volume and instance must be in the same Availability Zone.",
-                FailureLevel.ERROR,
+                "Your configuration for Queues '{0}' includes multiple subnets and external shared storage "
+                "configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
+                FailureLevel.INFO,
             )
+
+
+class MultiAzRootVolumeValidator(Validator):
+    """
+    Root Volume Validator.
+
+    Validates that the root volume associated to the HeanNode and ComputeFleet are in the same AZ.
+    If they aren't inform the customers about possible increases of latency or costs.
+    """
+
+    def _validate(self, head_node_az: str, queues):
+        cross_az_queues = set()
+
         for queue in queues:
             queue_az_set = set(queue.networking.az_list)
-            if len(queue_az_set) > 1 or (set(ebs_az) != queue_az_set):
-                self._add_failure(
-                    "Your configuration for Queue '{0}' includes multiple subnets and external shared storage "
-                    "configuration. Accessing a shared storage from different AZs can lead to increased "
-                    "latency and costs.".format(queue.name),
-                    FailureLevel.INFO,
-                )
+            if len(queue_az_set) > 1 or (set([head_node_az]) != queue_az_set):
+                cross_az_queues.add(queue.name)
+
+        if cross_az_queues:
+            self._add_failure(
+                "Your configuration for Queues '{0}' includes multiple subnets different from where HeadNode is "
+                "located. Accessing a shared storage from different AZs can lead to increased storage "
+                "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
+                FailureLevel.INFO,
+            )
 
 
 class SharedEbsVolumeIdValidator(Validator):

@@ -388,10 +388,10 @@ class CapacityReservationResourceGroupValidator(Validator):
 
         if unreserved_instance_types_per_az:
             self._add_failure(
-                "The Capacity Reservation Resource Group ({crrg_arn}) has reservations for these "
-                "InstanceTypes and Availability Zones: {cr_instance_az}. Please consider that the cluster can "
-                "launch instances in these Availability Zones that have no reserved capacity for the given "
-                "instance types: {unreserved_instance_types}.".format(
+                "The Capacity Reservation Resource Group '{crrg_arn}' has reservations for these InstanceTypes and "
+                "Availability Zones: '{cr_instance_az}'. Please consider that the cluster can launch instances in these"
+                " Availability Zones that have no capacity reservations in the Resource Group for the given "
+                "instance types: '{unreserved_instance_types}'.".format(
                     crrg_arn=capacity_reservation_resource_group_arn,
                     cr_instance_az=", ".join(
                         ["(%s: %s)" % (cr["InstanceType"], cr["AvailabilityZone"]) for cr in capacity_reservations]
@@ -422,10 +422,10 @@ class CapacityReservationResourceGroupValidator(Validator):
 
         if not found_qualified_capacity_reservation:
             self._add_failure(
-                "Queue {queue} uses subnets in these availability zones: {subnet_azs_without_reservations} but the "
-                "Capacity Reservation Resource Group ({cr_group_arn}) has reservations in these "
-                "availability zones: {cr_azs}. You can either add a capacity reservation in the "
-                "availability zones that the subnets are in or remove the Capacity Reservation from the "
+                "Queue '{queue}' has a subnet configuration mapping to the following availability zones: "
+                "'{subnet_azs_without_reservations}' but the Capacity Reservation Resource Group '{cr_group_arn}' "
+                "has reservations in these availability zones: '{cr_azs}'. You can either add a capacity reservation "
+                "in the availability zones that the subnets are in or remove the Capacity Reservation from the "
                 "Cluster Configuration.".format(
                     queue=queue_name,
                     subnet_azs_without_reservations=", ".join(
@@ -439,10 +439,10 @@ class CapacityReservationResourceGroupValidator(Validator):
             )
         if found_qualified_capacity_reservation and subnets_without_reservations:
             self._add_failure(
-                "Queue {queue} may launch nodes in these availability zones: {subnet_azs_without_reservations} but the "
-                "Capacity Reservation Group ({cr_group_arn}) reserves capacity in these availability zones: "
-                "{cr_azs}. Consider adding capacity reservations in all the availability zones covered "
-                "by the queue.".format(
+                "Queue '{queue}' has a subnet configuration mapping to the following availability zones: "
+                "'{subnet_azs_without_reservations}' but the Capacity Reservation Group '{cr_group_arn}' reserves "
+                "capacity in these availability zones: '{cr_azs}'. Consider adding capacity reservations in all the "
+                "availability zones covered by the queue.".format(
                     queue=queue_name,
                     subnet_azs_without_reservations=", ".join(
                         [subnet_id_az_mapping[subnet_id] for subnet_id in subnets_without_reservations]

@@ -121,6 +121,7 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
     MultiAzEbsVolumeValidator,
+    MultiAzRootVolumeValidator,
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
@@ -1421,6 +1422,8 @@ class BaseClusterConfig(Resource):
             compute_subnet_ids=compute_subnet_ids,
             new_storage_count=new_storage_count,
         )
+        ebs_volumes = []
+        head_node_az = self.head_node.networking.availability_zone
         for storage in self.shared_storage:
             if isinstance(storage, (SharedFsxLustre, ExistingFsxOpenZfs, ExistingFsxOntap)) and storage.is_unmanaged:
                 self._register_validator(
@@ -1428,19 +1431,25 @@ class BaseClusterConfig(Resource):
                     queues=queues,
                     fsx_az_list=storage.file_system_availability_zones,
                 )
-            if isinstance(storage, (RootVolume, SharedEbs)):
-                head_node_az = self.head_node.networking.availability_zone
+            if isinstance(storage, SharedEbs):
                 ebs_az = head_node_az
                 # if the EBS volume is managed we set the AZ == to the HeadNode AZ otherwise we ask EC2 about
                 # the AZ where the existing volume is created
-                if isinstance(storage, SharedEbs) and not storage.is_managed:
+                if not storage.is_managed:
                     ebs_az = storage.availability_zone
-                self._register_validator(
-                    MultiAzEbsVolumeValidator,
-                    ebs_az=ebs_az,
-                    head_node_az=head_node_az,
-                    queues=queues,
-                )
+                ebs_volumes.append({"name": storage.name, "az": ebs_az})
+
+        self._register_validator(
+            MultiAzEbsVolumeValidator,
+            head_node_az=head_node_az,
+            ebs_volumes=ebs_volumes,
+            queues=queues,
+        )
+        self._register_validator(
+            MultiAzRootVolumeValidator,
+            head_node_az=head_node_az,
+            queues=queues,
+        )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
         for storage_type in ["EFS", "FSx", "RAID"]:
@@ -2079,6 +2088,8 @@ class _CommonQueue(BaseQueue):
                 MultiAzPlacementGroupValidator,
                 multi_az_enabled=self.multi_az_enabled,
                 placement_group_enabled=placement_group.enabled_or_assigned,
+                compute_resource_name=compute_resource.name,
+                queue_name=self.name,
             )
 
 
