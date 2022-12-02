@@ -965,16 +965,16 @@ def vpc_stacks(cfn_stacks_factory, request):
             az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
             # if only one AZ can be used for the given region, use it multiple times
             if len(az_names) == 1:
-                az_names *= 2
-            availability_zones = random.sample(az_names, k=2)
+                az_names *= 3
+            availability_zones = random.sample(az_names, k=3)
         # otherwise, select a subset of all AZs in the region
         else:
             az_list = get_availability_zones(region, credential)
             # if number of available zones is smaller than 2, available zones should be [None, None]
-            if len(az_list) < 2:
-                availability_zones = [None, None]
+            if len(az_list) < 3:
+                availability_zones = [None, None, None]
             else:
-                availability_zones = random.sample(az_list, k=2)
+                availability_zones = random.sample(az_list, k=3)
 
         # Subnets visual representation:
         # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
@@ -988,7 +988,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet = SubnetConfig(
             name="Private",
-            cidr="192.168.64.0/18",  # 16382 IPs
+            cidr="192.168.64.0/19",  # 8190 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
@@ -996,7 +996,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet_different_cidr = SubnetConfig(
             name="PrivateAdditionalCidr",
-            cidr="192.168.128.0/17",  # 32766 IPs
+            cidr="192.168.96.0/19",  # 8190 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[1],
@@ -1010,10 +1010,51 @@ def vpc_stacks(cfn_stacks_factory, request):
             availability_zone=availability_zones[0],
             default_gateway=Gateways.NONE,
         )
+        public_subnet_az2 = SubnetConfig(
+            name="PublicAz2",
+            cidr="192.168.128.0/19",  # 8190 IPs
+            map_public_ip_on_launch=True,
+            has_nat_gateway=True,
+            availability_zone=availability_zones[1],
+            default_gateway=Gateways.INTERNET_GATEWAY,
+        )
+        private_subnet_az2 = SubnetConfig(
+            name="PrivateAz2",
+            cidr="192.168.160.0/19",  # 8190 IPs
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            availability_zone=availability_zones[1],
+            default_gateway=Gateways.NAT_GATEWAY,
+        )
+        public_subnet_az3 = SubnetConfig(
+            name="PublicAz3",
+            cidr="192.168.192.0/19",  # 8190 IPs
+            map_public_ip_on_launch=True,
+            has_nat_gateway=True,
+            availability_zone=availability_zones[2],
+            default_gateway=Gateways.INTERNET_GATEWAY,
+        )
+        private_subnet_az3 = SubnetConfig(
+            name="PrivateAz3",
+            cidr="192.168.224.0/19",  # 8190 IPs
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            availability_zone=availability_zones[2],
+            default_gateway=Gateways.NAT_GATEWAY,
+        )
         vpc_config = VPCConfig(
             cidr="192.168.0.0/17",
             additional_cidr_blocks=["192.168.128.0/17"],
-            subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
+            subnets=[
+                public_subnet,
+                private_subnet,
+                private_subnet_different_cidr,
+                no_internet_subnet,
+                public_subnet_az2,
+                private_subnet_az2,
+                public_subnet_az3,
+                private_subnet_az3,
+            ],
         )
         template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zones[0]).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
