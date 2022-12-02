@@ -964,7 +964,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             az_id_to_az_name = get_az_id_to_az_name_map(region, credential)
             az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
             # if only one AZ can be used for the given region, use it multiple times
-            if len(az_names) == 1:
+            if len(az_names) <= 2:
                 az_names *= 3
             availability_zones = random.sample(az_names, k=3)
         # otherwise, select a subset of all AZs in the region
@@ -1056,7 +1056,9 @@ def vpc_stacks(cfn_stacks_factory, request):
                 private_subnet_az3,
             ],
         )
-        template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zones[0]).build()
+        template = NetworkTemplateBuilder(
+            vpc_configuration=vpc_config, default_availability_zone=availability_zones[0]
+        ).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
