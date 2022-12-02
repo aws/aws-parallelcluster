@@ -4,26 +4,34 @@ CHANGELOG
 -----
 
 **ENHANCEMENTS**
+- Add support for launching nodes across multiple availability zones to increase capacity availability.
+- Add support for specifying multiple subnets for each queue to increase capacity availability.
 - Add new configuration parameter in `Iam/ResourcePrefix` to specify a prefix for path and name of IAM resources created by ParallelCluster
 - Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
-- Add `failureReason` to `describe-cluster` output when cluster creation fails with headnode wait condition.
 - Add possibility to specify a custom script to be executed in the head node during the update of the cluster. The script can be specified with `OnNodeUpdated` parameter when using Slurm as scheduler.
 
 **CHANGES**
 - Remove creation of EFS mount targets for existing FS.
 - Mount EFS file systems using amazon-efs-utils. EFS files systems can be mounted using in-transit encryption and IAM identity.
 - Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
+- Upgrade EFA installer to `1.20.0`
+  - Efa-driver: `efa-2.1`
+  - Efa-config: `efa-config-1.11-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1`
+  - Rdma-core: `rdma-core-43.0-2`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
 
 3.3.1
 -----
 
-**ENHANCEMENTS**
-- When setting DeletionPolicy to Retain, the file system configured in the SharedStorage section is now preserved
-  also during a cluster update operation.
-
 **CHANGES**
-- Allow usage of deprecated official AMIs.
+- Allow to use official product AMIs even after the two years EC2 deprecation time.
 - Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
+
+**BUG FIXES**
+- Prevent managed FSx for Lustre file systems to be replaced during a cluster update avoiding to support changes on the compute fleet subnet id.
+- Apply the `DeletionPolicy` defined on shared storages also during the cluster update operations.
 
 3.3.0
 -----

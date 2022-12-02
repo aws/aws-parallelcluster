@@ -20,7 +20,7 @@ HeadNode:
       - Policy: {{ additional_policy_arn }}
   CustomActions:
     OnNodeUpdated:
-      Script: s3://{{ resource_bucket }}/scripts/updated_postupdate.sh
+      Script: s3://{{ resource_bucket }}/scripts/{{ postupdate_script }}
       Args:
         - UPDATE-ARG2
 Scheduling:

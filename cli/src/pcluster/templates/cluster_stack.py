@@ -42,6 +42,7 @@ from aws_cdk.core import (
 )
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     BaseSharedFsx,
@@ -210,6 +211,14 @@ class ClusterCdkStack(Stack):
             default=self.bucket.artifact_directory,
         )
         CfnParameter(self, "Scheduler", default=self.config.scheduling.scheduler)
+
+        try:
+            CfnParameter(self, "OfficialAmi", default=self.config.official_ami)
+        except AWSClientError:
+            # This might happen if there is no official AMI
+            # and custom AMIs are defined for the head node and compute nodes
+            pass
+
         CfnParameter(
             self,
             "ConfigVersion",
@@ -232,13 +241,17 @@ class ClusterCdkStack(Stack):
         if self.config.is_cw_logging_enabled:
             self.log_group = self._add_cluster_log_group()
 
-        self._add_iam_resources()
-
         # Managed security groups
         self._head_security_group, self._compute_security_group = self._add_security_groups()
 
         # Head Node ENI
         self._head_eni = self._add_head_eni()
+
+        if self.config.shared_storage:
+            for storage in self.config.shared_storage:
+                self._add_shared_storage(storage)
+
+        self._add_iam_resources()
 
         # Additional Cfn Stack
         if self.config.additional_resources:
@@ -246,10 +259,6 @@ class ClusterCdkStack(Stack):
 
         # Cleanup Resources Lambda Function
         cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
-
-        if self.config.shared_storage:
-            for storage in self.config.shared_storage:
-                self._add_shared_storage(storage)
 
         self._add_fleet_and_scheduler_resources(cleanup_lambda, cleanup_lambda_role)
 
@@ -292,7 +301,13 @@ class ClusterCdkStack(Stack):
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(
-            self, "HeadNodeIamResources", self.config, self.config.head_node, "HeadNode", self.bucket
+            self,
+            "HeadNodeIamResources",
+            self.config,
+            self.config.head_node,
+            self.shared_storage_infos,
+            "HeadNode",
+            self.bucket,
         )
         self._head_node_instance_profile = head_node_iam_resources.instance_profile
         self._managed_head_node_instance_role = head_node_iam_resources.instance_role
@@ -301,7 +316,12 @@ class ClusterCdkStack(Stack):
             iam_resources = {}
             for queue in self.config.scheduling.queues:
                 iam_resources[queue.name] = ComputeNodeIamResources(
-                    self, f"ComputeNodeIamResources{queue.name}", self.config, queue, queue.name
+                    self,
+                    f"ComputeNodeIamResources{queue.name}",
+                    self.config,
+                    queue,
+                    self.shared_storage_infos,
+                    queue.name,
                 )
 
             self._compute_instance_profiles = {k: v.instance_profile for k, v in iam_resources.items()}
@@ -968,10 +988,11 @@ class ClusterCdkStack(Stack):
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                     "efs_encryption_in_transits": to_comma_separated_string(
-                        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"]
+                        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
+                        use_lower_case=True,
                     ),
                     "efs_iam_authorizations": to_comma_separated_string(
-                        self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"]
+                        self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"], use_lower_case=True
                     ),
                     "fsx_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.FSX),
                     "fsx_mount_names": to_comma_separated_string(
@@ -1547,10 +1568,12 @@ class ComputeFleetConstruct(Construct):
                                     self._shared_storage_mount_dirs[SharedStorageType.EFS]
                                 ),
                                 "EFSEncryptionInTransits": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"]
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
+                                    use_lower_case=True,
                                 ),
                                 "EFSIamAuthorizations": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"]
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
+                                    use_lower_case=True,
                                 ),
                                 "FSXIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.FSX

@@ -280,7 +280,7 @@ def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
             "SubnetIds",
             ["subnet-12345678"],
             ["subnet-1234567a"],
-            UpdatePolicy.QUEUE_UPDATE_STRATEGY,
+            UpdatePolicy.MANAGED_FSX,
             is_list=False,
         ),
         Change(

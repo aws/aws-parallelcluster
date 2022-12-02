@@ -662,7 +662,7 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
         validate=validate.Length(min=1),
-        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+        metadata={"update_policy": UpdatePolicy.MANAGED_FSX},
     )
     placement_group = fields.Nested(
         PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
@@ -682,7 +682,7 @@ class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
         validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+        metadata={"update_policy": UpdatePolicy.MANAGED_FSX},
     )
 
     @post_load

@@ -8,16 +8,20 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 import pytest
 from assertpy import assert_that
 from munch import DefaultMunch
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     BaseQueue,
     CapacityReservationTarget,
     RootVolume,
     SchedulerPluginQueueNetworking,
+    SharedEbs,
     SlurmComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
@@ -63,6 +67,11 @@ from pcluster.validators.cluster_validators import (
     _LaunchTemplateValidator,
 )
 from pcluster.validators.common import FailureLevel
+from pcluster.validators.ebs_validators import (
+    MultiAzEbsVolumeValidator,
+    MultiAzRootVolumeValidator,
+    SharedEbsVolumeIdValidator,
+)
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 from tests.utils import MockedBoto3Request
@@ -459,8 +468,9 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
         (
             True,
             True,
-            "Elastic Fabric Adapter (EFA) was enabled on ComputeResource 'compute' in Queue 'queue' "
-            "but enhanced networking cannot be leveraged across multiple AZs. ",
+            "You have enabled the Elastic Fabric Adapter (EFA) for the 'compute' Compute Resource on the 'queue' queue."
+            " EFA is not supported across Availability zones. Either disable EFA to use multiple subnets on the queue "
+            "or specify only one subnet to enable EFA on the compute resources.",
         ),
     ],
 )
@@ -1329,8 +1339,8 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                 ]
             },
             FailureLevel.ERROR,
-            "There is no existing Mount Target in the Availability Zone dummy-az-3 for EFS dummy-efs-1. "
-            "Please create an EFS Mount Target for the Availability Zone dummy-az-3.",
+            "There is no existing Mount Target for EFS 'dummy-efs-1' in these Availability Zones: '\\['dummy-az-3'\\]'."
+            " Please create an EFS Mount Target for those availability zones.",
         ),
         (
             {"dummy-az-3": {"subnet-3"}},
@@ -1671,9 +1681,10 @@ def test_efs_id_validator(
             ],
             {"efs": 1, "fsx": 1, "raid": 1},
             FailureLevel.ERROR,
-            "Multiple subnets configuration does not support FSx 'managed' storage. "
-            "Found 1 'managed' FSx storage. Please make sure to provide "
-            "an existing shared storage, properly configured to work across the target subnets.",
+            "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids under "
+            "the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared storage, "
+            "properly configured to work across the target subnets or remove the managed FSx storage to use multiple "
+            "subnets for a queue.",
         ),
         (
             [
@@ -1757,9 +1768,10 @@ def test_efs_id_validator(
             ],
             {"efs": 0, "fsx": 1, "raid": 0},
             FailureLevel.ERROR,
-            "Multiple subnets configuration does not support FSx 'managed' storage. Found 1 'managed' FSx storage. "
-            "Please make sure to provide an existing shared storage, "
-            "properly configured to work across the target subnets.",
+            "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids under "
+            "the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared storage, "
+            "properly configured to work across the target subnets or remove the managed FSx storage to use multiple "
+            "subnets for a queue.",
         ),
         (
             [
@@ -1780,9 +1792,10 @@ def test_efs_id_validator(
             ],
             {"efs": 1, "fsx": 3, "raid": 0},
             FailureLevel.ERROR,
-            "Multiple subnets configuration does not support FSx 'managed' storage. "
-            "Found 3 'managed' FSx storage. Please make sure to provide "
-            "an existing shared storage, properly configured to work across the target subnets.",
+            "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids under "
+            "the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared storage, "
+            "properly configured to work across the target subnets or remove the managed FSx storage to use multiple "
+            "subnets for a queue.",
         ),
     ],
 )
@@ -1816,9 +1829,9 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             ["us-east-1a"],
             FailureLevel.INFO,
             [
-                "Your configuration for Queue 'different-az-queue' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs."
+                "Your configuration for Queue 'different-az-queue' includes multiple subnets and external shared "
+                "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "networking latency and added inter-AZ data transfer costs."
             ],
         ),
         (
@@ -1904,9 +1917,9 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             ["us-east-1a", "us-east-1b"],
             FailureLevel.INFO,
             [
-                "Your configuration for Queue 'multi-az-queue-mismatch' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs."
+                "Your configuration for Queue 'multi-az-queue-mismatch' includes multiple subnets and external shared "
+                "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "networking latency and added inter-AZ data transfer costs."
             ],
         ),
         (
@@ -1925,7 +1938,7 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             [
                 "Your configuration for Queue 'multi-az-queue-partial-match' includes multiple subnets and external "
                 "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs."
+                "storage networking latency and added inter-AZ data transfer costs."
             ],
         ),
         (
@@ -1964,12 +1977,12 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
             ["us-east-1b"],
             FailureLevel.INFO,
             [
-                "Your configuration for Queue 'different-az-queue-1' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs.",
-                "Your configuration for Queue 'different-az-queue-2' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "latency and costs.",
+                "Your configuration for Queue 'different-az-queue-1' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "networking latency and added inter-AZ data transfer costs.",
+                "Your configuration for Queue 'different-az-queue-2' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "networking latency and added inter-AZ data transfer costs.",
             ],
         ),
     ],
@@ -1982,6 +1995,298 @@ def test_unmanaged_fsx_multiple_az_validator(
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
 
     actual_failures = UnmanagedFsxMultiAzValidator().execute(queues, fsx_az_list)
+    assert_failure_messages(actual_failures, expected_messages)
+    assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "storage, is_managed, availability_zone, volume_description",
+    [
+        (
+            SharedEbs(
+                mount_dir="mount-dir",
+                name="volume-name",
+                kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                snapshot_id="snapshot-abdcef76",
+                volume_type="gp2",
+                throughput=300,
+                volume_id=None,
+                raid=None,
+            ),
+            True,
+            "",
+            {"AvailabilityZone": "us-east-1a"},
+        ),
+        (
+            SharedEbs(
+                mount_dir="mount-dir",
+                name="volume-name",
+                volume_id="volume-id",
+            ),
+            False,
+            "us-east-1a",
+            {"AvailabilityZone": "us-east-1a"},
+        ),
+    ],
+)
+def test_shared_ebs_properties(
+    mocker,
+    storage,
+    is_managed,
+    availability_zone,
+    volume_description,
+):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_volume", return_value=volume_description)
+    assert_that(storage.is_managed == is_managed).is_true()
+    assert_that(storage.availability_zone == availability_zone).is_true()
+
+
+class DummySharedEbs:
+    def __init__(self, name: str, availability_zone: str):
+        self.name = name
+        self.availability_zone = availability_zone
+        self.is_managed = False
+
+
+@pytest.mark.parametrize(
+    "head_node_az, ebs_volumes, queues, subnet_az_mappings, failure_level, expected_messages",
+    [
+        (
+            "us-east-1a",
+            [DummySharedEbs("vol-1", "us-east-1a")],
+            [
+                SlurmQueue(
+                    name="different-az-queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="different-az-queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+            ],
+            [{"subnet-2": "us-east-1b"}, {"subnet-2": "us-east-1b"}],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queues 'different-az-queue-1, different-az-queue-2' includes multiple subnets "
+                "and external shared storage configuration. Accessing a shared storage from different AZs can lead to "
+                "increased storage network latency and inter-AZ data transfer costs.",
+            ],
+        ),
+        (
+            "us-east-1b",
+            [DummySharedEbs("vol-1", "us-east-1a")],
+            [
+                SlurmQueue(
+                    name="same-az-queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="same-az-queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a"}],
+            FailureLevel.ERROR,
+            [
+                "Your configuration includes an EBS volume 'vol-1' created in a different availability zone than "
+                + "the Head Node. The volume and instance must be in the same availability zone",
+            ],
+        ),
+        (
+            "us-east-1b",
+            [
+                DummySharedEbs("vol-1", "us-east-1a"),
+                DummySharedEbs("vol-2", "us-east-1b"),
+                DummySharedEbs("vol-3", "us-east-1c"),
+            ],
+            [
+                SlurmQueue(
+                    name="queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a"}, {"subnet-1": "us-east-1a"}],
+            FailureLevel.ERROR,
+            [
+                "Your configuration includes an EBS volume 'vol-1' created in a different availability zone than "
+                + "the Head Node. The volume and instance must be in the same availability zone",
+                "Your configuration includes an EBS volume 'vol-3' created in a different availability zone than "
+                + "the Head Node. The volume and instance must be in the same availability zone",
+                "Your configuration for Queues 'queue-1, queue-2' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "network latency and inter-AZ data transfer costs.",
+            ],
+        ),
+        (
+            "us-east-1a",
+            [DummySharedEbs("vol-1", "us-east-1a")],
+            [
+                SlurmQueue(
+                    name="queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="queue-3",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2", "subnet-3"],
+                    ),
+                ),
+            ],
+            [
+                {"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"},
+                {"subnet-1": "us-east-1a"},
+                {"subnet-2": "us-east-1b", "subnet-3": "us-east-1c"},
+            ],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queues 'queue-1, queue-3' includes multiple subnets and external shared "
+                + "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                + "network latency and inter-AZ data transfer costs."
+            ],
+        ),
+    ],
+)
+def test_multi_az_shared_ebs_validator(
+    mocker,
+    head_node_az,
+    ebs_volumes,
+    queues,
+    subnet_az_mappings,
+    failure_level,
+    expected_messages,
+):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
+
+    actual_failures = MultiAzEbsVolumeValidator().execute(head_node_az, ebs_volumes, queues)
+    assert_failure_messages(actual_failures, expected_messages)
+    assert_failure_level(actual_failures, failure_level)
+
+
+def test_ec2_volume_validator(mocker):
+    # Test both SharedEbsVolumeIdValidator and MultiAzEbsVolumeValidator can produce good error
+    # when a volume does not exist.
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    volume_id = "vol-12345678"
+    aws_error_message = f"Value ({volume_id}) for parameter volumes is invalid. Expected: 'vol-...'."
+    pcluster_error_message = f"Volume '{volume_id}' does not exist."
+
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_volume",
+        side_effect=AWSClientError("dummy_function_name", aws_error_message),
+    )
+    actual_failures = SharedEbsVolumeIdValidator().execute(volume_id=volume_id, head_node_instance_id="i-123")
+    assert_failure_messages(actual_failures, pcluster_error_message)
+
+    actual_failures = MultiAzEbsVolumeValidator().execute(
+        "us-east-1a", [SharedEbs(mount_dir="test", name="test", volume_id=volume_id)], []
+    )
+    assert_failure_messages(actual_failures, pcluster_error_message)
+
+
+@pytest.mark.parametrize(
+    "head_node_az, queues, subnet_az_mappings, failure_level, expected_messages",
+    [
+        (
+            "us-east-1a",
+            [
+                SlurmQueue(
+                    name="same-az-queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="different-az-queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a"}, {"subnet-2": "us-east-1b"}],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queues 'different-az-queue-2' includes multiple subnets "
+                "different from where HeadNode is located. Accessing a shared storage from different AZs can lead to "
+                "increased storage network latency and inter-AZ data transfer costs.",
+            ],
+        ),
+        (
+            "us-east-1a",
+            [
+                SlurmQueue(
+                    name="multi-az-queue-1",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-1", "subnet-2"],
+                    ),
+                ),
+                SlurmQueue(
+                    name="different-az-queue-2",
+                    compute_resources=[],
+                    networking=SlurmQueueNetworking(
+                        subnet_ids=["subnet-2"],
+                    ),
+                ),
+            ],
+            [{"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}, {"subnet-2": "us-east-1b"}],
+            FailureLevel.INFO,
+            [
+                "Your configuration for Queues 'different-az-queue-2, multi-az-queue-1' includes multiple subnets "
+                "different from where HeadNode is located. Accessing a shared storage from different AZs can lead to "
+                "increased storage network latency and inter-AZ data transfer costs.",
+            ],
+        ),
+    ],
+)
+def test_multi_az_root_volume_validator(
+    mocker,
+    head_node_az,
+    queues,
+    subnet_az_mappings,
+    failure_level,
+    expected_messages,
+):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
+
+    actual_failures = MultiAzRootVolumeValidator().execute(head_node_az, queues)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
 

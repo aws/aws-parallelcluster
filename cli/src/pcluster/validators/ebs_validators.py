@@ -187,6 +187,74 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                     )
 
 
+class MultiAzEbsVolumeValidator(Validator):
+    """
+    MultiAz Ebs Volume Validator.
+
+    Validate that the EBS volume, HeanNode and ComputeFleet are in the same AZ.
+    If they aren't inform the customers about possible increases of latency or costs.
+    If the volume is in a different az w.r.t the HeadNode raises an error.
+    """
+
+    def _validate(self, head_node_az: str, ebs_volumes, queues):
+        cross_az_queues = set()
+        for volume in ebs_volumes:
+            try:
+                # if the EBS volume is managed we set the AZ == to the HeadNode AZ otherwise we ask EC2 about
+                # the AZ where the existing volume is created
+                ebs_az = head_node_az if volume.is_managed else volume.availability_zone
+                if ebs_az != head_node_az:
+                    self._add_failure(
+                        "Your configuration includes an EBS volume '{0}' created in a different availability zone than "
+                        "the Head Node. The volume and instance must be in the same availability "
+                        "zone.".format(volume.name),
+                        FailureLevel.ERROR,
+                    )
+
+                for queue in queues:
+                    queue_az_set = set(queue.networking.az_list)
+                    if len(queue_az_set) > 1 or ({ebs_az} != queue_az_set):
+                        cross_az_queues.add(queue.name)
+            except AWSClientError as e:
+                if str(e).endswith("parameter volumes is invalid. Expected: 'vol-...'."):
+                    self._add_failure(f"Volume '{volume.volume_id}' does not exist.", FailureLevel.ERROR)
+                else:
+                    self._add_failure(str(e), FailureLevel.ERROR)
+
+        if cross_az_queues:
+            self._add_failure(
+                "Your configuration for Queues '{0}' includes multiple subnets and external shared storage "
+                "configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
+                FailureLevel.INFO,
+            )
+
+
+class MultiAzRootVolumeValidator(Validator):
+    """
+    Root Volume Validator.
+
+    Validates that the root volume associated to the HeanNode and ComputeFleet are in the same AZ.
+    If they aren't inform the customers about possible increases of latency or costs.
+    """
+
+    def _validate(self, head_node_az: str, queues):
+        cross_az_queues = set()
+
+        for queue in queues:
+            queue_az_set = set(queue.networking.az_list)
+            if len(queue_az_set) > 1 or (set([head_node_az]) != queue_az_set):
+                cross_az_queues.add(queue.name)
+
+        if cross_az_queues:
+            self._add_failure(
+                "Your configuration for Queues '{0}' includes multiple subnets different from where HeadNode is "
+                "located. Accessing a shared storage from different AZs can lead to increased storage "
+                "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
+                FailureLevel.INFO,
+            )
+
+
 class SharedEbsVolumeIdValidator(Validator):
     """
     SharedEBS volume id validator.
@@ -214,6 +282,6 @@ class SharedEbsVolumeIdValidator(Validator):
                     )
             except AWSClientError as e:
                 if str(e).endswith("parameter volumes is invalid. Expected: 'vol-...'."):
-                    self._add_failure(f"Volume {volume_id} does not exist.", FailureLevel.ERROR)
+                    self._add_failure(f"Volume '{volume_id}' does not exist.", FailureLevel.ERROR)
                 else:
                     self._add_failure(str(e), FailureLevel.ERROR)

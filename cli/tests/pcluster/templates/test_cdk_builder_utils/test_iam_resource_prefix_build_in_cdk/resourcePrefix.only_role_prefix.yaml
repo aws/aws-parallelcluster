@@ -15,6 +15,8 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource1
           InstanceType: t2.micro
+          MinCount: 1
+          MaxCount: 5
       Networking:
         SubnetIds:
           - subnet-12345678

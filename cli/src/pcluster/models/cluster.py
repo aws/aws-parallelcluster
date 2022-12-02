@@ -172,7 +172,7 @@ class Cluster:
         self.template_body = None
         self.__config = None
         self.__s3_artifact_dir = None
-
+        self.__official_ami = None
         self.__has_running_capacity = None
         self.__running_capacity = None
 
@@ -181,6 +181,7 @@ class Cluster:
         """Return the ClusterStack object."""
         if not self.__stack:
             self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
+            self.__official_ami = self.__stack.official_ami
         return self.__stack
 
     @property
@@ -434,6 +435,8 @@ class Cluster:
             LOGGER.info("Validating cluster configuration...")
             Cluster._load_additional_instance_type_data(cluster_config_dict)
             config = self._load_config(cluster_config_dict)
+            config.official_ami = self.__official_ami
+
             validation_failures = config.validate(validator_suppressors, context)
             if any(f.level.value >= FailureLevel(validation_failure_level).value for f in validation_failures):
                 raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)

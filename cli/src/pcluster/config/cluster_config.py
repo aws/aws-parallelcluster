@@ -120,6 +120,8 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
+    MultiAzEbsVolumeValidator,
+    MultiAzRootVolumeValidator,
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
@@ -310,6 +312,19 @@ class SharedEbs(Ebs):
         )
         self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
+
+    @property
+    def is_managed(self):
+        """Return True if the volume is managed."""
+        return self.volume_id is None
+
+    @property
+    def availability_zone(self):
+        """Return the availability zone of an existing EBS volume."""
+        if not self.is_managed:
+            return AWSApi.instance().ec2.describe_volume(self.volume_id)["AvailabilityZone"]
+        else:
+            return ""
 
 
 class SharedEfs(Resource):
@@ -1407,6 +1422,8 @@ class BaseClusterConfig(Resource):
             compute_subnet_ids=compute_subnet_ids,
             new_storage_count=new_storage_count,
         )
+        ebs_volumes = []
+        head_node_az = self.head_node.networking.availability_zone
         for storage in self.shared_storage:
             if isinstance(storage, (SharedFsxLustre, ExistingFsxOpenZfs, ExistingFsxOntap)) and storage.is_unmanaged:
                 self._register_validator(
@@ -1414,6 +1431,20 @@ class BaseClusterConfig(Resource):
                     queues=queues,
                     fsx_az_list=storage.file_system_availability_zones,
                 )
+            if isinstance(storage, SharedEbs):
+                ebs_volumes.append(storage)
+
+        self._register_validator(
+            MultiAzEbsVolumeValidator,
+            head_node_az=head_node_az,
+            ebs_volumes=ebs_volumes,
+            queues=queues,
+        )
+        self._register_validator(
+            MultiAzRootVolumeValidator,
+            head_node_az=head_node_az,
+            queues=queues,
+        )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
         for storage_type in ["EFS", "FSx", "RAID"]:
@@ -1641,6 +1672,10 @@ class BaseClusterConfig(Resource):
                 self.image.os, self.head_node.architecture, ami_filters
             )
         return self._official_ami
+
+    @official_ami.setter
+    def official_ami(self, value):
+        self._official_ami = value
 
     @property
     def lambda_functions_vpc_config(self):
@@ -2048,6 +2083,8 @@ class _CommonQueue(BaseQueue):
                 MultiAzPlacementGroupValidator,
                 multi_az_enabled=self.multi_az_enabled,
                 placement_group_enabled=placement_group.enabled_or_assigned,
+                compute_resource_name=compute_resource.name,
+                queue_name=self.name,
             )
 
 
@@ -2611,13 +2648,6 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
         checked_images = []
         for queue in self.scheduling.queues:
             queue_image = self.image_dict[queue.name]
-            self._register_validator(
-                ComputeResourceLaunchTemplateValidator,
-                queue=queue,
-                ami_id=queue_image,
-                os=self.image.os,
-                tags=self.get_cluster_tags(),
-            )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
             root_volume = queue.compute_settings.local_storage.root_volume
             root_volume_size = root_volume.size
@@ -2641,6 +2671,14 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 checked_images.append(queue_image)
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
+                self._register_validator(
+                    ComputeResourceLaunchTemplateValidator,
+                    queue=queue,
+                    compute_resource=compute_resource,
+                    ami_id=queue_image,
+                    os=self.image.os,
+                    tags=self.get_cluster_tags(),
+                )
                 for instance_type in compute_resource.instance_types:
                     self._register_validator(
                         InstanceTypeBaseAMICompatibleValidator,

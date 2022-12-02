@@ -137,6 +137,33 @@ class _DummyEc2Client(Ec2Client):
             },
         ]
 
+    def describe_volume(self, volume_id):
+        return {
+            "Attachments": [
+                {
+                    "Device": "dev-01",
+                    "InstanceId": "instance-01",
+                    "State": "attached",
+                    "VolumeId": "vol-01",
+                    "DeleteOnTermination": True,
+                },
+            ],
+            "AvailabilityZone": "az-1",
+            "Encrypted": False,
+            "KmsKeyId": "kms-key",
+            "Size": 123,
+            "SnapshotId": "snapshot-123",
+            "State": "available",
+            "VolumeId": "vol-123",
+            "Iops": 123,
+            "Tags": [
+                {"Key": "string", "Value": "string"},
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": False,
+            "Throughput": 123,
+        }
+
     def get_subnet_vpc(self, subnet_id):
         return "vpc-123"
 

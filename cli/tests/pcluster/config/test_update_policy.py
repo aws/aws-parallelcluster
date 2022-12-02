@@ -15,7 +15,10 @@ from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import (
     UpdatePolicy,
+    actions_needed_managed_fsx,
+    condition_checker_managed_fsx,
     condition_checker_managed_placement_group,
+    fail_reason_managed_fsx,
     fail_reason_managed_placement_group,
     is_managed_placement_group_deletion,
 )
@@ -1295,3 +1298,322 @@ def test_condition_checker_managed_placement_group(
     assert_that(actual_top).is_equal_to(expected_result_top)
     actual_message = fail_reason_managed_placement_group(change, patch)
     assert_that(actual_message).is_equal_to(expected_message)
+
+
+@pytest.mark.parametrize(
+    "base_config, target_config, change, expected_subnet_updated, expected_fail_reason, expected_action_needed",
+    [
+        # If change includes SubnetIds and existing + new cluster configuration uses the same managed Fsx for Lustre
+        #   - Show Managed Fsx validation failure message
+        (
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"}
+                ],
+            },
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-87654321"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"}
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678"],
+                new_value=["subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "SubnetIds configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss",
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide.",
+        ),
+        # If update includes SubnetIds and existing cluster configuration uses an External Fsx for Lustre FS
+        #   - Fall back to QueueUpdateStrategy Update Policy failure message
+        (
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+                "SharedStorage": [
+                    {
+                        "MountDir": "/test-fsx-lustre",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    }
+                ],
+            },
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-87654321"]}}]},
+                "SharedStorage": [
+                    {
+                        "MountDir": "/test-fsx-lustre",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    }
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678"],
+                new_value=["subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
+            "configuration used for the 'update-cluster' operation",
+        ),
+        # If change includes SubnetIds and existing + new cluster configuration does not have an Fsx FileSystem
+        #   - Fall back to QueueUpdateStrategy Update Policy failure message
+        (
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-efs", "Name": "test-efs", "StorageType": "Efs"},
+                    {"MountDir": "/test-ebs", "Name": "test-ebs", "StorageType": "Ebs"},
+                ],
+            },
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-87654321"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-efs", "Name": "test-efs", "StorageType": "Efs"},
+                    {"MountDir": "/test-ebs", "Name": "test-ebs", "StorageType": "Ebs"},
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678"],
+                new_value=["subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
+            "configuration used for the 'update-cluster' operation",
+        ),
+        # If change includes SubnetIds and existing managed Fsx FileSystem is updated to unmanaged Fsx FileSystem
+        #   - Fall back to QueueUpdateStrategy Update Policy failure message
+        (
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+                "SharedStorage": [
+                    {
+                        "MountDir": "/test-fsx-lustre",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    }
+                ],
+            },
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-87654321"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"},
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678"],
+                new_value=["subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
+            "configuration used for the 'update-cluster' operation",
+        ),
+        # If SubnetIds is updated and the existing cluster has a managed Fsx FileSystem
+        # and an unmanaged Fsx FileSystem is added:
+        #   - Show Managed Fsx validation failure message
+        (
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"},
+                ],
+            },
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-87654321"]}}]},
+                "SharedStorage": [
+                    {
+                        "MountDir": "/test-fsx-lustre-unmanaged",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    },
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"},
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678"],
+                new_value=["subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "SubnetIds configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss",
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide.",
+        ),
+        # If change includes addition of SubnetIds and existing + new cluster configuration uses the same
+        # managed Fsx for Lustre
+        #   - Show Managed Fsx validation failure message
+        (
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"}
+                ],
+            },
+            {
+                "Scheduling": {
+                    "Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678", "subnet-87654321"]}}]
+                },
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"}
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678"],
+                new_value=["subnet-12345678", "subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "SubnetIds configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss",
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide.",
+        ),
+        # If change includes removal of SubnetIds and existing + new cluster configuration uses the same
+        # managed Fsx for Lustre
+        #   - Show Managed Fsx validation failure message
+        (
+            {
+                "Scheduling": {
+                    "Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678", "subnet-87654321"]}}]
+                },
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"}
+                ],
+            },
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+                "SharedStorage": [
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"}
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678", "subnet-87654321"],
+                new_value=["subnet-12345678"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "SubnetIds configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss",
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide.",
+        ),
+        # If change includes removal of SubnetIds and no managed Fsx FileSystem is present
+        #   - Fall back to QueueUpdateStrategy Update Policy failure message
+        (
+            {
+                "Scheduling": {
+                    "Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678", "subnet-87654321"]}}]
+                },
+                "SharedStorage": [
+                    {
+                        "MountDir": "/test-fsx-lustre-unmanaged",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    },
+                ],
+            },
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-87654321"]}}]},
+                "SharedStorage": [
+                    {
+                        "MountDir": "/test-fsx-lustre-unmanaged",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    },
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"},
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678", "subnet-87654321"],
+                new_value=["subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
+            "configuration used for the 'update-cluster' operation",
+        ),
+        # If change includes addition of SubnetIds and no managed Fsx FileSystem is present
+        #   - Fall back to QueueUpdateStrategy Update Policy failure message but update is possible
+        (
+            {
+                "Scheduling": {"Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678"]}}]},
+            },
+            {
+                "Scheduling": {
+                    "Queues": [{"Name": "mock-q", "Networking": {"SubnetIds": ["subnet-12345678", "subnet-87654321"]}}]
+                },
+                "SharedStorage": [
+                    {
+                        "MountDir": "/test-fsx-lustre-unmanaged",
+                        "FsxLustreSettings": {"FileSystemId": "test-fsx-lustre-id"},
+                        "StorageType": "FsxLustre",
+                    },
+                    {"MountDir": "/test-fsx-lustre", "Name": "test-fsx-lustre", "StorageType": "FsxLustre"},
+                ],
+            },
+            Change(
+                path=["SlurmQueues[mock-q]", "Networking"],
+                key="SubnetIds",
+                old_value=["subnet-12345678"],
+                new_value=["subnet-12345678", "subnet-87654321"],
+                update_policy={},
+                is_list=False,
+            ),
+            True,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
+            "configuration used for the 'update-cluster' operation",
+        ),
+    ],
+)
+def test_condition_checker_managed_fsx(
+    mocker,
+    base_config,
+    target_config,
+    change,
+    expected_subnet_updated,
+    expected_fail_reason,
+    expected_action_needed,
+):
+    cluster = Cluster(name="mock-name", stack="mock-stack")
+    mocker.patch.object(cluster, "has_running_capacity", return_value=True)
+    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
+    assert_that(condition_checker_managed_fsx(change, patch)).is_equal_to(expected_subnet_updated)
+    assert_that(fail_reason_managed_fsx(change, patch)).is_equal_to(expected_fail_reason)
+    assert_that(actions_needed_managed_fsx(change, patch)).is_equal_to(expected_action_needed)

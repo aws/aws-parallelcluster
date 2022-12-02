@@ -241,7 +241,7 @@ disable_hyperthreading:
 dns:
   test_dns.py::test_hit_no_cluster_dns_mpi:
     dimensions:
-      - regions: ["eu-west-2"]
+      - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
@@ -262,7 +262,7 @@ efa:
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-east-1"]
+      - regions: ["eu-west-1"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
@@ -693,7 +693,7 @@ update:
         oss: ["alinux2"]
   test_update.py::test_update_slurm:
     dimensions:
-      - regions: ["us-west-2"]
+      - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
   test_update.py::test_update_compute_ami:
@@ -719,7 +719,7 @@ update:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      - regions: ["ap-east-1"]
+      - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]

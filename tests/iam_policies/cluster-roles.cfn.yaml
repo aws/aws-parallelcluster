@@ -120,6 +120,7 @@ Resources:
               - Action:
                   - cloudformation:DescribeStackResource
                   - cloudformation:SignalResource
+                  - cloudformation:DescribeStacks
                 Effect: Allow
                 Resource: '*'
               - Action:

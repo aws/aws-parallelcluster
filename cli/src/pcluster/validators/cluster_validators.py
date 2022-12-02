@@ -391,8 +391,10 @@ class EfaMultiAzValidator(Validator):
     ):
         if multi_az_enabled and compute_resource_efa_enabled:
             message = (
-                f"Elastic Fabric Adapter (EFA) was enabled on ComputeResource '{compute_resource_name}' in Queue "
-                f"'{queue_name}' but enhanced networking cannot be leveraged across multiple AZs. "
+                f"You have enabled the Elastic Fabric Adapter (EFA) for the '{compute_resource_name}' Compute Resource"
+                f" on the '{queue_name}' queue. EFA is not supported across Availability zones. Either disable EFA "
+                "to use multiple subnets on the queue or specify only one subnet to enable EFA on "
+                "the compute resources."
             )
             self._add_failure(
                 message,
@@ -694,9 +696,10 @@ class ManagedFsxMultiAzValidator(Validator):
     def _validate(self, compute_subnet_ids, new_storage_count):
         if len(compute_subnet_ids) > 1 and new_storage_count.get("fsx") > 0:
             self._add_failure(
-                "Multiple subnets configuration does not support FSx 'managed' storage. Found {0} 'managed' "
-                "FSx storage. Please make sure to provide an existing shared storage, properly configured to work "
-                "across the target subnets.".format(new_storage_count.get("fsx")),
+                "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids "
+                "under the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared "
+                "storage, properly configured to work across the target subnets or remove the managed FSx storage to "
+                "use multiple subnets for a queue.",
                 FailureLevel.ERROR,
             )
 
@@ -717,8 +720,8 @@ class UnmanagedFsxMultiAzValidator(Validator):
             if not queue_az_set.issubset(fs_az_set):
                 self._add_failure(
                     "Your configuration for Queue '{0}' includes multiple subnets and external shared storage "
-                    "configuration. Accessing a shared storage from different AZs can lead to increased "
-                    "latency and costs.".format(queue.name),
+                    "configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                    "networking latency and added inter-AZ data transfer costs.".format(queue.name),
                     FailureLevel.INFO,
                 )
 
@@ -739,6 +742,8 @@ class EfsIdValidator(Validator):  # TODO add tests
                 "Availability Zone or use a standard storage class EFS.",
                 FailureLevel.ERROR,
             )
+
+        avail_zones_missing_mount_target_for_efs_standard = []
         for avail_zone, subnets in avail_zones_mapping.items():
             head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, avail_zone)
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
@@ -758,11 +763,15 @@ class EfsIdValidator(Validator):  # TODO add tests
                     self._check_cidrs_cover_subnets(head_node_target_id, avail_zone, sg_ids, efs_id, subnets)
             else:
                 if AWSApi.instance().efs.is_efs_standard(efs_id):
-                    self._add_failure(
-                        "There is no existing Mount Target in the Availability Zone {0} for EFS {1}. "
-                        "Please create an EFS Mount Target for the Availability Zone {0}.".format(avail_zone, efs_id),
-                        FailureLevel.ERROR,
-                    )
+                    avail_zones_missing_mount_target_for_efs_standard.append(avail_zone)
+        if avail_zones_missing_mount_target_for_efs_standard:
+            self._add_failure(
+                "There is no existing Mount Target for EFS '{0}' in these Availability Zones: '{1}'. "
+                "Please create an EFS Mount Target for those availability zones.".format(
+                    efs_id, avail_zones_missing_mount_target_for_efs_standard
+                ),
+                FailureLevel.ERROR,
+            )
 
     def _check_subnet_access(self, security_groups_ids, subnet_cidr, access_type):
         permission = "IpPermissions" if access_type == "in" else "IpPermissionsEgress"
@@ -1175,7 +1184,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, os, ami_id, tags):
+    def _validate(self, queue, compute_resource, os, ami_id, tags):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1185,8 +1194,10 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             if queue.networking.additional_security_groups:
                 queue_security_groups.extend(queue.networking.additional_security_groups)
 
-            queue_placement_group_id = queue.networking.placement_group.id if queue.networking.placement_group else None
-            queue_placement_group = {"GroupName": queue_placement_group_id} if queue_placement_group_id else {}
+            compute_resource_placement_group = (
+                compute_resource.networking.placement_group or queue.networking.placement_group
+            )
+            placement_group_name = compute_resource_placement_group.assignment
 
             # Select the "best" compute resource to run dryrun tests against.
             # Resources with multiple NICs are preferred among others.
@@ -1204,7 +1215,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 ami_id=ami_id,
                 subnet_id=queue_subnet_id,
                 security_groups_ids=queue_security_groups,
-                placement_group=queue_placement_group,
+                placement_group={"GroupName": placement_group_name} if placement_group_name else {},
                 tags=tags,
             )
         except Exception as e:

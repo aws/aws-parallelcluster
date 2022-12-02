@@ -188,6 +188,23 @@ def is_managed_placement_group_deletion(change, patch):
     ) and not is_placement_group_managed_for_compute_resource(target_q_networking, target_cr_networking)
 
 
+def get_managed_fsx_from_config(config):
+    """Extract managed Fsx for Lustre shared storage entries in a cluster configuration."""
+    managed_fsx_storage = [
+        storage
+        for storage in config.get("SharedStorage", [])
+        if storage.get("StorageType") == "FsxLustre" and "FileSystemId" not in storage.get("FsxLustreSettings", {})
+    ]
+    return managed_fsx_storage
+
+
+def unchanged_managed_fsx_lustre_names(_, patch):
+    """Get list of managed Fsx for Lustre Shared Storage that hasn't changed between cluster configuration updates."""
+    managed_fsx_names_before_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.base_config)}
+    managed_fsx_names_after_update = {fsx.get("Name") for fsx in get_managed_fsx_from_config(patch.target_config)}
+    return managed_fsx_names_before_update.intersection(managed_fsx_names_after_update)
+
+
 def is_slurm_scheduler(patch):
     return patch.cluster.stack.scheduler == SLURM
 
@@ -238,16 +255,47 @@ def fail_reason_managed_placement_group(change, patch):
     return reason
 
 
+def fail_reason_managed_fsx(change, patch):
+    managed_fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
+    if managed_fsx_lustre_names:
+        reason = (
+            f"{change.key} configuration cannot be updated when a managed FSx for Lustre file system is configured. "
+            "Forcing an update would trigger a deletion of the existing file system and result in potential data loss"
+        )
+    else:
+        reason = fail_reason_queue_update_strategy(change, patch)
+    return reason
+
+
+def is_queue_update_strategy_set(patch):
+    return (
+        patch.target_config.get("Scheduling")
+        .get("SlurmSettings", {})
+        .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
+        != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+    )
+
+
 def condition_checker_queue_update_strategy(change, patch):
     result = not patch.cluster.has_running_capacity()
     # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
     if is_slurm_queues_change(change):
+        result = result or is_queue_update_strategy_set(patch)
+
+    return result
+
+
+def condition_checker_queue_update_strategy_on_remove(change, patch):
+    result = not patch.cluster.has_running_capacity()
+    # Update of list element value is possible if one of the following is verified:
+    # - fleet is stopped
+    # - queue update strategy is set (different from default)
+    # - new list element is added
+    if is_slurm_queues_change(change):
         result = (
             result
-            or patch.target_config.get("Scheduling")
-            .get("SlurmSettings", {})
-            .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
-            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
+            or is_queue_update_strategy_set(patch)
+            or (isinstance(change.old_value, list) and all(value in change.new_value for value in change.old_value))
         )
 
     return result
@@ -258,6 +306,14 @@ def condition_checker_managed_placement_group(change, patch):
         result = False
     else:
         result = condition_checker_queue_update_strategy(change, patch)
+    return result
+
+
+def condition_checker_managed_fsx(change, patch):
+    if unchanged_managed_fsx_lustre_names(change, patch):
+        result = False
+    else:
+        result = condition_checker_queue_update_strategy_on_remove(change, patch)
     return result
 
 
@@ -276,6 +332,17 @@ def actions_needed_shared_storage_update(change, patch):
     return actions
 
 
+def actions_needed_managed_fsx(change, patch):
+    fsx_lustre_names = unchanged_managed_fsx_lustre_names(change, patch)
+    if fsx_lustre_names:
+        return (
+            "If you intend to preserve the same file system or you want to create a new one please refer to the "
+            "shared storage section in ParallelCluster user guide."
+        )
+    else:
+        return actions_needed_queue_update_strategy(change, patch)
+
+
 def condition_checker_shared_storage_update_policy(change, patch):
     """
     Check different requirements for different schedulers.
@@ -288,13 +355,7 @@ def condition_checker_shared_storage_update_policy(change, patch):
         return False
     result = not patch.cluster.has_running_capacity()
     if is_slurm_scheduler(patch) and not is_stop_required_for_shared_storage(change):
-        result = (
-            result
-            or patch.target_config.get("Scheduling")
-            .get("SlurmSettings", {})
-            .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
-            != QueueUpdateStrategy.COMPUTE_FLEET_STOP.value
-        )
+        result = result or is_queue_update_strategy_set(patch)
 
     return result
 
@@ -320,6 +381,7 @@ UpdatePolicy.ACTIONS_NEEDED = {
     "pcluster_stop_conditional": actions_needed_queue_update_strategy,
     "managed_placement_group": actions_needed_managed_placement_group,
     "shared_storage_update_conditional": actions_needed_shared_storage_update,
+    "managed_fsx": actions_needed_managed_fsx,
 }
 
 # Base policies
@@ -454,4 +516,13 @@ UpdatePolicy.UNSUPPORTED = UpdatePolicy(
         else "{0} the parameter '{1}'".format("Restore" if change.is_list else "Remove", change.key)
     )
     + ". If you need this change, please consider creating a new cluster instead of updating the existing one.",
+)
+
+# Block update if cluster has a managed Fsx for Lustre FileSystem, otherwise fallback to QueueUpdateStrategy
+UpdatePolicy.MANAGED_FSX = UpdatePolicy(
+    name="MANAGED_FSX",
+    level=6,
+    fail_reason=fail_reason_managed_fsx,
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["managed_fsx"],
+    condition_checker=condition_checker_managed_fsx,
 )
