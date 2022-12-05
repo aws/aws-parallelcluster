@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import os
 import os as os_lib
 from shutil import copyfile
 
@@ -17,9 +18,12 @@ import boto3
 import pytest
 import yaml
 from assertpy import assert_that
+from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from framework.credential_providers import register_cli_credentials_for_region
+from framework.tests_configuration.config_utils import get_all_regions
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
-from utils import wait_for_computefleet_changed
+from utils import generate_stack_name, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.schedulers.test_awsbatch import _test_job_submission as _test_job_submission_awsbatch
@@ -332,3 +336,134 @@ def test_s3_read_write_resource(region, pcluster_config_reader, s3_bucket_factor
     # Check S3 resources
     check_s3_read_resource(region, cluster, get_policy_resources(config, enable_write_access=False))
     check_s3_read_write_resource(region, cluster, get_policy_resources(config, enable_write_access=True))
+
+
+@pytest.mark.parametrize("iam_resource_prefix", ["name-prefix-", "/path-prefix/", "/path-prefix/name-prefix-"])
+@pytest.mark.usefixtures("os", "instance")
+def test_iam_resource_prefix(
+    register_resource_prefix_cli_credentials,
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+    s3_bucket_factory,
+    s3_bucket,
+    iam_resource_prefix,
+):
+    bucket_name = s3_bucket
+    cfn_client, _, iam_client, _ = _create_boto3_clients(region)
+
+    create_config, update_config = _get_config_create_and_update(test_datadir)
+   
+    cluster_config = pcluster_config_reader(
+        config_file=create_config,
+        min_count=1,
+        bucket=bucket_name,
+        iam_resource_prefix=iam_resource_prefix,
+    )
+    cluster = clusters_factory(cluster_config)
+    _test_iam_resource_in_cluster(cfn_client, iam_client, cluster.name, iam_resource_prefix)
+
+def _split_resource_prefix(resource_prefix):
+    """To split Path and name prefix from Resource Prefix."""
+    if resource_prefix:
+        split_index = resource_prefix.rfind("/") + 1
+        return (
+            None
+            if split_index == 0
+            else resource_prefix
+            if split_index == len(resource_prefix)
+            else resource_prefix[:split_index],
+            None
+            if split_index == len(resource_prefix)
+            else resource_prefix
+            if split_index == 0
+            else resource_prefix[split_index:],
+        )
+    return None, None
+
+
+def _check_iam_resource_prefix(resource_arn_list, iam_resource_prefix):
+    """Check the path and name of IAM resource ( Roles, policy and Instance profiles)."""
+    iam_path, iam_name_prefix = _split_resource_prefix(iam_resource_prefix)
+    for resource in resource_arn_list:
+        if "arn:aws:iam:" in resource:
+            if iam_path:
+                assert_that(resource).contains(iam_path)
+            else:
+                assert_that(resource).contains("/parallelcluster/")
+        if iam_name_prefix:
+            assert_that(resource).contains(iam_name_prefix)
+
+
+def _test_iam_resource_in_cluster(cfn_client, iam_client, stack_name, iam_resource_prefix):
+    """Test IAM resources ( Roles, policy and Instance profiles)."""
+
+    resources = cfn_client.describe_stack_resources(StackName=stack_name)["StackResources"]
+    resource_arn_list = []
+
+    for resource in resources:
+        resource_type = resource["ResourceType"]
+        if resource_type == "AWS::IAM::Role":
+
+            resource_arn_list.append(iam_client.get_role(RoleName=resource["PhysicalResourceId"])["Role"]["Arn"])
+            resource_arn_list.extend(
+                iam_client.list_role_policies(RoleName=resource["PhysicalResourceId"])["PolicyNames"]
+            )
+        if resource_type == "AWS::IAM::InstanceProfile":
+            resource_arn_list.append(
+                iam_client.get_instance_profile(InstanceProfileName=resource["PhysicalResourceId"])["InstanceProfile"][
+                    "Arn"
+                ]
+            )
+    _check_iam_resource_prefix(resource_arn_list, iam_resource_prefix)
+
+
+@pytest.fixture(scope="class")
+def initialize_resource_prefix_cli_creds(request):
+    """Create an IAM Role with Permission Boundary for testing Resource Prefix Feature."""
+
+    if request.config.getoption("use_default_iam_credentials"):
+        logging.info("Using default IAM credentials to run pcluster commands")
+        yield None
+    else:
+        stack_factory = CfnStacksFactory(request.config.getoption("credential"))
+
+        regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+        stack_template_path = os.path.join("..", "iam_policies", "user-role-rp.cfn.yaml")
+        with open(stack_template_path, encoding="utf-8") as stack_template_file:
+            stack_template_data = stack_template_file.read()
+        cli_creds = {}
+        for region in regions:
+            if request.config.getoption("iam_user_role_stack_name"):
+                stack_name = request.config.getoption("iam_user_role_stack_name")
+                logging.info(f"Using stack {stack_name} in region {region}")
+                stack = CfnStack(
+                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                )
+            else:
+                logging.info("Creating IAM roles for pcluster CLI")
+                stack_name = generate_stack_name(
+                    "integ-tests-iam-rp-user-role", request.config.getoption("stackname_suffix")
+                )
+                stack = CfnStack(
+                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                )
+
+                stack_factory.create_stack(stack)
+            cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
+
+        yield cli_creds
+
+        if not request.config.getoption("no_delete"):
+            stack_factory.delete_all_stacks()
+        else:
+            logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+
+
+@pytest.fixture(scope="class")
+def register_resource_prefix_cli_credentials(initialize_resource_prefix_cli_creds):
+    if initialize_resource_prefix_cli_creds:
+        for region, creds in initialize_resource_prefix_cli_creds.items():
+            register_cli_credentials_for_region(region, creds)
