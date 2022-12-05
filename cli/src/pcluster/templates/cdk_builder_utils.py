@@ -273,13 +273,13 @@ def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str
     return full_resource_path, full_resource_name
 
 
-def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement], has_vpc_config: bool):
+def add_lambda_cfn_role(scope, config, function_id: str, statements: List[iam.PolicyStatement], has_vpc_config: bool):
     """Return a CfnRole to be used for a Lambda function."""
     role_path, role_name = add_cluster_iam_resource_prefix(
-        scope.config.cluster_name, scope.config, name=f"{function_id}Role", iam_type="AWS::IAM::Role"
+        config.cluster_name, config, name=f"{function_id}Role", iam_type="AWS::IAM::Role"
     )
     _, policy_name = add_cluster_iam_resource_prefix(
-        scope.config.cluster_name, scope.config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
+        config.cluster_name, config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
     )
 
     role_id = f"{function_id}Role" if role_name else f"{function_id}FunctionExecutionRole"
