@@ -146,7 +146,18 @@ def write_file_into_efs(
                 "Action": "sts:AssumeRole"
             }
         ]
-    }))
+    },
+    Policies=[Policy(PolicyName="EFSPolicy",PolicyDocument={
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "VisualEditor0",
+                "Effect": "Allow",
+                "Action": "elasticfilesystem:*",
+                "Resource": "*"
+            }
+        ]
+    })]))
     iam_instance_profile = write_file_template.add_resource(InstanceProfile("BlankProfile",Roles=[Ref(role)]))
     write_file_template.add_resource(
         Instance(
@@ -181,7 +192,7 @@ def _write_user_data(efs_id, random_file_name):
         """  # noqa: E501
 
 
-def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False):
+def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, iam=False):
     # TODO: Add iam. The value of the two parameters should be set according to cluster configuration parameters.
     logging.info("Checking efs {0} is correctly mounted".format(mount_dir))
     # Following EFS instruction to check https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html
@@ -198,7 +209,10 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False):
     # Check fstab content according to https://docs.aws.amazon.com/efs/latest/ug/automount-with-efs-mount-helper.html
     logging.info("Checking efs {0} is correctly configured in fstab".format(mount_dir))
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    if tls:  # TODO: Add a another check when tls and iam are enabled together
+    logging.info(f"tls {tls} iam {iam}")
+    if tls and iam:
+        assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls,iam 0 0")
+    elif tls:  # TODO: Add a another check when tls and iam are enabled together
         assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls 0 0")
     else:
         assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport 0 0")
