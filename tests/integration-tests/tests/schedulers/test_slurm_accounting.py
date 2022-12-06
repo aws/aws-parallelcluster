@@ -56,14 +56,11 @@ def _require_server_identity(remote_command_executor, test_resources_dir, region
     )
 
 
-@retry(stop_max_attempt_number=3, wait_fixed=seconds(10))
-def _assert_accounting_is_enabled(remote_command_executor):
-    assert_that(_is_accounting_enabled(remote_command_executor)).is_true()
-
-
 def _test_require_server_identity(remote_command_executor, test_resources_dir, region):
     _require_server_identity(remote_command_executor, test_resources_dir, region)
-    _assert_accounting_is_enabled(remote_command_executor)
+    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
+        remote_command_executor,
+    )
 
 
 def _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir):
