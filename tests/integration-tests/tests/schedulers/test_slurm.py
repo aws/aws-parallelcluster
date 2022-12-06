@@ -1259,7 +1259,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 22.05.5")
+    assert_that(version).is_equal_to("slurm 22.05.6")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
