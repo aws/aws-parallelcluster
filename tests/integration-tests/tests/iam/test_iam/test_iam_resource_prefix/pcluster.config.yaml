@@ -1,7 +1,5 @@
 Image:
   Os: {{ os }}
-Iam:
-  ResourcePrefix: {{ iam_resource_prefix}}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -10,9 +8,6 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     S3Access:
-      - BucketName: {{ bucket }}
-        KeyName: read_only/
-        EnableWriteAccess: false
       - BucketName: {{ bucket }}
         KeyName: read_and_write/
         EnableWriteAccess: true
@@ -38,12 +33,7 @@ Scheduling:
       Iam:
         S3Access:
           - BucketName: {{ bucket }}
-            KeyName: read_only/
-            EnableWriteAccess: false
-          - BucketName: {{ bucket }}
             KeyName: read_and_write/
             EnableWriteAccess: true
-DevSettings:
-  Timeouts:
-    HeadNodeBootstrapTimeout: 1234  # timeout in seconds
+
    
