@@ -131,10 +131,10 @@ def test_multiple_efs(
     logging.info("finished applying policy")
     efs_mount_target_stack_factory(existing_efs_ids)
     logging.info("created efs_mount_target_stack_factory")
-    existing_efs_filenames.extend([
+    existing_efs_filenames.extend(
         write_file_into_efs(
             region, vpc_stack, existing_efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
-        )]
+        )
     )
     logging.info("extended existing_efs_filenames")
     for i in range(num_existing_efs):
