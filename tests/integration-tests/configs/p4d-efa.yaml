@@ -1,0 +1,13 @@
+{%- import 'common.jinja2' as common -%}
+{%- set regions = ["us-east-1"] -%}
+{%- set instances = ["p4d.24xlarge"] -%}
+
+---
+test-suites:
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: {{ regions }}
+          instances: {{ instances }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
