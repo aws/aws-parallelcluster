@@ -1829,7 +1829,6 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
 
         # Create a security group that allows all communication between the mount targets and instances in the VPC
         vpc_id = vpc_stack.cfn_outputs["VpcId"]
-        logging.info(f"got vpc_id {vpc_id}")
         security_group = template.add_resource(
             ec2.SecurityGroup(
                 "SecurityGroupResource",
@@ -1837,12 +1836,10 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
                 VpcId=vpc_id,
             )
         )
-        logging.info(f"got security group {security_group}")
         # Allow inbound connection though NFS port within the VPC
         cidr_block_association_set = boto3.client("ec2").describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0][
             "CidrBlockAssociationSet"
         ]
-        logging.info(f"cidr_block_association_set {cidr_block_association_set}")
         for index, cidr_block_association in enumerate(cidr_block_association_set):
             vpc_cidr = cidr_block_association["CidrBlock"]
             template.add_resource(
@@ -1855,20 +1852,13 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
                     GroupId=Ref(security_group),
                 )
             )
-        logging.info("added security group")
         # Create mount targets
         subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
-        logging.info(f"got subnet ids {subnet_ids}")
         _add_mount_targets(subnet_ids, efs_ids, security_group, template)
-        logging.info("added mount targets")
         stack_name = generate_stack_name("integ-tests-mount-targets", request.config.getoption("stackname_suffix"))
-        logging.info(f"generated stack name {stack_name}")
         stack = CfnStack(name=stack_name, region=region, template=template.to_json())
-        logging.info("defined stack")
         cfn_stacks_factory.create_stack(stack)
-        logging.info("created stack")
         created_stacks.append(stack)
-        logging.info("added created stack to created_stacks list")
         return stack.name
 
     yield create_mount_targets

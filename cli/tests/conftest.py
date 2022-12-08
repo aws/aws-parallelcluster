@@ -163,7 +163,6 @@ def pcluster_config_reader(test_datadir):
         file_loader = FileSystemLoader(str(test_datadir))
         env = SandboxedEnvironment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**kwargs)
-        logging.info(rendered_template)
         with open(output_file_path, "w", encoding="utf-8") as f:
             f.write(rendered_template)
         return output_file_path
