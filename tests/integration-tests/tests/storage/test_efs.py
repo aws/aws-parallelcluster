@@ -161,18 +161,22 @@ def test_multiple_efs(
         remote_command_executor.run_remote_command(f"cat {existing_efs_mount_dirs[i]}/{existing_efs_filenames[i]}")
 
     all_mount_dirs = existing_efs_mount_dirs + new_efs_mount_dirs
+    # append false for the one new_efs_mount_dir
+    iam_authorizations.append(False)
+    encryption_in_transits.append(False)
     _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands,
-                                            iam_authorizations + [False], encryption_in_transits + [False])
+                                            iam_authorizations, encryption_in_transits)
 
     if scheduler == "slurm":  # Only Slurm supports compute nodes reboot
         remote_command_executor, scheduler_commands = _check_efs_after_nodes_reboot(
-            all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory
+            all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory, iam_authorizations, encryption_in_transits
         )
 
     run_benchmarks(remote_command_executor, scheduler_commands)
 
 
-def _check_efs_after_nodes_reboot(all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory):
+def _check_efs_after_nodes_reboot(all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory,
+                                  iam_authorizations=[], encryption_in_transits=[]):
     reboot_head_node(cluster, remote_command_executor)
     # Re-establish connection after head node reboot
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -181,7 +185,7 @@ def _check_efs_after_nodes_reboot(all_mount_dirs, cluster, remote_command_execut
     for compute_node in compute_nodes:
         scheduler_commands.reboot_compute_node(compute_node, asap=False)
     scheduler_commands.wait_nodes_status("idle", compute_nodes)
-    _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands)
+    _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits)
     return remote_command_executor, scheduler_commands
 
 
