@@ -1852,9 +1852,11 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
                     GroupId=Ref(security_group),
                 )
             )
+
         # Create mount targets
         subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
         _add_mount_targets(subnet_ids, efs_ids, security_group, template)
+
         stack_name = generate_stack_name("integ-tests-mount-targets", request.config.getoption("stackname_suffix"))
         stack = CfnStack(name=stack_name, region=region, template=template.to_json())
         cfn_stacks_factory.create_stack(stack)
