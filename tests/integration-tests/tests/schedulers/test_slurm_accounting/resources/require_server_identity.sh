@@ -8,7 +8,7 @@ CA_PATH="/tmp/slurm"
 CA_FILE_PATH="${CA_PATH}/${CA_NAME}"
 SLURMDBD_CONFIG_FILE="/opt/slurm/etc/slurmdbd.conf"
 
-wget ${CA_URL} -nH -x --cut-dirs=1 -P ${CA_PATH}
+wget ${CA_URL} -P ${CA_PATH}
 
 echo "Clearing previous CA Setting"
 sed -i "/^StorageParameters\s*=/d" "${SLURMDBD_CONFIG_FILE}"
