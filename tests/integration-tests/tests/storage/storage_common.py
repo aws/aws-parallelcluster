@@ -135,7 +135,7 @@ def write_file_into_efs(
         """  # noqa: E501
     role = write_file_template.add_resource(
         Role(
-            "blank",
+            "IAMTLS",
             AssumeRolePolicyDocument={
                 "Version": "2012-10-17",
                 "Statement": [
@@ -160,7 +160,7 @@ def write_file_into_efs(
             ],
         )
     )
-    iam_instance_profile = write_file_template.add_resource(InstanceProfile("BlankProfile", Roles=[Ref(role)]))
+    iam_instance_profile = write_file_template.add_resource(InstanceProfile("IAMTLS_Profile", Roles=[Ref(role)]))
     write_file_template.add_resource(
         Instance(
             "InstanceToWriteEFS",
