@@ -9,15 +9,16 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 
 import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_compute_nodes_instance_ips, get_vpc_snakecase_value
+from utils import get_arn_partition, get_vpc_snakecase_value
 
-from tests.common.utils import reboot_head_node
+from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
@@ -87,13 +88,40 @@ def test_multiple_efs(
     # Names of files that will be written from separate instance. The test checks the cluster nodes can access them.
     existing_efs_filenames = []
     existing_efs_mount_dirs = []
+    iam_authorizations = [False, False, True]
+    encryption_in_transits = [False, True, True]
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
         num_existing_efs = 20
     else:
-        num_existing_efs = 2
-    # TODO: create an additional EFS with file system policy to prevent anonymous access
+        num_existing_efs = 3
+    # create an additional EFS with file system policy to prevent anonymous access
     existing_efs_ids = efs_stack_factory(num_existing_efs)
+    account_id = (
+        boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
+        .get_caller_identity()
+        .get("Account")
+    )
+    policy = {
+        "Version": "2012-10-17",
+        "Id": "efs-policy-wizard-2b0679e4-cbf2-4cb7-a9d0-2f3bb4a6f911",
+        "Statement": [
+            {
+                "Sid": "efs-block-not-iam-in-account",
+                "Effect": "Deny",
+                "Principal": {"AWS": "*"},
+                "Action": [
+                    "elasticfilesystem:ClientMount",
+                    "elasticfilesystem:ClientRootAccess",
+                    "elasticfilesystem:ClientWrite",
+                ],
+                "Resource": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
+                f"file-system/{existing_efs_ids[-1]}",
+                "Condition": {"StringNotLike": {"aws:PrincipalAccount": account_id}},
+            }
+        ],
+    }
+    boto3.client("efs").put_file_system_policy(FileSystemId=existing_efs_ids[-1], Policy=json.dumps(policy))
     efs_mount_target_stack_factory(existing_efs_ids)
     existing_efs_filenames.extend(
         write_file_into_efs(
@@ -106,11 +134,13 @@ def test_multiple_efs(
     new_efs_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
 
     _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
-    # TODO: change cluster configuration file to test different tls and iam settings to EFS.
+    # change cluster configuration file to test different tls and iam settings to EFS.
     cluster_config = pcluster_config_reader(
         existing_efs_mount_dirs=existing_efs_mount_dirs,
         existing_efs_ids=existing_efs_ids,
         new_efs_mount_dirs=new_efs_mount_dirs,
+        iam_authorizations=iam_authorizations,
+        encryption_in_transits=encryption_in_transits,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -120,17 +150,34 @@ def test_multiple_efs(
         remote_command_executor.run_remote_command(f"cat {existing_efs_mount_dirs[i]}/{existing_efs_filenames[i]}")
 
     all_mount_dirs = existing_efs_mount_dirs + new_efs_mount_dirs
-    _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands)
+    # append false for the one new_efs_mount_dir
+    iam_authorizations.append(False)
+    encryption_in_transits.append(False)
+    _check_efs_correctly_mounted_and_shared(
+        all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
+    )
 
     if scheduler == "slurm":  # Only Slurm supports compute nodes reboot
         remote_command_executor, scheduler_commands = _check_efs_after_nodes_reboot(
-            all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory
+            all_mount_dirs,
+            cluster,
+            remote_command_executor,
+            scheduler_commands_factory,
+            iam_authorizations,
+            encryption_in_transits,
         )
 
     run_benchmarks(remote_command_executor, scheduler_commands)
 
 
-def _check_efs_after_nodes_reboot(all_mount_dirs, cluster, remote_command_executor, scheduler_commands_factory):
+def _check_efs_after_nodes_reboot(
+    all_mount_dirs,
+    cluster,
+    remote_command_executor,
+    scheduler_commands_factory,
+    iam_authorizations,
+    encryption_in_transits,
+):
     reboot_head_node(cluster, remote_command_executor)
     # Re-establish connection after head node reboot
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -139,13 +186,22 @@ def _check_efs_after_nodes_reboot(all_mount_dirs, cluster, remote_command_execut
     for compute_node in compute_nodes:
         scheduler_commands.reboot_compute_node(compute_node, asap=False)
     scheduler_commands.wait_nodes_status("idle", compute_nodes)
-    _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands)
+    _check_efs_correctly_mounted_and_shared(
+        all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
+    )
     return remote_command_executor, scheduler_commands
 
 
-def _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands):
-    for mount_dir in all_mount_dirs:
-        test_efs_correctly_mounted(remote_command_executor, mount_dir)
+def _check_efs_correctly_mounted_and_shared(
+    all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
+):
+    for i, mount_dir in enumerate(all_mount_dirs):
+        test_efs_correctly_mounted(
+            remote_command_executor,
+            mount_dir,
+            encryption_in_transits[i],
+            iam_authorizations[i],
+        )
         _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
@@ -164,26 +220,3 @@ def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
         assert_that(head_node_subnet_az).is_equal_to(compute_subnet_az)
     else:
         assert_that(head_node_subnet_az).is_not_equal_to(compute_subnet_az)
-
-
-def _test_efs_utils(remote_command_executor, scheduler_commands, cluster, region, mount_dirs, efs_ids):
-    # Collect a list of command executors of all compute nodes
-    compute_node_remote_command_executors = []
-    for compute_node_ip in get_compute_nodes_instance_ips(cluster.name, region):
-        compute_node_remote_command_executors.append(RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip))
-    # Unmount all EFS from head node and compute nodes
-    for mount_dir in mount_dirs:
-        command = f"sudo umount {mount_dir}"
-        remote_command_executor.run_remote_command(command)
-        for compute_node_remote_command_executor in compute_node_remote_command_executors:
-            compute_node_remote_command_executor.run_remote_command(command)
-    # Mount all EFS using EFS-utils
-    assert_that(mount_dirs).is_length(len(efs_ids))
-    for mount_dir, efs_id in zip(mount_dirs, efs_ids):
-        command = f"sudo mount -t efs -o tls {efs_id}:/ {mount_dir}"
-        remote_command_executor.run_remote_command(command)
-        for compute_node_remote_command_executor in compute_node_remote_command_executors:
-            compute_node_remote_command_executor.run_remote_command(command)
-        _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-    for mount_dir in mount_dirs:
-        test_efs_correctly_mounted(remote_command_executor, mount_dir)
