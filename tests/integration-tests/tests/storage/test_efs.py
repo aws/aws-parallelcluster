@@ -124,7 +124,7 @@ def test_multiple_efs(
                 }
             ],
         }
-    boto3.client("efs").put_file_system_policy(FileSystemId=existing_efs_ids[-1], Policy=json.dumps(policy))
+        boto3.client("efs").put_file_system_policy(FileSystemId=existing_efs_ids[-1], Policy=json.dumps(policy))
     efs_mount_target_stack_factory(existing_efs_ids)
     existing_efs_filenames.extend(
         write_file_into_efs(
