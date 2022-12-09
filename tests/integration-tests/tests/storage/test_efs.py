@@ -220,26 +220,3 @@ def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
         assert_that(head_node_subnet_az).is_equal_to(compute_subnet_az)
     else:
         assert_that(head_node_subnet_az).is_not_equal_to(compute_subnet_az)
-
-
-def _test_efs_utils(remote_command_executor, scheduler_commands, cluster, region, mount_dirs, efs_ids):
-    # Collect a list of command executors of all compute nodes
-    compute_node_remote_command_executors = []
-    for compute_node_ip in get_compute_nodes_instance_ips(cluster.name, region):
-        compute_node_remote_command_executors.append(RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip))
-    # Unmount all EFS from head node and compute nodes
-    for mount_dir in mount_dirs:
-        command = f"sudo umount {mount_dir}"
-        remote_command_executor.run_remote_command(command)
-        for compute_node_remote_command_executor in compute_node_remote_command_executors:
-            compute_node_remote_command_executor.run_remote_command(command)
-    # Mount all EFS using EFS-utils
-    assert_that(mount_dirs).is_length(len(efs_ids))
-    for mount_dir, efs_id in zip(mount_dirs, efs_ids):
-        command = f"sudo mount -t efs -o tls {efs_id}:/ {mount_dir}"
-        remote_command_executor.run_remote_command(command)
-        for compute_node_remote_command_executor in compute_node_remote_command_executors:
-            compute_node_remote_command_executor.run_remote_command(command)
-        _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-    for mount_dir in mount_dirs:
-        test_efs_correctly_mounted(remote_command_executor, mount_dir)
