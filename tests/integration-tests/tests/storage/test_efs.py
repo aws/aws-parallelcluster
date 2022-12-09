@@ -16,7 +16,7 @@ import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_arn_partition, get_compute_nodes_instance_ips, get_vpc_snakecase_value
+from utils import get_arn_partition, get_vpc_snakecase_value
 
 from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
