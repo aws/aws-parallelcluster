@@ -86,17 +86,21 @@ Resources:
               - iam:DeleteRole
               - iam:TagRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
             Effect: Allow
             Sid: IamRole
           - Action:
               - iam:CreateRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
             Effect: Allow
             Condition: !If
               - EnablePermissionsBoundary
@@ -108,10 +112,12 @@ Resources:
           - Action:
               - iam:PutRolePolicy
               - iam:DeleteRolePolicy
-            Resource: 
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
             Effect: Allow
             Sid: IamInlinePolicy
             Condition: !If
@@ -123,16 +129,19 @@ Resources:
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
-            Resource: 
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
             Condition:
               ArnLike:
                 iam:PolicyARN:
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster*
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*/name-prefix-*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/path-prefix/name-prefix-*
+#                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster*
+#                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
+#                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*/name-prefix-*
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
@@ -164,10 +173,13 @@ Resources:
               - iam:GetRole
               - iam:PassRole
             Resource:
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*'
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+#              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*'
+#              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*'
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
             Effect: Allow
             Condition:
               StringEqualsIfExists:
@@ -380,18 +392,24 @@ Resources:
               - iam:SimulatePrincipalPolicy
               - iam:GetInstanceProfile
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/path-prefix/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/path-prefix/name-prefix-*
+#              Some of the Inline ParallelCluster Policies dont have a path
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/path-prefix/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/name-prefix-*
             Effect: Allow
             Sid: IamRead
           - Action:
@@ -400,18 +418,26 @@ Resources:
               - iam:AddRoleToInstanceProfile
               - iam:RemoveRoleFromInstanceProfile
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*
             Effect: Allow
             Sid: IamInstanceProfile
           - Action:
               - iam:GetRole
               - iam:PassRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+#              Some of the CleanupRoles have naming convention of /path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+#              Some of the Roles like HN and CN have naming convention of /path-prefix/{clsuter_name}/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+          
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
             Effect: Allow
             Condition:
               StringEqualsIfExists:
@@ -571,10 +597,14 @@ Resources:
               - iam:GetRole
               - iam:PassRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
             Effect: Allow
           - Action:
               - cloudformation:*
@@ -678,10 +708,14 @@ Resources:
               - iam:ListInstanceProfiles
               - iam:ListInstanceProfilesForRole
               - iam:DeleteRolePolicy
-            Resource: 
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
             Effect: Allow
           - Action:
               - iam:CreateInstanceProfile
@@ -691,10 +725,14 @@ Resources:
               - iam:TagInstanceProfile
               - iam:UntagInstanceProfile
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*/name-prefix-*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/name-prefix-*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/path-prefix/*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*/name-prefix-*
+#              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/path-prefix/*
             Effect: Allow
           - Action:
               - iam:CreatePolicy
@@ -710,9 +748,10 @@ Resources:
               - iam:TagPolicy
               - iam:UntagPolicy
             Resource: 
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*/name-prefix-*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/path-prefix/*'         
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/path-prefix/name-prefix-*'
+            #              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*'
+#              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*/name-prefix-*'
+#              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/path-prefix/*'         
             Effect: Allow
           - Action:
               - ec2:Describe*

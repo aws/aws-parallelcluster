@@ -1,5 +1,7 @@
 Image:
   Os: {{ os }}
+Iam:
+  ResourcePrefix: {{ iam_resource_prefix }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:

@@ -336,7 +336,7 @@ def test_s3_read_write_resource(region, pcluster_config_reader, s3_bucket_factor
     check_s3_read_resource(region, cluster, get_policy_resources(config, enable_write_access=False))
     check_s3_read_write_resource(region, cluster, get_policy_resources(config, enable_write_access=True))
 
-
+@pytest.mark.parametrize("iam_resource_prefix",[ "/path-prefix/name-prefix-"])
 @pytest.mark.usefixtures("os", "instance")
 def test_iam_resource_prefix(
     register_resource_prefix_cli_credentials,
@@ -347,21 +347,20 @@ def test_iam_resource_prefix(
     scheduler_commands_factory,
     s3_bucket_factory,
     s3_bucket,
+    iam_resource_prefix,
 ):
     bucket_name = s3_bucket
-    iam_resource_prefix_list = ["name-prefix-", "/path-prefix/", "/path-prefix/name-prefix-"]
     cfn_client, _, iam_client, _ = _create_boto3_clients(region)
     create_config, _ = _get_config_create_and_update(test_datadir)
-    pcluster_config_reader(
+    cluster_config = pcluster_config_reader(
         config_file=create_config,
         min_count=1,
         bucket=bucket_name,
+        iam_resource_prefix= iam_resource_prefix
     )
 
-    for iam_resource_prefix in iam_resource_prefix_list:
-        cluster_config = _update_config_with_iam_resource_prefix(test_datadir, iam_resource_prefix)
-        cluster = clusters_factory(cluster_config)
-        _test_iam_resource_in_cluster(cfn_client, iam_client, cluster.name, iam_resource_prefix)
+    cluster = clusters_factory(cluster_config)
+    _test_iam_resource_in_cluster(cfn_client, iam_client, cluster.name, iam_resource_prefix)
 
 
 def _split_resource_prefix(resource_prefix):
@@ -428,42 +427,38 @@ def _test_iam_resource_in_cluster(cfn_client, iam_client, stack_name, iam_resour
 @pytest.fixture()
 def initialize_resource_prefix_cli_creds(request,test_datadir):
     """Create an IAM Role with Permission Boundary for testing Resource Prefix Feature."""
-    if request.config.getoption("use_default_iam_credentials"):
-        logging.info("Using default IAM credentials to run pcluster commands")
-        yield None
-    else:
-        stack_factory = CfnStacksFactory(request.config.getoption("credential"))
+    stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
-        regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-        stack_template_path = os_lib.path.join("..", "iam_policies", test_datadir/"user-role-iam-resource-prefix.cfn.yaml")
-        with open(stack_template_path, encoding="utf-8") as stack_template_file:
-            stack_template_data = stack_template_file.read()
-        cli_creds = {}
-        for region in regions:
-            if request.config.getoption("iam_user_role_stack_name"):
-                stack_name = request.config.getoption("iam_user_role_stack_name")
-                logging.info(f"Using stack {stack_name} in region {region}")
-                stack = CfnStack(
-                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-                )
-            else:
-                logging.info("Creating IAM roles for pcluster CLI")
-                stack_name = generate_stack_name(
-                    "integ-tests-iam-rp-user-role", request.config.getoption("stackname_suffix")
-                )
-                stack = CfnStack(
-                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-                )
-
-                stack_factory.create_stack(stack)
-            cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
-
-        yield cli_creds
-
-        if not request.config.getoption("no_delete"):
-            stack_factory.delete_all_stacks()
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    stack_template_path = os_lib.path.join("..", "iam_policies", test_datadir/"user-role-iam-resource-prefix.cfn.yaml")
+    with open(stack_template_path, encoding="utf-8") as stack_template_file:
+        stack_template_data = stack_template_file.read()
+    cli_creds = {}
+    for region in regions:
+        if request.config.getoption("iam_user_role_stack_name"):
+            stack_name = request.config.getoption("iam_user_role_stack_name")
+            logging.info(f"Using stack {stack_name} in region {region}")
+            stack = CfnStack(
+                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+            )
         else:
-            logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+            logging.info("Creating IAM roles for pcluster CLI")
+            stack_name = generate_stack_name(
+                "integ-tests-iam-rp-user-role", request.config.getoption("stackname_suffix")
+            )
+            stack = CfnStack(
+                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+            )
+
+            stack_factory.create_stack(stack)
+        cli_creds[region] = stack.cfn_outputs["ParallelClusterUserRole"]
+
+    yield cli_creds
+
+    if not request.config.getoption("no_delete"):
+        stack_factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture()
@@ -472,21 +467,6 @@ def register_resource_prefix_cli_credentials(initialize_resource_prefix_cli_cred
     if initialize_resource_prefix_cli_creds:
         for region, creds in initialize_resource_prefix_cli_creds.items():
             register_cli_credentials_for_region(region, creds)
-
-
-def _update_config_with_iam_resource_prefix(
-    test_datadir,
-    iam_resource_prefix,
-    output_file=None,
-    config_file="pcluster.config.yaml",
-):
-    """Update the config file with iam resource prefix."""
-    config_file_path = test_datadir / config_file
-    if not os_lib.path.isfile(config_file_path):
-        raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
-    output_file_path = test_datadir / output_file if output_file else config_file_path
-    _inject_resource_in_config(output_file_path, iam_resource_prefix, ("Iam", "ResourcePrefix"))
-    return output_file_path
 
 
 def _inject_resource_in_config(cluster_config, resource_value, resource_keys):
