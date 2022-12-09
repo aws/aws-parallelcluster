@@ -197,7 +197,7 @@ def _write_user_data(efs_id, random_file_name):
 
 
 def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, iam=False):
-    # Add iam. The value of the two parameters should be set according to cluster configuration parameters.
+    # The value of the two parameters should be set according to cluster configuration parameters.
     logging.info("Checking efs {0} is correctly mounted".format(mount_dir))
     # Following EFS instruction to check https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html
     result = remote_command_executor.run_remote_command("mount | column -t | grep '{0}'".format(mount_dir))
