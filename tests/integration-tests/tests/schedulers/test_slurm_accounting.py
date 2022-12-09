@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 import boto3
@@ -6,6 +7,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
+from time_utils import seconds
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 
@@ -30,7 +32,9 @@ def _get_slurm_database_config_parameters(database_stack_outputs):
 
 
 def _get_expected_users(remote_command_executor, test_resources_dir):
-    users = remote_command_executor.run_remote_script(str(test_resources_dir / "get_accounting_users.sh")).stdout
+    users = remote_command_executor.run_remote_script(
+        os.path.join(str(test_resources_dir), "get_accounting_users.sh")
+    ).stdout
     for user in users.splitlines():
         logging.info("  Expected User: %s", user)
     return users.splitlines()
@@ -38,6 +42,25 @@ def _get_expected_users(remote_command_executor, test_resources_dir):
 
 def _is_accounting_enabled(remote_command_executor):
     return remote_command_executor.run_remote_command("sacct", raise_on_error=False).ok
+
+
+def _require_server_identity(remote_command_executor, test_resources_dir, region):
+    ca_url = f"https://truststore.pki.rds.amazonaws.com/{region}/{region}-bundle.pem"
+    remote_command_executor.run_remote_script(
+        os.path.join(str(test_resources_dir), "require_server_identity.sh"),
+        args=[
+            ca_url,
+            f"{region}-bundle.pem",
+        ],
+        run_as_root=True,
+    )
+
+
+def _test_require_server_identity(remote_command_executor, test_resources_dir, region):
+    _require_server_identity(remote_command_executor, test_resources_dir, region)
+    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
+        remote_command_executor,
+    )
 
 
 def _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir):
@@ -130,6 +153,7 @@ def test_slurm_accounting(
     _test_successful_startup_in_log(remote_command_executor)
     _test_slurmdbd_log_exists_in_log_group(cluster)
     _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir)
+    _test_require_server_identity(remote_command_executor, test_resources_dir, region)
     _test_jobs_get_recorded(scheduler_commands)
 
 
