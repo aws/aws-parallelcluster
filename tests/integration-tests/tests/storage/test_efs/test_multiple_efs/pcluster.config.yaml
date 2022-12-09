@@ -45,4 +45,6 @@ SharedStorage:
     StorageType: Efs
     EfsSettings:
       FileSystemId: {{ efs_fs_id }}
+      IamAuthorization: {{ iam_authorizations[loop.index-1] }}
+      EncryptionInTransit: {{ encryption_in_transits[loop.index-1] }}
   {% endfor %}

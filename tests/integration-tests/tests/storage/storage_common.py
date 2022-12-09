@@ -18,7 +18,7 @@ from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from troposphere import Base64, Sub, Template
+from troposphere import Base64, Ref, Sub, Template
 from troposphere.ec2 import Instance
 from troposphere.fsx import (
     ClientConfigurations,
@@ -27,6 +27,7 @@ from troposphere.fsx import (
     OpenZFSConfiguration,
     RootVolumeConfiguration,
 )
+from troposphere.iam import InstanceProfile, Policy, Role
 from utils import generate_stack_name, random_alphanumeric, retrieve_cfn_outputs
 
 from tests.common.utils import retrieve_latest_ami
@@ -128,9 +129,38 @@ def write_file_into_efs(
         package_upgrade: true
         runcmd:
         - yum install -y nfs-utils
+        - yum install -y amazon-efs-utils
         {write_file_user_data}
         - opt/aws/bin/cfn-signal -e $? --stack ${{AWS::StackName}} --resource InstanceToWriteEFS --region ${{AWS::Region}}
         """  # noqa: E501
+    role = write_file_template.add_resource(
+        Role(
+            "IAMTLS",
+            AssumeRolePolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [
+                    {"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}
+                ],
+            },
+            Policies=[
+                Policy(
+                    PolicyName="EFSPolicy",
+                    PolicyDocument={
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Sid": "VisualEditor0",
+                                "Effect": "Allow",
+                                "Action": "elasticfilesystem:*",
+                                "Resource": "*",
+                            }
+                        ],
+                    },
+                )
+            ],
+        )
+    )
+    iam_instance_profile = write_file_template.add_resource(InstanceProfile("IAMTLS_Profile", Roles=[Ref(role)]))
     write_file_template.add_resource(
         Instance(
             "InstanceToWriteEFS",
@@ -140,10 +170,13 @@ def write_file_into_efs(
             SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
+            IamInstanceProfile=Ref(iam_instance_profile),
         )
     )
     stack_name = generate_stack_name("integ-tests-efs-write-file", request.config.getoption("stackname_suffix"))
-    write_file_stack = CfnStack(name=stack_name, region=region, template=write_file_template.to_json())
+    write_file_stack = CfnStack(
+        name=stack_name, region=region, template=write_file_template.to_json(), capabilities=["CAPABILITY_IAM"]
+    )
     cfn_stacks_factory.create_stack(write_file_stack)
 
     # Delete created stacks so the instance and mount targets are deleted.
@@ -157,14 +190,14 @@ def _write_user_data(efs_id, random_file_name):
     mount_dir = "/mnt/efs/fs"
     return f"""
         - mkdir -p {mount_dir}
-        - mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev "{efs_id}.efs.${{AWS::Region}}.${{AWS::URLSuffix}}:/" {mount_dir}
+        - mount -t efs -o tls,iam {efs_id}:/ {mount_dir}
         - touch {mount_dir}/{random_file_name}
         - umount {mount_dir}
         """  # noqa: E501
 
 
-def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False):
-    # TODO: Add iam. The value of the two parameters should be set according to cluster configuration parameters.
+def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, iam=False):
+    # The value of the two parameters should be set according to cluster configuration parameters.
     logging.info("Checking efs {0} is correctly mounted".format(mount_dir))
     # Following EFS instruction to check https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html
     result = remote_command_executor.run_remote_command("mount | column -t | grep '{0}'".format(mount_dir))
@@ -180,7 +213,9 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False):
     # Check fstab content according to https://docs.aws.amazon.com/efs/latest/ug/automount-with-efs-mount-helper.html
     logging.info("Checking efs {0} is correctly configured in fstab".format(mount_dir))
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    if tls:  # TODO: Add a another check when tls and iam are enabled together
+    if tls and iam:  # Add a another check when tls and iam are enabled together
+        assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls,iam 0 0")
+    elif tls:
         assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls 0 0")
     else:
         assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport 0 0")
