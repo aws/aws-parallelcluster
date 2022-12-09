@@ -809,8 +809,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "us-west-2": ["usw2-az4"],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
-    # m6g.xlarge is not supported in apne1-az2
-    "ap-northeast-1": ["apne1-az4", "apne1-az1"],
+    # FSx for Luster is not supported in apne1-az1
+    "ap-northeast-1": ["apne1-az4", "apne1-az2"],
     # c4.xlarge is not supported in apne2-az2
     "ap-northeast-2": ["apne2-az1", "apne2-az3"],
     # c5.xlarge is not supported in apse1-az3
