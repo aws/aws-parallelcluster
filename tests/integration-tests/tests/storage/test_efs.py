@@ -175,8 +175,8 @@ def _check_efs_after_nodes_reboot(
     cluster,
     remote_command_executor,
     scheduler_commands_factory,
-    iam_authorizations=None,
-    encryption_in_transits=None,
+    iam_authorizations,
+    encryption_in_transits,
 ):
     reboot_head_node(cluster, remote_command_executor)
     # Re-establish connection after head node reboot
@@ -193,14 +193,14 @@ def _check_efs_after_nodes_reboot(
 
 
 def _check_efs_correctly_mounted_and_shared(
-    all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations=None, encryption_in_transits=None
+    all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
 ):
     for i, mount_dir in enumerate(all_mount_dirs):
         test_efs_correctly_mounted(
             remote_command_executor,
             mount_dir,
-            encryption_in_transits[i] if encryption_in_transits is not None else False,
-            iam_authorizations[i] if iam_authorizations is not None else False,
+            encryption_in_transits[i],
+            iam_authorizations[i],
         )
         _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
