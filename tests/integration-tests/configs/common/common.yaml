@@ -633,17 +633,17 @@ storage:
         schedulers: ["awsbatch"]
   test_ebs.py::test_ebs_multiple:
     dimensions:
-      - regions: ["eu-west-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      - regions: ["eu-west-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_single:
     dimensions:
-      {%- for region, oss in [("eu-west-3", common.OSS_COMMERCIAL_X86), ("cn-north-1", common.OSS_CHINA_X86), ("us-gov-west-1", common.OSS_GOVCLOUD_X86)] %}
+      {%- for region, oss in [("eu-west-2", common.OSS_COMMERCIAL_X86), ("cn-northwest-1", common.OSS_CHINA_X86), ("us-gov-west-1", common.OSS_GOVCLOUD_X86)] %}
       - regions: ["{{ region }}"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ oss }}
@@ -651,7 +651,7 @@ storage:
       {%- endfor %}
   test_ebs.py::test_ebs_snapshot:
     dimensions:
-      - regions: ["ap-northeast-2"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -661,7 +661,7 @@ storage:
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_existing:
     dimensions:
-      - regions: ["ap-northeast-2"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
