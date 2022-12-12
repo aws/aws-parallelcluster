@@ -68,6 +68,7 @@ CHANGELOG
 - Upgrade EFA installer to version 1.18.0.
 - Upgrade NICE DCV to version 2022.1-13300.
 - Allow for suppressing the `SingleSubnetValidator` for `Queues`.
+- Remove usage of prolog/epilog Slurm configuration when `UseEc2Hostnames` is set to `true`.
 
 **BUG FIXES**
 - Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.
