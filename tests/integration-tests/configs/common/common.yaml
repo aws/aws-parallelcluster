@@ -723,6 +723,11 @@ update:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+  test_update.py::test_multi_az_create_and_update:
+    dimensions:
+      - regions: [ "eu-west-2" ]
+        schedulers: [ "slurm" ]
+        oss: ["alinux2"]
 # Temporarily disabling p4d tests
 # multiple_nics:
 #   test_multiple_nics.py::test_multiple_nics:
