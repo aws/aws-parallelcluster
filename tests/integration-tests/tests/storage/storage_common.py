@@ -160,7 +160,7 @@ def write_file_into_efs(
             ],
         )
     )
-    iam_instance_profile = write_file_template.add_resource(InstanceProfile("IAMTLS_Profile", Roles=[Ref(role)]))
+    iam_instance_profile = write_file_template.add_resource(InstanceProfile("IamTlsProfile", Roles=[Ref(role)]))
     write_file_template.add_resource(
         Instance(
             "InstanceToWriteEFS",
