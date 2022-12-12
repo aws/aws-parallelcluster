@@ -15,6 +15,7 @@ import re
 import boto3
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
+from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
@@ -30,26 +31,74 @@ from troposphere.fsx import (
 from troposphere.iam import InstanceProfile, Policy, Role
 from utils import generate_stack_name, random_alphanumeric, retrieve_cfn_outputs
 
+from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import retrieve_latest_ami
 
 
-def verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition=None):
+def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head_node: bool = True):
+    """
+    Returns a nested list of SubnetIds from the cluster configuration for each queue and headnode by default.
+    Example: [[HeadNode SubnetId], [<queue-0-SubnetIds>], [<queue-1-SubnetIds>], ...]
+    """
+    head_node_subnet_id = cluster.config.get("HeadNode", {}).get("Networking", {}).get("SubnetId")
+    if scheduler == "slurm":
+        queues = cluster.config.get("Scheduling", {}).get("SlurmQueues", [])
+    else:
+        queues = cluster.config.get("Scheduling", {}).get("AwsBatchQueues", [])
+
+    compute_subnet_ids = [queue.get("Networking", {}).get("SubnetIds", []) for queue in queues]
+    if include_head_node:
+        return [[head_node_subnet_id], *compute_subnet_ids]
+    return compute_subnet_ids
+
+
+def verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=None):
+    """
+    Confirm nodes can read and write to the FileSystem
+    Example:
+    - Partitions: ["A", "B"]
+    While writing:
+        "A" writes a file "A-<random_alphanumeric_characters>"
+        "B" writes a file "B-<random_alphanumeric_characters>"
+    While Reading:
+        "A" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
+        "B" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
+    """
     head_node_file = random_alphanumeric()
-    compute_file = random_alphanumeric()
+    logging.info(f"Writing HeadNode File: {head_node_file}")
     remote_command_executor.run_remote_command(
         "touch {mount_dir}/{head_node_file}".format(mount_dir=mount_dir, head_node_file=head_node_file)
     )
-    job_command = "cat {mount_dir}/{head_node_file} && touch {mount_dir}/{compute_file}".format(
-        mount_dir=mount_dir, head_node_file=head_node_file, compute_file=compute_file
-    )
 
-    result = scheduler_commands.submit_command(job_command, partition=partition)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    remote_command_executor.run_remote_command(
-        "cat {mount_dir}/{compute_file}".format(mount_dir=mount_dir, compute_file=compute_file)
+    # Submit a "Write" job to each partition
+    files_to_read = [head_node_file]
+    partitions = (
+        partitions or scheduler_commands.get_partitions() if isinstance(scheduler_commands, SlurmCommands) else [None]
     )
+    for partition in partitions:
+        compute_file = "{}-{}".format(partition, random_alphanumeric())
+        logging.info(f"Writing Compute File: {compute_file} from {partition}")
+        job_command = "touch {mount_dir}/{compute_file}".format(mount_dir=mount_dir, compute_file=compute_file)
+        result = scheduler_commands.submit_command(job_command, partition=partition)
+        job_id = scheduler_commands.assert_job_submitted(result.stdout)
+        scheduler_commands.wait_job_completed(job_id)
+        scheduler_commands.assert_job_succeeded(job_id)
+        files_to_read.append(compute_file)
+
+    read_all_files_command = "cat {files_to_read}".format(
+        files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
+    )
+    # Attempt reading files from HeadNode
+    logging.info(f"Reading Files: {files_to_read} from HeadNode")
+    remote_command_executor.run_remote_command(read_all_files_command)
+
+    # Submit a "Read" job to each partition
+    for partition in partitions:
+        logging.info(f"Reading Files: {files_to_read} from {partition}")
+        result = scheduler_commands.submit_command(read_all_files_command, partition=partition)
+        job_id = scheduler_commands.assert_job_submitted(result.stdout)
+        scheduler_commands.wait_job_completed(job_id)
+        scheduler_commands.assert_job_succeeded(job_id)
 
 
 # for EBS

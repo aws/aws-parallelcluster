@@ -23,10 +23,23 @@ Scheduling:
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
+          MaxCount: 1
           {% endif %}
       Networking:
         SubnetIds:
           - {{ private_additional_cidr_subnet_id }}
+    {% if scheduler == "slurm" %}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_az3_subnet_id }}
+    {% endif %}
 # This compute subnet would be in a different AZ than head node for regions defined in AVAILABILITY_ZONE_OVERRIDES
 # See conftest for details
 SharedStorage:
