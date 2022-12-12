@@ -15,13 +15,12 @@ import logging
 import boto3
 import pytest
 from assertpy import assert_that
-from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_arn_partition, get_vpc_snakecase_value
 
 from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
-    get_cluster_subnet_ids_groups,
+    assert_subnet_az_relations_from_config,
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
     write_file_into_efs,
@@ -40,7 +39,7 @@ def test_efs_compute_az(
     mount_dir = "efs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
-    _assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
+    assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -61,7 +60,7 @@ def test_efs_same_az(
     mount_dir = "efs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
-    _assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=True)
+    assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -149,7 +148,7 @@ def test_multiple_efs(
         encryption_in_transits=encryption_in_transits,
     )
     cluster = clusters_factory(cluster_config)
-    _assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
+    assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
@@ -227,23 +226,6 @@ def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
         assert_that(head_node_subnet_az).is_equal_to(compute_subnet_az)
     else:
         assert_that(head_node_subnet_az).is_not_equal_to(compute_subnet_az)
-
-
-def _assert_subnet_az_relations_from_config(region: str, scheduler: str, cluster: Cluster, expected_in_same_az: bool):
-    # [["Subnet1"], ["Subnet2", "Subnet3"], ["Subnet1", "Subnet2"], ...]
-    cluster_subnet_ids_groups = get_cluster_subnet_ids_groups(cluster, scheduler)
-
-    # ["AZ1", "AZ2", "AZ3", "AZ1", "AZ2", ...]
-    cluster_avail_zones = [
-        boto3.resource("ec2", region_name=region).Subnet(subnet_id).availability_zone
-        for subnet_ids_group in cluster_subnet_ids_groups
-        for subnet_id in subnet_ids_group
-    ]
-
-    if expected_in_same_az:
-        assert_that(set(cluster_avail_zones)).is_length(1)
-    else:
-        assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
 
 
 def _test_efs_utils(remote_command_executor, scheduler_commands, cluster, region, mount_dirs, efs_ids):
