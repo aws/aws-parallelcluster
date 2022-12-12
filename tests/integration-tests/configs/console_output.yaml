@@ -1,0 +1,11 @@
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  cloudwatch_logging:
+    test_compute_console_output_logging.py::test_compute_console_logging:
+      dimensions:
+        - regions: ["us-east-1"]
+#          oss: ["alinux2", "ubuntu2004", "centos7", "ubuntu1804"]
+          oss: ["alinux2"]
+          instances: ["t2.micro"]
+          schedulers: ["slurm"]

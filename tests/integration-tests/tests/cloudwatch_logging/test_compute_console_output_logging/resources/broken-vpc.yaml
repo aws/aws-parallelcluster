@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This template is creates a VPC
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Network Configuration"
+        Parameters:
+          - AvailabilityZone
+          - PublicSubnetCidrBlock
+          - PrivateSubnetCidrBlock
+    ParameterLabels:
+      AvailabilityZone:
+        default: "Which availability zone should the VPC subnets be created in?"
+      PublicSubnetCidrBlock:
+        default: "The CIDR block to be used for the public subnet."
+      PrivateSubnetCidrBlock:
+        default: "The CIDR block to be used for the private subnet."
+Parameters:
+  AvailabilityZone:
+    Description: Subnet Availability Zone
+    Type: AWS::EC2::AvailabilityZone::Name
+  PublicSubnetCidrBlock:
+    Description: CIDR block for the public subnet.
+    Type: String
+    Default: '10.0.16.0/24'
+    AllowedPattern: >-
+      ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      The CIDR block must be formatted as W.X.Y.Z/prefix, where prefix must be between 16 and 28.
+  PrivateSubnetCidrBlock:
+    Description: CIDR block for the private subnet.
+    Type: String
+    Default: '10.0.128.0/20'
+    AllowedPattern: >-
+      ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      The CIDR block must be formatted as W.X.Y.Z/prefix, where prefix must be between 16 and 28.
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  ParallelClusterVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: 'Name'
+          Value: 'ParallelClusterVPC'
+        - Key: 'parallelcluster:infrastructure'
+          Value: 'vpc'
+  ParallelClusterInternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: 'Name'
+          Value: 'ParallelClusterInternetGateway'
+        - Key: 'parallelcluster:infrastructure'
+          Value: 'internet-gateway'
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref ParallelClusterInternetGateway
+      VpcId: !Ref ParallelClusterVPC
+  NatIPPublic:
+    Type: 'AWS::EC2::EIP'
+    DependsOn:
+      - ParallelClusterVPC
+      - ParallelClusterInternetGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: 'Name'
+          Value: 'ParallelClusterElasticIP'
+        - Key: 'parallelcluster:infrastructure'
+          Value: 'internet-elastic-ip'
+  NatGatewayPublic:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt
+        - NatIPPublic
+        - AllocationId
+      SubnetId: !Ref PublicSubnet
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref ParallelClusterVPC
+      AvailabilityZone: !Ref AvailabilityZone
+      CidrBlock: !Ref PublicSubnetCidrBlock
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: 'Name'
+          Value: 'PublicSubnet'
+        - Key: 'parallelcluster:infrastructure'
+          Value: !Sub cluster-subnet-${AvailabilityZone}
+  PublicSubnetRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref ParallelClusterVPC
+      Tags:
+        - Key: 'Name'
+          Value: 'PublicSubnetRouteTable'
+        - Key: 'parallelcluster:infrastructure'
+          Value: !Sub cluster-subnet-${AvailabilityZone}
+  PublicSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      SubnetId: !Ref PublicSubnet
+  DefaultRoutePublic:
+    Type: 'AWS::EC2::Route'
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref ParallelClusterInternetGateway
+      RouteTableId: !Ref PublicSubnetRouteTable
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref ParallelClusterVPC
+      AvailabilityZone: !Ref AvailabilityZone
+      CidrBlock: !Ref PrivateSubnetCidrBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: 'Name'
+          Value: 'PrivateSubnet'
+        - Key: 'parallelcluster:infrastructure'
+          Value: !Sub cluster-subnet-${AvailabilityZone}
+  PrivateSubnetRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref ParallelClusterVPC
+      Tags:
+        - Key: 'Name'
+          Value: 'PrivateSubnetRouteTable'
+        - Key: 'parallelcluster:infrastructure'
+          Value: !Sub cluster-subnet-${AvailabilityZone}
+  PrivateSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateSubnetRouteTable
+      SubnetId: !Ref PrivateSubnet
+Outputs:
+  parallelclustervpc:
+    Value: !Ref ParallelClusterVPC
+  parallelclusterdpublicsubnet:
+    Value: !Ref PublicSubnet
+  parallelclusterdprivatesubnet:
+    Value: !Ref PrivateSubnet
