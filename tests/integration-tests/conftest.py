@@ -1371,6 +1371,9 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     availability_zone = (
         boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_subnet_id"]).availability_zone
     )
+    availability_zone_2 = (
+        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_az2_subnet_id"]).availability_zone
+    )
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=availability_zone,
@@ -1434,10 +1437,59 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
             ),
         ],
     )
+    # odcr resources for MultiAZ integ-tests
+    az1_odcr = ec2.CapacityReservation(
+        "az1Odcr",
+        AvailabilityZone=availability_zone,
+        InstanceCount=2,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="t3.micro",
+    )
+    az2_odcr = ec2.CapacityReservation(
+        "az2Odcr",
+        AvailabilityZone=availability_zone_2,
+        InstanceCount=2,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="t3.micro",
+    )
+    multi_az_odcr_group = resourcegroups.Group(
+        "multiAzOdcrGroup",
+        Name=generate_stack_name("multi-az-odcr-group", request.config.getoption("stackname_suffix")),
+        Configuration=[
+            resourcegroups.ConfigurationItem(Type="AWS::EC2::CapacityReservationPool"),
+            resourcegroups.ConfigurationItem(
+                Type="AWS::ResourceGroups::Generic",
+                Parameters=[
+                    resourcegroups.ConfigurationParameter(
+                        Name="allowed-resource-types", Values=["AWS::EC2::CapacityReservation"]
+                    )
+                ],
+            ),
+        ],
+        Resources=[
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(az1_odcr),
+            ),
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(az2_odcr),
+            ),
+        ],
+    )
     odcr_template.add_resource(open_odcr)
     odcr_template.add_resource(target_odcr)
     odcr_template.add_resource(pg_odcr)
     odcr_template.add_resource(odcr_group)
+    odcr_template.add_resource(az1_odcr)
+    odcr_template.add_resource(az2_odcr)
+    odcr_template.add_resource(multi_az_odcr_group)
 
     stack = CfnStack(
         name=generate_stack_name("integ-tests-odcr", request.config.getoption("stackname_suffix")),
