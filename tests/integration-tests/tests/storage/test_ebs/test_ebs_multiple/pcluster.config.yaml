@@ -42,6 +42,25 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+    {% if scheduler == "slurm" %}
+    - Name: queue-1
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Encrypted: false
+            VolumeType: gp3
+            Iops: 3200
+            Throughput: 130
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_az3_subnet_id }}
+    {% endif %}
 SharedStorage:
   - MountDir: {{ mount_dirs[0] }}
     Name: ebs1

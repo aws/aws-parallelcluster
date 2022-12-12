@@ -18,7 +18,11 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.storage.kms_key_factory import KMSKeyFactory
-from tests.storage.storage_common import test_ebs_correctly_mounted, verify_directory_correctly_shared
+from tests.storage.storage_common import (
+    assert_subnet_az_relations_from_config,
+    test_ebs_correctly_mounted,
+    verify_directory_correctly_shared,
+)
 
 
 @pytest.mark.usefixtures("instance")
@@ -31,6 +35,9 @@ def test_ebs_single(
         mount_dir=mount_dir, ec2_iam_role=kms_key_factory.iam_role_arn, ebs_kms_key_id=kms_key_id
     )
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -53,6 +60,7 @@ def test_ebs_snapshot(
     snapshots_factory,
     clusters_factory,
     scheduler_commands_factory,
+    scheduler,
 ):
     logging.info("Testing ebs snapshot")
     mount_dir = "ebs_mount_dir"
@@ -67,6 +75,9 @@ def test_ebs_snapshot(
     cluster_config = pcluster_config_reader(mount_dir=mount_dir, volume_size=volume_size, snapshot_id=snapshot_id)
 
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -96,6 +107,9 @@ def test_ebs_multiple(
     volume_sizes[4] = 500
     cluster_config = pcluster_config_reader(mount_dirs=mount_dirs, volume_sizes=volume_sizes)
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -162,6 +176,9 @@ def test_ebs_existing(
     cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
 
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     existing_mount_dir = "/" + existing_mount_dir
