@@ -33,6 +33,18 @@ Scheduling:
       Iam:
         InstanceRole: {{ ec2_iam_role }}
       {% endif %}
+    {% if scheduler == "slurm" %}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_az3_subnet_id }}
+    {% endif %}
 SharedStorage:
   - MountDir: {{ mount_dir }}
     StorageType: Ebs
