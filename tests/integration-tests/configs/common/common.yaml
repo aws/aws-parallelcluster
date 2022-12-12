@@ -579,13 +579,13 @@ storage:
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
     dimensions:
-      - regions: ["us-west-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
   test_efs.py::test_efs_same_az:
     dimensions:
-      - regions: ["ap-northeast-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
@@ -593,11 +593,11 @@ storage:
   # We should consider this when assigning dimensions to each test.
   test_efs.py::test_multiple_efs:
     dimensions:
-      - regions: ["ap-northeast-2", "cn-north-1"]
+      - regions: ["eu-west-2", "cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_BATCH }}
         schedulers: ["awsbatch"]
-      - regions: [ "ap-northeast-2" ]
+      - regions: [ "eu-west-2" ]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: [ "slurm" ]

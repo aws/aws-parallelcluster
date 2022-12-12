@@ -966,10 +966,10 @@ def test_dynamic_file_systems_update(
     for node_name in queue1_nodes:
         _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
     for mount_dir in all_mount_dirs:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue2")
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue2"])
     scheduler_commands.cancel_job(queue1_job_id)
     for mount_dir in all_mount_dirs:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue1")
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
 
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     cluster.stop()
