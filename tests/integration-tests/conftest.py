@@ -1356,7 +1356,10 @@ def placement_group_stack(cfn_stacks_factory, request, region):
 
     yield stack
 
-    cfn_stacks_factory.delete_stack(stack.name, region)
+    if not request.config.getoption("no_delete"):
+        cfn_stacks_factory.delete_stack(stack.name, region)
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture(scope="class")
@@ -1445,7 +1448,10 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
 
     yield stack
 
-    cfn_stacks_factory.delete_stack(stack.name, region)
+    if not request.config.getoption("no_delete"):
+        cfn_stacks_factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture()
