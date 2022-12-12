@@ -286,6 +286,25 @@ def get_file_system_type(fsx_id, region):
         return fsx.describe_volumes(VolumeIds=[fsx_id]).get("Volumes")[0].get("VolumeType")
 
 
+def assert_subnet_az_relations_from_config(
+    region: str, scheduler: str, cluster: Cluster, expected_in_same_az: bool, include_head_node: bool = True
+):
+    # [["Subnet1"], ["Subnet2", "Subnet3"], ["Subnet1", "Subnet2"], ...]
+    cluster_subnet_ids_groups = get_cluster_subnet_ids_groups(cluster, scheduler, include_head_node)
+
+    # ["AZ1", "AZ2", "AZ3", "AZ1", "AZ2", ...]
+    cluster_avail_zones = [
+        boto3.resource("ec2", region_name=region).Subnet(subnet_id).availability_zone
+        for subnet_ids_group in cluster_subnet_ids_groups
+        for subnet_id in subnet_ids_group
+    ]
+
+    if expected_in_same_az:
+        assert_that(set(cluster_avail_zones)).is_length(1)
+    else:
+        assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
+
+
 def assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
     logging.info("Testing fsx correctly mounted on compute nodes")
     remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
