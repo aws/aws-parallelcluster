@@ -980,7 +980,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
         public_subnet = SubnetConfig(
             name="Public",
-            cidr="192.168.32.0/19",  # 8190 IPs
+            cidr="192.168.32.0/20",  # 4096 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             availability_zone=availability_zones[0],
@@ -988,7 +988,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet = SubnetConfig(
             name="Private",
-            cidr="192.168.64.0/19",  # 8190 IPs
+            cidr="192.168.64.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
@@ -996,7 +996,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet_different_cidr = SubnetConfig(
             name="PrivateAdditionalCidr",
-            cidr="192.168.96.0/19",  # 8190 IPs
+            cidr="192.168.96.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[1],
@@ -1004,7 +1004,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         no_internet_subnet = SubnetConfig(
             name="NoInternet",
-            cidr="192.168.16.0/20",  # 4094 IPs
+            cidr="192.168.16.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
@@ -1012,7 +1012,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         public_subnet_az2 = SubnetConfig(
             name="PublicAz2",
-            cidr="192.168.128.0/19",  # 8190 IPs
+            cidr="192.168.128.0/20",  # 4096 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             availability_zone=availability_zones[1],
@@ -1020,7 +1020,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet_az2 = SubnetConfig(
             name="PrivateAz2",
-            cidr="192.168.160.0/19",  # 8190 IPs
+            cidr="192.168.160.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[1],
@@ -1028,7 +1028,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         public_subnet_az3 = SubnetConfig(
             name="PublicAz3",
-            cidr="192.168.192.0/19",  # 8190 IPs
+            cidr="192.168.192.0/20",  # 4096 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             availability_zone=availability_zones[2],
@@ -1036,7 +1036,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet_az3 = SubnetConfig(
             name="PrivateAz3",
-            cidr="192.168.224.0/19",  # 8190 IPs
+            cidr="192.168.224.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[2],
