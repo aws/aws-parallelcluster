@@ -1,0 +1,35 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      ComputeResources:
+        - Name: compute-resource-1
+          Instances:
+            - InstanceType: t3.micro
+          MinCount: 6
+          MaxCount: 10
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: {{ multi_az_capacity_reservation_arn }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+          - {{ public_az2_subnet_id }}
+    - Name: queue2
+      ComputeResources:
+        - Name: compute-resource-2
+          Instances:
+            - InstanceType: t2.micro
+          MinCount: 0
+          MaxCount: 4
+      Networking:
+        SubnetIds:
+          - {{ public_az3_subnet_id }}
+          - {{ public_az2_subnet_id }}
