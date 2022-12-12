@@ -14,11 +14,13 @@ import logging
 import boto3
 import pytest
 from assertpy import assert_that
+from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ips, get_vpc_snakecase_value
 
 from tests.common.utils import reboot_head_node
 from tests.storage.storage_common import (
+    get_cluster_subnet_ids_groups,
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
     write_file_into_efs,
@@ -26,16 +28,18 @@ from tests.storage.storage_common import (
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
+def test_efs_compute_az(
+    region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
     """
     Test when compute subnet is in a different AZ from head node subnet.
 
     A compute mount target should be created and the efs correctly mounted on compute.
     """
-    _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
     mount_dir = "efs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
+    _assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -45,16 +49,18 @@ def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_st
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
+def test_efs_same_az(
+    region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
     """
     Test when compute subnet is in the same AZ as head node subnet.
 
     No compute mount point needed and the efs correctly mounted on compute.
     """
-    _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=True)
     mount_dir = "efs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
+    _assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -105,7 +111,6 @@ def test_multiple_efs(
 
     new_efs_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
 
-    _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
     # TODO: change cluster configuration file to test different tls and iam settings to EFS.
     cluster_config = pcluster_config_reader(
         existing_efs_mount_dirs=existing_efs_mount_dirs,
@@ -113,6 +118,7 @@ def test_multiple_efs(
         new_efs_mount_dirs=new_efs_mount_dirs,
     )
     cluster = clusters_factory(cluster_config)
+    _assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
@@ -164,6 +170,23 @@ def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
         assert_that(head_node_subnet_az).is_equal_to(compute_subnet_az)
     else:
         assert_that(head_node_subnet_az).is_not_equal_to(compute_subnet_az)
+
+
+def _assert_subnet_az_relations_from_config(region: str, scheduler: str, cluster: Cluster, expected_in_same_az: bool):
+    # [["Subnet1"], ["Subnet2", "Subnet3"], ["Subnet1", "Subnet2"], ...]
+    cluster_subnet_ids_groups = get_cluster_subnet_ids_groups(cluster, scheduler)
+
+    # ["AZ1", "AZ2", "AZ3", "AZ1", "AZ2", ...]
+    cluster_avail_zones = [
+        boto3.resource("ec2", region_name=region).Subnet(subnet_id).availability_zone
+        for subnet_ids_group in cluster_subnet_ids_groups
+        for subnet_id in subnet_ids_group
+    ]
+
+    if expected_in_same_az:
+        assert_that(set(cluster_avail_zones)).is_length(1)
+    else:
+        assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
 
 
 def _test_efs_utils(remote_command_executor, scheduler_commands, cluster, region, mount_dirs, efs_ids):
