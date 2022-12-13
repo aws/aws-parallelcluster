@@ -90,6 +90,8 @@ def test_multiple_efs(
 
     To verify the efs is the existing efs, the test expects a file with random ran inside the efs mounted
     """
+    if scheduler == "awsbatch":
+        return
     # Names of files that will be written from separate instance. The test checks the cluster nodes can access them.
     existing_efs_filenames = []
     existing_efs_mount_dirs = []
