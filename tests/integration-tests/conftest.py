@@ -386,6 +386,7 @@ def clusters_factory(request, region):
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
             region=region,
+            custom_cli_credentials=kwargs.get("custom_cli_credentials"),
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, **kwargs)
