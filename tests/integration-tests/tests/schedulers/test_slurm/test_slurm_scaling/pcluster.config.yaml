@@ -20,6 +20,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          - {{ private_az2_subnet_id }}
       ComputeResources:
         - Name: dummy-1
           {% if scheduler == "plugin" %}
@@ -40,6 +41,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          - {{ private_az2_subnet_id }}
       ComputeResources:
         - Name: dummy-2
           {% if scheduler == "plugin" %}
