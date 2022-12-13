@@ -129,9 +129,10 @@ class SingleInstanceTypeSubnetValidator(Validator):
     def _validate(self, queue_name, subnet_ids):
         if len(subnet_ids) > 1:
             self._add_failure(
-                "At least one compute resource in the '{0}' queue uses a single instance type. "
-                "Multiple subnets configuration is not supported for single instance type, "
-                "please use the Instances configuration parameter for multiple instance type "
+                "At least one compute resource in the '{0}' queue is configured using the "
+                "'ComputeResource/InstanceType' parameter to specify the Instance Type. Multiple subnets configuration "
+                "is not supported when using 'ComputeResource/InstanceType', please use the "
+                "'ComputeResource/Instances/InstanceType' configuration parameter for instance type "
                 "allocation.".format(queue_name),
                 FailureLevel.ERROR,
             )
