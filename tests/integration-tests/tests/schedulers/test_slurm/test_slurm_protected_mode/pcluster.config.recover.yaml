@@ -18,6 +18,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          - {{ private_az2_subnet_id }}
       ComputeResources:
         - Name: broken-static
           {% if scheduler == "plugin" %}
@@ -35,6 +36,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          - {{ private_az2_subnet_id }}
       ComputeResources:
         - Name: broken-dynamic
           {% if scheduler == "plugin" %}
@@ -58,6 +60,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          - {{ private_az2_subnet_id }}
       ComputeResources:
         - Name: normal
           {% if scheduler == "plugin" %}
