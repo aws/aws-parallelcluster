@@ -1,0 +1,15 @@
+name: Security Exclusions Checker
+on:
+  pull_request:
+      types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+jobs:
+  # Prevent security exclusions
+  security-exclusions-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check PR
+      uses: francesco-giordano/gh-pr-content-checker@v1.0.0
+      with:
+        diffDoesNotContainRegex: "\\bnosec\\b|\\bnosemgrep\\b"
+        skipLabels: skip-security-exclusions-check
