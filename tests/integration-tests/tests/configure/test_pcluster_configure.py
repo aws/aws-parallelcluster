@@ -18,6 +18,7 @@ import pytest
 import yaml
 from assertpy import assert_that
 from conftest import inject_additional_config_settings
+from utils import get_instance_info
 
 PROMPTS = {
     "region": lambda region: {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
@@ -81,7 +82,7 @@ def test_pcluster_configure_avoid_bad_subnets(
     config_path = test_datadir / "config.yaml"
     bad_subnets_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, instance)
-        + standard_queue_prompts(scheduler, instance)
+        + standard_queue_prompts(scheduler, instance, region)
         + [
             PROMPTS["vpc_creation"]("n"),
             PROMPTS["vpc_id"](vpc_stack.cfn_outputs["VpcId"]),
@@ -103,7 +104,7 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
     config_path = test_datadir / "config.yaml"
     region_without_t2micro_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, "")
-        + standard_queue_prompts(scheduler, "")
+        + standard_queue_prompts(scheduler, "", region)
         + standard_vpc_subnet_prompts(vpc_stack)
     )
     stages = orchestrate_pcluster_configure_stages(region_without_t2micro_prompts, scheduler)
@@ -192,7 +193,7 @@ def test_efa_unsupported(vpc_stack, key_name, region, os, instance, scheduler, c
 def _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack):
     standard_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, instance)
-        + standard_queue_prompts(scheduler, instance)
+        + standard_queue_prompts(scheduler, instance, region)
         + standard_vpc_subnet_prompts(vpc_stack)
     )
     stages = orchestrate_pcluster_configure_stages(standard_prompts, scheduler)
@@ -231,14 +232,24 @@ def standard_first_stage_prompts(region, key_name, scheduler, os, instance):
     ]
 
 
-def standard_queue_prompts(scheduler, instance, size=""):
-    return [
+def standard_queue_prompts(scheduler, instance, region, size=""):
+    queue_prompts = [
         PROMPTS["no_of_queues"](1),
         PROMPTS["queue_name"](queue=1, name="myqueue"),
         PROMPTS["no_of_compute_resources"](queue_name="myqueue", queue=1, n=1),
         PROMPTS["compute_instance_type"](resource=1, queue_name="myqueue", instance=instance),
-        prompt_max_size(scheduler=scheduler, size=size),
     ]
+
+    is_efa_supported = get_instance_info(instance, region).get("NetworkInfo", {}).get("EfaSupported", False)
+    if is_efa_supported:
+        queue_prompts.append(PROMPTS["enable_efa"]("y"))
+
+    queue_prompts.append(prompt_max_size(scheduler=scheduler, size=size))
+
+    if is_efa_supported:
+        queue_prompts.append(PROMPTS["placement_group"](""))
+
+    return queue_prompts
 
 
 def standard_vpc_subnet_prompts(vpc_stack):
