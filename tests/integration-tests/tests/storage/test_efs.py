@@ -140,11 +140,14 @@ def _check_efs_after_nodes_reboot(all_mount_dirs, cluster, remote_command_execut
     # Re-establish connection after head node reboot
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    compute_nodes = scheduler_commands.get_compute_nodes("queue-0")
-    for compute_node in compute_nodes:
-        scheduler_commands.reboot_compute_node(compute_node, asap=False)
-    scheduler_commands.wait_nodes_status("idle", compute_nodes)
-    _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands)
+    for partition in scheduler_commands.get_partitions():
+        compute_nodes = scheduler_commands.get_compute_nodes(filter_by_partition=partition)
+        logging.info(f"Rebooting compute nodes: {compute_nodes} in partition {partition}")
+        for compute_node in compute_nodes:
+            scheduler_commands.reboot_compute_node(compute_node, asap=False)
+        scheduler_commands.wait_nodes_status("idle", compute_nodes)
+        logging.info(f"Compute nodes in partition {partition} now IDLE: {compute_nodes}")
+        _check_efs_correctly_mounted_and_shared(all_mount_dirs, remote_command_executor, scheduler_commands)
     return remote_command_executor, scheduler_commands
 
 
