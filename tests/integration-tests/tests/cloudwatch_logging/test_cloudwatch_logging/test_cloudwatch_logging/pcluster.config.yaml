@@ -25,6 +25,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          - {{ private_az2_subnet_id }}
 Monitoring:
   Logs:
     CloudWatch:
