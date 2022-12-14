@@ -25,3 +25,4 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
+          - {{ public_az2_subnet_id }}
