@@ -95,39 +95,40 @@ def test_multiple_efs(
     # Names of files that will be written from separate instance. The test checks the cluster nodes can access them.
     existing_efs_filenames = []
     existing_efs_mount_dirs = []
-    iam_authorizations = [False, False, True]
-    encryption_in_transits = [False, True, True]
+    iam_authorizations = [False, False, True] if scheduler != "awsbatch" else 3*[False]
+    encryption_in_transits = [False, True, True] if scheduler != "awsbatch" else 3*[False]
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
         num_existing_efs = 20
     else:
         num_existing_efs = 3
-    # create an additional EFS with file system policy to prevent anonymous access
-    existing_efs_ids = efs_stack_factory(num_existing_efs)
-    account_id = (
-        boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
-        .get_caller_identity()
-        .get("Account")
-    )
-    policy = {
-        "Version": "2012-10-17",
-        "Id": "efs-policy-wizard-2b0679e4-cbf2-4cb7-a9d0-2f3bb4a6f911",
-        "Statement": [
-            {
-                "Sid": "efs-block-not-iam-in-account",
-                "Effect": "Deny",
-                "Principal": {"AWS": "*"},
-                "Action": [
-                    "elasticfilesystem:ClientMount",
-                    "elasticfilesystem:ClientRootAccess",
-                    "elasticfilesystem:ClientWrite",
-                ],
-                "Resource": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
-                f"file-system/{existing_efs_ids[-1]}",
-                "Condition": {"StringNotLike": {"aws:PrincipalAccount": account_id}},
-            }
-        ],
-    }
+    if scheduler != "awsbatch":
+        # create an additional EFS with file system policy to prevent anonymous access
+        existing_efs_ids = efs_stack_factory(num_existing_efs)
+        account_id = (
+            boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
+            .get_caller_identity()
+            .get("Account")
+        )
+        policy = {
+            "Version": "2012-10-17",
+            "Id": "efs-policy-wizard-2b0679e4-cbf2-4cb7-a9d0-2f3bb4a6f911",
+            "Statement": [
+                {
+                    "Sid": "efs-block-not-iam-in-account",
+                    "Effect": "Deny",
+                    "Principal": {"AWS": "*"},
+                    "Action": [
+                        "elasticfilesystem:ClientMount",
+                        "elasticfilesystem:ClientRootAccess",
+                        "elasticfilesystem:ClientWrite",
+                    ],
+                    "Resource": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
+                    f"file-system/{existing_efs_ids[-1]}",
+                    "Condition": {"StringNotLike": {"aws:PrincipalAccount": account_id}},
+                }
+            ],
+        }
     boto3.client("efs").put_file_system_policy(FileSystemId=existing_efs_ids[-1], Policy=json.dumps(policy))
     efs_mount_target_stack_factory(existing_efs_ids)
     existing_efs_filenames.extend(
