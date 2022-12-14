@@ -1,0 +1,52 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue-0
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: queue-1
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_az2_subnet_id }}
+SharedStorage:
+  - MountDir: test-managed-fsx
+    Name: fsx1
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      ImportPath: s3://{{ bucket_name }}
+      ExportPath: s3://{{ bucket_name }}/export_dir
+      DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200
