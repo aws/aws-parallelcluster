@@ -90,8 +90,8 @@ def test_multiple_efs(
     # Names of files that will be written from separate instance. The test checks the cluster nodes can access them.
     existing_efs_filenames = []
     existing_efs_mount_dirs = []
-    iam_authorizations = [False, False, True] if scheduler != "awsbatch" else 3*[False]
-    encryption_in_transits = [False, True, True] if scheduler != "awsbatch" else 3*[False]
+    iam_authorizations = [False, False, True] if scheduler != "awsbatch" else 3 * [False]
+    encryption_in_transits = [False, True, True] if scheduler != "awsbatch" else 3 * [False]
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
         num_existing_efs = 20
