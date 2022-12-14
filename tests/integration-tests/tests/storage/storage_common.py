@@ -306,14 +306,10 @@ def assert_subnet_az_relations_from_config(
 
 
 def assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
-    logging.info("Testing fsx correctly mounted on compute nodes")
-    remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
-    job_command = "cat {mount_dir}/test_file && touch {mount_dir}/compute_output".format(mount_dir=mount_dir)
-    result = scheduler_commands.submit_command(job_command)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    remote_command_executor.run_remote_command("cat {mount_dir}/compute_output".format(mount_dir=mount_dir))
+    logging.info("Testing fsx correctly shared on HeadNode and Compute Nodes")
+    verify_directory_correctly_shared(
+        remote_command_executor, mount_dir, scheduler_commands, partitions=scheduler_commands.get_partitions()
+    )
 
 
 def assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, volume_id):
