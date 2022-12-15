@@ -428,7 +428,11 @@ class ClustersFactory:
         command, wait = self._build_command(cluster, kwargs)
         try:
             result = run_pcluster_command(
-                command, timeout=7200, raise_on_error=raise_on_error, log_error=log_error, **kwargs
+                command,
+                timeout=7200,
+                raise_on_error=raise_on_error,
+                log_error=log_error,
+                custom_cli_credentials=self.custom_cli_credentials,
             )
             logging.info("create-cluster response: %s", result.stdout)
             response = json.loads(result.stdout)

@@ -89,7 +89,6 @@ def run_command(
     timeout=None,
     raise_on_error=True,
     shell=False,
-    custom_cli_credentials=None,
 ):
     """Execute shell command."""
     if isinstance(command, str) and not shell:

@@ -21,7 +21,7 @@ from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from framework.tests_configuration.config_utils import get_all_regions
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
-from utils import dict_add_nested_key, generate_stack_name, wait_for_computefleet_changed
+from utils import generate_stack_name, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.schedulers.test_awsbatch import _test_job_submission as _test_job_submission_awsbatch
@@ -462,12 +462,3 @@ def initialize_resource_prefix_cli_creds(request):
         stack_factory.delete_all_stacks()
     else:
         logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
-
-
-def _inject_resource_in_config(cluster_config, resource_value, resource_keys):
-    """Injects cluster config file with a given resource key-value."""
-    with open(cluster_config, encoding="utf-8") as conf_file:
-        config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
-    dict_add_nested_key(config_content, resource_value, resource_keys)
-    with open(cluster_config, "w", encoding="utf-8") as conf_file:
-        yaml.dump(config_content, conf_file)
