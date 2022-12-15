@@ -18,6 +18,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       CustomActions:
         OnNodeStart:
           # pre-install script to make c5.large instance type instance has bootstrap error
@@ -40,6 +43,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       CustomActions:
         OnNodeStart:
           # pre-install script to make c5.large instance type instance has bootstrap error
@@ -70,6 +76,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       CustomActions:
         OnNodeStart:
           # pre-install script to make c5.large instance type instance has bootstrap error

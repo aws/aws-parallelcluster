@@ -21,7 +21,9 @@ Scheduling:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          InstanceType: {{ instance }}
+          Instances:
+            - InstanceType: {{ instance }}
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
+          - {{ public_az2_subnet_id }}

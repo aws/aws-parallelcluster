@@ -73,13 +73,13 @@ class NetworkTemplateBuilder:
         self,
         vpc_configuration: VPCConfig,
         existing_vpc: bool = False,
-        availability_zone: str = None,
+        default_availability_zone: str = None,
         description="Network build by NetworkTemplateBuilder",
     ):
         self.__template = Template()
         self.__template.set_version("2010-09-09")
         self.__template.set_description(description)
-        self.__availability_zone = self.__get_availability_zone(availability_zone)
+        self.__default_availability_zone = self.__get_default_availability_zone(default_availability_zone)
         self.__vpc_config = vpc_configuration
         self.__vpc, self.__additional_vpc_cidr_blocks = self.__get_vpc(existing_vpc)
         self.__existing_vpc = existing_vpc
@@ -96,7 +96,7 @@ class NetworkTemplateBuilder:
         else:
             return self.__build_vpc()
 
-    def __get_availability_zone(self, availability_zone):
+    def __get_default_availability_zone(self, availability_zone):
         if availability_zone:
             return availability_zone
         else:
@@ -123,7 +123,7 @@ class NetworkTemplateBuilder:
         for subnet in self.__vpc_subnets:
             subnet_ref = self.__build_subnet(subnet, self.__vpc, self.__additional_vpc_cidr_blocks)
             subnet_refs.append(subnet_ref)
-            if subnet.has_nat_gateway:
+            if subnet.has_nat_gateway and nat_gateway is None:
                 nat_gateway = self.__build_nat_gateway(subnet, subnet_ref)
 
         for subnet, subnet_ref in zip(self.__vpc_subnets, subnet_refs):
@@ -209,7 +209,7 @@ class NetworkTemplateBuilder:
             VpcId=Ref(vpc),
             MapPublicIpOnLaunch=subnet_config.map_public_ip_on_launch,
             Tags=subnet_config.tags(),
-            AvailabilityZone=subnet_config.availability_zone or self.__availability_zone,
+            AvailabilityZone=subnet_config.availability_zone or self.__default_availability_zone,
             DependsOn=additional_vpc_cidr_blocks,
         )
         self.__template.add_resource(subnet)
