@@ -156,12 +156,6 @@ Resources:
                 grep fallback_homedir "$SSSD_CONFIG_PATH"
                 systemctl restart sssd
 
-                # Configure SSHD
-                # SSHD: enable password auth
-                sed -ri 's/\s*PasswordAuthentication\s+no$/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-                grep -E '\s*PasswordAuthentication\s+yes' "$SSHD_CONFIG_PATH"
-                systemctl restart sshd
-
                 # Script to add a number of users
                 cat << EOF > /usr/local/bin/add_a_number_of_users.sh
                 #!/bin/bash
