@@ -74,6 +74,7 @@ from utils import (
     get_architecture_supported_by_instance_type,
     get_arn_partition,
     get_instance_info,
+    get_metadata,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
@@ -608,6 +609,17 @@ def inject_additional_config_settings(  # noqa: C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
+    if not dict_has_nested_key(config_content, ("HeadNode", "Ssh", "AllowedIps")):
+        # If the test is running in an EC2 instance limit SSH connection access from instance running the test
+        instance_ip = get_metadata("public-ipv4", raise_error=False)
+        if not instance_ip:
+            instance_ip = get_metadata("local-ipv4", raise_error=False)
+        if instance_ip:
+            logging.info(f"Limiting AllowedIps rule to IP: {instance_ip}")
+            dict_add_nested_key(config_content, f"{instance_ip}/32", ("HeadNode", "Ssh", "AllowedIps"))
+        else:
+            logging.info("Skipping AllowedIps rule because unable to find local and public IP for the instance.")
+
     if not dict_has_nested_key(config_content, ("Imds", "ImdsSupport")):
         dict_add_nested_key(config_content, "v2.0", ("Imds", "ImdsSupport"))
 
@@ -964,15 +976,18 @@ def vpc_stacks(cfn_stacks_factory, request):
             az_id_to_az_name = get_az_id_to_az_name_map(region, credential)
             az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
             # if only one AZ can be used for the given region, use it multiple times
-            if len(az_names) <= 2:
-                az_names *= 3
-            availability_zones = random.sample(az_names, k=3)
+            if len(az_names) == 1:
+                availability_zones = az_names * 3
+            if len(az_names) == 2:
+                # ensures that az[0] and az[1] are always different if two az are available for use
+                availability_zones = az_names + random.sample(az_names, k=1)
         # otherwise, select a subset of all AZs in the region
         else:
             az_list = get_availability_zones(region, credential)
-            # if number of available zones is smaller than 2, available zones should be [None, None]
+            # if number of available zones is smaller than 3, list is expanded to 3 and filled with [None, ...]
             if len(az_list) < 3:
-                availability_zones = [None, None, None]
+                diff = 3 - len(az_list)
+                availability_zones = az_list + [None] * diff
             else:
                 availability_zones = random.sample(az_list, k=3)
 
