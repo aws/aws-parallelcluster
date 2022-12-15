@@ -115,7 +115,13 @@ def _verify_compute_console_output_log_exists_in_log_group(cluster):
     events = get_log_events(log_group_name, stream_name)
     messages = (event.get("message") for event in events)
     assert_that(
-        [message for message in messages if re.fullmatch(r"Console output for node compute-st-.*", message)]
+        [
+            message
+            for message in messages
+            if re.fullmatch(
+                r"2\d{3}-\d{1,2}-\d{1,2} \d{2}:\d{2}:\d{2},\d{3} - Console output for node compute-st-.*", message
+            )
+        ]
     ).is_not_empty()
 
 

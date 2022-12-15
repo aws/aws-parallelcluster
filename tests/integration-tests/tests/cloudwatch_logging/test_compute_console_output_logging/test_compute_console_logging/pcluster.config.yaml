@@ -7,6 +7,7 @@ HeadNode:
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
   Ssh:
     KeyName: {{ key_name }}
   Imds:
