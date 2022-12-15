@@ -269,8 +269,8 @@ def test_multiple_fsx(
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
-    import_path = "s3://{0}".format(bucket_name)
-    export_path = "s3://{0}/export_dir".format(bucket_name)
+    import_path, export_path = "s3://{0}".format(bucket_name), "s3://{0}/export_dir".format(bucket_name)
+
     partition = utils.get_arn_partition(region)
     num_new_fsx_lustre = 1
     num_existing_fsx_ontap_volumes = 2 if partition != "aws-cn" else 0  # China does not have Ontap
@@ -285,38 +285,17 @@ def test_multiple_fsx(
     fsx_lustre_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
     for i in range(num_new_fsx_lustre + num_existing_fsx_lustre - 1):
         fsx_lustre_mount_dirs.append(f"/fsx_lustre_mount_dir{i}")
-    fsx_ontap_mount_dirs = []
-    for i in range(num_existing_fsx_ontap_volumes):
-        fsx_ontap_mount_dirs.append(f"/fsx_ontap_mount_dir{i}")
-    fsx_open_zfs_mount_dirs = []
-    for i in range(num_existing_fsx_open_zfs_volumes):
-        fsx_open_zfs_mount_dirs.append(f"/fsx_open_zfs_mount_dir{i}")
-    existing_fsx_lustre_fs_ids = fsx_factory(
-        ports=[988],
-        ip_protocols=["tcp"],
-        num=num_existing_fsx_lustre,
-        file_system_type="LUSTRE",
-        StorageCapacity=1200,
-        LustreConfiguration=LustreConfiguration(
-            title="lustreConfiguration",
-            ImportPath=import_path,
-            ExportPath=export_path,
-            DeploymentType="PERSISTENT_1",
-            PerUnitStorageThroughput=200,
-        ),
+
+    fsx_ontap_mount_dirs = [f"/fsx_ontap_mount_dir{i}" for i in range(num_existing_fsx_ontap_volumes)]
+    fsx_open_zfs_mount_dirs = [f"/fsx_open_zfs_mount_dir{i}" for i in range(num_existing_fsx_open_zfs_volumes)]
+
+    existing_fsx_lustre_fs_ids = _create_fsx_lustre_volume_ids(
+        num_existing_fsx_lustre, fsx_factory, import_path, export_path
     )
-    if num_existing_fsx_ontap_volumes > 0:
-        fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
-        fsx_ontap_volume_ids = svm_factory(fsx_ontap_fs_id, num_volumes=num_existing_fsx_ontap_volumes)
-    else:
-        fsx_ontap_volume_ids = []
-    if num_existing_fsx_open_zfs_volumes > 0:
-        fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
-        fsx_open_zfs_volume_ids = open_zfs_volume_factory(
-            fsx_open_zfs_root_volume_id, num_volumes=num_existing_fsx_open_zfs_volumes
-        )
-    else:
-        fsx_open_zfs_volume_ids = []
+    fsx_on_tap_volume_ids = _create_fsx_on_tap_volume_ids(num_existing_fsx_ontap_volumes, fsx_factory, svm_factory)
+    fsx_open_zfs_volume_ids = _create_fsx_open_zfs_volume_ids(
+        num_existing_fsx_ontap_volumes, fsx_factory, open_zfs_volume_factory
+    )
 
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
@@ -324,7 +303,7 @@ def test_multiple_fsx(
         existing_fsx_lustre_fs_ids=existing_fsx_lustre_fs_ids,
         fsx_open_zfs_volume_ids=fsx_open_zfs_volume_ids,
         fsx_open_zfs_mount_dirs=fsx_open_zfs_mount_dirs,
-        fsx_ontap_volume_ids=fsx_ontap_volume_ids,
+        fsx_ontap_volume_ids=fsx_on_tap_volume_ids,
         fsx_ontap_mount_dirs=fsx_ontap_mount_dirs,
     )
     cluster = clusters_factory(cluster_config)
@@ -340,6 +319,88 @@ def test_multiple_fsx(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     run_benchmarks(remote_command_executor, scheduler_commands)
+
+
+@pytest.mark.usefixtures("instance", "scheduler")
+def test_multi_az_fsx(
+    os,
+    region,
+    fsx_factory,
+    svm_factory,
+    open_zfs_volume_factory,
+    vpc_stack,
+    pcluster_config_reader,
+    clusters_factory,
+    s3_bucket_factory,
+    scheduler_commands_factory,
+    test_datadir,
+):
+    """Test that FSx FileSystem works in a MultiAZ Cluster."""
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    import_path = "s3://{0}".format(bucket_name)
+    export_path = "s3://{0}/export_dir".format(bucket_name)
+
+    existing_fsx_lustre_fs_id = _create_fsx_lustre_volume_ids(1, fsx_factory, import_path, export_path)[0]
+    fsx_lustre_mount_dir = "/fsx_lustre_mount_dir"
+
+    cluster_config = pcluster_config_reader(
+        config_file="pcluster-unmanaged-fsx.config.yaml",
+        bucket_name=bucket_name,
+        fsx_lustre_mount_dir=fsx_lustre_mount_dir,
+        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+    )
+    cluster = clusters_factory(cluster_config)
+
+    check_fsx(
+        cluster,
+        region,
+        scheduler_commands_factory,
+        [fsx_lustre_mount_dir],
+        bucket_name,
+    )
+
+    managed_fsx_config = pcluster_config_reader(config_file="pcluster-managed-fsx.config.yaml", bucket_name=bucket_name)
+
+    response = cluster.update(managed_fsx_config, raise_on_error=False)
+    assert_that(
+        any(
+            "Managed FSx storage created by ParallelCluster is not supported" in error["message"]
+            for error in response["configurationValidationErrors"]
+        )
+    ).is_true()
+
+
+def _create_fsx_on_tap_volume_ids(num_existing_fsx_ontap_volumes, fsx_factory, svm_factory):
+    if num_existing_fsx_ontap_volumes > 0:
+        fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
+        return svm_factory(fsx_ontap_fs_id, num_volumes=num_existing_fsx_ontap_volumes)
+    return []
+
+
+def _create_fsx_open_zfs_volume_ids(num_existing_fsx_open_zfs_volumes, fsx_factory, open_zfs_volume_factory):
+    if num_existing_fsx_open_zfs_volumes > 0:
+        fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
+        return open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=num_existing_fsx_open_zfs_volumes)
+    return []
+
+
+def _create_fsx_lustre_volume_ids(num_existing_fsx_lustre, fsx_factory, import_path, export_path):
+    return fsx_factory(
+        ports=[988],
+        ip_protocols=["tcp"],
+        num=num_existing_fsx_lustre,
+        file_system_type="LUSTRE",
+        StorageCapacity=1200,
+        LustreConfiguration=LustreConfiguration(
+            title="lustreConfiguration",
+            ImportPath=import_path,
+            ExportPath=export_path,
+            DeploymentType="PERSISTENT_1",
+            PerUnitStorageThroughput=200,
+        ),
+    )
 
 
 def _get_storage_type(fsx):

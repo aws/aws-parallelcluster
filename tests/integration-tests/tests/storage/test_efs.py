@@ -20,6 +20,7 @@ from utils import get_arn_partition, get_vpc_snakecase_value
 
 from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
+    assert_subnet_az_relations_from_config,
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
     write_file_into_efs,
@@ -27,16 +28,18 @@ from tests.storage.storage_common import (
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
+def test_efs_compute_az(
+    region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
     """
     Test when compute subnet is in a different AZ from head node subnet.
 
     A compute mount target should be created and the efs correctly mounted on compute.
     """
-    _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
     mount_dir = "efs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -46,16 +49,18 @@ def test_efs_compute_az(region, pcluster_config_reader, clusters_factory, vpc_st
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_efs_same_az(region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory):
+def test_efs_same_az(
+    region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
     """
     Test when compute subnet is in the same AZ as head node subnet.
 
     No compute mount point needed and the efs correctly mounted on compute.
     """
-    _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=True)
     mount_dir = "efs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -143,6 +148,7 @@ def test_multiple_efs(
         encryption_in_transits=encryption_in_transits,
     )
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(region, scheduler, cluster, expected_in_same_az=False)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
@@ -182,13 +188,16 @@ def _check_efs_after_nodes_reboot(
     # Re-establish connection after head node reboot
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    compute_nodes = scheduler_commands.get_compute_nodes("queue-0")
-    for compute_node in compute_nodes:
-        scheduler_commands.reboot_compute_node(compute_node, asap=False)
-    scheduler_commands.wait_nodes_status("idle", compute_nodes)
-    _check_efs_correctly_mounted_and_shared(
-        all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
-    )
+    for partition in scheduler_commands.get_partitions():
+        compute_nodes = scheduler_commands.get_compute_nodes(filter_by_partition=partition)
+        logging.info(f"Rebooting compute nodes: {compute_nodes} in partition {partition}")
+        for compute_node in compute_nodes:
+            scheduler_commands.reboot_compute_node(compute_node, asap=False)
+        scheduler_commands.wait_nodes_status("idle", compute_nodes)
+        logging.info(f"Compute nodes in partition {partition} now IDLE: {compute_nodes}")
+        _check_efs_correctly_mounted_and_shared(
+            all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
+        )
     return remote_command_executor, scheduler_commands
 
 
@@ -220,3 +229,26 @@ def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
         assert_that(head_node_subnet_az).is_equal_to(compute_subnet_az)
     else:
         assert_that(head_node_subnet_az).is_not_equal_to(compute_subnet_az)
+
+
+def _test_efs_utils(remote_command_executor, scheduler_commands, cluster, region, mount_dirs, efs_ids):
+    # Collect a list of command executors of all compute nodes
+    compute_node_remote_command_executors = []
+    for compute_node_ip in get_compute_nodes_instance_ips(cluster.name, region):
+        compute_node_remote_command_executors.append(RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip))
+    # Unmount all EFS from head node and compute nodes
+    for mount_dir in mount_dirs:
+        command = f"sudo umount {mount_dir}"
+        remote_command_executor.run_remote_command(command)
+        for compute_node_remote_command_executor in compute_node_remote_command_executors:
+            compute_node_remote_command_executor.run_remote_command(command)
+    # Mount all EFS using EFS-utils
+    assert_that(mount_dirs).is_length(len(efs_ids))
+    for mount_dir, efs_id in zip(mount_dirs, efs_ids):
+        command = f"sudo mount -t efs -o tls {efs_id}:/ {mount_dir}"
+        remote_command_executor.run_remote_command(command)
+        for compute_node_remote_command_executor in compute_node_remote_command_executors:
+            compute_node_remote_command_executor.run_remote_command(command)
+        _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+    for mount_dir in mount_dirs:
+        test_efs_correctly_mounted(remote_command_executor, mount_dir)

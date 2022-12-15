@@ -20,6 +20,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       ComputeResources:
         - Name: dummy-1
           {% if scheduler == "plugin" %}
@@ -40,6 +43,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       ComputeResources:
         - Name: dummy-2
           {% if scheduler == "plugin" %}
