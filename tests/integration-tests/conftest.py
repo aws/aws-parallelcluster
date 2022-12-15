@@ -73,6 +73,7 @@ from utils import (
     get_architecture_supported_by_instance_type,
     get_arn_partition,
     get_instance_info,
+    get_metadata,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
@@ -606,6 +607,17 @@ def inject_additional_config_settings(  # noqa: C901
 ):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
+
+    if not dict_has_nested_key(config_content, ("HeadNode", "Ssh", "AllowedIps")):
+        # If the test is running in an EC2 instance limit SSH connection access from instance running the test
+        instance_ip = get_metadata("public-ipv4", raise_error=False)
+        if not instance_ip:
+            instance_ip = get_metadata("local-ipv4", raise_error=False)
+        if instance_ip:
+            logging.info(f"Limiting AllowedIps rule to IP: {instance_ip}")
+            dict_add_nested_key(config_content, f"{instance_ip}/32", ("HeadNode", "Ssh", "AllowedIps"))
+        else:
+            logging.info("Skipping AllowedIps rule because unable to find local and public IP for the instance.")
 
     if not dict_has_nested_key(config_content, ("Imds", "ImdsSupport")):
         dict_add_nested_key(config_content, "v2.0", ("Imds", "ImdsSupport"))
