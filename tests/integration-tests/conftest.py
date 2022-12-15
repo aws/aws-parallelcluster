@@ -976,15 +976,18 @@ def vpc_stacks(cfn_stacks_factory, request):
             az_id_to_az_name = get_az_id_to_az_name_map(region, credential)
             az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
             # if only one AZ can be used for the given region, use it multiple times
-            if len(az_names) <= 2:
-                az_names *= 3
-            availability_zones = random.sample(az_names, k=3)
+            if len(az_names) == 1:
+                availability_zones = az_names * 3
+            if len(az_names) == 2:
+                # ensures that az[0] and az[1] are always different if two az are available for use
+                availability_zones = az_names + random.sample(az_names, k=1)
         # otherwise, select a subset of all AZs in the region
         else:
             az_list = get_availability_zones(region, credential)
-            # if number of available zones is smaller than 2, available zones should be [None, None]
+            # if number of available zones is smaller than 3, list is expanded to 3 and filled with [None, ...]
             if len(az_list) < 3:
-                availability_zones = [None, None, None]
+                diff = 3 - len(az_list)
+                availability_zones = az_list + [None] * diff
             else:
                 availability_zones = random.sample(az_list, k=3)
 
