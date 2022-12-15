@@ -405,10 +405,9 @@ class Cluster:
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
 
-    def __init__(self, delete_logs_on_success=False, custom_cli_credentials=None):
+    def __init__(self, delete_logs_on_success=False):
         self.__created_clusters = {}
         self._delete_logs_on_success = delete_logs_on_success
-        self.custom_cli_credentials = custom_cli_credentials
 
     def create_cluster(self, cluster, log_error=True, raise_on_error=True, **kwargs):
         """
@@ -424,7 +423,6 @@ class ClustersFactory:
 
         # create the cluster
         logging.info("Creating cluster {0} with config {1}".format(name, cluster.config_file))
-        self.custom_cli_credentials = kwargs.get("custom_cli_credentials")
         command, wait = self._build_command(cluster, kwargs)
         try:
             result = run_pcluster_command(
@@ -432,7 +430,7 @@ class ClustersFactory:
                 timeout=7200,
                 raise_on_error=raise_on_error,
                 log_error=log_error,
-                custom_cli_credentials=self.custom_cli_credentials,
+                custom_cli_credentials=kwargs.get("custom_cli_credentials"),
             )
             logging.info("create-cluster response: %s", result.stdout)
             response = json.loads(result.stdout)
