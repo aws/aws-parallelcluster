@@ -123,7 +123,7 @@ class NetworkTemplateBuilder:
         for subnet in self.__vpc_subnets:
             subnet_ref = self.__build_subnet(subnet, self.__vpc, self.__additional_vpc_cidr_blocks)
             subnet_refs.append(subnet_ref)
-            if subnet.has_nat_gateway:
+            if subnet.has_nat_gateway and nat_gateway is None:
                 nat_gateway = self.__build_nat_gateway(subnet, subnet_ref)
 
         for subnet, subnet_ref in zip(self.__vpc_subnets, subnet_refs):
