@@ -102,9 +102,9 @@ def test_multiple_efs(
         num_existing_efs = 20
     else:
         num_existing_efs = 3
+    # create an additional EFS with file system policy to prevent anonymous access
+    existing_efs_ids = efs_stack_factory(num_existing_efs)
     if scheduler != "awsbatch":
-        # create an additional EFS with file system policy to prevent anonymous access
-        existing_efs_ids = efs_stack_factory(num_existing_efs)
         account_id = (
             boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
             .get_caller_identity()
