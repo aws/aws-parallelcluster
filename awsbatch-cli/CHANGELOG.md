@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+1.1.0
+------
+
+**CHANGES**
+
+- Remove support for Python 3.6 and add support for Python 3.10.
+
 1.0.0
 ------
 
