@@ -50,6 +50,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
+    test_iam.py::test_iam_resource_prefix:
+      dimensions:
+        - regions: [ "eu-north-1" ]
+          schedulers: [ "slurm" ]
+          oss: [ "alinux2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
   schedulers:
     test_awsbatch.py::test_awsbatch:
       dimensions:
