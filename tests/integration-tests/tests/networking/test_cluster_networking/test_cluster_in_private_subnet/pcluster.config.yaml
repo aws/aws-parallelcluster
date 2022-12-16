@@ -6,6 +6,7 @@ HeadNode:
     SubnetId: {{ private_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+    AllowedIps: {{ bastion_ip }}/32
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
