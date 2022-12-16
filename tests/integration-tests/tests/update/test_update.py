@@ -25,7 +25,7 @@ from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 from time_utils import minutes, seconds
 from troposphere.fsx import LustreConfiguration
-from utils import wait_for_computefleet_changed
+from utils import describe_cluster_instances, retrieve_cfn_resources, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
@@ -966,10 +966,10 @@ def test_dynamic_file_systems_update(
     for node_name in queue1_nodes:
         _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
     for mount_dir in all_mount_dirs:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue2")
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue2"])
     scheduler_commands.cancel_job(queue1_job_id)
     for mount_dir in all_mount_dirs:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue1")
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
 
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     cluster.stop()
@@ -1230,3 +1230,94 @@ def _test_shared_storage_rollback(
     logging.info("Checking managed FSX is deleted after stack rollback")
     with pytest.raises(ClientError, match="FileSystemNotFound"):
         boto3.client("fsx", region).describe_file_systems(FileSystemIds=managed_fsx)
+
+
+@pytest.mark.usefixtures("os")
+def test_multi_az_create_and_update(
+    region, pcluster_config_reader, clusters_factory, odcr_stack, scheduler_commands_factory, test_datadir
+):
+    """Test creation and then update of a multi-az cluster."""
+
+    # Step 1
+    # Create a cluster with two queues
+    #  q1 with 2 subnets in different AZ
+    #    plus a ReservationGroup with two reservations that ensure hosts are provisioned in both AZs
+    #  q2 with 1 subnet in one AZ
+
+    resource_groups_client = boto3.client(service_name="resource-groups", region_name=region)
+    odcr_resources = retrieve_cfn_resources(odcr_stack.name, region)
+    resource_group_arn = resource_groups_client.get_group(Group=odcr_stack.cfn_resources["multiAzOdcrGroup"])["Group"][
+        "GroupArn"
+    ]
+
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster_create.config.yaml",
+        multi_az_capacity_reservation_arn=resource_group_arn,
+    )
+
+    cluster = clusters_factory(init_config_file)
+
+    # Retrieves list of cluster instances and checks that
+    # at least one instance was launched in each AZ/Reservation
+    instances = describe_cluster_instances(cluster.name, region, filter_by_compute_resource_name="compute-resource-1")
+    _assert_instance_in_capacity_reservation(instances, odcr_resources["az1Odcr"])
+    _assert_instance_in_capacity_reservation(instances, odcr_resources["az2Odcr"])
+
+    # ## First update
+    # - add a subnet in Queue2
+    # update should succeed without failures or warning messages
+    first_update_config = pcluster_config_reader(
+        config_file="pcluster_update_1.config.yaml",
+        multi_az_capacity_reservation_arn=resource_group_arn,
+    )
+
+    response = cluster.update(str(first_update_config))
+    assert_that(response["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
+
+    # Second update
+    # - remove a subnet in Queue2
+    # update should fail asking to stop the fleet
+    second_update_config = pcluster_config_reader(
+        config_file="pcluster_update_2.config.yaml",
+        multi_az_capacity_reservation_arn=resource_group_arn,
+    )
+
+    response = cluster.update(str(second_update_config), raise_on_error=False)
+    assert_that(response["message"]).is_equal_to("Update failure")
+    assert_that(response["updateValidationErrors"][0]["message"]).contains("All compute nodes must be stopped")
+
+    # Third update
+    #  - stops the fleet
+    #  - wait until all compute instances are terminated
+    # after fully stopping the fleet, the update should succeed
+
+    cluster.stop()
+    _wait_until_instances_are_stopped(cluster)
+
+    response = cluster.update(str(second_update_config))
+    assert_that(response["computeFleetStatus"]).is_equal_to("STOPPED")
+    assert_that(response["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
+
+
+def _assert_instance_in_capacity_reservation(instances, expected_reservation):
+    if any(
+        instance["CapacityReservationId"] == expected_reservation
+        for instance in instances
+        if "CapacityReservationId" in instance
+    ):
+        logging.info("Instances found in reservation: %s", expected_reservation)
+    else:
+        logging.error("No instances found in reservation: %s", expected_reservation)
+        pytest.fail("No instances found in the reservation")
+
+
+@retry(retry_on_result=lambda result: result is False, wait_fixed=seconds(20), stop_max_delay=seconds(360))
+def _wait_until_instances_are_stopped(cluster):
+    instances = cluster.describe_cluster_instances()
+    n_compute_instances = len(instances) - 1  # Do not count the HeadNode
+    if n_compute_instances <= 1:
+        logging.info("All compute instances were stopped.")
+    else:
+        logging.info("Still found %2d compute instances in the cluster. Waiting... ", n_compute_instances)
+
+    return n_compute_instances <= 1

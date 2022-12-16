@@ -1184,7 +1184,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, compute_resource, os, ami_id, tags):
+    def _validate(self, queue, os, ami_id, tags):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1194,11 +1194,6 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             if queue.networking.additional_security_groups:
                 queue_security_groups.extend(queue.networking.additional_security_groups)
 
-            compute_resource_placement_group = (
-                compute_resource.networking.placement_group or queue.networking.placement_group
-            )
-            placement_group_name = compute_resource_placement_group.assignment
-
             # Select the "best" compute resource to run dryrun tests against.
             # Resources with multiple NICs are preferred among others.
             # Temporarily limiting dryrun tests to 1 per queue to save boto3 calls.
@@ -1206,6 +1201,11 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 (compute_res for compute_res in queue.compute_resources if compute_res.max_network_interface_count > 1),
                 queue.compute_resources[0],
             )
+            compute_resource_placement_group = (
+                dry_run_compute_resource.networking.placement_group or queue.networking.placement_group
+            )
+
+            placement_group_name = compute_resource_placement_group.assignment
             # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
             self._test_compute_resource(
                 queue=queue,

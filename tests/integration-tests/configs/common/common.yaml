@@ -560,6 +560,12 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+  test_fsx_lustre.py::test_multi_az_fsx:
+    dimensions:
+      - regions: ["eu-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        schedulers: ["slurm"]
   test_fsx_lustre.py::test_fsx_lustre_configuration_options:
     dimensions:
       - regions: ["us-east-2"]
@@ -579,13 +585,13 @@ storage:
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
     dimensions:
-      - regions: ["us-west-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
   test_efs.py::test_efs_same_az:
     dimensions:
-      - regions: ["ap-northeast-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
@@ -593,11 +599,11 @@ storage:
   # We should consider this when assigning dimensions to each test.
   test_efs.py::test_multiple_efs:
     dimensions:
-      - regions: ["ap-northeast-2", "cn-north-1"]
+      - regions: ["eu-west-2", "cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_BATCH }}
         schedulers: ["awsbatch"]
-      - regions: [ "ap-northeast-2" ]
+      - regions: [ "eu-west-2" ]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: [ "slurm" ]
@@ -633,17 +639,17 @@ storage:
         schedulers: ["awsbatch"]
   test_ebs.py::test_ebs_multiple:
     dimensions:
-      - regions: ["eu-west-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      - regions: ["eu-west-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_single:
     dimensions:
-      {%- for region, oss in [("eu-west-3", common.OSS_COMMERCIAL_X86), ("cn-north-1", common.OSS_CHINA_X86), ("us-gov-west-1", common.OSS_GOVCLOUD_X86)] %}
+      {%- for region, oss in [("eu-west-2", common.OSS_COMMERCIAL_X86), ("cn-northwest-1", common.OSS_CHINA_X86), ("us-gov-west-1", common.OSS_GOVCLOUD_X86)] %}
       - regions: ["{{ region }}"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ oss }}
@@ -651,7 +657,7 @@ storage:
       {%- endfor %}
   test_ebs.py::test_ebs_snapshot:
     dimensions:
-      - regions: ["ap-northeast-2"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -661,7 +667,7 @@ storage:
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_existing:
     dimensions:
-      - regions: ["ap-northeast-2"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
@@ -723,6 +729,11 @@ update:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+  test_update.py::test_multi_az_create_and_update:
+    dimensions:
+      - regions: [ "eu-west-2" ]
+        schedulers: [ "slurm" ]
+        oss: ["alinux2"]
 # Temporarily disabling p4d tests
 # multiple_nics:
 #   test_multiple_nics.py::test_multiple_nics:

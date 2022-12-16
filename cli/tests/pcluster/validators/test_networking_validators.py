@@ -170,9 +170,10 @@ def test_multi_az_placement_group_validator(
                 ["subnet-00000000"],
                 ["subnet-11111111"],
             ],
-            "At least one compute resource in the 'multi-subnet-queue' queue uses a single instance type. Multiple "
-            "subnets configuration is not supported for single instance type, please use the Instances configuration"
-            " parameter for multiple instance type allocation.",
+            "At least one compute resource in the 'multi-subnet-queue' queue is configured using the "
+            "'ComputeResource/InstanceType' parameter to specify the Instance Type. Multiple subnets configuration is "
+            "not supported when using 'ComputeResource/InstanceType', please use the "
+            "'ComputeResource/Instances/InstanceType' configuration parameter for instance type allocation.",
         ),
         (
             "single-subnet-queue",
