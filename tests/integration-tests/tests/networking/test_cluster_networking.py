@@ -44,8 +44,7 @@ def test_cluster_in_private_subnet(
 ):
     # This test just creates a cluster in the private subnet and just checks that no failures occur
     fsx_mount_dir = "/fsx_mount"
-    bastion_ip = bastion_instance.split("@")[1]  # bastion_instance has a value like: ec2-user@52.81.238.68
-    cluster_config = pcluster_config_reader(fsx_mount_dir=fsx_mount_dir, bastion_ip=bastion_ip)
+    cluster_config = pcluster_config_reader(fsx_mount_dir=fsx_mount_dir)
     cluster = clusters_factory(cluster_config)
     assert_that(cluster).is_not_none()
 
@@ -131,13 +130,9 @@ def test_cluster_in_no_internet_subnet(
     bucket_name = s3_bucket_factory()
     _upload_pre_install_script(bucket_name, test_datadir)
 
-    bastion_ip = bastion_instance.split("@")[1]  # bastion_instance has a value like: ec2-user@52.81.238.68
     vpc_default_security_group_id = get_default_vpc_security_group(vpc_stack.cfn_outputs["VpcId"], region)
     cluster_config = pcluster_config_reader(
-        vpc_default_security_group_id=vpc_default_security_group_id,
-        bucket_name=bucket_name,
-        architecture=architecture,
-        bastion_ip=bastion_ip,
+        vpc_default_security_group_id=vpc_default_security_group_id, bucket_name=bucket_name, architecture=architecture
     )
     cluster = clusters_factory(cluster_config)
 
