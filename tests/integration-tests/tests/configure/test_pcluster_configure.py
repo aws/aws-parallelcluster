@@ -240,7 +240,9 @@ def standard_queue_prompts(scheduler, instance, region, size=""):
         PROMPTS["compute_instance_type"](resource=1, queue_name="myqueue", instance=instance),
     ]
 
-    is_efa_supported = get_instance_info(instance, region).get("NetworkInfo", {}).get("EfaSupported", False)
+    is_efa_supported = False
+    if instance:
+        is_efa_supported = get_instance_info(instance, region).get("NetworkInfo", {}).get("EfaSupported", False)
     if is_efa_supported:
         queue_prompts.append(PROMPTS["enable_efa"]("y"))
 
