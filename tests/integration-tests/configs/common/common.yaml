@@ -294,6 +294,12 @@ iam:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
+  test_iam.py::test_iam_resource_prefix:
+    dimensions:
+      - regions: [ "eu-north-1" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: [ "alinux2" ]
+        schedulers: [ "slurm" ]
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
