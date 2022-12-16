@@ -139,8 +139,7 @@ def test_multiple_efs(
 
     new_efs_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
 
-
-    # TODO: change cluster configuration file to test different tls and iam settings to EFS.
+    # Change cluster configuration file to test different tls and iam settings to EFS.
     cluster_config = pcluster_config_reader(
         existing_efs_mount_dirs=existing_efs_mount_dirs,
         existing_efs_ids=existing_efs_ids,
