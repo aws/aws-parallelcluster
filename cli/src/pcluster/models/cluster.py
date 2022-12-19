@@ -359,21 +359,23 @@ class Cluster:
                 validator_suppressors, validation_failure_level
             )
 
+            LOGGER.info("Generating artifact dir and uploading config...")
             self._add_tags()
             self._generate_artifact_dir()
             artifact_dir_generated = True
             self._upload_config()
+            LOGGER.info("Generation and upload completed successfully")
 
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
-                LOGGER.info("Generating CDK template...")
                 self.template_body = CDKTemplateBuilder().build_cluster_template(
                     cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
                 )
-                LOGGER.info("CDK template generated correctly.")
 
+            LOGGER.info("Uploading cluster artifacts...")
             # upload cluster artifacts and generated template
             self._upload_artifacts()
+            LOGGER.info("Upload of cluster artifacts completed successfully")
 
             LOGGER.info("Creating stack named: %s", self.stack_name)
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
