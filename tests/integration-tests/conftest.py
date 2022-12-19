@@ -373,7 +373,7 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, upper_case_cluster_name=False, **kwargs):
+    def _cluster_factory(cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
@@ -386,7 +386,7 @@ def clusters_factory(request, region):
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
             region=region,
-            custom_cli_credentials=kwargs.get("custom_cli_credentials"),
+            custom_cli_credentials=custom_cli_credentials,
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, **kwargs)
