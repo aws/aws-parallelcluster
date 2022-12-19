@@ -14,8 +14,8 @@ from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client
 class Route53Client(Boto3Client):
     """Route53 Boto3 client."""
 
-    def __init__(self):
-        super().__init__("route53")
+    def __init__(self, profile_name = None):
+        super().__init__("route53", profile_name=profile_name)
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
