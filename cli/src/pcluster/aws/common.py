@@ -15,7 +15,7 @@ import os
 import threading
 import time
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
 
 import boto3
 from botocore.config import Config
@@ -139,8 +139,11 @@ def _log_boto3_calls(params, **kwargs):
 class Boto3Client:
     """Boto3 client Class."""
 
-    def __init__(self, client_name: str, botocore_config_kwargs: Dict = None):
-        self._client = boto3.client(
+    def __init__(
+        self, client_name: str, botocore_config_kwargs: Optional[Dict] = None, profile_name: Optional[str] = None
+    ):
+        session = boto3.Session(profile_name=profile_name)        
+        self._client = session.client(
             client_name, config=Config(**botocore_config_kwargs) if botocore_config_kwargs else None
         )
         self._client.meta.events.register("provide-client-params.*.*", _log_boto3_calls)
