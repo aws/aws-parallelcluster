@@ -518,6 +518,8 @@ class NodeIamResourcesBase(Construct):
             return f"{IAM_ROLE_PATH}{Stack.of(self).stack_name}/"
 
     def _format_arn(self, **kwargs):
+        if kwargs["resource"].startswith("arn:"):
+            return kwargs["resource"]
         return Stack.of(self).format_arn(**kwargs)
 
     @abc.abstractmethod
@@ -893,6 +895,8 @@ class PclusterLambdaConstruct(Construct):
         return Fn.select(2, Fn.split("/", Stack.of(self).stack_id))
 
     def _format_arn(self, **kwargs):
+        if kwargs["resource"].startswith("arn:"):
+            return kwargs["resource"]
         return Stack.of(self).format_arn(**kwargs)
 
 
