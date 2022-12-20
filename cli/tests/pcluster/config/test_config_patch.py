@@ -845,6 +845,45 @@ def _test_storage(base_conf, target_conf):
     )
 
 
+def _test_iam(base_conf, target_conf):
+    # Check the update of Iam section with both updatable and not updatable keys
+    for iam_section_child_key, iam_section_child_value in {
+        "ResourcePrefix": {"old_config_value": "/path/name-prefix", "expected_update_policy": UpdatePolicy.UNSUPPORTED},
+        "PermissionBoundary": {
+            "old_config_value": "arn:aws:iam::aws:policy/some_old_permission_boundary",
+            "expected_update_policy": UpdatePolicy.SUPPORTED,
+        },
+        "Role": {
+            "old_config_value": {"LambdaFunctionsRole": "arn:aws:iam::aws:role/some_old_role"},
+            "expected_update_policy": UpdatePolicy.SUPPORTED,
+        },
+    }.items():
+        base_conf.update(
+            {
+                "Iam": {
+                    f"{iam_section_child_key}": f"{iam_section_child_value.get('old_config_value')}",
+                }
+            }
+        )
+        _check_patch(
+            base_conf,
+            target_conf,
+            [
+                Change(
+                    ["Iam"],
+                    f"{iam_section_child_key}",
+                    f"{iam_section_child_value.get('old_config_value')}",
+                    None,
+                    UpdatePolicy(
+                        iam_section_child_value.get("expected_update_policy"),
+                    ),
+                    is_list=False,
+                )
+            ],
+            iam_section_child_value.get("expected_update_policy"),
+        )
+
+
 @pytest.mark.parametrize(
     "test",
     [
@@ -859,6 +898,7 @@ def _test_storage(base_conf, target_conf):
         _test_updatable_custom_actions,
         _test_updatable_custom_actions_attributes,
         _test_storage,
+        _test_iam,
     ],
 )
 def test_adaptation(mocker, test_datadir, pcluster_config_reader, test):
