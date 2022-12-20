@@ -19,6 +19,8 @@ from typing import Dict, Optional
 
 import boto3
 from botocore.config import Config
+from botocore.session import get_session
+from botocore.credentials import RefreshableCredentials
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
 LOGGER = logging.getLogger(__name__)
@@ -140,17 +142,28 @@ class Boto3Client:
     """Boto3 client Class."""
 
     def __init__(
-        self, client_name: str, botocore_config_kwargs: Optional[Dict] = None, profile_name: Optional[str] = None
+        self,
+        client_name: str,
+        botocore_config_kwargs: Optional[Dict] = None,
+        profile_name: Optional[str] = None,
+        role_name: Optional[str] = None,
     ):
-        session = boto3.Session(profile_name=profile_name)        
+        if role_name is not None:
+            self.role_name = role_name
+            session = self._assumed_session()
+        else:
+            session = boto3.Session(profile_name=profile_name)        
+        
         self._client = session.client(
-            client_name, config=Config(**botocore_config_kwargs) if botocore_config_kwargs else None
+            client_name,
+            config=Config(**botocore_config_kwargs) if botocore_config_kwargs else None
         )
         self._client.meta.events.register("provide-client-params.*.*", _log_boto3_calls)
 
     def _paginate_results(self, method, **kwargs):
         """
-        Return a generator for a boto3 call, this allows pagination over an arbitrary number of responses.
+        Return a generator for a boto3 call, this allows pagination over an arbitrary
+        number of responses.
 
         :param method: boto3 method
         :param kwargs: arguments to method
@@ -160,6 +173,29 @@ class Boto3Client:
         for page in paginator.paginate(**kwargs).result_key_iters():
             for result in page:
                 yield result
+
+    def _refresh(self):
+        sts = boto3.client("sts")
+        
+        response = sts.assume_role(
+            RoleArn=self.role_arn, RoleSessionName="pc-assume-role"
+        )
+        creds = response["Credentials"]
+        return {
+            "access_key": creds["AccessKeyId"],
+            "secret_key": creds["SecretAccessKey"],
+            "token": creds["SessionToken"],
+            "expiry_time": creds["Expiration"].isoformat(),
+        }
+    
+    def _assumed_session(self):
+        session = get_session()
+        session._credentials = RefreshableCredentials.create_from_metadata(
+            metadata=self._refresh(),
+            refresh_using=self._refresh,
+            method="sts-assume-role"
+        )
+        return boto3.Session(botocore_session=session)
 
 
 class Boto3Resource:

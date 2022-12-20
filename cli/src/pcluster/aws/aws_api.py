@@ -46,6 +46,10 @@ class AWSApi:
             "route53": os.environ.get("PCLUSTER_AWS_PROFILE_ROUTE53")
         }
 
+        self._roles = {
+            "route53": os.environ.get("PCLUSTER_AWS_ROLE_ROUTE53")
+        }
+
         self._batch = None
         self._cfn = None
         self._ec2 = None
@@ -159,7 +163,10 @@ class AWSApi:
     def route53(self):
         """Route53 client."""
         if not self._route53:
-            self._route53 = Route53Client(profile_name=self._profiles["route53"])
+            self._route53 = Route53Client(
+                profile_name=self._profiles["route53"],
+                role_name=self._roles["route53"]
+            )
         return self._route53
 
     @property
