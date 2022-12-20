@@ -19,7 +19,7 @@ variables:
   PRODUCTION_ACCOUNT_ID: "007425665442"
   IMAGE_NAME: aam-pcluster-manager
   WORKING_DIR: cli
-  DOCKERFILE: api/client/docker/awslambda/Dockerfile
+  DOCKERFILE: api/docker/awslambda/Dockerfile
 
 .sandbox:
   variables:
