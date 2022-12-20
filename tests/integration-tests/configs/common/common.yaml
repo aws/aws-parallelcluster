@@ -26,6 +26,7 @@ arm_pl:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
 scheduler_plugin:
   test_scheduler_plugin.py::test_scheduler_plugin_integration:
     dimensions:
@@ -37,6 +38,7 @@ scheduler_plugin:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["plugin"]
+{%- endif %}
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
     dimensions:
