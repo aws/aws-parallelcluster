@@ -1,0 +1,168 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+stages:
+  - docker:sandbox:build
+  - docker:sandbox:push
+  - docker:integration:push
+  - docker:production:push
+
+variables:
+  AWS_DEFAULT_REGION: us-east-1
+  SANDBOX_ACCOUNT_ID: "835540724922"
+  INTEGRATION_ACCOUNT_ID: "459514386611"
+  PRODUCTION_ACCOUNT_ID: "007425665442"
+  IMAGE_NAME: aam-pcluster-manager
+
+.sandbox:
+  variables:
+    AWS_ACCOUNT_ID: $SANDBOX_ACCOUNT_ID
+    ENVIRONMENT: "sandbox"
+    CICD_ROLE: "arn:aws:iam::${SANDBOX_ACCOUNT_ID}:role/GitrunnerCICD"
+    VAULT_ROLE: "GitrunnerCICD-${SANDBOX_ACCOUNT_ID}"
+    VAULT_URL: "vault.service.dev.acadian-asset.com"
+    VAULT_ADDR: "https://active.vault.service.dev.acadian-asset.com"
+    OKTA_KEY_PATH: "secret/okta-sandbox/api/token"
+    PUSH_REPO: "${SANDBOX_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_NAME}"
+
+.integration:
+  variables:
+    AWS_ACCOUNT_ID: $INTEGRATION_ACCOUNT_ID
+    ENVIRONMENT: "integration"
+    CICD_ROLE: "arn:aws:iam::${INTEGRATION_ACCOUNT_ID}:role/GitrunnerCICD"
+    VAULT_ROLE: "GitrunnerCICD-${INTEGRATION_ACCOUNT_ID}"
+    VAULT_URL: "vault.service.qa.acadian-asset.com"
+    VAULT_ADDR: "https://active.vault.service.qa.acadian-asset.com"
+    OKTA_KEY_PATH: "secret/okta-sandbox/api/token"
+    PULL_REPO: "${SANDBOX_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_NAME}"
+    PULL_ROLE: "arn:aws:iam::${SANDBOX_ACCOUNT_ID}:role/GitrunnerCICD"
+    PUSH_REPO: "${INTEGRATION_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_NAME}"
+    TAG_EXP: '$${CI_COMMIT_SHORT_SHA}'
+
+.production:
+  variables:
+    AWS_ACCOUNT_ID: $PRODUCTION_ACCOUNT_ID
+    ENVIRONMENT: "production"
+    CICD_ROLE: "arn:aws:iam::${PRODUCTION_ACCOUNT_ID}:role/GitrunnerCICD"
+    VAULT_ROLE: "GitrunnerCICD-${PRODUCTION_ACCOUNT_ID}"
+    VAULT_URL: "vault.service.prod.acadian-asset.com"
+    VAULT_ADDR: "https://active.vault.service.prod.acadian-asset.com"
+    OKTA_KEY_PATH: "secret/okta/api/token"
+    PULL_REPO: "${INTEGRATION_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_NAME}"
+    PULL_ROLE: "arn:aws:iam::${INTEGRATION_ACCOUNT_ID}:role/GitrunnerCICD"
+    PUSH_REPO: "${PRODUCTION_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_NAME}"
+    TAG_EXP: '$(echo "${CI_COMMIT_TAG}" | sed "s/${IMAGE_NAME}-v//")'
+
+.ecr:
+  login:
+    - unset AWS_ACCESS_KEY_ID
+    - unset AWS_SECRET_ACCESS_KEY
+    - unset AWS_SESSION_TOKEN
+    - ASSUMED_CREDS=$(aws sts assume-role --role-arn "$ROLE" --role-session-name "$CI_PROJECT_PATH_SLUG")
+    - export AWS_SECRET_ACCESS_KEY=$(echo $ASSUMED_CREDS | jq -r .Credentials.SecretAccessKey)
+    - export AWS_ACCESS_KEY_ID=$(echo $ASSUMED_CREDS | jq -r .Credentials.AccessKeyId)
+    - export AWS_SESSION_TOKEN=$(echo $ASSUMED_CREDS | jq -r .Credentials.SessionToken)
+    - $(aws ecr get-login --no-include-email --region "$AWS_DEFAULT_REGION")
+  copy:
+    - docker pull "${PULL_REPO}:${CI_COMMIT_SHORT_SHA}"
+    - docker tag "${PULL_REPO}:${CI_COMMIT_SHORT_SHA}" "${PUSH_REPO}:latest"
+    - docker tag "${PULL_REPO}:${CI_COMMIT_SHORT_SHA}" "${PUSH_REPO}:${TAG}"
+  push:
+    - docker push "${PUSH_REPO}:latest"
+    - docker push "${PUSH_REPO}:${TAG}"
+
+.docker:
+  image: aam-docker.jfrog.io/aam-docker:20.10.7
+  services:
+    - docker:20.10.7-dind
+  tags:
+    - dm-linux
+
+.docker.build:
+  needs: []
+  extends:
+    - .docker
+  script:
+    - ROLE=$CICD_ROLE
+    - !reference [.ecr, login]
+    - BUILD_ARGS=$(test -e "./$WORKING_DIR/docker/args.sh" && sed 's@^@--build-arg @g' "./$WORKING_DIR/docker/args.sh" | tr "\n" " " || echo "")
+    - echo "$BUILD_ARGS"
+    - docker build $(echo $BUILD_ARGS) -f "./$WORKING_DIR/docker/Dockerfile" -t "${IMAGE_NAME}:latest" "./$WORKING_DIR/docker"
+    - docker save "${IMAGE_NAME}:latest" > "${IMAGE_NAME}.tar"
+  rules:
+    - if: $CI_COMMIT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+      allow_failure: false
+      changes: !reference [.changes, docker]
+  artifacts:
+    paths:
+      - "$IMAGE_NAME.tar"
+
+.docker.push:
+  extends:
+    - .docker
+  script:
+    - TAG=$CI_COMMIT_SHORT_SHA
+    - ROLE=$CICD_ROLE
+    - docker load -i "${IMAGE_NAME}.tar"
+    - !reference [.ecr, login]
+    - docker tag "${IMAGE_NAME}:latest" "${PUSH_REPO}:latest"
+    - docker tag "${IMAGE_NAME}:latest" "${PUSH_REPO}:${TAG}"
+    - !reference [.ecr, push]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: false
+      changes: !reference [.changes, docker]
+
+.docker.promote:
+  extends:
+    - .docker
+  script:
+    - eval TAG=${TAG_EXP}
+    - ROLE=$PULL_ROLE
+    - !reference [.ecr, login]
+    - !reference [.ecr, copy]
+    - ROLE=$CICD_ROLE
+    - !reference [.ecr, login]
+    - !reference [.ecr, push]
+
+docker.sandbox.build:
+  stage: docker:sandbox:build
+  needs: []
+  extends:
+    - .docker.build
+    - .sandbox
+
+docker.sandbox.push:
+  stage: docker:sandbox:push
+  extends:
+    - .docker.push
+    - .sandbox
+
+docker.integration.push:
+  stage: docker:integration:push
+  extends:
+    - .docker.promote
+    - .integration
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: false
+      changes: !reference [.changes, docker]
+
+docker.production.push:
+  stage: docker:production:push
+  needs: []
+  extends:
+    - .docker.promote
+    - .production
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+      when: always
+      allow_failure: false
