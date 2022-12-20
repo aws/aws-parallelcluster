@@ -21,7 +21,7 @@ CHANGELOG
   - Libfabric-aws: `libfabric-aws-1.16.1`
   - Rdma-core: `rdma-core-43.0-2`
   - Open MPI: `openmpi40-aws-4.1.4-3`
-- Upgrade Slurm to version 22.05.6.
+- Upgrade Slurm to version 22.05.7.
 
 3.3.1
 -----
