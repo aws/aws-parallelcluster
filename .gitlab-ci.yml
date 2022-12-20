@@ -98,7 +98,6 @@ variables:
     - if: $CI_COMMIT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
       allow_failure: false
-      changes: !reference [.changes, docker]
   artifacts:
     paths:
       - "$IMAGE_NAME.tar"
@@ -118,7 +117,6 @@ variables:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
       allow_failure: false
-      changes: !reference [.changes, docker]
 
 .docker.promote:
   extends:
@@ -154,7 +152,6 @@ docker.integration.push:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: manual
       allow_failure: false
-      changes: !reference [.changes, docker]
 
 docker.production.push:
   stage: docker:production:push
