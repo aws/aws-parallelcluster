@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 # This module provides unit tests for the functions in the pcluster.utils module."""
+import itertools
 import os
 import time
 
@@ -350,3 +351,7 @@ def test_split_resource_prefix(resource_prefix, expected_output):
     iam_path_prefix, iam_role_prefix = utils.split_resource_prefix(resource_prefix=resource_prefix)
     assert_that(iam_path_prefix).is_equal_to(expected_output[0])
     assert_that(iam_role_prefix).is_equal_to(expected_output[1])
+
+
+def flatten(array):
+    return list(itertools.chain(array))

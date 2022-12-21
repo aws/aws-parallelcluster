@@ -142,7 +142,7 @@ class ClusterCdkStack:
         self._add_outputs()
 
         try:
-            apply_permissions_boundary(cluster_config.iam.permissions_boundary, self)
+            apply_permissions_boundary(cluster_config.iam.permissions_boundary, self.stack)
         except AttributeError:
             pass
 

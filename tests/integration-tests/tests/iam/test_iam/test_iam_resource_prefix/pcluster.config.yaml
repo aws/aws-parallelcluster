@@ -1,0 +1,43 @@
+Imds:
+  ImdsSupport: {{ imds_support }}
+Image:
+  Os: {{ os }}
+Iam:
+  ResourcePrefix: {{ iam_resource_prefix }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket }}
+        KeyName: read_and_write/
+        EnableWriteAccess: true
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+          MinCount: {{ min_count }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+          MinCount: {{ min_count }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket }}
+            KeyName: read_and_write/
+            EnableWriteAccess: true
+
+   
