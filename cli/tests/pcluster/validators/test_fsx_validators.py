@@ -17,6 +17,7 @@ from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
     FsxBackupOptionsValidator,
+    FsxDescribeVolumesValidator,
     FsxPersistentOptionsValidator,
     FsxS3Validator,
     FsxStorageCapacityValidator,
@@ -438,3 +439,15 @@ def test_auto_import_policy_validator(mocker, auto_import_policy, cluster_region
 
     actual_failures = FsxAutoImportValidator().execute(auto_import_policy, "s3://test/test1/test2")
     assert_failure_messages(actual_failures, expected_message)
+
+
+def test_fsx_non_happy_ontap_openfsx_mounting(mocker):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    expected_message = "Failed to describe volumes"
+    non_happy_describe_volumes = mocker.patch(
+        "pcluster.aws.fsx.FSxClient.describe_volumes",
+        side_effect=AWSClientError(function_name="describe_volumes", message=expected_message),
+    )
+    actual_failures = FsxDescribeVolumesValidator().execute([])
+    assert_failure_messages(actual_failures, expected_message)
+    non_happy_describe_volumes.assert_called_with([])

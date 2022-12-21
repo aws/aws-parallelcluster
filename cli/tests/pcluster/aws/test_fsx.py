@@ -8,11 +8,11 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 import pytest
 from assertpy import assert_that
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from tests.utils import MockedBoto3Request
 
 
@@ -124,3 +124,20 @@ def test_describe_volumes(boto3_stubber):
     # Fourth boto3 call after resetting the AWSApi instance. The latest fsx lifecycle should be retrieved from boto3
     AWSApi.reset()
     assert_that(AWSApi.instance().fsx.describe_volumes([volume])[0]["Lifecycle"]).is_equal_to("CREATED")
+
+
+def get_non_happy_describe_volumes(volume_ids):
+    return MockedBoto3Request(
+        method="describe_volumes",
+        response="Error",
+        generate_error=True,
+        expected_params={"VolumeIds": volume_ids},
+    )
+
+
+def test_non_happy_describe_volumes(boto3_stubber):
+    volume_id = "fsvol-12345678901234567"
+    mocked_request = get_non_happy_describe_volumes([volume_id])
+    boto3_stubber("fsx", mocked_request)
+    with pytest.raises(AWSClientError):
+        return AWSApi.instance().fsx.describe_volumes([volume_id])
