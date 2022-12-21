@@ -695,6 +695,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             if capacity_reservation_ids:
                 policy.append(
                     iam.PolicyStatement(
+                        sid="AllowRunningReservedCapacity",
                         actions=["ec2:RunInstances"],
                         effect=iam.Effect.ALLOW,
                         resources=[
@@ -711,6 +712,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 policy.extend(
                     [
                         iam.PolicyStatement(
+                            sid="AllowManagingReservedCapacity",
                             actions=["ec2:RunInstances", "ec2:CreateFleet", "resource-groups:ListGroupResources"],
                             effect=iam.Effect.ALLOW,
                             resources=capacity_reservation_resource_group_arns,
@@ -749,6 +751,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         if self._config.directory_service:
             policy.append(
                 iam.PolicyStatement(
+                    sid="AllowGettingDirectorySecretValue",
                     actions=["secretsmanager:GetSecretValue"],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
@@ -758,6 +761,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         if self._config.scheduling.scheduler == "slurm" and self._config.scheduling.settings.database:
             policy.append(
                 iam.PolicyStatement(
+                    sid="AllowGettingSlurmDbSecretValue",
                     actions=["secretsmanager:GetSecretValue"],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.scheduling.settings.database.password_secret_arn],

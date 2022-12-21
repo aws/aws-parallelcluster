@@ -1,0 +1,22 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+DirectoryService:
+  DomainName: corp.something.com
+  DomainAddr: ldaps://corp.something.com
+  PasswordSecretArn: arn:aws:secretsmanager:eu-west-1:123456789:secret:a-secret-name
+  DomainReadOnlyUser: cn=ReadOnlyUser,ou=Users,ou=CORP,dc=corp,dc=something,dc=com
+  LdapTlsCaCert: /path/to/domain-certificate.crt
