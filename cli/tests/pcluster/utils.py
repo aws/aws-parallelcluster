@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import os
 from copy import deepcopy
 
@@ -49,6 +50,27 @@ def get_resources(
             )
         )
     )
+
+
+def get_head_node_policy(template, enforce_not_null=True):
+    policy = get_resources(template, type="AWS::IAM::Policy", name="ParallelClusterPoliciesHeadNode").get(
+        "ParallelClusterPoliciesHeadNode"
+    )
+    if enforce_not_null:
+        assert_that(policy).is_not_none()
+    return policy
+
+
+def get_statement_by_sid(policy, sid, enforce_not_null=True):
+    statements = policy["Properties"]["PolicyDocument"]["Statement"]
+    statement = next(filter(lambda s: s.get("Sid") == sid, statements), None)
+    if enforce_not_null:
+        assert_that(statement).is_not_none()
+    return statement
+
+
+def flatten(array):
+    return list(itertools.chain(array))
 
 
 def assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, expected_vpc_config):

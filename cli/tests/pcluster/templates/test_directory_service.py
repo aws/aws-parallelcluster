@@ -17,7 +17,7 @@ from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
-from tests.pcluster.utils import flatten, get_resources
+from tests.pcluster.utils import get_head_node_policy, get_statement_by_sid
 
 
 @pytest.mark.parametrize(
@@ -26,7 +26,7 @@ from tests.pcluster.utils import flatten, get_resources
         ("config.yaml"),
     ],
 )
-def test_custom_cookbook(mocker, test_datadir, config_file_name):
+def test_head_node_permissions(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
@@ -37,15 +37,8 @@ def test_custom_cookbook(mocker, test_datadir, config_file_name):
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
-    custom_cookbook_policy_head_node = get_resources(
-        generated_template, type="AWS::IAM::Policy", name="CustomCookbookPoliciesHeadNode"
-    ).get("CustomCookbookPoliciesHeadNode")
-
-    assert_that(custom_cookbook_policy_head_node).is_not_none()
-
-    statements = custom_cookbook_policy_head_node["Properties"]["PolicyDocument"]["Statement"]
-    effects = [statement["Effect"] for statement in statements]
-    actions = flatten([statement["Action"] for statement in statements])
-
-    assert_that(effects).contains_only("Allow")
-    assert_that(actions).contains_only("s3:GetObject", "s3:GetBucketLocation")
+    head_node_policy = get_head_node_policy(generated_template)
+    statement = get_statement_by_sid(policy=head_node_policy, sid="AllowGettingDirectorySecretValue")
+    assert_that(statement["Effect"]).is_equal_to("Allow")
+    assert_that(statement["Action"]).is_equal_to("secretsmanager:GetSecretValue")
+    assert_that(statement["Resource"]).is_equal_to("arn:aws:secretsmanager:eu-west-1:123456789:secret:a-secret-name")
