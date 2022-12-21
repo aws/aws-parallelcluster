@@ -1,3 +1,5 @@
+Imds:
+  ImdsSupport: {{ imds_support }}
 Image:
   Os: {{ os }}
 CustomS3Bucket: {{ resource_bucket }}
