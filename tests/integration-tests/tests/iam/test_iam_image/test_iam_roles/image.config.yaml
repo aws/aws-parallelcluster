@@ -6,6 +6,8 @@ Image:
         Size: 35
 
 Build:
+    Imds:
+        ImdsSupport: {{ imds_support }}
     Iam:
         InstanceProfile: {{ instance_profile }}
         CleanupLambdaRole: {{ lambda_cleanup_role }}

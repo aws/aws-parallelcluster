@@ -346,7 +346,7 @@ def test_official_images(region, api_client):
 def test_custom_image(region, api_client, build_image, os, request, pcluster_config_reader):
     base_ami = retrieve_latest_ami(region, os)
 
-    config_file = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami)
+    config_file = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami, imds_support="v2.0")
     with open(config_file, encoding="utf-8") as config_file:
         config = config_file.read()
 
