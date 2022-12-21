@@ -225,7 +225,7 @@ class FsxAutoImportValidator(Validator):
 
 
 class FsxDescribeVolumesValidator(Validator):
-    """Backup id validator."""
+    """Describe volumes validator."""
 
     def _validate(self, volume_ids):
         try:
