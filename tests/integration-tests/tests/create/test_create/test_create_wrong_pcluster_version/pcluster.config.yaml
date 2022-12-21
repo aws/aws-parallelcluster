@@ -1,3 +1,5 @@
+Imds:
+  ImdsSupport: {{ imds_support }}
 Image:
   Os: {{ os }}
   CustomAmi: {{ custom_ami }}

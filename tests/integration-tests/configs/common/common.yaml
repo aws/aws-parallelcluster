@@ -154,7 +154,7 @@ createami:
         oss: ["alinux2", "ubuntu2004", "centos7"]
   test_createami.py::test_kernel4_build_image_run_cluster:
     dimensions:
-      - regions: ["ca-central-1"]
+      - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
@@ -523,6 +523,12 @@ schedulers:
         instances:  {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7", "ubuntu1804"]
         schedulers: ["slurm"]
+  test_slurm.py::test_slurm_reconfigure_race_condition:
+     dimensions:
+      - regions: ["af-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: [ "slurm" ]
 spot:
   test_spot.py::test_spot_default:
     dimensions:

@@ -1,0 +1,27 @@
+Image:
+  Os: alinux2
+Iam:
+  ResourcePrefix: "/a-prefix/"
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+      Iam:
+        InstanceRole: arn:aws:iam::123456789:role/role-name
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource2
+          InstanceType: c5.2xlarge
