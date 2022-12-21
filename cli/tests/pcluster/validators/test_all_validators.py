@@ -119,7 +119,13 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
 
     # Assert validators are called
     for m in mockers:
-        if m["name"] in ["TagKeyValidator", "ClusterNameValidator", "InstanceProfileValidator", "RoleValidator"]:
+        if m["name"] in [
+            "TagKeyValidator",
+            "ClusterNameValidator",
+            "InstanceProfileValidator",
+            "RoleValidator",
+            "FsxDescribeVolumesValidator",
+        ]:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue
         print("Checking " + m["name"] + " is called")
@@ -406,6 +412,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
                 "CapacityReservationResourceGroupValidator",
                 "DatabaseUriValidator",
                 "InstanceTypePlacementGroupValidator",
+                "FsxDescribeVolumesValidator",
             ]
             + flexible_instance_types_validators
         ):
