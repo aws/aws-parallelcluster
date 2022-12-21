@@ -65,6 +65,7 @@ def _build_image(images_factory, instance_profile, lambda_cleanup_role, os, pclu
         parent_image=base_ami,
         instance_profile=instance_profile,
         lambda_cleanup_role=lambda_cleanup_role,
+        imds_support="v2.0",
     )
     image = images_factory(image_id, image_config, region)
     return image
