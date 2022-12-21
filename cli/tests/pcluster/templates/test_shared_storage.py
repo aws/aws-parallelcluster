@@ -18,7 +18,7 @@ from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
-from tests.pcluster.utils import get_resources
+from tests.pcluster.utils import get_head_node_policy, get_resources, get_statement_by_sid
 
 
 @pytest.mark.parametrize(
@@ -236,14 +236,8 @@ def test_efs_permissions(mocker, test_datadir, config_file_name):
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
-    head_node_policy = get_resources(
-        generated_template, type="AWS::IAM::Policy", name="ParallelClusterPoliciesHeadNode"
-    ).get("ParallelClusterPoliciesHeadNode")
-
-    assert_that(head_node_policy).is_not_none()
-
-    statements = head_node_policy["Properties"]["PolicyDocument"]["Statement"]
-    statement = next(filter(lambda s: s.get("Sid") == "Efs", statements))
+    head_node_policy = get_head_node_policy(generated_template)
+    statement = get_statement_by_sid(policy=head_node_policy, sid="Efs")
 
     assert_that(statement["Effect"]).is_equal_to("Allow")
     assert_that(statement["Action"]).contains_only(
