@@ -12,6 +12,7 @@
 import pytest
 from assertpy import assert_that
 
+from pcluster.aws.common import AWSClientError
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
@@ -200,6 +201,22 @@ def assert_sg_rule(
     )
 
     assert_that(sg_rules).is_length(1)
+
+
+def test_non_happy_ontap_and_openfsx_mounting(mocker, test_datadir):
+    mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.aws.fsx.FSxClient.describe_volumes",
+        side_effect=AWSClientError(function_name="describe_volumes", message="describing volumes is unauthorized"),
+    )
+
+    input_yaml = load_yaml_dict(test_datadir / "config.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    with pytest.raises(AWSClientError):
+        CDKTemplateBuilder().build_cluster_template(
+            cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+        )
 
 
 @pytest.mark.parametrize(
