@@ -1,0 +1,18 @@
+Image:
+  Os: alinux2
+Iam:
+  PermissionsBoundary: "arn:aws:iam:123456789:policy/APolicy"
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge

@@ -257,7 +257,7 @@ def _wait_instance_running(ec2_client, instance_ids):
     )
 
 
-@retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
 def _wait_compute_cloudinit_done(command_executor, compute_node):
     """Wait till cloud-init complete on a given compute node"""
     compute_node_private_ip = compute_node.get("privateIpAddress")

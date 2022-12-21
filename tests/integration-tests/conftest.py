@@ -386,6 +386,7 @@ def clusters_factory(request, region):
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
             region=region,
+            custom_cli_credentials=kwargs.get("custom_cli_credentials"),
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, **kwargs)
@@ -763,6 +764,7 @@ def _get_default_template_values(vpc_stack, request):
     ):
         default_values["scheduler"] = "plugin"
     default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    default_values["imds_support"] = "v2.0"
     default_values["scheduler_prefix"] = {
         "slurm": "Slurm",
         "awsbatch": "AwsBatch",

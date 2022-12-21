@@ -1981,7 +1981,7 @@ class ClusterSchema(BaseSchema):
     tags = fields.Nested(
         TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
     )
-    iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     directory_service = fields.Nested(
         DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )

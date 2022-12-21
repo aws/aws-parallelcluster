@@ -294,7 +294,7 @@ def test_multiple_fsx(
     )
     fsx_on_tap_volume_ids = _create_fsx_on_tap_volume_ids(num_existing_fsx_ontap_volumes, fsx_factory, svm_factory)
     fsx_open_zfs_volume_ids = _create_fsx_open_zfs_volume_ids(
-        num_existing_fsx_ontap_volumes, fsx_factory, open_zfs_volume_factory
+        num_existing_fsx_open_zfs_volumes, fsx_factory, open_zfs_volume_factory
     )
 
     cluster_config = pcluster_config_reader(

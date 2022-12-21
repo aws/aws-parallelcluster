@@ -200,3 +200,35 @@ def assert_sg_rule(
     )
 
     assert_that(sg_rules).is_length(1)
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        ("config.yaml"),
+    ],
+)
+def test_efs_permissions(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    head_node_policy = get_resources(
+        generated_template, type="AWS::IAM::Policy", name="ParallelClusterPoliciesHeadNode"
+    ).get("ParallelClusterPoliciesHeadNode")
+
+    assert_that(head_node_policy).is_not_none()
+
+    statements = head_node_policy["Properties"]["PolicyDocument"]["Statement"]
+    statement = next(filter(lambda s: s.get("Sid") == "Efs", statements))
+
+    assert_that(statement["Effect"]).is_equal_to("Allow")
+    assert_that(statement["Action"]).contains_only(
+        "elasticfilesystem:ClientMount", "elasticfilesystem:ClientRootAccess", "elasticfilesystem:ClientWrite"
+    )
