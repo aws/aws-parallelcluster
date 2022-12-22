@@ -31,6 +31,8 @@ from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.storage.assertions import assert_storage_existence
+from tests.common.storage.constants import StorageType
 from tests.common.utils import generate_random_string, retrieve_latest_ami
 from tests.storage.storage_common import (
     check_fsx,
@@ -854,6 +856,7 @@ def test_dynamic_file_systems_update(
     fsx_factory,
     svm_factory,
     open_zfs_volume_factory,
+    delete_storage_on_teardown,
 ):
     """Test update shared storages."""
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
@@ -893,7 +896,9 @@ def test_dynamic_file_systems_update(
     )
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader()
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster.config.yaml", output_file="pcluster.config.init.yaml"
+    )
     cluster = clusters_factory(init_config_file)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -913,8 +918,10 @@ def test_dynamic_file_systems_update(
     scheduler_commands.wait_job_running(queue1_job_id)
 
     # update cluster to add ebs, efs, fsx with drain strategy
+    logging.info("Updating the cluster to mount managed storage with DeletionPolicy set to Delete")
     update_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.update_drain.yaml",
+        output_file="pcluster.config.update_drain_1.yaml",
         volume_id=existing_ebs_volume_id,
         existing_ebs_mount_dir=existing_ebs_mount_dir,
         existing_efs_mount_dir=existing_efs_mount_dir,
@@ -927,12 +934,16 @@ def test_dynamic_file_systems_update(
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
+        new_ebs_deletion_policy="Delete",
         new_raid_mount_dir=new_raid_mount_dir,
+        new_raid_deletion_policy="Delete",
         new_lustre_mount_dir=new_lustre_mount_dir,
+        new_lustre_deletion_policy="Delete",
         new_efs_mount_dir=new_efs_mount_dir,
+        new_efs_deletion_policy="Delete",
     )
 
-    cluster.update(str(update_cluster_config))
+    cluster.update(update_cluster_config)
 
     # check chef client log contains expected log
     assert_lines_in_logs(
@@ -971,7 +982,49 @@ def test_dynamic_file_systems_update(
     for mount_dir in all_mount_dirs:
         verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
 
+    logging.info("Updating the cluster to set DeletionPolicy to Retain for every managed storage")
+    update_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update_drain.yaml",
+        output_file="pcluster.config.update_drain_2.yaml",
+        volume_id=existing_ebs_volume_id,
+        existing_ebs_mount_dir=existing_ebs_mount_dir,
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        fsx_lustre_mount_dir=fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
+        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        bucket_name=bucket_name,
+        new_ebs_mount_dir=new_ebs_mount_dir,
+        new_ebs_deletion_policy="Retain",
+        new_raid_mount_dir=new_raid_mount_dir,
+        new_raid_deletion_policy="Retain",
+        new_lustre_mount_dir=new_lustre_mount_dir,
+        new_lustre_deletion_policy="Retain",
+        new_efs_mount_dir=new_efs_mount_dir,
+        new_efs_deletion_policy="Retain",
+    )
+
+    cluster.update(update_cluster_config)
+
+    existing_ebs_ids = [existing_ebs_volume_id]
+    existing_efs_ids = [existing_efs_id]
+    existing_fsx_ids = [existing_fsx_lustre_fs_id, existing_fsx_ontap_volume_id, existing_fsx_open_zfs_volume_id]
+
+    retained_ebs_noraid_volume_ids = [
+        id for id in cluster.cfn_outputs["EBSIds"].split(",") if id not in existing_ebs_ids
+    ]
+    retained_ebs_raid_volume_ids = [
+        id for id in cluster.cfn_outputs["RAIDIds"].split(",") if id not in existing_ebs_ids
+    ]
+    retained_ebs_volume_ids = retained_ebs_noraid_volume_ids + retained_ebs_raid_volume_ids
+    retained_efs_filesystem_ids = [id for id in cluster.cfn_outputs["EFSIds"].split(",") if id not in existing_efs_ids]
+    retained_fsx_filesystem_ids = [id for id in cluster.cfn_outputs["FSXIds"].split(",") if id not in existing_fsx_ids]
+
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
+    logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
     cluster.stop()
     wait_for_computefleet_changed(cluster, "STOPPED")
     cluster.update(str(init_config_file))
@@ -996,6 +1049,26 @@ def test_dynamic_file_systems_update(
         all_mount_dirs,
         cluster_nodes,
     )
+
+    # Verify that detached managed storage have been retained and delete them.
+    logging.info(
+        "Checking that retained managed storage resources have been retained and mark them for deletion on teardown"
+    )
+    retained_storage = {
+        StorageType.STORAGE_EBS: dict(ids=retained_ebs_volume_ids, expected_states=["available"]),
+        StorageType.STORAGE_EFS: dict(ids=retained_efs_filesystem_ids, expected_states=["available"]),
+        StorageType.STORAGE_FSX: dict(ids=retained_fsx_filesystem_ids, expected_states=["AVAILABLE"]),
+    }
+    for storage_type in retained_storage:
+        for storage_id in retained_storage[storage_type]["ids"]:
+            assert_storage_existence(
+                region,
+                storage_type,
+                storage_id,
+                should_exist=True,
+                expected_states=retained_storage[storage_type]["expected_states"],
+            )
+            delete_storage_on_teardown(storage_type, storage_id)
 
     _test_shared_storage_rollback(
         cluster,

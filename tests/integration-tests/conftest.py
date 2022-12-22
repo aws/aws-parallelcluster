@@ -84,6 +84,10 @@ from utils import (
 
 from tests.common.osu_common import run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.common.storage.constants import StorageType
+from tests.common.storage.ebs_utils import delete_ebs_volume
+from tests.common.storage.efs_utils import delete_efs_filesystem
+from tests.common.storage.fsx_utils import delete_fsx_filesystem
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
@@ -2012,3 +2016,33 @@ def _add_mount_targets(subnet_ids, efs_ids, security_group, template):
                     )
                 )
                 availability_zones_with_mount_target.add(subnet["AvailabilityZone"])
+
+
+@pytest.fixture(scope="class")
+def delete_storage_on_teardown(request, region):
+    supported_storage_types = [StorageType.STORAGE_EBS, StorageType.STORAGE_EFS, StorageType.STORAGE_FSX]
+    delete_storage_function = {
+        StorageType.STORAGE_EBS: delete_ebs_volume,
+        StorageType.STORAGE_EFS: delete_efs_filesystem,
+        StorageType.STORAGE_FSX: delete_fsx_filesystem,
+    }
+    storage_resources = {storage_type: set() for storage_type in supported_storage_types}
+
+    def _add_storage(storage_type: StorageType, storage_id: str):
+        logging.info(
+            f"Adding storage for deletion on teardown: storage of type {storage_type.name} with id {storage_id}"
+        )
+        storage_resources[storage_type].add(storage_id)
+
+    def _delete_storage_resources():
+        logging.info("Deleting storage resource on teardown")
+        for storage_type, storage_ids in storage_resources.items():
+            for storage_id in storage_ids:
+                delete_storage_function[storage_type](region, storage_id)
+
+    yield _add_storage
+
+    if request.config.getoption("no_delete"):
+        logging.info("Not deleting storage resources marked for removal because --no-delete option was specified")
+    else:
+        _delete_storage_resources()
