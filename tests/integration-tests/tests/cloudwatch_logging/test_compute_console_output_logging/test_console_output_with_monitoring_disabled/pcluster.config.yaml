@@ -20,11 +20,11 @@ Scheduling:
         - Name: cit
           Instances:
             - InstanceType: {{ instance }}
-          MinCount: 1
+          MinCount: 0
           MaxCount: 10
       Networking:
         SubnetIds:
-          - {{ no_internet_subnet_id }}
+          - {{ private_subnet_id }}
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
@@ -32,5 +32,4 @@ Scheduling:
 Monitoring:
   Logs:
     CloudWatch:
-      Enabled: true
-      RetentionInDays: 14
+      Enabled: false

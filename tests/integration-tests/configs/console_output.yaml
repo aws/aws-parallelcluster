@@ -2,10 +2,24 @@
 ---
 test-suites:
   cloudwatch_logging:
-    test_compute_console_output_logging.py::test_compute_console_logging:
+#    test_compute_console_output_logging.py::test_compute_console_logging:
+#      dimensions:
+#        - regions: ["us-east-1"]
+##          oss: ["alinux2", "ubuntu2004", "centos7", "ubuntu1804"]
+#          oss: ["alinux2"]
+#          instances: ["t2.micro"]
+#          schedulers: ["slurm"]
+    test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
       dimensions:
         - regions: ["us-east-1"]
 #          oss: ["alinux2", "ubuntu2004", "centos7", "ubuntu1804"]
           oss: ["alinux2"]
-          instances: ["t2.micro"]
+          instances: ["c5.xlarge"]
+          schedulers: ["slurm"]
+    test_compute_console_output_logging.py::test_monitoring_enabled_allows_console_output:
+      dimensions:
+        - regions: ["us-east-1"]
+#          oss: ["alinux2", "ubuntu2004", "centos7", "ubuntu1804"]
+          oss: ["alinux2"]
+          instances: ["c5.xlarge"]
           schedulers: ["slurm"]

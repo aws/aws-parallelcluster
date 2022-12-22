@@ -1,9 +1,13 @@
 import logging
 import re
+from pathlib import Path
 
 import boto3
 import pytest
 from assertpy import assert_that
+from clusters_factory import Cluster
+from configparser import ConfigParser
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes
 
@@ -29,7 +33,7 @@ def _get_infra_stack_outputs(stack_name, region_name):
     }
 
 
-@retry(stop_max_attempt_number=10, wait_fixed=minutes(3))
+@retry(stop_max_attempt_number=15, wait_fixed=minutes(3))
 def _verify_compute_console_output_log_exists_in_log_group(cluster):
     log_groups = get_cluster_log_groups_from_boto3(f"/aws/parallelcluster/{cluster.name}")
     assert_that(log_groups).is_length(1)
@@ -58,14 +62,89 @@ def _verify_compute_console_output_log_exists_in_log_group(cluster):
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_compute_console_logging(
     pcluster_config_reader,
+    clusters_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config, raise_on_error=False, wait=False)
+
+    _verify_compute_console_output_log_exists_in_log_group(cluster)
+
+
+def _get_clustermgtd_config(remote_command_executor: RemoteCommandExecutor) -> ConfigParser:
+    config = remote_command_executor.run_remote_command(
+        "cat /etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf",
+        raise_on_error=False,
+    ).stdout
+    for line in config.splitlines():
+        logger.info("  Config-Line: %s", line)
+    config_parser = ConfigParser()
+    config_parser.read_string(config)
+    return config_parser
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_console_output_with_monitoring_disabled(
+    pcluster_config_reader,
     cfn_stacks_factory,
     test_datadir,
     test_resources_dir,
     clusters_factory,
 ):
-    logger.info("Test Data Dir: %s", test_datadir)
-
     cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config, raise_on_error=False, wait=False)
+    cluster: Cluster = clusters_factory(cluster_config)
 
-    _verify_compute_console_output_log_exists_in_log_group(cluster)
+    head_node_role = cluster.cfn_resources.get("RoleHeadNode")
+
+    iam = boto3.client("iam")
+    policies = iam.get_role_policy(RoleName=head_node_role, PolicyName="parallelcluster")
+    policies = {policy.get("Sid"): policy for policy in policies.get("PolicyDocument").get("Statement")}
+    assert_that(policies).does_not_contain_key("EC2GetComputeConsoleOutput")
+    for statement in (policies.get(sid) for sid in policies):
+        action = statement.get("Action")
+        assert_that(
+            "ec2:GetConsoleOutput" in action if isinstance(action, list) else action == "ec2:GetConsoleOutput"
+        ).is_false()
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    config = _get_clustermgtd_config(remote_command_executor)
+    assert_that(
+        config.getboolean(
+            "clustermgtd",
+            "compute_console_logging_enabled",
+            fallback=False,
+        )
+    ).is_false()
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_monitoring_enabled_configures_console_output(
+    pcluster_config_reader,
+    cfn_stacks_factory,
+    test_datadir,
+    test_resources_dir,
+    clusters_factory,
+):
+    cluster_config = pcluster_config_reader()
+    cluster: Cluster = clusters_factory(cluster_config)
+
+    head_node_role = cluster.cfn_resources.get("RoleHeadNode")
+
+    iam = boto3.client("iam")
+    policies = iam.get_role_policy(RoleName=head_node_role, PolicyName="parallelcluster")
+    policies = {policy.get("Sid"): policy for policy in policies.get("PolicyDocument").get("Statement")}
+    assert_that(policies).does_contain_key("EC2GetComputeConsoleOutput")
+    statement = policies.get("EC2GetComputeConsoleOutput")
+    action = statement.get("Action")
+    assert_that(
+        "ec2:GetConsoleOutput" in action if isinstance(action, list) else action == "ec2:GetConsoleOutput"
+    ).is_true()
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    config = _get_clustermgtd_config(remote_command_executor)
+    assert_that(
+        config.getboolean(
+            "clustermgtd",
+            "compute_console_logging_enabled",
+            fallback=False,
+        )
+    ).is_true()
