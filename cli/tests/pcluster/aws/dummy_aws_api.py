@@ -13,6 +13,7 @@ import os
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import FsxFileSystemInfo, InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
+from pcluster.aws.common import AWSClientError
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.efs import EfsClient
@@ -87,11 +88,11 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
 
 
 class _DummyAWSApi(AWSApi):
-    def __init__(self):
+    def __init__(self, non_happy=False):
         os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
         self._ec2 = _DummyEc2Client()
         self._efs = _DummyEfsClient()
-        self._fsx = _DummyFSxClient()
+        self._fsx = _DummyFSxClient(non_happy)
         self._cfn = _DummyCfnClient()
         self._s3 = _DummyS3Client()
         self._imagebuilder = _DummyImageBuilderClient()
@@ -196,8 +197,9 @@ class _DummyEfsClient(EfsClient):
 
 
 class _DummyFSxClient(FSxClient):
-    def __init__(self):
+    def __init__(self, non_happy=False):
         """Override Parent constructor. No real boto3 client is created."""
+        self.non_happy = non_happy
         pass
 
     def get_filesystem_info(self, fsx_fs_id):
@@ -210,6 +212,9 @@ class _DummyFSxClient(FSxClient):
 
     def describe_volumes(self, volume_ids):
         """Describe FSx volumes."""
+        if self.non_happy:
+            raise AWSClientError(function_name="describe_volumes", message="describing volumes is unauthorized")
+
         result = []
         for volume_id in volume_ids:
             result.append(
@@ -337,8 +342,8 @@ class _DummySecretsManagerClient(SecretsManagerClient):
         }
 
 
-def mock_aws_api(mocker, mock_instance_type_info=True):
+def mock_aws_api(mocker, mock_instance_type_info=True, non_happy=False):
     """Mock AWS Api."""
-    mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
+    mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi(non_happy))
     if mock_instance_type_info:
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)

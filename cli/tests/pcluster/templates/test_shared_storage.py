@@ -204,11 +204,7 @@ def assert_sg_rule(
 
 
 def test_non_happy_ontap_and_openfsx_mounting(mocker, test_datadir):
-    mock_aws_api(mocker)
-    mocker.patch(
-        "pcluster.aws.fsx.FSxClient.describe_volumes",
-        side_effect=AWSClientError(function_name="describe_volumes", message="describing volumes is unauthorized"),
-    )
+    mock_aws_api(mocker, True, True)
 
     input_yaml = load_yaml_dict(test_datadir / "config.yaml")
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
