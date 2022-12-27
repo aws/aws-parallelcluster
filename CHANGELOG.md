@@ -49,7 +49,7 @@ CHANGELOG
 - Add support for On-Demand Capacity Reservations and Capacity Reservations Resource Groups.
 - Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure. 
 - Add support for `Networking/PlacementGroup` in the `SlurmQueues/ComputeResources` section.
-- Add support for instances with multiple network interfaces that allows only one ENI per device.
+- Add support for instances with multiple network interfaces that allows only one ENI per device (e.g. `hp6id.32xlarge`) as compute nodes.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
 - Add validator to check if configured instance types support placement groups.
 - Configure NFS threads to be `min(256, max(8, num_cores * 4))` to ensure better stability and performance.
