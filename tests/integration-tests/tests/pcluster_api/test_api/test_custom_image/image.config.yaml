@@ -1,6 +1,4 @@
 Build:
-  Imds:
-    ImdsSupport: {{ imds_support }}
   InstanceType: {{ instance }}
   ParentImage: {{ parent_image }}
   UpdateOsPackages:

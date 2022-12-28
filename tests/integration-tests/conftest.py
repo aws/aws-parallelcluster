@@ -764,7 +764,6 @@ def _get_default_template_values(vpc_stack, request):
     ):
         default_values["scheduler"] = "plugin"
     default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
-    default_values["imds_support"] = "v2.0"
     default_values["scheduler_prefix"] = {
         "slurm": "Slurm",
         "awsbatch": "AwsBatch",

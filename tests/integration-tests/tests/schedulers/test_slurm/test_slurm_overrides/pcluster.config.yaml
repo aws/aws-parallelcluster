@@ -1,5 +1,3 @@
-Imds:
-  ImdsSupport: {{ imds_support }}
 Image:
   Os: {{ os }}
 HeadNode:
