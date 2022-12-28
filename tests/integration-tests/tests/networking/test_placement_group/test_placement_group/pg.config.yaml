@@ -1,6 +1,4 @@
 Region: us-west-2
-Imds:
-  ImdsSupport: {{ imds_support }}
 Image:
   Os: alinux2
 HeadNode:
