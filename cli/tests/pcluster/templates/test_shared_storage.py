@@ -203,9 +203,9 @@ def assert_sg_rule(
     assert_that(sg_rules).is_length(1)
 
 
-def test_non_happy_ontap_and_openfsx_mounting(mocker, test_datadir):
+def test_non_happy_ontap_and_openzfs_mounting(mocker, test_datadir):
     dummy_api = _DummyAWSApi()
-    dummy_api._fsx.set_non_happy(True)
+    dummy_api._fsx.set_non_happy_describe_volumes(True)
     mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=dummy_api)
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)
 

@@ -199,7 +199,7 @@ class _DummyEfsClient(EfsClient):
 class _DummyFSxClient(FSxClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-        self.non_happy = False
+        self.non_happy_describe_volumes = False
 
     def get_filesystem_info(self, fsx_fs_id):
         return {
@@ -209,12 +209,12 @@ class _DummyFSxClient(FSxClient):
             },
         }
 
-    def set_non_happy(self, non_happy):
-        self.non_happy = non_happy
+    def set_non_happy_describe_volumes(self, non_happy_describe_volumes):
+        self.non_happy_describe_volumes = non_happy_describe_volumes
 
     def describe_volumes(self, volume_ids):
         """Describe FSx volumes."""
-        if self.non_happy:
+        if self.non_happy_describe_volumes:
             raise AWSClientError(function_name="describe_volumes", message="describing volumes is unauthorized")
 
         result = []
