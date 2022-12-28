@@ -16,7 +16,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
-from tests.pcluster.aws.dummy_aws_api import mock_aws_api, _DummyAWSApi, _DummyInstanceTypeInfo
+from tests.pcluster.aws.dummy_aws_api import _DummyAWSApi, _DummyInstanceTypeInfo, mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
 from tests.pcluster.utils import get_head_node_policy, get_resources, get_statement_by_sid
 
