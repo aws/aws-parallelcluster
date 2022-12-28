@@ -23,7 +23,7 @@ def register_cli_credentials_for_region(region, iam_role):
     cli_credentials[region] = iam_role
 
 
-def run_pcluster_command(*args, **kwargs):
+def run_pcluster_command(*args, custom_cli_credentials=None, **kwargs):
     """Run a command after assuming the role configured through register_cli_credentials_for_region."""
 
     region = kwargs.get("region")
@@ -31,10 +31,7 @@ def run_pcluster_command(*args, **kwargs):
         region = os.environ["AWS_DEFAULT_REGION"]
 
     if region in cli_credentials:
-        with sts_credential_provider(
-            region, credential_arn=kwargs.get("custom_cli_credentials") or cli_credentials.get(region)
-        ):
-            kwargs.pop("custom_cli_credentials", None)
+        with sts_credential_provider(region, credential_arn=custom_cli_credentials or cli_credentials.get(region)):
             return run_command(*args, **kwargs)
     else:
         return run_command(*args, **kwargs)
