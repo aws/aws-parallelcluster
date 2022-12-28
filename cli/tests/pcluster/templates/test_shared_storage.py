@@ -16,7 +16,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
-from tests.pcluster.aws.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api, _DummyAWSApi, _DummyInstanceTypeInfo
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
 from tests.pcluster.utils import get_head_node_policy, get_resources, get_statement_by_sid
 
@@ -204,7 +204,10 @@ def assert_sg_rule(
 
 
 def test_non_happy_ontap_and_openfsx_mounting(mocker, test_datadir):
-    mock_aws_api(mocker, True, True)
+    dummy_api = _DummyAWSApi()
+    dummy_api._fsx.set_non_happy(True)
+    mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=dummy_api)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)
 
     input_yaml = load_yaml_dict(test_datadir / "config.yaml")
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
