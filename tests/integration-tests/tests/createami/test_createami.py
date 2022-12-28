@@ -60,7 +60,7 @@ def test_invalid_config(
     # Get custom S3 bucket
     bucket_name = s3_bucket_factory()
     image_config = pcluster_config_reader(
-        config_file="image.config.yaml", parent_image=arm64_ami, bucket_name=bucket_name
+        config_file="image.config.yaml", parent_image=arm64_ami, bucket_name=bucket_name, imds_support="v2.0"
     )
     image = images_factory(image_id, image_config, region, raise_on_error=False, log_error=False)
 
@@ -459,6 +459,7 @@ def test_build_image_custom_components(
         instance_type=instance,
         bucket_name=bucket_name,
         region=region,
+        imds_support="v2.0",
     )
 
     image = images_factory(image_id, image_config, region)
@@ -519,7 +520,7 @@ def test_build_image_wrong_pcluster_version(
     wrong_ami = pcluster_ami_without_standard_naming(wrong_version)
 
     image_config = pcluster_config_reader(
-        config_file="image.config.yaml", parent_image=wrong_ami, instance_type=instance
+        config_file="image.config.yaml", parent_image=wrong_ami, instance_type=instance, imds_support="v2.0"
     )
     image_id = generate_stack_name(
         "integ-tests-build-image-wrong-version", request.config.getoption("stackname_suffix")
@@ -553,5 +554,5 @@ def _test_build_image_failed(image):
 def _keep_recent_logs(image):
     """Keep several lines of recent log to the console when creating an image fails."""
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
-    failure_logs = image.get_log_events(log_stream_name, start_from_head=True, query="events[*].message", limit=100)
+    failure_logs = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=100)
     logging.info(f"Image built failed for {image.image_id}, the last 100 lines of the log are: {failure_logs}")

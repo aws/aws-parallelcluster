@@ -430,7 +430,7 @@ class ClustersFactory:
                 timeout=7200,
                 raise_on_error=raise_on_error,
                 log_error=log_error,
-                custom_cli_credentials=kwargs.get("custom_cli_credentials"),
+                custom_cli_credentials=cluster.custom_cli_credentials,
             )
             logging.info("create-cluster response: %s", result.stdout)
             response = json.loads(result.stdout)
@@ -481,11 +481,10 @@ class ClustersFactory:
             kwargs["suppress_validators"] = validators_list
 
         for k, val in kwargs.items():
-            if k != "custom_cli_credentials":
-                if isinstance(val, (list, tuple)):
-                    command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
-                else:
-                    command.extend([f"--{kebab_case(k)}", str(val)])
+            if isinstance(val, (list, tuple)):
+                command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
+            else:
+                command.extend([f"--{kebab_case(k)}", str(val)])
 
         return command, wait
 
