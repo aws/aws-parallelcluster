@@ -200,7 +200,6 @@ class _DummyFSxClient(FSxClient):
     def __init__(self, non_happy=False):
         """Override Parent constructor. No real boto3 client is created."""
         self.non_happy = non_happy
-        pass
 
     def get_filesystem_info(self, fsx_fs_id):
         return {
