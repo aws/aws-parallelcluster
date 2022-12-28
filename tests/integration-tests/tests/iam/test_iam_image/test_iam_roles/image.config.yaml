@@ -7,7 +7,7 @@ Image:
 
 Build:
     Imds:
-        ImdsSupport: {{ imds_support }}
+        ImdsSupport: { { imds_support } }
     Iam:
         InstanceProfile: {{ instance_profile }}
         CleanupLambdaRole: {{ lambda_cleanup_role }}
