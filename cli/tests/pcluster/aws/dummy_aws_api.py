@@ -199,7 +199,7 @@ class _DummyEfsClient(EfsClient):
 class _DummyFSxClient(FSxClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-        pass
+        self.non_happy = False
 
     def get_filesystem_info(self, fsx_fs_id):
         return {
