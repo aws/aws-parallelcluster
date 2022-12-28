@@ -1,6 +1,4 @@
 Image:
-    Imds:
-        ImdsSupport: { { imds_support } }
     RootVolume:
         Size: 200
         Encrypted: True
