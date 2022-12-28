@@ -5,7 +5,7 @@ Image:
 
 Build:
     Imds:
-        ImdsSupport: {{ imds_support }}
+        ImdsSupport: { { imds_support } }
     InstanceType: {{ instance }}
     ParentImage: {{ parent_image }}
 
