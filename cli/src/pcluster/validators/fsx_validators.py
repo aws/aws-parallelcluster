@@ -222,16 +222,3 @@ class FsxAutoImportValidator(Validator):
             bucket = get_bucket_name_from_s3_url(import_path)
             if AWSApi.instance().s3.get_bucket_region(bucket) != get_region():
                 self._add_failure("FSx auto import is not supported for cross-region buckets.", FailureLevel.ERROR)
-
-
-class FsxDescribeVolumesValidator(Validator):
-    """Describe volumes validator."""
-
-    def _validate(self, volume_ids):
-        try:
-            AWSApi.instance().fsx.describe_volumes(volume_ids)
-        except AWSClientError:
-            self._add_failure(
-                "Failed to describe volumes",
-                FailureLevel.ERROR,
-            )
