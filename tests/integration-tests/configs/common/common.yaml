@@ -81,6 +81,38 @@ cloudwatch_logging:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
+    dimensions:
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["cn-northwest-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+      - regions: ["us-gov-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_monitoring_enabled_configures_console_output:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["cn-northwest-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+      - regions: ["us-gov-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
     dimensions:

@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from pathlib import Path
@@ -132,12 +133,15 @@ def test_monitoring_enabled_configures_console_output(
     iam = boto3.client("iam")
     policies = iam.get_role_policy(RoleName=head_node_role, PolicyName="parallelcluster")
     policies = {policy.get("Sid"): policy for policy in policies.get("PolicyDocument").get("Statement")}
-    assert_that(policies).does_contain_key("EC2GetComputeConsoleOutput")
+    logger.info(json.dumps(policies))
+    assert_that(policies).contains_key("EC2GetComputeConsoleOutput")
     statement = policies.get("EC2GetComputeConsoleOutput")
     action = statement.get("Action")
     assert_that(
         "ec2:GetConsoleOutput" in action if isinstance(action, list) else action == "ec2:GetConsoleOutput"
     ).is_true()
+    queues = statement.get("Condition").get("StringEquals").get("aws:ResourceTag/parallelcluster:queue-name")
+    assert_that(queues).contains_only("compute-a", "compute-b")
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     config = _get_clustermgtd_config(remote_command_executor)
