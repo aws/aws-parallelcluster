@@ -1,5 +1,3 @@
-Imds:
-  ImdsSupport: {{ imds_support }}
 Image:
   Os: {{ os }}
   CustomAmi: {{ custom_ami}}  # If an AMI without proper tags is provided, it will generate an warning

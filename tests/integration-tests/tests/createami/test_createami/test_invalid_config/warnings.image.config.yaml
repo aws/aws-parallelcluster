@@ -7,8 +7,6 @@ DevSettings:
     NodePackage: "s3://test/aws-parallelcluster-node-3.0.tgz"
 
 Build:
-    Imds:
-        ImdsSupport: {{ imds_support }}
     InstanceType: c5.xlarge
     ParentImage: {{ parent_image }}
 
