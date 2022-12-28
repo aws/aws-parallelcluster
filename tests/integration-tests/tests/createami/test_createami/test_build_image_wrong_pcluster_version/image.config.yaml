@@ -1,5 +1,3 @@
 Build:
-  Imds:
-    ImdsSupport: {{ imds_support }}
   InstanceType: {{ instance_type }}
   ParentImage: {{ parent_image }}
