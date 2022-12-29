@@ -198,7 +198,7 @@ class _DummyEfsClient(EfsClient):
 class _DummyFSxClient(FSxClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-        pass
+        self.non_happy_describe_volumes_error = None
 
     def get_filesystem_info(self, fsx_fs_id):
         return {
@@ -208,8 +208,14 @@ class _DummyFSxClient(FSxClient):
             },
         }
 
+    def set_non_happy_describe_volumes(self, error):
+        self.non_happy_describe_volumes_error = error
+
     def describe_volumes(self, volume_ids):
         """Describe FSx volumes."""
+        if self.non_happy_describe_volumes_error is not None:
+            raise self.non_happy_describe_volumes_error
+
         result = []
         for volume_id in volume_ids:
             result.append(
