@@ -823,10 +823,12 @@ Resources:
               - dynamodb:BatchWriteItem
             Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
             Effect: Allow
-          - Action: ec2:DescribeInstances
+          - Action: 
+              - ec2:DescribeInstances
             Effect: Allow
             Resource: '*'
-          - Action: ec2:TerminateInstances
+          - Action: 
+              - ec2:TerminateInstances
             Condition:
               StringEquals:
                 ec2:ResourceTag/parallelcluster:node-type: ComputeNode
@@ -838,7 +840,8 @@ Resources:
             Resource:
               - !Sub arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*
               - !Sub arn:${AWS::Partition}:s3:::dcv-license.${AWS::Region}/*
-          - Action: ec2:RunInstances
+          - Action: 
+              - ec2:RunInstances
             Resource: '*'
             Effect: Allow
           - Action:
@@ -901,7 +904,8 @@ Resources:
               - iam:RemoveRoleFromInstanceProfile
             Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
             Effect: Allow
-          - Action: imagebuilder:DeleteInfrastructureConfiguration
+          - Action: 
+              - imagebuilder:DeleteInfrastructureConfiguration
             Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
             Effect: Allow
           - Action:
@@ -909,10 +913,12 @@ Resources:
             Resource:
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:component/parallelclusterimage-*/*'
             Effect: Allow
-          - Action: imagebuilder:DeleteImageRecipe
+          - Action: 
+              - imagebuilder:DeleteImageRecipe
             Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*/*'
             Effect: Allow
-          - Action: imagebuilder:DeleteDistributionConfiguration
+          - Action: 
+              - imagebuilder:DeleteDistributionConfiguration
             Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
             Effect: Allow
           - Action:
@@ -921,13 +927,16 @@ Resources:
               - imagebuilder:CancelImageCreation
             Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/parallelclusterimage-*/*'
             Effect: Allow
-          - Action: cloudformation:DeleteStack
+          - Action: 
+              - cloudformation:DeleteStack
             Resource: !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*/*'
             Effect: Allow
-          - Action: ec2:CreateTags
+          - Action: 
+              - ec2:CreateTags
             Resource: !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}::image/*'
             Effect: Allow
-          - Action: tag:TagResources
+          - Action: 
+              - tag:TagResources
             Resource: '*'
             Effect: Allow
           - Action:
@@ -935,7 +944,8 @@ Resources:
               - lambda:RemovePermission
             Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
             Effect: Allow
-          - Action: logs:DeleteLogGroup
+          - Action: 
+              - logs:DeleteLogGroup
             Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*:*'
             Effect: Allow
           - Action:

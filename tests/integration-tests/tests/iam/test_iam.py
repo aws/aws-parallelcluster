@@ -18,9 +18,11 @@ import pytest
 import yaml
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from cfn_tools import load_yaml
 from framework.tests_configuration.config_utils import get_all_regions
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
+from troposphere.template_generator import TemplateGenerator
 from utils import generate_stack_name, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_no_errors_in_logs
@@ -348,7 +350,11 @@ def test_iam_resource_prefix(
     s3_bucket,
     iam_resource_prefix,
 ):
-    cli_credentials = initialize_resource_prefix_cli_creds(test_datadir)
+
+    cli_credentials = initialize_resource_prefix_cli_creds(
+        role_config_file=os_lib.path.join("..", "iam_policies", "user-role.cfn.yaml"),
+        iam_resource_prefix=iam_resource_prefix,
+    )
     if cli_credentials:
         for region, creds in cli_credentials.items():
 
@@ -361,6 +367,233 @@ def test_iam_resource_prefix(
 
             cluster = clusters_factory(cluster_config, custom_cli_credentials=creds)
             _test_iam_resource_in_cluster(cfn_client, iam_client, cluster.name, iam_resource_prefix)
+
+
+def _remove_from_config(config, item_list):
+    if isinstance(config, dict):
+        for item in item_list:
+            config.pop(item)
+    elif isinstance(config, list):
+        for item in item_list:
+            config.remove(item)
+
+
+def _replace_resource(config_string, list_of_dict):
+    for nested_dict in list_of_dict:
+        for new_sub, old_sub_list in nested_dict.items():
+            for old_sub in old_sub_list:
+                config_string = config_string.replace(old_sub, new_sub)
+    return config_string
+
+
+def _convert_default_property_to_str(parameters, conditions):
+    for key, _ in parameters.items():
+        if key not in ["Region", "FsxS3Buckets"]:
+            parameters.get(key).properties.update({"Default": str(parameters.get(key).properties.get("Default"))})
+            parameters.get(key).properties.update(
+                {"AllowedValues": list(map(str, parameters.get(key).properties.get("AllowedValues")))}
+            )
+    for key, value in conditions.items():
+        if value.data.get("Fn::Equals"):
+            conditions.get(key).data.update(
+                {"Fn::Equals": [str(x) if isinstance(x, bool) else x for x in value.data.get("Fn::Equals")]}
+            )
+
+
+def _update_policy_statements(config, policy_name_list, iam_role):
+    for policy_name in policy_name_list:
+        for statement in config.resources.get(policy_name).properties.get("PolicyDocument").get("Statement"):
+            for key, value in statement.items():
+                if key == "Action" and value == ["iam:PassRole"]:
+                    value.append("iam:GetRole")
+                    statement["Resource"].extend(iam_role)
+
+
+def _add_other_policy_to_permission_boundary(permission_boundary_statements, other_policy, iam_policy):
+    for statement in other_policy:
+        if (
+            _find_resource_action("dynamodb:", statement["Action"])
+            or _find_resource_action("ec2:", statement["Action"])
+            or _find_resource_action("cloudwatch:", statement["Action"])
+            or _find_resource_action("route53:", statement["Action"])
+            or _find_resource_action("lambda:", statement["Action"])
+            or _find_resource_action("logs:", statement["Action"])
+        ):
+            permission_boundary_statements.append(statement)
+
+    permission_boundary_statements.append(
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreatePolicy",
+                "iam:CreatePolicyVersion",
+                "iam:DeletePolicyVersion",
+                "iam:GetPolicyVersion",
+                "iam:GetPolicy",
+                "iam:DeletePolicy",
+                "iam:ListInstanceProfiles",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListEntitiesForPolicy",
+                "iam:ListPolicyVersions",
+                "iam:TagPolicy",
+                "iam:UntagPolicy",
+            ],
+            "Resource": iam_policy,
+        }
+    )
+
+
+def _change_permission_boundary(
+    permission_boundary_statements, other_policy, iam_role, iam_instance_profile, iam_policy, iam_path
+):
+    # Remove and update a few Policy statements in Permission Boundary
+    _update_existing_policy_in_permission_boundary(
+        permission_boundary_statements, iam_role, iam_instance_profile, iam_path
+    )
+    _add_other_policy_to_permission_boundary(permission_boundary_statements, other_policy, iam_policy)
+
+
+def _change_existing_iam_policies(statement, iam_role, iam_instance_profile, iam_path):
+    if statement["Action"] == ["iam:PassRole", "iam:GetRole"]:
+        if statement["Action"] == ["iam:PassRole", "iam:GetRole"]:
+            if statement.get("Condition"):
+                statement.pop("Condition")
+    elif ":role" + iam_path + "*" in statement["Resource"].data["Fn::Sub"]:
+        statement["Action"].extend(
+            [
+                "iam:CreateRole",
+                "iam:AttachRolePolicy",
+                "iam:PutRolePermissionsBoundary",
+                "iam:TagRole",
+                "iam:UntagRole",
+                "iam:ListRoleTags",
+                "iam:ListRolePolicies",
+                "iam:GetRolePolicy",
+                "iam:PutRolePolicy",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListInstanceProfiles",
+                "iam:ListInstanceProfilesForRole",
+            ]
+        )
+        statement["Resource"] = iam_role
+    elif "instance-profile" + iam_path + "*" in statement["Resource"].data["Fn::Sub"]:
+        statement["Action"].extend(
+            [
+                "iam:CreateInstanceProfile",
+                "iam:AddRoleToInstanceProfile",
+                "iam:TagInstanceProfile",
+                "iam:UntagInstanceProfile",
+            ]
+        )
+        statement["Resource"] = iam_role + iam_instance_profile
+
+
+def _update_existing_policy_in_permission_boundary(
+    permission_boundary_statements, iam_role, iam_instance_profile, iam_path
+):
+    keep_first_cloudformation_policy = True
+    for statement in list(permission_boundary_statements):
+        if _find_resource_action("ec2:", statement["Action"]):
+            if not statement.get("Condition"):
+                permission_boundary_statements.remove(statement)
+        elif _find_resource_action("cloudformation:", statement["Action"]):
+            statement["Action"].clear()
+            statement["Action"].append("cloudformation:*")
+            keep_first_cloudformation_policy = False
+        elif _find_resource_action("iam:", statement["Action"]):
+            _change_existing_iam_policies(statement, iam_role, iam_instance_profile, iam_path)
+        elif (
+            (_find_resource_action("cloudformation:", statement["Action"]) and not keep_first_cloudformation_policy)
+            or _find_resource_action("logs:", statement["Action"])
+            or _find_resource_action("dynamodb:", statement["Action"])
+            or _find_resource_action("lambda:", statement["Action"])
+            or _find_resource_action("route53:", statement["Action"])
+            or _find_resource_action("imagebuilder:", statement["Action"])
+            or _find_resource_action("codebuild:", statement["Action"])
+            or _find_resource_action("tag:", statement["Action"])
+            or _find_resource_action("SNS:", statement["Action"])
+            or _find_resource_action("ssm:", statement["Action"])
+            or _find_resource_action("ecr:", statement["Action"])
+            or _find_resource_action("ec2messages:", statement["Action"])
+            or _find_resource_action("ssmmessages:", statement["Action"])
+            or _find_resource_action("kms:", statement["Action"])
+        ):
+            permission_boundary_statements.remove(statement)
+
+
+def _find_resource_action(resource_type, action_list):
+    return any(resource_type in action for action in action_list)
+
+
+def _create_iam_user_role_config(cluster_config, iam_resource_prefix):
+    """Creates config file by changing the user-role.cfn.yaml to create a user role with permission boundary."""
+    iam_path, iam_name_prefix = _split_resource_prefix(iam_resource_prefix)
+    with open(cluster_config, "r", encoding="utf-8") as f:
+        config_string = _replace_resource(
+            f.read(),
+            [
+                {"role" + iam_path + "*": ["role/parallelcluster/*", "role/*"]},
+                {"policy/" + iam_name_prefix + "*": ["policy/parallelcluster/*", "policy/*"]},
+                {"instance-profile" + iam_path + "*": ["instance-profile/parallelcluster/*", "instance-profile/*"]},
+            ],
+        )
+        config_template = TemplateGenerator(load_yaml(config_string))
+
+    # Remove Policies from ManagedPolicyArns
+    _remove_from_config(
+        config=config_template.resources.get("ParallelClusterUserRole").properties.get("ManagedPolicyArns"),
+        item_list=[
+            "ParallelClusterBuildImageManagedPolicy",
+            "ParallelClusterDeleteImageManagedPolicy",
+            "ParallelClusterListImagesManagedPolicy",
+            "ParallelClusterDescribeImageManagedPolicy",
+        ],
+    )
+    # Remove the Policies from Config
+    _remove_from_config(
+        config=config_template.resources,
+        item_list=[
+            "ParallelClusterBuildImageManagedPolicy",
+            "ParallelClusterDeleteImageManagedPolicy",
+            "ParallelClusterListImagesManagedPolicy",
+            "ParallelClusterDescribeImageManagedPolicy",
+            "IntegTestsPolicy",
+            "FSxS3AccessPolicy",
+        ],
+    )
+
+    _convert_default_property_to_str(config_template.parameters, config_template.conditions)
+
+    iam_role = [
+        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role" + iam_path + "*"},
+        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/" + iam_name_prefix + "*"},
+    ]
+    iam_instance_profile = [
+        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile" + iam_path + "*"}
+    ]
+    iam_policy = [{"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/" + iam_name_prefix + "*"}]
+
+    _update_policy_statements(
+        config_template,
+        ["ParallelClusterClusterPolicyBatch", "ParallelClusterClusterPolicy", "PermissionsBoundaryPolicy"],
+        iam_role,
+    )
+
+    config_template.resources.get("ParallelClusterUserRole").properties.update(
+        {"PermissionsBoundary": {"Ref": "PermissionsBoundaryPolicy"}}
+    )
+
+    _change_permission_boundary(
+        config_template.resources.get("PermissionsBoundaryPolicy").properties.get("PolicyDocument").get("Statement"),
+        other_policy=config_template.resources.get("ParallelClusterClusterPolicy")
+        .properties.get("PolicyDocument")
+        .get("Statement"),
+        iam_role=iam_role,
+        iam_instance_profile=iam_instance_profile,
+        iam_policy=iam_policy,
+        iam_path=iam_path,
+    )
+    return config_template.to_yaml()
 
 
 def _split_resource_prefix(resource_prefix):
@@ -430,11 +663,9 @@ def initialize_resource_prefix_cli_creds(request):
 
     stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    def _create_resource_prefix_cli_creds(test_datadir):
+    def _create_resource_prefix_cli_creds(role_config_file, iam_resource_prefix):
         regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-        stack_template_path = os_lib.path.join("..", test_datadir / "user-role-iam-resource-prefix.cfn.yaml")
-        with open(stack_template_path, encoding="utf-8") as stack_template_file:
-            stack_template_data = stack_template_file.read()
+        stack_template_data = _create_iam_user_role_config(role_config_file, iam_resource_prefix)
         cli_creds = {}
         for region in regions:
             if request.config.getoption("iam_user_role_stack_name"):
