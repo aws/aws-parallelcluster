@@ -11,7 +11,10 @@
 import datetime
 import logging
 import shutil
-import subprocess
+
+# A nosec comment is appended to the following line in order to disable the B404 check.
+# In this file the input of the module subprocess is trusted.
+import subprocess  # nosec B404
 
 import six
 from pkg_resources import packaging
