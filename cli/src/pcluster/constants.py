@@ -12,6 +12,10 @@
 from pkg_resources import packaging
 
 PCLUSTER_NAME_MAX_LENGTH = 60
+# When Slurm accounting is enabled, Slurm creates database tables with the format 'cluster_name' + 'suffix'.
+# MySQL and MariaDB have a maximum table name length of 64 characters.
+# The longest suffix used by Slurm is 24 chars, therefore the cluster name must be at most 40 chars long.
+PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING = 40
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 

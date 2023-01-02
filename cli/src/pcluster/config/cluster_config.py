@@ -1264,7 +1264,7 @@ class BaseClusterConfig(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
-        self._register_validator(ClusterNameValidator, name=self.cluster_name)
+        self._register_validator(ClusterNameValidator, name=self.cluster_name, scheduling=self.scheduling)
         self._register_validator(
             ArchitectureOsValidator,
             os=self.image.os,
