@@ -369,16 +369,18 @@ def test_iam_resource_prefix(
             _test_iam_resource_in_cluster(cfn_client, iam_client, cluster.name, iam_resource_prefix)
 
 
-def _remove_from_config(config, item_list):
+def _remove_from_config(config, section_list):
+    """Remove a list of sections from Config template."""
     if isinstance(config, dict):
-        for item in item_list:
+        for item in section_list:
             config.pop(item)
     elif isinstance(config, list):
-        for item in item_list:
+        for item in section_list:
             config.remove(item)
 
 
 def _replace_resource(config_string, list_of_dict):
+    """Replace a list of old substrings to new substring."""
     for nested_dict in list_of_dict:
         for new_sub, old_sub_list in nested_dict.items():
             for old_sub in old_sub_list:
@@ -387,6 +389,7 @@ def _replace_resource(config_string, list_of_dict):
 
 
 def _convert_default_property_to_str(parameters, conditions):
+    """Convert Default and Allowed Values property of Parameters and Conditions Section in CFN template to String"""
     for key, _ in parameters.items():
         if key not in ["Region", "FsxS3Buckets"]:
             parameters.get(key).properties.update({"Default": str(parameters.get(key).properties.get("Default"))})
@@ -401,6 +404,10 @@ def _convert_default_property_to_str(parameters, conditions):
 
 
 def _update_policy_statements(config, policy_name_list, iam_role):
+    """
+    Update Policy statements to add GetRole Action and Resources
+    for all the sections of Policies containing PassRole.
+    """
     for policy_name in policy_name_list:
         for statement in config.resources.get(policy_name).properties.get("PolicyDocument").get("Statement"):
             for key, value in statement.items():
@@ -410,6 +417,10 @@ def _update_policy_statements(config, policy_name_list, iam_role):
 
 
 def _add_other_policy_to_permission_boundary(permission_boundary_statements, other_policy, iam_policy):
+    """
+    Add Policy statements from other list of policies in Permission Boundary
+    as effective permissions are an insterection of both.
+    """
     for statement in other_policy:
         if (
             _find_resource_action("dynamodb:", statement["Action"])
@@ -446,7 +457,7 @@ def _add_other_policy_to_permission_boundary(permission_boundary_statements, oth
 def _change_permission_boundary(
     permission_boundary_statements, other_policy, iam_role, iam_instance_profile, iam_policy, iam_path
 ):
-    # Remove and update a few Policy statements in Permission Boundary
+    """Remove and update a few Policy statements in Permission Boundary."""
     _update_existing_policy_in_permission_boundary(
         permission_boundary_statements, iam_role, iam_instance_profile, iam_path
     )
@@ -454,6 +465,7 @@ def _change_permission_boundary(
 
 
 def _change_existing_iam_policies(statement, iam_role, iam_instance_profile, iam_path):
+    """Change existing Iam Policy staements of Permission Boundary."""
     if statement["Action"] == ["iam:PassRole", "iam:GetRole"]:
         if statement["Action"] == ["iam:PassRole", "iam:GetRole"]:
             if statement.get("Condition"):
@@ -491,6 +503,7 @@ def _change_existing_iam_policies(statement, iam_role, iam_instance_profile, iam
 def _update_existing_policy_in_permission_boundary(
     permission_boundary_statements, iam_role, iam_instance_profile, iam_path
 ):
+    """Update or remove sections of Policy statements from Permission Boundary"""
     keep_first_cloudformation_policy = True
     for statement in list(permission_boundary_statements):
         if _find_resource_action("ec2:", statement["Action"]):
@@ -522,6 +535,7 @@ def _update_existing_policy_in_permission_boundary(
 
 
 def _find_resource_action(resource_type, action_list):
+    """Check if a specific resource type exists in the Policy statement's Actions."""
     return any(resource_type in action for action in action_list)
 
 
