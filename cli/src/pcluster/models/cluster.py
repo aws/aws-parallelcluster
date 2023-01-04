@@ -66,6 +66,7 @@ from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, Com
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url, parse_bucket_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.templates.import_cdk import start as start_cdk_import
 from pcluster.utils import (
     datetime_to_epoch,
     generate_random_name_with_prefix,
@@ -352,6 +353,7 @@ class Cluster:
         raises ClusterActionError: in case of generic error
         raises ConfigValidationError: if configuration is invalid
         """
+        start_cdk_import()
         creation_result = None
         artifact_dir_generated = False
         try:
@@ -887,6 +889,7 @@ class Cluster:
         raises ConfigValidationError: if configuration is invalid
         raises ClusterUpdateError: if update is not allowed
         """
+        start_cdk_import()
         try:
             target_config, changes, ignored_validation_failures = self.validate_update_request(
                 target_source_config, validator_suppressors, validation_failure_level, force
