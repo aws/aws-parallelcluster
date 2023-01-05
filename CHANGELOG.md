@@ -27,7 +27,6 @@ CHANGELOG
 - Add new configuration parameter in `Iam/ResourcePrefix` to specify a prefix for path and name of IAM resources created by ParallelCluster
 - Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
 - Add possibility to specify a custom script to be executed in the head node during the update of the cluster. The script can be specified with `OnNodeUpdated` parameter when using Slurm as scheduler.
-- Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
 
 **CHANGES**
 - Remove creation of EFS mount targets for existing FS.

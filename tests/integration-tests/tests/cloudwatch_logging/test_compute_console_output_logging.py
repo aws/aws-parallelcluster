@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-from pathlib import Path
 
 import boto3
 import pytest
@@ -152,3 +151,18 @@ def test_monitoring_enabled_configures_console_output(
             fallback=False,
         )
     ).is_true()
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_custom_action_error(
+    pcluster_config_reader, cfn_stacks_factory, test_datadir, test_resources_dir, region, clusters_factory, s3_bucket
+):
+    bucket_name = s3_bucket
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    script = "on_node_start.sh"
+    script_path = f"test_custom_action_error/{script}"
+    bucket.upload_file(str(test_datadir / script), script_path)
+
+    cluster_config = pcluster_config_reader(bucket=bucket_name, script_path=script_path)
+    cluster: Cluster = clusters_factory(cluster_config, raise_on_error=False, wait=False)
+    _verify_compute_console_output_log_exists_in_log_group(cluster)

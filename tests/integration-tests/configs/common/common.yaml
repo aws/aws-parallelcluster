@@ -113,6 +113,16 @@ cloudwatch_logging:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_custom_action_error:
+    dimensions:
+      - regions: ["eu-north-1"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
     dimensions:
