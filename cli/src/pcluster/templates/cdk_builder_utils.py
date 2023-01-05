@@ -58,7 +58,10 @@ def create_hash_suffix(string_to_hash: str):
     return (
         string_to_hash
         if string_to_hash == "HeadNode"
-        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
+        # A nosec comment is appended to the following line in order to disable the B324 check.
+        # The sha1 is used just as a hashing function.
+        # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec B324 nosemgrep
     )
 
 
@@ -315,7 +318,10 @@ def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource)
     :param compute_resource
     :return: 16 chars string e.g. 2238a84ac8a74529
     """
-    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
+    # A nosec comment is appended to the following line in order to disable the B324 check.
+    # The sha1 is used just as a hashing function.
+    # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec B324 nosemgrep
 
 
 class NodeIamResourcesBase(Construct):

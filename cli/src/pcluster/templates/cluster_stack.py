@@ -1074,7 +1074,10 @@ class ClusterCdkStack:
             },
             "deployConfigFiles": {
                 "files": {
-                    "/tmp/dna.json": {  # nosec
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/dna.json": {  # nosec B108
                         "content": dna_json,
                         "mode": "000644",
                         "owner": "root",
@@ -1087,13 +1090,19 @@ class ClusterCdkStack:
                         "group": "root",
                         "content": "cookbook_path ['/etc/chef/cookbooks']",
                     },
-                    "/tmp/extra.json": {  # nosec
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/extra.json": {  # nosec B108
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
                         "content": self.config.extra_chef_attributes,
                     },
-                    "/tmp/wait_condition_handle.txt": {  # nosec
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/wait_condition_handle.txt": {  # nosec B108
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
