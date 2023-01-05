@@ -26,6 +26,7 @@ from pcluster.constants import (
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
+    PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING,
     PCLUSTER_NAME_REGEX,
     PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
@@ -84,16 +85,29 @@ CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH = 255 - HOST_NAME_MAX_LENGTH - 1
 class ClusterNameValidator(Validator):
     """Cluster name validator."""
 
-    def _validate(self, name):
-        if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
-            self._add_failure(
-                (
-                    "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-                    "It must start with an alphabetic character and can't be longer "
-                    f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
-                ),
-                FailureLevel.ERROR,
-            )
+    def _validate(self, name, scheduling):
+        if scheduling.scheduler == "slurm" and scheduling.settings.database is not None:
+            if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING - 1), name):
+                self._add_failure(
+                    (
+                        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and "
+                        "hyphens. "
+                        "It must start with an alphabetic character and when using Slurm accounting it can't be longer "
+                        f"than {PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING} characters."
+                    ),
+                    FailureLevel.ERROR,
+                )
+        else:
+            if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
+                self._add_failure(
+                    (
+                        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and "
+                        "hyphens. "
+                        "It must start with an alphabetic character and can't be longer "
+                        f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
+                    ),
+                    FailureLevel.ERROR,
+                )
 
 
 class RegionValidator(Validator):

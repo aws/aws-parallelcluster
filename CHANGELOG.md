@@ -4,6 +4,13 @@ CHANGELOG
 3.5.0
 -----
 
+**ENHANCEMENTS**
+
+**CHANGES**
+
+**BUG FIXES**
+- Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
+
 3.4.0
 -----
 
