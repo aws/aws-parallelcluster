@@ -64,7 +64,7 @@ def _ssh(args, extra_args):
             # - The args passed to the remote command are sanitized.
             # - The default command to which these args is known.
             # - Users have full control over any customization of the command to which args are passed.
-            os.system(cmd)  # nosec nosemgrep
+            os.system(cmd)  # nosec B605 nosemgrep
         else:
             print(json.dumps({"command": cmd}, indent=2))
 

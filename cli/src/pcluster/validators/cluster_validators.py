@@ -878,7 +878,10 @@ class SharedStorageMountDirValidator(Validator):
             "/sbin",
             "/srv",
             "/sys",
-            "/tmp",  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B108 check.
+            # It is a false positive since is a list to check folder name
+            # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+            "/tmp",  # nosec B108
             "/usr",
             "/var",
         ]
