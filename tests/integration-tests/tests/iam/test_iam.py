@@ -18,9 +18,12 @@ import pytest
 import yaml
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from cfn_tools import load_yaml
 from framework.tests_configuration.config_utils import get_all_regions
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
+from troposphere.iam import ManagedPolicy
+from troposphere.template_generator import TemplateGenerator
 from utils import generate_stack_name, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_no_errors_in_logs
@@ -348,7 +351,11 @@ def test_iam_resource_prefix(
     s3_bucket,
     iam_resource_prefix,
 ):
-    cli_credentials = initialize_resource_prefix_cli_creds(test_datadir)
+
+    cli_credentials = initialize_resource_prefix_cli_creds(
+        role_config_file=os_lib.path.join("..", "iam_policies", "user-role.cfn.yaml"),
+        iam_resource_prefix=iam_resource_prefix,
+    )
     if cli_credentials:
         for region, creds in cli_credentials.items():
 
@@ -361,6 +368,323 @@ def test_iam_resource_prefix(
 
             cluster = clusters_factory(cluster_config, custom_cli_credentials=creds)
             _test_iam_resource_in_cluster(cfn_client, iam_client, cluster.name, iam_resource_prefix)
+
+
+def _update_paramters_and_conditions(parameters, conditions, iam_path, iam_name_prefix):
+    """
+    Convert Default and Allowed Values property of Parameters and Conditions Section in CFN template to String.
+    And Update the Default property of CustomIamPathPrefix and CustomIamNamePrefix
+    with test specific path and name prefix.
+    """
+    for key, _ in parameters.items():
+        if key == "CustomIamPathPrefix":
+            parameters.get(key).properties.update({"Default": iam_path.replace("/", "")})
+        elif key == "CustomIamNamePrefix":
+            parameters.get(key).properties.update({"Default": iam_name_prefix})
+        elif isinstance(parameters.get(key).properties.get("Default"), bool):
+            parameters.get(key).properties.update({"Default": str(parameters.get(key).properties.get("Default"))})
+            parameters.get(key).properties.update(
+                {"AllowedValues": list(map(str, parameters.get(key).properties.get("AllowedValues")))}
+            )
+
+    for key, value in conditions.items():
+        if value.data.get("Fn::Equals"):
+            conditions.get(key).data.update(
+                {"Fn::Equals": [str(x) if isinstance(x, bool) else x for x in value.data.get("Fn::Equals")]}
+            )
+
+
+def _create_permission_boundary(permission_boundary_name):
+    """Create a Permission Boundary for testing IAM Resource Prefix."""
+    return ManagedPolicy(
+        title=permission_boundary_name,
+        Description="Least privileged policy for Resource Prefix",
+        PolicyDocument={
+            "Statement": [
+                {
+                    "Action": ["ec2:TerminateInstances"],
+                    "Condition": {"StringEquals": {"ec2:ResourceTag/parallelcluster:node-type": "ComputeNode"}},
+                    "Effect": "Allow",
+                    "Resource": "*",
+                },
+                {
+                    "Action": ["s3:GetObject"],
+                    "Effect": "Allow",
+                    "Resource": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:s3:::dcv-license.${AWS::Region}/*"},
+                    ],
+                },
+                {
+                    "Action": ["iam:PassRole", "iam:GetRole"],
+                    "Effect": "Allow",
+                    "Resource": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamNamePrefix}*"},
+                    ],
+                },
+                {"Action": ["cloudformation:*"], "Effect": "Allow", "Resource": "*"},
+                {
+                    "Action": [
+                        "s3:DeleteObject",
+                        "s3:DeleteObjectVersion",
+                        "s3:ListBucket",
+                        "s3:ListBucketVersions",
+                        "s3:GetObject",
+                        "s3:PutObject",
+                        "s3:GetObjectVersion",
+                    ],
+                    "Effect": "Allow",
+                    "Resource": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*"},
+                    ],
+                },
+                {
+                    "Action": [
+                        "iam:DetachRolePolicy",
+                        "iam:DeleteRole",
+                        "iam:DeleteRolePolicy",
+                        "iam:CreateRole",
+                        "iam:AttachRolePolicy",
+                        "iam:PutRolePermissionsBoundary",
+                        "iam:TagRole",
+                        "iam:UntagRole",
+                        "iam:ListRoleTags",
+                        "iam:ListRolePolicies",
+                        "iam:GetRolePolicy",
+                        "iam:PutRolePolicy",
+                        "iam:ListAttachedRolePolicies",
+                        "iam:ListInstanceProfiles",
+                        "iam:ListInstanceProfilesForRole",
+                    ],
+                    "Effect": "Allow",
+                    "Resource": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamNamePrefix}*"},
+                    ],
+                },
+                {
+                    "Action": [
+                        "iam:DeleteInstanceProfile",
+                        "iam:RemoveRoleFromInstanceProfile",
+                        "iam:CreateInstanceProfile",
+                        "iam:AddRoleToInstanceProfile",
+                        "iam:TagInstanceProfile",
+                        "iam:UntagInstanceProfile",
+                    ],
+                    "Effect": "Allow",
+                    "Resource": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamNamePrefix}*"},
+                        {
+                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/"
+                            "${CustomIamPathPrefix}/*"
+                        },
+                    ],
+                },
+                {
+                    "Action": ["cloudformation:*"],
+                    "Effect": "Allow",
+                    "Resource": {
+                        "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*/*"
+                    },
+                },
+                {
+                    "Action": ["s3:GetObject"],
+                    "Effect": "Allow",
+                    "Resource": {"Fn::Sub": "arn:${AWS::Partition}:s3:::ec2imagebuilder*"},
+                },
+                {
+                    "Action": ["ec2:Describe*"],
+                    "Condition": {
+                        "Fn::If": [
+                            "IsMultiRegion",
+                            {"Ref": "AWS::NoValue"},
+                            {"StringEquals": {"aws:RequestedRegion": [{"Ref": "Region"}]}},
+                        ]
+                    },
+                    "Effect": "Allow",
+                    "Resource": "*",
+                    "Sid": "EC2Read",
+                },
+                {
+                    "Action": [
+                        "ec2:AllocateAddress",
+                        "ec2:AssociateAddress",
+                        "ec2:AttachNetworkInterface",
+                        "ec2:AuthorizeSecurityGroupEgress",
+                        "ec2:AuthorizeSecurityGroupIngress",
+                        "ec2:CreateLaunchTemplate",
+                        "ec2:CreateLaunchTemplateVersion",
+                        "ec2:CreateNetworkInterface",
+                        "ec2:CreatePlacementGroup",
+                        "ec2:CreateSecurityGroup",
+                        "ec2:CreateSnapshot",
+                        "ec2:CreateTags",
+                        "ec2:CreateVolume",
+                        "ec2:DeleteLaunchTemplate",
+                        "ec2:DeleteNetworkInterface",
+                        "ec2:DeletePlacementGroup",
+                        "ec2:DeleteSecurityGroup",
+                        "ec2:DeleteVolume",
+                        "ec2:DisassociateAddress",
+                        "ec2:ModifyLaunchTemplate",
+                        "ec2:ModifyNetworkInterfaceAttribute",
+                        "ec2:ModifyVolume",
+                        "ec2:ModifyVolumeAttribute",
+                        "ec2:ReleaseAddress",
+                        "ec2:RevokeSecurityGroupEgress",
+                        "ec2:RevokeSecurityGroupIngress",
+                        "ec2:RunInstances",
+                        "ec2:TerminateInstances",
+                    ],
+                    "Condition": {
+                        "Fn::If": [
+                            "IsMultiRegion",
+                            {"Ref": "AWS::NoValue"},
+                            {"StringEquals": {"aws:RequestedRegion": [{"Ref": "Region"}]}},
+                        ]
+                    },
+                    "Effect": "Allow",
+                    "Resource": "*",
+                    "Sid": "EC2Write",
+                },
+                {
+                    "Action": [
+                        "dynamodb:DescribeTable",
+                        "dynamodb:ListTagsOfResource",
+                        "dynamodb:CreateTable",
+                        "dynamodb:DeleteTable",
+                        "dynamodb:GetItem",
+                        "dynamodb:PutItem",
+                        "dynamodb:UpdateItem",
+                        "dynamodb:Query",
+                        "dynamodb:TagResource",
+                    ],
+                    "Effect": "Allow",
+                    "Resource": {
+                        "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*"
+                    },
+                    "Sid": "DynamoDB",
+                },
+                {
+                    "Action": [
+                        "route53:ChangeResourceRecordSets",
+                        "route53:ChangeTagsForResource",
+                        "route53:CreateHostedZone",
+                        "route53:DeleteHostedZone",
+                        "route53:GetChange",
+                        "route53:GetHostedZone",
+                        "route53:ListResourceRecordSets",
+                        "route53:ListQueryLoggingConfigs",
+                    ],
+                    "Effect": "Allow",
+                    "Resource": "*",
+                    "Sid": "Route53HostedZones",
+                },
+                {
+                    "Action": [
+                        "cloudwatch:PutDashboard",
+                        "cloudwatch:ListDashboards",
+                        "cloudwatch:DeleteDashboards",
+                        "cloudwatch:GetDashboard",
+                    ],
+                    "Condition": {
+                        "Fn::If": [
+                            "IsMultiRegion",
+                            {"Ref": "AWS::NoValue"},
+                            {"StringEquals": {"aws:RequestedRegion": [{"Ref": "Region"}]}},
+                        ]
+                    },
+                    "Effect": "Allow",
+                    "Resource": "*",
+                    "Sid": "CloudWatch",
+                },
+                {
+                    "Action": [
+                        "lambda:CreateFunction",
+                        "lambda:TagResource",
+                        "lambda:DeleteFunction",
+                        "lambda:GetFunctionConfiguration",
+                        "lambda:GetFunction",
+                        "lambda:InvokeFunction",
+                        "lambda:AddPermission",
+                        "lambda:RemovePermission",
+                        "lambda:UpdateFunctionConfiguration",
+                        "lambda:ListTags",
+                        "lambda:UntagResource",
+                    ],
+                    "Effect": "Allow",
+                    "Resource": [
+                        {
+                            "Fn::Sub": "arn:${AWS::Partition}:lambda:${Region}:"
+                            "${AWS::AccountId}:function:parallelcluster-*"
+                        },
+                        {"Fn::Sub": "arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:pcluster-*"},
+                    ],
+                    "Sid": "Lambda",
+                },
+                {
+                    "Action": [
+                        "logs:DeleteLogGroup",
+                        "logs:PutRetentionPolicy",
+                        "logs:DescribeLogGroups",
+                        "logs:CreateLogGroup",
+                        "logs:TagResource",
+                        "logs:UntagResource",
+                    ],
+                    "Condition": {
+                        "Fn::If": [
+                            "IsMultiRegion",
+                            {"Ref": "AWS::NoValue"},
+                            {"StringEquals": {"aws:RequestedRegion": [{"Ref": "Region"}]}},
+                        ]
+                    },
+                    "Effect": "Allow",
+                    "Resource": "*",
+                    "Sid": "CloudWatchLogs",
+                },
+                {
+                    "Action": [
+                        "iam:CreatePolicy",
+                        "iam:CreatePolicyVersion",
+                        "iam:DeletePolicyVersion",
+                        "iam:GetPolicyVersion",
+                        "iam:GetPolicy",
+                        "iam:DeletePolicy",
+                        "iam:ListInstanceProfiles",
+                        "iam:ListInstanceProfilesForRole",
+                        "iam:ListEntitiesForPolicy",
+                        "iam:ListPolicyVersions",
+                        "iam:TagPolicy",
+                        "iam:UntagPolicy",
+                    ],
+                    "Effect": "Allow",
+                    "Resource": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${CustomIamNamePrefix}*"}
+                    ],
+                },
+            ],
+            "Version": "2012-10-17",
+        },
+    )
+
+
+def _create_iam_user_role_template(cluster_config, iam_resource_prefix):
+    """Creates config file by changing the user-role.cfn.yaml to create a user role with permission boundary."""
+
+    iam_path, iam_name_prefix = _split_resource_prefix(iam_resource_prefix)
+    with open(cluster_config, "r", encoding="utf-8") as f:
+
+        config_template = TemplateGenerator(load_yaml(f.read()))
+
+    config_template.add_resource(_create_permission_boundary("IamResourcePrefixPermissionBoundary"))
+    config_template.resources.get("ParallelClusterUserRole").properties.update(
+        {"PermissionsBoundary": {"Ref": "IamResourcePrefixPermissionBoundary"}}
+    )
+    _update_paramters_and_conditions(config_template.parameters, config_template.conditions, iam_path, iam_name_prefix)
+    return config_template.to_yaml()
 
 
 def _split_resource_prefix(resource_prefix):
@@ -430,11 +754,9 @@ def initialize_resource_prefix_cli_creds(request):
 
     stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    def _create_resource_prefix_cli_creds(test_datadir):
+    def _create_resource_prefix_cli_creds(role_config_file, iam_resource_prefix):
         regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-        stack_template_path = os_lib.path.join("..", test_datadir / "user-role-iam-resource-prefix.cfn.yaml")
-        with open(stack_template_path, encoding="utf-8") as stack_template_file:
-            stack_template_data = stack_template_file.read()
+        stack_template_data = _create_iam_user_role_template(role_config_file, iam_resource_prefix)
         cli_creds = {}
         for region in regions:
             if request.config.getoption("iam_user_role_stack_name"):
@@ -449,7 +771,10 @@ def initialize_resource_prefix_cli_creds(request):
                     "integ-tests-iam-rp-user-role", request.config.getoption("stackname_suffix")
                 )
                 stack = CfnStack(
-                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                    name=stack_name,
+                    region=region,
+                    capabilities=["CAPABILITY_IAM"],
+                    template=stack_template_data,
                 )
 
                 stack_factory.create_stack(stack)

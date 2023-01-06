@@ -5,6 +5,22 @@ Parameters:
     Type: String
     Default: '*'
 
+  CustomIamPathPrefix:
+    Description: Use for setting a Path prefix for IAM Role and Instance-profile resources
+    Type: String
+    Default: 'parallelcluster'
+    AllowedValues:
+      - 'parallelcluster'
+      - 'path-prefix'
+
+  CustomIamNamePrefix:
+    Description: Use for setting a Name prefix for IAM Policy resources
+    Type: String
+    Default: 'parallelcluster'
+    AllowedValues:
+      - 'parallelcluster'
+      - 'name-prefix-'
+
   EnableIamAdminAccess:
     Description: WARNING - setting this to true grants IAM admin privileges
     Type: String
@@ -89,13 +105,13 @@ Resources:
               - iam:DeleteRole
               - iam:TagRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Effect: Allow
             Sid: IamRole
           - Action:
               - iam:CreateRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Effect: Allow
             Condition: !If
               - EnablePermissionsBoundary
@@ -107,7 +123,7 @@ Resources:
           - Action:
               - iam:PutRolePolicy
               - iam:DeleteRolePolicy
-            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Effect: Allow
             Sid: IamInlinePolicy
             Condition: !If
@@ -119,11 +135,11 @@ Resources:
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
-            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Condition:
               ArnLike:
                 iam:PolicyARN:
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${CustomIamNamePrefix}*
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -155,7 +171,7 @@ Resources:
           - Action:
               - iam:PassRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Effect: Allow
             Condition:
               StringEqualsIfExists:
@@ -380,13 +396,13 @@ Resources:
               - iam:AddRoleToInstanceProfile
               - iam:RemoveRoleFromInstanceProfile
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/${CustomIamPathPrefix}/*
             Effect: Allow
             Sid: IamInstanceProfile
           - Action:
               - iam:PassRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Effect: Allow
             Condition:
               StringEqualsIfExists:
@@ -509,16 +525,16 @@ Resources:
               - iam:GetRolePolicy
               - iam:GetInstanceProfile
             Resource:
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/${CustomIamPathPrefix}/*'
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/ParallelClusterImage*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*'
           - Sid: IAMPassRole
             Effect: Allow
             Action:
               - iam:PassRole
             Resource:
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/${CustomIamPathPrefix}/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*'
             Condition:
               StringEquals:
                 iam:PassedToService:
@@ -623,8 +639,8 @@ Resources:
             Action:
               - iam:RemoveRoleFromInstanceProfile
             Resource:
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/${CustomIamPathPrefix}/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*'
           - Sid: ImageBuilder
             Effect: Allow
             Action:
@@ -770,7 +786,7 @@ Resources:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
               # Needed to enable capacity reservation access without creating a custom policy in tests
               - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEC2FullAccess
             Effect: Allow
@@ -844,7 +860,7 @@ Resources:
           - Action:
               - iam:PassRole
             Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Effect: Allow
             Condition:
               StringEquals:
@@ -894,12 +910,12 @@ Resources:
               - iam:DetachRolePolicy
               - iam:DeleteRole
               - iam:DeleteRolePolicy
-            Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+            Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*'
             Effect: Allow
           - Action:
               - iam:DeleteInstanceProfile
               - iam:RemoveRoleFromInstanceProfile
-            Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+            Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/${CustomIamPathPrefix}/*'
             Effect: Allow
           - Action: imagebuilder:DeleteInfrastructureConfiguration
             Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
