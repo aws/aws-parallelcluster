@@ -140,7 +140,7 @@ Resources:
               ArnLike:
                 iam:PolicyARN:
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${CustomIamNamePrefix}*
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${CustomIamNamePrefix}/*
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
