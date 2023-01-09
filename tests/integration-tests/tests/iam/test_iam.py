@@ -378,7 +378,7 @@ def _update_paramters_and_conditions(parameters, conditions, iam_path, iam_name_
     """
     for key, _ in parameters.items():
         if key == "CustomIamPathPrefix":
-            parameters.get(key).properties.update({"Default": iam_path.replace("/", "")})
+            parameters.get(key).properties.update({"Default": iam_path[1:-1]})
         elif key == "CustomIamNamePrefix":
             parameters.get(key).properties.update({"Default": iam_name_prefix})
         elif isinstance(parameters.get(key).properties.get("Default"), bool):
