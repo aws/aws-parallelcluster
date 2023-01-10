@@ -609,8 +609,6 @@ def test_scontrol_update_nodelist_sorting(
     assert_that(slurm_commands.get_node_attribute(nodes_in_queue1[0], "NodeAddr")).is_equal_to(nodes_in_queue1[0])
     assert_that(slurm_commands.get_node_attribute(nodes_in_queue2[0], "NodeAddr")).is_equal_to(nodes_in_queue2[0])
 
-    remote_command_executor.run_remote_command("sudo systemctl start supervisord")
-
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_slurm_overrides(
