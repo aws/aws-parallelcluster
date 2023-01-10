@@ -99,7 +99,9 @@ class CfnStacksFactory:
                 stack.cfn_stack_id = result["StackId"]
                 self.__created_stacks[id] = stack
                 final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
-                self.__assert_stack_status(final_status, "CREATE_COMPLETE")
+                self.__assert_stack_status(
+                    final_status, "CREATE_COMPLETE", cfn_client=cfn_client, name=stack.cfn_stack_id
+                )
                 # Initialize the stack data while still in the credential context
                 stack.init_stack_data()
             except Exception as e:
@@ -171,8 +173,26 @@ class CfnStacksFactory:
         return cfn_client.describe_stacks(StackName=name).get("Stacks")[0].get("StackStatus")
 
     @staticmethod
-    def __assert_stack_status(status, expected_status):
+    def __get_stack_resource_failures(name, cfn_client):
+        resources = cfn_client.list_stack_resources(StackName=name).get("StackResourceSummaries")
+        return (
+            {resource.get("LogicalResourceId"): resource.get("ResourceStatusReason")}
+            for resource in resources
+            if resource.get("ResourceStatus") == "CREATE_FAILED"
+        )
+
+    @staticmethod
+    def __assert_stack_status(status, expected_status, cfn_client=None, name=None):
         if status != expected_status:
+            if cfn_client and name:
+                failures = "\n\t".join(
+                    str(failure) for failure in CfnStacksFactory.__get_stack_resource_failures(name, cfn_client)
+                )
+                raise Exception(
+                    "Stack status {0} for {1} differs from expected one {2}:\n\t{3}".format(
+                        status, name, expected_status, failures
+                    )
+                )
             raise Exception("Stack status {0} differs from expected one {1}".format(status, expected_status))
 
     @staticmethod
