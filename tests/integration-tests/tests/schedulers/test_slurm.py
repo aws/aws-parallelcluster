@@ -601,7 +601,7 @@ def test_scontrol_update_nodelist_sorting(
 
     # Stop clustermgtd since it may fix the situation under the hood if it calls scontrol update
     # with a sorted list of nodes
-    remote_command_executor.run_remote_command(f"sudo systemctl stop supervisord")
+    remote_command_executor.run_remote_command("sudo systemctl stop supervisord")
 
     # Run scontrol update with unsorted list of nodes
     remote_command_executor.run_remote_command(f"sudo -i scontrol update nodename={nodelist} nodeaddr={nodelist}")
@@ -609,7 +609,7 @@ def test_scontrol_update_nodelist_sorting(
     assert_that(slurm_commands.get_node_attribute(nodes_in_queue1[0], "NodeAddr")).is_equal_to(nodes_in_queue1[0])
     assert_that(slurm_commands.get_node_attribute(nodes_in_queue2[0], "NodeAddr")).is_equal_to(nodes_in_queue2[0])
 
-    remote_command_executor.run_remote_command(f"sudo systemctl start supervisord")
+    remote_command_executor.run_remote_command("sudo systemctl start supervisord")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
