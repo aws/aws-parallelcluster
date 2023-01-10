@@ -561,6 +561,56 @@ def test_update_slurm_reconfigure_race_condition(
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_scontrol_update_nodelist_sorting(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    """
+    Test that scontrol update node follows the order of the nodelist provided by the user.
+
+    In Slurm 22.05 the scontrol update node logic was modified and a sorting routine was
+    introduced, which modified the order of the nodes in the nodelist.
+    If `scontrol update node nodename=nodelist nodeaddr=nodeaddrlist` is called, only the
+    nodelist was sorted (not the nodeaddrlist). This causes mismatches between the Slurm
+    nodenames and the assigned addresses.
+
+    See https://bugs.schedmd.com/show_bug.cgi?id=15731
+    """
+
+    max_count_cr1 = max_count_cr2 = 4
+
+    cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.yaml",
+        output_file="pcluster.config.initial.yaml",
+        max_count_cr1=max_count_cr1,
+        max_count_cr2=max_count_cr2,
+    )
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    assert_compute_node_states(slurm_commands, compute_nodes=None, expected_states=["idle~"])
+
+    nodes_in_queue1 = slurm_commands.get_compute_nodes("queue1", all_nodes=True)
+    nodes_in_queue2 = slurm_commands.get_compute_nodes("queue2", all_nodes=True)
+
+    # Create an unsorted list of nodes to be updated (queue2 is alphabetically after queue1)``:s
+    nodelist = f"{nodes_in_queue2[0]},{nodes_in_queue1[0]}"
+
+    # Stop clustermgtd since it may fix the situation under the hood if it calls scontrol update
+    # with a sorted list of nodes
+    remote_command_executor.run_remote_command("sudo systemctl stop supervisord")
+
+    # Run scontrol update with unsorted list of nodes
+    remote_command_executor.run_remote_command(f"sudo -i scontrol update nodename={nodelist} nodeaddr={nodelist}")
+
+    assert_that(slurm_commands.get_node_attribute(nodes_in_queue1[0], "NodeAddr")).is_equal_to(nodes_in_queue1[0])
+    assert_that(slurm_commands.get_node_attribute(nodes_in_queue2[0], "NodeAddr")).is_equal_to(nodes_in_queue2[0])
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_slurm_overrides(
     scheduler,
     region,
