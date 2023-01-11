@@ -12,6 +12,12 @@ CHANGELOG
 **BUG FIXES**
 - Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
 
+3.4.1
+-----
+
+**BUG FIXES**
+- Fix an issue with the Slurm scheduler that might incorrectly apply updates to its internal registry of compute nodes. This might result in EC2 instances to become inaccessible or backed by an incorrect instance type.
+
 3.4.0
 -----
 
