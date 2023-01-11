@@ -513,7 +513,7 @@ schedulers:
         schedulers: ["slurm"]
   test_slurm.py::test_scontrol_update_nodelist_sorting:
     dimensions:
-      - regions: ["ca-central-2"]
+      - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
