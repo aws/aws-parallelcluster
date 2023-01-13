@@ -38,7 +38,11 @@ def handler(event, context):  # pylint: disable=unused-argument
     url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
-            connection = HTTPSConnection(host)  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B309 check.
+            # ParallelCluster only supports python >= 3.4.3
+            # [B309:blacklist] Use of HTTPSConnection on older versions of Python prior to 2.7.9 and 3.4.3
+            # do not provide security, see https://wiki.openstack.org/wiki/OSSN/OSSN-0033
+            connection = HTTPSConnection(host)  # nosec B309 nosemgrep
             connection.request(
                 method="PUT", url=url, body=data, headers={"Content-Type": "", "content-length": str(len(data))}
             )

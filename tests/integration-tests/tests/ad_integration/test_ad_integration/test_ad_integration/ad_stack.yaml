@@ -12,6 +12,14 @@ Parameters:
     Description: Subnet ID of the public subnet.
     Type: String
 Resources:
+  DisableImdsv1LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpPutResponseHopLimit: 4
+          HttpTokens: required
   AdDomainAdminNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -103,6 +111,9 @@ Resources:
       ImageId: {{ admin_node_ami_id }}
       InstanceType: {{ admin_node_instance_type }}
       KeyName: {{ admin_node_key_name }}
+      LaunchTemplate:
+        LaunchTemplateId: !Ref 'DisableImdsv1LaunchTemplate'
+        Version: !GetAtt 'DisableImdsv1LaunchTemplate.LatestVersionNumber'
       SecurityGroupIds:
         - Ref: AdDomainAdminNodeSecurityGroup
       SubnetId:
