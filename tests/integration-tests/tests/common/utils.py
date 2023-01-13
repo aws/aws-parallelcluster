@@ -125,6 +125,7 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
                 {"Name": "architecture", "Values": [architecture]},
             ],
             Owners=["self", "amazon"],
+            IncludeDeprecated=True,
         ).get("Images", [])
         ami_id = client.copy_image(
             Description="This AMI is a copy from an official AMI but uses a different naming. "
