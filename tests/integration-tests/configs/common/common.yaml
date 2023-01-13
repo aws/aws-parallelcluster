@@ -511,6 +511,12 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_update_nodelist_sorting:
+    dimensions:
+      - regions: ["ca-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
   test_slurm_accounting.py::test_slurm_accounting:
     dimensions:
       - regions: ["us-east-1", "ap-south-1"]
