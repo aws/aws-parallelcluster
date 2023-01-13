@@ -149,21 +149,27 @@ write_files:
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
       custom_cookbook=${CustomChefCookbook}
       export _region=${AWS::Region}
-      cookbook_retry_strategy=--retry 3
+
+      # The default curl setting will timeout the connect attempt at 5 minutes, so
+      # having the retry count set to 3 will result in 15m to failure if there is
+      # no internet connectivity from the compute node.
+      cookbook_url_retry_strategy=--retry 3
       s3_url=${AWS::URLSuffix}
       if [ "${!custom_cookbook}" != "NONE" ]; then
         if [[ "${!custom_cookbook}" =~ ^s3://([^/]*)(.*) ]]; then
           export AWS_RETRY_MODE=standard
           export AWS_MAX_ATTEMPTS=2
-          # S3API_RESULT=$(aws s3api get-bucket-location --debug --cli-connect-timeout 60 --bucket ${!BASH_REMATCH[1]} 2>&1 | tee -a /var/log/aws.log) || error_exit "${!S3API_RESULT}"
+          # Set the socket connection timeout to 15s. Emperically, it seems like the actual
+          # timeout is 8x(cli-connect-timeout). i.e. if cli-connection-timeout is set to
+          # 60s, the call will timeout the connect attempt at 8m. Setting it to 15s, causes
+          # each attempt to take 240s, so 2m * 3 attempts will result in a failure after 6
+          # minutes.
           S3API_RESULT=$(aws s3api get-bucket-location --cli-connect-timeout 15 --bucket ${!BASH_REMATCH[1]} 2>&1) || error_exit "${!S3API_RESULT}"
           bucket_region=$(echo "${!S3API_RESULT}" | jq -r '.LocationConstraint')
           if [[ "${!bucket_region}" == null ]]; then
             bucket_region="us-east-1"
           fi
           cookbook_url=$(aws s3 presign "${!custom_cookbook}" --region "${!bucket_region}")
-          # Use a more aggressive timeout for s3 endpoints
-          cookbook_retry_strategy=${!cookbook_retry_strategy} --connect-timeout 60
         else
           cookbook_url=${!custom_cookbook}
         fi
@@ -182,7 +188,7 @@ write_files:
         error_exit "This AMI was not baked by ParallelCluster. Please use pcluster build-image command to create an AMI by providing your AMI as parent image."
       fi
       if [ "${!custom_cookbook}" != "NONE" ]; then
-        curl ${!cookbook_retry_strategy} -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url} || error_exit "Failed to download custom cookbook from ${!cookbook_url}"
+        curl ${!cookbook_url_retry_strategy} -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
         vendor_cookbook
       fi
       cd /tmp
