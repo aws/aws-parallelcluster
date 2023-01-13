@@ -713,7 +713,7 @@ update:
         oss: ["alinux2"]
   test_update.py::test_update_slurm:
     dimensions:
-      - regions: ["eu-central-1"]
+      - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
   test_update.py::test_update_compute_ami:
