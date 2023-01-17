@@ -36,18 +36,48 @@ from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_F
 
 LOGGER = logging.getLogger(__name__)
 
+DEFAULT_PARTITION = "aws"
+PARTITION_MAP = {
+    "cn-": "aws-cn",
+    "us-gov-": "aws-us-gov",
+    "us-iso-": "aws-iso",
+    "us-isob-": "aws-iso-b",
+}
 
-def get_partition():
-    """Get partition for the region set in the environment."""
-    return next(("aws-" + partition for partition in ["us-gov", "cn"] if get_region().startswith(partition)), "aws")
+DEFAULT_DOMAIN = "amazonaws.com"
+DOMAIN_MAP = {
+    "aws-cn": "amazonaws.com.cn",
+    "aws-iso": "c2s.ic.gov",
+    "aws-iso-b": "sc2s.sgov.gov",
+}
+
+DEFAULT_DOCS_URL = "docs.aws.amazon.com"
+DOCS_URL_MAP = {
+    "aws-cn": "docs.amazonaws.cn",
+    "aws-iso": "docs.c2shome.ic.gov",
+    "aws-iso-b": "docs.sc2shome.sgov.gov",
+}
 
 
-def get_url_domain_suffix():
-    """Get domain suffix."""
-    if get_partition() == "aws-cn":
-        return "amazonaws.com.cn"
-    else:
-        return "amazonaws.com"
+def get_partition(region: str = None):
+    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    _region = get_region() if region is None else region
+    return next(
+        (partition for region_prefix, partition in PARTITION_MAP.items() if _region.startswith(region_prefix)),
+        DEFAULT_PARTITION,
+    )
+
+
+def get_url_domain_suffix(partition: str = None):
+    """Get domain for the given partition. If partition is None, consider the partition set in the environment."""
+    _partition = get_partition() if partition is None else partition
+    return DOMAIN_MAP.get(_partition, DEFAULT_DOMAIN)
+
+
+def get_docs_base_url(partition: str = None):
+    """Get the docs url for the given partition. If partition is None, consider the partition set in the environment."""
+    _partition = get_partition() if partition is None else partition
+    return DOCS_URL_MAP.get(_partition, DEFAULT_DOCS_URL)
 
 
 def replace_url_parameters(url):
@@ -239,9 +269,8 @@ def verify_stack_status(stack_name, waiting_states, successful_states):
 def get_templates_bucket_path():
     """Return a string containing the path of bucket."""
     region = get_region()
-    s3_suffix = ".cn" if region.startswith("cn") else ""
     return (
-        f"https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{s3_suffix}/"
+        f"https://{region}-aws-parallelcluster.s3.{region}.{get_url_domain_suffix()}/"
         f"parallelcluster/{get_installed_version()}/templates/"
     )
 
