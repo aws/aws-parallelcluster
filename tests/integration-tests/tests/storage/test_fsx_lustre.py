@@ -273,8 +273,12 @@ def test_multiple_fsx(
 
     partition = utils.get_arn_partition(region)
     num_new_fsx_lustre = 1
-    num_existing_fsx_ontap_volumes = 2 if partition != "aws-cn" else 0  # China does not have Ontap
-    num_existing_fsx_open_zfs_volumes = 2 if partition == "aws" else 0  # China and GovCloud do not have OpenZFS.
+    num_existing_fsx_ontap_volumes = (
+        2 if partition in ["aws", "aws-us-gov"] else 0
+    )  # China and Isolated do not have Ontap
+    num_existing_fsx_open_zfs_volumes = (
+        2 if partition in ["aws"] else 0
+    )  # China, GovCloud and Isolated do not have OpenZFS.
     if request.config.getoption("benchmarks") and os == "alinux2":
         # Only create more FSx when benchmarks are specified. Limiting OS to reduce cost of too many file systems
         num_existing_fsx = 20
