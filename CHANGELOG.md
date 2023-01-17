@@ -21,6 +21,10 @@ CHANGELOG
 - Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
 - Fix Update policy for MaxCount to always perform numerical comparisons on MaxCount property.
 
+3.5.1
+-----
+- Add support for US isolated regions: us-iso-* and us-isob-*.
+
 3.5.0
 -----
 
