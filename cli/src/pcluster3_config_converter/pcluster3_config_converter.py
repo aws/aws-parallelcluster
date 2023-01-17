@@ -19,6 +19,8 @@ import boto3
 import configparser
 import yaml
 
+from pcluster.utils import get_partition
+
 
 class ConfigDumper(yaml.Dumper):
     """Dumper to increase the indent when dump a list."""
@@ -51,11 +53,6 @@ def _warn(message):
 def _note(message):
     """Print a note to stdout."""
     print("Note: {0}".format(message))
-
-
-def _get_partition(region):
-    """Get partition from the given region."""
-    return next(("aws-" + partition for partition in ["us-gov", "cn"] if region.startswith(partition)), "aws")
 
 
 def _add_if(section, section_name, value):
@@ -166,7 +163,7 @@ class Pcluster3ConfigConverter(object):
         role = dict()
         iam_lambda_role = self.cluster_config_get("iam_lambda_role")
         if iam_lambda_role:
-            role["LambdaFunctionRole"] = _role_name_to_arn(iam_lambda_role, _get_partition(self.get_region()))
+            role["LambdaFunctionRole"] = _role_name_to_arn(iam_lambda_role, get_partition(self.get_region()))
         _add_if(iam, "Role", role)
         _add_if(self.pcluster3_configuration, section_name, iam)
 
@@ -646,7 +643,7 @@ class Pcluster3ConfigConverter(object):
         additional_iam_policies = []
         ec2_iam_role = self.cluster_config_get("ec2_iam_role")
         if ec2_iam_role:
-            iam["InstanceRole"] = _role_name_to_arn(ec2_iam_role, _get_partition(self.get_region()))
+            iam["InstanceRole"] = _role_name_to_arn(ec2_iam_role, get_partition(self.get_region()))
         additional_iam_policies_list = self.cluster_config_get("additional_iam_policies")
         if additional_iam_policies_list:
             for policy in additional_iam_policies_list.split(","):
