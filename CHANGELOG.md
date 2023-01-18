@@ -1,5 +1,9 @@
 CHANGELOG
 =========
+3.6.0
+---
+**CHANGES**
+- Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
 
 3.6.0
 ----
