@@ -20,7 +20,7 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from troposphere import Base64, Ref, Sub, Template
-from troposphere.ec2 import Instance
+from troposphere.ec2 import Instance, LaunchTemplate, LaunchTemplateSpecification
 from troposphere.fsx import (
     ClientConfigurations,
     NfsExports,
@@ -211,11 +211,25 @@ def write_file_into_efs(
     )
     iam_instance_profile = write_file_template.add_resource(InstanceProfile("IamTlsProfile", Roles=[Ref(role)]))
     write_file_template.add_resource(
+        LaunchTemplate.from_dict(
+            "LaunchTemplateIMDSv2",
+            {
+                "LaunchTemplateName": "imdsv2-storage-enforcer",
+                "LaunchTemplateData": {"MetadataOptions": {"HttpTokens": "required", "HttpEndpoint": "enabled"}},
+            },
+        )
+    )
+
+    write_file_template.add_resource(
         Instance(
             "InstanceToWriteEFS",
             CreationPolicy={"ResourceSignal": {"Timeout": "PT10M"}},
             ImageId=retrieve_latest_ami(region, "alinux2"),
             InstanceType="c5.xlarge",
+            LaunchTemplate=LaunchTemplateSpecification(
+                LaunchTemplateName="imdsv2-storage-enforcer",
+                Version="1",
+            ),
             SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
