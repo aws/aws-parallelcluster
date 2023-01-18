@@ -731,7 +731,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 
 constructs
-3.4.217
+3.4.218
 Apache-2.0
 Amazon Web Services
 https://github.com/aws/constructs
@@ -3189,7 +3189,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 
 
-aws-cdk; https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE
+aws-cdk 1.188.0; https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -3392,7 +3392,7 @@ aws-cdk; https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE
    See the License for the specific language governing permissions and
    limitations under the License.
 
-Python 3.9 
+Python 3.9; https://raw.githubusercontent.com/python/cpython/3.9/LICENSE 
 A. HISTORY OF THE SOFTWARE
 ==========================
 
