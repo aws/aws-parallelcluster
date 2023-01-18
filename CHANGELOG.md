@@ -1,12 +1,14 @@
 CHANGELOG
 =========
-3.6.0
----
-**CHANGES**
-- Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
 
 3.6.0
 ----
+
+**ENHANCEMENTS**
+- Add log rotation support for ParallelCluster managed logs.
+
+**CHANGES**
+- Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.

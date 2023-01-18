@@ -97,6 +97,7 @@ write_files:
           "cluster_user": "${OSUser}",
           "enable_intel_hpc_platform": "${IntelHPCPlatform}",
           "cw_logging_enabled": "${CWLoggingEnabled}",
+          "log_rotation_enabled": "${LogRotationEnabled}",
           "scheduler_queue_name": "${QueueName}",
           "scheduler_compute_resource_name": "${ComputeResourceName}",
           "enable_efa_gdr": "${EnableEfaGdr}",
