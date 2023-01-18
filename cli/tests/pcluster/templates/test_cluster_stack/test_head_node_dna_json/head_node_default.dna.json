@@ -9,6 +9,7 @@
     "custom_awsbatchcli_package": "",
     "custom_node_package": "",
     "cw_logging_enabled": "true",
+    "log_rotation_enabled": "true",
     "dcv_enabled": "false",
     "dcv_port": "NONE",
     "ddb_table": "NONE",

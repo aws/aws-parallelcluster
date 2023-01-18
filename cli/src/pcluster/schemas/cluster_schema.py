@@ -63,6 +63,7 @@ from pcluster.config.cluster_config import (
     Imds,
     IntelSoftware,
     LocalStorage,
+    LogRotation,
     Logs,
     Monitoring,
     PlacementGroup,
@@ -758,6 +759,17 @@ class CloudWatchLogsSchema(BaseSchema):
         return CloudWatchLogs(**data)
 
 
+class RotationSchema(BaseSchema):
+    """Represent the schema of the Log Rotation section."""
+
+    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LogRotation(**data)
+
+
 class CloudWatchDashboardsSchema(BaseSchema):
     """Represent the schema of the CloudWatchDashboards section."""
 
@@ -773,6 +785,7 @@ class LogsSchema(BaseSchema):
     """Represent the schema of the Logs section."""
 
     cloud_watch = fields.Nested(CloudWatchLogsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    rotation = fields.Nested(RotationSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
