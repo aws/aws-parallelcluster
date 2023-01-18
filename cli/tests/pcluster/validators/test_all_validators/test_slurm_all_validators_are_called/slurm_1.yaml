@@ -170,7 +170,7 @@ Monitoring:
   Logs:
     CloudWatch:
       Enabled: true  # true
-      RetentionInDays: 30  # 14
+      RetentionInDays: 180  # 14
   Dashboards:
     CloudWatch:
       Enabled: true  # true
