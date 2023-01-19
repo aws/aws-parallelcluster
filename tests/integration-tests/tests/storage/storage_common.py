@@ -67,7 +67,9 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
     head_node_file = random_alphanumeric()
     logging.info(f"Writing HeadNode File: {head_node_file}")
     remote_command_executor.run_remote_command(
-        "touch {mount_dir}/{head_node_file}".format(mount_dir=mount_dir, head_node_file=head_node_file)
+        "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
+            mount_dir=mount_dir, head_node_file=head_node_file
+        )
     )
 
     # Submit a "Write" job to each partition
@@ -78,7 +80,9 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
     for partition in partitions:
         compute_file = "{}-{}".format(partition, random_alphanumeric())
         logging.info(f"Writing Compute File: {compute_file} from {partition}")
-        job_command = "touch {mount_dir}/{compute_file}".format(mount_dir=mount_dir, compute_file=compute_file)
+        job_command = "touch {mount_dir}/{compute_file} && cat {mount_dir}/{compute_file}".format(
+            mount_dir=mount_dir, compute_file=compute_file
+        )
         result = scheduler_commands.submit_command(job_command, partition=partition)
         job_id = scheduler_commands.assert_job_submitted(result.stdout)
         scheduler_commands.wait_job_completed(job_id)
