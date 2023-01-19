@@ -20,7 +20,7 @@ Scheduling:
         - Name: cit
           Instances:
             - InstanceType: {{ instance }}
-          MinCount: 1
+          MinCount: 2
           MaxCount: 10
       Networking:
         SubnetIds:

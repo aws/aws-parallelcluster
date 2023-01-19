@@ -15,22 +15,42 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
-    - Name: compute
+    - Name: compute-a
       ComputeResources:
-        - Name: cit
+        - Name: cit-0
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 10
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
       CustomActions:
         OnNodeStart:
           Script: s3://{{ bucket }}/{{ script_path }}
           Args:
             - arg1
             - arg2
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+    - Name: compute-b
+      ComputeResources:
+        - Name: cit-1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 10
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket }}/{{ script_path }}
+          Args:
+            - arg1
+            - arg2
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
