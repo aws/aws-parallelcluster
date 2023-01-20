@@ -26,7 +26,6 @@ from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeResourceSizeValidator,
     AwsBatchFsxValidator,
     AwsBatchInstancesArchitectureCompatibilityValidator,
-    AwsBatchRegionValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
@@ -38,18 +37,6 @@ from .utils import assert_failure_messages
 def boto3_stubber_path():
     """Specify that boto3_mocker should stub calls to boto3 for the pcluster.utils module."""
     return "pcluster.aws.common.boto3"
-
-
-@pytest.mark.parametrize(
-    "region, expected_message",
-    [
-        ("eu-west-1", None),
-        ("ap-northeast-3", "AWS Batch scheduler is not supported in.*region"),
-    ],
-)
-def test_awsbatch_region_validator(region, expected_message):
-    actual_failures = AwsBatchRegionValidator().execute(region)
-    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

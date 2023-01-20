@@ -14,6 +14,7 @@ from assertpy import assert_that
 from pkg_resources import packaging
 
 from pcluster.aws.aws_resources import ImageInfo
+from pcluster.constants import Feature
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import get_installed_version, load_yaml_dict
 from pcluster.validators import (
@@ -425,6 +426,8 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
 
     cluster_validators = validators_path + ".cluster_validators"
     scheduler_os_validator = mocker.patch(cluster_validators + ".SchedulerOsValidator._validate", return_value=[])
+    feature_validators = validators_path + ".feature_validators"
+    feature_region_validator = mocker.patch(feature_validators + ".FeatureRegionValidator._validate", return_value=[])
     compute_resource_size_validator = mocker.patch(
         cluster_validators + ".ComputeResourceSizeValidator._validate", return_value=[]
     )
@@ -538,6 +541,10 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
 
     # Assert validators are called
     scheduler_os_validator.assert_has_calls([call(os="centos7", scheduler="plugin")])
+    feature_region_validator.assert_has_calls(
+        [call(feature=feature, region="us-east-1") for feature in Feature if feature is not Feature.BATCH],
+        any_order=True,
+    )
     compute_resource_size_validator.assert_has_calls(
         [
             # Defaults of min_count=0, max_count=10
@@ -610,7 +617,13 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
     ]
     shared_storage_name_mount_dir_tuple_list.sort(key=lambda tup: tup[1])
     assert_that(shared_storage_name_mount_dir_tuple_list).is_equal_to(
-        [("name1", "/my/mount/point1"), ("name2", "/my/mount/point2"), ("name3", "/my/mount/point3")]
+        [
+            ("name1", "/my/mount/point1"),
+            ("name2", "/my/mount/point2"),
+            ("name3", "/my/mount/point3"),
+            ("name4", "/my/mount/point4"),
+            ("name5", "/my/mount/point5"),
+        ]
     )
     local_mount_dir_instance_types_dict = duplicate_mount_dir_validator.call_args[1][
         "local_mount_dir_instance_types_dict"
@@ -620,7 +633,7 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
         [
             call(storage_type="EBS", max_number=5, storage_count=1),
             call(storage_type="existing EFS", max_number=20, storage_count=0),
-            call(storage_type="existing FSx", max_number=20, storage_count=0),
+            call(storage_type="existing FSx", max_number=20, storage_count=2),
             call(storage_type="new EFS", max_number=1, storage_count=1),
             call(storage_type="new FSx", max_number=1, storage_count=1),
             call(storage_type="new RAID", max_number=1, storage_count=0),

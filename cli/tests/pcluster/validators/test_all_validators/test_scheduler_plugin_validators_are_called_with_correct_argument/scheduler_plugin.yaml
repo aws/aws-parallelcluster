@@ -10,6 +10,8 @@ HeadNode:
   LocalStorage:
     EphemeralVolume:
       MountDir: /scratch_head
+  Dcv:
+    Enabled: true
 Scheduling:
   Scheduler: plugin
   SchedulerSettings:
@@ -178,3 +180,13 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 3600
+  - MountDir: /my/mount/point4
+    Name: name4
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: "fsvol-00e6e91b8898ec4ef"
+  - MountDir: /my/mount/point5
+    Name: name5
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: "fsvol-00e6e91b8898ec4ef"
