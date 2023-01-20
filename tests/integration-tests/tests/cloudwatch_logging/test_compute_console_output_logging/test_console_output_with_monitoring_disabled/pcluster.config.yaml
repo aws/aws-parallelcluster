@@ -4,10 +4,6 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-  Iam:
-    AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
-      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -25,10 +21,6 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-      Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
-          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 Monitoring:
   Logs:
     CloudWatch:

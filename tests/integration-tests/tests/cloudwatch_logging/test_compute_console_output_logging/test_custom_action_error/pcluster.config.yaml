@@ -4,10 +4,6 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-  Iam:
-    AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
-      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -32,9 +28,9 @@ Scheduling:
             - arg1
             - arg2
       Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
-          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        S3Access:
+          - BucketName: {{ bucket }}
+            EnableWriteAccess: true
     - Name: compute-b
       ComputeResources:
         - Name: cit-1
@@ -52,9 +48,6 @@ Scheduling:
             - arg1
             - arg2
       Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
-          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-DevSettings:
-  Cookbook:
-    ChefCookbook: s3://davprat-aws-parallelcluster-cookbook-development/parallelcluster/3.5.0/cookbooks/aws-parallelcluster-cookbook-3.5.0.tgz
+        S3Access:
+          - BucketName: {{ bucket }}
+            EnableWriteAccess: true

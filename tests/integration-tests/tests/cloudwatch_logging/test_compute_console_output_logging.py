@@ -20,11 +20,6 @@ from tests.cloudwatch_logging.cloudwatch_logging_boto3_utils import (
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture
-def test_resources_dir(datadir):
-    return datadir / "resources"
-
-
 @retry(stop_max_attempt_number=15, wait_fixed=minutes(3))
 def _verify_compute_console_output_log_exists_in_log_group(cluster):
     log_groups = get_cluster_log_groups_from_boto3(f"/aws/parallelcluster/{cluster.name}")
@@ -102,7 +97,6 @@ def test_console_output_with_monitoring_disabled(
     pcluster_config_reader,
     cfn_stacks_factory,
     test_datadir,
-    test_resources_dir,
     clusters_factory,
 ):
     cluster_config = pcluster_config_reader()
@@ -133,7 +127,7 @@ def test_console_output_with_monitoring_disabled(
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_custom_action_error(
-    pcluster_config_reader, cfn_stacks_factory, test_datadir, test_resources_dir, region, clusters_factory, s3_bucket
+    pcluster_config_reader, cfn_stacks_factory, test_datadir, region, clusters_factory, s3_bucket
 ):
     bucket_name = s3_bucket
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
