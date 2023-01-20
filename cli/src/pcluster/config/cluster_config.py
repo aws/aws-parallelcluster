@@ -50,6 +50,7 @@ from pcluster.constants import (
     SCHEDULER_PLUGIN_INTERFACE_VERSION,
     SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
     SUPPORTED_OSES,
+    Feature,
 )
 from pcluster.utils import (
     get_attr,
@@ -64,7 +65,6 @@ from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeResourceSizeValidator,
     AwsBatchFsxValidator,
     AwsBatchInstancesArchitectureCompatibilityValidator,
-    AwsBatchRegionValidator,
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
@@ -139,6 +139,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupNamingValidator,
 )
 from pcluster.validators.efs_validators import EfsMountOptionsValidator
+from pcluster.validators.feature_validators import FeatureRegionValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
@@ -1296,6 +1297,7 @@ class BaseClusterConfig(Resource):
             imds_support=self.imds.imds_support,
         )
         if self.head_node.dcv:
+            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
             self._register_validator(
                 DcvValidator,
                 instance_type=self.head_node.instance_type,
@@ -1340,7 +1342,7 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
 
-    def _register_storage_validators(self):
+    def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:
             ebs_count = 0
             new_storage_count = defaultdict(int)
@@ -1369,12 +1371,18 @@ class BaseClusterConfig(Resource):
                         existing_fsx.add(storage.file_system_id)
                     else:
                         new_storage_count["fsx"] += 1
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_LUSTRE, region=self.region)
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
-                elif isinstance(storage, (ExistingFsxOpenZfs, ExistingFsxOntap)):
+                elif isinstance(storage, ExistingFsxOpenZfs):
                     existing_storage_count["fsx"] += 1
                     existing_fsx.add(storage.file_system_id)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_OPENZFS, region=self.region)
+                elif isinstance(storage, ExistingFsxOntap):
+                    existing_storage_count["fsx"] += 1
+                    existing_fsx.add(storage.file_system_id)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_ONTAP, region=self.region)
                 elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
@@ -1767,7 +1775,7 @@ class AwsBatchClusterConfig(BaseClusterConfig):
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
-        self._register_validator(AwsBatchRegionValidator, region=self.region)
+        self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
         if self.shared_storage:
