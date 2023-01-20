@@ -336,10 +336,10 @@ def bastion_instance(vpc_stack, cfn_stacks_factory, request, region, key_name):
     launch_template = ec2.LaunchTemplate.from_dict(
         "LaunchTemplateIMDSv2",
         {
-            "LaunchTemplateName": "imdsv2-network-enforcer",
             "LaunchTemplateData": {"MetadataOptions": {"HttpTokens": "required", "HttpEndpoint": "enabled"}},
         },
     )
+    bastion_template.add_resource(launch_template)
     instance = ec2.Instance(
         "NetworkingBastionInstance",
         InstanceType="c5.xlarge",
@@ -347,12 +347,10 @@ def bastion_instance(vpc_stack, cfn_stacks_factory, request, region, key_name):
         KeyName=key_name,
         SecurityGroupIds=[Ref(bastion_sg)],
         LaunchTemplate=ec2.LaunchTemplateSpecification(
-            LaunchTemplateName="imdsv2-network-enforcer",
-            Version="1",
+            LaunchTemplateId=Ref(launch_template), Version=GetAtt(launch_template, "LatestVersionNumber")
         ),
         SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
     )
-    bastion_template.add_resource(launch_template)
     bastion_template.add_resource(bastion_sg)
     bastion_template.add_resource(instance)
     bastion_template.add_output(
