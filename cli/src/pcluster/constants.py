@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from enum import Enum
 
 from pkg_resources import packaging
 
@@ -209,3 +210,31 @@ LAMBDA_VPC_ACCESS_MANAGED_POLICY = "arn:${AWS::Partition}:iam::aws:policy/servic
 
 IAM_NAME_PREFIX_LENGTH_LIMIT = 30
 IAM_PATH_LENGTH_LIMIT = 512
+
+
+# Features support
+# By default, all features are considered supported.
+# To mark a feature as unsupported for certain regions,
+# add the entry to the map below by region prefixes.
+class Feature(Enum):
+    """
+    Enumeration of features.
+
+    We do not expect this enumeration to list all the features,
+    but at least those that are considered for feature flagging.
+    """
+
+    BATCH = "AWS Batch scheduler"
+    DCV = "NICE DCV"
+    FSX_LUSTRE = "FSx Lustre"
+    FSX_ONTAP = "FSx ONTAP"
+    FSX_OPENZFS = "FSx OpenZfs"
+
+
+UNSUPPORTED_FEATURES_MAP = {
+    Feature.BATCH: ["ap-northeast-3", "us-iso"],
+    Feature.DCV: ["us-iso"],
+    Feature.FSX_LUSTRE: ["us-iso"],
+    Feature.FSX_ONTAP: ["us-iso"],
+    Feature.FSX_OPENZFS: ["us-iso"],
+}
