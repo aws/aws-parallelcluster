@@ -9,9 +9,12 @@
 import os.path
 
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, fail
 
+from pcluster.api.errors import BadRequestException
 from pcluster.cli.entrypoint import run
+from pcluster.cli.exceptions import APIOperationException
+from pcluster.constants import Operation
 from pcluster.utils import to_kebab_case, to_utc_datetime
 
 BASE_COMMAND = ["pcluster", "export-image-logs"]
@@ -61,6 +64,7 @@ class TestExportImageLogsCommand:
         ],
     )
     def test_execute(self, mocker, set_env, args):
+        mocked_assert_supported_operation = mocker.patch("pcluster.cli.commands.image_logs.assert_supported_operation")
         export_logs_mock = mocker.patch(
             "pcluster.cli.commands.image_logs.ImageBuilder.export_logs",
             return_value=args.get("output_file", "https://u.r.l."),
@@ -93,6 +97,39 @@ class TestExportImageLogsCommand:
             }
         )
         export_logs_mock.assert_called_with(**expected_params)
+        mocked_assert_supported_operation.assert_called_once()
+        mocked_assert_supported_operation.assert_called_with(operation=Operation.EXPORT_IMAGE_LOGS, region="us-east-1")
+
+    @pytest.mark.parametrize("is_operation_supported", [True, False])
+    def test_operation_support(self, mocker, set_env, is_operation_supported):
+        set_env("AWS_DEFAULT_REGION", "us-east-1")
+
+        mocked_assert_supported_operation = mocker.patch(
+            "pcluster.cli.commands.image_logs.assert_supported_operation",
+            side_effect=None if is_operation_supported else BadRequestException("ERROR MESSAGE"),
+        )
+
+        mocked_export_logs = mocker.patch("pcluster.cli.commands.image_logs.ImageBuilder.export_logs")
+
+        command = ["export-image-logs"] + self._build_cli_args(
+            {**REQUIRED_ARGS},
+        )
+
+        try:
+            run(command)
+            if not is_operation_supported:
+                fail("Expected to fail due to operation being unsupported.")
+        except Exception as exc:
+            assert_that(exc).is_instance_of(APIOperationException)
+            assert_that(exc.data).is_equal_to(dict(message="Bad Request: ERROR MESSAGE"))
+
+        mocked_assert_supported_operation.assert_called_once()
+        mocked_assert_supported_operation.assert_called_with(operation=Operation.EXPORT_IMAGE_LOGS, region="us-east-1")
+
+        if is_operation_supported:
+            mocked_export_logs.assert_called_once()
+        else:
+            mocked_export_logs.assert_not_called()
 
     @staticmethod
     def _build_cli_args(args):
