@@ -141,6 +141,7 @@ Class | Method | HTTP request | Description
  - [Ec2AmiInfo](docs/Ec2AmiInfo.md)
  - [Ec2AmiInfoSummary](docs/Ec2AmiInfoSummary.md)
  - [Ec2AmiState](docs/Ec2AmiState.md)
+ - [Failure](docs/Failure.md)
  - [GetClusterLogEventsResponseContent](docs/GetClusterLogEventsResponseContent.md)
  - [GetClusterStackEventsResponseContent](docs/GetClusterStackEventsResponseContent.md)
  - [GetImageLogEventsResponseContent](docs/GetImageLogEventsResponseContent.md)

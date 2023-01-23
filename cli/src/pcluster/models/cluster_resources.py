@@ -11,6 +11,7 @@
 import datetime
 import itertools
 import re
+from dataclasses import dataclass
 from typing import List
 
 from pcluster.aws.aws_api import AWSApi
@@ -80,7 +81,7 @@ class ClusterStack(StackInfo):
         """Return Batch compute environment."""
         return self._get_output("BatchComputeEnvironmentArn")
 
-    def get_failure_reason(self):
+    def _get_failure_reason(self):
         """Reason of the failure when the cluster_status is in CREATE_FAILED."""
 
         def _is_failed_wait(event):
@@ -94,6 +95,91 @@ class ClusterStack(StackInfo):
         stack_events = list(itertools.chain.from_iterable(get_all_stack_events(self.name)))
         failure_event = next(filter(_is_failed_wait, stack_events), None)
         return failure_event.get("ResourceStatusReason") if failure_event else None
+
+    def get_cluster_creation_failure(self):
+        """Get error code and error reasons for cluster creation failure."""
+
+        @dataclass
+        class ClusterCreationFailure:
+            """Represent the object holding the data of ClusterCreationFailure."""
+
+            failure_code: str
+            api_failure_reason: str
+            cfn_failure_reason: str
+
+        cluster_creation_failures = [
+            ClusterCreationFailure(
+                "AmiVersionMismatch",
+                "ParallelCluster version of the custom AMI is different than the cookbook. Please make them "
+                "consistent.",
+                "This AMI was created with",
+            ),
+            ClusterCreationFailure(
+                "InvalidAmi",
+                "The custom AMI is invalid. It needs to be created using build-image command by providing your AMI as "
+                "parent image.",
+                "This AMI was not baked by ParallelCluster",
+            ),
+            ClusterCreationFailure(
+                "OnNodeConfiguredExecutionFailure",
+                "Failed to execute OnNodeConfigured script.",
+                "Failed to execute OnNodeConfigured script",
+            ),
+            ClusterCreationFailure(
+                "OnNodeConfiguredDownloadFailure",
+                "Failed to download OnNodeConfigured script.",
+                "Failed to download OnNodeConfigured script",
+            ),  # s3 and wget
+            ClusterCreationFailure(
+                "OnNodeConfiguredFailure",
+                "Failed to run OnNodeConfigured script.",
+                "Failed to run OnNodeConfigured script",
+            ),
+            ClusterCreationFailure(
+                "OnNodeStartExecutionFailure",
+                "Failed to execute OnNodeStart script.",
+                "Failed to execute OnNodeStart script",
+            ),
+            ClusterCreationFailure(
+                "OnNodeStartDownloadFailure",
+                "Failed to download OnNodeStart script.",
+                "Failed to download OnNodeStart script",
+            ),  # s3 and wget
+            ClusterCreationFailure(
+                "OnNodeStartFailure", "Failed to run OnNodeStart script.", "Failed to run OnNodeStart script"
+            ),
+            ClusterCreationFailure("EbsMountFailure", "Failed to mount EBS volume.", "Failed to mount EBS volume"),
+            ClusterCreationFailure("EfsMountFailure", "Failed to mount EFS.", "Failed to mount EFS"),
+            ClusterCreationFailure("FsxMountFailure", "Failed to mount FSX.", "Failed to mount FSX"),
+            ClusterCreationFailure("RaidMountFailure", "Failed to mount RAID array.", "Failed to mount RAID array"),
+            ClusterCreationFailure(
+                "HeadNodeBootstrapFailure", "Failed to set up the head node.", "configured scheduler plugin"
+            ),
+            ClusterCreationFailure(
+                "HeadNodeBootstrapFailure", "Failed to set up the head node.", "Failed to run chef recipe"
+            ),
+            ClusterCreationFailure(
+                "HeadNodeBootstrapFailure", "Failed to bootstrap the head node.", "Failed to bootstrap the head node"
+            ),
+            ClusterCreationFailure(
+                "ResourceCreationFailure",
+                "Failed to create resources for head node bootstrap.",
+                "Resource creation cancelled",
+            ),
+            ClusterCreationFailure(
+                "HeadNodeBootstrapFailure", "Cluster creation timed out.", "WaitCondition timed out"
+            ),
+        ]
+
+        general_failure = failure = ClusterCreationFailure(
+            "ClusterCreationFailure", "Failed to create the cluster.", ""
+        )
+        cfn_failure_reason = self._get_failure_reason()
+        if cfn_failure_reason:
+            failure = next(
+                (f for f in cluster_creation_failures if f.cfn_failure_reason in cfn_failure_reason), general_failure
+            )
+        return failure.failure_code, failure.api_failure_reason
 
 
 class ClusterInstance(InstanceInfo):
