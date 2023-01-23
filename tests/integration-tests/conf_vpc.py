@@ -43,6 +43,52 @@ AVAILABILITY_ZONE_OVERRIDES = {
 }
 
 
+#
+# To ensure that each subnets has enough IP addresses to support current test parallelism
+# we will split the VPC address space into 32 subnets of 2046 (/21) addresses
+# The first 10 will be used for public subnets
+# The second 10 will be used for private subnets
+# The remaining 12 will be left for custom subnets
+CIDR_FOR_PUBLIC_SUBNETS = [
+    "192.168.0.0/21",
+    "192.168.8.0/21",
+    "192.168.16.0/21",
+    "192.168.24.0/21",
+    "192.168.32.0/21",
+    "192.168.40.0/21",
+    "192.168.48.0/21",
+    "192.168.56.0/21",
+    "192.168.64.0/21",
+    "192.168.72.0/21",
+]
+CIDR_FOR_PRIVATE_SUBNETS = [
+    "192.168.80.0/21",
+    "192.168.88.0/21",
+    "192.168.96.0/21",
+    "192.168.104.0/21",
+    "192.168.112.0/21",
+    "192.168.120.0/21",
+    "192.168.128.0/21",
+    "192.168.136.0/21",
+    "192.168.144.0/21",
+    "192.168.152.0/21",
+]
+CIDR_FOR_CUSTOM_SUBNETS = [
+    "192.168.160.0/21",
+    "192.168.168.0/21",
+    "192.168.176.0/21",
+    "192.168.184.0/21",
+    "192.168.192.0/21",
+    "192.168.200.0/21",
+    "192.168.208.0/21",
+    "192.168.216.0/21",
+    "192.168.224.0/21",
+    "192.168.232.0/21",
+    "192.168.240.0/21",
+    "192.168.248.0/21",
+]
+
+
 # Implements NamingConvention for Subnets
 # See: https://quip-amazon.com/xLgkAjTFgb7L/
 # Decision-Doc-Test-Runner-MultiAZ-requirements-and-improvements#temp:C:ZbZc1ead4e609ac455e821b5a7dc
