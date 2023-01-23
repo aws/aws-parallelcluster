@@ -723,7 +723,9 @@ class TestDescribeCluster:
                     ],
                     "version": get_installed_version(),
                     "scheduler": {"type": "plugin", "metadata": {"name": "plugin", "version": "1.0.0"}},
-                    "failureReason": "some errors",
+                    "failures": [
+                        {"failureCode": "ClusterCreationFailure", "failureReason": "Failed to create the cluster."},
+                    ],
                 },
             ),
             (
@@ -890,7 +892,7 @@ class TestDescribeCluster:
             )
 
     @pytest.mark.parametrize(
-        "cfn_stack_status, get_stack_events_response, expected_failure_reason",
+        "cfn_stack_status, get_stack_events_response, expected_failures",
         [
             (
                 "ROLLBACK_COMPLETE",
@@ -917,10 +919,13 @@ class TestDescribeCluster:
                         },
                     ]
                 ],
-                "WaitCondition received failed message: 'This AMI was created with aws-parallelcluster-cookbook-3.3.0, "
-                "but is trying to be used with aws-parallelcluster-cookbook-3.4.0b1. Please either use an AMI created "
-                "with aws-parallelcluster-cookbook-3.4.0b1 or change your ParallelCluster to "
-                "aws-parallelcluster-cookbook-3.3.0' for uniqueId: i-01fdb3c2b73182693",
+                [
+                    {
+                        "failureCode": "AmiVersionMismatch",
+                        "failureReason": "ParallelCluster version of the custom AMI is different than the cookbook. "
+                        "Please make them consistent.",
+                    }
+                ],
             ),
             (
                 "ROLLBACK_IN_PROGRESS",
@@ -938,7 +943,8 @@ class TestDescribeCluster:
                             "StackName": "fake-name",
                             "ResourceType": "AWS::CloudFormation::WaitCondition",
                             "ResourceStatus": "CREATE_FAILED",
-                            "ResourceStatusReason": "WaitCondition received failed message: Fail to run preinstall",
+                            "ResourceStatusReason": "WaitCondition received failed message: Failed to execute "
+                            "OnNodeStart script...",
                         },
                     ],
                     [
@@ -958,14 +964,87 @@ class TestDescribeCluster:
                         },
                     ],
                 ],
-                "WaitCondition received failed message: Fail to run preinstall",
+                [
+                    {
+                        "failureCode": "OnNodeStartExecutionFailure",
+                        "failureReason": "Failed to execute OnNodeStart script.",
+                    }
+                ],
             ),
-            ("CREATE_FAILED", [], None),
+            (
+                "CREATE_FAILED",
+                [
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition received failed message: 'Failed to mount FSX. "
+                            "Please check /var/log/chef-client.log in the head node, or "
+                            "check the chef-client.log in CloudWatch logs. Please refer to "
+                            "https://docs.aws.amazon.com/parallelcluster/latest/ug/"
+                            "troubleshooting-v3.html#troubleshooting-v3-get-logs for more "
+                            "details on ParallelCluster logs.' for "
+                            "uniqueId: i-01fdb3c2b73182693",
+                        },
+                    ]
+                ],
+                [{"failureCode": "FsxMountFailure", "failureReason": "Failed to mount FSX."}],
+            ),
+            (
+                "CREATE_FAILED",
+                [
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition timed out. Received 0 conditions when "
+                            "expecting 1",
+                        },
+                    ]
+                ],
+                [{"failureCode": "HeadNodeBootstrapFailure", "failureReason": "Cluster creation timed out."}],
+            ),
+            (
+                "CREATE_FAILED",
+                [
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "Resource creation cancelled",
+                        },
+                    ]
+                ],
+                [
+                    {
+                        "failureCode": "ResourceCreationFailure",
+                        "failureReason": "Failed to create resources for head node bootstrap.",
+                    }
+                ],
+            ),
+            (
+                "CREATE_FAILED",
+                [],
+                [{"failureCode": "ClusterCreationFailure", "failureReason": "Failed to create the cluster."}],
+            ),
         ],
-        ids=["get_stack_events_without_next_token", "get_stack_events_with_next_token", "no_stack_event"],
+        ids=[
+            "get_stack_events_without_next_token",
+            "get_stack_events_with_next_token",
+            "fail_to_mount_fsx",
+            "cluster_creation_timeout",
+            "cluster_resource_creation_failure",
+            "no_stack_event",
+        ],
     )
     def test_cluster_creation_failed(
-        self, client, mocker, cfn_stack_status, get_stack_events_response, expected_failure_reason
+        self, client, mocker, cfn_stack_status, get_stack_events_response, expected_failures
     ):
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
@@ -1008,8 +1087,8 @@ class TestDescribeCluster:
             "version": get_installed_version(),
             "scheduler": {"type": "slurm"},
         }
-        if expected_failure_reason:
-            expected_response["failureReason"] = expected_failure_reason
+        if expected_failures:
+            expected_response["failures"] = expected_failures
         mocker.patch(
             "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
         ).side_effect = ClusterActionError("failed")
