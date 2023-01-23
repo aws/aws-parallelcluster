@@ -43,6 +43,7 @@ from pcluster.api.models import (
     DeleteClusterResponseContent,
     DescribeClusterResponseContent,
     EC2Instance,
+    Failure,
     InstanceState,
     ListClustersResponseContent,
     Scheduler,
@@ -235,7 +236,7 @@ def describe_cluster(cluster_name, region=None):
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cluster_status,
         scheduler=Scheduler(type=cluster.stack.scheduler, metadata=cluster.get_plugin_metadata()),
-        failure_reason=cfn_stack.get_failure_reason() if cluster_status == ClusterStatus.CREATE_FAILED else None,
+        failures=_get_creation_failures(cluster_status, cfn_stack),
     )
 
     try:
@@ -444,3 +445,11 @@ def _create_message(failure_reason, action_needed):
     if action_needed:
         message = f"{message}. {action_needed}" if message else action_needed
     return message or "Error during update"
+
+
+def _get_creation_failures(cluster_status, cfn_stack):
+    """Get a list of Failure objects containing failure code and reason when cluster creation failed."""
+    if cluster_status != ClusterStatus.CREATE_FAILED:
+        return None
+    failure_code, failure_reason = cfn_stack.get_cluster_creation_failure()
+    return [Failure(failure_code=failure_code, failure_reason=failure_reason)]

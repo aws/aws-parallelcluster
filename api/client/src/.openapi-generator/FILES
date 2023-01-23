@@ -36,6 +36,7 @@ docs/EC2Instance.md
 docs/Ec2AmiInfo.md
 docs/Ec2AmiInfoSummary.md
 docs/Ec2AmiState.md
+docs/Failure.md
 docs/GetClusterLogEventsResponseContent.md
 docs/GetClusterStackEventsResponseContent.md
 docs/GetImageLogEventsResponseContent.md
@@ -116,6 +117,7 @@ pcluster_client/model/ec2_ami_info.py
 pcluster_client/model/ec2_ami_info_summary.py
 pcluster_client/model/ec2_ami_state.py
 pcluster_client/model/ec2_instance.py
+pcluster_client/model/failure.py
 pcluster_client/model/get_cluster_log_events_response_content.py
 pcluster_client/model/get_cluster_stack_events_response_content.py
 pcluster_client/model/get_image_log_events_response_content.py
