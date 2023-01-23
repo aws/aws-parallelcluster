@@ -101,14 +101,8 @@ def _get_subnets(conn, vpc_id):
     subnet_options = []
     subnet_list = conn.describe_subnets(
         Filters=[
-            {
-                "Name": "vpcId",
-                "Values": [vpc_id]
-            },
-            {
-                "Name": "ipv6-native",
-                "Values":  ["false"]
-            },
+            {"Name": "vpcId", "Values": [vpc_id]},
+            {"Name": "ipv6-native", "Values": ["false"]},
         ]
     ).get("Subnets")
     for subnet in subnet_list:
