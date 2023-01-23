@@ -594,6 +594,7 @@ class AwsBatchConstruct(Construct):
 
             manage_docker_images_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
+                config=self.config,
                 function_id="ManageDockerImages",
                 statements=[
                     iam.PolicyStatement(
@@ -670,6 +671,7 @@ class AwsBatchConstruct(Construct):
         if self.create_lambda_roles:
             build_notification_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
+                config=self.config,
                 function_id="BuildNotification",
                 statements=[
                     get_cloud_watch_logs_policy_statement(

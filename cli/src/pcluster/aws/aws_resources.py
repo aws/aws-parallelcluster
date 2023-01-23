@@ -312,6 +312,11 @@ class FsxFileSystemInfo:
         """Return network interface ids of the file system."""
         return self.file_system_data.get("NetworkInterfaceIds")
 
+    @property
+    def subnet_ids(self):
+        """Return subnet ids of the file system."""
+        return self.file_system_data.get("SubnetIds")
+
 
 class ImageInfo:
     """Object to store Ec2 Image information, initialized with the describe_image or describe_images in ec2 client."""

@@ -18,6 +18,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       ComputeResources:
         - Name: broken-static
           {% if scheduler == "plugin" %}
@@ -34,6 +37,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       ComputeResources:
         - Name: broken-dynamic
           {% if scheduler == "plugin" %}
@@ -57,6 +63,9 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+          {% if scheduler == "slurm" %}
+          - {{ private_az2_subnet_id }}
+          {% endif %}
       ComputeResources:
         - Name: normal
           {% if scheduler == "plugin" %}

@@ -26,6 +26,18 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+    {% if scheduler == "slurm" %}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_az3_subnet_id }}
+    {% endif %}
 SharedStorage:
   - MountDir: {{ existing_mount_dir }}
     Name: name1

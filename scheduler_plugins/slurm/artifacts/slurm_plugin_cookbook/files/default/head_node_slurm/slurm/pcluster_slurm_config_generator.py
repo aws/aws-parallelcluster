@@ -145,10 +145,7 @@ def _generate_slurm_parallelcluster_configs(
 def _get_jinja_env(template_directory):
     """Return jinja environment with trim_blocks/lstrip_blocks set to True."""
     file_loader = FileSystemLoader(template_directory)
-    # A nosec comment is appended to the following line in order to disable the B701 check.
-    # The contents of the default templates are known and the input configuration data is
-    # validated by the CLI.
-    env = SandboxedEnvironment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)  # nosec nosemgrep
+    env = SandboxedEnvironment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
     env.filters["sanify_name"] = lambda value: re.sub(r"[^A-Za-z0-9]", "", value)
     env.filters["gpus"] = _gpu_count
     env.filters["gpu_type"] = _gpu_type

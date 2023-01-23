@@ -67,6 +67,14 @@ Conditions:
   CreateAD: !Equals ['', '']
 
 Resources:
+  DisableImdsv1LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpPutResponseHopLimit: 4
+          HttpTokens: required
   PrepRole:
     Type: AWS::IAM::Role
     Properties:
@@ -362,6 +370,9 @@ Resources:
       ImageId: !Ref AdminNodeAmiId
       InstanceType: t2.micro
       KeyName: !Ref Keypair
+      LaunchTemplate:
+        LaunchTemplateId: !Ref 'DisableImdsv1LaunchTemplate'
+        Version: !GetAtt 'DisableImdsv1LaunchTemplate.LatestVersionNumber'
       SecurityGroupIds:
         - Ref: AdDomainAdminNodeSecurityGroup
       SubnetId: !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]

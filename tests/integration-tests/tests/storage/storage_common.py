@@ -15,11 +15,12 @@ import re
 import boto3
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
+from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from troposphere import Base64, Sub, Template
-from troposphere.ec2 import Instance
+from troposphere import Base64, GetAtt, Ref, Sub, Template
+from troposphere.ec2 import Instance, LaunchTemplate, LaunchTemplateSpecification
 from troposphere.fsx import (
     ClientConfigurations,
     NfsExports,
@@ -27,28 +28,81 @@ from troposphere.fsx import (
     OpenZFSConfiguration,
     RootVolumeConfiguration,
 )
+from troposphere.iam import InstanceProfile, Policy, Role
 from utils import generate_stack_name, random_alphanumeric, retrieve_cfn_outputs
 
+from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import retrieve_latest_ami
 
 
-def verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition=None):
+def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head_node: bool = True):
+    """
+    Returns a nested list of SubnetIds from the cluster configuration for each queue and headnode by default.
+    Example: [[HeadNode SubnetId], [<queue-0-SubnetIds>], [<queue-1-SubnetIds>], ...]
+    """
+    head_node_subnet_id = cluster.config.get("HeadNode", {}).get("Networking", {}).get("SubnetId")
+    if scheduler == "slurm":
+        queues = cluster.config.get("Scheduling", {}).get("SlurmQueues", [])
+    else:
+        queues = cluster.config.get("Scheduling", {}).get("AwsBatchQueues", [])
+
+    compute_subnet_ids = [queue.get("Networking", {}).get("SubnetIds", []) for queue in queues]
+    if include_head_node:
+        return [[head_node_subnet_id], *compute_subnet_ids]
+    return compute_subnet_ids
+
+
+def verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=None):
+    """
+    Confirm nodes can read and write to the FileSystem
+    Example:
+    - Partitions: ["A", "B"]
+    While writing:
+        "A" writes a file "A-<random_alphanumeric_characters>"
+        "B" writes a file "B-<random_alphanumeric_characters>"
+    While Reading:
+        "A" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
+        "B" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
+    """
     head_node_file = random_alphanumeric()
-    compute_file = random_alphanumeric()
+    logging.info(f"Writing HeadNode File: {head_node_file}")
     remote_command_executor.run_remote_command(
-        "touch {mount_dir}/{head_node_file}".format(mount_dir=mount_dir, head_node_file=head_node_file)
-    )
-    job_command = "cat {mount_dir}/{head_node_file} && touch {mount_dir}/{compute_file}".format(
-        mount_dir=mount_dir, head_node_file=head_node_file, compute_file=compute_file
+        "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
+            mount_dir=mount_dir, head_node_file=head_node_file
+        )
     )
 
-    result = scheduler_commands.submit_command(job_command, partition=partition)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    remote_command_executor.run_remote_command(
-        "cat {mount_dir}/{compute_file}".format(mount_dir=mount_dir, compute_file=compute_file)
+    # Submit a "Write" job to each partition
+    files_to_read = [head_node_file]
+    partitions = (
+        partitions or scheduler_commands.get_partitions() if isinstance(scheduler_commands, SlurmCommands) else [None]
     )
+    for partition in partitions:
+        compute_file = "{}-{}".format(partition, random_alphanumeric())
+        logging.info(f"Writing Compute File: {compute_file} from {partition}")
+        job_command = "touch {mount_dir}/{compute_file} && cat {mount_dir}/{compute_file}".format(
+            mount_dir=mount_dir, compute_file=compute_file
+        )
+        result = scheduler_commands.submit_command(job_command, partition=partition)
+        job_id = scheduler_commands.assert_job_submitted(result.stdout)
+        scheduler_commands.wait_job_completed(job_id)
+        scheduler_commands.assert_job_succeeded(job_id)
+        files_to_read.append(compute_file)
+
+    read_all_files_command = "cat {files_to_read}".format(
+        files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
+    )
+    # Attempt reading files from HeadNode
+    logging.info(f"Reading Files: {files_to_read} from HeadNode")
+    remote_command_executor.run_remote_command(read_all_files_command)
+
+    # Submit a "Read" job to each partition
+    for partition in partitions:
+        logging.info(f"Reading Files: {files_to_read} from {partition}")
+        result = scheduler_commands.submit_command(read_all_files_command, partition=partition)
+        job_id = scheduler_commands.assert_job_submitted(result.stdout)
+        scheduler_commands.wait_job_completed(job_id)
+        scheduler_commands.assert_job_succeeded(job_id)
 
 
 # for EBS
@@ -128,22 +182,65 @@ def write_file_into_efs(
         package_upgrade: true
         runcmd:
         - yum install -y nfs-utils
+        - yum install -y amazon-efs-utils
         {write_file_user_data}
         - opt/aws/bin/cfn-signal -e $? --stack ${{AWS::StackName}} --resource InstanceToWriteEFS --region ${{AWS::Region}}
         """  # noqa: E501
+    role = write_file_template.add_resource(
+        Role(
+            "IAMTLS",
+            AssumeRolePolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [
+                    {"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}
+                ],
+            },
+            Policies=[
+                Policy(
+                    PolicyName="EFSPolicy",
+                    PolicyDocument={
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Sid": "VisualEditor0",
+                                "Effect": "Allow",
+                                "Action": "elasticfilesystem:*",
+                                "Resource": "*",
+                            }
+                        ],
+                    },
+                )
+            ],
+        )
+    )
+    iam_instance_profile = write_file_template.add_resource(InstanceProfile("IamTlsProfile", Roles=[Ref(role)]))
+    launch_template = LaunchTemplate.from_dict(
+        "LaunchTemplateIMDSv2",
+        {
+            "LaunchTemplateData": {"MetadataOptions": {"HttpTokens": "required", "HttpEndpoint": "enabled"}},
+        },
+    )
+    write_file_template.add_resource(launch_template)
+
     write_file_template.add_resource(
         Instance(
             "InstanceToWriteEFS",
             CreationPolicy={"ResourceSignal": {"Timeout": "PT10M"}},
             ImageId=retrieve_latest_ami(region, "alinux2"),
             InstanceType="c5.xlarge",
+            LaunchTemplate=LaunchTemplateSpecification(
+                LaunchTemplateId=Ref(launch_template), Version=GetAtt(launch_template, "LatestVersionNumber")
+            ),
             SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
+            IamInstanceProfile=Ref(iam_instance_profile),
         )
     )
     stack_name = generate_stack_name("integ-tests-efs-write-file", request.config.getoption("stackname_suffix"))
-    write_file_stack = CfnStack(name=stack_name, region=region, template=write_file_template.to_json())
+    write_file_stack = CfnStack(
+        name=stack_name, region=region, template=write_file_template.to_json(), capabilities=["CAPABILITY_IAM"]
+    )
     cfn_stacks_factory.create_stack(write_file_stack)
 
     # Delete created stacks so the instance and mount targets are deleted.
@@ -157,14 +254,14 @@ def _write_user_data(efs_id, random_file_name):
     mount_dir = "/mnt/efs/fs"
     return f"""
         - mkdir -p {mount_dir}
-        - mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev "{efs_id}.efs.${{AWS::Region}}.${{AWS::URLSuffix}}:/" {mount_dir}
+        - mount -t efs -o tls,iam {efs_id}:/ {mount_dir}
         - touch {mount_dir}/{random_file_name}
         - umount {mount_dir}
         """  # noqa: E501
 
 
-def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False):
-    # TODO: Add iam. The value of the two parameters should be set according to cluster configuration parameters.
+def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, iam=False):
+    # The value of the two parameters should be set according to cluster configuration parameters.
     logging.info("Checking efs {0} is correctly mounted".format(mount_dir))
     # Following EFS instruction to check https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html
     result = remote_command_executor.run_remote_command("mount | column -t | grep '{0}'".format(mount_dir))
@@ -180,7 +277,9 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False):
     # Check fstab content according to https://docs.aws.amazon.com/efs/latest/ug/automount-with-efs-mount-helper.html
     logging.info("Checking efs {0} is correctly configured in fstab".format(mount_dir))
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    if tls:  # TODO: Add a another check when tls and iam are enabled together
+    if tls and iam:  # Add a another check when tls and iam are enabled together
+        assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls,iam 0 0")
+    elif tls:
         assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls 0 0")
     else:
         assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport 0 0")
@@ -237,15 +336,30 @@ def get_file_system_type(fsx_id, region):
         return fsx.describe_volumes(VolumeIds=[fsx_id]).get("Volumes")[0].get("VolumeType")
 
 
+def assert_subnet_az_relations_from_config(
+    region: str, scheduler: str, cluster: Cluster, expected_in_same_az: bool, include_head_node: bool = True
+):
+    # [["Subnet1"], ["Subnet2", "Subnet3"], ["Subnet1", "Subnet2"], ...]
+    cluster_subnet_ids_groups = get_cluster_subnet_ids_groups(cluster, scheduler, include_head_node)
+
+    # ["AZ1", "AZ2", "AZ3", "AZ1", "AZ2", ...]
+    cluster_avail_zones = [
+        boto3.resource("ec2", region_name=region).Subnet(subnet_id).availability_zone
+        for subnet_ids_group in cluster_subnet_ids_groups
+        for subnet_id in subnet_ids_group
+    ]
+
+    if expected_in_same_az:
+        assert_that(set(cluster_avail_zones)).is_length(1)
+    else:
+        assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
+
+
 def assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
-    logging.info("Testing fsx correctly mounted on compute nodes")
-    remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
-    job_command = "cat {mount_dir}/test_file && touch {mount_dir}/compute_output".format(mount_dir=mount_dir)
-    result = scheduler_commands.submit_command(job_command)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    remote_command_executor.run_remote_command("cat {mount_dir}/compute_output".format(mount_dir=mount_dir))
+    logging.info("Testing fsx correctly shared on HeadNode and Compute Nodes")
+    verify_directory_correctly_shared(
+        remote_command_executor, mount_dir, scheduler_commands, partitions=scheduler_commands.get_partitions()
+    )
 
 
 def assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, volume_id):

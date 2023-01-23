@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import os as os_lib
+from datetime import datetime, timedelta
 
 import pytest
 from assertpy import assert_that, soft_assertions
@@ -19,7 +20,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.config.cluster_config import AmiSearchFilters, Tag
 from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, to_iso_timestr
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
@@ -132,12 +133,31 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
             None,
             {
                 "Images": [
-                    {"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"},
-                    {"Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other"},
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-earlier",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-deprecated",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2020-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
                 ]
             },
             [
-                ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}),
+                ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later"}),
                 ImageInfo({"Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other"}),
             ],
             None,
@@ -146,15 +166,38 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
         pytest.param(
             "alinux2",
             None,
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
-            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            {
+                "Images": [
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-earlier",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2020-10-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2020-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-created-later"})],
             None,
             id="test with os",
         ),
         pytest.param(
             None,
             "x86_64",
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            {
+                "Images": [
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
             [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
             None,
             id="test with architecture",
@@ -162,7 +205,15 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
         pytest.param(
             "alinux2",
             "x86_64",
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            {
+                "Images": [
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
             [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
             None,
             id="test with os and architecture",
@@ -178,8 +229,8 @@ def test_get_official_images(boto3_stubber, os, architecture, boto3_response, ex
         "Filters": [
             {"Name": "name", "Values": [f"aws-parallelcluster-{filter_version}-{filter_os}-{filter_arch}*"]},
         ],
-        "ImageIds": [],
         "Owners": ["amazon"],
+        "IncludeDeprecated": True,
     }
     mocked_requests = [
         MockedBoto3Request(
@@ -251,6 +302,7 @@ def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_r
             {"Name": "name", "Values": [f"aws-parallelcluster-{get_installed_version()}-amzn2-hvm-{architecture}*"]},
         ],
         "Owners": [filters.owner if filters and filters.owner else "amazon"],
+        "IncludeDeprecated": True,
     }
     if filters and filters.tags:
         expected_params["Filters"].extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in filters.tags])
@@ -270,6 +322,83 @@ def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_r
     else:
         ami_id = Ec2Client().get_official_image_id(os, architecture, filters)
         assert_that(ami_id).is_equal_to(expected_ami_id)
+
+
+@pytest.mark.parametrize(
+    "boto3_response, expected_ami_id",
+    [
+        (
+            {
+                "Images": [
+                    {
+                        "ImageId": "A",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "ImageId": "B",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
+            "B",
+        ),
+        (
+            {
+                "Images": [
+                    {
+                        "ImageId": "A",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "ImageId": "B",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
+            "A",
+        ),
+        (
+            {
+                "Images": [
+                    {
+                        "ImageId": "A",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "ImageId": "B",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                        "DeprecationTime": to_iso_timestr(datetime.now() + timedelta(minutes=5)),
+                    },
+                ]
+            },
+            "B",
+        ),
+    ],
+    ids=["both deprecated", "one deprecated", "deprecation in the future"],
+)
+def test_get_official_image_id_with_deprecation(boto3_stubber, boto3_response, expected_ami_id):
+    expected_params = {
+        "Filters": [
+            {"Name": "name", "Values": [f"aws-parallelcluster-{get_installed_version()}-amzn2-hvm-arm64*"]},
+        ],
+        "Owners": ["amazon"],
+        "IncludeDeprecated": True,
+    }
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_images",
+            expected_params=expected_params,
+            response=boto3_response,
+            generate_error=False,
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+
+    ami_id = Ec2Client().get_official_image_id("alinux2", "arm64", None)
+    assert_that(ami_id).is_equal_to(expected_ami_id)
 
 
 @pytest.mark.parametrize(
@@ -470,3 +599,23 @@ def test_describe_security_groups_cache(boto3_stubber):
     # The latest security group ip permission should be retrieved from boto3
     AWSApi.reset()
     assert_that(AWSApi.instance().ec2.describe_security_groups([security_group])[0]["IpPermissions"]).is_not_empty()
+
+
+def get_describe_volumes_mocked_request(volume_id, az):
+    return MockedBoto3Request(
+        method="describe_volumes",
+        response={"Volumes": [{"VolumeId": volume_id, "AvailabilityZone": az}]},
+        expected_params={"VolumeIds": [volume_id]},
+    )
+
+
+def test_describe_volume(boto3_stubber):
+    volume_id = "vol-1"
+    az = "az-1"
+    mocked_requests = [
+        get_describe_volumes_mocked_request(volume_id, az),
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    response = AWSApi.instance().ec2.describe_volume(volume_id)
+
+    assert_that(response["AvailabilityZone"] == az).is_true()

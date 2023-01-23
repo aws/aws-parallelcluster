@@ -8,7 +8,9 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import re
+from datetime import datetime
 from typing import Any, List, Tuple
 
 from botocore.exceptions import ClientError
@@ -283,6 +285,13 @@ class Ec2Client(Boto3Client):
         instance_info = self.get_instance_type_info(instance_type)
         return instance_info.supported_architecture()
 
+    @staticmethod
+    def _is_image_deprecated(image):
+        return "DeprecationTime" in image and utils.to_iso_timestr(datetime.now()) >= image["DeprecationTime"]
+
+    def _find_valid_official_image(self, images):
+        return max(images, key=lambda image: ("0" if self._is_image_deprecated(image) else "1") + image["CreationDate"])
+
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def get_official_image_id(self, os, architecture, filters=None):
@@ -292,20 +301,25 @@ class Ec2Client(Boto3Client):
 
         filters = [{"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]}]
         filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
-        images = self._client.describe_images(Owners=[owner], Filters=filters).get("Images")
+        images = self._client.describe_images(Owners=[owner], Filters=filters, IncludeDeprecated=True).get("Images")
         if not images:
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
-        return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
+        return self._find_valid_official_image(images).get("ImageId")
 
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def get_official_images(self, os=None, architecture=None):
         """Get the list of official images, optionally filtered by os and architecture."""
-        try:
-            owners = ["amazon"]
-            name = f"{self._get_official_image_name_prefix(os, architecture)}*"
-            filters = [{"Name": "name", "Values": [name]}]
-            return self.describe_images(ami_ids=[], owners=owners, filters=filters)
-        except ImageNotFoundError:
-            return []
+        owners = ["amazon"]
+        name = f"{self._get_official_image_name_prefix(os, architecture)}*"
+        filters = [{"Name": "name", "Values": [name]}]
+        return [
+            ImageInfo(self._find_valid_official_image(images_os_arch))
+            for _, images_os_arch in itertools.groupby(
+                self._client.describe_images(Owners=owners, Filters=filters, IncludeDeprecated=True).get("Images"),
+                key=lambda image: f'{self.extract_os_from_official_image_name(image["Name"])}-{image["Architecture"]}',
+            )
+        ]
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
@@ -460,6 +474,7 @@ class Ec2Client(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_volume(self, volume_id):
         """Describe a volume."""
         return self._client.describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]

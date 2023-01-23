@@ -42,6 +42,7 @@ from aws_cdk.core import (
 )
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     BaseSharedFsx,
@@ -103,7 +104,7 @@ from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
 
-class ClusterCdkStack(Stack):
+class ClusterCdkStack:
     """Create the CloudFormation stack template for the Cluster."""
 
     def __init__(
@@ -116,7 +117,7 @@ class ClusterCdkStack(Stack):
         log_group_name=None,
         **kwargs,
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        self.stack = Stack(scope=scope, id=construct_id, **kwargs)
         self._stack_name = stack_name
         self._launch_template_builder = CdkLaunchTemplateBuilder()
         self.config = cluster_config
@@ -130,7 +131,7 @@ class ClusterCdkStack(Stack):
             else:
                 # pcluster create create a log group with timestamp suffix
                 timestamp = f"{datetime.utcnow().strftime('%Y%m%d%H%M')}"
-                self.log_group_name = f"{CW_LOG_GROUP_NAME_PREFIX}{self.stack_name}-{timestamp}"
+                self.log_group_name = f"{CW_LOG_GROUP_NAME_PREFIX}{self.stack.stack_name}-{timestamp}"
 
         self.shared_storage_infos = {storage_type: [] for storage_type in SharedStorageType}
         self.shared_storage_mount_dirs = {storage_type: [] for storage_type in SharedStorageType}
@@ -141,17 +142,17 @@ class ClusterCdkStack(Stack):
         self._add_outputs()
 
         try:
-            apply_permissions_boundary(cluster_config.iam.permissions_boundary, self)
+            apply_permissions_boundary(cluster_config.iam.permissions_boundary, self.stack)
         except AttributeError:
             pass
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
     def _stack_unique_id(self):
-        return Fn.select(2, Fn.split("/", self.stack_id))
+        return Fn.select(2, Fn.split("/", self.stack.stack_id))
 
     def _build_resource_path(self):
-        return self.stack_id
+        return self.stack.stack_id
 
     def _get_head_node_security_groups(self):
         """Return the security groups to be used for the head node, created by us OR provided by the user."""
@@ -192,33 +193,41 @@ class ClusterCdkStack(Stack):
 
     def _add_parameters(self):
         CfnParameter(
-            self,
+            self.stack,
             "ClusterUser",
             description="Username to login to head node",
             default=OS_MAPPING[self.config.image.os]["user"],
         )
         CfnParameter(
-            self,
+            self.stack,
             "ResourcesS3Bucket",
             description="S3 user bucket where AWS ParallelCluster resources are stored",
             default=self.bucket.name,
         )
         CfnParameter(
-            self,
+            self.stack,
             "ArtifactS3RootDirectory",
             description="Root directory in S3 bucket where cluster artifacts are stored",
             default=self.bucket.artifact_directory,
         )
-        CfnParameter(self, "Scheduler", default=self.config.scheduling.scheduler)
+        CfnParameter(self.stack, "Scheduler", default=self.config.scheduling.scheduler)
+
+        try:
+            CfnParameter(self.stack, "OfficialAmi", default=self.config.official_ami)
+        except AWSClientError:
+            # This might happen if there is no official AMI
+            # and custom AMIs are defined for the head node and compute nodes
+            pass
+
         CfnParameter(
-            self,
+            self.stack,
             "ConfigVersion",
             description="Version of the original config used to generate the stack",
             default=self.config.original_config_version,
         )
         if self.config.is_cw_logging_enabled:
             CfnParameter(
-                self,
+                self.stack,
                 CW_LOGS_CFN_PARAM_NAME,
                 description="CloudWatch Log Group associated to the cluster",
                 default=self.log_group_name,
@@ -232,24 +241,24 @@ class ClusterCdkStack(Stack):
         if self.config.is_cw_logging_enabled:
             self.log_group = self._add_cluster_log_group()
 
-        self._add_iam_resources()
-
         # Managed security groups
         self._head_security_group, self._compute_security_group = self._add_security_groups()
 
         # Head Node ENI
         self._head_eni = self._add_head_eni()
 
-        # Additional Cfn Stack
-        if self.config.additional_resources:
-            CfnStack(self, "AdditionalCfnStack", template_url=self.config.additional_resources)
-
-        # Cleanup Resources Lambda Function
-        cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
-
         if self.config.shared_storage:
             for storage in self.config.shared_storage:
                 self._add_shared_storage(storage)
+
+        self._add_iam_resources()
+
+        # Additional Cfn Stack
+        if self.config.additional_resources:
+            CfnStack(self.stack, "AdditionalCfnStack", template_url=self.config.additional_resources)
+
+        # Cleanup Resources Lambda Function
+        cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
 
         self._add_fleet_and_scheduler_resources(cleanup_lambda, cleanup_lambda_role)
 
@@ -265,7 +274,7 @@ class ClusterCdkStack(Stack):
         # AWS Batch related resources
         if self._condition_is_batch():
             self.scheduler_resources = AwsBatchConstruct(
-                scope=self,
+                scope=self.stack,
                 id="AwsBatch",
                 stack_name=self._stack_name,
                 cluster_config=self.config,
@@ -281,9 +290,9 @@ class ClusterCdkStack(Stack):
         # CloudWatch Dashboard
         if self.config.is_cw_dashboard_enabled:
             self.cloudwatch_dashboard = CWDashboardConstruct(
-                scope=self,
+                scope=self.stack,
                 id="PclusterDashboard",
-                stack_name=self.stack_name,
+                stack_name=self.stack.stack_name,
                 cluster_config=self.config,
                 head_node_instance=self.head_node_instance,
                 shared_storage_infos=self.shared_storage_infos,
@@ -292,7 +301,13 @@ class ClusterCdkStack(Stack):
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(
-            self, "HeadNodeIamResources", self.config, self.config.head_node, "HeadNode", self.bucket
+            self.stack,
+            "HeadNodeIamResources",
+            self.config,
+            self.config.head_node,
+            self.shared_storage_infos,
+            "HeadNode",
+            self.bucket,
         )
         self._head_node_instance_profile = head_node_iam_resources.instance_profile
         self._managed_head_node_instance_role = head_node_iam_resources.instance_role
@@ -301,7 +316,12 @@ class ClusterCdkStack(Stack):
             iam_resources = {}
             for queue in self.config.scheduling.queues:
                 iam_resources[queue.name] = ComputeNodeIamResources(
-                    self, f"ComputeNodeIamResources{queue.name}", self.config, queue, queue.name
+                    self.stack,
+                    f"ComputeNodeIamResources{queue.name}",
+                    self.config,
+                    queue,
+                    self.shared_storage_infos,
+                    queue.name,
                 )
 
             self._compute_instance_profiles = {k: v.instance_profile for k, v in iam_resources.items()}
@@ -309,7 +329,7 @@ class ClusterCdkStack(Stack):
 
     def _add_cluster_log_group(self):
         log_group = logs.CfnLogGroup(
-            self,
+            self.stack,
             "CloudWatchLogGroup",
             log_group_name=self.log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
@@ -322,7 +342,7 @@ class ClusterCdkStack(Stack):
         self.scheduler_resources = None
         if self._condition_is_slurm():
             self.scheduler_resources = SlurmConstruct(
-                scope=self,
+                scope=self.stack,
                 id="Slurm",
                 stack_name=self._stack_name,
                 cluster_config=self.config,
@@ -334,9 +354,9 @@ class ClusterCdkStack(Stack):
             )
         if not self._condition_is_batch():
             _dynamodb_table_status = dynamomdb.CfnTable(
-                self,
+                self.stack,
                 "DynamoDBTable",
-                table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack_name,
+                table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack.stack_name,
                 attribute_definitions=[
                     dynamomdb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
                 ],
@@ -349,7 +369,7 @@ class ClusterCdkStack(Stack):
         self.compute_fleet_resources = None
         if not self._condition_is_batch():
             self.compute_fleet_resources = ComputeFleetConstruct(
-                scope=self,
+                scope=self.stack,
                 id="ComputeFleet",
                 cluster_config=self.config,
                 log_group=self.log_group,
@@ -373,15 +393,16 @@ class ClusterCdkStack(Stack):
             s3_policy_actions = ["s3:DeleteObject", "s3:DeleteObjectVersion", "s3:ListBucket", "s3:ListBucketVersions"]
 
             cleanup_resources_lambda_role = add_lambda_cfn_role(
-                scope=self,
+                scope=self.stack,
+                config=self.config,
                 function_id="CleanupResources",
                 statements=[
                     iam.PolicyStatement(
                         actions=s3_policy_actions,
                         effect=iam.Effect.ALLOW,
                         resources=[
-                            self.format_arn(service="s3", resource=self.bucket.name, region="", account=""),
-                            self.format_arn(
+                            self.stack.format_arn(service="s3", resource=self.bucket.name, region="", account=""),
+                            self.stack.format_arn(
                                 service="s3",
                                 resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/*",
                                 region="",
@@ -391,10 +412,10 @@ class ClusterCdkStack(Stack):
                         sid="S3BucketPolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self.format_arn(
+                        resource=self.stack.format_arn(
                             service="logs",
-                            account=self.account,
-                            region=self.region,
+                            account=self.stack.account,
+                            region=self.stack.region,
                             resource=get_lambda_log_group_prefix("CleanupResources-*"),
                         )
                     ),
@@ -403,7 +424,7 @@ class ClusterCdkStack(Stack):
             )
 
         cleanup_resources_lambda = PclusterLambdaConstruct(
-            scope=self,
+            scope=self.stack,
             id="CleanupResourcesFunctionConstruct",
             function_id="CleanupResources",
             bucket=self.bucket,
@@ -415,7 +436,7 @@ class ClusterCdkStack(Stack):
         ).lambda_func
 
         CustomResource(
-            self,
+            self.stack,
             "CleanupResourcesS3BucketCustomResource",
             service_token=cleanup_resources_lambda.attr_arn,
             properties={
@@ -432,7 +453,7 @@ class ClusterCdkStack(Stack):
         head_eni_group_set = self._get_head_node_security_groups_full()
 
         head_eni = ec2.CfnNetworkInterface(
-            self,
+            self.stack,
             "HeadNodeENI",
             description="AWS ParallelCluster head node interface",
             subnet_id=self.config.head_node.networking.subnet_id,
@@ -444,11 +465,13 @@ class ClusterCdkStack(Stack):
         if elastic_ip:
             # Create and associate EIP to Head Node
             if elastic_ip is True:
-                allocation_id = ec2.CfnEIP(self, "HeadNodeEIP", domain="vpc").attr_allocation_id
+                allocation_id = ec2.CfnEIP(self.stack, "HeadNodeEIP", domain="vpc").attr_allocation_id
             # Attach existing EIP
             else:
                 allocation_id = AWSApi.instance().ec2.get_eip_allocation_id(elastic_ip)
-            ec2.CfnEIPAssociation(self, "AssociateEIP", allocation_id=allocation_id, network_interface_id=head_eni.ref)
+            ec2.CfnEIPAssociation(
+                self.stack, "AssociateEIP", allocation_id=allocation_id, network_interface_id=head_eni.ref
+            )
 
         return head_eni
 
@@ -518,7 +541,7 @@ class ClusterCdkStack(Stack):
 
     def _allow_all_ingress(self, description, source_security_group_id, group_id):
         return ec2.CfnSecurityGroupIngress(
-            self,
+            self.stack,
             description,
             ip_protocol="-1",
             from_port=0,
@@ -529,7 +552,7 @@ class ClusterCdkStack(Stack):
 
     def _allow_all_egress(self, description, destination_security_group_id, group_id):
         return ec2.CfnSecurityGroupEgress(
-            self,
+            self.stack,
             description,
             ip_protocol="-1",
             from_port=0,
@@ -541,13 +564,15 @@ class ClusterCdkStack(Stack):
     def _add_storage_security_group(self, storage_cfn_id, storage):
         storage_type = storage.shared_storage_type
         storage_security_group = ec2.CfnSecurityGroup(
-            self,
+            self.stack,
             "{0}SecurityGroup".format(storage_cfn_id),
             group_description=f"Allow access to {storage_type} file system {storage_cfn_id}",
             vpc_id=self.config.vpc_id,
         )
         storage_deletion_policy = convert_deletion_policy(storage.deletion_policy)
-        storage_security_group.cfn_options.deletion_policy = storage_deletion_policy
+        storage_security_group.cfn_options.deletion_policy = (
+            storage_security_group.cfn_options.update_replace_policy
+        ) = storage_deletion_policy
 
         target_security_groups = {
             "Head": self._get_head_node_security_groups(),
@@ -570,20 +595,27 @@ class ClusterCdkStack(Stack):
                 )
 
                 if sg_type == "Storage":
-                    ingress_rule.cfn_options.deletion_policy = storage_deletion_policy
-                    egress_rule.cfn_options.deletion_policy = storage_deletion_policy
+                    ingress_rule.cfn_options.deletion_policy = (
+                        ingress_rule.cfn_options.update_replace_policy
+                    ) = storage_deletion_policy
+                    egress_rule.cfn_options.deletion_policy = (
+                        egress_rule.cfn_options.update_replace_policy
+                    ) = storage_deletion_policy
 
         return storage_security_group
 
     def _add_compute_security_group(self):
         compute_security_group = ec2.CfnSecurityGroup(
-            self, "ComputeSecurityGroup", group_description="Allow access to compute nodes", vpc_id=self.config.vpc_id
+            self.stack,
+            "ComputeSecurityGroup",
+            group_description="Allow access to compute nodes",
+            vpc_id=self.config.vpc_id,
         )
 
         # ComputeSecurityGroupEgress
         # Access to other compute nodes from compute nodes
         compute_security_group_egress = ec2.CfnSecurityGroupEgress(
-            self,
+            self.stack,
             "ComputeSecurityGroupEgress",
             ip_protocol="-1",
             from_port=0,
@@ -595,7 +627,7 @@ class ClusterCdkStack(Stack):
         # ComputeSecurityGroupNormalEgress
         # Internet access from compute nodes
         ec2.CfnSecurityGroupEgress(
-            self,
+            self.stack,
             "ComputeSecurityGroupNormalEgress",
             ip_protocol="-1",
             from_port=0,
@@ -607,7 +639,7 @@ class ClusterCdkStack(Stack):
         # ComputeSecurityGroupIngress
         # Access to compute nodes from other compute nodes
         ec2.CfnSecurityGroupIngress(
-            self,
+            self.stack,
             "ComputeSecurityGroupIngress",
             ip_protocol="-1",
             from_port=0,
@@ -637,7 +669,7 @@ class ClusterCdkStack(Stack):
                 )
             )
         return ec2.CfnSecurityGroup(
-            self,
+            self.stack,
             "HeadNodeSecurityGroup",
             group_description="Enable access to the head node",
             vpc_id=self.config.vpc_id,
@@ -682,7 +714,7 @@ class ClusterCdkStack(Stack):
                     drive_cache_type = "NONE"
             file_system_security_groups = [self._add_storage_security_group(id, shared_fsx)]
             fsx_resource = fsx.CfnFileSystem(
-                self,
+                self.stack,
                 id,
                 storage_capacity=shared_fsx.storage_capacity,
                 lustre_configuration=fsx.CfnFileSystem.LustreConfigurationProperty(
@@ -703,12 +735,14 @@ class ClusterCdkStack(Stack):
                 kms_key_id=shared_fsx.kms_key_id,
                 file_system_type=LUSTRE,
                 storage_type=shared_fsx.fsx_storage_type,
-                subnet_ids=self.config.compute_subnet_ids,
+                subnet_ids=self.config.compute_subnet_ids[0:1],
                 security_group_ids=[sg.ref for sg in file_system_security_groups],
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
-            fsx_resource.cfn_options.deletion_policy = convert_deletion_policy(shared_fsx.deletion_policy)
+            fsx_resource.cfn_options.deletion_policy = (
+                fsx_resource.cfn_options.update_replace_policy
+            ) = convert_deletion_policy(shared_fsx.deletion_policy)
 
             fsx_id = fsx_resource.ref
             # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
@@ -733,7 +767,7 @@ class ClusterCdkStack(Stack):
         deletion_policy = convert_deletion_policy(shared_efs.deletion_policy)
         if not efs_id and shared_efs.mount_dir:
             efs_resource = efs.CfnFileSystem(
-                self,
+                self.stack,
                 id,
                 encrypted=shared_efs.encrypted,
                 kms_key_id=shared_efs.kms_key_id,
@@ -742,7 +776,7 @@ class ClusterCdkStack(Stack):
                 throughput_mode=shared_efs.throughput_mode,
             )
             efs_resource.tags.set_tag(key="Name", value=shared_efs.name)
-            efs_resource.cfn_options.deletion_policy = deletion_policy
+            efs_resource.cfn_options.deletion_policy = efs_resource.cfn_options.update_replace_policy = deletion_policy
             efs_id = efs_resource.ref
 
         checked_availability_zones = []
@@ -795,13 +829,15 @@ class ClusterCdkStack(Stack):
         if availability_zone not in checked_availability_zones:
             if new_file_system:
                 efs_resource = efs.CfnMountTarget(
-                    self,
+                    self.stack,
                     "{0}MT{1}".format(efs_cfn_resource_id, availability_zone),
                     file_system_id=file_system_id,
                     security_groups=[sg.ref for sg in security_groups],
                     subnet_id=subnet_id,
                 )
-                efs_resource.cfn_options.deletion_policy = deletion_policy
+                efs_resource.cfn_options.deletion_policy = (
+                    efs_resource.cfn_options.update_replace_policy
+                ) = deletion_policy
             checked_availability_zones.append(availability_zone)
 
     def _add_raid_volume(self, id_prefix: str, shared_ebs: SharedEbs):
@@ -823,7 +859,7 @@ class ClusterCdkStack(Stack):
 
     def _add_cfn_volume(self, id: str, shared_ebs: SharedEbs):
         volume = ec2.CfnVolume(
-            self,
+            self.stack,
             id,
             availability_zone=self.config.head_node.networking.availability_zone,
             encrypted=shared_ebs.encrypted,
@@ -835,13 +871,17 @@ class ClusterCdkStack(Stack):
             volume_type=shared_ebs.volume_type,
             tags=[CfnTag(key="Name", value=shared_ebs.name)],
         )
-        volume.cfn_options.deletion_policy = convert_deletion_policy(shared_ebs.deletion_policy)
+        volume.cfn_options.deletion_policy = volume.cfn_options.update_replace_policy = convert_deletion_policy(
+            shared_ebs.deletion_policy
+        )
         return volume.ref
 
     def _add_wait_condition(self):
-        wait_condition_handle = cfn.CfnWaitConditionHandle(self, id="HeadNodeWaitConditionHandle" + self.timestamp)
+        wait_condition_handle = cfn.CfnWaitConditionHandle(
+            self.stack, id="HeadNodeWaitConditionHandle" + self.timestamp
+        )
         wait_condition = cfn.CfnWaitCondition(
-            self,
+            self.stack,
             id="HeadNodeWaitCondition" + self.timestamp,
             count=1,
             handle=wait_condition_handle.ref,
@@ -876,7 +916,7 @@ class ClusterCdkStack(Stack):
 
         # Head node Launch Template
         head_node_launch_template = ec2.CfnLaunchTemplate(
-            self,
+            self.stack,
             "HeadNodeLaunchTemplate",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=head_node.instance_type,
@@ -918,16 +958,17 @@ class ClusterCdkStack(Stack):
         # Metadata
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
-        pre_install_action, post_install_action = (None, None)
+        pre_install_action, post_install_action, post_update_action = (None, None, None)
         if head_node.custom_actions:
             pre_install_action = head_node.custom_actions.on_node_start
             post_install_action = head_node.custom_actions.on_node_configured
+            post_update_action = head_node.custom_actions.on_node_updated
 
         dna_json = json.dumps(
             {
                 "cluster": {
                     "stack_name": self._stack_name,
-                    "stack_arn": self.stack_id,
+                    "stack_arn": self.stack.stack_id,
                     "scheduler_plugin_substack_arn": self.scheduler_plugin_stack.ref
                     if self.scheduler_plugin_stack
                     else "",
@@ -947,14 +988,19 @@ class ClusterCdkStack(Stack):
                     "postinstall_args": join_shell_args(post_install_action.args)
                     if post_install_action and post_install_action.args
                     else "NONE",
-                    "region": self.region,
+                    "postupdate": post_update_action.script if post_update_action else "NONE",
+                    "postupdate_args": join_shell_args(post_update_action.args)
+                    if post_update_action and post_update_action.args
+                    else "NONE",
+                    "region": self.stack.region,
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                     "efs_encryption_in_transits": to_comma_separated_string(
-                        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"]
+                        self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
+                        use_lower_case=True,
                     ),
                     "efs_iam_authorizations": to_comma_separated_string(
-                        self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"]
+                        self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"], use_lower_case=True
                     ),
                     "fsx_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.FSX),
                     "fsx_mount_names": to_comma_separated_string(
@@ -1028,7 +1074,10 @@ class ClusterCdkStack(Stack):
             },
             "deployConfigFiles": {
                 "files": {
-                    "/tmp/dna.json": {  # nosec
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/dna.json": {  # nosec B108
                         "content": dna_json,
                         "mode": "000644",
                         "owner": "root",
@@ -1041,13 +1090,19 @@ class ClusterCdkStack(Stack):
                         "group": "root",
                         "content": "cookbook_path ['/etc/chef/cookbooks']",
                     },
-                    "/tmp/extra.json": {  # nosec
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/extra.json": {  # nosec B108
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
                         "content": self.config.extra_chef_attributes,
                     },
-                    "/tmp/wait_condition_handle.txt": {  # nosec
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/wait_condition_handle.txt": {  # nosec B108
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
@@ -1080,7 +1135,7 @@ class ClusterCdkStack(Stack):
                                 "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
                                 "runas=root\n"
                             ),
-                            {"StackName": self._stack_name, "Region": self.region},
+                            {"StackName": self._stack_name, "Region": self.stack.region},
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1089,7 +1144,7 @@ class ClusterCdkStack(Stack):
                     "/etc/cfn/cfn-hup.conf": {
                         "content": Fn.sub(
                             "[main]\nstack=${StackId}\nregion=${Region}\ninterval=2",
-                            {"StackId": self.stack_id, "Region": self.region},
+                            {"StackId": self.stack.stack_id, "Region": self.stack.region},
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1157,6 +1212,7 @@ class ClusterCdkStack(Stack):
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
                             " --override-runlist aws-parallelcluster::update &&"
+                            " /opt/parallelcluster/scripts/fetch_and_run -postupdate &&"
                             " cfn-signal --exit-code=0 --reason='Update complete'"
                             f" '{self.wait_condition_handle.ref}' ||"
                             " cfn-signal --exit-code=1 --reason='Update failed'"
@@ -1178,7 +1234,7 @@ class ClusterCdkStack(Stack):
 
         head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
         head_node_instance = ec2.CfnInstance(
-            self,
+            self.stack,
             "HeadNode",
             launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
                 launch_template_id=head_node_launch_template.ref,
@@ -1224,7 +1280,7 @@ class ClusterCdkStack(Stack):
 
         parameters = {
             "ClusterName": self._stack_name,
-            "ParallelClusterStackId": self.stack_id,
+            "ParallelClusterStackId": self.stack.stack_id,
             "VpcId": self.config.vpc_id,
             # Empty if passed in config and not created by pclsuter
             "HeadNodeRoleName": self._managed_head_node_instance_role.ref
@@ -1242,7 +1298,7 @@ class ClusterCdkStack(Stack):
                 ] = compute_resource["LaunchTemplate"]["Version"]
 
         self.scheduler_plugin_stack = CfnStack(
-            self, "SchedulerPluginStack", template_url=template_url, parameters=parameters
+            self.stack, "SchedulerPluginStack", template_url=template_url, parameters=parameters
         )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
@@ -1270,28 +1326,28 @@ class ClusterCdkStack(Stack):
         # Storage filesystem Ids
         for storage_type, storage_list in self.shared_storage_infos.items():
             CfnOutput(
-                self,
+                self.stack,
                 "{0}Ids".format(storage_type.name),
                 description="{0} Filesystem IDs".format(storage_type.name),
                 value=",".join(storage.id for storage in storage_list),
             )
 
         CfnOutput(
-            self,
+            self.stack,
             "HeadNodeInstanceID",
             description="ID of the head node instance",
             value=self.head_node_instance.ref,
         )
 
         CfnOutput(
-            self,
+            self.stack,
             "HeadNodePrivateIP",
             description="Private IP Address of the head node",
             value=self.head_node_instance.attr_private_ip,
         )
 
         CfnOutput(
-            self,
+            self.stack,
             "HeadNodePrivateDnsName",
             description="Private DNS name of the head node",
             value=self.head_node_instance.attr_private_dns_name,
@@ -1529,10 +1585,12 @@ class ComputeFleetConstruct(Construct):
                                     self._shared_storage_mount_dirs[SharedStorageType.EFS]
                                 ),
                                 "EFSEncryptionInTransits": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"]
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
+                                    use_lower_case=True,
                                 ),
                                 "EFSIamAuthorizations": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"]
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
+                                    use_lower_case=True,
                                 ),
                                 "FSXIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.FSX

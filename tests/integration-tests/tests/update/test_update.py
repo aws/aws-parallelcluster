@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import os.path
 import re
 import time
 
@@ -24,12 +25,14 @@ from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 from time_utils import minutes, seconds
 from troposphere.fsx import LustreConfiguration
-from utils import wait_for_computefleet_changed
+from utils import describe_cluster_instances, retrieve_cfn_resources, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.storage.assertions import assert_storage_existence
+from tests.common.storage.constants import StorageType
 from tests.common.utils import generate_random_string, retrieve_latest_ami
 from tests.storage.storage_common import (
     check_fsx,
@@ -48,12 +51,23 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    for script in ["preinstall.sh", "postinstall.sh", "updated_preinstall.sh", "updated_postinstall.sh"]:
+    for script in [
+        "preinstall.sh",
+        "postinstall.sh",
+        "updated_preinstall.sh",
+        "updated_postinstall.sh",
+        "postupdate.sh",
+        "updated_postupdate.sh",
+        "failed_postupdate.sh",
+    ]:
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name, bucket=bucket_name)
+    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
+
+    # Check update hook is NOT executed at cluster creation time
+    assert_that(os.path.exists("/tmp/postupdate_out.txt")).is_false()
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
     cluster.update(str(init_config_file), force_update="true")
@@ -61,6 +75,9 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(command_executor)
+
+    # Check update hook is executed at cluster update time
+    _check_head_node_script(command_executor, "postupdate", "UPDATE-ARG1")
 
     # Create shared dir for script results
     command_executor.run_remote_command("mkdir -p /shared/script_results")
@@ -127,9 +144,10 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     additional_policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
-        bucket=bucket_name,
+        output_file="pcluster.config.update.successful.yaml",
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
+        postupdate_script="updated_postupdate.sh",
     )
     cluster.update(str(updated_config_file), force_update="true")
 
@@ -248,12 +266,65 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Add a new dynamic node t2.micro to queue1-i3
     new_compute_node = _add_compute_nodes(slurm_commands, "queue1", "t2.micro")
 
-    assert_that(len(new_compute_node)).is_equal_to(1)
+    logging.info(f"New compute node: {new_compute_node}")
+
+    assert_that(len(new_compute_node), description="There should be only one new compute node").is_equal_to(1)
     _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_preinstall", "ABC")
     _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_postinstall", "DEF")
 
+    # Check the new update hook with new args is executed at cluster update time
+    _check_head_node_script(command_executor, "updated_postupdate", "UPDATE-ARG2")
+
+    # Same as previous update, but with a post update script that fails
+    failed_update_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update.failed.yaml",
+        resource_bucket=bucket_name,
+        additional_policy_arn=additional_policy_arn,
+        postupdate_script="failed_postupdate.sh",
+    )
+    cluster.update(str(failed_update_config_file), raise_on_error=False, log_error=False)
+
+    _check_rollback_with_expected_error_message(region, cluster)
+
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
+
+
+def _check_rollback_with_expected_error_message(region, cluster):
+    """Verify that the update has been rolled back with the expected error message."""
+    logging.info("Checking rollback with expected error message")
+    client = boto3.client("cloudformation", region_name=region)
+
+    stack_status = client.describe_stacks(StackName=cluster.name)["Stacks"][0]["StackStatus"]
+    error_message = _get_update_failure_reason(client, cluster)
+
+    assert_that(stack_status).is_equal_to("UPDATE_ROLLBACK_COMPLETE")
+    assert_that(error_message).starts_with("WaitCondition received failed message: 'Update failed'")
+
+
+def _get_update_failure_reason(client, cluster):
+    """
+    Return the error message of the event triggering the rolled back update.
+
+    In case of update rollback, we expect a single resource to be in `CREATE_FAILED` state, namely
+    the head node wait condition. This resource has the status reason with the expected error message.
+    """
+    paginator = client.get_paginator("describe_stack_events")
+    for events in paginator.paginate(StackName=cluster.name):
+        for event in events["StackEvents"]:
+            if event["ResourceStatus"] == "CREATE_FAILED":
+                return event["ResourceStatusReason"]
+    return ""
+
+
+def _check_head_node_script(command_executor, script_name, script_arg):
+    """Verify that update hook script is executed with the right arguments."""
+    logging.info(f"Checking {script_name} script")
+    output_file_path = f"/tmp/{script_name}_out.txt"
+
+    result = command_executor.run_remote_command(f"cat {output_file_path}")
+    assert_that(result.stdout).matches(rf"{script_name}-{script_arg}")
 
 
 def _assert_launch_templates_config(queues_config, cluster_name, region):
@@ -785,6 +856,7 @@ def test_dynamic_file_systems_update(
     fsx_factory,
     svm_factory,
     open_zfs_volume_factory,
+    delete_storage_on_teardown,
 ):
     """Test update shared storages."""
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
@@ -824,7 +896,9 @@ def test_dynamic_file_systems_update(
     )
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader()
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster.config.yaml", output_file="pcluster.config.init.yaml"
+    )
     cluster = clusters_factory(init_config_file)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -844,8 +918,10 @@ def test_dynamic_file_systems_update(
     scheduler_commands.wait_job_running(queue1_job_id)
 
     # update cluster to add ebs, efs, fsx with drain strategy
+    logging.info("Updating the cluster to mount managed storage with DeletionPolicy set to Delete")
     update_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.update_drain.yaml",
+        output_file="pcluster.config.update_drain_1.yaml",
         volume_id=existing_ebs_volume_id,
         existing_ebs_mount_dir=existing_ebs_mount_dir,
         existing_efs_mount_dir=existing_efs_mount_dir,
@@ -858,12 +934,16 @@ def test_dynamic_file_systems_update(
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
+        new_ebs_deletion_policy="Delete",
         new_raid_mount_dir=new_raid_mount_dir,
+        new_raid_deletion_policy="Delete",
         new_lustre_mount_dir=new_lustre_mount_dir,
+        new_lustre_deletion_policy="Delete",
         new_efs_mount_dir=new_efs_mount_dir,
+        new_efs_deletion_policy="Delete",
     )
 
-    cluster.update(str(update_cluster_config))
+    cluster.update(update_cluster_config)
 
     # check chef client log contains expected log
     assert_lines_in_logs(
@@ -897,12 +977,54 @@ def test_dynamic_file_systems_update(
     for node_name in queue1_nodes:
         _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
     for mount_dir in all_mount_dirs:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue2")
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue2"])
     scheduler_commands.cancel_job(queue1_job_id)
     for mount_dir in all_mount_dirs:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partition="queue1")
+        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
+
+    logging.info("Updating the cluster to set DeletionPolicy to Retain for every managed storage")
+    update_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update_drain.yaml",
+        output_file="pcluster.config.update_drain_2.yaml",
+        volume_id=existing_ebs_volume_id,
+        existing_ebs_mount_dir=existing_ebs_mount_dir,
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        fsx_lustre_mount_dir=fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
+        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        bucket_name=bucket_name,
+        new_ebs_mount_dir=new_ebs_mount_dir,
+        new_ebs_deletion_policy="Retain",
+        new_raid_mount_dir=new_raid_mount_dir,
+        new_raid_deletion_policy="Retain",
+        new_lustre_mount_dir=new_lustre_mount_dir,
+        new_lustre_deletion_policy="Retain",
+        new_efs_mount_dir=new_efs_mount_dir,
+        new_efs_deletion_policy="Retain",
+    )
+
+    cluster.update(update_cluster_config)
+
+    existing_ebs_ids = [existing_ebs_volume_id]
+    existing_efs_ids = [existing_efs_id]
+    existing_fsx_ids = [existing_fsx_lustre_fs_id, existing_fsx_ontap_volume_id, existing_fsx_open_zfs_volume_id]
+
+    retained_ebs_noraid_volume_ids = [
+        id for id in cluster.cfn_outputs["EBSIds"].split(",") if id not in existing_ebs_ids
+    ]
+    retained_ebs_raid_volume_ids = [
+        id for id in cluster.cfn_outputs["RAIDIds"].split(",") if id not in existing_ebs_ids
+    ]
+    retained_ebs_volume_ids = retained_ebs_noraid_volume_ids + retained_ebs_raid_volume_ids
+    retained_efs_filesystem_ids = [id for id in cluster.cfn_outputs["EFSIds"].split(",") if id not in existing_efs_ids]
+    retained_fsx_filesystem_ids = [id for id in cluster.cfn_outputs["FSXIds"].split(",") if id not in existing_fsx_ids]
 
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
+    logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
     cluster.stop()
     wait_for_computefleet_changed(cluster, "STOPPED")
     cluster.update(str(init_config_file))
@@ -927,6 +1049,26 @@ def test_dynamic_file_systems_update(
         all_mount_dirs,
         cluster_nodes,
     )
+
+    # Verify that detached managed storage have been retained and delete them.
+    logging.info(
+        "Checking that retained managed storage resources have been retained and mark them for deletion on teardown"
+    )
+    retained_storage = {
+        StorageType.STORAGE_EBS: dict(ids=retained_ebs_volume_ids, expected_states=["available"]),
+        StorageType.STORAGE_EFS: dict(ids=retained_efs_filesystem_ids, expected_states=["available"]),
+        StorageType.STORAGE_FSX: dict(ids=retained_fsx_filesystem_ids, expected_states=["AVAILABLE"]),
+    }
+    for storage_type in retained_storage:
+        for storage_id in retained_storage[storage_type]["ids"]:
+            assert_storage_existence(
+                region,
+                storage_type,
+                storage_id,
+                should_exist=True,
+                expected_states=retained_storage[storage_type]["expected_states"],
+            )
+            delete_storage_on_teardown(storage_type, storage_id)
 
     _test_shared_storage_rollback(
         cluster,
@@ -1109,7 +1251,7 @@ def _test_shared_storage_rollback(
         str(problematic_cluster_config),
         force_update="true",
         raise_on_error=False,
-        suppress_validators="type:SharedEbsVolumeIdValidator",
+        suppress_validators="ALL",
     )
     assert_that(response["clusterStatus"]).is_equal_to("UPDATE_FAILED")
     # Test rollback update recipe run finished
@@ -1161,3 +1303,94 @@ def _test_shared_storage_rollback(
     logging.info("Checking managed FSX is deleted after stack rollback")
     with pytest.raises(ClientError, match="FileSystemNotFound"):
         boto3.client("fsx", region).describe_file_systems(FileSystemIds=managed_fsx)
+
+
+@pytest.mark.usefixtures("os")
+def test_multi_az_create_and_update(
+    region, pcluster_config_reader, clusters_factory, odcr_stack, scheduler_commands_factory, test_datadir
+):
+    """Test creation and then update of a multi-az cluster."""
+
+    # Step 1
+    # Create a cluster with two queues
+    #  q1 with 2 subnets in different AZ
+    #    plus a ReservationGroup with two reservations that ensure hosts are provisioned in both AZs
+    #  q2 with 1 subnet in one AZ
+
+    resource_groups_client = boto3.client(service_name="resource-groups", region_name=region)
+    odcr_resources = retrieve_cfn_resources(odcr_stack.name, region)
+    resource_group_arn = resource_groups_client.get_group(Group=odcr_stack.cfn_resources["multiAzOdcrGroup"])["Group"][
+        "GroupArn"
+    ]
+
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster_create.config.yaml",
+        multi_az_capacity_reservation_arn=resource_group_arn,
+    )
+
+    cluster = clusters_factory(init_config_file)
+
+    # Retrieves list of cluster instances and checks that
+    # at least one instance was launched in each AZ/Reservation
+    instances = describe_cluster_instances(cluster.name, region, filter_by_compute_resource_name="compute-resource-1")
+    _assert_instance_in_capacity_reservation(instances, odcr_resources["az1Odcr"])
+    _assert_instance_in_capacity_reservation(instances, odcr_resources["az2Odcr"])
+
+    # ## First update
+    # - add a subnet in Queue2
+    # update should succeed without failures or warning messages
+    first_update_config = pcluster_config_reader(
+        config_file="pcluster_update_1.config.yaml",
+        multi_az_capacity_reservation_arn=resource_group_arn,
+    )
+
+    response = cluster.update(str(first_update_config))
+    assert_that(response["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
+
+    # Second update
+    # - remove a subnet in Queue2
+    # update should fail asking to stop the fleet
+    second_update_config = pcluster_config_reader(
+        config_file="pcluster_update_2.config.yaml",
+        multi_az_capacity_reservation_arn=resource_group_arn,
+    )
+
+    response = cluster.update(str(second_update_config), raise_on_error=False)
+    assert_that(response["message"]).is_equal_to("Update failure")
+    assert_that(response["updateValidationErrors"][0]["message"]).contains("All compute nodes must be stopped")
+
+    # Third update
+    #  - stops the fleet
+    #  - wait until all compute instances are terminated
+    # after fully stopping the fleet, the update should succeed
+
+    cluster.stop()
+    _wait_until_instances_are_stopped(cluster)
+
+    response = cluster.update(str(second_update_config))
+    assert_that(response["computeFleetStatus"]).is_equal_to("STOPPED")
+    assert_that(response["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
+
+
+def _assert_instance_in_capacity_reservation(instances, expected_reservation):
+    if any(
+        instance["CapacityReservationId"] == expected_reservation
+        for instance in instances
+        if "CapacityReservationId" in instance
+    ):
+        logging.info("Instances found in reservation: %s", expected_reservation)
+    else:
+        logging.error("No instances found in reservation: %s", expected_reservation)
+        pytest.fail("No instances found in the reservation")
+
+
+@retry(retry_on_result=lambda result: result is False, wait_fixed=seconds(20), stop_max_delay=seconds(360))
+def _wait_until_instances_are_stopped(cluster):
+    instances = cluster.describe_cluster_instances()
+    n_compute_instances = len(instances) - 1  # Do not count the HeadNode
+    if n_compute_instances <= 1:
+        logging.info("All compute instances were stopped.")
+    else:
+        logging.info("Still found %2d compute instances in the cluster. Waiting... ", n_compute_instances)
+
+    return n_compute_instances <= 1

@@ -21,6 +21,7 @@ import subprocess
 from hashlib import sha1
 
 import boto3
+import requests
 from assertpy import assert_that
 from constants import OS_TO_ROOT_VOLUME_DEVICE
 from jinja2 import FileSystemLoader
@@ -80,7 +81,15 @@ def retry_if_subprocess_error(exception):
     return isinstance(exception, subprocess.CalledProcessError)
 
 
-def run_command(command, capture_output=True, log_error=True, env=None, timeout=None, raise_on_error=True, shell=False):
+def run_command(
+    command,
+    capture_output=True,
+    log_error=True,
+    env=None,
+    timeout=None,
+    raise_on_error=True,
+    shell=False,
+):
     """Execute shell command."""
     if isinstance(command, str) and not shell:
         command = shlex.split(command)
@@ -436,6 +445,33 @@ def get_root_volume_id(instance_id, region, os):
     ]
     assert_that(matching_devices).is_length(1)
     return matching_devices[0].get("Ebs").get("VolumeId")
+
+
+def get_metadata(metadata_path, raise_error=True):
+    """
+    Get EC2 instance metadata.
+
+    :param raise_error: set to False if you want to return None in case of Exception (e.g. no EC2 instance)
+    :param metadata_path: the metadata relative path
+    :return: the metadata value.
+    """
+    metadata_value = None
+    try:
+        metadata_base_url = "http://169.254.169.254/latest"
+        token = requests.put(f"{metadata_base_url}/api/token", headers={"X-aws-ec2-metadata-token-ttl-seconds": "300"})
+
+        headers = {}
+        if token.status_code == requests.codes.ok:
+            headers["X-aws-ec2-metadata-token"] = token.content
+        metadata_value = requests.get(f"{metadata_base_url}/meta-data/{metadata_path}", headers=headers).text
+    except Exception as e:
+        error_msg = f"Unable to get {metadata_path} metadata. Failed with exception: {e}"
+        logging.critical(error_msg)
+        if raise_error:
+            raise Exception(error_msg)
+
+    logging.debug("%s=%s", metadata_path, metadata_value)
+    return metadata_value
 
 
 def dict_has_nested_key(d, keys):

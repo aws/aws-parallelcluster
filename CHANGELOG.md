@@ -1,21 +1,56 @@
 CHANGELOG
 =========
+
+3.5.0
+-----
+
+**ENHANCEMENTS**
+- Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
+
+**CHANGES**
+
+**BUG FIXES**
+- Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
+
+3.4.1
+-----
+
+**BUG FIXES**
+- Fix an issue with the Slurm scheduler that might incorrectly apply updates to its internal registry of compute nodes. This might result in EC2 instances to become inaccessible or backed by an incorrect instance type.
+
 3.4.0
 -----
 
 **ENHANCEMENTS**
+- Add support for launching nodes across multiple availability zones to increase capacity availability.
+- Add support for specifying multiple subnets for each queue to increase capacity availability.
 - Add new configuration parameter in `Iam/ResourcePrefix` to specify a prefix for path and name of IAM resources created by ParallelCluster
 - Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
+- Add possibility to specify a custom script to be executed in the head node during the update of the cluster. The script can be specified with `OnNodeUpdated` parameter when using Slurm as scheduler.
 
 **CHANGES**
 - Remove creation of EFS mount targets for existing FS.
+- Mount EFS file systems using amazon-efs-utils. EFS files systems can be mounted using in-transit encryption and IAM authorized user.
+- Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
+- Upgrade EFA installer to `1.20.0`
+  - Efa-driver: `efa-2.1`
+  - Efa-config: `efa-config-1.11-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1`
+  - Rdma-core: `rdma-core-43.0-2`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
+- Upgrade Slurm to version 22.05.7.
 
-3.4.0
+3.3.1
 -----
 
 **CHANGES**
-- Mount EFS file systems using amazon-efs-utils. EFS files systems can be mounted using in-transit encryption and IAM identity.
-- Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
+- Allow to use official product AMIs even after the two years EC2 deprecation time.
+- Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
+
+**BUG FIXES**
+- Prevent managed FSx for Lustre file systems to be replaced during a cluster update avoiding to support changes on the compute fleet subnet id.
+- Apply the `DeletionPolicy` defined on shared storages also during the cluster update operations.
 
 3.3.0
 -----
@@ -26,9 +61,10 @@ CHANGELOG
 - Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage to support storage retention.
 - Add new configuration section `Scheduling/SlurmSettings/Database` to enable accounting functionality in Slurm.
 - Add support for On-Demand Capacity Reservations and Capacity Reservations Resource Groups.
-- Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure. 
+- Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure.
 - Add support for `Networking/PlacementGroup` in the `SlurmQueues/ComputeResources` section.
 - Add support for instances with multiple network interfaces that allows only one ENI per device.
+- Add support for hp6id instance type as compute nodes.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
 - Add validator to check if configured instance types support placement groups.
 - Configure NFS threads to be `min(256, max(8, num_cores * 4))` to ensure better stability and performance.
@@ -52,6 +88,7 @@ CHANGELOG
 - Upgrade EFA installer to version 1.18.0.
 - Upgrade NICE DCV to version 2022.1-13300.
 - Allow for suppressing the `SingleSubnetValidator` for `Queues`.
+- Remove usage of prolog/epilog Slurm configuration when `UseEc2Hostnames` is set to `true`.
 
 **BUG FIXES**
 - Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.

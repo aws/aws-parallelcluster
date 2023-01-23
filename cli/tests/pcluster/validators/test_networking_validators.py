@@ -18,7 +18,7 @@ from pcluster.validators.networking_validators import (
     MultiAzPlacementGroupValidator,
     QueueSubnetsValidator,
     SecurityGroupsValidator,
-    SingleSubnetValidator,
+    SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -76,9 +76,9 @@ def test_ec2_subnet_id_validator(mocker):
             "subnets-in-common-az-queue-1",
             ["subnet-00000000", "subnet-11111111"],
             {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
-            "SubnetIds specified in queue subnets-in-common-az-queue-1 contains multiple subnets in the same AZs: "
-            "us-east-1a: subnet-00000000, subnet-11111111. "
-            "Please make sure all subnets in the queue are in different AZs.",
+            "SubnetIds configured for the 'subnets-in-common-az-queue-1' queue contains two or more subnets in the same"
+            " Availability Zone: 'us-east-1a: subnet-00000000, subnet-11111111'. Please make sure all subnets "
+            "configured for the queue are in different Availability Zones.",
         ),
         (
             "subnets-in-common-az-queue-2",
@@ -90,16 +90,17 @@ def test_ec2_subnet_id_validator(mocker):
                 "subnet-4": "us-east-1b",
                 "subnet-5": "us-east-1b",
             },
-            "SubnetIds specified in queue subnets-in-common-az-queue-2 contains multiple subnets in the same AZs: "
-            "us-east-1a: subnet-1, subnet-2; us-east-1b: subnet-3, subnet-4, subnet-5. "
-            "Please make sure all subnets in the queue are in different AZs.",
+            "SubnetIds configured for the 'subnets-in-common-az-queue-2' queue contains two or more subnets in the same"
+            " Availability Zone: 'us-east-1a: subnet-1, subnet-2; us-east-1b: subnet-3, subnet-4, subnet-5'."
+            " Please make sure all subnets configured for the queue are in different Availability Zones.",
         ),
         (
             "duplicate-subnets-queue",
             ["subnet-00000000", "subnet-00000000", "subnet-11111111", "subnet-11111111", "subnet-11111111"],
             {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1b"},
-            "The following subnet ids are specified multiple times in queue duplicate-subnets-queue: "
-            "subnet-00000000, subnet-11111111.",
+            "The following Subnet Ids are specified multiple times in the SubnetId's configuration of the "
+            "'duplicate-subnets-queue' queue: 'subnet-00000000, subnet-11111111'. Please remove the duplicate "
+            "subnet Ids from the queue's SubnetId configuration.",
         ),
         # This test should trigger both validation errors for duplicate subnet ids and multiple subnets
         # in the same AZ, that's why it's repeated twice below.
@@ -107,16 +108,17 @@ def test_ec2_subnet_id_validator(mocker):
             "duplicate-subnets-queue-1",
             ["subnet-00000000", "subnet-00000000", "subnet-11111111"],
             {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
-            "The following subnet ids are specified multiple times in queue duplicate-subnets-queue-1: "
-            "subnet-00000000.",
+            "The following Subnet Ids are specified multiple times in the SubnetId's configuration of the "
+            "'duplicate-subnets-queue-1' queue: 'subnet-00000000'. Please remove the duplicate subnet Ids from the "
+            "queue's SubnetId configuration.",
         ),
         (
             "duplicate-subnets-queue-2",
             ["subnet-00000000", "subnet-00000000", "subnet-11111111"],
             {"subnet-00000000": "us-east-1a", "subnet-11111111": "us-east-1a"},
-            "SubnetIds specified in queue duplicate-subnets-queue-2 contains multiple subnets in the same AZs: "
-            "us-east-1a: subnet-00000000, subnet-11111111. "
-            "Please make sure all subnets in the queue are in different AZs.",
+            "The following Subnet Ids are specified multiple times in the SubnetId's configuration of the "
+            "'duplicate-subnets-queue-2' queue: 'subnet-00000000'. Please remove the duplicate subnet Ids from the "
+            "queue's SubnetId configuration.",
         ),
     ],
 )
@@ -133,21 +135,29 @@ def test_queue_subnets_validator(mocker, queue_name, queue_subnets, subnet_id_az
 
 
 @pytest.mark.parametrize(
-    "multi_az_enabled, placement_group_enabled, expected_message",
+    "multi_az_enabled, placement_group_enabled, compute_resource_name, queue_name, expected_message",
     [
-        (True, False, None),
-        (False, True, None),
-        (False, False, None),
+        (True, False, "test-cr", "test-q", None),
+        (False, True, "test-cr", "test-q", None),
+        (False, False, "test-cr", "test-q", None),
         (
             True,
             True,
-            "Multiple subnets configuration does not support specifying Placement Group. "
-            "Either specify a single subnet or remove the Placement Group configuration.",
+            "test-cr",
+            "test-q",
+            "You have enabled PlacementGroups for the 'test-cr' Compute Resource on the 'test-q' queue. "
+            "PlacementGroups are not supported across Availability zones. Either remove the PlacementGroup "
+            "configuration to use multiple subnets on the queue or specify only one subnet to use a PlacementGroup "
+            "for compute resources.",
         ),
     ],
 )
-def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_enabled, expected_message):
-    actual_failures = MultiAzPlacementGroupValidator().execute(multi_az_enabled, placement_group_enabled)
+def test_multi_az_placement_group_validator(
+    multi_az_enabled, placement_group_enabled, compute_resource_name, queue_name, expected_message
+):
+    actual_failures = MultiAzPlacementGroupValidator().execute(
+        multi_az_enabled, placement_group_enabled, compute_resource_name, queue_name
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -160,10 +170,10 @@ def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_en
                 ["subnet-00000000"],
                 ["subnet-11111111"],
             ],
-            "At least one compute resource in queue multi-subnet-queue uses a single instance type. "
-            "Multiple subnets configuration is not supported for single instance type, "
-            "please use the Instances configuration parameter for multiple instance type "
-            "allocation.",
+            "At least one compute resource in the 'multi-subnet-queue' queue is configured using the "
+            "'ComputeResource/InstanceType' parameter to specify the Instance Type. Multiple subnets configuration is "
+            "not supported when using 'ComputeResource/InstanceType', please use the "
+            "'ComputeResource/Instances/InstanceType' configuration parameter for instance type allocation.",
         ),
         (
             "single-subnet-queue",
@@ -174,8 +184,8 @@ def test_multi_az_placement_group_validator(multi_az_enabled, placement_group_en
         ),
     ],
 )
-def test_single_subnet_validator(queue_name, subnet_ids, failure_message):
-    actual_failure = SingleSubnetValidator().execute(queue_name, subnet_ids)
+def test_single_instance_type_subnet_validator(queue_name, subnet_ids, failure_message):
+    actual_failure = SingleInstanceTypeSubnetValidator().execute(queue_name, subnet_ids)
 
     assert_failure_messages(actual_failure, failure_message)
 

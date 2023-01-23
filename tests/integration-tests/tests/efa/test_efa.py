@@ -98,7 +98,12 @@ def test_efa(
 
     if network_interfaces_count > 1:
         _test_osu_benchmarks_multiple_bandwidth(
-            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
+            instance,
+            remote_command_executor,
+            scheduler_commands,
+            test_datadir,
+            slots_per_instance,
+            partition="efa-enabled",
         )
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
@@ -197,8 +202,21 @@ def _test_osu_benchmarks_collective(
 
 
 def _test_osu_benchmarks_multiple_bandwidth(
-    remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
+    instance, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
 ):
+    instance_bandwidth_dict = {
+        # Expected bandwidth for p4d and p4de (4 * 100 Gbps NICS -> declared NetworkPerformance 400 Gbps):
+        # OMPI 4.1.0: ~330Gbps = 41250MB/s with Placement Group
+        # OMPI 4.1.0: ~252Gbps = 31550MB/s without Placement Group
+        # OMPI 4.0.5: ~95Gbps = 11875MB/s with Placement Group
+        "p4d.24xlarge": 30000,  # Equivalent to a theoretical maximum of a single 240Gbps card
+        # 4 100 Gbps NICS -> declared NetworkPerformance 400 Gbps
+        "p4de.24xlarge": 30000,  # Equivalent to a theoretical maximum of a single 240Gbps card
+        # 2 up to 170 Gbps NICS -> declared NetworkPerformance 200 Gbps
+        "hpc6id.32xlarge": 23000,  # Equivalent to a theoretical maximum of a single 184Gbps card
+        # 8 100 Gbps NICS -> declared NetworkPerformance 800 Gbps
+        "trn1.32xlarge": 80000,  # Equivalent to a theoretical maximum of a single 640Gbps card
+    }
     num_instances = 2
     run_individual_osu_benchmark(
         "openmpi",
@@ -215,11 +233,10 @@ def _test_osu_benchmarks_multiple_bandwidth(
         "cat /shared/osu_mbw_mr.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
     ).stdout
 
-    # Expected bandwidth with 4 NICS:
-    # OMPI 4.1.0: ~330Gbps = 41250MB/s with Placement Group
-    # OMPI 4.1.0: ~252Gbps = 31550MB/s without Placement Group
-    # OMPI 4.0.5: ~95Gbps = 11875MB/s with Placement Group
-    expected_bandwidth = 30000
+    expected_bandwidth = instance_bandwidth_dict.get(instance)
+    if expected_bandwidth is None:
+        pytest.fail(f"Instance {instance} is not valid for multiple bandwidth tests")
+
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 

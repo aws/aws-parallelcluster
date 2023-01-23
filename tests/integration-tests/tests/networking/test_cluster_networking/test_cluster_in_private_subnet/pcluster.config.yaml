@@ -6,6 +6,7 @@ HeadNode:
     SubnetId: {{ private_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+    AllowedIps: 0.0.0.0/0
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:

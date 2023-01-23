@@ -261,7 +261,10 @@ class CfnResource():
 
     @staticmethod
     def _rand_string(length):
-        return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(length))  # nosec
+        # A nosec comment is appended to the following line in order to disable the B311 check.
+        # The random.choice is used to generate random string for names.
+        # [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+        return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(length))  # nosec B311
 
     def _add_permission(self, rule_arn):
         sid = self._event['LogicalResourceId'] + self._rand_string(8)

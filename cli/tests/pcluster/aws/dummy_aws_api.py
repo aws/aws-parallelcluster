@@ -137,6 +137,33 @@ class _DummyEc2Client(Ec2Client):
             },
         ]
 
+    def describe_volume(self, volume_id):
+        return {
+            "Attachments": [
+                {
+                    "Device": "dev-01",
+                    "InstanceId": "instance-01",
+                    "State": "attached",
+                    "VolumeId": "vol-01",
+                    "DeleteOnTermination": True,
+                },
+            ],
+            "AvailabilityZone": "az-1",
+            "Encrypted": False,
+            "KmsKeyId": "kms-key",
+            "Size": 123,
+            "SnapshotId": "snapshot-123",
+            "State": "available",
+            "VolumeId": "vol-123",
+            "Iops": 123,
+            "Tags": [
+                {"Key": "string", "Value": "string"},
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": False,
+            "Throughput": 123,
+        }
+
     def get_subnet_vpc(self, subnet_id):
         return "vpc-123"
 
@@ -171,7 +198,7 @@ class _DummyEfsClient(EfsClient):
 class _DummyFSxClient(FSxClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-        pass
+        self.non_happy_describe_volumes_error = None
 
     def get_filesystem_info(self, fsx_fs_id):
         return {
@@ -181,8 +208,14 @@ class _DummyFSxClient(FSxClient):
             },
         }
 
+    def set_non_happy_describe_volumes(self, error):
+        self.non_happy_describe_volumes_error = error
+
     def describe_volumes(self, volume_ids):
         """Describe FSx volumes."""
+        if self.non_happy_describe_volumes_error is not None:
+            raise self.non_happy_describe_volumes_error
+
         result = []
         for volume_id in volume_ids:
             result.append(
@@ -204,6 +237,7 @@ class _DummyFSxClient(FSxClient):
                         "FileSystemType": "LUSTRE",
                         "LustreConfiguration": {"MountName": "abcdef"},
                         "FileSystemId": file_system_id,
+                        "SubnetIds": ["subnet-1"],
                     }
                 )
             )

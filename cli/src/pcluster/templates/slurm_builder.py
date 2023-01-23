@@ -157,6 +157,7 @@ class SlurmConstruct(Construct):
                     "dynamodb:PutItem",
                     "dynamodb:BatchWriteItem",
                     "dynamodb:GetItem",
+                    "dynamodb:BatchGetItem",
                 ],
                 "effect": iam.Effect.ALLOW,
                 "resources": [
@@ -244,6 +245,7 @@ class SlurmConstruct(Construct):
         if self.cleanup_lambda_role:
             cleanup_route53_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
+                config=self.config,
                 function_id="CleanupRoute53",
                 statements=[
                     iam.PolicyStatement(

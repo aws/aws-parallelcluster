@@ -652,18 +652,18 @@ class PlacementGroupSchema(BaseSchema):
 class QueueNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of Queue."""
 
-    subnet_ids = fields.List(
-        fields.Str(validate=get_field_validator("subnet_id")),
-        required=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
-    )
     assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
 class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of slurm Queue."""
 
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(min=1),
+        metadata={"update_policy": UpdatePolicy.MANAGED_FSX},
+    )
     placement_group = fields.Nested(
         PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
@@ -677,6 +677,13 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
 
 class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
     """Represent the schema of the Networking, child of aws batch Queue."""
+
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(equal=1),
+        metadata={"update_policy": UpdatePolicy.MANAGED_FSX},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1059,11 +1066,26 @@ class HeadNodeCustomActionSchema(BaseSchema):
         return CustomAction(**data)
 
 
+class HeadNodeUpdatableCustomActionSchema(BaseSchema):
+    """Represent the schema of an updatable custom action."""
+
+    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomAction(**data)
+
+
 class HeadNodeCustomActionsSchema(BaseSchema):
     """Represent the schema for all available custom actions."""
 
     on_node_start = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     on_node_configured = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_updated = fields.Nested(
+        HeadNodeUpdatableCustomActionSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1121,7 +1143,7 @@ class HeadNodeSchema(BaseSchema):
     ssh = fields.Nested(SshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     iam = fields.Nested(HeadNodeIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     imds = fields.Nested(ImdsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     image = fields.Nested(HeadNodeImageSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1742,7 +1764,10 @@ class SchedulerPluginSettingsSchema(BaseSchema):
 
     def _fetch_scheduler_definition_from_https(self, original_scheduler_definition):
         try:
-            with urlopen(original_scheduler_definition) as f:  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B310 check.
+            # The urlopen argument is properly validated
+            # [B310:blacklist] Audit url open for permitted schemes.
+            with urlopen(original_scheduler_definition) as f:  # nosec B310 nosemgrep
                 scheduler_definition = f.read().decode("utf-8")
                 return scheduler_definition
         except Exception:
@@ -1959,7 +1984,7 @@ class ClusterSchema(BaseSchema):
     tags = fields.Nested(
         TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
     )
-    iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     directory_service = fields.Nested(
         DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
@@ -1983,11 +2008,18 @@ class ClusterSchema(BaseSchema):
     def no_settings_for_batch(self, data, **kwargs):
         """Ensure IntelSoftware and DirectoryService section is not included when AWS Batch is the scheduler."""
         scheduling = data.get("scheduling")
+        head_node = data.get("head_node")
         if scheduling and scheduling.scheduler == "awsbatch":
             error_message = "The use of the {} configuration is not supported when using awsbatch as the scheduler."
             additional_packages = data.get("additional_packages")
-            if additional_packages and additional_packages.intel_software.intel_hpc_platform:
+            if (
+                additional_packages
+                and additional_packages.intel_software
+                and additional_packages.intel_software.intel_hpc_platform
+            ):
                 raise ValidationError(error_message.format("IntelSoftware"))
+            if head_node.custom_actions and head_node.custom_actions.on_node_updated:
+                raise ValidationError(error_message.format("OnNodeUpdated"))
             if data.get("directory_service"):
                 raise ValidationError(error_message.format("DirectoryService"))
 

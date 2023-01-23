@@ -83,8 +83,8 @@ class QueueSubnetsValidator(Validator):
         if len(set(subnet_ids)) < len(subnet_ids):
             duplicate_ids = [subnet_id for subnet_id, count in Counter(subnet_ids).items() if count > 1]
             self._add_failure(
-                "The following subnet ids are specified multiple times "
-                "in queue {0}: {1}.".format(
+                "The following Subnet Ids are specified multiple times in the SubnetId's configuration of the '{0}' "
+                "queue: '{1}'. Please remove the duplicate subnet Ids from the queue's SubnetId configuration.".format(
                     queue_name,
                     ", ".join(duplicate_ids),
                 ),
@@ -97,8 +97,9 @@ class QueueSubnetsValidator(Validator):
             if len(azs_with_multiple_subnets) > 0:
 
                 self._add_failure(
-                    "SubnetIds specified in queue {0} contains multiple subnets in the same AZs: {1}. "
-                    "Please make sure all subnets in the queue are in different AZs.".format(
+                    "SubnetIds configured for the '{0}' queue contains two or more subnets in the same Availability "
+                    "Zone: '{1}'. Please make sure all subnets configured for the queue are in different Availability"
+                    " Zones.".format(
                         queue_name,
                         "; ".join(
                             f"{az}: {', '.join(subnets)}" for az, subnets in sorted(azs_with_multiple_subnets.items())
@@ -122,15 +123,16 @@ class ElasticIpValidator(Validator):
                 self._add_failure(str(e), FailureLevel.ERROR)
 
 
-class SingleSubnetValidator(Validator):
+class SingleInstanceTypeSubnetValidator(Validator):
     """Validate only one subnet is used for compute resources with single instance type."""
 
     def _validate(self, queue_name, subnet_ids):
         if len(subnet_ids) > 1:
             self._add_failure(
-                "At least one compute resource in queue {0} uses a single instance type. "
-                "Multiple subnets configuration is not supported for single instance type, "
-                "please use the Instances configuration parameter for multiple instance type "
+                "At least one compute resource in the '{0}' queue is configured using the "
+                "'ComputeResource/InstanceType' parameter to specify the Instance Type. Multiple subnets configuration "
+                "is not supported when using 'ComputeResource/InstanceType', please use the "
+                "'ComputeResource/Instances/InstanceType' configuration parameter for instance type "
                 "allocation.".format(queue_name),
                 FailureLevel.ERROR,
             )
@@ -139,11 +141,15 @@ class SingleSubnetValidator(Validator):
 class MultiAzPlacementGroupValidator(Validator):
     """Validate a PlacementGroup is not specified when MultiAZ is enabled."""
 
-    def _validate(self, multi_az_enabled: bool, placement_group_enabled: bool):
+    def _validate(
+        self, multi_az_enabled: bool, placement_group_enabled: bool, compute_resource_name: str, queue_name: str
+    ):
         if multi_az_enabled and placement_group_enabled:
             self._add_failure(
-                "Multiple subnets configuration does not support specifying Placement Group. "
-                "Either specify a single subnet or remove the Placement Group configuration.",
+                f"You have enabled PlacementGroups for the '{compute_resource_name}' Compute Resource on the "
+                f"'{queue_name}' queue. PlacementGroups are not supported across Availability zones. Either remove the "
+                "PlacementGroup configuration to use multiple subnets on the queue or specify only one subnet to "
+                "use a PlacementGroup for compute resources.",
                 FailureLevel.ERROR,
             )
 

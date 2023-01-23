@@ -1,0 +1,21 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+  SlurmSettings:
+    Database:
+      Uri: test.example.com:3306
+      UserName: user_name
+      PasswordSecretArn: arn:aws:secretsmanager:eu-west-1:123456789:secret:a-secret-name

@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import re
 import time
 from datetime import datetime, timezone
 
@@ -487,30 +488,31 @@ def test_scontrol_reboot(
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_update_slurm_reconfigure_race_condition(
+def test_scontrol_update_nodelist_sorting(
     pcluster_config_reader,
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
 ):
     """
-    Test race condition between restart of slurmctld and scontrol reconfigure.
+    Test that scontrol update node follows the order of the nodelist provided by the user.
 
-    In Slurm 21.08 it looks like cloud nodes may not get powered-down after their
-    SuspendTime has expired if a cluster update is performed, which restarts the
-    slurmctld daemon and immediately performs an scontrol reconfigure.
+    In Slurm 22.05 the scontrol update node logic was modified and a sorting routine was
+    introduced, which modified the order of the nodes in the nodelist.
+    If `scontrol update node nodename=nodelist nodeaddr=nodeaddrlist` is called, only the
+    nodelist was sorted (not the nodeaddrlist). This causes mismatches between the Slurm
+    nodenames and the assigned addresses.
 
-    See https://bugs.schedmd.com/show_bug.cgi?id=13953
+    See https://bugs.schedmd.com/show_bug.cgi?id=15731
     """
 
-    max_count_cr1 = 10
-    scale_down_idle_time_mins = 5
+    max_count_cr1 = max_count_cr2 = 4
 
     cluster_config = pcluster_config_reader(
         config_file="pcluster.config.yaml",
         output_file="pcluster.config.initial.yaml",
         max_count_cr1=max_count_cr1,
-        scale_down_idle_time_mins=scale_down_idle_time_mins,
+        max_count_cr2=max_count_cr2,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -518,46 +520,21 @@ def test_update_slurm_reconfigure_race_condition(
 
     assert_compute_node_states(slurm_commands, compute_nodes=None, expected_states=["idle~"])
 
-    max_retries = 5
-    for iter in range(1, max_retries + 1):
+    nodes_in_queue1 = slurm_commands.get_compute_nodes("queue1", all_nodes=True)
+    nodes_in_queue2 = slurm_commands.get_compute_nodes("queue2", all_nodes=True)
 
-        job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
-            submit_command_args={
-                "nodes": 2,
-                "slots": 2,
-                "command": "srun sleep 300",
-                "raise_on_error": False,
-            }
-        )
-        slurm_commands.wait_job_running(job_id_1)
-        nodelist = slurm_commands.get_job_info(job_id_1, field="NodeList")
-        nodes = remote_command_executor.run_remote_command(
-            f"sinfo -N --nodes {nodelist} -h -O NodeHost:100 | sort | uniq"
-        ).stdout.splitlines()
-        nodes = [node.strip() for node in nodes]
-        slurm_commands.cancel_job(job_id_1)
+    # Create an unsorted list of nodes to be updated (queue2 is alphabetically after queue1)``:s
+    nodelist = f"{nodes_in_queue2[0]},{nodes_in_queue1[0]}"
 
-        max_count_cr1 = max_count_cr1 + 3
+    # Stop clustermgtd since it may fix the situation under the hood if it calls scontrol update
+    # with a sorted list of nodes
+    remote_command_executor.run_remote_command("sudo systemctl stop supervisord")
 
-        updated_config_file = pcluster_config_reader(
-            config_file="pcluster.config.yaml",
-            output_file=f"pcluster.config.iter_{iter}.yaml",
-            max_count_cr1=max_count_cr1,
-            scale_down_idle_time_mins=scale_down_idle_time_mins,
-        )
-        cluster.update(
-            config_file=updated_config_file,
-            wait=True,
-        )
+    # Run scontrol update with unsorted list of nodes
+    remote_command_executor.run_remote_command(f"sudo -i scontrol update nodename={nodelist} nodeaddr={nodelist}")
 
-        # Check that nodes get powered down by Slurm.
-        retry(wait_fixed=seconds(30), stop_max_delay=minutes(2 * scale_down_idle_time_mins))(
-            assert_compute_node_states
-        )(
-            scheduler_commands=slurm_commands,
-            compute_nodes=nodes,
-            expected_states=["idle%"],
-        )
+    assert_that(slurm_commands.get_node_attribute(nodes_in_queue1[0], "NodeAddr")).is_equal_to(nodes_in_queue1[0])
+    assert_that(slurm_commands.get_node_attribute(nodes_in_queue2[0], "NodeAddr")).is_equal_to(nodes_in_queue2[0])
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1259,7 +1236,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 22.05.5")
+    assert_that(version).is_equal_to("slurm 22.05.7")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -2024,6 +2001,74 @@ def _test_scontrol_reboot_nodes(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         ["Found the following unhealthy static nodes"],
+    )
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
+def trigger_slurm_reconfigure_race_condition(remote_command_executor):
+    # trigger slurmctld restart and scontrol reconfigure until they are executed in the same timestamp second
+    remote_command_executor.run_remote_command("sudo -i systemctl restart slurmctld && sudo -i scontrol reconfigure")
+    restart_time = _get_latest_timestamp_for_log_entry(
+        remote_command_executor, "/var/log/slurmctld.log", "slurmctld version .* started on cluster"
+    )
+    reconfigure_time = _get_latest_timestamp_for_log_entry(
+        remote_command_executor, "/var/log/slurmctld.log", "_slurm_rpc_reconfigure_controller: completed"
+    )
+    assert_that(restart_time.second).is_equal_to(reconfigure_time.second)
+    assert_that((reconfigure_time - restart_time).total_seconds()).is_less_than_or_equal_to(1.0)
+
+
+def _get_latest_timestamp_for_log_entry(remote_command_executor, log_path, log_entry):
+    log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_path), hide=True).stdout
+    match = re.findall(rf"\[(.+?)\] {log_entry}", log)[-1]
+    return datetime.strptime(match, "%Y-%m-%dT%H:%M:%S.%f")
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_slurm_reconfigure_race_condition(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    """
+    Test race condition between restart of slurmctld and scontrol reconfigure.
+
+    In Slurm 21.08 cloud nodes are not get powered-down after their
+    SuspendTime has expired if a cluster update is performed, which restarts the
+    slurmctld daemon and immediately performs a scontrol reconfigure.
+
+    See https://bugs.schedmd.com/show_bug.cgi?id=13953
+    """
+
+    scale_down_idle_time_mins = 1
+    cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.yaml",
+        scale_down_idle_time_mins=scale_down_idle_time_mins,
+    )
+
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    trigger_slurm_reconfigure_race_condition(remote_command_executor)
+
+    job_id = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "nodes": 1,
+            "slots": 1,
+        }
+    )
+    slurm_commands.wait_job_completed(job_id)
+    compute_nodes = slurm_commands.get_compute_nodes()
+    # Check that nodes get powered down by Slurm after scale_down_idle_time_mins.
+    wait_for_compute_nodes_states(
+        scheduler_commands=slurm_commands,
+        compute_nodes=compute_nodes,
+        expected_states=["idle~"],
+        wait_fixed_secs=30,
+        stop_max_delay_secs=5 * scale_down_idle_time_mins * 60,
     )
 
 

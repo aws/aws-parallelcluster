@@ -65,6 +65,11 @@ class ClusterStack(StackInfo):
         """Return the version of the original config used to generate the stack in the cluster."""
         return self._get_param("ConfigVersion")
 
+    @property
+    def official_ami(self):
+        """Return the original official AMI."""
+        return self._get_param("OfficialAmi")
+
     def delete(self):
         """Delete stack."""
         AWSApi.instance().cfn.delete_stack(self.name)

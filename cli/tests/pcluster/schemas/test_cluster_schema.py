@@ -24,9 +24,11 @@ from pcluster.aws.common import AWSClientError
 from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
+    HeadNodeCustomActionsSchema,
     HeadNodeIamSchema,
     HeadNodeRootVolumeSchema,
     ImageSchema,
+    QueueCustomActionsSchema,
     QueueIamSchema,
     SchedulerPluginCloudFormationClusterInfrastructureSchema,
     SchedulerPluginClusterSharedArtifactSchema,
@@ -210,6 +212,94 @@ DUMMY_AWSBATCH_QUEUE = {
     "Networking": {"SubnetIds": ["subnet-12345678"]},
     "ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}],
 }
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"OnNodeUpdating": "test"}, "Unknown field"),
+        ({"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"}, "Invalid input type."),
+        ({"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}}, "Unknown field"),
+        # Successes
+        (
+            {
+                "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+                "OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2"},
+                "OnNodeUpdated": {"Script": "test3"},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+    ],
+)
+def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            HeadNodeCustomActionsSchema().load(config_dict)
+    else:
+        HeadNodeCustomActionsSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"OnNodeUpdated": "test"}, "Unknown field"),
+        (
+            {
+                "OnNodeStart": "test",
+                "OnNodeConfigured": "test",
+            },
+            "Invalid input type.",
+        ),
+        ({"OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]}}, "Unknown field"),
+        # Successes
+        (
+            {
+                "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2"},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+    ],
+)
+def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            QueueCustomActionsSchema().load(config_dict)
+    else:
+        QueueCustomActionsSchema().load(config_dict)
 
 
 def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):
@@ -480,10 +570,7 @@ def test_scheduler_constraints_for_intel_packages(
     mock_aws_api(mocker)
     config_file_name = f"{scheduler}.{'enabled' if install_intel_packages_enabled else 'disabled'}.yaml"
     if failure_message:
-        with pytest.raises(
-            ValidationError,
-            match=failure_message,
-        ):
+        with pytest.raises(ValidationError, match=failure_message):
             load_cluster_model_from_yaml(config_file_name, test_datadir)
     else:
         _, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
@@ -491,6 +578,34 @@ def test_scheduler_constraints_for_intel_packages(
         assert_that(cluster.additional_packages.intel_software.intel_hpc_platform).is_equal_to(
             install_intel_packages_enabled
         )
+
+
+@pytest.mark.parametrize(
+    "scheduler, custom_action, failure_message",
+    [
+        ("slurm", "no_actions", None),
+        ("slurm", "on_node_start", None),
+        ("slurm", "on_node_configured", None),
+        ("slurm", "on_node_updated", None),
+        ("awsbatch", "no_actions", None),
+        ("awsbatch", "on_node_start", None),
+        ("awsbatch", "on_node_configured", None),
+        (
+            "awsbatch",
+            "on_node_updated",
+            "The use of the OnNodeUpdated configuration is not supported when using awsbatch as the scheduler",
+        ),
+    ],
+)
+def test_scheduler_constraints_for_custom_actions(mocker, test_datadir, scheduler, custom_action, failure_message):
+    mock_aws_api(mocker)
+    config_file_name = f"{scheduler}.{custom_action}.yaml"
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            load_cluster_model_from_yaml(config_file_name, test_datadir)
+    else:
+        _, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
+        assert_that(cluster.scheduling.scheduler).is_equal_to(scheduler)
 
 
 @pytest.mark.parametrize(

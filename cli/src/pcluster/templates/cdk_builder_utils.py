@@ -58,7 +58,10 @@ def create_hash_suffix(string_to_hash: str):
     return (
         string_to_hash
         if string_to_hash == "HeadNode"
-        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
+        # A nosec comment is appended to the following line in order to disable the B324 check.
+        # The sha1 is used just as a hashing function.
+        # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec B324 nosemgrep
     )
 
 
@@ -118,8 +121,12 @@ def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> d
     )
 
 
-def to_comma_separated_string(list):
-    return ",".join(str(item) for item in list)
+def to_comma_separated_string(list, use_lower_case=False):
+    result = ",".join(str(item) for item in list)
+    if use_lower_case:
+        return result.lower()
+    else:
+        return result
 
 
 def get_shared_storage_ids_by_type(shared_storage_infos: dict, storage_type: SharedStorageType):
@@ -269,13 +276,13 @@ def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str
     return full_resource_path, full_resource_name
 
 
-def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement], has_vpc_config: bool):
+def add_lambda_cfn_role(scope, config, function_id: str, statements: List[iam.PolicyStatement], has_vpc_config: bool):
     """Return a CfnRole to be used for a Lambda function."""
     role_path, role_name = add_cluster_iam_resource_prefix(
-        scope.config.cluster_name, scope.config, name=f"{function_id}Role", iam_type="AWS::IAM::Role"
+        config.cluster_name, config, name=f"{function_id}Role", iam_type="AWS::IAM::Role"
     )
     _, policy_name = add_cluster_iam_resource_prefix(
-        scope.config.cluster_name, scope.config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
+        config.cluster_name, config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
     )
 
     role_id = f"{function_id}Role" if role_name else f"{function_id}FunctionExecutionRole"
@@ -311,22 +318,31 @@ def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource)
     :param compute_resource
     :return: 16 chars string e.g. 2238a84ac8a74529
     """
-    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
+    # A nosec comment is appended to the following line in order to disable the B324 check.
+    # The sha1 is used just as a hashing function.
+    # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec B324 nosemgrep
 
 
 class NodeIamResourcesBase(Construct):
     """Abstract construct defining IAM resources for a cluster node."""
 
     def __init__(
-        self, scope: Construct, id: str, config: BaseClusterConfig, node: Union[HeadNode, BaseQueue], name: str
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: Union[HeadNode, BaseQueue],
+        shared_storage_infos: dict,
+        name: str,
     ):
         super().__init__(scope, id)
         self._config = config
         self.instance_role = None
 
-        self._add_role_and_policies(node, name)
+        self._add_role_and_policies(node, shared_storage_infos, name)
 
-    def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
+    def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], shared_storage_infos: dict, name: str):
         """Create role and policies for the given node/queue."""
         suffix = create_hash_suffix(name)
         if node.instance_profile:
@@ -339,7 +355,9 @@ class NodeIamResourcesBase(Construct):
             self.instance_role = self._add_node_role(node, f"Role{suffix}")
 
             # ParallelCluster Policies
-            self._add_pcluster_policies_to_role(self.instance_role.ref, f"ParallelClusterPolicies{suffix}")
+            self._add_pcluster_policies_to_role(
+                self.instance_role.ref, shared_storage_infos, f"ParallelClusterPolicies{suffix}"
+            )
 
             # Custom Cookbook S3 url policy
             if self._condition_custom_cookbook_with_s3_url():
@@ -380,17 +398,45 @@ class NodeIamResourcesBase(Construct):
             role_name=role_name,
         )
 
-    def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
+    def _add_pcluster_policies_to_role(self, role_ref: str, shared_storage_infos: dict, name: str):
         _, policy_name = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, "parallelcluster", iam_type="AWS::IAM::Policy"
         )
+        common_policies = []
+        if self._config.scheduling.scheduler != "awsbatch":
+            efs_with_iam_authorization_arns = self._get_efs_with_iam_authorization_arns(shared_storage_infos)
+            if efs_with_iam_authorization_arns:
+                common_policies.append(
+                    iam.PolicyStatement(
+                        sid="Efs",
+                        actions=[
+                            "elasticfilesystem:ClientMount",
+                            "elasticfilesystem:ClientRootAccess",
+                            "elasticfilesystem:ClientWrite",
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        resources=efs_with_iam_authorization_arns,
+                    ),
+                )
         iam.CfnPolicy(
             Stack.of(self),
             name,
             policy_name=policy_name or "parallelcluster",
-            policy_document=iam.PolicyDocument(statements=self._build_policy()),
+            policy_document=iam.PolicyDocument(statements=self._build_policy() + common_policies),
             roles=[role_ref],
         )
+
+    def _get_efs_with_iam_authorization_arns(self, shared_storage_infos):
+        return [
+            self._format_arn(
+                service="elasticfilesystem",
+                resource=f"file-system/{efs_id}",
+                region=Stack.of(self).region,
+                account=Stack.of(self).account,
+            )
+            for efs_id, efs_storage in shared_storage_infos[SharedStorageType.EFS]
+            if efs_storage.iam_authorization
+        ]
 
     def _condition_custom_cookbook_with_s3_url(self):
         try:
@@ -494,11 +540,12 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         id: str,
         config: BaseClusterConfig,
         node: Union[HeadNode, BaseQueue],
+        shared_storage_infos: dict,
         name: str,
         cluster_bucket: S3Bucket,
     ):
         self._cluster_bucket = cluster_bucket
-        super().__init__(scope, id, config, node, name)
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
         policy = [
@@ -649,11 +696,15 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     ),
                 ]
             )
+
+            self._add_compute_console_output_policy_statement(policy)
+
             capacity_reservation_ids = self._config.capacity_reservation_ids
 
             if capacity_reservation_ids:
                 policy.append(
                     iam.PolicyStatement(
+                        sid="AllowRunningReservedCapacity",
                         actions=["ec2:RunInstances"],
                         effect=iam.Effect.ALLOW,
                         resources=[
@@ -670,6 +721,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 policy.extend(
                     [
                         iam.PolicyStatement(
+                            sid="AllowManagingReservedCapacity",
                             actions=["ec2:RunInstances", "ec2:CreateFleet", "resource-groups:ListGroupResources"],
                             effect=iam.Effect.ALLOW,
                             resources=capacity_reservation_resource_group_arns,
@@ -708,6 +760,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         if self._config.directory_service:
             policy.append(
                 iam.PolicyStatement(
+                    sid="AllowGettingDirectorySecretValue",
                     actions=["secretsmanager:GetSecretValue"],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
@@ -717,6 +770,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         if self._config.scheduling.scheduler == "slurm" and self._config.scheduling.settings.database:
             policy.append(
                 iam.PolicyStatement(
+                    sid="AllowGettingSlurmDbSecretValue",
                     actions=["secretsmanager:GetSecretValue"],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.scheduling.settings.database.password_secret_arn],
@@ -725,12 +779,34 @@ class HeadNodeIamResources(NodeIamResourcesBase):
 
         return policy
 
+    def _add_compute_console_output_policy_statement(self, policy):
+        if self._config.monitoring.logs.cloud_watch.enabled:
+            queue_names = [queue.name for queue in self._config.scheduling.queues]
+            policy.append(
+                iam.PolicyStatement(
+                    sid="EC2GetComputeConsoleOutput",
+                    actions=["ec2:GetConsoleOutput"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._format_arn(service="ec2", resource="instance/*")],
+                    conditions={
+                        "StringEquals": {
+                            "aws:ResourceTag/parallelcluster:queue-name": queue_names,
+                            "aws:ResourceTag/parallelcluster:node-type": "Compute",
+                            "aws:ResourceTag/parallelcluster:cluster-name": Stack.of(self).stack_name,
+                        }
+                    },
+                )
+            )
+
     def _generate_head_node_pass_role_resources(self):
         """Return a unique list of ARNs that the head node should be able to use when calling PassRole."""
+        resource_iam_path, _ = add_cluster_iam_resource_prefix(
+            self._config.cluster_name, self._config, "", iam_type="AWS::IAM::Role"
+        )
         default_pass_role_resource = self._format_arn(
             service="iam",
             region="",
-            resource=f"role{self._cluster_scoped_iam_path()}*",
+            resource=f"role{self._cluster_scoped_iam_path(iam_path=resource_iam_path)}*",
         )
 
         # If there are any queues where a custom instance role was specified,
@@ -757,9 +833,15 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
     """Construct defining IAM resources for a compute node."""
 
     def __init__(
-        self, scope: Construct, id: str, config: BaseClusterConfig, node: Union[HeadNode, BaseQueue], name: str
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: Union[HeadNode, BaseQueue],
+        shared_storage_infos: dict,
+        name: str,
     ):
-        super().__init__(scope, id, config, node, name)
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
         return [

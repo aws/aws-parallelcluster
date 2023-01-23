@@ -74,6 +74,7 @@ from utils import (
     get_architecture_supported_by_instance_type,
     get_arn_partition,
     get_instance_info,
+    get_metadata,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
@@ -83,6 +84,10 @@ from utils import (
 
 from tests.common.osu_common import run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.common.storage.constants import StorageType
+from tests.common.storage.ebs_utils import delete_ebs_volume
+from tests.common.storage.efs_utils import delete_efs_filesystem
+from tests.common.storage.fsx_utils import delete_fsx_filesystem
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
@@ -372,7 +377,7 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, upper_case_cluster_name=False, **kwargs):
+    def _cluster_factory(cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
@@ -385,6 +390,7 @@ def clusters_factory(request, region):
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
             region=region,
+            custom_cli_credentials=custom_cli_credentials,
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, **kwargs)
@@ -608,6 +614,17 @@ def inject_additional_config_settings(  # noqa: C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
+    if not dict_has_nested_key(config_content, ("HeadNode", "Ssh", "AllowedIps")):
+        # If the test is running in an EC2 instance limit SSH connection access from instance running the test
+        instance_ip = get_metadata("public-ipv4", raise_error=False)
+        if not instance_ip:
+            instance_ip = get_metadata("local-ipv4", raise_error=False)
+        if instance_ip:
+            logging.info(f"Limiting AllowedIps rule to IP: {instance_ip}")
+            dict_add_nested_key(config_content, f"{instance_ip}/32", ("HeadNode", "Ssh", "AllowedIps"))
+        else:
+            logging.info("Skipping AllowedIps rule because unable to find local and public IP for the instance.")
+
     if not dict_has_nested_key(config_content, ("Imds", "ImdsSupport")):
         dict_add_nested_key(config_content, "v2.0", ("Imds", "ImdsSupport"))
 
@@ -809,8 +826,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "us-west-2": ["usw2-az4"],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
-    # m6g.xlarge is not supported in apne1-az2
-    "ap-northeast-1": ["apne1-az4", "apne1-az1"],
+    # FSx for Luster is not supported in apne1-az1
+    "ap-northeast-1": ["apne1-az4", "apne1-az2"],
     # c4.xlarge is not supported in apne2-az2
     "ap-northeast-2": ["apne2-az1", "apne2-az3"],
     # c5.xlarge is not supported in apse1-az3
@@ -965,22 +982,25 @@ def vpc_stacks(cfn_stacks_factory, request):
             az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
             # if only one AZ can be used for the given region, use it multiple times
             if len(az_names) == 1:
-                az_names *= 2
-            availability_zones = random.sample(az_names, k=2)
+                availability_zones = az_names * 3
+            if len(az_names) == 2:
+                # ensures that az[0] and az[1] are always different if two az are available for use
+                availability_zones = az_names + random.sample(az_names, k=1)
         # otherwise, select a subset of all AZs in the region
         else:
             az_list = get_availability_zones(region, credential)
-            # if number of available zones is smaller than 2, available zones should be [None, None]
-            if len(az_list) < 2:
-                availability_zones = [None, None]
+            # if number of available zones is smaller than 3, list is expanded to 3 and filled with [None, ...]
+            if len(az_list) < 3:
+                diff = 3 - len(az_list)
+                availability_zones = az_list + [None] * diff
             else:
-                availability_zones = random.sample(az_list, k=2)
+                availability_zones = random.sample(az_list, k=3)
 
         # Subnets visual representation:
         # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
         public_subnet = SubnetConfig(
             name="Public",
-            cidr="192.168.32.0/19",  # 8190 IPs
+            cidr="192.168.32.0/20",  # 4096 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             availability_zone=availability_zones[0],
@@ -988,7 +1008,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet = SubnetConfig(
             name="Private",
-            cidr="192.168.64.0/18",  # 16382 IPs
+            cidr="192.168.64.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
@@ -996,7 +1016,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet_different_cidr = SubnetConfig(
             name="PrivateAdditionalCidr",
-            cidr="192.168.128.0/17",  # 32766 IPs
+            cidr="192.168.96.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[1],
@@ -1004,18 +1024,61 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         no_internet_subnet = SubnetConfig(
             name="NoInternet",
-            cidr="192.168.16.0/20",  # 4094 IPs
+            cidr="192.168.16.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
             default_gateway=Gateways.NONE,
         )
+        public_subnet_az2 = SubnetConfig(
+            name="PublicAz2",
+            cidr="192.168.128.0/20",  # 4096 IPs
+            map_public_ip_on_launch=True,
+            has_nat_gateway=True,
+            availability_zone=availability_zones[1],
+            default_gateway=Gateways.INTERNET_GATEWAY,
+        )
+        private_subnet_az2 = SubnetConfig(
+            name="PrivateAz2",
+            cidr="192.168.160.0/20",  # 4096 IPs
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            availability_zone=availability_zones[1],
+            default_gateway=Gateways.NAT_GATEWAY,
+        )
+        public_subnet_az3 = SubnetConfig(
+            name="PublicAz3",
+            cidr="192.168.192.0/20",  # 4096 IPs
+            map_public_ip_on_launch=True,
+            has_nat_gateway=True,
+            availability_zone=availability_zones[2],
+            default_gateway=Gateways.INTERNET_GATEWAY,
+        )
+        private_subnet_az3 = SubnetConfig(
+            name="PrivateAz3",
+            cidr="192.168.224.0/20",  # 4096 IPs
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            availability_zone=availability_zones[2],
+            default_gateway=Gateways.NAT_GATEWAY,
+        )
         vpc_config = VPCConfig(
             cidr="192.168.0.0/17",
             additional_cidr_blocks=["192.168.128.0/17"],
-            subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
+            subnets=[
+                public_subnet,
+                private_subnet,
+                private_subnet_different_cidr,
+                no_internet_subnet,
+                public_subnet_az2,
+                private_subnet_az2,
+                public_subnet_az3,
+                private_subnet_az3,
+            ],
         )
-        template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zones[0]).build()
+        template = NetworkTemplateBuilder(
+            vpc_configuration=vpc_config, default_availability_zone=availability_zones[0]
+        ).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
@@ -1313,7 +1376,10 @@ def placement_group_stack(cfn_stacks_factory, request, region):
 
     yield stack
 
-    cfn_stacks_factory.delete_stack(stack.name, region)
+    if not request.config.getoption("no_delete"):
+        cfn_stacks_factory.delete_stack(stack.name, region)
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture(scope="class")
@@ -1325,19 +1391,22 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     availability_zone = (
         boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_subnet_id"]).availability_zone
     )
+    availability_zone_2 = (
+        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_az2_subnet_id"]).availability_zone
+    )
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=availability_zone,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
-        InstanceType="c6gn.xlarge",
+        InstanceType="c5.xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
         AvailabilityZone=availability_zone,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
-        InstanceType="c7g.xlarge",
+        InstanceType="r5.xlarge",
         InstanceMatchCriteria="targeted",
     )
     pg_name = placement_group_stack.cfn_resources["PlacementGroup"]
@@ -1346,7 +1415,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
         AvailabilityZone=availability_zone,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
-        InstanceType="m6g.xlarge",
+        InstanceType="m5.xlarge",
         InstanceMatchCriteria="targeted",
         PlacementGroupArn=boto3.resource("ec2").PlacementGroup(pg_name).group_arn,
     )
@@ -1388,10 +1457,59 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
             ),
         ],
     )
+    # odcr resources for MultiAZ integ-tests
+    az1_odcr = ec2.CapacityReservation(
+        "az1Odcr",
+        AvailabilityZone=availability_zone,
+        InstanceCount=2,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="t3.micro",
+    )
+    az2_odcr = ec2.CapacityReservation(
+        "az2Odcr",
+        AvailabilityZone=availability_zone_2,
+        InstanceCount=2,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="t3.micro",
+    )
+    multi_az_odcr_group = resourcegroups.Group(
+        "multiAzOdcrGroup",
+        Name=generate_stack_name("multi-az-odcr-group", request.config.getoption("stackname_suffix")),
+        Configuration=[
+            resourcegroups.ConfigurationItem(Type="AWS::EC2::CapacityReservationPool"),
+            resourcegroups.ConfigurationItem(
+                Type="AWS::ResourceGroups::Generic",
+                Parameters=[
+                    resourcegroups.ConfigurationParameter(
+                        Name="allowed-resource-types", Values=["AWS::EC2::CapacityReservation"]
+                    )
+                ],
+            ),
+        ],
+        Resources=[
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(az1_odcr),
+            ),
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(az2_odcr),
+            ),
+        ],
+    )
     odcr_template.add_resource(open_odcr)
     odcr_template.add_resource(target_odcr)
     odcr_template.add_resource(pg_odcr)
     odcr_template.add_resource(odcr_group)
+    odcr_template.add_resource(az1_odcr)
+    odcr_template.add_resource(az2_odcr)
+    odcr_template.add_resource(multi_az_odcr_group)
 
     stack = CfnStack(
         name=generate_stack_name("integ-tests-odcr", request.config.getoption("stackname_suffix")),
@@ -1402,7 +1520,10 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
 
     yield stack
 
-    cfn_stacks_factory.delete_stack(stack.name, region)
+    if not request.config.getoption("no_delete"):
+        cfn_stacks_factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture()
@@ -1895,3 +2016,33 @@ def _add_mount_targets(subnet_ids, efs_ids, security_group, template):
                     )
                 )
                 availability_zones_with_mount_target.add(subnet["AvailabilityZone"])
+
+
+@pytest.fixture(scope="class")
+def delete_storage_on_teardown(request, region):
+    supported_storage_types = [StorageType.STORAGE_EBS, StorageType.STORAGE_EFS, StorageType.STORAGE_FSX]
+    delete_storage_function = {
+        StorageType.STORAGE_EBS: delete_ebs_volume,
+        StorageType.STORAGE_EFS: delete_efs_filesystem,
+        StorageType.STORAGE_FSX: delete_fsx_filesystem,
+    }
+    storage_resources = {storage_type: set() for storage_type in supported_storage_types}
+
+    def _add_storage(storage_type: StorageType, storage_id: str):
+        logging.info(
+            f"Adding storage for deletion on teardown: storage of type {storage_type.name} with id {storage_id}"
+        )
+        storage_resources[storage_type].add(storage_id)
+
+    def _delete_storage_resources():
+        logging.info("Deleting storage resource on teardown")
+        for storage_type, storage_ids in storage_resources.items():
+            for storage_id in storage_ids:
+                delete_storage_function[storage_type](region, storage_id)
+
+    yield _add_storage
+
+    if request.config.getoption("no_delete"):
+        logging.info("Not deleting storage resources marked for removal because --no-delete option was specified")
+    else:
+        _delete_storage_resources()

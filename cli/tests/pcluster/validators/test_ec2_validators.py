@@ -616,7 +616,7 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
         (
             [capacity_reservation(id="cr-good", instance_type="c5.xlarge", az="us-east-1b")],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b"},
             None,
         ),
@@ -627,21 +627,21 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
                 capacity_reservation(id="cr-bad-2", instance_type="c5.xlarge", az="us-east-1b"),
             ],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b"},
             None,
         ),
         (
             [],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b"},
             at_least_one_capacity_reservation_error_message,
         ),
         (
             [capacity_reservation(id="cr-bad-1", instance_type="m5.xlarge", az="us-east-1b")],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b"},
             at_least_one_capacity_reservation_error_message,
         ),
@@ -651,7 +651,7 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
                 capacity_reservation(id="cr-bad-2", instance_type="m5.xlarge", az="us-east-1b"),
             ],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b"},
             at_least_one_capacity_reservation_error_message,
         ),
@@ -660,7 +660,7 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
                 capacity_reservation(id="cr-good", instance_type="c5.xlarge", az="us-east-1b"),
             ],
             mock_bad_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b"},
             "Capacity reservation resource group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) must be "
             "a Service Linked Group created from the AWS CLI.  See "
@@ -671,7 +671,7 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
                 capacity_reservation(id="cr-good", instance_type="c5.xlarge", az="us-east-1b"),
             ],
             "AWSClientError",
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b"},
             "Capacity reservation resource group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) must be"
             " a Service Linked Group created from the AWS CLI.  See "
@@ -682,26 +682,25 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
                 capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
             ],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b", "subnet-456": "us-east-1a"},
-            "Queue TestQueue may launch nodes in these availability zones: us-east-1a but the "
-            "Capacity Reservation Group (arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) "
-            "reserves capacity in these availability zones: us-east-1b. "
-            "Consider adding capacity reservations in all the availability zones covered by the queue.",
+            "Queue 'TestQueue' has a subnet configuration mapping to the following availability zones: 'us-east-1a' "
+            "but the Capacity Reservation Group 'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' "
+            "reserves capacity in these availability zones: 'us-east-1b'. Consider adding capacity reservations in "
+            "all the availability zones covered by the queue.",
         ),
         (
             [
                 capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
             ],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1c", "subnet-456": "us-east-1a"},
-            "Queue TestQueue uses subnets in these availability zones: (subnet-123: us-east-1c), "
-            "(subnet-456: us-east-1a) but the Capacity Reservation Resource Group "
-            "(arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) has reservations "
-            "in these availability zones: us-east-1b. You can either add a capacity reservation in the "
-            "availability zones that the subnets are in or remove the Capacity Reservation from the "
-            "Cluster Configuration.",
+            "Queue 'TestQueue' has a subnet configuration mapping to the following availability zones: "
+            "'(subnet-123: us-east-1c), (subnet-456: us-east-1a)' but the Capacity Reservation Resource Group "
+            "'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' has reservations in these availability "
+            "zones: 'us-east-1b'. You can either add a capacity reservation in the availability zones that the subnets "
+            "are in or remove the Capacity Reservation from the Cluster Configuration.",
         ),
         (
             [
@@ -709,14 +708,13 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
                 capacity_reservation(id="cr-test-2", instance_type="c5.xlarge", az="us-east-1d"),
             ],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1c", "subnet-456": "us-east-1a"},
-            "Queue TestQueue uses subnets in these availability zones: (subnet-123: us-east-1c), "
-            "(subnet-456: us-east-1a) but the Capacity Reservation Resource Group "
-            "(arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy) has reservations "
-            "in these availability zones: us-east-1b, us-east-1d. You can either add a capacity reservation in the "
-            "availability zones that the subnets are in or remove the Capacity Reservation from the "
-            "Cluster Configuration.",
+            "Queue 'TestQueue' has a subnet configuration mapping to the following availability zones: "
+            "'(subnet-123: us-east-1c), (subnet-456: us-east-1a)' but the Capacity Reservation Resource Group "
+            "'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' has reservations in these availability "
+            "zones: 'us-east-1b, us-east-1d'. You can either add a capacity reservation in the availability zones "
+            "that the subnets are in or remove the Capacity Reservation from the Cluster Configuration.",
         ),
         (
             [
@@ -724,9 +722,40 @@ capacity_reservation = namedtuple("CapacityReservation", "id instance_type az")
                 capacity_reservation(id="cr-test-2", instance_type="c5.xlarge", az="us-east-1d"),
             ],
             mock_good_config,
-            "c5.xlarge",
+            ["c5.xlarge"],
             {"subnet-123": "us-east-1b", "subnet-456": "us-east-1d"},
             "",
+        ),
+        # Include CRs with instance types that have reservations in SOME of the AZs
+        (
+            [
+                capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
+                capacity_reservation(id="cr-test-2", instance_type="c5n.xlarge", az="us-east-1d"),
+            ],
+            mock_good_config,
+            ["c5.xlarge", "c5n.xlarge"],
+            {"subnet-123": "us-east-1b", "subnet-456": "us-east-1d"},
+            "The Capacity Reservation Resource Group 'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' "
+            "has reservations for these InstanceTypes and Availability Zones: '(c5.xlarge: us-east-1b), "
+            "(c5n.xlarge: us-east-1d)'. Please consider that the cluster can launch instances in these "
+            "Availability Zones that have no capacity reservations in the Resource Group for the given instance types: "
+            "'{us-east-1b: ['c5n.xlarge']}, {us-east-1d: ['c5.xlarge']}'.",
+        ),
+        # Include CRs with instance types that have reservations in SOME of the AZs
+        # and one of the Subnets/AZs in NOT covered by any of the CRs
+        (
+            [
+                capacity_reservation(id="cr-test-1", instance_type="c5.xlarge", az="us-east-1b"),
+                capacity_reservation(id="cr-test-2", instance_type="c5n.xlarge", az="us-east-1d"),
+            ],
+            mock_good_config,
+            ["c5.xlarge", "c5n.xlarge"],
+            {"subnet-123": "us-east-1b", "subnet-456": "us-east-1d", "subnet-789": "us-east-1c"},
+            "The Capacity Reservation Resource Group 'arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy' "
+            "has reservations for these InstanceTypes and Availability Zones: '(c5.xlarge: us-east-1b), "
+            "(c5n.xlarge: us-east-1d)'. Please consider that the cluster can launch instances in these "
+            "Availability Zones that have no capacity reservations in the Resource Group for the given instance types: "
+            "'{us-east-1b: ['c5n.xlarge']}, {us-east-1c: ['c5.xlarge', 'c5n.xlarge']}, {us-east-1d: ['c5.xlarge']}'.",
         ),
     ],
 )
@@ -763,7 +792,7 @@ def test_capacity_reservation_resource_group_validator(
     )
     actual_failures = CapacityReservationResourceGroupValidator().execute(
         capacity_reservation_resource_group_arn="arn:aws:resource-groups:eu-west-1:12345678:group/skip_dummy",
-        instance_types=[desired_instance_type],
+        instance_types=desired_instance_type,
         subnet_ids=subnet_az_map.keys(),
         queue_name="TestQueue",
         subnet_id_az_mapping=subnet_az_map,
@@ -793,41 +822,50 @@ mock_odcrs = [
 
 
 @pytest.mark.parametrize(
-    "placement_group, odcr, subnet, instance_types, odcr_list, expected_message",
+    "placement_group, odcr, subnets, instance_types, odcr_list, "
+    "multi_az_enabled, subnet_id_az_mapping, expected_message",
     [
-        (None, None, "mock-subnet-1", ["mock-type"], mock_odcrs[:2], None),
+        (None, None, "mock-subnet-1", ["mock-type"], mock_odcrs[:2], False, {"mock-subnet-1": "us-east-1"}, None),
         (
             None,
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-1",
+            ["mock-subnet-1"],
             ["mock-type"],
             mock_odcrs[:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
             None,
             CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
-            "mock-subnet-1",
+            ["mock-subnet-1"],
             ["mock-type", "mock-type-2"],
             mock_odcrs[:3],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
             None,
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-1",
+            ["mock-subnet-1"],
             ["mock-type", "mock-type-2"],
             mock_odcrs[:2],
-            "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' "
-            "and no placement group provided. Please either provide a placement group or add an ODCR that "
-            "does not target a placement group and targets the instance type.",
+            False,
+            {"mock-subnet-1": "us-east-1"},
+            "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' in 'us-east-1' and "
+            "no placement group provided. Please either provide a placement group or add an ODCR that does not target "
+            "a placement group and targets the instance type.",
         ),
         (
             "mock-placement",
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-2",
+            ["mock-subnet-2"],
             ["mock-type"],
             mock_odcrs[:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             "When using an open or targeted capacity reservation with an unrelated placement group, "
             "insufficient capacity errors may occur due to placement constraints outside of the "
             "reservation even if the capacity reservation has remaining capacity. Please consider either "
@@ -837,20 +875,44 @@ mock_odcrs = [
         (
             "test",
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-3",
+            ["mock-subnet-3"],
             ["mock-type"],
             mock_odcrs[1:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test' targets the 'mock-type' instance type but there "
             "are no ODCRs included in the resource group that target that instance type.",
         ),
         (
             "test-2",
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
-            "mock-subnet-3",
+            ["mock-subnet-3"],
             ["mock-type"],
             mock_odcrs[1:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test-2' targets the 'mock-type' instance type but there "
             "are no ODCRs included in the resource group that target that instance type.",
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
+            ["mock-subnet-1", "mock-subnet-2"],
+            ["mock-type", "mock-type-2"],
+            mock_odcrs[:3],
+            True,
+            {"mock-subnet-1": "us-east-1"},
+            None,
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
+            ["mock-subnet-1", "mock-subnet-2"],
+            ["mock-type"],
+            mock_odcrs[:3],
+            True,
+            {"mock-subnet-1": "us-east-1"},
+            None,
         ),
     ],
 )
@@ -858,9 +920,11 @@ def test_placement_group_capacity_reservation_validator(
     mocker,
     placement_group,
     odcr,
-    subnet,
+    subnets,
     instance_types,
     odcr_list,
+    multi_az_enabled,
+    subnet_id_az_mapping,
     expected_message,
 ):
     mock_aws_api(mocker)
@@ -874,7 +938,12 @@ def test_placement_group_capacity_reservation_validator(
         return_value=desired_availability_zone,
     )
     actual_failure = PlacementGroupCapacityReservationValidator().execute(
-        placement_group=placement_group, odcr=odcr, subnet=subnet, instance_types=instance_types
+        placement_group=placement_group,
+        odcr=odcr,
+        subnet=subnets[0],
+        instance_types=instance_types,
+        multi_az_enabled=multi_az_enabled,
+        subnet_id_az_mapping=subnet_id_az_mapping,
     )
     assert_failure_messages(actual_failure, expected_message)
 
