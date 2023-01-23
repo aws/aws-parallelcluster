@@ -16,10 +16,13 @@ import time
 
 import boto3
 import pytest
+
+from cfn_stacks_factory import CfnStack
 import utils
 import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
@@ -836,7 +839,36 @@ def _test_update_queue_strategy_with_running_job(
     _check_queue_ami(cluster, ec2, pcluster_copy_ami_id, "queue2")
     assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
 
+@pytest.fixture
+@pytest.mark.usefixtures("cfn_stacks_factory")
+def external_shared_storage_stack(request, region, cfn_stacks_factory):
+    # specify template as an s3 bucket link
+    template = "https://"
 
+    option = "external_shared_storage_stack_name"
+    if request.config.getoption(option):
+        logging.info("Using stack {0} in region {1}".format(request.config.getoption(option), region))
+        stack = CfnStack(name=request.config.getoption(option), region=region, template=template)
+    else:
+        stack = CfnStack(
+            name=utils.generate_stack_name("integ-tests-external-shared-storage", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=template,
+            capabilities=["CAPABILITY_IAM"]
+        )
+        #CfnStacksFactory = cfn_stacks_factory.CfnStacksFactory()
+        cfn_stacks_factory.create_stack(stack)
+    return stack
+
+@pytest.mark.usefixtures("instance", "external_shared_storage_stack")
+def test_dynamic_file_systems_update2(
+        request,
+        region,
+        os,
+        scheduler,
+        instance
+):
+    True
 @pytest.mark.usefixtures("instance")
 def test_dynamic_file_systems_update(
     region,
