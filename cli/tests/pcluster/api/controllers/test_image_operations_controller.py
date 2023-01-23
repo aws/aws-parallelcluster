@@ -28,7 +28,7 @@ from pcluster.aws.common import (
     LimitExceededError,
     StackNotFoundError,
 )
-from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP, SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
+from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP, SUPPORTED_ARCHITECTURES, SUPPORTED_OSES, Operation
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
@@ -39,6 +39,7 @@ from pcluster.models.imagebuilder import (
 from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
 from pcluster.utils import get_installed_version, to_iso_timestr, to_utc_datetime
 from pcluster.validators.common import FailureLevel, ValidationResult
+from tests.pcluster.api.controllers.utils import mock_assert_supported_operation, verify_unsupported_operation
 
 
 def _create_image_info(image_id):
@@ -280,6 +281,18 @@ class TestListImages:
             assert_that(response.status_code).is_equal_to(status_code)
             assert_that(response.get_json()).is_equal_to(expected_error)
 
+    def test_unsupported_operation_error(self, client, mocker):
+        mocked_assert_supported_operation = mock_assert_supported_operation(
+            mocker, "pcluster.api.controllers.image_operations_controller.assert_supported_operation"
+        )
+        response = self._send_test_request(client, ImageStatusFilteringOption.AVAILABLE)
+        verify_unsupported_operation(
+            mocked_assertion=mocked_assert_supported_operation,
+            operation=Operation.LIST_IMAGES,
+            region="us-east-1",
+            response=response,
+        )
+
 
 class TestDeleteImage:
     url = "/v3/images/custom/{image_name}"
@@ -457,6 +470,18 @@ class TestDeleteImage:
             assert_that(response.status_code).is_equal_to(500)
             assert_that(response.get_json()).is_equal_to(expected_error)
 
+    def test_unsupported_operation_error(self, client, mocker):
+        mocked_assert_supported_operation = mock_assert_supported_operation(
+            mocker, "pcluster.api.controllers.image_operations_controller.assert_supported_operation"
+        )
+        response = self._send_test_request(client, "image1")
+        verify_unsupported_operation(
+            mocked_assertion=mocked_assert_supported_operation,
+            operation=Operation.DELETE_IMAGE,
+            region="us-east-1",
+            response=response,
+        )
+
 
 class TestBuildImage:
     url = "/v3/images/custom"
@@ -633,6 +658,18 @@ class TestBuildImage:
         response = self._send_test_request(client)
         assert_that(response.status_code).is_equal_to(400)
         assert_that(response.get_json()["message"]).matches("Invalid image configuration.")
+
+    def test_unsupported_operation_error(self, client, mocker):
+        mocked_assert_supported_operation = mock_assert_supported_operation(
+            mocker, "pcluster.api.controllers.image_operations_controller.assert_supported_operation"
+        )
+        response = self._send_test_request(client)
+        verify_unsupported_operation(
+            mocked_assertion=mocked_assert_supported_operation,
+            operation=Operation.BUILD_IMAGE,
+            region="eu-west-1",
+            response=response,
+        )
 
 
 def _create_official_image_info(version, os, architecture):
@@ -936,3 +973,15 @@ class TestDescribeImage:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_error)
+
+    def test_unsupported_operation_error(self, client, mocker):
+        mocked_assert_supported_operation = mock_assert_supported_operation(
+            mocker, "pcluster.api.controllers.image_operations_controller.assert_supported_operation"
+        )
+        response = self._send_test_request(client, "image1")
+        verify_unsupported_operation(
+            mocked_assertion=mocked_assert_supported_operation,
+            operation=Operation.DESCRIBE_IMAGE,
+            region="us-east-1",
+            response=response,
+        )

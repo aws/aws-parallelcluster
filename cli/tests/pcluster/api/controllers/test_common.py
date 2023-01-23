@@ -8,10 +8,15 @@
 import os
 
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, fail
 
-from pcluster.api.controllers.common import configure_aws_region, configure_aws_region_from_config
+from pcluster.api.controllers.common import (
+    assert_supported_operation,
+    configure_aws_region,
+    configure_aws_region_from_config,
+)
 from pcluster.api.errors import BadRequestException
+from pcluster.constants import Operation
 
 
 @pytest.mark.parametrize(
@@ -70,3 +75,44 @@ class TestConfigureAwsRegionFromConfig:
         else:
             configure_aws_region_from_config(region, yaml)
             assert_that(os.environ["AWS_DEFAULT_REGION"]).is_equal_to(expected)
+
+
+def _get_test_assert_supported_operation_parameters():
+    parameters = []
+    for operation in Operation:
+        regions_to_test = ["us-iso-east-1", "us-iso-west-1", "us-isob-east-1", "us-isoWHATEVER", "WHATEVER-ELSE"]
+        for region in regions_to_test:
+            if operation in [
+                Operation.BUILD_IMAGE,
+                Operation.DELETE_IMAGE,
+                Operation.DESCRIBE_IMAGE,
+                Operation.LIST_IMAGES,
+                Operation.EXPORT_IMAGE_LOGS,
+                Operation.GET_IMAGE_LOG_EVENTS,
+                Operation.GET_IMAGE_STACK_EVENTS,
+                Operation.LIST_IMAGE_LOG_STREAMS,
+            ] and region.startswith("us-iso"):
+                expected_support = False
+            else:
+                expected_support = True
+            parameters.append((operation, region, expected_support))
+    return parameters
+
+
+@pytest.mark.parametrize("operation, region, expected_support", _get_test_assert_supported_operation_parameters())
+def test_assert_supported_operation(mocker, operation, region, expected_support):
+    if expected_support:
+        try:
+            assert_supported_operation(operation=operation, region=region)
+        except Exception as e:
+            fail(
+                f"assert_supported_operation with operation {operation} and region {region} "
+                f"raised an unexpected exception: {e}"
+            )
+    else:
+        with pytest.raises(Exception) as exc:
+            assert_supported_operation(operation=operation, region=region)
+            assert_that(exc).is_instance_of(BadRequestException)
+            assert_that(str(exc.value)).is_equal_to(
+                f"The operation '{operation.value}' is not supported in region '{region}'."
+            )
