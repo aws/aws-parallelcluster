@@ -13,7 +13,10 @@ from typing import List
 from argparse import ArgumentParser, Namespace
 
 from pcluster import utils
+from pcluster.api.controllers.common import assert_supported_operation
+from pcluster.aws.common import get_region
 from pcluster.cli.commands.common import CliCommand, ExportLogsCommand
+from pcluster.constants import Operation
 from pcluster.models.imagebuilder import ImageBuilder
 
 LOGGER = logging.getLogger(__name__)
@@ -51,6 +54,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
         )
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
+        assert_supported_operation(operation=Operation.EXPORT_IMAGE_LOGS, region=args.region or get_region())
         try:
             if args.output_file:
                 self._validate_output_file_path(args.output_file)

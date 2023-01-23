@@ -215,7 +215,15 @@ def _run_operation(model, args, extra_args):
             error_encoded = encoder.JSONEncoder().encode(message)
             raise APIOperationException(json.loads(error_encoded))
     else:
-        return args.func(args, extra_args)
+        try:
+            return args.func(args, extra_args)
+        except pcluster.api.errors.ParallelClusterApiException as e:
+            # Format exception messages in the same manner as the api
+            message = pcluster.api.errors.exception_message(e)
+            error_encoded = encoder.JSONEncoder().encode(message)
+            raise APIOperationException(json.loads(error_encoded))
+        except Exception as e:
+            raise e
 
 
 def run(sys_args, model=None):
