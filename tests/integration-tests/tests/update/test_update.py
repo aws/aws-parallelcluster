@@ -23,6 +23,7 @@ import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
 
+from conftest import parameterized_cfn_stacks_factory
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
@@ -839,36 +840,37 @@ def _test_update_queue_strategy_with_running_job(
     _check_queue_ami(cluster, ec2, pcluster_copy_ami_id, "queue2")
     assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
 
+
 @pytest.fixture
-@pytest.mark.usefixtures("cfn_stacks_factory")
-def external_shared_storage_stack(request, region, cfn_stacks_factory):
-    # specify template as an s3 bucket link
-    template = "https://"
+@pytest.mark.usefixtures("parameterized_cfn_stacks_factory")
+def external_shared_storage_stack(request, test_datadir):
+    def _create_stack(region, vpc, PublicAz3, PublicAz2, import_path, export_path, Public):
+        template_path = os.path.join(str(test_datadir), "storage-stack.json")
+        option = "external_shared_storage_stack_name"
+        if request.config.getoption(option):
+            logging.info("Using stack {0} in region {1}".format(request.config.getoption(option), region))
+            stack = parameterized_cfn_stacks_factory(name=request.config.getoption(option), region=region, template_path=template_path)
+        else:
+            params = [
+                {"ParameterKey": "vpc", "ParameterValue": vpc},
+                {"ParameterKey": "PublicAz3", "ParameterValue": PublicAz3},
+                {"ParameterKey": "PublicAz2", "ParameterValue": PublicAz2},
+                {"ParameterKey": "import_path", "ParameterValue": import_path},
+                {"ParameterKey": "export_path", "ParameterValue": export_path},
+                {"ParameterKey": "Public", "ParameterValue": Public},
+            ]
+            stack = parameterized_cfn_stacks_factory(
+                stack_prefix="integ-tests-external-shared-storage",
+                region=region,
+                parameters=params,
+                template_path=template_path,
+                capabilities=["CAPABILITY_IAM"]
+            )
+        return stack
 
-    option = "external_shared_storage_stack_name"
-    if request.config.getoption(option):
-        logging.info("Using stack {0} in region {1}".format(request.config.getoption(option), region))
-        stack = CfnStack(name=request.config.getoption(option), region=region, template=template)
-    else:
-        stack = CfnStack(
-            name=utils.generate_stack_name("integ-tests-external-shared-storage", request.config.getoption("stackname_suffix")),
-            region=region,
-            template=template,
-            capabilities=["CAPABILITY_IAM"]
-        )
-        #CfnStacksFactory = cfn_stacks_factory.CfnStacksFactory()
-        cfn_stacks_factory.create_stack(stack)
-    return stack
+    yield _create_stack
 
-@pytest.mark.usefixtures("instance", "external_shared_storage_stack")
-def test_dynamic_file_systems_update2(
-        request,
-        region,
-        os,
-        scheduler,
-        instance
-):
-    True
+
 @pytest.mark.usefixtures("instance")
 def test_dynamic_file_systems_update(
     region,
@@ -879,15 +881,10 @@ def test_dynamic_file_systems_update(
     scheduler_commands_factory,
     request,
     snapshots_factory,
-    efs_stack_factory,
-    efs_mount_target_stack_factory,
     vpc_stack,
     key_name,
     s3_bucket_factory,
     test_datadir,
-    fsx_factory,
-    svm_factory,
-    open_zfs_volume_factory,
     delete_storage_on_teardown,
 ):
     """Test update shared storages."""
@@ -919,11 +916,6 @@ def test_dynamic_file_systems_update(
         request,
         vpc_stack,
         region,
-        efs_stack_factory,
-        efs_mount_target_stack_factory,
-        fsx_factory,
-        svm_factory,
-        open_zfs_volume_factory,
         bucket_name,
     )
 
@@ -1117,59 +1109,36 @@ def test_dynamic_file_systems_update(
     )
 
 
+@pytest.mark.usefixtures("external_shared_storage_stack")
 def _create_shared_storages_resources(
     snapshots_factory,
     request,
     vpc_stack,
     region,
-    efs_stack_factory,
-    efs_mount_target_stack_factory,
-    fsx_factory,
-    svm_factory,
-    open_zfs_volume_factory,
     bucket_name,
 ):
+
     """Create existing EBS, EFS, FSX resources for test."""
     # create 1 existing ebs
-    ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.cfn_outputs["PublicSubnetId"], region)
+    Public = vpc_stack.cfn_outputs["PublicSubnetId"]
+    ebs_volume_id = snapshots_factory.create_existing_volume(request, Public, region)
 
-    # create 1 efs
-    existing_efs_ids = efs_stack_factory(1)
-    efs_mount_target_stack_factory(existing_efs_ids)
-    existing_efs_id = existing_efs_ids[0]
-
-    # create 1 fsx lustre
+    # external-shared-storage-stack params
+    vpc = vpc_stack.cfn_outputs["VpcId"]
+    PublicAz3 = vpc_stack.cfn_outputs["PublicAz3SubnetId"]
+    PublicAz2 = vpc_stack.cfn_outputs["PublicAz2SubnetId"]
     import_path = "s3://{0}".format(bucket_name)
     export_path = "s3://{0}/export_dir".format(bucket_name)
-    existing_fsx_lustre_fs_id = fsx_factory(
-        ports=[988],
-        ip_protocols=["tcp"],
-        num=1,
-        file_system_type="LUSTRE",
-        StorageCapacity=1200,
-        LustreConfiguration=LustreConfiguration(
-            title="lustreConfiguration",
-            ImportPath=import_path,
-            ExportPath=export_path,
-            DeploymentType="PERSISTENT_1",
-            PerUnitStorageThroughput=200,
-        ),
-    )[0]
 
-    # create 1 fsx ontap
-    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
-    fsx_ontap_volume_id = svm_factory(fsx_ontap_fs_id, num_volumes=1)[0]
-
-    # create 1 open zfs
-    fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
-    fsx_open_zfs_volume_id = open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=1)[0]
+    # create external-shared-storage-stack
+    storage_stack = external_shared_storage_stack(vpc=vpc, PublicAz3=PublicAz3, PublicAz2=PublicAz2, import_path=import_path, export_path=export_path, Public=Public)
 
     return (
         ebs_volume_id,
-        existing_efs_id,
-        existing_fsx_lustre_fs_id,
-        fsx_ontap_volume_id,
-        fsx_open_zfs_volume_id,
+        storage_stack.cfn_outputs["efs_id"],
+        storage_stack.cfn_outputs["fsx_lustre_fs_id"],
+        storage_stack.cfn_outputs["fsx_ontap_volume_id"],
+        storage_stack.cfn_outputs["fsx_open_zfs_volume_id"]
     )
 
 
