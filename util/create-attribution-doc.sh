@@ -42,39 +42,41 @@ pip-licenses -i $aws_cdk_ignore_subpackages aws-parallelcluster pip-licenses pac
 cpy_version=$(python -V |  grep -Eo '([0-9]+)(\.?[0-9]+)' | head -1) 
 
 
-# Appending License to the THIRD-PARTY-LICENSES file
+# Function to Append Licenses of different Packages to the THIRD-PARTY-LICENSES file
+append_to_final_license_file(){
+  
+  # Package Name, Package Version, License Type , URL for package, URL for License
+  # Adding a header to final License file with Package Name, Package Version, License Type , URL for package
+  echo -e "\n\n\n$1 \n$2 \n$3 \n$4" >> $final_license_file
+  # Appending License
+  curl $5 >> $final_license_file
+  # Some Packages have Dual Licenses 
+  if [ $# -gt 5 ]
+    then
+      curl $6 >> $final_license_file
+      curl $7 >> $final_license_file
+  fi
+  
+
+}
+
+
+
 
 # certifi 
-#Adding a header for certifi version and License URL
-echo -e "\ncertifi \n2022.12.07 \nMozilla Public License 2.0 (MPL 2.0) \nhttps://github.com/certifi/python-certifi/tree/2022.12.07" >> $final_license_file
-# Appending certifi License files 
-curl https://raw.githubusercontent.com/certifi/python-certifi/2022.12.07/LICENSE >> $final_license_file
+append_to_final_license_file "certifi" "2022.12.07" "Mozilla Public License 2.0 (MPL 2.0)" "https://github.com/certifi/python-certifi/tree/2022.12.07" "https://raw.githubusercontent.com/certifi/python-certifi/2022.12.07/LICENSE"
 
 # exception_group 
-#Adding a header for exception_group version and License URL
-echo -e "\n\n\nexceptiongroup \n$exception_group_version \nMIT License \nhttps://github.com/agronholm/exceptiongroup" >> $final_license_file
-# Appending exception_group License files 
-curl https://raw.githubusercontent.com/agronholm/exceptiongroup/main/LICENSE >> $final_license_file
+append_to_final_license_file "exceptiongroup" $exception_group_version "MIT License" "https://github.com/agronholm/exceptiongroup" "https://raw.githubusercontent.com/agronholm/exceptiongroup/main/LICENSE"
 
 # idna 
-#Adding a header for idna version and License URL
-echo -e "\n\n\nidna \n$idna_version \nBSD License \nhttps://github.com/kjd/idna" >> $final_license_file
-# Appending idna License files 
-curl https://raw.githubusercontent.com/kjd/idna/master/LICENSE.md >> $final_license_file
+append_to_final_license_file "idna" $idna_version "BSD License" "https://github.com/kjd/idna" "https://raw.githubusercontent.com/kjd/idna/master/LICENSE.md"
 
 # typing_extentions
-#Adding a header for typing_extentions version and License URL
-echo -e "\n\n\ntyping_extensions \n$typing_extentions_version \nPython Software Foundation License \nhttps://github.com/python/typing_extensions"  >> $final_license_file
-# Appending typing_extentions License files 
-curl  https://raw.githubusercontent.com/python/typing_extensions/main/LICENSE >> $final_license_file
+append_to_final_license_file "typing_extensions" $typing_extentions_version "Python Software Foundation License" "https://github.com/python/typing_extensions" "https://raw.githubusercontent.com/python/typing_extensions/main/LICENSE"
 
 # Packaging
-# Adding a header for Packaging version and License URL
-echo -e "\n\n\npackaging \n$packaging_version\nApache Software License; BSD License\nhttps://github.com/pypa/packaging " >> $final_license_file
-# Appending Packaging's 3 License files 
-curl https://raw.githubusercontent.com/pypa/packaging/main/LICENSE >> $final_license_file
-curl https://raw.githubusercontent.com/pypa/packaging/main/LICENSE.APACHE >> $final_license_file
-curl https://raw.githubusercontent.com/pypa/packaging/main/LICENSE.BSD >> $final_license_file
+append_to_final_license_file "packaging" $packaging_version "pache Software License; BSD License" "https://github.com/pypa/packaging" "https://raw.githubusercontent.com/pypa/packaging/main/LICENSE" "https://raw.githubusercontent.com/pypa/packaging/main/LICENSE.APACHE" "https://raw.githubusercontent.com/pypa/packaging/main/LICENSE.BSD"
 
 # pyinstaller-hooks-contrib
 # Adding a header for pyinstaller-hooks-contrib version and License URL 
@@ -97,18 +99,10 @@ cat pyinstaller-5.7.0/COPYING.txt >> $final_license_file
 rm -rf pyinstaller-5.7.0
 
 # aws-cdk 
-# Adding a header for aws-cdk version and License URL 
-echo -e "\n\n\naws-cdk \n$aws_cdk_version\nApache License \nhttps://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE" >> $final_license_file
-# Appending aws-cdk License 
-curl https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE >> $final_license_file
+append_to_final_license_file "aws-cdk" $aws_cdk_version "Apache License" "https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE" "https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE"
 
 # Python
-# Adding a header for Python version and License URL 
-echo -e "\nPython \n$cpy_version \nPSF License Version 2; Zero-Clause BSD license \nhttps://raw.githubusercontent.com/python/cpython/$cpy_version/LICENSE " >> $final_license_file
-# Appending Python License
-curl https://raw.githubusercontent.com/python/cpython/$cpy_version/LICENSE >> $final_license_file
-
-
+append_to_final_license_file "Python" $cpy_version "PSF License Version 2; Zero-Clause BSD license" "https://raw.githubusercontent.com/python/cpython/$cpy_version/LICENSE" "https://raw.githubusercontent.com/python/cpython/$cpy_version/LICENSE"
 
 
 deactivate

@@ -703,7 +703,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 
 constructs
-3.4.224
+3.4.225
 Apache-2.0
 Amazon Web Services
 https://github.com/aws/constructs
@@ -2136,6 +2136,8 @@ IN THE SOFTWARE.
 
 
 
+
+
 certifi 
 2022.12.07 
 Mozilla Public License 2.0 (MPL 2.0) 
@@ -2544,9 +2546,9 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 packaging 
-23.0
-Apache Software License; BSD License
-https://github.com/pypa/packaging 
+23.0 
+pache Software License; BSD License 
+https://github.com/pypa/packaging
 This software is made available under the terms of *either* of the licenses
 found in LICENSE.APACHE or LICENSE.BSD. Contributions to this software is made
 under the terms of *both* these licenses.
@@ -3744,7 +3746,7 @@ Apache License 2.0
 
 
 aws-cdk 
-1.189.0
+1.189.0 
 Apache License 
 https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE
                                  Apache License
@@ -3949,10 +3951,12 @@ https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE
    See the License for the specific language governing permissions and
    limitations under the License.
 
+
+
 Python 
 3.9 
 PSF License Version 2; Zero-Clause BSD license 
-https://raw.githubusercontent.com/python/cpython/3.9/LICENSE 
+https://raw.githubusercontent.com/python/cpython/3.9/LICENSE
 A. HISTORY OF THE SOFTWARE
 ==========================
 
