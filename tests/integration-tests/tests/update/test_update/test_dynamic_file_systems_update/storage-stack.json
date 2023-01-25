@@ -1,0 +1,352 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "external-shared-storage template for test_update.py::test_dynamic_file_systems_update",
+  "Parameters": {
+    "PublicAz3": {
+      "Type": "String",
+      "Default": ""
+    },
+    "PublicAz2": {
+      "Type": "String",
+      "Default": ""
+    },
+    "Public": {
+      "Type": "String",
+      "Default": ""
+    },
+    "import_path": {
+      "Type": "String",
+      "Default": ""
+    },
+    "export_path": {
+      "Type": "String",
+      "Default": ""
+    },
+    "vpc": {
+      "Type": "String",
+      "Default": ""
+    }
+  },
+  "Resources": {
+    "FileSystemResource0": {
+      "Type": "AWS::EFS::FileSystem"
+    },
+    "MountTargetResourceEfs0Subnet0": {
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "FileSystemResource0"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "SecurityGroupResource"
+          }
+        ],
+        "SubnetId": {
+          "Ref": "PublicAz3"
+        }
+      },
+      "Type": "AWS::EFS::MountTarget"
+    },
+    "MountTargetResourceEfs0Subnet1": {
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "FileSystemResource0"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "SecurityGroupResource"
+          }
+        ],
+        "SubnetId": {
+          "Ref": "PublicAz2"
+        }
+      },
+      "Type": "AWS::EFS::MountTarget"
+    },
+    "SecurityGroupIngressResource0": {
+      "Properties": {
+        "CidrIp": "192.168.0.0/17",
+        "FromPort": 2049,
+        "GroupId": {
+          "Ref": "SecurityGroupResource"
+        },
+        "IpProtocol": "-1",
+        "ToPort": 2049
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress"
+    },
+    "SecurityGroupIngressResource1": {
+      "Properties": {
+        "CidrIp": "192.168.128.0/17",
+        "FromPort": 2049,
+        "GroupId": {
+          "Ref": "SecurityGroupResource"
+        },
+        "IpProtocol": "-1",
+        "ToPort": 2049
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress"
+    },
+    "SecurityGroupResource": {
+      "Properties": {
+        "GroupDescription": "custom security group for EFS mount targets",
+        "VpcId": {
+          "Ref": "vpc"
+        }
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "FSxSecurityGroup": {
+      "Properties": {
+        "GroupDescription": "SecurityGroup for testing existing FSx",
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 988,
+            "IpProtocol": "tcp",
+            "ToPort": 988
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 111,
+            "IpProtocol": "tcp",
+            "ToPort": 111
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 111,
+            "IpProtocol": "udp",
+            "ToPort": 111
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 635,
+            "IpProtocol": "tcp",
+            "ToPort": 635
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 635,
+            "IpProtocol": "udp",
+            "ToPort": 635
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 2049,
+            "IpProtocol": "tcp",
+            "ToPort": 2049
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 2049,
+            "IpProtocol": "udp",
+            "ToPort": 2049
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 4046,
+            "IpProtocol": "tcp",
+            "ToPort": 4046
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 4046,
+            "IpProtocol": "udp",
+            "ToPort": 4046
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 20001,
+            "IpProtocol": "tcp",
+            "ToPort": 20001
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 20001,
+            "IpProtocol": "udp",
+            "ToPort": 20001
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 20002,
+            "IpProtocol": "tcp",
+            "ToPort": 20002
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 20002,
+            "IpProtocol": "udp",
+            "ToPort": 20002
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 20003,
+            "IpProtocol": "tcp",
+            "ToPort": 20003
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 20003,
+            "IpProtocol": "udp",
+            "ToPort": 20003
+          }
+        ],
+        "VpcId": {
+          "Ref": "vpc"
+        }
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "FileSystemResource1": {
+      "Properties": {
+        "FileSystemType": "LUSTRE",
+        "LustreConfiguration": {
+          "DeploymentType": "PERSISTENT_1",
+          "ExportPath": { "Ref": "export_path"},
+          "ImportPath": { "Ref": "import_path"},
+          "PerUnitStorageThroughput": 200
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "FSxSecurityGroup"
+          }
+        ],
+        "StorageCapacity": 1200,
+        "SubnetIds": [
+          {
+            "Ref": "Public"
+          }
+        ]
+      },
+      "Type": "AWS::FSx::FileSystem"
+    },
+    "FileSystemResource2": {
+      "Properties": {
+        "FileSystemType": "ONTAP",
+        "OntapConfiguration": {
+          "DeploymentType": "SINGLE_AZ_1",
+          "ThroughputCapacity": 128
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "FSxSecurityGroup"
+          }
+        ],
+        "StorageCapacity": 1024,
+        "SubnetIds": [
+          {
+            "Ref": "Public"
+          }
+        ]
+      },
+      "Type": "AWS::FSx::FileSystem"
+    },
+    "SVMVolume0": {
+      "Properties": {
+        "Name": "vol0",
+        "OntapConfiguration": {
+          "JunctionPath": "/vol0",
+          "SizeInMegabytes": "10240",
+          "StorageEfficiencyEnabled": "true",
+          "StorageVirtualMachineId": {
+            "Ref": "StorageVirtualMachineFileSystemResource"
+          }
+        },
+        "VolumeType": "ONTAP"
+      },
+      "Type": "AWS::FSx::Volume"
+    },
+    "StorageVirtualMachineFileSystemResource": {
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "FileSystemResource2"
+        },
+        "Name": "fsx"
+      },
+      "Type": "AWS::FSx::StorageVirtualMachine"
+    },
+    "FileSystemResource3": {
+      "Properties": {
+        "FileSystemType": "OPENZFS",
+        "OpenZFSConfiguration": {
+          "DeploymentType": "SINGLE_AZ_1",
+          "RootVolumeConfiguration": {
+            "NfsExports": [
+              {
+                "ClientConfigurations": [
+                  {
+                    "Clients": "*",
+                    "Options": [
+                      "rw",
+                      "crossmnt"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "ThroughputCapacity": 64
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "FSxSecurityGroup"
+          }
+        ],
+        "StorageCapacity": 64,
+        "SubnetIds": [
+          {
+            "Ref": "Public"
+          }
+        ]
+      },
+      "Type": "AWS::FSx::FileSystem"
+    },
+    "OpenZFSVolume0": {
+      "Properties": {
+        "Name": "vol0",
+        "OpenZFSConfiguration": {
+          "NfsExports": [
+            {
+              "ClientConfigurations": [
+                {
+                  "Clients": "*",
+                  "Options": [
+                    "rw",
+                    "crossmnt"
+                  ]
+                }
+              ]
+            }
+          ],
+          "ParentVolumeId": {
+            "Ref": "FileSystemResource3"
+          }
+        },
+        "VolumeType": "OPENZFS"
+      },
+      "Type": "AWS::FSx::Volume"
+    }
+  },
+  "Outputs": {
+    "efs_id": {
+      "Value": {
+        "Ref": "FileSystemResource0"
+      }
+    },
+    "fsx_lustre_fs_id": {
+      "Value": {
+        "Ref": "FileSystemResource1"
+      }
+    },
+    "fsx_ontap_volume_id": {
+      "Value": {
+        "Ref": "FileSystemResource2"
+      }
+    },
+    "fsx_open_zfs_volume_id": {
+      "Value": {
+        "Ref": "SVMVolume0"
+      }
+    }
+  }
+}
