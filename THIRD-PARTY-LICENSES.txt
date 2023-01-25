@@ -2547,7 +2547,7 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 packaging 
 23.0 
-pache Software License; BSD License 
+Apache Software License; BSD License 
 https://github.com/pypa/packaging
 This software is made available under the terms of *either* of the licenses
 found in LICENSE.APACHE or LICENSE.BSD. Contributions to this software is made
@@ -2756,7 +2756,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 pyinstaller-hooks-contrib 
-2022.15
+2022.15 
 Apache License 2.0; GNU General Public License 
 https://github.com/pyinstaller/pyinstaller-hooks-contrib/archive/refs/tags/2022.15.tar.gz.
 ============================================
@@ -3137,7 +3137,7 @@ POSSIBILITY OF SUCH DAMAGES.
 
 
 pyinstaller 
-5.7.0
+5.7.0 
 GNU General Public License v2 (GPLv2) 
 https://github.com/pyinstaller/pyinstaller/archive/refs/tags/v5.7.0.tar.gz.
 ================================
