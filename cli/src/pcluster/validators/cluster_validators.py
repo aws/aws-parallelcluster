@@ -1142,7 +1142,7 @@ class _LaunchTemplateValidator(Validator):
 class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, head_node, os, ami_id, tags):
+    def _validate(self, head_node, os, ami_id, tags, imds_support):
         try:
             head_node_security_groups = []
             if head_node.networking.security_groups:
@@ -1171,6 +1171,9 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 BlockDeviceMappings=(
                     self._launch_template_builder.get_block_device_mappings(head_node.local_storage.root_volume, os)
                 ),
+                MetadataOptions={
+                    "HttpTokens": "required" if imds_support == "v2.0" else "optional",
+                },
             )
         except Exception as e:
             self._add_failure(
@@ -1201,7 +1204,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, os, ami_id, tags):
+    def _validate(self, queue, os, ami_id, tags, imds_support):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1234,6 +1237,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 security_groups_ids=queue_security_groups,
                 placement_group={"GroupName": placement_group_name} if placement_group_name else {},
                 tags=tags,
+                imds_support=imds_support,
             )
         except Exception as e:
             self._add_failure(
@@ -1241,7 +1245,17 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
     def _test_compute_resource(
-        self, queue, os, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
+        self,
+        queue,
+        os,
+        compute_resource,
+        use_public_ips,
+        ami_id,
+        subnet_id,
+        security_groups_ids,
+        placement_group,
+        tags,
+        imds_support,
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
@@ -1268,6 +1282,9 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             BlockDeviceMappings=self._launch_template_builder.get_block_device_mappings(
                 queue.compute_settings.local_storage.root_volume, os
             ),
+            MetadataOptions={
+                "HttpTokens": "required" if imds_support == "v2.0" else "optional",
+            },
         )
 
 
