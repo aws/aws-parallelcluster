@@ -25,3 +25,7 @@ DeploymentSettings:
         - {{ private_subnet_id }}
         SecurityGroupIds:
         - {{ default_vpc_security_group_id }}
+
+DevSettings:
+    Cookbook:
+        ChefCookbook: s3://us-east-1-aws-parallelcluster/patches/3.4.1/aws-parallelcluster-cookbook-3.4.1.tgz
