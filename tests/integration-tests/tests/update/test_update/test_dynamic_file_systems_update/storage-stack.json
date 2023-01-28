@@ -14,11 +14,11 @@
       "Type": "String",
       "Default": ""
     },
-    "import_path": {
+    "ImportPathParam": {
       "Type": "String",
       "Default": ""
     },
-    "export_path": {
+    "ExportPathParam": {
       "Type": "String",
       "Default": ""
     },
@@ -105,7 +105,41 @@
             "FromPort": 988,
             "IpProtocol": "tcp",
             "ToPort": 988
-          },
+          }
+        ],
+        "VpcId": {
+          "Ref": "vpc"
+        }
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "FileSystemResource1": {
+      "Properties": {
+        "FileSystemType": "LUSTRE",
+        "LustreConfiguration": {
+          "DeploymentType": "PERSISTENT_1",
+          "ExportPath": { "Ref": "ExportPathParam"},
+          "ImportPath": { "Ref": "ImportPathParam"},
+          "PerUnitStorageThroughput": 200
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "FSxSecurityGroup"
+          }
+        ],
+        "StorageCapacity": 1200,
+        "SubnetIds": [
+          {
+            "Ref": "Public"
+          }
+        ]
+      },
+      "Type": "AWS::FSx::FileSystem"
+    },
+    "FSxSecurityGroup1": {
+      "Properties": {
+        "GroupDescription": "SecurityGroup for testing existing FSx",
+        "SecurityGroupIngress": [
           {
             "CidrIp": "0.0.0.0/0",
             "FromPort": 111,
@@ -153,6 +187,86 @@
             "FromPort": 4046,
             "IpProtocol": "udp",
             "ToPort": 4046
+          }
+        ],
+        "VpcId": {
+          "Ref": "vpc"
+        }
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "FileSystemResource2": {
+      "Properties": {
+        "FileSystemType": "ONTAP",
+        "OntapConfiguration": {
+          "DeploymentType": "SINGLE_AZ_1",
+          "ThroughputCapacity": 128
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "FSxSecurityGroup1"
+          }
+        ],
+        "StorageCapacity": 1024,
+        "SubnetIds": [
+          {
+            "Ref": "Public"
+          }
+        ]
+      },
+      "Type": "AWS::FSx::FileSystem"
+    },
+    "SVMVolume0": {
+      "Properties": {
+        "Name": "vol0",
+        "OntapConfiguration": {
+          "JunctionPath": "/vol0",
+          "SizeInMegabytes": "10240",
+          "StorageEfficiencyEnabled": "true",
+          "StorageVirtualMachineId": {
+            "Ref": "StorageVirtualMachineFileSystemResource"
+          }
+        },
+        "VolumeType": "ONTAP"
+      },
+      "Type": "AWS::FSx::Volume"
+    },
+    "StorageVirtualMachineFileSystemResource": {
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "FileSystemResource2"
+        },
+        "Name": "fsx"
+      },
+      "Type": "AWS::FSx::StorageVirtualMachine"
+    },
+    "FSxSecurityGroup2": {
+      "Properties": {
+        "GroupDescription": "SecurityGroup for testing existing FSx",
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 111,
+            "IpProtocol": "tcp",
+            "ToPort": 111
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 111,
+            "IpProtocol": "udp",
+            "ToPort": 111
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 2049,
+            "IpProtocol": "tcp",
+            "ToPort": 2049
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 2049,
+            "IpProtocol": "udp",
+            "ToPort": 2049
           },
           {
             "CidrIp": "0.0.0.0/0",
@@ -197,74 +311,6 @@
       },
       "Type": "AWS::EC2::SecurityGroup"
     },
-    "FileSystemResource1": {
-      "Properties": {
-        "FileSystemType": "LUSTRE",
-        "LustreConfiguration": {
-          "DeploymentType": "PERSISTENT_1",
-          "ExportPath": { "Ref": "export_path"},
-          "ImportPath": { "Ref": "import_path"},
-          "PerUnitStorageThroughput": 200
-        },
-        "SecurityGroupIds": [
-          {
-            "Ref": "FSxSecurityGroup"
-          }
-        ],
-        "StorageCapacity": 1200,
-        "SubnetIds": [
-          {
-            "Ref": "Public"
-          }
-        ]
-      },
-      "Type": "AWS::FSx::FileSystem"
-    },
-    "FileSystemResource2": {
-      "Properties": {
-        "FileSystemType": "ONTAP",
-        "OntapConfiguration": {
-          "DeploymentType": "SINGLE_AZ_1",
-          "ThroughputCapacity": 128
-        },
-        "SecurityGroupIds": [
-          {
-            "Ref": "FSxSecurityGroup"
-          }
-        ],
-        "StorageCapacity": 1024,
-        "SubnetIds": [
-          {
-            "Ref": "Public"
-          }
-        ]
-      },
-      "Type": "AWS::FSx::FileSystem"
-    },
-    "SVMVolume0": {
-      "Properties": {
-        "Name": "vol0",
-        "OntapConfiguration": {
-          "JunctionPath": "/vol0",
-          "SizeInMegabytes": "10240",
-          "StorageEfficiencyEnabled": "true",
-          "StorageVirtualMachineId": {
-            "Ref": "StorageVirtualMachineFileSystemResource"
-          }
-        },
-        "VolumeType": "ONTAP"
-      },
-      "Type": "AWS::FSx::Volume"
-    },
-    "StorageVirtualMachineFileSystemResource": {
-      "Properties": {
-        "FileSystemId": {
-          "Ref": "FileSystemResource2"
-        },
-        "Name": "fsx"
-      },
-      "Type": "AWS::FSx::StorageVirtualMachine"
-    },
     "FileSystemResource3": {
       "Properties": {
         "FileSystemType": "OPENZFS",
@@ -289,7 +335,7 @@
         },
         "SecurityGroupIds": [
           {
-            "Ref": "FSxSecurityGroup"
+            "Ref": "FSxSecurityGroup2"
           }
         ],
         "StorageCapacity": 64,
@@ -319,7 +365,10 @@
             }
           ],
           "ParentVolumeId": {
-            "Ref": "FileSystemResource3"
+            "Fn::GetAtt": [
+              "FileSystemResource3",
+              "RootVolumeId"
+            ]
           }
         },
         "VolumeType": "OPENZFS"
@@ -328,24 +377,24 @@
     }
   },
   "Outputs": {
-    "efs_id": {
+    "EfsId": {
       "Value": {
         "Ref": "FileSystemResource0"
       }
     },
-    "fsx_lustre_fs_id": {
+    "FsxLustreFsId": {
       "Value": {
         "Ref": "FileSystemResource1"
       }
     },
-    "fsx_ontap_volume_id": {
-      "Value": {
-        "Ref": "FileSystemResource2"
-      }
-    },
-    "fsx_open_zfs_volume_id": {
+    "FsxOntapVolumeId": {
       "Value": {
         "Ref": "SVMVolume0"
+      }
+    },
+    "FsxOpenZfsVolumeId": {
+      "Value": {
+        "Ref": "OpenZFSVolume0"
       }
     }
   }

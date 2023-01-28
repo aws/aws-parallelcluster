@@ -842,34 +842,62 @@ def _test_update_queue_strategy_with_running_job(
 
 
 @pytest.fixture
-@pytest.mark.usefixtures("parameterized_cfn_stacks_factory")
-def external_shared_storage_stack(request, test_datadir):
-    def _create_stack(region, vpc, PublicAz3, PublicAz2, import_path, export_path, Public):
+def external_shared_storage_stack(request, test_datadir, region, vpc_stack, cfn_stacks_factory):
+
+    def create(import_path, export_path):
         template_path = os.path.join(str(test_datadir), "storage-stack.json")
+        template = open(template_path, encoding="utf-8").read()
         option = "external_shared_storage_stack_name"
         if request.config.getoption(option):
             logging.info("Using stack {0} in region {1}".format(request.config.getoption(option), region))
-            stack = parameterized_cfn_stacks_factory(name=request.config.getoption(option), region=region, template_path=template_path)
+            stack = CfnStack(name=request.config.getoption(option), region=region, template=template)
         else:
+            # availability_zones_with_mount_target = set()
+            # for file_system in boto3.client("efs").describe_file_systems()["FileSystems"]:
+            #     logging.info("FileSystem: %s", file_system)
+            #     efs_id = file_system["FileSystemId"]
+            #     logging.info("efs id: %s", efs_id)
+            #     for mount_target in boto3.client("efs").describe_mount_targets(FileSystemId=efs_id)["MountTargets"]:
+            #         logging.info("mount target: %s", mount_target)
+            #         availability_zones_with_mount_target.add(mount_target["AvailabilityZoneName"])
+            subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
+            subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
+            available_subnet_ids = [subnets[0]["SubnetId"]]
+            logging.info("vpc_stack subnet_ids: %s", subnet_ids)
+            #logging.info("availability_zones_with_mount_target: %s", availability_zones_with_mount_target)
+            for subnet in subnets:
+                logging.info(subnet)
+                if subnet["AvailabilityZone"] != subnets[0]["AvailabilityZone"]:
+                    available_subnet_ids.append(subnet["SubnetId"])
+                    break
+            logging.info("available subnet ids: %s", available_subnet_ids)
+
+            vpc = vpc_stack.cfn_outputs["VpcId"]
+            # PublicAz3 = vpc_stack.cfn_outputs["PublicAz3SubnetId"]#available_subnet_ids[2] #
+            # PublicAz2 = vpc_stack.cfn_outputs["PublicAz2SubnetId"]#available_subnet_ids[1] #
+            Public = vpc_stack.cfn_outputs["PublicSubnetId"]#available_subnet_ids[0] #
+            PublicAz3 = available_subnet_ids[1]
+            PublicAz2 = available_subnet_ids[0]
+            #Public = available_subnet_ids[0]
             params = [
                 {"ParameterKey": "vpc", "ParameterValue": vpc},
                 {"ParameterKey": "PublicAz3", "ParameterValue": PublicAz3},
                 {"ParameterKey": "PublicAz2", "ParameterValue": PublicAz2},
-                {"ParameterKey": "import_path", "ParameterValue": import_path},
-                {"ParameterKey": "export_path", "ParameterValue": export_path},
+                {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
+                {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
                 {"ParameterKey": "Public", "ParameterValue": Public},
             ]
-            stack = parameterized_cfn_stacks_factory(
-                stack_prefix="integ-tests-external-shared-storage",
+            stack = CfnStack(
+                name=utils.generate_stack_name("integ-tests-external-shared-storage", request.config.getoption("stackname_suffix")),
                 region=region,
                 parameters=params,
-                template_path=template_path,
+                template=template,
                 capabilities=["CAPABILITY_IAM"]
             )
+            cfn_stacks_factory.create_stack(stack)
         return stack
 
-    yield _create_stack
-
+    yield create
 
 @pytest.mark.usefixtures("instance")
 def test_dynamic_file_systems_update(
@@ -886,6 +914,7 @@ def test_dynamic_file_systems_update(
     s3_bucket_factory,
     test_datadir,
     delete_storage_on_teardown,
+    external_shared_storage_stack
 ):
     """Test update shared storages."""
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
@@ -917,6 +946,7 @@ def test_dynamic_file_systems_update(
         vpc_stack,
         region,
         bucket_name,
+        external_shared_storage_stack
     )
 
     # Create cluster with initial configuration
@@ -1109,36 +1139,33 @@ def test_dynamic_file_systems_update(
     )
 
 
-@pytest.mark.usefixtures("external_shared_storage_stack")
+
 def _create_shared_storages_resources(
     snapshots_factory,
     request,
     vpc_stack,
     region,
     bucket_name,
+    external_shared_storage_stack
 ):
 
     """Create existing EBS, EFS, FSX resources for test."""
     # create 1 existing ebs
-    Public = vpc_stack.cfn_outputs["PublicSubnetId"]
-    ebs_volume_id = snapshots_factory.create_existing_volume(request, Public, region)
+    ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.cfn_outputs["PublicSubnetId"], region)
 
     # external-shared-storage-stack params
-    vpc = vpc_stack.cfn_outputs["VpcId"]
-    PublicAz3 = vpc_stack.cfn_outputs["PublicAz3SubnetId"]
-    PublicAz2 = vpc_stack.cfn_outputs["PublicAz2SubnetId"]
     import_path = "s3://{0}".format(bucket_name)
     export_path = "s3://{0}/export_dir".format(bucket_name)
 
     # create external-shared-storage-stack
-    storage_stack = external_shared_storage_stack(vpc=vpc, PublicAz3=PublicAz3, PublicAz2=PublicAz2, import_path=import_path, export_path=export_path, Public=Public)
+    storage_stack = external_shared_storage_stack(import_path=import_path, export_path=export_path)
 
     return (
         ebs_volume_id,
-        storage_stack.cfn_outputs["efs_id"],
-        storage_stack.cfn_outputs["fsx_lustre_fs_id"],
-        storage_stack.cfn_outputs["fsx_ontap_volume_id"],
-        storage_stack.cfn_outputs["fsx_open_zfs_volume_id"]
+        storage_stack.cfn_outputs["EfsId"],
+        storage_stack.cfn_outputs["FsxLustreFsId"],
+        storage_stack.cfn_outputs["FsxOntapVolumeId"],
+        storage_stack.cfn_outputs["FsxOpenZfsVolumeId"]
     )
 
 
