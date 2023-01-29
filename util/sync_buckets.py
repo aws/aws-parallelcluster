@@ -125,7 +125,7 @@ def _parse_args():
 
 def _get_s3_object_metadata(s3_url):
     req = urllib.request.Request(url=s3_url, method="HEAD")
-    response = urllib.request.urlopen(req)  # nosec nosemgrep
+    response = urllib.request.urlopen(req)  # nosec
     assert response.status == 200  # nosec
     metadata = {}
     metadata["version_id"] = response.headers.get("x-amz-version-id")

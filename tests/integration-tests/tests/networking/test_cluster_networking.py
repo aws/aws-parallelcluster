@@ -333,12 +333,22 @@ def bastion_instance(vpc_stack, cfn_stacks_factory, request, region, key_name):
         VpcId=vpc_stack.cfn_outputs["VpcId"],
     )
 
+    launch_template = ec2.LaunchTemplate.from_dict(
+        "LaunchTemplateIMDSv2",
+        {
+            "LaunchTemplateData": {"MetadataOptions": {"HttpTokens": "required", "HttpEndpoint": "enabled"}},
+        },
+    )
+    bastion_template.add_resource(launch_template)
     instance = ec2.Instance(
         "NetworkingBastionInstance",
         InstanceType="c5.xlarge",
         ImageId=retrieve_latest_ami(region, "alinux2"),
         KeyName=key_name,
         SecurityGroupIds=[Ref(bastion_sg)],
+        LaunchTemplate=ec2.LaunchTemplateSpecification(
+            LaunchTemplateId=Ref(launch_template), Version=GetAtt(launch_template, "LatestVersionNumber")
+        ),
         SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
     )
     bastion_template.add_resource(bastion_sg)

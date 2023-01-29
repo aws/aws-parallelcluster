@@ -26,6 +26,7 @@ from pcluster.constants import (
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
+    PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING,
     PCLUSTER_NAME_REGEX,
     PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
@@ -84,16 +85,29 @@ CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH = 255 - HOST_NAME_MAX_LENGTH - 1
 class ClusterNameValidator(Validator):
     """Cluster name validator."""
 
-    def _validate(self, name):
-        if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
-            self._add_failure(
-                (
-                    "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-                    "It must start with an alphabetic character and can't be longer "
-                    f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
-                ),
-                FailureLevel.ERROR,
-            )
+    def _validate(self, name, scheduling):
+        if scheduling.scheduler == "slurm" and scheduling.settings.database is not None:
+            if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING - 1), name):
+                self._add_failure(
+                    (
+                        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and "
+                        "hyphens. "
+                        "It must start with an alphabetic character and when using Slurm accounting it can't be longer "
+                        f"than {PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING} characters."
+                    ),
+                    FailureLevel.ERROR,
+                )
+        else:
+            if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
+                self._add_failure(
+                    (
+                        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and "
+                        "hyphens. "
+                        "It must start with an alphabetic character and can't be longer "
+                        f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
+                    ),
+                    FailureLevel.ERROR,
+                )
 
 
 class RegionValidator(Validator):
@@ -864,7 +878,10 @@ class SharedStorageMountDirValidator(Validator):
             "/sbin",
             "/srv",
             "/sys",
-            "/tmp",  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B108 check.
+            # It is a false positive since is a list to check folder name
+            # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+            "/tmp",  # nosec B108
             "/usr",
             "/var",
         ]
@@ -1125,7 +1142,7 @@ class _LaunchTemplateValidator(Validator):
 class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, head_node, os, ami_id, tags):
+    def _validate(self, head_node, os, ami_id, tags, imds_support):
         try:
             head_node_security_groups = []
             if head_node.networking.security_groups:
@@ -1154,6 +1171,9 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 BlockDeviceMappings=(
                     self._launch_template_builder.get_block_device_mappings(head_node.local_storage.root_volume, os)
                 ),
+                MetadataOptions={
+                    "HttpTokens": "required" if imds_support == "v2.0" else "optional",
+                },
             )
         except Exception as e:
             self._add_failure(
@@ -1184,7 +1204,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, os, ami_id, tags):
+    def _validate(self, queue, os, ami_id, tags, imds_support):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1217,6 +1237,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 security_groups_ids=queue_security_groups,
                 placement_group={"GroupName": placement_group_name} if placement_group_name else {},
                 tags=tags,
+                imds_support=imds_support,
             )
         except Exception as e:
             self._add_failure(
@@ -1224,7 +1245,17 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
     def _test_compute_resource(
-        self, queue, os, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
+        self,
+        queue,
+        os,
+        compute_resource,
+        use_public_ips,
+        ami_id,
+        subnet_id,
+        security_groups_ids,
+        placement_group,
+        tags,
+        imds_support,
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
@@ -1251,6 +1282,9 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             BlockDeviceMappings=self._launch_template_builder.get_block_device_mappings(
                 queue.compute_settings.local_storage.root_volume, os
             ),
+            MetadataOptions={
+                "HttpTokens": "required" if imds_support == "v2.0" else "optional",
+            },
         )
 
 

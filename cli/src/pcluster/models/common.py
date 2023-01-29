@@ -245,14 +245,20 @@ class CloudWatchLogsExporter:
             os.remove(compressed_path)
 
 
-def export_stack_events(stack_name: str, output_file: str):
-    """Save CFN stack events into a file."""
+def get_all_stack_events(stack_name: str):
+    """Retrieve all stack events."""
     stack_events = []
     chunk = AWSApi.instance().cfn.get_stack_events(stack_name)
     stack_events.append(chunk["StackEvents"])
     while chunk.get("nextToken"):
         chunk = AWSApi.instance().cfn.get_stack_events(stack_name, next_token=chunk["nextToken"])
         stack_events.append(chunk["StackEvents"])
+    return stack_events
+
+
+def export_stack_events(stack_name: str, output_file: str):
+    """Save CFN stack events into a file."""
+    stack_events = get_all_stack_events(stack_name)
 
     with open(output_file, "w", encoding="utf-8") as cfn_events_file:
         cfn_events_file.write(json.dumps(stack_events, cls=JSONEncoder, indent=2))

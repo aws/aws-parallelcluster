@@ -58,7 +58,10 @@ def create_hash_suffix(string_to_hash: str):
     return (
         string_to_hash
         if string_to_hash == "HeadNode"
-        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
+        # A nosec comment is appended to the following line in order to disable the B324 check.
+        # The sha1 is used just as a hashing function.
+        # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec B324 nosemgrep
     )
 
 
@@ -315,7 +318,10 @@ def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource)
     :param compute_resource
     :return: 16 chars string e.g. 2238a84ac8a74529
     """
-    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
+    # A nosec comment is appended to the following line in order to disable the B324 check.
+    # The sha1 is used just as a hashing function.
+    # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec B324 nosemgrep
 
 
 class NodeIamResourcesBase(Construct):
@@ -690,6 +696,9 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     ),
                 ]
             )
+
+            self._add_compute_console_output_policy_statement(policy)
+
             capacity_reservation_ids = self._config.capacity_reservation_ids
 
             if capacity_reservation_ids:
@@ -769,6 +778,25 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             )
 
         return policy
+
+    def _add_compute_console_output_policy_statement(self, policy):
+        if self._config.monitoring.logs.cloud_watch.enabled:
+            queue_names = [queue.name for queue in self._config.scheduling.queues]
+            policy.append(
+                iam.PolicyStatement(
+                    sid="EC2GetComputeConsoleOutput",
+                    actions=["ec2:GetConsoleOutput"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._format_arn(service="ec2", resource="instance/*")],
+                    conditions={
+                        "StringEquals": {
+                            "aws:ResourceTag/parallelcluster:queue-name": queue_names,
+                            "aws:ResourceTag/parallelcluster:node-type": "Compute",
+                            "aws:ResourceTag/parallelcluster:cluster-name": Stack.of(self).stack_name,
+                        }
+                    },
+                )
+            )
 
     def _generate_head_node_pass_role_resources(self):
         """Return a unique list of ARNs that the head node should be able to use when calling PassRole."""

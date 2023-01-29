@@ -36,12 +36,14 @@ from pcluster.api.models import (
     CloudFormationStackStatus,
     ClusterConfigurationStructure,
     ClusterInfoSummary,
+    ClusterStatus,
     CreateClusterBadRequestExceptionResponseContent,
     CreateClusterRequestContent,
     CreateClusterResponseContent,
     DeleteClusterResponseContent,
     DescribeClusterResponseContent,
     EC2Instance,
+    Failure,
     InstanceState,
     ListClustersResponseContent,
     Scheduler,
@@ -220,6 +222,7 @@ def describe_cluster(cluster_name, region=None):
         # Do not fail request when S3 bucket is not available
         LOGGER.error(e)
 
+    cluster_status = cloud_formation_status_to_cluster_status(cfn_stack.status)
     response = DescribeClusterResponseContent(
         creation_time=to_utc_datetime(cfn_stack.creation_time),
         version=cfn_stack.version,
@@ -231,8 +234,9 @@ def describe_cluster(cluster_name, region=None):
         cloudformation_stack_arn=cfn_stack.id,
         last_updated_time=to_utc_datetime(cfn_stack.last_updated_time),
         region=os.environ.get("AWS_DEFAULT_REGION"),
-        cluster_status=cloud_formation_status_to_cluster_status(cfn_stack.status),
+        cluster_status=cluster_status,
         scheduler=Scheduler(type=cluster.stack.scheduler, metadata=cluster.get_plugin_metadata()),
+        failures=_get_creation_failures(cluster_status, cfn_stack),
     )
 
     try:
@@ -441,3 +445,11 @@ def _create_message(failure_reason, action_needed):
     if action_needed:
         message = f"{message}. {action_needed}" if message else action_needed
     return message or "Error during update"
+
+
+def _get_creation_failures(cluster_status, cfn_stack):
+    """Get a list of Failure objects containing failure code and reason when cluster creation failed."""
+    if cluster_status != ClusterStatus.CREATE_FAILED:
+        return None
+    failure_code, failure_reason = cfn_stack.get_cluster_creation_failure()
+    return [Failure(failure_code=failure_code, failure_reason=failure_reason)]

@@ -68,7 +68,10 @@ class UrlValidator(Validator):
 
     def _validate_https_uri(self, url: str, fail_on_error: bool):
         try:
-            with urlopen(url):  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B310 check.
+            # The urlopen argument is properly validated
+            # [B310:blacklist] Audit url open for permitted schemes.
+            with urlopen(url):  # nosec B310 nosemgrep
                 pass
         except HTTPError as e:
             self._add_failure(

@@ -1264,7 +1264,7 @@ class BaseClusterConfig(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
-        self._register_validator(ClusterNameValidator, name=self.cluster_name)
+        self._register_validator(ClusterNameValidator, name=self.cluster_name, scheduling=self.scheduling)
         self._register_validator(
             ArchitectureOsValidator,
             os=self.image.os,
@@ -1293,6 +1293,7 @@ class BaseClusterConfig(Resource):
             os=self.image.os,
             ami_id=self.head_node_ami,
             tags=self.get_cluster_tags(),
+            imds_support=self.imds.imds_support,
         )
         if self.head_node.dcv:
             self._register_validator(
@@ -2654,6 +2655,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 ami_id=queue_image,
                 os=self.image.os,
                 tags=self.get_cluster_tags(),
+                imds_support=self.imds.imds_support,
             )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
             root_volume = queue.compute_settings.local_storage.root_volume

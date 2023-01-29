@@ -208,6 +208,7 @@ class EBSSnapshotsFactory:
             MinCount=1,
             MaxCount=1,
             InstanceType="t2.micro",
+            MetadataOptions={"HttpTokens": "required", "HttpEndpoint": "enabled"},
             NetworkInterfaces=[
                 {
                     "SubnetId": subnet.id,

@@ -1764,7 +1764,10 @@ class SchedulerPluginSettingsSchema(BaseSchema):
 
     def _fetch_scheduler_definition_from_https(self, original_scheduler_definition):
         try:
-            with urlopen(original_scheduler_definition) as f:  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B310 check.
+            # The urlopen argument is properly validated
+            # [B310:blacklist] Audit url open for permitted schemes.
+            with urlopen(original_scheduler_definition) as f:  # nosec B310 nosemgrep
                 scheduler_definition = f.read().decode("utf-8")
                 return scheduler_definition
         except Exception:

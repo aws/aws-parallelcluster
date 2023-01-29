@@ -81,6 +81,22 @@ cloudwatch_logging:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_custom_action_error:
+    dimensions:
+      - regions: ["ap-east-1"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["us-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
     dimensions:
@@ -141,6 +157,24 @@ create:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
+  test_create.py::test_cluster_creation_with_problematic_preinstall_script:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        schedulers: ["slurm"]
+        oss: ["centos7"]
+  test_create.py::test_cluster_creation_timeout:
+    dimensions:
+      - regions: ["ap-northeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm", "awsbatch"]
+        oss: ["alinux2"]
+  test_create.py::test_cluster_creation_with_invalid_ebs:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        schedulers: ["slurm"]
+        oss: ["ubuntu1804", "ubuntu2004"]
 createami:
   test_createami.py::test_invalid_config:
     dimensions:
@@ -510,6 +544,12 @@ schedulers:
       - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_update_nodelist_sorting:
+    dimensions:
+      - regions: ["ca-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
         schedulers: ["slurm"]
   test_slurm_accounting.py::test_slurm_accounting:
     dimensions:

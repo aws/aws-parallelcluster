@@ -90,3 +90,13 @@ structure Metadata {
     version: String,
 }
 
+list Failures {
+    member: Failure
+}
+
+structure Failure {
+    @documentation("Failure code when the cluster stack is in CREATE_FAILED status.")
+    failureCode: String,
+    @documentation("Failure reason when the cluster stack is in CREATE_FAILED status.")
+    failureReason: String,
+}
