@@ -20,11 +20,11 @@ import utils
 import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 from time_utils import minutes, seconds
-from troposphere.fsx import LustreConfiguration
 from utils import describe_cluster_instances, retrieve_cfn_resources, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
@@ -36,8 +36,6 @@ from tests.common.storage.constants import StorageType
 from tests.common.utils import generate_random_string, retrieve_latest_ami
 from tests.storage.storage_common import (
     check_fsx,
-    create_fsx_ontap,
-    create_fsx_open_zfs,
     test_ebs_correctly_mounted,
     test_efs_correctly_mounted,
     test_raid_correctly_configured,
@@ -837,6 +835,54 @@ def _test_update_queue_strategy_with_running_job(
     assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
 
 
+@pytest.fixture
+def external_shared_storage_stack(request, test_datadir, region, vpc_stack, cfn_stacks_factory):
+    def create_stack(bucket_name):
+        template_path = os.path.join(str(test_datadir), "storage-stack.yaml")
+        with open(template_path, encoding="utf-8") as template_file:
+            template = template_file.read()
+            option = "external_shared_storage_stack_name"
+            if request.config.getoption(option):
+                stack = CfnStack(name=request.config.getoption(option), region=region, template=template)
+            else:
+                # Choose subnets from different availability zones
+                subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
+                subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
+                available_subnet_ids = [subnets[0]["SubnetId"]]
+                for subnet in subnets:
+                    if subnet["AvailabilityZone"] != subnets[0]["AvailabilityZone"]:
+                        available_subnet_ids.append(subnet["SubnetId"])
+                        break
+
+                vpc = vpc_stack.cfn_outputs["VpcId"]
+                public_subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
+                subnet_id0 = available_subnet_ids[0]
+                subnet_id1 = available_subnet_ids[1]
+                import_path = "s3://{0}".format(bucket_name)
+                export_path = "s3://{0}/export_dir".format(bucket_name)
+                params = [
+                    {"ParameterKey": "vpc", "ParameterValue": vpc},
+                    {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
+                    {"ParameterKey": "SubnetId0", "ParameterValue": subnet_id0},
+                    {"ParameterKey": "SubnetId1", "ParameterValue": subnet_id1},
+                    {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
+                    {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
+                ]
+                stack = CfnStack(
+                    name=utils.generate_stack_name(
+                        "integ-tests-external-shared-storage", request.config.getoption("stackname_suffix")
+                    ),
+                    region=region,
+                    parameters=params,
+                    template=template,
+                    capabilities=["CAPABILITY_IAM"],
+                )
+                cfn_stacks_factory.create_stack(stack)
+            return stack
+
+    yield create_stack
+
+
 @pytest.mark.usefixtures("instance")
 def test_dynamic_file_systems_update(
     region,
@@ -847,16 +893,12 @@ def test_dynamic_file_systems_update(
     scheduler_commands_factory,
     request,
     snapshots_factory,
-    efs_stack_factory,
-    efs_mount_target_stack_factory,
     vpc_stack,
     key_name,
     s3_bucket_factory,
     test_datadir,
-    fsx_factory,
-    svm_factory,
-    open_zfs_volume_factory,
     delete_storage_on_teardown,
+    external_shared_storage_stack,
 ):
     """Test update shared storages."""
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
@@ -883,16 +925,7 @@ def test_dynamic_file_systems_update(
         existing_fsx_ontap_volume_id,
         existing_fsx_open_zfs_volume_id,
     ) = _create_shared_storages_resources(
-        snapshots_factory,
-        request,
-        vpc_stack,
-        region,
-        efs_stack_factory,
-        efs_mount_target_stack_factory,
-        fsx_factory,
-        svm_factory,
-        open_zfs_volume_factory,
-        bucket_name,
+        snapshots_factory, request, vpc_stack, region, bucket_name, external_shared_storage_stack
     )
 
     # Create cluster with initial configuration
@@ -1086,58 +1119,21 @@ def test_dynamic_file_systems_update(
 
 
 def _create_shared_storages_resources(
-    snapshots_factory,
-    request,
-    vpc_stack,
-    region,
-    efs_stack_factory,
-    efs_mount_target_stack_factory,
-    fsx_factory,
-    svm_factory,
-    open_zfs_volume_factory,
-    bucket_name,
+    snapshots_factory, request, vpc_stack, region, bucket_name, external_shared_storage_stack
 ):
     """Create existing EBS, EFS, FSX resources for test."""
     # create 1 existing ebs
     ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.cfn_outputs["PublicSubnetId"], region)
 
-    # create 1 efs
-    existing_efs_ids = efs_stack_factory(1)
-    efs_mount_target_stack_factory(existing_efs_ids)
-    existing_efs_id = existing_efs_ids[0]
-
-    # create 1 fsx lustre
-    import_path = "s3://{0}".format(bucket_name)
-    export_path = "s3://{0}/export_dir".format(bucket_name)
-    existing_fsx_lustre_fs_id = fsx_factory(
-        ports=[988],
-        ip_protocols=["tcp"],
-        num=1,
-        file_system_type="LUSTRE",
-        StorageCapacity=1200,
-        LustreConfiguration=LustreConfiguration(
-            title="lustreConfiguration",
-            ImportPath=import_path,
-            ExportPath=export_path,
-            DeploymentType="PERSISTENT_1",
-            PerUnitStorageThroughput=200,
-        ),
-    )[0]
-
-    # create 1 fsx ontap
-    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
-    fsx_ontap_volume_id = svm_factory(fsx_ontap_fs_id, num_volumes=1)[0]
-
-    # create 1 open zfs
-    fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
-    fsx_open_zfs_volume_id = open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=1)[0]
+    # create external-shared-storage-stack
+    storage_stack = external_shared_storage_stack(bucket_name)
 
     return (
         ebs_volume_id,
-        existing_efs_id,
-        existing_fsx_lustre_fs_id,
-        fsx_ontap_volume_id,
-        fsx_open_zfs_volume_id,
+        storage_stack.cfn_outputs["EfsId"],
+        storage_stack.cfn_outputs["FsxLustreFsId"],
+        storage_stack.cfn_outputs["FsxOntapVolumeId"],
+        storage_stack.cfn_outputs["FsxOpenZfsVolumeId"],
     )
 
 
