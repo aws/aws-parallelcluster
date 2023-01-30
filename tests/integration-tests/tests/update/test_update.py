@@ -878,8 +878,7 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack, cfn_
                     capabilities=["CAPABILITY_IAM"],
                 )
                 cfn_stacks_factory.create_stack(stack)
-
-        return stack
+            return stack
 
     yield create_stack
 
