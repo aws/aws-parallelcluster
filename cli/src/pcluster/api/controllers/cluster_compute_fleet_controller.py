@@ -80,8 +80,11 @@ def update_compute_fleet(update_compute_fleet_request_content, cluster_name, reg
         elif status == RequestedComputeFleetStatus.STOP_REQUESTED:
             cluster.stop()
         else:
-            raise BadRequestException(  # nosec
-                "the update compute fleet status can only be set to"
+            # A nosec comment is appended to the following line in order to disable the false positive B608 check.
+            # False positive since it is not a SQL query.
+            # [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.
+            raise BadRequestException(
+                "the update compute fleet status can only be set to"  # nosec B608
                 " `START_REQUESTED` or `STOP_REQUESTED` for %s scheduler clusters."
                 % cluster.stack.scheduler.capitalize()
             )

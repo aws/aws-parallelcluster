@@ -4,6 +4,21 @@ CHANGELOG
 3.5.0
 -----
 
+**ENHANCEMENTS**
+- Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
+- Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
+
+**CHANGES**
+
+**BUG FIXES**
+- Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
+
+3.4.1
+-----
+
+**BUG FIXES**
+- Fix an issue with the Slurm scheduler that might incorrectly apply updates to its internal registry of compute nodes. This might result in EC2 instances to become inaccessible or backed by an incorrect instance type.
+
 3.4.0
 -----
 
@@ -47,7 +62,7 @@ CHANGELOG
 - Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage to support storage retention.
 - Add new configuration section `Scheduling/SlurmSettings/Database` to enable accounting functionality in Slurm.
 - Add support for On-Demand Capacity Reservations and Capacity Reservations Resource Groups.
-- Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure. 
+- Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure.
 - Add support for `Networking/PlacementGroup` in the `SlurmQueues/ComputeResources` section.
 - Add support for instances with multiple network interfaces that allows only one ENI per device.
 - Add support for hp6id instance type as compute nodes.
@@ -74,7 +89,7 @@ CHANGELOG
 - Upgrade EFA installer to version 1.18.0.
 - Upgrade NICE DCV to version 2022.1-13300.
 - Allow for suppressing the `SingleSubnetValidator` for `Queues`.
-- Remove usage of prolog/epilog Slurm configuration when `UseEc2Hostnames` is set to `true`.  
+- Remove usage of prolog/epilog Slurm configuration when `UseEc2Hostnames` is set to `true`.
 
 **BUG FIXES**
 - Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.

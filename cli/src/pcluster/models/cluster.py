@@ -66,6 +66,7 @@ from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, Com
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url, parse_bucket_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.templates.import_cdk import start as start_cdk_import
 from pcluster.utils import (
     datetime_to_epoch,
     generate_random_name_with_prefix,
@@ -352,6 +353,7 @@ class Cluster:
         raises ClusterActionError: in case of generic error
         raises ConfigValidationError: if configuration is invalid
         """
+        start_cdk_import()
         creation_result = None
         artifact_dir_generated = False
         try:
@@ -568,9 +570,10 @@ class Cluster:
                 )
                 file_content = result["Body"].read().decode("utf-8")
             else:
-                with urlopen(  # nosec nosemgrep - scheduler_plugin_template url is properly validated
-                    scheduler_plugin_template
-                ) as f:
+                # A nosec comment is appended to the following line in order to disable the B310 check.
+                # The urlopen argument is properly validated
+                # [B310:blacklist] Audit url open for permitted schemes.
+                with urlopen(scheduler_plugin_template) as f:  # nosec B310 nosemgrep
                     file_content = f.read().decode("utf-8")
         except Exception as e:
             raise BadRequestClusterActionError(
@@ -585,7 +588,12 @@ class Cluster:
             LOGGER.info("Rendering the following scheduler plugin CloudFormation template:\n%s", file_content)
             environment = SandboxedEnvironment(loader=BaseLoader)
             environment.filters["hash"] = (
-                lambda value: hashlib.sha1(value.encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
+                # A nosec comment is appended to the following line in order to disable the B324 checks.
+                # The sha1 is used just as a hashing function.
+                # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+                lambda value: hashlib.sha1(value.encode())  # nosec B324 nosemgrep
+                .hexdigest()[0:16]
+                .capitalize()
             )
             template = environment.from_string(file_content)
             rendered_template = template.render(
@@ -887,6 +895,7 @@ class Cluster:
         raises ConfigValidationError: if configuration is invalid
         raises ClusterUpdateError: if update is not allowed
         """
+        start_cdk_import()
         try:
             target_config, changes, ignored_validation_failures = self.validate_update_request(
                 target_source_config, validator_suppressors, validation_failure_level, force

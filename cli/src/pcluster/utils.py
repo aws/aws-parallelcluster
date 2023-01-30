@@ -18,7 +18,6 @@ import re
 import string
 import sys
 import time
-import urllib.request
 import zipfile
 from io import BytesIO
 from shlex import quote
@@ -28,7 +27,6 @@ from urllib.parse import urlparse
 import dateutil.parser
 import pkg_resources
 import yaml
-from pkg_resources import packaging
 from yaml import SafeLoader
 from yaml.constructor import ConstructorError
 from yaml.resolver import BaseResolver
@@ -64,7 +62,7 @@ def generate_random_name_with_prefix(name_prefix):
     Example: <name_prefix>-4htvo26lchkqeho1
     """
     random_string = generate_random_prefix()
-    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])  # nosec
+    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
     return output_name
 
 
@@ -74,7 +72,10 @@ def generate_random_prefix():
 
     Example: 4htvo26lchkqeho1
     """
-    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
+    # A nosec comment is appended to the following line in order to disable the B311 check.
+    # The random.choice is used to generate random string for names.
+    # [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec B311
 
 
 def _add_file_to_zip(zip_file, path, arcname):
@@ -249,18 +250,6 @@ def get_installed_version(base_version_only: bool = False):
     """Get the version of the installed aws-parallelcluster package."""
     pkg_distribution = pkg_resources.get_distribution("aws-parallelcluster")
     return pkg_distribution.version if not base_version_only else pkg_distribution.parsed_version.base_version
-
-
-def check_if_latest_version():
-    """Check if the current package version is the latest one."""
-    try:
-        pypi_url = "https://pypi.python.org/pypi/aws-parallelcluster/json"
-        with urllib.request.urlopen(pypi_url) as url:  # nosec nosemgrep
-            latest = json.loads(url.read())["info"]["version"]
-        if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
-            print(f"Info: There is a newer version {latest} of AWS ParallelCluster available.")
-    except Exception:  # nosec
-        pass
 
 
 def warn(message):

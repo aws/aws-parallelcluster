@@ -27,7 +27,10 @@ def _send_response(response_url, response_body):
     url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
-            connection = HTTPSConnection(host)  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B309 check.
+            # ParallelCluster only supports python >= 3.4.3
+            # [B309:blacklist] Use of HTTPSConnection on older versions of Python prior to 2.7.9 and 3.4.3 do not provide security, see https://wiki.openstack.org/wiki/OSSN/OSSN-0033
+            connection = HTTPSConnection(host)  # nosec B309 nosemgrep
             connection.request(method="PUT", url=url, body=json_response_body, headers=headers)
             response = connection.getresponse()
             logger.info("CloudFormation returned status code: %s", response.reason)

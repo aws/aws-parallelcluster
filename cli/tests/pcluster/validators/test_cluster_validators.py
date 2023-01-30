@@ -17,17 +17,21 @@ from munch import DefaultMunch
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
+    AwsBatchScheduling,
     BaseQueue,
     CapacityReservationTarget,
+    Database,
     RootVolume,
     SchedulerPluginQueueNetworking,
     SharedEbs,
     SlurmComputeResource,
     SlurmQueue,
     SlurmQueueNetworking,
+    SlurmScheduling,
+    SlurmSettings,
     Tag,
 )
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
@@ -83,16 +87,21 @@ def boto3_stubber_path():
 
 
 @pytest.mark.parametrize(
-    "cluster_name, should_trigger_error",
+    "cluster_name, scheduling, should_trigger_error",
     [
-        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),
-        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", True),
-        ("2AClusterCanNotBeginByANumber", True),
-        ("ClusterCanNotContainUnderscores_LikeThis", True),
-        ("ClusterCanNotContainSpaces LikeThis", True),
+        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", SlurmScheduling(queues=None), False),
+        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", SlurmScheduling(queues=None), True),
+        ("2AClusterCanNotBeginByANumber", SlurmScheduling(queues=None), True),
+        ("ClusterCanNotContainUnderscores_LikeThis", SlurmScheduling(queues=None), True),
+        ("ClusterCanNotContainSpaces LikeThis", SlurmScheduling(queues=None), True),
+        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", AwsBatchScheduling(queues=None), False),
+        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", AwsBatchScheduling(queues=None), True),
+        ("2AClusterCanNotBeginByANumber", AwsBatchScheduling(queues=None), True),
+        ("ClusterCanNotContainUnderscores_LikeThis", AwsBatchScheduling(queues=None), True),
+        ("ClusterCanNotContainSpaces LikeThis", AwsBatchScheduling(queues=None), True),
     ],
 )
-def test_cluster_name_validator(cluster_name, should_trigger_error):
+def test_cluster_name_validator(cluster_name, scheduling, should_trigger_error):
     expected_message = (
         (
             "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
@@ -102,7 +111,76 @@ def test_cluster_name_validator(cluster_name, should_trigger_error):
         if should_trigger_error
         else None
     )
-    actual_failures = ClusterNameValidator().execute(cluster_name)
+    actual_failures = ClusterNameValidator().execute(cluster_name, scheduling)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "cluster_name, scheduling, should_trigger_error",
+    [
+        (
+            "ClusterNameWith40------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    database=Database(
+                        uri="database.uri.com",
+                        user_name="database_admin",
+                        password_secret_arn="aws_secret_arn",
+                    ),
+                ),
+            ),
+            False,
+        ),
+        (
+            "ClusterNameWith41-------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    database=Database(
+                        uri="database_uri",
+                        user_name="database_admin",
+                        password_secret_arn="aws_secret_arn",
+                    ),
+                ),
+            ),
+            True,
+        ),
+        (
+            "ClusterNameWith40------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    database=None,
+                ),
+            ),
+            False,
+        ),
+        (
+            "ClusterNameWith41-------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    settings=SlurmSettings(
+                        database=None,
+                    ),
+                ),
+            ),
+            False,
+        ),
+    ],
+)
+def test_cluster_name_validator_slurm_accounting(cluster_name, scheduling, should_trigger_error):
+    expected_message = (
+        (
+            "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
+            "It must start with an alphabetic character and when using Slurm accounting it can't be longer "
+            f"than {PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING} characters."
+        )
+        if should_trigger_error
+        else None
+    )
+    actual_failures = ClusterNameValidator().execute(cluster_name, scheduling)
     assert_failure_messages(actual_failures, expected_message)
 
 

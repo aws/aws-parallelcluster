@@ -157,7 +157,7 @@ Debugging/Development options:
   --ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME
                         Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
   --external-shared-storage-stack-name 
-                        Name of and existing external shared storage stack. (default: None)
+                        Name of an existing external shared storage stack. (default: None)
 ```
 
 Here is an example of tests submission:

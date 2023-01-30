@@ -294,7 +294,7 @@ CONFIG_FILE_TO_GENERATOR = {
 
 
 def _read_json_from_url(url):
-    response = urlopen(url)  # nosec nosemgrep
+    response = urlopen(url)  # nosec
     return json.loads(response.read().decode("utf-8"))
 
 
