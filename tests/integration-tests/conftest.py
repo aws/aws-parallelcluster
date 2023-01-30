@@ -171,6 +171,10 @@ def pytest_addoption(parser):
         "--slurm-database-stack-name",
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
     )
+    parser.addoption(
+        "--external-shared-storage-stack-name",
+        help="Name of existing external shared storage stack.",
+    )
 
 
 def pytest_generate_tests(metafunc):

@@ -6,6 +6,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
+- Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
 
 **CHANGES**
 
