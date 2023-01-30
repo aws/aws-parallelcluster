@@ -28,4 +28,4 @@ DeploymentSettings:
 
 DevSettings:
     Cookbook:
-        ChefCookbook: s3://us-east-1-aws-parallelcluster/patches/3.4.1/aws-parallelcluster-cookbook-3.4.1.tgz
+        ChefCookbook: https://us-east-1-aws-parallelcluster.s3.amazonaws.com/patches/3.4.1/aws-parallelcluster-cookbook-3.4.1.tgz
