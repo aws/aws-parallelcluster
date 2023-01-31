@@ -10,6 +10,7 @@ CHANGELOG
 - Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
 
 **CHANGES**
+- Upgrade Slurm to version 22.05.8.
 
 **BUG FIXES**
 - Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
