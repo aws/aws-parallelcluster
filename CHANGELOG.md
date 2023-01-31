@@ -5,6 +5,7 @@ CHANGELOG
 -----
 
 **ENHANCEMENTS**
+- Add a CloudFormation template for the policies needed for ParallelCluster functionality.
 - Add a library interface to ParallelCluster functionality.
 - Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
 - Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.

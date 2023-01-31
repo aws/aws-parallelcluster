@@ -1,5 +1,7 @@
 pytest
-jinja2
+jinja2~=3.0
 cfn-lint
 cfn-flip
 assertpy
+boto3
+PyYAML~=5.3
