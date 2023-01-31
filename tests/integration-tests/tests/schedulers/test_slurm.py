@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 import re
 import time
@@ -288,6 +289,29 @@ def test_slurm_protected_mode(
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
     _test_job_run_in_working_queue(scheduler_commands)
     _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.test_slurm_protected_mode_on_cluster_create
+def test_slurm_protected_mode_on_cluster_create(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    scheduler_commands_factory,
+):
+    """Test that slurm protected mode triggers head node launch failure on cluster creation."""
+    # Create S3 bucket for pre-install scripts
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
+
+    cluster_config = pcluster_config_reader(bucket=bucket_name)
+    cluster = clusters_factory(cluster_config, raise_on_error=False, wait=False)
+    remote_command_executor = _wait_until_protected_mode_failure_count_set(cluster)
+    _test_compute_fleet_status(remote_command_executor, expected_status="PROTECTED")
+    _test_cluster_creation_failure(cluster)
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1415,6 +1439,24 @@ def _set_protected_failure_count(remote_command_executor, protected_failure_coun
     )
 
 
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
+def _wait_until_protected_mode_failure_count_set(cluster):
+    """Retry setting the protected failure count until the clustermgtd is running."""
+    remote_command_executor = retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(RemoteCommandExecutor)(cluster)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "ClusterManager Startup",
+        ],
+    )
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    assert_that(clustermgtd_conf_path).is_not_empty()
+    _set_protected_failure_count(remote_command_executor, 3, clustermgtd_conf_path)
+
+    return remote_command_executor
+
+
 def _enable_protected_mode(remote_command_executor, clustermgtd_conf_path):
     """Enable protected mode by removing lines related to protected mode in the config, so it will be set to default."""
     remote_command_executor.run_remote_command(f"sudo sed -i '/'protected_failure_count'/d' {clustermgtd_conf_path}")
@@ -1535,6 +1577,21 @@ def _test_recover_from_protected_mode(
     # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
     # not enter protected mode
     check_status(cluster, compute_fleet_status="RUNNING")
+
+
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
+def _test_compute_fleet_status(command_executor, expected_status):
+    """Assert that the compute fleet status is the expected status."""
+    result = command_executor.run_remote_command("get-compute-fleet-status.sh").stdout
+    status = json.loads(result)
+    assert_that(status.get("status")).is_equal_to(expected_status)
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
+def _test_cluster_creation_failure(cluster, failure_code="HeadNodeBootstrapFailure"):
+    """Retry describe-cluster until we see {failure_code}."""
+    response = cluster.describe_cluster()
+    assert_that(response["failures"][0]["failureCode"]).is_equal_to(failure_code)
 
 
 def _test_compute_node_bootstrap_timeout(
