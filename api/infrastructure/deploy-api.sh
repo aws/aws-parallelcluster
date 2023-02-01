@@ -98,6 +98,8 @@ fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 ECR_ENDPOINT="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
 S3_UPLOAD_URI="s3://${S3_BUCKET}/api/ParallelCluster.openapi.yaml"
+POLICIES_S3_URI="s3://${S3_BUCKET}/stacks/parallelcluster-policies.yaml"
+POLICIES_STACK_URI="http://${S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.amazonaws.com/stacks/parallelcluster-policies.yaml"
 
 echo "Building docker image"
 "${SCRIPT_DIR}/../docker/awslambda/docker-build.sh"
@@ -109,6 +111,9 @@ docker push "${ECR_ENDPOINT}/${ECR_REPO}:latest"
 
 echo "Publishing OpenAPI specs to S3"
 aws s3 cp "${SCRIPT_DIR}/../spec/openapi/ParallelCluster.openapi.yaml" "${S3_UPLOAD_URI}"
+
+echo "Publishing policies CloudFormation stack to S3"
+aws s3 cp "${SCRIPT_DIR}/../../cloudformation/policies/parallelcluster-policies.yaml" "${POLICIES_S3_URI}"
 
 echo ""
 if [ "$SKIP_IMAGE_IMPORT" = "true" ]; then
@@ -127,6 +132,7 @@ aws cloudformation deploy \
     --s3-bucket "${S3_BUCKET}" \
     --s3-prefix "api/" \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" "${OVERRIDE_IMAGE_URI_PRM}"="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
+                          PoliciesStackUri="${POLICIES_STACK_URI}" \
                           EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
                           ImageBuilderVpcId="${IMAGE_BUILDER_VPC_ID}" \
                           ImageBuilderSubnetId="${IMAGE_BUILDER_SUBNET_ID}" \
