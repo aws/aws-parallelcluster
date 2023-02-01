@@ -47,7 +47,7 @@ def _create_database_stack(cfn_stacks_factory, request, region, vpc_stack):
 
 
 @pytest.fixture(scope="package")
-def database_factory(request, cfn_stacks_factory, vpc_stacks):
+def database_factory(request, cfn_stacks_factory, vpc_stacks_shared):
     created_database_stacks = defaultdict(dict)
 
     logging.info("Setting up database_factory fixture")
@@ -63,7 +63,7 @@ def database_factory(request, cfn_stacks_factory, vpc_stacks):
 
         if not created_database_stacks.get(region, {}).get("default"):
             logging.info("Creating default database stack")
-            database_stack = _create_database_stack(cfn_stacks_factory, request, region, vpc_stacks[region])
+            database_stack = _create_database_stack(cfn_stacks_factory, request, region, vpc_stacks_shared[region])
             created_database_stacks[region]["default"] = database_stack.name
 
         logging.info("Using database stack %s", created_database_stacks.get(region, {}).get("default"))
