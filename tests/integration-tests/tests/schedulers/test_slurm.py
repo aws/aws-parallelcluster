@@ -311,6 +311,13 @@ def test_slurm_protected_mode_on_cluster_create(
     cluster = clusters_factory(cluster_config, raise_on_error=False, wait=False)
     remote_command_executor = _wait_until_protected_mode_failure_count_set(cluster)
     _test_compute_fleet_status(remote_command_executor, expected_status="PROTECTED")
+    assert_lines_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Updating compute fleet status from RUNNING to PROTECTED",
+        ],
+    )
     _test_cluster_creation_failure(cluster)
 
 
