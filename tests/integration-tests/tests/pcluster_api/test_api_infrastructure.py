@@ -205,6 +205,8 @@ def _test_docker_image_refresh(image_builder_pipeline, lambda_name):
 )
 def _wait_for_image_build(image_builder_pipeline):
     image_builder = boto3.client("imagebuilder")
-    return image_builder.list_image_pipeline_images(imagePipelineArn=image_builder_pipeline,)[
+    return image_builder.list_image_pipeline_images(
+        imagePipelineArn=image_builder_pipeline,
+    )[
         "imageSummaryList"
     ][0]

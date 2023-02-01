@@ -67,7 +67,6 @@ class TestGetImageLogEvents:
     def test_successful_get_image_log_events_request(
         self, client, mocker, region, next_token, start_from_head, limit, start_time, end_time
     ):
-
         log_stream_name = "logstream"
         mock_log_events = [
             {
@@ -223,7 +222,6 @@ class TestGetImageStackEvents:
         ],
     )
     def test_successful_get_image_log_events_request(self, client, mocker, mock_image_stack, region, next_token):
-
         uid = "00000000-dddd-4444-bbbb-555555555555"
         image_id = "image"
         account_id = "012345678999"
