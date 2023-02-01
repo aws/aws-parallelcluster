@@ -78,8 +78,8 @@ Outputs:
     Condition: EnableFSxS3AccessCondition
     Value: !Ref ParallelClusterFSxS3AccessPolicy
 
-  ParallelClusterUserRole:
-    Value: !Ref ParallelClusterUserRole
+  ParallelClusterUserRoleArn:
+    Value: !GetAtt ParallelClusterUserRole.Arn
 
   DefaultParallelClusterIamAdminPolicy:
     Condition: EnableIamPolicy
