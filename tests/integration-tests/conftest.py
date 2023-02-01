@@ -968,11 +968,16 @@ def register_cli_credentials(initialize_cli_creds):
             register_cli_credentials_for_region(region, creds)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def vpc_stacks(cfn_stacks_factory, request):
-    """Create VPC used by integ tests in all configured regions."""
+@xdist_session_fixture(autouse=True)
+def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
+    """
+    Create VPC used by integ tests in all configured regions, shared among session.
+    One VPC per region will be created.
+    :return: a dictionary of VPC stacks with region as key
+    """
+
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-    vpc_stacks = {}
+    vpc_stacks_dict = {}
 
     for region in regions:
         # Creating private_subnet_different_cidr in a different AZ for test_efs
@@ -1081,11 +1086,83 @@ def vpc_stacks(cfn_stacks_factory, request):
             ],
         )
         template = NetworkTemplateBuilder(
-            vpc_configuration=vpc_config, default_availability_zone=availability_zones[0]
+            vpc_configuration=vpc_config,
+            default_availability_zone=availability_zones[0],
+            create_bastion_instance=True,
+            bastion_key_name=key_name,
+            region=region,
         ).build()
-        vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
+        vpc_stacks_dict[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
-    return vpc_stacks
+    return vpc_stacks_dict
+
+
+@pytest.fixture(scope="class")
+def vpc_stack_with_endpoints(region, request, key_name):
+    """
+    Create a VPC stack with VPC endpoints.
+    Since VPC endpoints modify DNS at VPC level, all the subnets in that VPC will be affected.
+    :return: a VPC stack
+    """
+
+    logging.info("Creating VPC stack with endpoints")
+    credential = request.config.getoption("credential")
+    stack_factory = CfnStacksFactory(request.config.getoption("credential"))
+
+    def _create_stack(request, template, region, stack_factory):
+        # TODO: be able to reuse an existing VPC endpoint stack
+        stack = CfnStack(
+            name=generate_stack_name("integ-tests-vpc-endpoints", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=template.to_json(),
+        )
+        stack_factory.create_stack(stack)
+        return stack
+
+    # tests with VPC endpoints are not using multi-AZ
+    availability_zone = get_availability_zones(region, credential)[0]
+
+    bastion_subnet = SubnetConfig(
+        name="Bastion",
+        cidr="192.168.32.0/20",
+        map_public_ip_on_launch=True,
+        has_nat_gateway=True,
+        availability_zone=availability_zone,
+        default_gateway=Gateways.INTERNET_GATEWAY,
+    )
+
+    no_internet_subnet = SubnetConfig(
+        name="NoInternet",
+        cidr="192.168.16.0/20",  # 4096 IPs
+        map_public_ip_on_launch=False,
+        has_nat_gateway=False,
+        availability_zone=availability_zone,
+        default_gateway=Gateways.NONE,
+    )
+
+    vpc_config = VPCConfig(
+        cidr="192.168.0.0/17",
+        additional_cidr_blocks=["192.168.128.0/17"],
+        subnets=[
+            bastion_subnet,
+            no_internet_subnet,
+        ],
+    )
+
+    template = NetworkTemplateBuilder(
+        vpc_configuration=vpc_config,
+        default_availability_zone=availability_zone,
+        create_vpc_endpoints=True,
+        bastion_key_name=key_name,
+        region=region,
+    ).build()
+
+    yield _create_stack(request, template, region, stack_factory)
+
+    if not request.config.getoption("no_delete"):
+        stack_factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN VPC endpoints stack because --no-delete option is set")
 
 
 @pytest.fixture(scope="class")
@@ -1120,8 +1197,8 @@ def create_roles_stack(request, region):
 
 
 @pytest.fixture(scope="class")
-def vpc_stack(vpc_stacks, region):
-    return vpc_stacks[region]
+def vpc_stack(vpc_stacks_shared, region):
+    return vpc_stacks_shared.get(region)
 
 
 @pytest.fixture(scope="session")
