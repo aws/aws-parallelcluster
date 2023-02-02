@@ -545,6 +545,12 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_reboot_ec2_health_checks:
+    dimensions:
+      - regions: ["us-east-2"]
+        instances: ["t2.medium"]
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
   test_slurm.py::test_slurm_overrides:
     dimensions:
       - regions: ["me-south-1"]

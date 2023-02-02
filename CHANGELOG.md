@@ -15,6 +15,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
+- Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be treated as unhealthy if the EC2 instance status checks fail (see https://github.com/aws/aws-parallelcluster/issues/4751)
 
 3.4.1
 -----

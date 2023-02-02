@@ -34,6 +34,7 @@ from tests.common.assertions import (
     assert_num_instances_in_cluster,
     assert_scaling_worked,
     wait_for_num_instances_in_cluster,
+    wait_for_slurm_rebooted_nodes,
 )
 from tests.common.hit_common import (
     assert_compute_node_reasons,
@@ -516,6 +517,111 @@ def test_scontrol_reboot(
         slurm_commands,
         "queue1-st-t2micro-2",
     )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_scontrol_reboot
+def test_scontrol_reboot_ec2_health_checks(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    """
+    Test that scontrol reboot does not trigger node replacements due to EC2 health check failures.
+
+    Two scenarios must be covered:
+    1.  the EC2 health checks are seen as failing while the compute node is in `REBOOT_ISSUED` state.
+        In order to keep the node in REBOOT_ISSUED for a longer time, a delay in the start of slurmd
+        is introduced.
+    2.  the EC2 health checks are seen as failing after the node has come back from reboot, because
+        EC2 takes a while before running the health checks and updating the health check status. This
+        is usually the case with t2.medium and Ubuntu 20.04.
+
+    This test is OS- and instance type dependent. Currently it is possible to reproduce the issue
+    only with Ubuntu 20.04.
+
+    See https://github.com/aws/aws-parallelcluster/issues/4751
+    """
+
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+    clustermgtd_config = dict()
+    clustermgtd_config["loop_time"] = "15"
+    clustermgtd_config["health_check_timeout"] = "15"
+    clustermgtd_config["health_check_timeout_after_slurmdstarttime"] = "180"
+
+    # Set shorter loop time and health check timeout to trigger failures due to EC2 health checks more easily
+    for key, val in clustermgtd_config.items():
+        remote_command_executor.run_remote_command(
+            f"sudo sed -i '/{key}/d' /etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+        )
+        remote_command_executor.run_remote_command(
+            f'echo "{key} = {val}" | sudo tee -a ' "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+        )
+
+    # Get compute nodes in the cluster
+    compute_nodes = slurm_commands.get_compute_nodes()
+
+    # Wait for compute nodes to be fully up and running
+    wait_for_compute_nodes_states(
+        slurm_commands,
+        compute_nodes,
+        "idle",
+        stop_max_delay_secs=300,
+    )
+
+    # Add drop-in file to delay startup of slurmd on the compute nodes. This will cause the compute node to
+    # stay longer in REBOOT_ISSUED state.
+    # TODO: generalize it for multiple nodes (it requires a parallel ssh utility such as clush).
+    # Currently the test uses only one compute node, so this is enough.
+    script = "add_sleep_to_slurmd_service_compute.sh"
+    remote_command_executor.run_remote_command(
+        f"rsync -a {script} {str(compute_nodes[0])}:~/", additional_files=[str(test_datadir / script)]
+    )
+    remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "chmod +x {script}"')
+    remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "./{script}"')
+
+    # Clear clustermgtd and slurmctld logs before starting the tests
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+
+    # 2 iterations to cover the two scenarios described in the test description
+    for scenario in range(1, 3):
+        if scenario == 2:
+            # Remove delay in startup of slurmd on the compute nodes.
+            # TODO: generalize it for multiple nodes (it requires a parallel ssh utility such as clush)
+            # Currently the test uses only one compute node, so it's not necessary.
+            script = "reset_sleep_slurmd_service_compute.sh"
+            remote_command_executor.run_remote_command(
+                f"rsync -a {script} {str(compute_nodes[0])}:~/", additional_files=[str(test_datadir / script)]
+            )
+            remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "chmod +x {script}"')
+            remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "./{script}"')
+
+        # Reboot static compute nodes
+        for node in compute_nodes:
+            slurm_commands.reboot_compute_node(node, asap=True)
+
+        # Wait for compute nodes to reply to slurmctld after rebooting
+        wait_for_slurm_rebooted_nodes(compute_nodes, remote_command_executor, stop_max_delay_secs=600)
+
+        # Check that the nodes are not marked as unhealthy in the following minutes
+        time.sleep(300)
+        assert_no_msg_in_logs(
+            remote_command_executor,
+            ["/var/log/parallelcluster/clustermgtd"],
+            ["Setting nodes failing health check type ec2_health_check to DRAIN"],
+        )
+
+        # Final check on the state of the compute nodes
+        assert_compute_node_states(slurm_commands, compute_nodes, "idle")
+
+        # Reset the slurmctld and clustermgtd logs
+        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
+        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
