@@ -89,22 +89,31 @@ def test_match_api():
     for key in policies["Resources"].keys():
         drop_keys = {"Condition"}
 
-        source_key = {"ParallelClusterFSxS3AccessPolicy": "FSxS3AccessPolicy"}.get(key, key)
+        source_key = {
+            "ParallelClusterFSxS3AccessPolicy": "FSxS3AccessPolicy",
+            "ParallelClusterLambdaRole": "ParallelClusterUserRole",
+        }.get(key, key)
+
         source_dict = {k: v for k, v in source["Resources"][source_key].items() if k not in drop_keys}
         dest_dict = {k: v for k, v in policies["Resources"][key].items() if k not in drop_keys}
 
-        if key == "ParallelClusterUserRole":
-            source_dict["Properties"]["ManagedPolicyArns"] = source_dict["Properties"]["ManagedPolicyArns"][2:]
+        if key == "ParallelClusterLambdaRole":
 
             def remove_batch_if(arn):
-                return arn if "Ref" in arn else arn["Fn::If"][1]
+                return arn if ("Ref" in arn or "Fn::Sub" in arn) else arn["Fn::If"][1]
 
             dest_dict["Properties"]["ManagedPolicyArns"] = list(
                 map(remove_batch_if, dest_dict["Properties"]["ManagedPolicyArns"])
             )
 
+        # Rename UserRole to LambdaRole, ignore policy name mismatch
         if key == "ParallelClusterFSxS3AccessPolicy":
+            source_dict["Properties"]["Roles"][0]["Ref"] = "ParallelClusterLambdaRole"
             del source_dict["Properties"]["PolicyName"]
             del dest_dict["Properties"]["PolicyName"]
+
+        # Rename UserRole to LambdaRole
+        if key == "DefaultParallelClusterIamAdminPolicy":
+            source_dict["Properties"]["Roles"][0]["Ref"] = "ParallelClusterLambdaRole"
 
         assert_that(dest_dict).is_equal_to(source_dict)

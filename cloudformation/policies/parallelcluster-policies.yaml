@@ -78,8 +78,8 @@ Outputs:
     Condition: EnableFSxS3AccessCondition
     Value: !Ref ParallelClusterFSxS3AccessPolicy
 
-  ParallelClusterUserRoleArn:
-    Value: !GetAtt ParallelClusterUserRole.Arn
+  ParallelClusterLambdaRoleArn:
+    Value: !GetAtt ParallelClusterLambdaRole.Arn
 
   DefaultParallelClusterIamAdminPolicy:
     Condition: EnableIamPolicy
@@ -111,7 +111,7 @@ Resources:
     Condition: EnableIamPolicy
     Properties:
       Roles:
-        - !Ref ParallelClusterUserRole
+        - !Ref ParallelClusterLambdaRole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -175,7 +175,7 @@ Resources:
             Sid: IamPolicy
 
 
-  ParallelClusterUserRole:
+  ParallelClusterLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -185,6 +185,9 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
       ManagedPolicyArns:
+        # Required for Lambda logging and XRay
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         # Required to run ParallelCluster functionalities
         - !Ref ParallelClusterClusterPolicy
         - !If
@@ -307,7 +310,7 @@ Resources:
             Effect: Allow
             Sid: EnableFSxS3Access
       Roles:
-        - !Ref ParallelClusterUserRole
+        - !Ref ParallelClusterLambdaRole
 
   ParallelClusterClusterPolicy:
     Type: AWS::IAM::ManagedPolicy
