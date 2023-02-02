@@ -22,7 +22,7 @@ class JSONEncoder(FlaskJSONEncoder):
 
     include_nulls = False
 
-    def default(self, obj):
+    def default(self, obj):  # pylint: disable=arguments-renamed
         """Override the base method to add support for model objects serialization."""
         if isinstance(obj, Model):
             dikt = {}

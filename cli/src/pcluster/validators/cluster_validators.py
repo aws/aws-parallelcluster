@@ -300,7 +300,6 @@ class MaxCountValidator(Validator):
     """Validate whether the number of resource exceeds the limits."""
 
     def _validate(self, resources_length, max_length, resource_name):
-
         if resources_length > max_length:
             self._add_failure(
                 "Invalid number of {resource_name} ({resources_length}) specified. Currently only supports "
@@ -318,7 +317,6 @@ class EfaValidator(Validator):
     """Check if EFA and EFA GDR are supported features in the given instance type."""
 
     def _validate(self, instance_type, efa_enabled, gdr_support, multiaz_enabled):
-
         instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
         if efa_enabled and not instance_type_supports_efa:
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
@@ -434,7 +432,6 @@ def _check_in_out_access(security_groups_ids, port, is_cidr_optional, protocol="
     out_access = False
 
     for sec_group in AWSApi.instance().ec2.describe_security_groups(security_groups_ids):
-
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
             if _check_sg_rules_for_port(rule, port, protocol):
@@ -588,7 +585,6 @@ class FsxArchitectureOsValidator(Validator):
     """
 
     def _validate(self, architecture: str, os):
-
         if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
             self._add_failure(
                 FSX_MESSAGES["errors"]["unsupported_architecture"].format(

@@ -45,7 +45,6 @@ def _gen_class(model: Dict) -> Dict[str, Callable]:
         """Take the name of an operation and return the function that call the controller."""
 
         def func(_self, **kwargs):
-
             # Validate that args provided match the model
             params = model[op_name]["params"]
             expected = {to_snake_case(param["name"]) for param in params if param["required"]}

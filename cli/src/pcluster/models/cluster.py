@@ -591,7 +591,8 @@ class Cluster:
                 # A nosec comment is appended to the following line in order to disable the B324 checks.
                 # The sha1 is used just as a hashing function.
                 # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
-                lambda value: hashlib.sha1(value.encode())  # nosec B324 nosemgrep
+                # [B303:blacklist] Use of insecure MD2, MD4, MD5, or SHA1 hash function
+                lambda value: hashlib.sha1(value.encode())  # nosec nosemgrep
                 .hexdigest()[0:16]
                 .capitalize()
             )
