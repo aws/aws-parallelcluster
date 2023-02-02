@@ -74,6 +74,10 @@ Outputs:
   ParallelClusterClusterPolicy:
     Value: !Ref ParallelClusterClusterPolicy
 
+  ParallelClusterClusterPolicyBatch:
+    Condition: EnableBatchAccessCondition
+    Value: !Ref ParallelClusterClusterPolicyBatch
+
   FSxS3AccessPolicy:
     Condition: EnableFSxS3AccessCondition
     Value: !Ref ParallelClusterFSxS3AccessPolicy
@@ -85,11 +89,8 @@ Outputs:
     Condition: EnableIamPolicy
     Value: !Ref DefaultParallelClusterIamAdminPolicy
 
-  ParallelClusterClusterPolicyBatch:
-    Condition: EnableBatchAccessCondition
-    Value: !Ref ParallelClusterClusterPolicyBatch
-
-
+  ParallelClusterLambdaRoleArn:
+    Value: !GetAtt ParallelClusterLambdaRole.Arn
 
 Conditions:
   IsMultiRegion: !Equals [!Ref Region, '*']
@@ -112,6 +113,7 @@ Resources:
     Properties:
       Roles:
         - !Ref ParallelClusterUserRole
+        - !Ref ParallelClusterLambdaRole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -173,6 +175,32 @@ Resources:
                 - !Ref AWS::NoValue
             Effect: Allow
             Sid: IamPolicy
+
+
+  ParallelClusterLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        # Required for Lambda logging and XRay
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        # Required to run ParallelCluster functionalities
+        - !Ref ParallelClusterClusterPolicy
+        - !If
+          - EnableBatchAccessCondition
+          - !Ref ParallelClusterClusterPolicyBatch
+          - !Ref AWS::NoValue
+        - !Ref ParallelClusterBuildImageManagedPolicy
+        - !Ref ParallelClusterDeleteImageManagedPolicy
+        - !Ref ParallelClusterListImagesManagedPolicy
+        - !Ref ParallelClusterDescribeImageManagedPolicy
+        - !Ref ParallelClusterLogRetrievalPolicy
 
 
   ParallelClusterUserRole:
