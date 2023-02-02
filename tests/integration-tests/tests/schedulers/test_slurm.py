@@ -559,7 +559,6 @@ def test_scontrol_reboot_ec2_health_checks(
 
     # 2 iterations to cover the two scenarios described in the test description
     for scenario in range(1, 3):
-
         if scenario == 2:
             # Remove delay in startup of slurmd on the compute nodes.
             # TODO: generalize it for multiple nodes (it requires a parallel ssh utility such as clush)
