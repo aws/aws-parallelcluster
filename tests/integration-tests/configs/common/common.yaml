@@ -515,6 +515,12 @@ schedulers:
 #        oss: ["alinux2"]
 #        schedulers: ["slurm_plugin"]
 #{%- endif %}
+  test_slurm.py::test_slurm_protected_mode_on_cluster_create:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
   test_slurm.py::test_fast_capacity_failover:
     dimensions:
       - regions: ["ap-east-1"]
