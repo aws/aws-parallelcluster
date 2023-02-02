@@ -74,6 +74,10 @@ Outputs:
   ParallelClusterClusterPolicy:
     Value: !Ref ParallelClusterClusterPolicy
 
+  ParallelClusterClusterPolicyBatch:
+    Condition: EnableBatchAccessCondition
+    Value: !Ref ParallelClusterClusterPolicyBatch
+
   FSxS3AccessPolicy:
     Condition: EnableFSxS3AccessCondition
     Value: !Ref ParallelClusterFSxS3AccessPolicy
@@ -85,11 +89,8 @@ Outputs:
     Condition: EnableIamPolicy
     Value: !Ref DefaultParallelClusterIamAdminPolicy
 
-  ParallelClusterClusterPolicyBatch:
-    Condition: EnableBatchAccessCondition
-    Value: !Ref ParallelClusterClusterPolicyBatch
-
-
+  ParallelClusterLambdaRoleArn:
+    Value: !GetAtt ParallelClusterLambdaRole.Arn
 
 Conditions:
   IsMultiRegion: !Equals [!Ref Region, '*']
