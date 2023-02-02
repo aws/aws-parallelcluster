@@ -50,7 +50,6 @@ class InstanceTypeAcceleratorManufacturerValidator(Validator):
     """
 
     def _validate(self, instance_type: str, instance_type_data: dict):
-
         gpu_info = instance_type_data.get("GpuInfo", {})
         if gpu_info:
             gpu_manufacturers = list({gpu.get("Manufacturer", "") for gpu in gpu_info.get("Gpus", [])})
