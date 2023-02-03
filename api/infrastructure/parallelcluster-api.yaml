@@ -163,13 +163,6 @@ Conditions:
   UseCustomDomainAndRoute53Configuration: !And
     - !Condition UseCustomDomain
     - !Condition UseRoute53Configuration
-  IsMultiRegion: !Equals [!Ref Region, '*']
-  EnableIamPolicy: !And
-    - !Or
-      - !Equals [!Ref EnableIamAdminAccess, true]
-      - !Condition EnablePermissionsBoundary
-    - !Not [!Condition UseCustomParallelClusterFunctionRole]
-  EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   UsePrivateVpcEndpoint: !And
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
     - !Not [!Equals [!Ref VpcEndpointId, '']]
@@ -181,15 +174,12 @@ Conditions:
     Fn::And:
       - !Not [!Equals [!Ref ImageBuilderVpcId, ""]]
       - !Not [!Equals [!Ref ImageBuilderSubnetId, ""]]
-  EnableFSxS3AccessCondition: !And
-    - !Equals [!Ref EnableFSxS3Access, true]
-    - !Condition CreateIamResources
-  UseAllBucketsForFSxS3: !Equals [!Ref FsxS3Buckets, "*"]
 
 Resources:
   # Policies nested stack
   PclusterPolicies:
     Type: AWS::CloudFormation::Stack
+    Condition: CreateIamResources
     Properties:
       TemplateURL: !Ref PoliciesStackUri
       TimeoutInMinutes: 10
