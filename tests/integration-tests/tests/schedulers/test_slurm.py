@@ -520,7 +520,6 @@ def test_update_slurm_reconfigure_race_condition(
 
     max_retries = 5
     for iter in range(1, max_retries + 1):
-
         job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
             submit_command_args={
                 "nodes": 2,

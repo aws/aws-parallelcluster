@@ -173,7 +173,7 @@ def _test_create_or_update_with_warnings(run_fn):
 
     Accepts a run_fn function that will accept arguments for create / update
     """
-    for (expected_response, validation_key, args) in _validation_test_cases():
+    for expected_response, validation_key, args in _validation_test_cases():
         actual_response = run_fn({"raise_on_error": False, "log_error": False, **args})
         _check_response(actual_response, expected_response, validation_key)
 

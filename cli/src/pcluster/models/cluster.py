@@ -585,7 +585,13 @@ class Cluster:
             LOGGER.info("Rendering the following scheduler plugin CloudFormation template:\n%s", file_content)
             environment = SandboxedEnvironment(loader=BaseLoader)
             environment.filters["hash"] = (
-                lambda value: hashlib.sha1(value.encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
+                # A nosec comment is appended to the following line in order to disable the B324 checks.
+                # The sha1 is used just as a hashing function.
+                # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+                # [B303:blacklist] Use of insecure MD2, MD4, MD5, or SHA1 hash function
+                lambda value: hashlib.sha1(value.encode())  # nosec nosemgrep
+                .hexdigest()[0:16]
+                .capitalize()
             )
             template = environment.from_string(file_content)
             rendered_template = template.render(

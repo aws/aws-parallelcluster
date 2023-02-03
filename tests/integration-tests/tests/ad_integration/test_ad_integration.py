@@ -144,7 +144,6 @@ def zip_dir(path):
 
 @pytest.fixture(scope="module")
 def store_secret_in_secret_manager(request, cfn_stacks_factory):
-
     secret_arns = {}
 
     def _store_secret(region, secret_string=None, secret_binary=None):

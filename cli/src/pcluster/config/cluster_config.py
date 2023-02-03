@@ -1885,7 +1885,10 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     @property
     def instance_types(self) -> List[str]:
         """Return list of instance type names in this compute resource."""
-        return [flexible_instance_type.instance_type for flexible_instance_type in self.instances]
+        return [
+            flexible_instance_type.instance_type
+            for flexible_instance_type in self.instances  # pylint: disable=not-an-iterable
+        ]
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:

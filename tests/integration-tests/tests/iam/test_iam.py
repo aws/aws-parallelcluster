@@ -351,7 +351,6 @@ def test_iam_resource_prefix(
     cli_credentials = initialize_resource_prefix_cli_creds(test_datadir)
     if cli_credentials:
         for region, creds in cli_credentials.items():
-
             bucket_name = s3_bucket
             cfn_client, _, iam_client, _ = _create_boto3_clients(region)
             create_config, _ = _get_config_create_and_update(test_datadir)
@@ -410,7 +409,6 @@ def _test_iam_resource_in_cluster(cfn_client, iam_client, stack_name, iam_resour
     for resource in resources:
         resource_type = resource["ResourceType"]
         if resource_type == "AWS::IAM::Role":
-
             resource_arn_list.append(iam_client.get_role(RoleName=resource["PhysicalResourceId"])["Role"]["Arn"])
             resource_arn_list.extend(
                 iam_client.list_role_policies(RoleName=resource["PhysicalResourceId"])["PolicyNames"]
