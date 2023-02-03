@@ -646,14 +646,13 @@ def test_queue_name_validator(name, expected_message):
 
 
 @pytest.mark.parametrize(
-    "fsx_file_system_type, fsx_vpc, ip_permissions, are_all_security_groups_customized, network_interfaces, "
-    "expected_message",
+    "fsx_file_system_type, fsx_vpc, ip_permissions, nodes_security_groups, network_interfaces, " "expected_message",
     [
         (  # working case, right vpc and sg, multiple network interfaces
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            True,
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f", "eni-001b3cef7c78b45c4"],
             None,
         ),
@@ -661,7 +660,7 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            True,
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
@@ -669,7 +668,44 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
-            False,
+            {frozenset({None}), frozenset({None})},
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # working case (LUSTRE) CIDR specified in the security group through ip ranges.
+            # This is more complex than above because the union of the sg rules cover the subnet but individual rules
+            # do not cover the subnet
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.0.1.0/25"}]},
+                {"IpProtocol": "tcp", "FromPort": 988, "ToPort": 988, "IpRanges": [{"CidrIp": "10.0.1.128/25"}]},
+            ],
+            {frozenset({None}), frozenset({None})},
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # working case (LUSTRE) CIDR specified in the security group through ip ranges.
+            # The CIDR does not cover the subnet, but security group is right
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.1.1.0/25"}]},
+                {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]},
+            ],
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # working case (LUSTRE) CIDR specified in the security group through ip ranges.
+            # The security group is wrong, but the CIDR covers the subnet
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.0.0.0/23"}]},
+                {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-34567890"}]},
+            ],
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
@@ -677,7 +713,7 @@ def test_queue_name_validator(name, expected_message):
             "OPENZFS",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
-            False,
+            {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
@@ -685,7 +721,7 @@ def test_queue_name_validator(name, expected_message):
             "ONTAP",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
-            False,
+            {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
@@ -693,16 +729,27 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "PrefixListIds": [{"PrefixListId": "pl-12345"}]}],
-            False,
+            {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
         (  # not working case, wrong security group. Lustre
-            # Security group without CIDR cannot work with clusters containing pcluster created security group.
+            # Security group without CIDR/prefix cannot work with clusters containing pcluster created security group.
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            False,
+            {frozenset({None}), frozenset({None})},
+            ["eni-09b9460295ddd4e5f"],
+            "The current security group settings on file system .* does not satisfy mounting requirement. "
+            "The file system must be associated to a security group that "
+            r"allows inbound and outbound TCP traffic through ports \[988\].",
+        ),
+        (  # not working case, wrong security group. Lustre
+            # Security group with other security groups as src/dst has to reachable from all nodes security groups.
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-23456789"}]}],
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file system .* does not satisfy mounting requirement. "
             "The file system must be associated to a security group that "
@@ -713,7 +760,7 @@ def test_queue_name_validator(name, expected_message):
             "OPENZFS",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            False,
+            {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file system .* does not satisfy mounting requirement. "
             "The file system must be associated to a security group that "
@@ -724,7 +771,7 @@ def test_queue_name_validator(name, expected_message):
             "ONTAP",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            False,
+            {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file system .* does not satisfy mounting requirement. "
             "The file system must be associated to a security group that "
@@ -734,7 +781,7 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            True,
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             [],
             "doesn't have Elastic Network Interfaces attached",
         ),
@@ -742,7 +789,7 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6ccWRONG",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            True,
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             "only support using FSx file system that is in the same VPC as the cluster",
         ),
@@ -759,7 +806,7 @@ def test_queue_name_validator(name, expected_message):
                     "UserIdGroupPairs": [],
                 }
             ],
-            True,
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             [
                 "only support using FSx file system that is in the same VPC as the cluster",
@@ -773,7 +820,7 @@ def test_fsx_network_validator(
     fsx_file_system_type,
     fsx_vpc,
     ip_permissions,
-    are_all_security_groups_customized,
+    nodes_security_groups,
     network_interfaces,
     expected_message,
 ):
@@ -917,7 +964,7 @@ def test_fsx_network_validator(
     boto3_stubber("ec2", ec2_mocked_requests)
 
     actual_failures = ExistingFsxNetworkingValidator().execute(
-        ["fs-0ff8da96d57f3b4e3"], "subnet-12345678", are_all_security_groups_customized
+        ["fs-0ff8da96d57f3b4e3"], ["subnet-12345678"], nodes_security_groups
     )
     assert_failure_messages(actual_failures, expected_message)
 
@@ -1401,13 +1448,13 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
 
 
 @pytest.mark.parametrize(
-    "avail_zones_mapping, cluster_subnet_cidr, are_all_security_groups_customized, security_groups, file_system_info, "
+    "avail_zones_mapping, cluster_subnet_cidr, nodes_security_groups, security_groups, file_system_info, "
     "failure_level, expected_message",
     [
         (
             {"dummy-az-3": {"subnet-3"}},
             "",
-            False,
+            {frozenset({None}), frozenset({"sg-12345678"})},
             {},
             {
                 "FileSystems": [
@@ -1420,10 +1467,11 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
             "There is no existing Mount Target for EFS 'dummy-efs-1' in these Availability Zones: '\\['dummy-az-3'\\]'."
             " Please create an EFS Mount Target for those availability zones.",
         ),
-        (
+        (  # We expect this validator does not provide error message when there is no mount targets,
+            # because another validator checks the existence of the mount targets.
             {"dummy-az-3": {"subnet-3"}},
             "",
-            False,
+            {frozenset({None}), frozenset({"sg-12345678"})},
             {},
             {
                 "FileSystems": [
@@ -1437,10 +1485,10 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
             None,
             "",
         ),
-        (
+        (  # Working case. Ip ranges of SG cover subnet.
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
             "0.0.0.0/16",
-            False,
+            {frozenset({None}), frozenset({"sg-12345678"})},
             [
                 {
                     "IpPermissions": [
@@ -1471,10 +1519,10 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
             None,
             None,
         ),
-        (
+        (  # NOT working case. Ip ranges of SG do not cover subnet.
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
             "0.0.0.0/16",
-            False,
+            {frozenset({None}), frozenset({"sg-12345678"})},
             [
                 {
                     "IpPermissions": [
@@ -1502,37 +1550,101 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                 },
             ],
             {},
-            FailureLevel.WARNING,
+            FailureLevel.ERROR,
             "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
-            "but it does not have a security group that allows inbound and outbound rules to allow traffic of subnet "
-            "subnet-2. Please modify the Mount Target's security group, to allow traffic on subnet.",
+            "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+            "Please modify the Mount Target's security group, to allow traffic on port 2049.",
         ),
-        (
+        (  # Working case. Union of Ip ranges of SG covers subnet. But individual Ip ranges do not cover subnet.
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
-            "0.0.0.0/16",
-            True,
+            "172.31.0.0/16",
+            {frozenset({None}), frozenset({"sg-12345678"})},
             [
                 {
                     "IpPermissions": [
                         {
                             "FromPort": 2049,
                             "IpProtocol": "tcp",
-                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "IpRanges": [{"CidrIp": "172.31.128.0/17"}],
                             "Ipv6Ranges": [],
                             "PrefixListIds": [],
                             "ToPort": 2049,
                             "UserIdGroupPairs": [],
-                        }
+                        },
+                        {
+                            "FromPort": 2040,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/17"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [],
+                        },
                     ],
                     "GroupId": "sg-041b924ce46b2dc0b",
                     "IpPermissionsEgress": [
                         {
                             "IpProtocol": "-1",
-                            "IpRanges": [{"CidrIp": "172.31.0.0/16"}],
+                            "IpRanges": [{"CidrIp": "172.31.128.0/17"}],
                             "Ipv6Ranges": [],
                             "PrefixListIds": [],
                             "UserIdGroupPairs": [],
-                        }
+                        },
+                        {
+                            "FromPort": 2049,
+                            "ToPort": 2049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [{"CidrIp": "172.31.0.0/17"}],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [],
+                        },
+                    ],
+                    "VpcId": "vpc-12345678",
+                },
+            ],
+            {},
+            None,
+            None,
+        ),
+        (  # Working case. Connections allowed by security group ids.
+            {"dummy-az-1": {"subnet-1", "subnet-2"}},
+            "172.31.0.0/16",
+            {frozenset({"sg-12345678"}), frozenset({"sg-23456789"})},
+            [
+                {
+                    "IpPermissions": [
+                        {
+                            "FromPort": 2040,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}],
+                        },
+                        {
+                            "FromPort": 2049,
+                            "IpProtocol": "tcp",
+                            "IpRanges": [],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "ToPort": 2049,
+                            "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-23456789"}],
+                        },
+                    ],
+                    "GroupId": "sg-041b924ce46b2dc0b",
+                    "IpPermissionsEgress": [
+                        {
+                            "IpProtocol": "-1",
+                            "IpRanges": [],
+                            "Ipv6Ranges": [],
+                            "PrefixListIds": [],
+                            "UserIdGroupPairs": [
+                                {"UserId": "123456789012", "GroupId": "sg-12345678"},
+                                {"UserId": "123456789012", "GroupId": "sg-23456789"},
+                            ],
+                        },
                     ],
                     "VpcId": "vpc-12345678",
                 },
@@ -1544,7 +1656,7 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
         (
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
             "172.31.64.0/20",
-            False,
+            {frozenset({None}), frozenset({"sg-12345678"})},
             [
                 {
                     "IpPermissions": [
@@ -1580,7 +1692,7 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
         (
             {"dummy-az-1": {"subnet-1", "subnet-2"}},
             "172.31.0.0/16",
-            False,
+            {frozenset({None}), frozenset({"sg-12345678"})},
             [
                 {
                     "IpPermissions": [
@@ -1608,15 +1720,15 @@ def test_deletion_policy_validator(deletion_policy, name, expected_message, fail
                 },
             ],
             {},
-            FailureLevel.WARNING,
+            FailureLevel.ERROR,
             "There is an existing Mount Target dummy-efs-mt-1 in the Availability Zone dummy-az-1 for EFS dummy-efs-1, "
-            "but it does not have a security group that allows inbound and outbound rules to allow traffic of subnet "
-            "subnet-2. Please modify the Mount Target's security group, to allow traffic on subnet.",
+            "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+            "Please modify the Mount Target's security group, to allow traffic on port 2049.",
         ),
         (
             {"dummy-az-1": {"subnet-1"}, "dummy-az-2": {"subnet-2"}},
             "0.0.0.0/16",
-            False,
+            {frozenset({None}), frozenset({None})},
             [
                 {
                     "IpPermissions": [
@@ -1662,7 +1774,7 @@ def test_efs_id_validator(
     mocker,
     boto3_stubber,
     avail_zones_mapping,
-    are_all_security_groups_customized,
+    nodes_security_groups,
     security_groups,
     cluster_subnet_cidr,
     file_system_info,
@@ -1676,7 +1788,7 @@ def test_efs_id_validator(
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_cidr", return_value=cluster_subnet_cidr)
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_security_groups", return_value=security_groups)
 
-    actual_failures = EfsIdValidator().execute(efs_id, avail_zones_mapping, are_all_security_groups_customized)
+    actual_failures = EfsIdValidator().execute(efs_id, avail_zones_mapping, nodes_security_groups)
     assert_failure_messages(actual_failures, expected_message)
     assert_failure_level(actual_failures, failure_level)
 

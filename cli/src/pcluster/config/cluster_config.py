@@ -1262,6 +1262,8 @@ class BaseClusterConfig(Resource):
         self._official_ami = None
         self.imds = imds or TopLevelImds(implied="v1.0")
         self.deployment_settings = deployment_settings
+        self.managed_head_node_security_group = None
+        self.managed_compute_security_group = None
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1395,15 +1397,15 @@ class BaseClusterConfig(Resource):
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
                             avail_zones_mapping=self.availability_zones_subnets_mapping,
-                            are_all_security_groups_customized=self.are_all_security_groups_customized,
+                            security_groups_by_nodes=self.security_groups_by_nodes,
                         )
                     else:
                         new_storage_count["efs"] += 1
             self._register_validator(
                 ExistingFsxNetworkingValidator,
                 file_system_ids=list(existing_fsx),
-                head_node_subnet_id=self.head_node.networking.subnet_id,
-                are_all_security_groups_customized=self.are_all_security_groups_customized,
+                subnet_ids=[self.head_node.networking.subnet_id] + self.compute_subnet_ids,
+                security_groups_by_nodes=self.security_groups_by_nodes,
             )
 
             self._validate_max_storage_count(ebs_count, existing_storage_count, new_storage_count)
@@ -1632,17 +1634,34 @@ class BaseClusterConfig(Resource):
         return self.head_node.dcv and self.head_node.dcv.enabled
 
     @property
-    def are_all_security_groups_customized(self):
-        """Return True if all head node and queues have (additional) security groups specified."""
+    def security_groups_by_nodes(self):
+        """
+        Return Security groups by nodes.
+
+        The result is a set of frozenset,
+        e.g. {frozenset(security groups for head node), frozenset(security groups for queue 1), ...}
+        """
         head_node_networking = self.head_node.networking
-        if not (head_node_networking.security_groups or head_node_networking.additional_security_groups):
-            return False
+        security_groups_for_head_node = set()
+        if head_node_networking.security_groups:
+            security_groups_for_head_node.update(set(head_node_networking.security_groups))
+        else:
+            security_groups_for_head_node.add(self.managed_head_node_security_group)
+        if head_node_networking.additional_security_groups:
+            security_groups_for_head_node.update(set(head_node_networking.additional_security_groups))
+        security_groups_for_all_nodes = {frozenset(security_groups_for_head_node)}
         for queue in self.scheduling.queues:
             queue_networking = queue.networking
             if isinstance(queue_networking, _QueueNetworking):
-                if not (queue_networking.security_groups or queue_networking.additional_security_groups):
-                    return False
-        return True
+                security_groups_for_compute_node = set()
+                if queue_networking.security_groups:
+                    security_groups_for_compute_node.update(set(queue_networking.security_groups))
+                else:
+                    security_groups_for_compute_node.add(self.managed_compute_security_group)
+                if queue_networking.additional_security_groups:
+                    security_groups_for_compute_node.update(set(queue_networking.additional_security_groups))
+                security_groups_for_all_nodes.add(frozenset(security_groups_for_compute_node))
+        return security_groups_for_all_nodes
 
     @property
     def extra_chef_attributes(self):

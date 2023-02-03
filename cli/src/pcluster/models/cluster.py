@@ -440,6 +440,9 @@ class Cluster:
             Cluster._load_additional_instance_type_data(cluster_config_dict)
             config = self._load_config(cluster_config_dict)
             config.official_ami = self.__official_ami
+            if context.during_update:
+                config.managed_head_node_security_group = self.stack.get_resource_physical_id("HeadNodeSecurityGroup")
+                config.managed_compute_security_group = self.stack.get_resource_physical_id("ComputeSecurityGroup")
 
             validation_failures = config.validate(validator_suppressors, context)
             if any(f.level.value >= FailureLevel(validation_failure_level).value for f in validation_failures):
@@ -851,7 +854,7 @@ class Cluster:
             validator_suppressors=validator_suppressors,
             validation_failure_level=validation_failure_level,
             config_text=target_source_config,
-            context=ValidatorContext(head_node_instance_id=self.head_node_instance.id),
+            context=ValidatorContext(head_node_instance_id=self.head_node_instance.id, during_update=True),
         )
         changes = self._validate_patch(force, target_config)
 

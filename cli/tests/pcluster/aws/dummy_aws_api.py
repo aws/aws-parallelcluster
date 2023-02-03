@@ -112,6 +112,9 @@ class _DummyCfnClient(CfnClient):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
+    def describe_stack_resources(self, stack_name: str):
+        return {}
+
 
 class _DummyEc2Client(Ec2Client):
     def __init__(self):
