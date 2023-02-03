@@ -6,6 +6,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
+- Fix EFS, FSx network security groups validators to avoid reporting false errors.
 
 3.5.0
 -----
