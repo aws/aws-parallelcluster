@@ -12,6 +12,7 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Slurm to version 22.05.8.
+- Make Slurm controller logs more verbose and enable additional logging for the Slurm power save plugin.
 
 **BUG FIXES**
 - Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
