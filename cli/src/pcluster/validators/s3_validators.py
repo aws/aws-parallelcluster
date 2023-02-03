@@ -92,7 +92,6 @@ class S3BucketUriValidator(Validator):
     """S3 Bucket Url Validator."""
 
     def _validate(self, url):
-
         if get_url_scheme(url) == "s3":
             try:
                 bucket = get_bucket_name_from_s3_url(url)

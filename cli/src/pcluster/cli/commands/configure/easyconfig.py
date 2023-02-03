@@ -115,7 +115,6 @@ def _get_subnets(conn, vpc_id):
 
 
 def configure(args):  # noqa: C901
-
     config_file_path = args.config
     # Check for invalid path (eg. a directory)
     if os.path.exists(config_file_path):

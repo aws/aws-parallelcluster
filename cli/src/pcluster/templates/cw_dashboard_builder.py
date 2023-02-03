@@ -80,7 +80,6 @@ class CWDashboardConstruct(Construct):
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
     def _add_resources(self):
-
         # Initialize a cloudwatch dashboard
         self.cloudwatch_dashboard = cloudwatch.Dashboard(
             self.stack_scope, "CloudwatchDashboard", dashboard_name=self.dashboard_name
@@ -497,7 +496,6 @@ class CWDashboardConstruct(Construct):
             if not self.empty_section:
                 self._add_text_widget(f"## {section_widgets.section_title}")
                 for log_params in section_widgets.widgets:
-
                     # Check if the log need to added
                     passed_condition = True
                     if log_params.conditions:
