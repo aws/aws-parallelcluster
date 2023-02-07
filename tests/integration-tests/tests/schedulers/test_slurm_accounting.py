@@ -127,6 +127,7 @@ def _test_that_slurmdbd_is_running(remote_command_executor):
 def test_slurm_accounting(
     region,
     pcluster_config_reader,
+    vpc_stack_for_database,
     database_factory,
     request,
     test_datadir,
@@ -143,7 +144,11 @@ def test_slurm_accounting(
     database_stack_outputs = get_infra_stack_outputs(database_stack_name)
 
     config_params = _get_slurm_database_config_parameters(database_stack_outputs)
-    cluster_config = pcluster_config_reader(**config_params)
+    public_subnet_id = vpc_stack_for_database.cfn_outputs["public_subnet_id"]
+    private_subnet_id = vpc_stack_for_database.cfn_outputs["private_subnet_id"]
+    cluster_config = pcluster_config_reader(
+        public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id, **config_params
+    )
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
