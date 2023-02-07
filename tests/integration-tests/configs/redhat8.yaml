@@ -1,4 +1,4 @@
-{%- import 'common.jinja2' as common -%}
+{%- import 'common.jinja2' as common with context -%}
 ---
 test-suites:
   ad_integration:
@@ -8,7 +8,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1804"]
           schedulers: ["slurm"]
-  # m6g.xlarge is available in the following region: ap-south-1, eu-north-1, eu-west-3, eu-south-1, eu-west-2, eu-west-1, ap-northeast-2, me-south-1, ap-northeast-1, ca-central-1, sa-east-1, ap-east-1, ap-southeast-1, ap-southeast-2, eu-central-1, ap-southeast-3, us-east-1, us-east-2, us-west-1, us-west-2
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
   arm_pl:
     test_arm_pl.py::test_arm_pl:
       dimensions:
@@ -75,6 +80,12 @@ test-suites:
           instances: ["m4.xlarge"]
           oss: ["alinux2", "centos7"]
           schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -97,10 +108,6 @@ test-suites:
           instances: ["c6gn.16xlarge"]
           oss: ["ubuntu1804", "ubuntu2004"]
           schedulers: ["slurm"]
-        - regions: [ "us-east-2" ]
-          instances: [{{ common.instance("instance_type_1") }}]
-          oss: [ "centos7" ]
-          schedulers: [ "slurm" ]
   intel_hpc:
     test_intel_hpc.py::test_intel_hpc:
       dimensions:
@@ -175,10 +182,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: ["slurm"]
-        - regions: [ "us-east-2" ]
-          instances: [{{ common.instance("instance_type_1") }}]
-          oss: [ "alinux2" ]
-          schedulers: [ "slurm" ]
   storage:
     # Commercial regions that can't test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
     test_fsx_lustre.py::test_fsx_lustre:
@@ -199,6 +202,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
     test_fsx_lustre.py::test_fsx_lustre_configuration_options:
       dimensions:
         - regions: ["us-east-2"]
@@ -211,6 +220,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: [ "slurm" ]
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
     test_raid.py::test_raid_performance_mode:
       dimensions:
         - regions: ["ap-south-1"]
