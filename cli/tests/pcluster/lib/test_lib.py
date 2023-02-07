@@ -16,7 +16,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.cli.exceptions import ParameterException
-from pcluster.lib import lib
+from pcluster.lib import lib as pcluster
 
 
 def _gen_model(funcs):
@@ -88,8 +88,8 @@ class TestParallelClusterLib:
     def test_args(self, mocker, model, func, kwargs, expected):
         mocker.patch("pcluster.cli.model.get_function_from_name", return_value=func)
         model = _gen_model(model)
-        pc_obj = lib._make_class(model)()  # pylint: disable=protected-access
-        assert_that(pc_obj.op(**kwargs)).is_equal_to(expected)
+        pcluster._add_functions(model, pcluster)  # pylint: disable=protected-access
+        assert_that(pcluster.op(**kwargs)).is_equal_to(expected)
 
     @pytest.mark.parametrize(
         "model, func, kwargs",
@@ -125,11 +125,11 @@ class TestParallelClusterLib:
     def test_args_missing(self, mocker, model, func, kwargs):
         mocker.patch("pcluster.cli.model.get_function_from_name", return_value=func)
         model = _gen_model(model)
-        pc_obj = lib._make_class(model)()  # pylint: disable=protected-access
+        pcluster._add_functions(model, pcluster)  # pylint: disable=protected-access
 
         # flake8: noqa
         with pytest.raises(TypeError) as exc_info:
-            pc_obj.op(**kwargs)
+            pcluster.op(**kwargs)
         assert_that(str(exc_info.value)).starts_with("<op> missing required arguments")
 
     @pytest.mark.parametrize(
@@ -181,9 +181,9 @@ class TestParallelClusterLib:
     def test_args_unexcpected(self, mocker, model, func, kwargs):
         mocker.patch("pcluster.cli.model.get_function_from_name", return_value=func)
         model = _gen_model(model)
-        pc_obj = lib._make_class(model)()  # pylint: disable=protected-access
+        pcluster._add_functions(model, pcluster)  # pylint: disable=protected-access
         with pytest.raises(TypeError) as exc_info:
-            pc_obj.op(**kwargs)
+            pcluster.op(**kwargs)
         assert_that(str(exc_info.value)).starts_with("<op> got unexpected arguments")
 
     @pytest.mark.parametrize(
@@ -211,8 +211,8 @@ class TestParallelClusterLib:
         mocker.patch("pcluster.cli.model.get_function_from_name", return_value=lambda x: x)
         mocker.patch("pcluster.cli.entrypoint.read_file", return_value="filedata")
         model = _gen_model({"op": [{"name": "x", "required": True, "body": False, **type_}]})
-        pc_obj = lib._make_class(model)()  # pylint: disable=protected-access
-        assert_that(pc_obj.op(x=input_)).is_equal_to(expected)
+        pcluster._add_functions(model, pcluster)  # pylint: disable=protected-access
+        assert_that(pcluster.op(x=input_)).is_equal_to(expected)
 
     @pytest.mark.parametrize(
         "type_, input_",
@@ -234,9 +234,9 @@ class TestParallelClusterLib:
     def test_parameter_invalid_type(self, mocker, type_, input_):
         mocker.patch("pcluster.cli.model.get_function_from_name", return_value=lambda x: x)
         model = _gen_model({"op": [{"name": "x", "required": True, "body": False, **type_}]})
-        pc_obj = lib._make_class(model)()  # pylint: disable=protected-access
+        pcluster._add_functions(model, pcluster)  # pylint: disable=protected-access
         with pytest.raises((ParameterException, TypeError)) as exc_info:
-            pc_obj.op(x=input_)
+            pcluster.op(x=input_)
 
     @pytest.mark.parametrize(
         "type_, input_",
@@ -250,7 +250,7 @@ class TestParallelClusterLib:
     def test_parameter_invalid_regex(self, mocker, type_, input_):
         mocker.patch("pcluster.cli.model.get_function_from_name", return_value=lambda x: x)
         model = _gen_model({"op": [{"name": "x", "required": True, "body": False, **type_}]})
-        pc_obj = lib._make_class(model)()  # pylint: disable=protected-access
+        pcluster._add_functions(model, pcluster)  # pylint: disable=protected-access
         # with pytest.raises( (ParameterException, TypeError) ) as exc_info:
         with pytest.raises(ParameterException) as exc_info:
-            pc_obj.op(x=input_)
+            pcluster.op(x=input_)
