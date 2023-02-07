@@ -4,6 +4,9 @@ CHANGELOG
 3.6.0
 ----
 
+**BUG FIXES**
+- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
+
 3.5.0
 -----
 
