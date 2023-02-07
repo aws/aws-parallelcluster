@@ -438,7 +438,7 @@ def orchestrate_pcluster_configure_stages(prompts, scheduler):
     return [prompt for prompt in prompts if scheduler != "awsbatch" or not prompt.get("skip_for_batch")]
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="class")
 def subnet_in_use1_az3(vpc_stack):
     # Subnet used to test the functionality of avoiding subnet in AZs that do not have user specified instance types
     # Hard coding implementation to run on us-east-1 and create subnet in use1_az3 without c5.xlarge
