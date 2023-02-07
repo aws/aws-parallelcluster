@@ -2760,6 +2760,16 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
         return list(result)
 
     @property
+    def capacity_reservation_arns(self):
+        """Return a list of capacity reservation ARNs specified in the config."""
+        return [
+            capacity_reservation["CapacityReservationArn"]
+            for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
+                self.capacity_reservation_ids
+            )
+        ]
+
+    @property
     def capacity_reservation_resource_group_arns(self):
         """Return a list of capacity reservation resource group in the config."""
         result = set()
