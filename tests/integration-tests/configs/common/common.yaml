@@ -298,6 +298,8 @@ efa:
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
+      # Capacity Reservation for `c6gn.16xlarge` created in `us-east-1a` do not move unless the target region also
+      # has a Capacity Reservation for `c6gn.16xlarge`
       - regions: ["us-east-1"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
