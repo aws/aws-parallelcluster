@@ -11,8 +11,10 @@
 import os
 
 import pytest
+from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
+from pcluster.models.s3_bucket import S3Bucket
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
@@ -66,3 +68,141 @@ def test_configure_s3_bucket(mocker, put_bucket_versioning_error, put_bucket_enc
     if put_bucket_versioning_error or put_bucket_encryption_error or put_bucket_policy_error:
         with pytest.raises(AWSClientError, match="An error occurred"):
             bucket.configure_s3_bucket()
+
+
+@pytest.mark.parametrize(
+    "region, bucket_name, cluster_name, template_name, expected_url",
+    [
+        (
+            "cn-north-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.cn-north-1.amazonaws.com.cn/cluster-name/templates/file-name",
+        ),
+        (
+            "us-iso-east-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-iso-east-1.c2s.ic.gov/cluster-name/templates/file-name",
+        ),
+        (
+            "us-isob-east-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-isob-east-1.sc2s.sgov.gov/cluster-name/templates/file-name",
+        ),
+        (
+            "CLASSIC-REGION",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.CLASSIC-REGION.amazonaws.com/cluster-name/templates/file-name",
+        ),
+    ],
+)
+def test_get_cfn_template_url(region, bucket_name, cluster_name, template_name, expected_url):
+    os.environ["AWS_DEFAULT_REGION"] = region
+
+    bucket = S3Bucket(
+        name=bucket_name,
+        stack_name=cluster_name,
+        service_name=cluster_name,
+        artifact_directory=cluster_name,
+    )
+
+    assert_that(bucket.get_cfn_template_url(template_name)).is_equal_to(expected_url)
+
+
+@pytest.mark.parametrize(
+    "region, bucket_name, cluster_name, config_name, expected_url",
+    [
+        (
+            "cn-north-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.cn-north-1.amazonaws.com.cn/cluster-name/configs/file-name",
+        ),
+        (
+            "us-iso-east-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-iso-east-1.c2s.ic.gov/cluster-name/configs/file-name",
+        ),
+        (
+            "us-isob-east-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-isob-east-1.sc2s.sgov.gov/cluster-name/configs/file-name",
+        ),
+        (
+            "CLASSIC-REGION",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.CLASSIC-REGION.amazonaws.com/cluster-name/configs/file-name",
+        ),
+    ],
+)
+def test_get_config_url(region, bucket_name, cluster_name, config_name, expected_url):
+    os.environ["AWS_DEFAULT_REGION"] = region
+
+    bucket = S3Bucket(
+        name=bucket_name,
+        stack_name=cluster_name,
+        service_name=cluster_name,
+        artifact_directory=cluster_name,
+    )
+
+    assert_that(bucket.get_config_url(config_name)).is_equal_to(expected_url)
+
+
+@pytest.mark.parametrize(
+    "region, bucket_name, cluster_name, resource_name, expected_url",
+    [
+        (
+            "cn-north-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.cn-north-1.amazonaws.com.cn/cluster-name/custom_resources/file-name",
+        ),
+        (
+            "us-iso-east-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-iso-east-1.c2s.ic.gov/cluster-name/custom_resources/file-name",
+        ),
+        (
+            "us-isob-east-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-isob-east-1.sc2s.sgov.gov/cluster-name/custom_resources/file-name",
+        ),
+        (
+            "CLASSIC-REGION",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.CLASSIC-REGION.amazonaws.com/cluster-name/custom_resources/file-name",
+        ),
+    ],
+)
+def test_get_resource_url(region, bucket_name, cluster_name, resource_name, expected_url):
+    os.environ["AWS_DEFAULT_REGION"] = region
+
+    bucket = S3Bucket(
+        name=bucket_name,
+        stack_name=cluster_name,
+        service_name=cluster_name,
+        artifact_directory=cluster_name,
+    )
+
+    assert_that(bucket.get_resource_url(resource_name)).is_equal_to(expected_url)

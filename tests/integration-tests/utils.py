@@ -29,6 +29,14 @@ from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
 
+DEFAULT_PARTITION = "aws"
+PARTITION_MAP = {
+    "cn": "aws-cn",
+    "us-gov": "aws-us-gov",
+    "us-iso-": "aws-iso",
+    "us-isob": "aws-iso-b",
+}
+
 
 class InstanceTypesData:
     """Utility class to retrieve instance types information needed for integration tests."""
@@ -509,12 +517,11 @@ def get_stack_id_tag_filter(stack_arn):
 
 
 def get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
+    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    return next(
+        (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
+        DEFAULT_PARTITION,
+    )
 
 
 def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):

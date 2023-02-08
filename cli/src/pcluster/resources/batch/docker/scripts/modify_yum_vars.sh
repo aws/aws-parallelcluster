@@ -18,11 +18,11 @@
 
 usage() {
     cat <<ENDUSAGE
-This script modifies yum repo variables so that the Amazon Linux 2 repo points to China-specific URLs.
-The modification is only made if the cluster is running in a China region.
+This script modifies yum repo variables so that the Amazon Linux 2 repo points to the region-specific URLs for China and Isolated regions.
+The modification is only made if the cluster is running in a China or Isolated region.
 
 USAGE:
-modify_china_yum_vars.sh <region>
+modify_yum_vars.sh <region>
 region: Region which cluster is running in
 ENDUSAGE
 
@@ -40,15 +40,23 @@ main() {
         error_exit_usage "Wrong number of arguments provided"
     fi
 
-    # Only modify yum repo variables if cluster is running in a China region.
-    REGION="${1}"
-    if [[ "${REGION}" =~ ^cn-.* ]]; then
+    # Modify yum repo variables if cluster is running in a region with non default AWS domain.
+    local REGION="${1}"
+    local AWS_DOMAIN="amazonaws.com"
+    if [[ ${REGION} == cn-* ]]; then
+        AWS_DOMAIN="amazonaws.com.cn"
+    elif [[ ${REGION} == us-iso-* ]]; then
+        AWS_DOMAIN="c2s.ic.gov"
+    elif [[ ${REGION} == us-isob-* ]]; then
+        AWS_DOMAIN="sc2s.sgov.gov"
+    fi
+    if [[ ${AWS_DOMAIN} != "amazonaws.com" ]]; then
         echo "amazonlinux-2-repos-${REGION}.s3" > /etc/yum/vars/amazonlinux
-        echo "amazonaws.com.cn" > /etc/yum/vars/awsdomain
+        echo "${AWS_DOMAIN}" > /etc/yum/vars/awsdomain
         echo "https" > /etc/yum/vars/awsproto
         echo "${REGION}" > /etc/yum/vars/awsregion
     else
-        echo "Not running in China region. Skipping modification of yum variables."
+        echo "Not running in China or Isolated region. Skipping modification of yum variables."
     fi
 }
 
