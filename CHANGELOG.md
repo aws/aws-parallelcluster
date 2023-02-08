@@ -11,8 +11,7 @@ CHANGELOG
 -----
 
 **ENHANCEMENTS**
-- Add a CloudFormation template for the policies needed for ParallelCluster functionality.
-- Add a library interface to ParallelCluster functionality.
+- Add official versioned ParallelCluster policies in a CloudFormation template to allow customers to easily reference them in their workloads.
 - Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
 - Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
 - Add support for US isolated regions: us-iso-* and us-isob-*.
@@ -20,10 +19,17 @@ CHANGELOG
 **CHANGES**
 - Upgrade Slurm to version 22.05.8.
 - Make Slurm controller logs more verbose and enable additional logging for the Slurm power save plugin.
+- Upgrade EFA installer to `1.21.0`
+  - Efa-driver: `efa-2.1.1-1`
+  - Efa-config: `efa-config-1.12-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1amzn3.0-1`
+  - Rdma-core: `rdma-core-43.0-1`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
 
 **BUG FIXES**
-- Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
-- Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be treated as unhealthy if the EC2 instance status checks fail (see https://github.com/aws/aws-parallelcluster/issues/4751)
+- Fix cluster DB creation by verifying the cluster name is no longer than 40 characters when Slurm accounting is enabled.
+- Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be replaced if the EC2 instance status checks fail.
 
 3.4.1
 -----
