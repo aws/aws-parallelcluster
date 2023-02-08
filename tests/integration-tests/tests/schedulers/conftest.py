@@ -70,7 +70,7 @@ def vpc_stack_for_database(region, request):
 
 
 def _create_database_stack(stack_factory, request, region, vpc_stack_for_database):
-    logging.info("Creating VPC stack for database")
+    logging.info("Creating stack for database")
     database_stack_name = generate_stack_name("integ-tests-slurm-db", request.config.getoption("stackname_suffix"))
 
     database_stack_template_path = "../../cloudformation/database/serverless-database.yaml"
