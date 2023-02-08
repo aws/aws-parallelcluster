@@ -238,3 +238,55 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
 }
+
+
+# Operations support
+# By default, all operations are considered supported.
+# To mark an operation as unsupported for certain regions,
+# add the entry to the map below by region prefixes.
+class Operation(Enum):
+    """
+    Enumeration of operations.
+
+    We do not expect this enumeration to list all the operations,
+    but at least those that are considered for operations flagging.
+    """
+
+    BUILD_IMAGE = "build-image"
+    CONFIGURE = "configure"
+    CREATE_CLUSTER = "create-cluster"
+    DCV_CONNECT = "dcv-connect"
+    DELETE_CLUSTER = "delete-cluster"
+    DELETE_CLUSTER_INSTANCES = "delete-cluster-instances"
+    DELETE_IMAGE = "delete-image"
+    DESCRIBE_CLUSTER = "describe-cluster"
+    DESCRIBE_CLUSTER_INSTANCES = "describe-cluster-instances"
+    DESCRIBE_COMPUTE_FLEET = "describe-compute-fleet"
+    DESCRIBE_IMAGE = "describe-image"
+    EXPORT_CLUSTER_LOGS = "export-cluster-logs"
+    EXPORT_IMAGE_LOGS = "export-image-logs"
+    GET_CLUSTER_LOG_EVENTS = "get-cluster-log-events"
+    GET_CLUSTER_STACK_EVENTS = "get-cluster-stack-events"
+    GET_IMAGE_LOG_EVENTS = "get-image-log-events"
+    GET_IMAGE_STACK_EVENTS = "get-image-stack-events"
+    LIST_CLUSTER_LOG_STREAMS = "list-cluster-log-streams"
+    LIST_CLUSTERS = "list-clusters"
+    LIST_IMAGES = "list-images"
+    LIST_IMAGE_LOG_STREAMS = "list-image-log-streams"
+    LIST_OFFICIAL_IMAGES = "list-official-images"
+    SSH = "ssh"
+    UPDATE_CLUSTER = "update-cluster"
+    UPDATE_COMOPUTE_FLEET = "update-compute-fleet"
+    VERSION = "version"
+
+
+UNSUPPORTED_OPERATIONS_MAP = {
+    Operation.BUILD_IMAGE: ["us-iso"],
+    Operation.DELETE_IMAGE: ["us-iso"],
+    Operation.DESCRIBE_IMAGE: ["us-iso"],
+    Operation.LIST_IMAGES: ["us-iso"],
+    Operation.EXPORT_IMAGE_LOGS: ["us-iso"],
+    Operation.GET_IMAGE_LOG_EVENTS: ["us-iso"],
+    Operation.GET_IMAGE_STACK_EVENTS: ["us-iso"],
+    Operation.LIST_IMAGE_LOG_STREAMS: ["us-iso"],
+}

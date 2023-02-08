@@ -707,13 +707,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         sid="AllowRunningReservedCapacity",
                         actions=["ec2:RunInstances"],
                         effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="ec2",
-                                resource=f"capacity-reservation/{capacity_reservation_id}",
-                            )
-                            for capacity_reservation_id in capacity_reservation_ids
-                        ],
+                        resources=self._config.capacity_reservation_arns,
                     )
                 )
             capacity_reservation_resource_group_arns = self._config.capacity_reservation_resource_group_arns

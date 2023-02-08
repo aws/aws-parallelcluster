@@ -27,9 +27,9 @@ from pcluster.api.errors import (
     NotFoundException,
     ParallelClusterApiException,
 )
-from pcluster.aws.common import BadRequestError, LimitExceededError, StackNotFoundError
+from pcluster.aws.common import BadRequestError, LimitExceededError, StackNotFoundError, get_region
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
-from pcluster.constants import SUPPORTED_REGIONS
+from pcluster.constants import SUPPORTED_REGIONS, UNSUPPORTED_OPERATIONS_MAP, Operation
 from pcluster.models.cluster import Cluster
 from pcluster.models.common import BadRequest, Conflict, LimitExceeded, NotFound, parse_config
 from pcluster.utils import get_installed_version, to_utc_datetime
@@ -177,3 +177,13 @@ def get_validator_suppressors(suppress_validators: Optional[List[str]]) -> Set[V
         validator_suppressors.add(TypeMatchValidatorsSuppressor(validator_types_to_suppress))
 
     return validator_suppressors
+
+
+def assert_supported_operation(operation: Operation, region: str):
+    """Raise a BadRequestException if the operation is not supported in the region."""
+    _region = get_region() if region is None else region
+    prefixes_of_unsupported_regions = UNSUPPORTED_OPERATIONS_MAP.get(operation, [])
+    if any(_region.startswith(region_prefix) for region_prefix in prefixes_of_unsupported_regions):
+        message = f"The operation '{operation.value}' is not supported in region '{region}'."
+        LOGGER.critical(message)
+        raise BadRequestException(message)
