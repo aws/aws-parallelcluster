@@ -63,6 +63,8 @@ Image:
 
 image_test = [(image_input_0, image_output_0), (image_input_1, image_output_1), (image_input_2, image_output_2)]
 
+iam_region_0 = "us-west-1"
+
 iam_input_0 = """
 [cluster default]
 iam_lambda_role = role_name
@@ -74,19 +76,54 @@ Iam:
     LambdaFunctionRole: arn:aws:iam::1234567:role/role_name
 """
 
+iam_region_1 = "cn-north-1"
+
 iam_input_1 = """
 [cluster default]
-iam_lambda_role =   role_name 
+iam_lambda_role = role_name
 iam_lambda_role1 =
 """
 
 iam_output_1 = """
 Iam:
   Role:
-    LambdaFunctionRole: arn:aws:iam::1234567:role/role_name
+    LambdaFunctionRole: arn:aws-cn:iam::1234567:role/role_name
 """
 
-iam_test = [(iam_input_0, iam_output_0), (iam_input_1, iam_output_1)]
+iam_region_2 = "us-iso-east-1"
+
+iam_input_2 = """
+[cluster default]
+iam_lambda_role = role_name
+iam_lambda_role1 =
+"""
+
+iam_output_2 = """
+Iam:
+  Role:
+    LambdaFunctionRole: arn:aws-iso:iam::1234567:role/role_name
+"""
+
+iam_region_3 = "us-isob-east-1"
+
+iam_input_3 = """
+[cluster default]
+iam_lambda_role = role_name
+iam_lambda_role1 =
+"""
+
+iam_output_3 = """
+Iam:
+  Role:
+    LambdaFunctionRole: arn:aws-iso-b:iam::1234567:role/role_name
+"""
+
+iam_test = [
+    (iam_region_0, iam_input_0, iam_output_0),
+    (iam_region_1, iam_input_1, iam_output_1),
+    (iam_region_2, iam_input_2, iam_output_2),
+    (iam_region_3, iam_input_3, iam_output_3),
+]
 
 additional_packages_input_0 = """
 [cluster default]
@@ -602,7 +639,7 @@ SharedStorage:
 
 shared_storage_input_3 = """
 [cluster default]
-ebs_settings = custom1 
+ebs_settings = custom1
 shared_dir = /shared_dir1
 
 [ebs custom1]
@@ -930,7 +967,7 @@ Scheduling:
           HttpProxyAddress: https://x.x.x.x:8080
         SecurityGroups:
           - sg-xxxxxx
-        SubnetIds: 
+        SubnetIds:
           - subnet-0bfad12f6b586686c
     - CapacityType: SPOT
       ComputeResources:
@@ -974,7 +1011,7 @@ Scheduling:
           HttpProxyAddress: https://x.x.x.x:8080
         SecurityGroups:
           - sg-xxxxxx
-        SubnetIds: 
+        SubnetIds:
           - subnet-0bfad12f6b586686c
   SlurmSettings:
     Dns:
@@ -1068,7 +1105,7 @@ Scheduling:
           HttpProxyAddress: https://x.x.x.x:8080
         SecurityGroups:
           - sg-xxxxxx
-        SubnetIds: 
+        SubnetIds:
           - subnet-12345
     - CapacityType: SPOT
       ComputeResources:
@@ -1092,7 +1129,7 @@ Scheduling:
           HttpProxyAddress: https://x.x.x.x:8080
         SecurityGroups:
           - sg-xxxxxx
-        SubnetIds: 
+        SubnetIds:
           - subnet-12345
   SlurmSettings:
     Dns:
@@ -1129,7 +1166,7 @@ Scheduling:
           Name: ondemand-i1
       Name: queue1
       Networking:
-        SubnetIds: 
+        SubnetIds:
           - subnet-12345
 """
 
@@ -1163,7 +1200,7 @@ Scheduling:
           Name: batch-compute
           SpotBidPercentage: 85.0
       Networking:
-        SubnetIds: 
+        SubnetIds:
           - subnet-0bfad12f6b
       Name: batch-queue
   Scheduler: awsbatch
@@ -1207,7 +1244,7 @@ Scheduling:
           - sg-xxxxxx
         SecurityGroups:
           - sg-xxxxxx
-        SubnetIds: 
+        SubnetIds:
           - subnet-12345
       Name: batch-queue
   Scheduler: awsbatch
@@ -1236,7 +1273,7 @@ Scheduling:
             - t2.micro
           Name: batch-compute
       Networking:
-        SubnetIds: 
+        SubnetIds:
           - subnet-12345
       Name: batch-queue
   Scheduler: awsbatch

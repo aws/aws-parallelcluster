@@ -24,7 +24,7 @@ import yaml
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
-from pcluster.utils import get_partition, yaml_load, zip_dir
+from pcluster.utils import get_partition, get_url_domain_suffix, yaml_load, zip_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -302,10 +302,10 @@ class S3Bucket:
 
     def _get_file_url(self, file_name, file_type):
         """Get file http url from S3 bucket."""
-        url = "https://{bucket_name}.s3.{region}.amazonaws.com{partition_suffix}/{config_key}".format(
+        url = "https://{bucket_name}.s3.{region}.{aws_domain}/{config_key}".format(
             bucket_name=self.name,
             region=self.region,
-            partition_suffix=".cn" if self.region.startswith("cn") else "",
+            aws_domain=get_url_domain_suffix(self.partition),
             config_key=self.get_object_key(file_type, file_name),
         )
         return url
