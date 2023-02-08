@@ -28,8 +28,6 @@ from troposphere.ec2 import (
     VPCGatewayAttachment,
 )
 
-from tests.common.utils import retrieve_latest_ami
-
 TAGS_PREFIX = "ParallelCluster"
 BASTION_INSTANCE_TYPE = "c5.large"
 
@@ -101,6 +99,7 @@ class NetworkTemplateBuilder:
         create_vpc_endpoints: bool = False,
         create_bastion_instance: bool = False,
         bastion_key_name: str = None,
+        bastion_image_id: str = None,
         region: str = None,
     ):
         self.__template = Template()
@@ -120,6 +119,7 @@ class NetworkTemplateBuilder:
         self.__create_vpc_endpoints = create_vpc_endpoints
         self.__create_bastion_instance = create_bastion_instance
         self.__bastion_key_name = bastion_key_name
+        self.__bastion_image_id = bastion_image_id
 
     def __get_vpc(self, existing_vpc):
         if existing_vpc:
@@ -178,6 +178,7 @@ class NetworkTemplateBuilder:
         if self.__create_bastion_instance or self.__create_vpc_endpoints:
             assert_that(bastion_subnet_ref).is_not_none()
             assert_that(self.__bastion_key_name).is_not_none()
+            assert_that(self.__bastion_image_id).is_not_none()
             assert_that(self.__region).is_not_none()
             self.__build_bastion_instance(bastion_subnet_ref)
 
@@ -297,7 +298,7 @@ class NetworkTemplateBuilder:
         instance = ec2.Instance(
             "NetworkingBastionInstance",
             InstanceType=BASTION_INSTANCE_TYPE,
-            ImageId=retrieve_latest_ami(self.__region, "alinux2"),
+            ImageId=self.__bastion_image_id,
             KeyName=self.__bastion_key_name,
             SecurityGroupIds=[Ref(bastion_sg)],
             LaunchTemplate=ec2.LaunchTemplateSpecification(
