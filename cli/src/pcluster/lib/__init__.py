@@ -6,6 +6,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Prevent the "ParallelCluster imported but not used" error
+# This series of imports and functions is to move parallelcluster functionality
+# to the module level.
 # flake8: noqa
-from pcluster.lib.lib import ParallelCluster
+from pcluster.lib import lib
+
+# Dynamically add pcluster functions to the pcluster module
+# pylint: disable=protected-access
+lib._add_functions(lib._load_model(), lib)
+
+# Now import the additional functions into this module.
+# pylint: disable=wrong-import-position
+from pcluster.lib.lib import *
