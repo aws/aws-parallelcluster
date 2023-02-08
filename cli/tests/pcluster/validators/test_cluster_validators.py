@@ -68,6 +68,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
+    _are_subnets_covered_by_cidrs,
     _LaunchTemplateValidator,
 )
 from pcluster.validators.common import FailureLevel
@@ -2479,6 +2480,23 @@ def test_multi_az_root_volume_validator(
     actual_failures = MultiAzRootVolumeValidator().execute(head_node_az, queues)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "ip_ranges, subnet_cidrs, covered",
+    [
+        (["0.0.0.0/0"], ["10.1.2.0/24"], True),  # Simple coverage
+        (["0.0.0.0/0"], ["10.1.0.0/16", "192.1.2.0/24"], True),  # Cover two subnets
+        (["10.1.0.0/16", "192.1.2.0/24"], ["10.1.0.0/16", "192.1.2.0/24"], True),  # Exact coverage
+        (["10.1.0.0/17", "10.1.128.0/17"], ["10.1.0.0/16"], True),  # Combination coverage
+        (["10.1.0.0/17"], ["10.1.0.0/16"], False),  # Uncovered
+    ],
+)
+def test_are_subnets_covered_by_cidrs(mocker, ip_ranges, subnet_cidrs, covered):
+    mock_aws_api(mocker)
+    assert_that(
+        _are_subnets_covered_by_cidrs([{"CidrIp": ip_range} for ip_range in ip_ranges], subnet_cidrs)
+    ).is_equal_to(covered)
 
 
 class TestDictLaunchTemplateBuilder:
