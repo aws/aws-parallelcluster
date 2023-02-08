@@ -24,7 +24,7 @@ from pcluster.utils import to_snake_case
 
 
 # The definition of the shape of model is defined in pcluster.cli.model
-def _gen_class(model: Dict) -> Dict[str, Callable]:
+def _gen_func_map(model: Dict) -> Dict[str, Callable]:
     """Generate a dict mapping function names to dispatch functions."""
 
     class Args:
@@ -44,7 +44,7 @@ def _gen_class(model: Dict) -> Dict[str, Callable]:
     def make_func(op_name: str) -> Callable:
         """Take the name of an operation and return the function that call the controller."""
 
-        def func(_self, **kwargs):
+        def func(**kwargs):
             # Validate that args provided match the model
             params = model[op_name]["params"]
             expected = {to_snake_case(param["name"]) for param in params if param["required"]}
@@ -82,9 +82,7 @@ def _load_model():
     return pcluster.cli.model.load_model(spec)
 
 
-def _make_class(model):
-    """Create a python class from a provided model."""
-    return type("ParallelCluster", (object,), _gen_class(model))
-
-
-ParallelCluster = _make_class(_load_model())
+def _add_functions(model, obj):
+    """Add parallel cluster functionality to the module."""
+    for func_name, func in _gen_func_map(model).items():
+        setattr(obj, func_name, func)
