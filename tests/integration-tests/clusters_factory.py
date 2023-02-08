@@ -20,6 +20,7 @@ import yaml
 from framework.credential_providers import run_pcluster_command
 from retrying import retry
 from utils import (
+    SetupError,
     dict_add_nested_key,
     get_stack_id_tag_filter,
     kebab_case,
@@ -415,6 +416,7 @@ class ClustersFactory:
         :param cluster: cluster to create.
         :param log_error: log error when error occurs. This can be set to False when error is expected
         :param raise_on_error: raise exception if cluster creation fails
+        :param failure_function: function that will be called if cluster creation fails
         :param kwargs: additional parameters to be passed to the pcluster command
         """
         name = cluster.name
@@ -428,7 +430,7 @@ class ClustersFactory:
             result = run_pcluster_command(
                 command,
                 timeout=7200,
-                raise_on_error=raise_on_error,
+                raise_on_error=False,
                 log_error=log_error,
                 custom_cli_credentials=cluster.custom_cli_credentials,
             )
@@ -439,7 +441,9 @@ class ClustersFactory:
                     error = f"Cluster creation failed for {name}"
                     logging.error(error)
                     if raise_on_error:
-                        raise Exception(error)
+                        response = cluster.describe_cluster()
+                        events = cluster.get_stack_events()
+                        raise SetupError(error, stack_events=events, cluster_details=response)
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
                     cluster.mark_as_created()

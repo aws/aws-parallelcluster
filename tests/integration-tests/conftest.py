@@ -27,6 +27,7 @@ from typing import Any, Optional, Tuple
 import boto3
 import pytest
 import yaml
+from _pytest._code import ExceptionInfo
 from _pytest.fixtures import FixtureDef, SubRequest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
@@ -63,6 +64,7 @@ from troposphere.fsx import (
 )
 from utils import (
     InstanceTypesData,
+    SetupError,
     create_s3_bucket,
     delete_s3_bucket,
     dict_add_nested_key,
@@ -369,6 +371,46 @@ def _add_properties_to_report(item):
     for dimension_value_pair in props:
         if dimension_value_pair not in item.user_properties:
             item.user_properties.append(dimension_value_pair)
+
+
+def _add_setup_exception_details_to_report(item, report, exception_info):
+    props = []
+
+    if not isinstance(exception_info.value, SetupError):
+        return
+
+    props.append(("failure-type", "setup"))
+    if exception_info.value.cluster_details:
+        logging.info("Cluster details: %s", json.dumps(exception_info.value.cluster_details, indent=2))
+        props.append(
+            (
+                "failure-codes",
+                json.dumps(
+                    [
+                        {failure["failureCode"]: failure["failureReason"]}
+                        for failure in exception_info.value.cluster_details["failures"]
+                    ]
+                ),
+            )
+        )
+    if exception_info.value.stack_events:
+        logging.info("Stack events: %s", json.dumps(exception_info.value.stack_events, indent=2))
+        props.append(
+            (
+                "failure-events",
+                json.dumps(
+                    [
+                        {
+                            event["logicalResourceId"]: event["resourceStatusReason"],
+                        }
+                        for event in exception_info.value.stack_events["events"]
+                        if event["resourceStatus"] == "CREATE_FAILED"
+                    ]
+                ),
+            )
+        )
+    for prop in props:
+        item.user_properties.append(prop)
 
 
 @pytest.fixture(scope="class")
@@ -1058,6 +1100,9 @@ def pytest_runtest_makereport(item, call):
     setattr(item, "rep_" + rep.when, rep)
 
     if rep.when in ["setup", "call"] and rep.failed:
+        exception_info: ExceptionInfo = call.excinfo
+        if exception_info.value and isinstance(exception_info.value, SetupError):
+            rep.when = "setup"
         try:
             update_failed_tests_config(item)
         except Exception as e:

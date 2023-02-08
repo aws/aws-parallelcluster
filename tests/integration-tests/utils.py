@@ -38,6 +38,39 @@ PARTITION_MAP = {
 }
 
 
+class SetupError(BaseException):
+    """Exception to throw from infrastructure factory fixtures if the infrastructure setup fails"""
+
+    def __init__(self, *args, stack_events=None, cluster_details=None):
+        self.message = self._format_message(args[0], stack_events, cluster_details)
+
+    @staticmethod
+    def _format_message(message, stack_events, cluster_details) -> str:
+        formatted_message = message if message else "Error during setup."
+        if cluster_details:
+            details_string = "\n\t".join(
+                [
+                    f"{failure['failureCode']}:\n\t\t{failure['failureReason']}"
+                    for failure in cluster_details["failures"]
+                ],
+            )
+            formatted_message += f"\n\n- Cluster Errors:\n\t{details_string}"
+
+        if stack_events:
+            events_string = "\n\t".join(
+                [
+                    f"* {event['logicalResourceId']}:\n\t\t{event['resourceStatusReason']}"
+                    for event in stack_events["events"]
+                    if event["resourceStatus"] == "CREATE_FAILED"
+                ]
+            )
+            formatted_message += f"\n\n- Stack Events:\n\t{events_string}"
+        return formatted_message
+
+    def __str__(self):
+        return "SetupError: {0} ".format(self.message) if self.message else "SetupError has been raised"
+
+
 class InstanceTypesData:
     """Utility class to retrieve instance types information needed for integration tests."""
 
@@ -430,6 +463,7 @@ def check_head_node_security_group(region, cluster, port, expected_cidr):
 def check_status(cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None):
     """Check the cluster's status and its head and compute status is as expected."""
     cluster_info = cluster.describe_cluster()
+    logging.info("Cluster Info: %s", cluster_info)
     if cluster_status:
         assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
     if head_node_status:
