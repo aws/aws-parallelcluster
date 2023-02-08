@@ -91,6 +91,7 @@ from tests.common.storage.fsx_utils import delete_fsx_filesystem
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
+    retrieve_latest_ami,
     retrieve_pcluster_ami_without_standard_naming,
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
@@ -1085,11 +1086,15 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
                 private_subnet_az3,
             ],
         )
+
+        with aws_credential_provider(region, credential):
+            bastion_image_id = retrieve_latest_ami(region, "alinux2")
         template = NetworkTemplateBuilder(
             vpc_configuration=vpc_config,
             default_availability_zone=availability_zones[0],
             create_bastion_instance=True,
             bastion_key_name=key_name,
+            bastion_image_id=bastion_image_id,
             region=region,
         ).build()
         vpc_stacks_dict[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
@@ -1149,11 +1154,15 @@ def vpc_stack_with_endpoints(region, request, key_name):
         ],
     )
 
+    with aws_credential_provider(region, credential):
+        bastion_image_id = retrieve_latest_ami(region, "alinux2")
+
     template = NetworkTemplateBuilder(
         vpc_configuration=vpc_config,
         default_availability_zone=availability_zone,
         create_vpc_endpoints=True,
         bastion_key_name=key_name,
+        bastion_image_id=bastion_image_id,
         region=region,
     ).build()
 
