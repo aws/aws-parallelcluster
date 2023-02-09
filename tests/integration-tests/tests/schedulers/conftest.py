@@ -5,7 +5,7 @@ from collections import defaultdict
 
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
-from conftest import get_availability_zones
+from conftest_networking import get_availability_zones
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import generate_stack_name
 
