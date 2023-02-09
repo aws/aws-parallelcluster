@@ -373,46 +373,6 @@ def _add_properties_to_report(item):
             item.user_properties.append(dimension_value_pair)
 
 
-def _add_setup_exception_details_to_report(item, report, exception_info):
-    props = []
-
-    if not isinstance(exception_info.value, SetupError):
-        return
-
-    props.append(("failure-type", "setup"))
-    if exception_info.value.cluster_details:
-        logging.info("Cluster details: %s", json.dumps(exception_info.value.cluster_details, indent=2))
-        props.append(
-            (
-                "failure-codes",
-                json.dumps(
-                    [
-                        {failure["failureCode"]: failure["failureReason"]}
-                        for failure in exception_info.value.cluster_details["failures"]
-                    ]
-                ),
-            )
-        )
-    if exception_info.value.stack_events:
-        logging.info("Stack events: %s", json.dumps(exception_info.value.stack_events, indent=2))
-        props.append(
-            (
-                "failure-events",
-                json.dumps(
-                    [
-                        {
-                            event["logicalResourceId"]: event["resourceStatusReason"],
-                        }
-                        for event in exception_info.value.stack_events["events"]
-                        if event["resourceStatus"] == "CREATE_FAILED"
-                    ]
-                ),
-            )
-        )
-    for prop in props:
-        item.user_properties.append(prop)
-
-
 @pytest.fixture(scope="class")
 @pytest.mark.usefixtures("setup_credentials")
 def clusters_factory(request, region):

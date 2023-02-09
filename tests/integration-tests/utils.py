@@ -50,7 +50,7 @@ class SetupError(BaseException):
         if cluster_details:
             details_string = "\n\t".join(
                 [
-                    f"{failure['failureCode']}:\n\t\t{failure['failureReason']}"
+                    f"* {failure['failureCode']}:\n\t\t{failure['failureReason']}"
                     for failure in cluster_details["failures"]
                 ],
             )
@@ -59,9 +59,9 @@ class SetupError(BaseException):
         if stack_events:
             events_string = "\n\t".join(
                 [
-                    f"* {event['logicalResourceId']}:\n\t\t{event['resourceStatusReason']}"
-                    for event in stack_events["events"]
-                    if event["resourceStatus"] == "CREATE_FAILED"
+                    f"* {event['LogicalResourceId']}:\n\t\t{event['ResourceStatusReason']}"
+                    for event in stack_events
+                    if event["ResourceStatus"] == "CREATE_FAILED"
                 ]
             )
             formatted_message += f"\n\n- Stack Events:\n\t{events_string}"
@@ -225,6 +225,27 @@ def retrieve_cfn_resources(stack_name, region):
     for resource in get_cfn_resources(stack_name, region):
         resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
     return resources
+
+
+def get_cfn_events(stack_name, region):
+    """Retrieve CloudFormation Stack Events from a give stack."""
+    if not stack_name:
+        logging.warning("stack_name not provided when retrieving events")
+        return []
+    if region is None:
+        region = os.environ.get("AWS_DEFAULT_REGION")
+    try:
+        logging.debug("Getting events for stack {}".format(stack_name))
+        cfn = boto3.client("cloudformation", region_name=region)
+        response = cfn.describe_stack_events(StackName=stack_name)
+        while response:
+            yield from response.get("StackEvents")
+            next_token = response.get("NextToken")
+            response = cfn.describe_stack_events(StackName=stack_name, NextToken=next_token) if next_token else None
+    except Exception as e:
+        logging.warning("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        raise
+    return None
 
 
 def get_substacks(stack_name, region=None, sub_stack_name=None):
@@ -463,7 +484,6 @@ def check_head_node_security_group(region, cluster, port, expected_cidr):
 def check_status(cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None):
     """Check the cluster's status and its head and compute status is as expected."""
     cluster_info = cluster.describe_cluster()
-    logging.info("Cluster Info: %s", cluster_info)
     if cluster_status:
         assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
     if head_node_status:

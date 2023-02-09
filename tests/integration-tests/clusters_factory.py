@@ -22,6 +22,7 @@ from retrying import retry
 from utils import (
     SetupError,
     dict_add_nested_key,
+    get_cfn_events,
     get_stack_id_tag_filter,
     kebab_case,
     retrieve_cfn_outputs,
@@ -416,7 +417,6 @@ class ClustersFactory:
         :param cluster: cluster to create.
         :param log_error: log error when error occurs. This can be set to False when error is expected
         :param raise_on_error: raise exception if cluster creation fails
-        :param failure_function: function that will be called if cluster creation fails
         :param kwargs: additional parameters to be passed to the pcluster command
         """
         name = cluster.name
@@ -441,8 +441,10 @@ class ClustersFactory:
                     error = f"Cluster creation failed for {name}"
                     logging.error(error)
                     if raise_on_error:
-                        response = cluster.describe_cluster()
-                        events = cluster.get_stack_events()
+                        # Get the stack ID so that we can retrieve events even
+                        # in the case where the stack has been deleted.
+                        stack_id = response.get("cloudformationStackArn")
+                        events = get_cfn_events(stack_name=stack_id, region=cluster.region)
                         raise SetupError(error, stack_events=events, cluster_details=response)
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
