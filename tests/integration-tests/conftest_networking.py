@@ -61,6 +61,27 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
+# Implements NamingConvention for Subnets
+# See: https://quip-amazon.com/xLgkAjTFgb7L/
+# Decision-Doc-Test-Runner-MultiAZ-requirements-and-improvements#temp:C:ZbZc1ead4e609ac455e821b5a7dc
+#
+# Default subnets (for retro-compatibilities and test-based overrides) will be named
+#  - Public
+#  - Private
+#
+# Unique zonal subnets will be named
+#  - Az1Public ....
+#  - Az1Private ...
+#
+# Custom subnets are allowed in either format
+# Az1PublicNoInternet
+# PrivateSpecialCidr
+#
+# Note: postfix SubnetId should be added somewhere else
+def subnet_name(visibility="Public", az_num=None, special=None):
+    az_id = "" if az_num is None else f"Az{az_num}"
+    special_tag = "" if special is None else f"{special}"
+    return f"{az_id}{visibility}{special_tag}"
 
 def get_availability_zones(region, credential):
     """
@@ -179,7 +200,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         # Subnets visual representation:
         # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
         public_subnet = SubnetConfig(
-            name="Public",
+            name=subnet_name(visibility="Public"),
             cidr="192.168.32.0/20",  # 4096 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
@@ -187,7 +208,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             default_gateway=Gateways.INTERNET_GATEWAY,
         )
         private_subnet = SubnetConfig(
-            name="Private",
+            name=subnet_name(visibility="Private"),
             cidr="192.168.64.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
@@ -195,7 +216,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             default_gateway=Gateways.NAT_GATEWAY,
         )
         private_subnet_different_cidr = SubnetConfig(
-            name="PrivateAdditionalCidr",
+            name=subnet_name(visibility="Private", special="AdditionalCidr"),
             cidr="192.168.96.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
@@ -203,7 +224,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             default_gateway=Gateways.NAT_GATEWAY,
         )
         no_internet_subnet = SubnetConfig(
-            name="NoInternet",
+            name=subnet_name(visibility="Private", special="NoInternet"),
             cidr="192.168.16.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
@@ -211,7 +232,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             default_gateway=Gateways.NONE,
         )
         public_subnet_az2 = SubnetConfig(
-            name="PublicAz2",
+            name=subnet_name(visibility="Public", az_num=2),
             cidr="192.168.128.0/20",  # 4096 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
@@ -219,7 +240,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             default_gateway=Gateways.INTERNET_GATEWAY,
         )
         private_subnet_az2 = SubnetConfig(
-            name="PrivateAz2",
+            name=subnet_name(visibility="Private", az_num=2),
             cidr="192.168.160.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
@@ -227,7 +248,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             default_gateway=Gateways.NAT_GATEWAY,
         )
         public_subnet_az3 = SubnetConfig(
-            name="PublicAz3",
+            name=subnet_name(visibility="Public", az_num=3),
             cidr="192.168.192.0/20",  # 4096 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
@@ -235,7 +256,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             default_gateway=Gateways.INTERNET_GATEWAY,
         )
         private_subnet_az3 = SubnetConfig(
-            name="PrivateAz3",
+            name=subnet_name(visibility="Private", az_num=3),
             cidr="192.168.224.0/20",  # 4096 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
