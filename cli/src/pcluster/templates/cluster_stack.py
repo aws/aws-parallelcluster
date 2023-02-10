@@ -27,6 +27,7 @@ from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
+from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk.core import (
     CfnCustomResource,
     CfnDeletionPolicy,
@@ -37,6 +38,7 @@ from aws_cdk.core import (
     CfnTag,
     Construct,
     CustomResource,
+    Duration,
     Fn,
     Stack,
 )
@@ -298,6 +300,38 @@ class ClusterCdkStack:
                 shared_storage_infos=self.shared_storage_infos,
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
             )
+
+            self.alarms = []
+
+            metrics_for_alarms = {
+                "Mem": cloudwatch.Metric(
+                    namespace="CWAgent",
+                    metric_name="mem_used_percent",
+                    dimensions_map={"InstanceId": self.head_node_instance.ref}
+                ),
+                "Disk": cloudwatch.Metric(
+                    namespace="CWAgent",
+                    metric_name="disk_used_percent",
+                    dimensions_map={"InstanceId": self.head_node_instance.ref}
+                )
+            }
+
+            for metric_key, metric in metrics_for_alarms.items():
+                alarm_id = f"Pcluster{metric_key}Alarm"
+                alarm_name = f"{metric_key}Alarm_{self.stack.stack_name}_{self.head_node_instance.ref}"
+                self.alarms.append(cloudwatch.Alarm(
+                    scope=self.stack,
+                    id=alarm_id,
+                    metric=metric,
+                    period=Duration.seconds(60),
+                    evaluation_periods=1,
+                    threshold=90,
+                    alarm_name=alarm_name,
+                    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    datapoints_to_alarm=1,
+                    statistic="Maximum"
+                ))
+
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(
