@@ -5,7 +5,6 @@ CHANGELOG
 ----
 
 **BUG FIXES**
-- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
 
 3.5.0
@@ -32,6 +31,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix cluster DB creation by verifying the cluster name is no longer than 40 characters when Slurm accounting is enabled.
 - Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be replaced if the EC2 instance status checks fail.
+- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
 
 3.4.1
 -----
