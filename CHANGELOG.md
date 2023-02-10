@@ -13,6 +13,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add official versioned ParallelCluster policies in a CloudFormation template to allow customers to easily reference them in their workloads.
+- Add a Python library to allow customers to use ParallelCluster functionalities in their own code.
 - Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
 - Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
 - Add support for US isolated regions: us-iso-* and us-isob-*.
