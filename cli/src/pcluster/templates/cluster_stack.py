@@ -85,7 +85,7 @@ from pcluster.templates.cdk_builder_utils import (
 from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting
+from pcluster.utils import get_attr, get_http_tokens_setting, get_service_endpoint
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -923,6 +923,8 @@ class ClusterCdkStack:
                 )
             )
 
+        cloudformation_url = get_service_endpoint("cloudformation", self.stack.region)
+
         # Head node Launch Template
         head_node_launch_template = ec2.CfnLaunchTemplate(
             self.stack,
@@ -950,6 +952,7 @@ class ClusterCdkStack:
                                 "DisableMultiThreadingManually": "true"
                                 if head_node.disable_simultaneous_multithreading_manually
                                 else "false",
+                                "CloudFormationUrl": cloudformation_url,
                             },
                             **get_common_user_data_env(head_node, self.config),
                         },
@@ -1125,10 +1128,16 @@ class ClusterCdkStack:
                                 "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
                                 ". /etc/profile.d/pcluster.sh; "
                                 "cfn-init -v --stack ${StackName} "
-                                "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
+                                "--resource HeadNodeLaunchTemplate --configsets update "
+                                "--region ${Region} "
+                                "--url ${CloudFormationUrl}\n"
                                 "runas=root\n"
                             ),
-                            {"StackName": self._stack_name, "Region": self.stack.region},
+                            {
+                                "StackName": self._stack_name,
+                                "Region": self.stack.region,
+                                "CloudFormationUrl": cloudformation_url,
+                            },
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1136,8 +1145,16 @@ class ClusterCdkStack:
                     },
                     "/etc/cfn/cfn-hup.conf": {
                         "content": Fn.sub(
-                            "[main]\nstack=${StackId}\nregion=${Region}\ninterval=2",
-                            {"StackId": self.stack.stack_id, "Region": self.stack.region},
+                            "[main]\n"
+                            "stack=${StackId}\n"
+                            "region=${Region}\n"
+                            "url=${CloudFormationUrl}\n"
+                            "interval=2\n",
+                            {
+                                "StackId": self.stack.stack_id,
+                                "Region": self.stack.region,
+                                "CloudFormationUrl": cloudformation_url,
+                            },
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1206,9 +1223,11 @@ class ClusterCdkStack:
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
                             " --override-runlist aws-parallelcluster::update &&"
                             " /opt/parallelcluster/scripts/fetch_and_run -postupdate &&"
-                            " cfn-signal --exit-code=0 --reason='Update complete'"
+                            f" cfn-signal --exit-code=0 --reason='Update complete'"
+                            f" --region {self.stack.region} --url {cloudformation_url}"
                             f" '{self.wait_condition_handle.ref}' ||"
-                            " cfn-signal --exit-code=1 --reason='Update failed'"
+                            f" cfn-signal --exit-code=1 --reason='Update failed'"
+                            f" --region {self.stack.region} --url {cloudformation_url}"
                             f" '{self.wait_condition_handle.ref}'"
                         ),
                         "cwd": "/etc/chef",
