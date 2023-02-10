@@ -765,8 +765,9 @@ def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = get_vpc_snakecase_value(vpc_stack)
     default_values["public_subnet_id"] = vpc_stack.get_public_subnet()  # TODO possibility to override default AZ
+    default_values["public_subnet_ids"] = vpc_stack.get_all_public_subnets()
     default_values["private_subnet_id"] = vpc_stack.get_private_subnet()  # TODO possibility to override default AZ
-    # TODO inject variable containing N subnets
+    default_values["private_subnet_ids"] = vpc_stack.get_all_private_subnets()
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
