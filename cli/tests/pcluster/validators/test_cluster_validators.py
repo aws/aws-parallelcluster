@@ -81,6 +81,11 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
 from tests.utils import MockedBoto3Request
 
 
+@pytest.fixture
+def get_region(mocker):
+    mocker.patch("pcluster.config.cluster_config.get_region", return_value="WHATEVER_REGION")
+
+
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.aws.common.boto3"
@@ -1682,11 +1687,11 @@ def test_efs_id_validator(
 
 
 @pytest.mark.parametrize(
-    "queues, new_storage_count, failure_level, expected_message",
+    "queue_parameters_array, new_storage_count, failure_level, expected_message",
     [
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1700,14 +1705,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1721,14 +1726,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1742,14 +1747,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1766,14 +1771,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1787,14 +1792,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1808,14 +1813,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1829,14 +1834,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1853,14 +1858,14 @@ def test_efs_id_validator(
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1877,25 +1882,29 @@ def test_efs_id_validator(
         ),
     ],
 )
-def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failure_level, expected_message):
+@pytest.mark.usefixtures("get_region")
+def test_new_storage_multiple_subnets_validator(
+    queue_parameters_array, new_storage_count, failure_level, expected_message
+):
+    queues = [SlurmQueue(**queue_parameters) for queue_parameters in queue_parameters_array]
     actual_failures = ManagedFsxMultiAzValidator().execute(queues, new_storage_count)
     assert_failure_messages(actual_failures, expected_message)
     assert_failure_level(actual_failures, failure_level)
 
 
 @pytest.mark.parametrize(
-    "queues, subnet_az_mappings, fsx_az_list, failure_level, expected_messages",
+    "queue_parameters_array, subnet_az_mappings, fsx_az_list, failure_level, expected_messages",
     [
         (
             [
-                SlurmQueue(
+                dict(
                     name="different-az-queue",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-2"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="single-az-same-subnet-queue",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1914,14 +1923,14 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="same-az-same-subnet-queue",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="same-az-other-subnet-queue",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1936,14 +1945,14 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="one-az-match-queue",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="full-az-match-queue",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1958,14 +1967,14 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="multi-az-queue-match",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1", "subnet-2"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="multi-az-queue-match",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -1983,7 +1992,7 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="multi-az-queue-mismatch",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2002,7 +2011,7 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="multi-az-queue-partial-match",
                     compute_resources=[],
                     networking=SchedulerPluginQueueNetworking(
@@ -2021,7 +2030,7 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="multi-az-queue-match",
                     compute_resources=[],
                     networking=SchedulerPluginQueueNetworking(
@@ -2036,14 +2045,14 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
         ),
         (
             [
-                SlurmQueue(
+                dict(
                     name="different-az-queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="different-az-queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2066,22 +2075,23 @@ def test_new_storage_multiple_subnets_validator(queues, new_storage_count, failu
     ],
 )
 def test_unmanaged_fsx_multiple_az_validator(
-    mocker, queues, subnet_az_mappings, fsx_az_list, failure_level, expected_messages
+    mocker, queue_parameters_array, subnet_az_mappings, fsx_az_list, failure_level, expected_messages
 ):
     mock_aws_api(mocker)
 
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
 
+    queues = [SlurmQueue(**queue_parameters) for queue_parameters in queue_parameters_array]
     actual_failures = UnmanagedFsxMultiAzValidator().execute(queues, fsx_az_list)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
 
 
 @pytest.mark.parametrize(
-    "storage, is_managed, availability_zone, volume_description",
+    "storage_parameters, is_managed, availability_zone, volume_description",
     [
         (
-            SharedEbs(
+            dict(
                 mount_dir="mount-dir",
                 name="volume-name",
                 kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
@@ -2096,7 +2106,7 @@ def test_unmanaged_fsx_multiple_az_validator(
             {"AvailabilityZone": "us-east-1a"},
         ),
         (
-            SharedEbs(
+            dict(
                 mount_dir="mount-dir",
                 name="volume-name",
                 volume_id="volume-id",
@@ -2109,13 +2119,14 @@ def test_unmanaged_fsx_multiple_az_validator(
 )
 def test_shared_ebs_properties(
     mocker,
-    storage,
+    storage_parameters,
     is_managed,
     availability_zone,
     volume_description,
 ):
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_volume", return_value=volume_description)
+    storage = SharedEbs(**storage_parameters)
     assert_that(storage.is_managed == is_managed).is_true()
     assert_that(storage.availability_zone == availability_zone).is_true()
 
@@ -2128,20 +2139,20 @@ class DummySharedEbs:
 
 
 @pytest.mark.parametrize(
-    "head_node_az, ebs_volumes, queues, subnet_az_mappings, failure_level, expected_messages",
+    "head_node_az, ebs_volumes, queue_parameters_array, subnet_az_mappings, failure_level, expected_messages",
     [
         (
             "us-east-1a",
             [DummySharedEbs("vol-1", "us-east-1a")],
             [
-                SlurmQueue(
+                dict(
                     name="different-az-queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-2"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="different-az-queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2161,14 +2172,14 @@ class DummySharedEbs:
             "us-east-1b",
             [DummySharedEbs("vol-1", "us-east-1a")],
             [
-                SlurmQueue(
+                dict(
                     name="same-az-queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="same-az-queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2191,14 +2202,14 @@ class DummySharedEbs:
                 DummySharedEbs("vol-3", "us-east-1c"),
             ],
             [
-                SlurmQueue(
+                dict(
                     name="queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2222,21 +2233,21 @@ class DummySharedEbs:
             "us-east-1a",
             [DummySharedEbs("vol-1", "us-east-1a")],
             [
-                SlurmQueue(
+                dict(
                     name="queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1", "subnet-2"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="queue-3",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2262,7 +2273,7 @@ def test_multi_az_shared_ebs_validator(
     mocker,
     head_node_az,
     ebs_volumes,
-    queues,
+    queue_parameters_array,
     subnet_az_mappings,
     failure_level,
     expected_messages,
@@ -2270,6 +2281,7 @@ def test_multi_az_shared_ebs_validator(
     mock_aws_api(mocker)
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
 
+    queues = [SlurmQueue(**queue_parameters) for queue_parameters in queue_parameters_array]
     actual_failures = MultiAzEbsVolumeValidator().execute(head_node_az, ebs_volumes, queues)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
@@ -2297,19 +2309,19 @@ def test_ec2_volume_validator(mocker):
 
 
 @pytest.mark.parametrize(
-    "head_node_az, queues, subnet_az_mappings, failure_level, expected_messages",
+    "head_node_az, queue_parameters_array, subnet_az_mappings, failure_level, expected_messages",
     [
         (
             "us-east-1a",
             [
-                SlurmQueue(
+                dict(
                     name="same-az-queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="different-az-queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2328,14 +2340,14 @@ def test_ec2_volume_validator(mocker):
         (
             "us-east-1a",
             [
-                SlurmQueue(
+                dict(
                     name="multi-az-queue-1",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
                         subnet_ids=["subnet-1", "subnet-2"],
                     ),
                 ),
-                SlurmQueue(
+                dict(
                     name="different-az-queue-2",
                     compute_resources=[],
                     networking=SlurmQueueNetworking(
@@ -2353,10 +2365,11 @@ def test_ec2_volume_validator(mocker):
         ),
     ],
 )
+@pytest.mark.usefixtures("get_region")
 def test_multi_az_root_volume_validator(
     mocker,
     head_node_az,
-    queues,
+    queue_parameters_array,
     subnet_az_mappings,
     failure_level,
     expected_messages,
@@ -2364,17 +2377,19 @@ def test_multi_az_root_volume_validator(
     mock_aws_api(mocker)
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnets_az_mapping", side_effect=subnet_az_mappings)
 
+    queues = [SlurmQueue(**queue_parameters) for queue_parameters in queue_parameters_array]
     actual_failures = MultiAzRootVolumeValidator().execute(head_node_az, queues)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
 
 
+@pytest.mark.usefixtures("get_region")
 class TestDictLaunchTemplateBuilder:
     @pytest.mark.parametrize(
-        "root_volume, image_os, expected_response",
+        "root_volume_parameters, image_os, expected_response",
         [
             pytest.param(
-                RootVolume(
+                dict(
                     size=10,
                     encrypted=False,
                     volume_type="mockVolumeType",
@@ -2423,7 +2438,7 @@ class TestDictLaunchTemplateBuilder:
                 id="test with all root volume fields populated",
             ),
             pytest.param(
-                RootVolume(
+                dict(
                     encrypted=True,
                     volume_type="mockVolumeType",
                     iops=15,
@@ -2471,7 +2486,8 @@ class TestDictLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_block_device_mappings(self, root_volume, image_os, expected_response):
+    def test_get_block_device_mappings(self, root_volume_parameters, image_os, expected_response):
+        root_volume = RootVolume(**root_volume_parameters)
         assert_that(DictLaunchTemplateBuilder().get_block_device_mappings(root_volume, image_os)).is_equal_to(
             expected_response
         )
@@ -2518,10 +2534,10 @@ class TestDictLaunchTemplateBuilder:
         )
 
     @pytest.mark.parametrize(
-        "queue, compute_resource, expected_response",
+        "queue_parameters, compute_resource, expected_response",
         [
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_resource_group_arn="queue_cr_rg_arn",
@@ -2544,7 +2560,7 @@ class TestDictLaunchTemplateBuilder:
                 id="test with queue and compute resource capacity reservation",
             ),
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_id="queue_cr_id",
@@ -2564,7 +2580,7 @@ class TestDictLaunchTemplateBuilder:
                 id="test with only queue capacity reservation",
             ),
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=None,
@@ -2578,7 +2594,8 @@ class TestDictLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_capacity_reservation(self, queue, compute_resource, expected_response):
+    def test_get_capacity_reservation(self, queue_parameters, compute_resource, expected_response):
+        queue = SlurmQueue(**queue_parameters)
         assert_that(DictLaunchTemplateBuilder().get_capacity_reservation(queue, compute_resource)).is_equal_to(
             expected_response
         )

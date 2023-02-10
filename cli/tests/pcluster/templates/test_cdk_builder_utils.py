@@ -36,6 +36,11 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
 
+@pytest.fixture
+def get_region(mocker):
+    mocker.patch("pcluster.config.cluster_config.get_region", return_value="WHATEVER_REGION")
+
+
 @pytest.mark.parametrize(
     "tags_dict, expected_result",
     [
@@ -94,12 +99,13 @@ def test_get_default_volume_tags(stack_name, node_type, raw_dict, expected_resul
     assert_that(get_default_volume_tags(stack_name, node_type, raw_dict)).is_equal_to(expected_result)
 
 
+@pytest.mark.usefixtures("get_region")
 class TestCdkLaunchTemplateBuilder:
     @pytest.mark.parametrize(
-        "root_volume, image_os, expected_response",
+        "root_volume_parameters, image_os, expected_response",
         [
             pytest.param(
-                RootVolume(
+                dict(
                     size=10,
                     encrypted=False,
                     volume_type="mockVolumeType",
@@ -196,7 +202,7 @@ class TestCdkLaunchTemplateBuilder:
                 id="test with all root volume fields populated",
             ),
             pytest.param(
-                RootVolume(
+                dict(
                     encrypted=True,
                     volume_type="mockVolumeType",
                     iops=15,
@@ -293,7 +299,8 @@ class TestCdkLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_block_device_mappings(self, root_volume, image_os, expected_response):
+    def test_get_block_device_mappings(self, root_volume_parameters, image_os, expected_response):
+        root_volume = RootVolume(**root_volume_parameters)
         assert_that(CdkLaunchTemplateBuilder().get_block_device_mappings(root_volume, image_os)).is_equal_to(
             expected_response
         )
@@ -337,10 +344,10 @@ class TestCdkLaunchTemplateBuilder:
         )
 
     @pytest.mark.parametrize(
-        "queue, compute_resource, expected_response",
+        "queue_parameters, compute_resource, expected_response",
         [
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_resource_group_arn="queue_cr_rg_arn",
@@ -364,7 +371,7 @@ class TestCdkLaunchTemplateBuilder:
                 id="test with queue and compute resource capacity reservation",
             ),
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_id="queue_cr_id",
@@ -385,7 +392,7 @@ class TestCdkLaunchTemplateBuilder:
                 id="test with only queue capacity reservation",
             ),
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=None,
@@ -399,7 +406,8 @@ class TestCdkLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_capacity_reservation(self, queue, compute_resource, expected_response):
+    def test_get_capacity_reservation(self, queue_parameters, compute_resource, expected_response):
+        queue = SlurmQueue(**queue_parameters)
         assert_that(CdkLaunchTemplateBuilder().get_capacity_reservation(queue, compute_resource)).is_equal_to(
             expected_response
         )
