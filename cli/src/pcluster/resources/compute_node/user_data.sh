@@ -144,6 +144,14 @@ write_files:
         export HOME="${!HOME_BAK}"
       }
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
+
+      # Configure Amazon Linux 2 instance running in US isolated region.
+      . /etc/os-release
+      if [[ "${!ID}${!VERSION_ID}" == "amzn2" && "${AWS::Region}" == us-iso* ]]; then
+        configuration_script="/opt/parallelcluster/scripts/patch-iso-instance.sh"
+        [[ -f ${!configuration_script} ]] && bash ${!configuration_script} "${AWS::Region}" && . ~/.bash_profile
+      fi
+
       custom_cookbook=${CustomChefCookbook}
       export _region=${AWS::Region}
 
@@ -155,7 +163,7 @@ write_files:
           # 60s, the call will timeout the connect attempt at 8m. Setting it to 15s, causes
           # each attempt to take 240s, so 2m * 3 attempts will result in a failure after 6
           # minutes.
-          S3API_RESULT=$(AWS_RETRY_MODE=standard aws s3api get-bucket-location --cli-connect-timeout 15 --bucket ${!BASH_REMATCH[1]} 2>&1) || error_exit "${!S3API_RESULT}"
+          S3API_RESULT=$(AWS_RETRY_MODE=standard aws s3api get-bucket-location --cli-connect-timeout 15 --bucket ${!BASH_REMATCH[1]} --region ${AWS::Region} 2>&1) || error_exit "${!S3API_RESULT}"
           bucket_region=$(echo "${!S3API_RESULT}" | jq -r '.LocationConstraint')
           if [[ "${!bucket_region}" == null ]]; then
             bucket_region="us-east-1"
