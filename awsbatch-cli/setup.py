@@ -20,7 +20,7 @@ def readme():
         return f.read()
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
@@ -67,6 +67,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
     ],

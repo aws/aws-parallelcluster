@@ -52,12 +52,13 @@ SharedStorage:
       Raid:
         Type: 0
         NumberOfVolumes: 5
+      DeletionPolicy: {{ new_raid_deletion_policy }}
   - MountDir: {{ new_ebs_mount_dir }}
     Name: /manage-ebs
     StorageType: Ebs
     EbsSettings:
       VolumeType: gp3
-      DeletionPolicy: Delete
+      DeletionPolicy: {{ new_ebs_deletion_policy }}
   - MountDir: {{ existing_ebs_mount_dir }}
     Name: existing_ebs
     StorageType: Ebs
@@ -72,6 +73,7 @@ SharedStorage:
       PerformanceMode: maxIO
       ThroughputMode: provisioned
       ProvisionedThroughput: 200
+      DeletionPolicy: {{ new_efs_deletion_policy }}
   - MountDir: {{ existing_efs_mount_dir }}
     Name: existing_efs
     StorageType: Efs
@@ -86,6 +88,7 @@ SharedStorage:
       ExportPath: s3://{{ bucket_name }}/export_dir
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 200
+      DeletionPolicy: {{ new_lustre_deletion_policy }}
   - MountDir: {{ fsx_lustre_mount_dir }}
     Name: existingfsx
     StorageType: FsxLustre

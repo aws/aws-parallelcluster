@@ -26,9 +26,7 @@ def _run_model(model, params):
 @pytest.fixture
 def identity_dispatch(mocker):
     def _identity(body, **kwargs):
-        ret = {"body": body}
-        ret.update(kwargs)
-        return ret
+        return {"body": body, **kwargs}
 
     mocker.patch("pcluster.cli.model.get_function_from_name", return_value=_identity)
 

@@ -12,12 +12,13 @@
 import pytest
 from assertpy import assert_that
 
+from pcluster.aws.common import AWSClientError
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
-from tests.pcluster.aws.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import _DummyAWSApi, _DummyInstanceTypeInfo, mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
-from tests.pcluster.utils import get_resources
+from tests.pcluster.utils import get_head_node_policy, get_resources, get_statement_by_sid
 
 
 @pytest.mark.parametrize(
@@ -200,3 +201,46 @@ def assert_sg_rule(
     )
 
     assert_that(sg_rules).is_length(1)
+
+
+def test_non_happy_ontap_and_openzfs_mounting(mocker, test_datadir):
+    dummy_api = _DummyAWSApi()
+    dummy_api._fsx.set_non_happy_describe_volumes(
+        AWSClientError(function_name="describe_volumes", message="describing volumes is unauthorized")
+    )
+    mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=dummy_api)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)
+
+    input_yaml = load_yaml_dict(test_datadir / "config.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    with pytest.raises(AWSClientError):
+        CDKTemplateBuilder().build_cluster_template(
+            cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+        )
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        ("config.yaml"),
+    ],
+)
+def test_efs_permissions(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    head_node_policy = get_head_node_policy(generated_template)
+    statement = get_statement_by_sid(policy=head_node_policy, sid="Efs")
+
+    assert_that(statement["Effect"]).is_equal_to("Allow")
+    assert_that(statement["Action"]).contains_only(
+        "elasticfilesystem:ClientMount", "elasticfilesystem:ClientRootAccess", "elasticfilesystem:ClientWrite"
+    )

@@ -1,5 +1,44 @@
 CHANGELOG
 =========
+
+3.6.0
+----
+
+**BUG FIXES**
+- Fix EFS, FSx network security groups validators to avoid reporting false errors.
+
+3.5.0
+-----
+
+**ENHANCEMENTS**
+- Add official versioned ParallelCluster policies in a CloudFormation template to allow customers to easily reference them in their workloads.
+- Add a Python library to allow customers to use ParallelCluster functionalities in their own code.
+- Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
+- Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
+- Add support for US isolated regions: us-iso-* and us-isob-*.
+
+**CHANGES**
+- Upgrade Slurm to version 22.05.8.
+- Make Slurm controller logs more verbose and enable additional logging for the Slurm power save plugin.
+- Upgrade EFA installer to `1.21.0`
+  - Efa-driver: `efa-2.1.1-1`
+  - Efa-config: `efa-config-1.12-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1amzn3.0-1`
+  - Rdma-core: `rdma-core-43.0-1`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
+
+**BUG FIXES**
+- Fix cluster DB creation by verifying the cluster name is no longer than 40 characters when Slurm accounting is enabled.
+- Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be replaced if the EC2 instance status checks fail.
+- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
+
+3.4.1
+-----
+
+**BUG FIXES**
+- Fix an issue with the Slurm scheduler that might incorrectly apply updates to its internal registry of compute nodes. This might result in EC2 instances to become inaccessible or backed by an incorrect instance type.
+
 3.4.0
 -----
 
@@ -21,7 +60,7 @@ CHANGELOG
   - Libfabric-aws: `libfabric-aws-1.16.1`
   - Rdma-core: `rdma-core-43.0-2`
   - Open MPI: `openmpi40-aws-4.1.4-3`
-- Upgrade Slurm to version 22.05.6.
+- Upgrade Slurm to version 22.05.7.
 
 3.3.1
 -----
@@ -43,9 +82,10 @@ CHANGELOG
 - Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage to support storage retention.
 - Add new configuration section `Scheduling/SlurmSettings/Database` to enable accounting functionality in Slurm.
 - Add support for On-Demand Capacity Reservations and Capacity Reservations Resource Groups.
-- Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure. 
+- Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure.
 - Add support for `Networking/PlacementGroup` in the `SlurmQueues/ComputeResources` section.
 - Add support for instances with multiple network interfaces that allows only one ENI per device.
+- Add support for hp6id instance type as compute nodes.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
 - Add validator to check if configured instance types support placement groups.
 - Configure NFS threads to be `min(256, max(8, num_cores * 4))` to ensure better stability and performance.
@@ -69,7 +109,7 @@ CHANGELOG
 - Upgrade EFA installer to version 1.18.0.
 - Upgrade NICE DCV to version 2022.1-13300.
 - Allow for suppressing the `SingleSubnetValidator` for `Queues`.
-- Remove usage of prolog/epilog Slurm configuration when `UseEc2Hostnames` is set to `true`.  
+- Remove usage of prolog/epilog Slurm configuration when `UseEc2Hostnames` is set to `true`.
 
 **BUG FIXES**
 - Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.

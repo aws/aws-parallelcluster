@@ -257,7 +257,7 @@ def _wait_instance_running(ec2_client, instance_ids):
     )
 
 
-@retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
 def _wait_compute_cloudinit_done(command_executor, compute_node):
     """Wait till cloud-init complete on a given compute node"""
     compute_node_private_ip = compute_node.get("privateIpAddress")
@@ -440,7 +440,9 @@ def _test_cluster_config(request, region, command_executor, cluster_config, rend
             len(target_config.get("Scheduling").get("SchedulerQueues"))
         )
         with open(rendered_queue_config_path, encoding="utf-8") as rendered_queue_config:
-            private_subnet_id = request.getfixturevalue("vpc_stacks").get(region).cfn_outputs.get("PrivateSubnetId")
+            private_subnet_id = (
+                request.getfixturevalue("vpc_stacks_shared").get(region).cfn_outputs.get("PrivateSubnetId")
+            )
             rendered_queue = yaml.safe_load(rendered_queue_config)
             # inject subnet id into rendered queue
             for queue in rendered_queue:

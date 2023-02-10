@@ -68,7 +68,10 @@ class UrlValidator(Validator):
 
     def _validate_https_uri(self, url: str, fail_on_error: bool):
         try:
-            with urlopen(url):  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B310 check.
+            # The urlopen argument is properly validated
+            # [B310:blacklist] Audit url open for permitted schemes.
+            with urlopen(url):  # nosec B310 nosemgrep
                 pass
         except HTTPError as e:
             self._add_failure(
@@ -92,7 +95,6 @@ class S3BucketUriValidator(Validator):
     """S3 Bucket Url Validator."""
 
     def _validate(self, url):
-
         if get_url_scheme(url) == "s3":
             try:
                 bucket = get_bucket_name_from_s3_url(url)

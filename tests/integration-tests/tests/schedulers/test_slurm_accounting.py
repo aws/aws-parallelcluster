@@ -127,6 +127,7 @@ def _test_that_slurmdbd_is_running(remote_command_executor):
 def test_slurm_accounting(
     region,
     pcluster_config_reader,
+    vpc_stack_for_database,
     database_factory,
     request,
     test_datadir,
@@ -143,7 +144,11 @@ def test_slurm_accounting(
     database_stack_outputs = get_infra_stack_outputs(database_stack_name)
 
     config_params = _get_slurm_database_config_parameters(database_stack_outputs)
-    cluster_config = pcluster_config_reader(**config_params)
+    public_subnet_id = vpc_stack_for_database.cfn_outputs["PublicSubnetId"]
+    private_subnet_id = vpc_stack_for_database.cfn_outputs["PrivateSubnetId"]
+    cluster_config = pcluster_config_reader(
+        public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id, **config_params
+    )
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -162,6 +167,7 @@ def test_slurm_accounting_disabled_to_enabled_update(
     region,
     pcluster_config_reader,
     database_factory,
+    vpc_stack_for_database,
     request,
     test_datadir,
     test_resources_dir,
@@ -175,9 +181,11 @@ def test_slurm_accounting_disabled_to_enabled_update(
     )
 
     database_stack_outputs = get_infra_stack_outputs(database_stack_name)
+    public_subnet_id = vpc_stack_for_database.cfn_outputs["PublicSubnetId"]
+    private_subnet_id = vpc_stack_for_database.cfn_outputs["PrivateSubnetId"]
 
     # First create a cluster without Slurm Accounting enabled
-    cluster_config = pcluster_config_reader(config_file="pcluster.config.yaml")
+    cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -187,7 +195,12 @@ def test_slurm_accounting_disabled_to_enabled_update(
     config_params = _get_slurm_database_config_parameters(database_stack_outputs)
 
     # Then update the cluster to enable Slurm Accounting
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", **config_params)
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        public_subnet_id=public_subnet_id,
+        private_subnet_id=private_subnet_id,
+        **config_params,
+    )
     cluster.update(str(updated_config_file), force_update="true")
 
     remote_command_executor = RemoteCommandExecutor(cluster)

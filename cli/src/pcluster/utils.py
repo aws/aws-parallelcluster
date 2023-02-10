@@ -18,7 +18,6 @@ import re
 import string
 import sys
 import time
-import urllib.request
 import zipfile
 from io import BytesIO
 from shlex import quote
@@ -28,7 +27,6 @@ from urllib.parse import urlparse
 import dateutil.parser
 import pkg_resources
 import yaml
-from pkg_resources import packaging
 from yaml import SafeLoader
 from yaml.constructor import ConstructorError
 from yaml.resolver import BaseResolver
@@ -38,18 +36,48 @@ from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_F
 
 LOGGER = logging.getLogger(__name__)
 
+DEFAULT_PARTITION = "aws"
+PARTITION_MAP = {
+    "cn-": "aws-cn",
+    "us-gov-": "aws-us-gov",
+    "us-iso-": "aws-iso",
+    "us-isob-": "aws-iso-b",
+}
 
-def get_partition():
-    """Get partition for the region set in the environment."""
-    return next(("aws-" + partition for partition in ["us-gov", "cn"] if get_region().startswith(partition)), "aws")
+DEFAULT_DOMAIN = "amazonaws.com"
+DOMAIN_MAP = {
+    "aws-cn": "amazonaws.com.cn",
+    "aws-iso": "c2s.ic.gov",
+    "aws-iso-b": "sc2s.sgov.gov",
+}
+
+DEFAULT_DOCS_URL = "docs.aws.amazon.com"
+DOCS_URL_MAP = {
+    "aws-cn": "docs.amazonaws.cn",
+    "aws-iso": "docs.c2shome.ic.gov",
+    "aws-iso-b": "docs.sc2shome.sgov.gov",
+}
 
 
-def get_url_domain_suffix():
-    """Get domain suffix."""
-    if get_partition() == "aws-cn":
-        return "amazonaws.com.cn"
-    else:
-        return "amazonaws.com"
+def get_partition(region: str = None):
+    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    _region = get_region() if region is None else region
+    return next(
+        (partition for region_prefix, partition in PARTITION_MAP.items() if _region.startswith(region_prefix)),
+        DEFAULT_PARTITION,
+    )
+
+
+def get_url_domain_suffix(partition: str = None):
+    """Get domain for the given partition. If partition is None, consider the partition set in the environment."""
+    _partition = get_partition() if partition is None else partition
+    return DOMAIN_MAP.get(_partition, DEFAULT_DOMAIN)
+
+
+def get_docs_base_url(partition: str = None):
+    """Get the docs url for the given partition. If partition is None, consider the partition set in the environment."""
+    _partition = get_partition() if partition is None else partition
+    return DOCS_URL_MAP.get(_partition, DEFAULT_DOCS_URL)
 
 
 def replace_url_parameters(url):
@@ -64,7 +92,7 @@ def generate_random_name_with_prefix(name_prefix):
     Example: <name_prefix>-4htvo26lchkqeho1
     """
     random_string = generate_random_prefix()
-    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])  # nosec
+    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
     return output_name
 
 
@@ -74,7 +102,10 @@ def generate_random_prefix():
 
     Example: 4htvo26lchkqeho1
     """
-    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
+    # A nosec comment is appended to the following line in order to disable the B311 check.
+    # The random.choice is used to generate random string for names.
+    # [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec B311
 
 
 def _add_file_to_zip(zip_file, path, arcname):
@@ -238,9 +269,8 @@ def verify_stack_status(stack_name, waiting_states, successful_states):
 def get_templates_bucket_path():
     """Return a string containing the path of bucket."""
     region = get_region()
-    s3_suffix = ".cn" if region.startswith("cn") else ""
     return (
-        f"https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{s3_suffix}/"
+        f"https://{region}-aws-parallelcluster.s3.{region}.{get_url_domain_suffix()}/"
         f"parallelcluster/{get_installed_version()}/templates/"
     )
 
@@ -249,18 +279,6 @@ def get_installed_version(base_version_only: bool = False):
     """Get the version of the installed aws-parallelcluster package."""
     pkg_distribution = pkg_resources.get_distribution("aws-parallelcluster")
     return pkg_distribution.version if not base_version_only else pkg_distribution.parsed_version.base_version
-
-
-def check_if_latest_version():
-    """Check if the current package version is the latest one."""
-    try:
-        pypi_url = "https://pypi.python.org/pypi/aws-parallelcluster/json"
-        with urllib.request.urlopen(pypi_url) as url:  # nosec nosemgrep
-            latest = json.loads(url.read())["info"]["version"]
-        if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
-            print(f"Info: There is a newer version {latest} of AWS ParallelCluster available.")
-    except Exception:  # nosec
-        pass
 
 
 def warn(message):

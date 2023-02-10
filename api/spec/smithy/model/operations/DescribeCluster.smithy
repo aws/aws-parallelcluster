@@ -61,6 +61,6 @@ structure DescribeClusterResponse {
     @documentation("Tags associated with the cluster.")
     tags: Tags,
     headNode: EC2Instance,
-    @documentation("Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.")
-    failureReason: String
+    @documentation("Failures array containing failures reason and code when the stack is in CREATE_FAILED status.")
+    failures: Failures
 }

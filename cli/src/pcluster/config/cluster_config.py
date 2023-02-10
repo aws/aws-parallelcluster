@@ -50,6 +50,7 @@ from pcluster.constants import (
     SCHEDULER_PLUGIN_INTERFACE_VERSION,
     SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
     SUPPORTED_OSES,
+    Feature,
 )
 from pcluster.utils import (
     get_attr,
@@ -64,7 +65,6 @@ from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeResourceSizeValidator,
     AwsBatchFsxValidator,
     AwsBatchInstancesArchitectureCompatibilityValidator,
-    AwsBatchRegionValidator,
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
@@ -139,6 +139,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupNamingValidator,
 )
 from pcluster.validators.efs_validators import EfsMountOptionsValidator
+from pcluster.validators.feature_validators import FeatureRegionValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
@@ -1261,10 +1262,12 @@ class BaseClusterConfig(Resource):
         self._official_ami = None
         self.imds = imds or TopLevelImds(implied="v1.0")
         self.deployment_settings = deployment_settings
+        self.managed_head_node_security_group = None
+        self.managed_compute_security_group = None
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
-        self._register_validator(ClusterNameValidator, name=self.cluster_name)
+        self._register_validator(ClusterNameValidator, name=self.cluster_name, scheduling=self.scheduling)
         self._register_validator(
             ArchitectureOsValidator,
             os=self.image.os,
@@ -1293,8 +1296,10 @@ class BaseClusterConfig(Resource):
             os=self.image.os,
             ami_id=self.head_node_ami,
             tags=self.get_cluster_tags(),
+            imds_support=self.imds.imds_support,
         )
         if self.head_node.dcv:
+            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
             self._register_validator(
                 DcvValidator,
                 instance_type=self.head_node.instance_type,
@@ -1339,7 +1344,7 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
 
-    def _register_storage_validators(self):
+    def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:
             ebs_count = 0
             new_storage_count = defaultdict(int)
@@ -1368,12 +1373,18 @@ class BaseClusterConfig(Resource):
                         existing_fsx.add(storage.file_system_id)
                     else:
                         new_storage_count["fsx"] += 1
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_LUSTRE, region=self.region)
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
-                elif isinstance(storage, (ExistingFsxOpenZfs, ExistingFsxOntap)):
+                elif isinstance(storage, ExistingFsxOpenZfs):
                     existing_storage_count["fsx"] += 1
                     existing_fsx.add(storage.file_system_id)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_OPENZFS, region=self.region)
+                elif isinstance(storage, ExistingFsxOntap):
+                    existing_storage_count["fsx"] += 1
+                    existing_fsx.add(storage.file_system_id)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_ONTAP, region=self.region)
                 elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
@@ -1386,15 +1397,15 @@ class BaseClusterConfig(Resource):
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
                             avail_zones_mapping=self.availability_zones_subnets_mapping,
-                            are_all_security_groups_customized=self.are_all_security_groups_customized,
+                            security_groups_by_nodes=self.security_groups_by_nodes,
                         )
                     else:
                         new_storage_count["efs"] += 1
             self._register_validator(
                 ExistingFsxNetworkingValidator,
                 file_system_ids=list(existing_fsx),
-                head_node_subnet_id=self.head_node.networking.subnet_id,
-                are_all_security_groups_customized=self.are_all_security_groups_customized,
+                subnet_ids=[self.head_node.networking.subnet_id] + self.compute_subnet_ids,
+                security_groups_by_nodes=self.security_groups_by_nodes,
             )
 
             self._validate_max_storage_count(ebs_count, existing_storage_count, new_storage_count)
@@ -1623,17 +1634,34 @@ class BaseClusterConfig(Resource):
         return self.head_node.dcv and self.head_node.dcv.enabled
 
     @property
-    def are_all_security_groups_customized(self):
-        """Return True if all head node and queues have (additional) security groups specified."""
+    def security_groups_by_nodes(self):
+        """
+        Return Security groups by nodes.
+
+        The result is a set of frozenset,
+        e.g. {frozenset(security groups for head node), frozenset(security groups for queue 1), ...}
+        """
         head_node_networking = self.head_node.networking
-        if not (head_node_networking.security_groups or head_node_networking.additional_security_groups):
-            return False
+        security_groups_for_head_node = set()
+        if head_node_networking.security_groups:
+            security_groups_for_head_node.update(set(head_node_networking.security_groups))
+        else:
+            security_groups_for_head_node.add(self.managed_head_node_security_group)
+        if head_node_networking.additional_security_groups:
+            security_groups_for_head_node.update(set(head_node_networking.additional_security_groups))
+        security_groups_for_all_nodes = {frozenset(security_groups_for_head_node)}
         for queue in self.scheduling.queues:
             queue_networking = queue.networking
             if isinstance(queue_networking, _QueueNetworking):
-                if not (queue_networking.security_groups or queue_networking.additional_security_groups):
-                    return False
-        return True
+                security_groups_for_compute_node = set()
+                if queue_networking.security_groups:
+                    security_groups_for_compute_node.update(set(queue_networking.security_groups))
+                else:
+                    security_groups_for_compute_node.add(self.managed_compute_security_group)
+                if queue_networking.additional_security_groups:
+                    security_groups_for_compute_node.update(set(queue_networking.additional_security_groups))
+                security_groups_for_all_nodes.add(frozenset(security_groups_for_compute_node))
+        return security_groups_for_all_nodes
 
     @property
     def extra_chef_attributes(self):
@@ -1766,7 +1794,7 @@ class AwsBatchClusterConfig(BaseClusterConfig):
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
-        self._register_validator(AwsBatchRegionValidator, region=self.region)
+        self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
         if self.shared_storage:
@@ -1885,7 +1913,10 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     @property
     def instance_types(self) -> List[str]:
         """Return list of instance type names in this compute resource."""
-        return [flexible_instance_type.instance_type for flexible_instance_type in self.instances]
+        return [
+            flexible_instance_type.instance_type
+            for flexible_instance_type in self.instances  # pylint: disable=not-an-iterable
+        ]
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
@@ -2654,6 +2685,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 ami_id=queue_image,
                 os=self.image.os,
                 tags=self.get_cluster_tags(),
+                imds_support=self.imds.imds_support,
             )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
             root_volume = queue.compute_settings.local_storage.root_volume
@@ -2745,6 +2777,16 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
             if capacity_reservation_target.capacity_reservation_id:
                 result.add(capacity_reservation_target.capacity_reservation_id)
         return list(result)
+
+    @property
+    def capacity_reservation_arns(self):
+        """Return a list of capacity reservation ARNs specified in the config."""
+        return [
+            capacity_reservation["CapacityReservationArn"]
+            for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
+                self.capacity_reservation_ids
+            )
+        ]
 
     @property
     def capacity_reservation_resource_group_arns(self):

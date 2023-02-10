@@ -80,7 +80,6 @@ class Resource:
         """
 
         def __init__(self, value, default=None, update_policy=None):
-
             # If the value is None, it means that the value has not been specified in the configuration; hence it can
             # be implied from its default, if present.
             if value is None and default is not None:

@@ -20,6 +20,7 @@ from pcluster.api.models.cluster_configuration_structure import ClusterConfigura
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
 from pcluster.api.models.ec2_instance import EC2Instance
+from pcluster.api.models.failure import Failure
 from pcluster.api.models.scheduler import Scheduler
 from pcluster.api.models.tag import Tag
 
@@ -40,12 +41,12 @@ class DescribeClusterResponseContent(Model):
         cloud_formation_stack_status=None,
         cluster_name=None,
         compute_fleet_status=None,
-        failure_reason=None,
         cloudformation_stack_arn=None,
         last_updated_time=None,
         region=None,
         cluster_status=None,
         scheduler=None,
+        failures=None,
     ):
         """DescribeClusterResponseContent - a model defined in OpenAPI
 
@@ -65,8 +66,6 @@ class DescribeClusterResponseContent(Model):
         :type cluster_name: str
         :param compute_fleet_status: The compute_fleet_status of this DescribeClusterResponseContent.
         :type compute_fleet_status: ComputeFleetStatus
-        :param failure_reason: The failure_reason of this DescribeClusterResponseContent.
-        :type failure_reason: str
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this DescribeClusterResponseContent.
         :type cloudformation_stack_arn: str
         :param last_updated_time: The last_updated_time of this DescribeClusterResponseContent.
@@ -77,6 +76,7 @@ class DescribeClusterResponseContent(Model):
         :type cluster_status: ClusterStatus
         :param scheduler: The scheduler of this DescribeClusterResponseContent.  # noqa: E501
         :type scheduler: Scheduler
+        :type failures: List[Failure]
         """
         self.openapi_types = {
             "creation_time": datetime,
@@ -87,12 +87,12 @@ class DescribeClusterResponseContent(Model):
             "cloud_formation_stack_status": CloudFormationStackStatus,
             "cluster_name": str,
             "compute_fleet_status": ComputeFleetStatus,
-            "failure_reason": str,
             "cloudformation_stack_arn": str,
             "last_updated_time": datetime,
             "region": str,
             "cluster_status": ClusterStatus,
             "scheduler": Scheduler,
+            "failures": List[Failure],
         }
 
         self.attribute_map = {
@@ -104,12 +104,12 @@ class DescribeClusterResponseContent(Model):
             "cloud_formation_stack_status": "cloudFormationStackStatus",
             "cluster_name": "clusterName",
             "compute_fleet_status": "computeFleetStatus",
-            "failure_reason": "failureReason",
             "cloudformation_stack_arn": "cloudformationStackArn",
             "last_updated_time": "lastUpdatedTime",
             "region": "region",
             "cluster_status": "clusterStatus",
             "scheduler": "scheduler",
+            "failures": "failures",
         }
 
         self._creation_time = creation_time
@@ -119,7 +119,7 @@ class DescribeClusterResponseContent(Model):
         self._cloud_formation_stack_status = cloud_formation_stack_status
         self._cluster_name = cluster_name
         self._compute_fleet_status = compute_fleet_status
-        self._failure_reason = failure_reason
+        self._failures = failures
         self._cloudformation_stack_arn = cloudformation_stack_arn
         self._last_updated_time = last_updated_time
         self._region = region
@@ -337,29 +337,6 @@ class DescribeClusterResponseContent(Model):
         self._compute_fleet_status = compute_fleet_status
 
     @property
-    def failure_reason(self):
-        """Gets the failure_reason of this DescribeClusterResponseContent.
-
-        Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status
-
-        :return: The failure_reason of this DescribeClusterResponseContent.
-        :rtype: str
-        """
-        return self._failure_reason
-
-    @failure_reason.setter
-    def failure_reason(self, failure_reason):
-        """Sets the failure_reason of this DescribeClusterResponseContent.
-
-        Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status
-
-        :param failure_reason: The failure_reason of this DescribeClusterResponseContent.
-        :type failure_reason: str
-        """
-
-        self._failure_reason = failure_reason
-
-    @property
     def scheduler(self):
         """Gets the scheduler of this DescribeClusterResponseContent.
 
@@ -477,3 +454,26 @@ class DescribeClusterResponseContent(Model):
             raise ValueError("Invalid value for `cluster_status`, must not be `None`")
 
         self._cluster_status = cluster_status
+
+    @property
+    def failures(self):
+        """Gets the failures of this DescribeClusterResponseContent.
+
+        Failures reason and code when the stack is in CREATE_FAILED status.  # noqa: E501
+
+        :return: The failures of this DescribeClusterResponseContent.
+        :rtype: List[Failure]
+        """
+        return self._failures
+
+    @failures.setter
+    def failures(self, failures):
+        """Sets the failures of this DescribeClusterResponseContent.
+
+        Failures reason and code when the stack is in CREATE_FAILED status.  # noqa: E501
+
+        :param failures: The failures of this DescribeClusterResponseContent.
+        :type failures: List[Failure]
+        """
+
+        self._failures = failures

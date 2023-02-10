@@ -9,7 +9,9 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
+import re
 import time
 from datetime import datetime, timezone
 
@@ -32,6 +34,7 @@ from tests.common.assertions import (
     assert_num_instances_in_cluster,
     assert_scaling_worked,
     wait_for_num_instances_in_cluster,
+    wait_for_slurm_rebooted_nodes,
 )
 from tests.common.hit_common import (
     assert_compute_node_reasons,
@@ -290,6 +293,36 @@ def test_slurm_protected_mode(
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.test_slurm_protected_mode_on_cluster_create
+def test_slurm_protected_mode_on_cluster_create(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    scheduler_commands_factory,
+):
+    """Test that slurm protected mode triggers head node launch failure on cluster creation."""
+    # Create S3 bucket for pre-install scripts
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
+
+    cluster_config = pcluster_config_reader(bucket=bucket_name)
+    cluster = clusters_factory(cluster_config, raise_on_error=False, wait=False)
+    remote_command_executor = _wait_until_protected_mode_failure_count_set(cluster)
+    _test_compute_fleet_status(remote_command_executor, expected_status="PROTECTED")
+    assert_lines_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Updating compute fleet status from RUNNING to PROTECTED",
+        ],
+    )
+    _test_cluster_creation_failure(cluster)
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.fast_capacity_failover
 def test_fast_capacity_failover(
     pcluster_config_reader,
@@ -487,30 +520,136 @@ def test_scontrol_reboot(
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_update_slurm_reconfigure_race_condition(
+@pytest.mark.slurm_scontrol_reboot
+def test_scontrol_reboot_ec2_health_checks(
     pcluster_config_reader,
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
 ):
     """
-    Test race condition between restart of slurmctld and scontrol reconfigure.
+    Test that scontrol reboot does not trigger node replacements due to EC2 health check failures.
 
-    In Slurm 21.08 it looks like cloud nodes may not get powered-down after their
-    SuspendTime has expired if a cluster update is performed, which restarts the
-    slurmctld daemon and immediately performs an scontrol reconfigure.
+    Two scenarios must be covered:
+    1.  the EC2 health checks are seen as failing while the compute node is in `REBOOT_ISSUED` state.
+        In order to keep the node in REBOOT_ISSUED for a longer time, a delay in the start of slurmd
+        is introduced.
+    2.  the EC2 health checks are seen as failing after the node has come back from reboot, because
+        EC2 takes a while before running the health checks and updating the health check status. This
+        is usually the case with t2.medium and Ubuntu 20.04.
 
-    See https://bugs.schedmd.com/show_bug.cgi?id=13953
+    This test is OS- and instance type dependent. Currently it is possible to reproduce the issue
+    only with Ubuntu 20.04.
+
+    See https://github.com/aws/aws-parallelcluster/issues/4751
     """
 
-    max_count_cr1 = 10
-    scale_down_idle_time_mins = 5
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+    clustermgtd_config = dict()
+    clustermgtd_config["loop_time"] = "15"
+    clustermgtd_config["health_check_timeout"] = "15"
+    clustermgtd_config["health_check_timeout_after_slurmdstarttime"] = "180"
+
+    # Set shorter loop time and health check timeout to trigger failures due to EC2 health checks more easily
+    for key, val in clustermgtd_config.items():
+        remote_command_executor.run_remote_command(
+            f"sudo sed -i '/{key}/d' /etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+        )
+        remote_command_executor.run_remote_command(
+            f'echo "{key} = {val}" | sudo tee -a ' "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+        )
+
+    # Get compute nodes in the cluster
+    compute_nodes = slurm_commands.get_compute_nodes()
+
+    # Wait for compute nodes to be fully up and running
+    wait_for_compute_nodes_states(
+        slurm_commands,
+        compute_nodes,
+        "idle",
+        stop_max_delay_secs=300,
+    )
+
+    # Add drop-in file to delay startup of slurmd on the compute nodes. This will cause the compute node to
+    # stay longer in REBOOT_ISSUED state.
+    # TODO: generalize it for multiple nodes (it requires a parallel ssh utility such as clush).
+    # Currently the test uses only one compute node, so this is enough.
+    script = "add_sleep_to_slurmd_service_compute.sh"
+    remote_command_executor.run_remote_command(
+        f"rsync -a {script} {str(compute_nodes[0])}:~/", additional_files=[str(test_datadir / script)]
+    )
+    remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "chmod +x {script}"')
+    remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "./{script}"')
+
+    # Clear clustermgtd and slurmctld logs before starting the tests
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+
+    # 2 iterations to cover the two scenarios described in the test description
+    for scenario in range(1, 3):
+        if scenario == 2:
+            # Remove delay in startup of slurmd on the compute nodes.
+            # TODO: generalize it for multiple nodes (it requires a parallel ssh utility such as clush)
+            # Currently the test uses only one compute node, so it's not necessary.
+            script = "reset_sleep_slurmd_service_compute.sh"
+            remote_command_executor.run_remote_command(
+                f"rsync -a {script} {str(compute_nodes[0])}:~/", additional_files=[str(test_datadir / script)]
+            )
+            remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "chmod +x {script}"')
+            remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "./{script}"')
+
+        # Reboot static compute nodes
+        for node in compute_nodes:
+            slurm_commands.reboot_compute_node(node, asap=True)
+
+        # Wait for compute nodes to reply to slurmctld after rebooting
+        wait_for_slurm_rebooted_nodes(compute_nodes, remote_command_executor, stop_max_delay_secs=600)
+
+        # Check that the nodes are not marked as unhealthy in the following minutes
+        time.sleep(300)
+        assert_no_msg_in_logs(
+            remote_command_executor,
+            ["/var/log/parallelcluster/clustermgtd"],
+            ["Setting nodes failing health check type ec2_health_check to DRAIN"],
+        )
+
+        # Final check on the state of the compute nodes
+        assert_compute_node_states(slurm_commands, compute_nodes, "idle")
+
+        # Reset the slurmctld and clustermgtd logs
+        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
+        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_scontrol_update_nodelist_sorting(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    """
+    Test that scontrol update node follows the order of the nodelist provided by the user.
+
+    In Slurm 22.05 the scontrol update node logic was modified and a sorting routine was
+    introduced, which modified the order of the nodes in the nodelist.
+    If `scontrol update node nodename=nodelist nodeaddr=nodeaddrlist` is called, only the
+    nodelist was sorted (not the nodeaddrlist). This causes mismatches between the Slurm
+    nodenames and the assigned addresses.
+
+    See https://bugs.schedmd.com/show_bug.cgi?id=15731
+    """
+
+    max_count_cr1 = max_count_cr2 = 4
 
     cluster_config = pcluster_config_reader(
         config_file="pcluster.config.yaml",
         output_file="pcluster.config.initial.yaml",
         max_count_cr1=max_count_cr1,
-        scale_down_idle_time_mins=scale_down_idle_time_mins,
+        max_count_cr2=max_count_cr2,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -518,46 +657,21 @@ def test_update_slurm_reconfigure_race_condition(
 
     assert_compute_node_states(slurm_commands, compute_nodes=None, expected_states=["idle~"])
 
-    max_retries = 5
-    for iter in range(1, max_retries + 1):
+    nodes_in_queue1 = slurm_commands.get_compute_nodes("queue1", all_nodes=True)
+    nodes_in_queue2 = slurm_commands.get_compute_nodes("queue2", all_nodes=True)
 
-        job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
-            submit_command_args={
-                "nodes": 2,
-                "slots": 2,
-                "command": "srun sleep 300",
-                "raise_on_error": False,
-            }
-        )
-        slurm_commands.wait_job_running(job_id_1)
-        nodelist = slurm_commands.get_job_info(job_id_1, field="NodeList")
-        nodes = remote_command_executor.run_remote_command(
-            f"sinfo -N --nodes {nodelist} -h -O NodeHost:100 | sort | uniq"
-        ).stdout.splitlines()
-        nodes = [node.strip() for node in nodes]
-        slurm_commands.cancel_job(job_id_1)
+    # Create an unsorted list of nodes to be updated (queue2 is alphabetically after queue1)``:s
+    nodelist = f"{nodes_in_queue2[0]},{nodes_in_queue1[0]}"
 
-        max_count_cr1 = max_count_cr1 + 3
+    # Stop clustermgtd since it may fix the situation under the hood if it calls scontrol update
+    # with a sorted list of nodes
+    remote_command_executor.run_remote_command("sudo systemctl stop supervisord")
 
-        updated_config_file = pcluster_config_reader(
-            config_file="pcluster.config.yaml",
-            output_file=f"pcluster.config.iter_{iter}.yaml",
-            max_count_cr1=max_count_cr1,
-            scale_down_idle_time_mins=scale_down_idle_time_mins,
-        )
-        cluster.update(
-            config_file=updated_config_file,
-            wait=True,
-        )
+    # Run scontrol update with unsorted list of nodes
+    remote_command_executor.run_remote_command(f"sudo -i scontrol update nodename={nodelist} nodeaddr={nodelist}")
 
-        # Check that nodes get powered down by Slurm.
-        retry(wait_fixed=seconds(30), stop_max_delay=minutes(2 * scale_down_idle_time_mins))(
-            assert_compute_node_states
-        )(
-            scheduler_commands=slurm_commands,
-            compute_nodes=nodes,
-            expected_states=["idle%"],
-        )
+    assert_that(slurm_commands.get_node_attribute(nodes_in_queue1[0], "NodeAddr")).is_equal_to(nodes_in_queue1[0])
+    assert_that(slurm_commands.get_node_attribute(nodes_in_queue2[0], "NodeAddr")).is_equal_to(nodes_in_queue2[0])
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1259,7 +1373,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 22.05.6")
+    assert_that(version).is_equal_to("slurm 22.05.8")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -1438,6 +1552,24 @@ def _set_protected_failure_count(remote_command_executor, protected_failure_coun
     )
 
 
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
+def _wait_until_protected_mode_failure_count_set(cluster):
+    """Retry setting the protected failure count until the clustermgtd is running."""
+    remote_command_executor = retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(RemoteCommandExecutor)(cluster)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "ClusterManager Startup",
+        ],
+    )
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    assert_that(clustermgtd_conf_path).is_not_empty()
+    _set_protected_failure_count(remote_command_executor, 3, clustermgtd_conf_path)
+
+    return remote_command_executor
+
+
 def _enable_protected_mode(remote_command_executor, clustermgtd_conf_path):
     """Enable protected mode by removing lines related to protected mode in the config, so it will be set to default."""
     remote_command_executor.run_remote_command(f"sudo sed -i '/'protected_failure_count'/d' {clustermgtd_conf_path}")
@@ -1558,6 +1690,21 @@ def _test_recover_from_protected_mode(
     # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
     # not enter protected mode
     check_status(cluster, compute_fleet_status="RUNNING")
+
+
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
+def _test_compute_fleet_status(command_executor, expected_status):
+    """Assert that the compute fleet status is the expected status."""
+    result = command_executor.run_remote_command("get-compute-fleet-status.sh").stdout
+    status = json.loads(result)
+    assert_that(status.get("status")).is_equal_to(expected_status)
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
+def _test_cluster_creation_failure(cluster, failure_code="HeadNodeBootstrapFailure"):
+    """Retry describe-cluster until we see {failure_code}."""
+    response = cluster.describe_cluster()
+    assert_that(response["failures"][0]["failureCode"]).is_equal_to(failure_code)
 
 
 def _test_compute_node_bootstrap_timeout(
@@ -2024,6 +2171,74 @@ def _test_scontrol_reboot_nodes(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         ["Found the following unhealthy static nodes"],
+    )
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
+def trigger_slurm_reconfigure_race_condition(remote_command_executor):
+    # trigger slurmctld restart and scontrol reconfigure until they are executed in the same timestamp second
+    remote_command_executor.run_remote_command("sudo -i systemctl restart slurmctld && sudo -i scontrol reconfigure")
+    restart_time = _get_latest_timestamp_for_log_entry(
+        remote_command_executor, "/var/log/slurmctld.log", "slurmctld version .* started on cluster"
+    )
+    reconfigure_time = _get_latest_timestamp_for_log_entry(
+        remote_command_executor, "/var/log/slurmctld.log", "_slurm_rpc_reconfigure_controller: completed"
+    )
+    assert_that(restart_time.second).is_equal_to(reconfigure_time.second)
+    assert_that((reconfigure_time - restart_time).total_seconds()).is_less_than_or_equal_to(1.0)
+
+
+def _get_latest_timestamp_for_log_entry(remote_command_executor, log_path, log_entry):
+    log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_path), hide=True).stdout
+    match = re.findall(rf"\[(.+?)\] {log_entry}", log)[-1]
+    return datetime.strptime(match, "%Y-%m-%dT%H:%M:%S.%f")
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_slurm_reconfigure_race_condition(
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    """
+    Test race condition between restart of slurmctld and scontrol reconfigure.
+
+    In Slurm 21.08 cloud nodes are not get powered-down after their
+    SuspendTime has expired if a cluster update is performed, which restarts the
+    slurmctld daemon and immediately performs a scontrol reconfigure.
+
+    See https://bugs.schedmd.com/show_bug.cgi?id=13953
+    """
+
+    scale_down_idle_time_mins = 1
+    cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.yaml",
+        scale_down_idle_time_mins=scale_down_idle_time_mins,
+    )
+
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    trigger_slurm_reconfigure_race_condition(remote_command_executor)
+
+    job_id = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "nodes": 1,
+            "slots": 1,
+        }
+    )
+    slurm_commands.wait_job_completed(job_id)
+    compute_nodes = slurm_commands.get_compute_nodes()
+    # Check that nodes get powered down by Slurm after scale_down_idle_time_mins.
+    wait_for_compute_nodes_states(
+        scheduler_commands=slurm_commands,
+        compute_nodes=compute_nodes,
+        expected_states=["idle~"],
+        wait_fixed_secs=30,
+        stop_max_delay_secs=5 * scale_down_idle_time_mins * 60,
     )
 
 

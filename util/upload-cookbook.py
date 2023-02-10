@@ -134,7 +134,7 @@ def _get_bucket_name(args, region):
 
 def _md5sum(cookbook_archive_file, md5sum_file):
     blocksize = 65536
-    hasher = hashlib.md5()  # nosec nosemgrep
+    hasher = hashlib.md5()  # nosec
     with open(cookbook_archive_file, "rb") as arch:
         buf = arch.read(blocksize)
         while len(buf) > 0:
@@ -261,7 +261,7 @@ def main():
 
         if not args.dryrun:
             # Stores LastModified info into .tgz.date file and uploads it back to bucket
-            with (open(base_name + ".tgz.date", "w+")) as f:
+            with open(base_name + ".tgz.date", "w+") as f:
                 response = s3.head_object(Bucket=bucket_name, Key=_COOKBOOKS_DIR + "/" + base_name + ".tgz")
                 f.write(response.get("LastModified").strftime("%Y-%m-%d_%H-%M-%S"))
 

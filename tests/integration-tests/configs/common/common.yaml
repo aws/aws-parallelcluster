@@ -26,6 +26,7 @@ arm_pl:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+{%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
 scheduler_plugin:
   test_scheduler_plugin.py::test_scheduler_plugin_integration:
     dimensions:
@@ -37,6 +38,7 @@ scheduler_plugin:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["plugin"]
+{%- endif %}
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
     dimensions:
@@ -76,6 +78,22 @@ cloudwatch_logging:
         schedulers: ["slurm"]
       # 3) run the test for all ARM OSes on an ARM instance
       - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_custom_action_error:
+    dimensions:
+      - regions: ["ap-east-1"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
@@ -139,6 +157,24 @@ create:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
+  test_create.py::test_cluster_creation_with_problematic_preinstall_script:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        schedulers: ["slurm"]
+        oss: ["centos7"]
+  test_create.py::test_cluster_creation_timeout:
+    dimensions:
+      - regions: ["ap-northeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm", "awsbatch"]
+        oss: ["alinux2"]
+  test_create.py::test_cluster_creation_with_invalid_ebs:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        schedulers: ["slurm"]
+        oss: ["ubuntu1804", "ubuntu2004"]
 createami:
   test_createami.py::test_invalid_config:
     dimensions:
@@ -152,7 +188,7 @@ createami:
         oss: ["alinux2", "ubuntu2004", "centos7"]
   test_createami.py::test_kernel4_build_image_run_cluster:
     dimensions:
-      - regions: ["ca-central-1"]
+      - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
@@ -262,7 +298,9 @@ efa:
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["eu-west-1"]
+      # Capacity Reservation for `c6gn.16xlarge` created in `us-east-1a` do not move unless the target region also
+      # has a Capacity Reservation for `c6gn.16xlarge`
+      - regions: ["us-east-1"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
@@ -479,6 +517,12 @@ schedulers:
 #        oss: ["alinux2"]
 #        schedulers: ["slurm_plugin"]
 #{%- endif %}
+  test_slurm.py::test_slurm_protected_mode_on_cluster_create:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
   test_slurm.py::test_fast_capacity_failover:
     dimensions:
       - regions: ["ap-east-1"]
@@ -503,11 +547,23 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_reboot_ec2_health_checks:
+    dimensions:
+      - regions: ["us-east-2"]
+        instances: ["t2.medium"]
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
   test_slurm.py::test_slurm_overrides:
     dimensions:
       - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_update_nodelist_sorting:
+    dimensions:
+      - regions: ["ca-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
         schedulers: ["slurm"]
   test_slurm_accounting.py::test_slurm_accounting:
     dimensions:
@@ -521,6 +577,12 @@ schedulers:
         instances:  {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7", "ubuntu1804"]
         schedulers: ["slurm"]
+  test_slurm.py::test_slurm_reconfigure_race_condition:
+     dimensions:
+      - regions: ["af-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: [ "slurm" ]
 spot:
   test_spot.py::test_spot_default:
     dimensions:

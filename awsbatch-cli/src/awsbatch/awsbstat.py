@@ -461,16 +461,16 @@ class AWSBstatCommand:
             single_jobs = []
             jobs_with_children = []
             for status in job_status:
-                next_token = ""  # nosec
-                while next_token is not None:
-                    response = self.batch_client.list_jobs(jobStatus=status, jobQueue=job_queue, nextToken=next_token)
+                next_page = ""
+                while next_page is not None:
+                    response = self.batch_client.list_jobs(jobStatus=status, jobQueue=job_queue, nextToken=next_page)
 
                     for job in response["jobSummaryList"]:
                         if get_job_type(job) != "SIMPLE" and expand_children is True:
                             jobs_with_children.append(job["jobId"])
                         else:
                             single_jobs.append(job)
-                    next_token = response.get("nextToken")
+                    next_page = response.get("nextToken")
 
             # create output items for job array children
             self.__populate_output_by_job_ids(jobs_with_children, details)

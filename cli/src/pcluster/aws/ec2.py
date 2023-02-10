@@ -136,7 +136,7 @@ class Ec2Client(Boto3Client):
     @Cache.cached
     def get_subnet_cidr(self, subnet_id):
         """Return cidr block  of the given subnet."""
-        subnets = self._client.describe_subnets(SubnetIds=[subnet_id]).get("Subnets")
+        subnets = self.describe_subnets([subnet_id])
         if subnets:
             return subnets[0].get("CidrBlock")
         raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")

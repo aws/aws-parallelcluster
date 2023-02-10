@@ -284,13 +284,13 @@ class AWSBhostsCommand:
         try:
             # connect to batch and ask for compute environments
             batch_client = self.boto3_factory.get_client("batch")
-            next_token = ""  # nosec
-            while next_token is not None:
+            next_page = ""
+            while next_page is not None:
                 response = batch_client.describe_compute_environments(
-                    computeEnvironments=compute_environments, nextToken=next_token
+                    computeEnvironments=compute_environments, nextToken=next_page
                 )
                 ecs_clusters.extend(self.__get_clusters(response["computeEnvironments"]))
-                next_token = response.get("nextToken")
+                next_page = response.get("nextToken")
         except Exception as e:
             fail("Error listing compute environments from AWS Batch. Failed with exception: %s" % e)
 

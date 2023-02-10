@@ -1,0 +1,291 @@
+{%- import 'common.jinja2' as common with context -%}
+---
+test-suites:
+  ad_integration:
+    test_ad_integration.py::test_ad_integration:
+      dimensions:
+        - regions: ["ap-southeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
+  arm_pl:
+    test_arm_pl.py::test_arm_pl:
+      dimensions:
+        - regions: ["ap-northeast-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm"]
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
+      dimensions:
+        - regions: ["ap-northeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        # 2) run the test for all x86 OSes with slurm
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+        # 3) run the test for all ARM OSes on an ARM instance
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm"]
+  configure:
+    test_pcluster_configure.py::test_pcluster_configure:
+      dimensions:
+        - regions: ["af-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
+          schedulers: ["slurm"]
+  createami:
+    test_createami.py::test_build_image:
+      dimensions:
+        - regions: ["eu-west-3"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2", "ubuntu2004", "centos7"]
+    test_createami.py::test_kernel4_build_image_run_cluster:
+      dimensions:
+        - regions: ["eu-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          schedulers: ["awsbatch", "slurm"]
+          oss: ["alinux2"]
+  dcv:
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        # DCV on GPU enabled instance
+        - regions: ["us-east-1"]
+          instances: ["g4dn.2xlarge"]
+          oss: {{common.OSS_COMMERCIAL_X86}}
+          schedulers: ["slurm"]
+        # DCV on ARM + GPU
+        - regions: ["us-east-1"]
+          instances: ["g5g.2xlarge"]
+          oss: ["alinux2", "ubuntu1804"]
+          schedulers: ["slurm"]
+  disable_hyperthreading:
+    test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: ["m4.xlarge"]
+          oss: ["alinux2", "centos7"]
+          schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
+  dns:
+    test_dns.py::test_hit_no_cluster_dns_mpi:
+      dimensions:
+        - regions: ["af-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: ["sa-east-1"]
+          instances: ["c5n.9xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+        - regions: ["us-east-1"]
+          instances: ["p4d.24xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+        - regions: ["us-east-1"]
+          instances: ["c6gn.16xlarge"]
+          oss: ["ubuntu1804", "ubuntu2004"]
+          schedulers: ["slurm"]
+  intel_hpc:
+    test_intel_hpc.py::test_intel_hpc:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: ["c5.18xlarge"]
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+  networking:
+    test_cluster_networking.py::test_cluster_in_private_subnet:
+      dimensions:
+        - regions: ["me-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+    test_cluster_networking.py::test_cluster_in_no_internet_subnet:
+      dimensions:
+          # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
+          # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+    test_multi_cidr.py::test_multi_cidr:
+      dimensions:
+        - regions: ["ap-northeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+      dimensions:
+        - regions: [ "us-west-2" ]
+          oss: [ "alinux2" ]
+  scaling:
+    test_mpi.py::test_mpi:
+      dimensions:
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm"]
+    test_mpi.py::test_mpi_ssh:
+      dimensions:
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+  schedulers:
+    test_awsbatch.py::test_awsbatch:
+      dimensions:
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_pmix:
+      dimensions:
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+        - regions: ["ap-northeast-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_scaling:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
+          schedulers: ["slurm"]
+  storage:
+    # Commercial regions that can't test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
+    test_fsx_lustre.py::test_fsx_lustre:
+      dimensions:
+        - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
+    # The checks performed in test_multiple_fsx is the same as test_fsx_lustre.
+    # We should consider this when assigning dimensions to each test.
+    test_fsx_lustre.py::test_multiple_fsx:
+      dimensions:
+        - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
+    test_fsx_lustre.py::test_fsx_lustre_configuration_options:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_efs.py::test_multiple_efs:
+      dimensions:
+        - regions: [ "eu-west-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: [ "slurm" ]
+          benchmarks:
+            - mpi_variants: [ "openmpi", "intelmpi" ]
+              num_instances: [ 4 ]
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: [ "osu_alltoall" ]
+    test_raid.py::test_raid_performance_mode:
+      dimensions:
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+    test_ebs.py::test_ebs_multiple:
+      dimensions:
+        - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+    test_ebs.py::test_ebs_existing:
+      dimensions:
+        - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+    # Ephemeral test requires instance type with instance store
+    test_ephemeral.py::test_head_node_stop:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: ["m5d.xlarge", "h1.2xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  update:
+    test_update.py::test_update_slurm:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+    test_update.py::test_update_compute_ami:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+    test_update.py::test_update_instance_list:
+      dimensions:
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_update.py::test_queue_parameters_update:
+      dimensions:
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_update.py::test_dynamic_file_systems_update:
+      dimensions:
+        - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+        - regions: ["ap-northeast-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm"]
+    test_update.py::test_multi_az_create_and_update:
+      dimensions:
+        - regions: [ "eu-west-2" ]
+          schedulers: [ "slurm" ]
+          oss: ["alinux2"]
