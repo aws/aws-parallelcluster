@@ -305,6 +305,18 @@ def to_snake_case(input):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
+def to_pascal_case(snake_case_word):
+    """Convert the given snake case word into a PascalCase one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
+
+
+def to_pascal_from_kebab_case(kebab_case_word):
+    """Convert the given kebab case word into a PascalCase one."""
+    parts = iter(kebab_case_word.split("-"))
+    return "".join(word.title() for word in parts)
+
+
 def create_s3_bucket(bucket_name, region):
     """
     Create a new S3 bucket.

@@ -9,13 +9,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import random
 from collections import OrderedDict
 
 import boto3
+from assertpy import assert_that
 from botocore.exceptions import ClientError
 from framework.credential_providers import aws_credential_provider
 from retrying import retry
-from utils import retrieve_cfn_outputs, retrieve_cfn_resources
+from utils import retrieve_cfn_outputs, retrieve_cfn_resources, to_pascal_from_kebab_case
 
 
 class CfnStack:
@@ -55,6 +57,40 @@ class CfnStack:
         if not self.__cfn_resources:
             self.__cfn_resources = retrieve_cfn_resources(self.name, self.region)
         return self.__cfn_resources
+
+
+class CfnVpcStack(CfnStack):
+    """Identify a CloudFormation VPC stack."""
+
+    # TODO add method to get N subnets
+    def __init__(self, default_az_id: str = None, az_ids: list = None, **kwargs):
+        super().__init__(**kwargs)
+        self.default_az_id = default_az_id
+        self.az_ids = az_ids
+
+    def get_public_subnet(self):  # TODO add possibility to override default
+        """Return the public subnet for a VPC stack."""
+        if self.default_az_id:
+            az_id_tag = to_pascal_from_kebab_case(self.default_az_id)
+        else:
+            # get random public subnet, if default is not set
+            assert_that(self.az_ids).is_not_none()
+            az_id_tag = to_pascal_from_kebab_case(random.choice(self.az_ids))
+
+        assert_that(az_id_tag).is_not_none()
+        return self.cfn_outputs[f"{az_id_tag}PublicSubnetId"]
+
+    def get_private_subnet(self):  # TODO add possibility to override default
+        """Return the private subnet for a VPC stack."""
+        if self.default_az_id:
+            az_id_tag = to_pascal_from_kebab_case(self.default_az_id)
+        else:
+            # get random private subnet, if default is not set
+            assert_that(self.az_ids).is_not_none()
+            az_id_tag = to_pascal_from_kebab_case(random.choice(self.az_ids))
+
+        assert_that(az_id_tag).is_not_none()
+        return self.cfn_outputs[f"{az_id_tag}PrivateSubnetId"]
 
 
 class CfnStacksFactory:

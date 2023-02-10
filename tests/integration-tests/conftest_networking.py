@@ -15,20 +15,22 @@
 
 import logging
 import random
+from functools import lru_cache
 
 import boto3
 import pytest
-from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from assertpy import assert_that
+from cfn_stacks_factory import CfnStacksFactory, CfnVpcStack
 from framework.credential_providers import aws_credential_provider
 from framework.fixture_utils import xdist_session_fixture
 from framework.tests_configuration.config_utils import get_all_regions
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
-from utils import generate_stack_name
+from utils import generate_stack_name, to_pascal_from_kebab_case
 
 from tests.common.utils import retrieve_latest_ami
 
-AVAILABILITY_ZONE_OVERRIDES = {
+DEFAULT_AVAILABILITY_ZONE = {
     # c5.xlarge is not supported in use1-az3
     # FSx Lustre file system creation is currently not supported for use1-az3
     # p4d.24xlarge targeted ODCR is only available on use1-az6
@@ -62,6 +64,57 @@ AVAILABILITY_ZONE_OVERRIDES = {
 }
 
 
+# Split the VPC address space into 32 subnets of 2046 (/21) addresses
+# to ensure that each subnets has enough IP addresses to support enough tests parallelism.
+# The first 10 are used for public subnets
+# The second 10 are used for private subnets
+# The remaining 12 are left for custom subnets
+CIDR_FOR_PUBLIC_SUBNETS = [
+    "192.168.0.0/21",
+    "192.168.8.0/21",
+    "192.168.16.0/21",
+    "192.168.24.0/21",
+    "192.168.32.0/21",
+    "192.168.40.0/21",
+    "192.168.48.0/21",
+    "192.168.56.0/21",
+    "192.168.64.0/21",
+    "192.168.72.0/21",
+]
+CIDR_FOR_PRIVATE_SUBNETS = [
+    "192.168.80.0/21",
+    "192.168.88.0/21",
+    "192.168.96.0/21",
+    "192.168.104.0/21",
+    "192.168.112.0/21",
+    "192.168.120.0/21",
+    "192.168.128.0/21",
+    "192.168.136.0/21",
+    "192.168.144.0/21",
+    "192.168.152.0/21",
+]
+CIDR_FOR_CUSTOM_SUBNETS = [
+    "192.168.160.0/21",
+    "192.168.168.0/21",
+    "192.168.176.0/21",
+    "192.168.184.0/21",
+    "192.168.192.0/21",
+    "192.168.200.0/21",
+    "192.168.208.0/21",
+    "192.168.216.0/21",
+    "192.168.224.0/21",
+    "192.168.232.0/21",
+    "192.168.240.0/21",
+    "192.168.248.0/21",
+]
+
+
+def subnet_name(visibility="Public", az_id=None, flavor=None):
+    az_id_pascal_case = "" if az_id is None else f"{to_pascal_from_kebab_case(az_id)}"
+    flavor_string = "" if flavor is None else f"{flavor}"
+    return f"{az_id_pascal_case}{visibility}{flavor_string}"
+
+
 def get_availability_zones(region, credential):
     """
     Return a list of availability zones for the given region.
@@ -84,6 +137,7 @@ def get_availability_zones(region, credential):
     return az_list
 
 
+@lru_cache(maxsize=128)
 def get_az_id_to_az_name_map(region, credential):
     """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
     # credentials are managed manually rather than via setup_sts_credentials because this function
@@ -103,15 +157,23 @@ def get_az_id_to_az_name_map(region, credential):
     wait_fixed=5000,
     retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
 )
-def _create_vpc_stack(request, template, region, cfn_stacks_factory):
+def _create_vpc_stack(request, template, region, default_az, az_ids, cfn_stacks_factory):
     if request.config.getoption("vpc_stack"):
         logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
-        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
+        stack = CfnVpcStack(
+            name=request.config.getoption("vpc_stack"),
+            region=region,
+            template=template.to_json(),
+            default_az_id=default_az,
+            az_ids=az_ids,
+        )
     else:
-        stack = CfnStack(
+        stack = CfnVpcStack(
             name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
             region=region,
             template=template.to_json(),
+            default_az_id=default_az,
+            az_ids=az_ids,
         )
         cfn_stacks_factory.create_stack(stack)
     return stack
@@ -123,7 +185,7 @@ def random_az_selector(request):
 
     def _get_random_availability_zones(region, num_azs=1, default_value=None):
         """Return num_azs random AZs (in the form of AZ names, e.g. 'us-east-1a') for the given region."""
-        az_ids = AVAILABILITY_ZONE_OVERRIDES.get(region, [])
+        az_ids = DEFAULT_AVAILABILITY_ZONE.get(region, [])
         if az_ids:
             az_id_to_az_name_map = get_az_id_to_az_name_map(region, request.config.getoption("credential"))
             sample = random.sample([az_id_to_az_name_map.get(az_id, default_value) for az_id in az_ids], k=num_azs)
@@ -148,126 +210,87 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
     """
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    credential = request.config.getoption("credential")
+
     vpc_stacks_dict = {}
-
     for region in regions:
-        # Creating private_subnet_different_cidr in a different AZ for test_efs
-        # To-do: isolate this logic and create a compute subnet in different AZ than head node in test_efs
+        # TODO Region can be AZ ID, in this case convert it to Region
+        az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
+        az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
+        az_names = [az_id_to_az_name_map.get(az_id) for az_id in az_id_to_az_name_map]
+        default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region))
+        default_az_name = az_id_to_az_name_map.get(default_az_id)
 
-        # if region has a non-empty list in AVAILABILITY_ZONE_OVERRIDES, select a subset of those AZs
-        credential = request.config.getoption("credential")
-        az_ids_for_region = AVAILABILITY_ZONE_OVERRIDES.get(region, [])
-        if az_ids_for_region:
-            az_id_to_az_name = get_az_id_to_az_name_map(region, credential)
-            az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
-            # if only one AZ can be used for the given region, use it multiple times
-            if len(az_names) == 1:
-                availability_zones = az_names * 3
-            if len(az_names) == 2:
-                # ensures that az[0] and az[1] are always different if two az are available for use
-                availability_zones = az_names + random.sample(az_names, k=1)
-        # otherwise, select a subset of all AZs in the region
-        else:
-            az_list = get_availability_zones(region, credential)
-            # if number of available zones is smaller than 3, list is expanded to 3 and filled with [None, ...]
-            if len(az_list) < 3:
-                diff = 3 - len(az_list)
-                availability_zones = az_list + [None] * diff
-            else:
-                availability_zones = random.sample(az_list, k=3)
+        subnets = []
+        assert_that(len(az_names)).is_greater_than(1)
 
-        # Subnets visual representation:
-        # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
-        public_subnet = SubnetConfig(
-            name="Public",
-            cidr="192.168.32.0/20",  # 4096 IPs
-            map_public_ip_on_launch=True,
-            has_nat_gateway=True,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.INTERNET_GATEWAY,
-        )
-        private_subnet = SubnetConfig(
-            name="Private",
-            cidr="192.168.64.0/20",  # 4096 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.NAT_GATEWAY,
-        )
-        private_subnet_different_cidr = SubnetConfig(
-            name="PrivateAdditionalCidr",
-            cidr="192.168.96.0/20",  # 4096 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[1],
-            default_gateway=Gateways.NAT_GATEWAY,
-        )
-        no_internet_subnet = SubnetConfig(
-            name="NoInternet",
-            cidr="192.168.16.0/20",  # 4096 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.NONE,
-        )
-        public_subnet_az2 = SubnetConfig(
-            name="PublicAz2",
-            cidr="192.168.128.0/20",  # 4096 IPs
-            map_public_ip_on_launch=True,
-            has_nat_gateway=True,
-            availability_zone=availability_zones[1],
-            default_gateway=Gateways.INTERNET_GATEWAY,
-        )
-        private_subnet_az2 = SubnetConfig(
-            name="PrivateAz2",
-            cidr="192.168.160.0/20",  # 4096 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[1],
-            default_gateway=Gateways.NAT_GATEWAY,
-        )
-        public_subnet_az3 = SubnetConfig(
-            name="PublicAz3",
-            cidr="192.168.192.0/20",  # 4096 IPs
-            map_public_ip_on_launch=True,
-            has_nat_gateway=True,
-            availability_zone=availability_zones[2],
-            default_gateway=Gateways.INTERNET_GATEWAY,
-        )
-        private_subnet_az3 = SubnetConfig(
-            name="PrivateAz3",
-            cidr="192.168.224.0/20",  # 4096 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[2],
-            default_gateway=Gateways.NAT_GATEWAY,
-        )
+        for index, az_id in enumerate(az_ids):
+            az_name = az_id_to_az_name_map.get(az_id)
+            # Subnets visual representation:
+            # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
+            subnets.append(
+                SubnetConfig(
+                    name=subnet_name(visibility="Public", az_id=az_id),
+                    cidr=CIDR_FOR_PUBLIC_SUBNETS[index],
+                    map_public_ip_on_launch=True,
+                    has_nat_gateway=True,
+                    availability_zone=az_name,
+                    default_gateway=Gateways.INTERNET_GATEWAY,
+                )
+            )
+            subnets.append(
+                SubnetConfig(
+                    name=subnet_name(visibility="Private", az_id=az_id),
+                    cidr=CIDR_FOR_PRIVATE_SUBNETS[index],
+                    map_public_ip_on_launch=False,
+                    has_nat_gateway=False,
+                    availability_zone=az_name,
+                    default_gateway=Gateways.NAT_GATEWAY,
+                )
+            )
+            if index == 0:
+                # Creating private_subnet_different_cidr in a different AZ for test_efs
+                # TODO isolate this logic and create a compute subnet in different AZ than head node in test_efs
+                subnets.append(
+                    SubnetConfig(
+                        name=subnet_name(visibility="Private", flavor="AdditionalCidr"),
+                        cidr=CIDR_FOR_CUSTOM_SUBNETS[index],
+                        map_public_ip_on_launch=False,
+                        has_nat_gateway=False,
+                        availability_zone=az_names[index + 1],
+                        default_gateway=Gateways.NAT_GATEWAY,
+                    )
+                )
+                subnets.append(
+                    SubnetConfig(
+                        name=subnet_name(visibility="Private", flavor="NoInternet"),
+                        cidr=CIDR_FOR_CUSTOM_SUBNETS[index + 1],
+                        map_public_ip_on_launch=False,
+                        has_nat_gateway=False,
+                        availability_zone=az_name,
+                        default_gateway=Gateways.NONE,
+                    )
+                )
+
         vpc_config = VPCConfig(
             cidr="192.168.0.0/17",
             additional_cidr_blocks=["192.168.128.0/17"],
-            subnets=[
-                public_subnet,
-                private_subnet,
-                private_subnet_different_cidr,
-                no_internet_subnet,
-                public_subnet_az2,
-                private_subnet_az2,
-                public_subnet_az3,
-                private_subnet_az3,
-            ],
+            subnets=subnets,
         )
 
         with aws_credential_provider(region, credential):
             bastion_image_id = retrieve_latest_ami(region, "alinux2")
         template = NetworkTemplateBuilder(
             vpc_configuration=vpc_config,
-            default_availability_zone=availability_zones[0],
+            default_availability_zone=default_az_name,
             create_bastion_instance=True,
             bastion_key_name=key_name,
             bastion_image_id=bastion_image_id,
             region=region,
         ).build()
-        vpc_stacks_dict[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
+        vpc_stacks_dict[region] = _create_vpc_stack(
+            request, template, region, default_az_id, az_ids, cfn_stacks_factory
+        )
 
     return vpc_stacks_dict
 
@@ -284,34 +307,38 @@ def vpc_stack_with_endpoints(region, request, key_name):
     credential = request.config.getoption("credential")
     stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    def _create_stack(request, template, region, stack_factory):
+    def _create_stack(request, template, region, default_az_id, az_ids, stack_factory):
         # TODO: be able to reuse an existing VPC endpoint stack
-        stack = CfnStack(
+        stack = CfnVpcStack(
             name=generate_stack_name("integ-tests-vpc-endpoints", request.config.getoption("stackname_suffix")),
             region=region,
             template=template.to_json(),
+            default_az_id=default_az_id,
+            az_ids=az_ids,
         )
         stack_factory.create_stack(stack)
         return stack
 
     # tests with VPC endpoints are not using multi-AZ
-    availability_zone = get_availability_zones(region, credential)[0]
+    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
+    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region))
+    default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     bastion_subnet = SubnetConfig(
-        name="Bastion",
+        name=subnet_name(visibility="Public", az_id=default_az_id),
         cidr="192.168.32.0/20",
         map_public_ip_on_launch=True,
         has_nat_gateway=True,
-        availability_zone=availability_zone,
+        availability_zone=default_az_name,
         default_gateway=Gateways.INTERNET_GATEWAY,
     )
 
     no_internet_subnet = SubnetConfig(
-        name="NoInternet",
+        name=subnet_name(visibility="Private", flavor="NoInternet"),
         cidr="192.168.16.0/20",  # 4096 IPs
         map_public_ip_on_launch=False,
         has_nat_gateway=False,
-        availability_zone=availability_zone,
+        availability_zone=default_az_name,
         default_gateway=Gateways.NONE,
     )
 
@@ -329,14 +356,14 @@ def vpc_stack_with_endpoints(region, request, key_name):
 
     template = NetworkTemplateBuilder(
         vpc_configuration=vpc_config,
-        default_availability_zone=availability_zone,
+        default_availability_zone=default_az_name,
         create_vpc_endpoints=True,
         bastion_key_name=key_name,
         bastion_image_id=bastion_image_id,
         region=region,
     ).build()
 
-    yield _create_stack(request, template, region, stack_factory)
+    yield _create_stack(request, template, region, default_az_id, [default_az_id], stack_factory)
 
     if not request.config.getoption("no_delete"):
         stack_factory.delete_all_stacks()

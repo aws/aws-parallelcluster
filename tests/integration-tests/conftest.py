@@ -28,7 +28,7 @@ import boto3
 import pytest
 import yaml
 from _pytest.fixtures import FixtureDef, SubRequest
-from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
     DIMENSIONS_MARKER_ARGS,
@@ -77,6 +77,7 @@ from utils import (
     random_alphanumeric,
     scheduler_plugin_definition_uploader,
     set_logger_formatter,
+    to_pascal_case,
 )
 
 from tests.common.osu_common import run_osu_benchmarks
@@ -760,9 +761,12 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
                 dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
 
 
-def _get_default_template_values(vpc_stack, request):
+def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = get_vpc_snakecase_value(vpc_stack)
+    default_values["public_subnet_id"] = vpc_stack.get_public_subnet()  # TODO possibility to override default AZ
+    default_values["private_subnet_id"] = vpc_stack.get_private_subnet()  # TODO possibility to override default AZ
+    # TODO inject variable containing N subnets
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
@@ -1397,12 +1401,6 @@ def mpi_variants(architecture):
     if architecture == "x86_64":
         variants.append("intelmpi")
     return variants
-
-
-def to_pascal_case(snake_case_word):
-    """Convert the given snake case word into a PascalCase one."""
-    parts = iter(snake_case_word.split("_"))
-    return "".join(word.title() for word in parts)
 
 
 @pytest.fixture()
