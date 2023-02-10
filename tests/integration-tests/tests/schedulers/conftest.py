@@ -4,8 +4,8 @@ import string
 from collections import defaultdict
 
 import pytest
-from cfn_stacks_factory import CfnStack, CfnStacksFactory
-from conftest_networking import get_availability_zones
+from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
+from conftest_networking import DEFAULT_AVAILABILITY_ZONE, get_az_id_to_az_name_map
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import generate_stack_name
 
@@ -21,22 +21,28 @@ def vpc_stack_for_database(region, request):
     credential = request.config.getoption("credential")
     stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    def _create_stack(request, template, region, stack_factory):
-        stack = CfnStack(
+    def _create_stack(request, template, region, default_az_id, az_ids, stack_factory):
+        stack = CfnVpcStack(
             name=generate_stack_name("integ-tests-vpc-database", request.config.getoption("stackname_suffix")),
             region=region,
             template=template.to_json(),
+            default_az_id=default_az_id,
+            az_ids=az_ids,
         )
         stack_factory.create_stack(stack)
         return stack
 
-    availability_zone = get_availability_zones(region, credential)[0]
+    # tests with database are not using multi-AZ
+    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
+    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region))
+    default_az_name = az_id_to_az_name_map.get(default_az_id)
+
     public_subnet = SubnetConfig(
         name="Public",
         cidr="192.168.32.0/20",  # 4096 IPs
         map_public_ip_on_launch=True,
         has_nat_gateway=True,
-        availability_zone=availability_zone,
+        availability_zone=default_az_name,
         default_gateway=Gateways.INTERNET_GATEWAY,
     )
     private_subnet = SubnetConfig(
@@ -44,7 +50,7 @@ def vpc_stack_for_database(region, request):
         cidr="192.168.64.0/20",  # 4096 IPs
         map_public_ip_on_launch=False,
         has_nat_gateway=False,
-        availability_zone=availability_zone,
+        availability_zone=default_az_name,
         default_gateway=Gateways.NAT_GATEWAY,
     )
     vpc_config = VPCConfig(
@@ -58,10 +64,10 @@ def vpc_stack_for_database(region, request):
 
     template = NetworkTemplateBuilder(
         vpc_configuration=vpc_config,
-        default_availability_zone=availability_zone,
+        default_availability_zone=default_az_name,
     ).build()
 
-    yield _create_stack(request, template, region, stack_factory)
+    yield _create_stack(request, template, region, default_az_id, [default_az_id], stack_factory)
 
     if not request.config.getoption("no_delete"):
         stack_factory.delete_all_stacks()

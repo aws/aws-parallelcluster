@@ -69,9 +69,7 @@ def test_ebs_snapshot(
 
     logging.info("Creating snapshot")
 
-    snapshot_id = snapshots_factory.create_snapshot(
-        request, vpc_stacks_shared[region].cfn_outputs["PublicSubnetId"], region
-    )
+    snapshot_id = snapshots_factory.create_snapshot(request, vpc_stacks_shared[region].get_public_subnet(), region)
 
     logging.info("Snapshot id: %s" % snapshot_id)
     cluster_config = pcluster_config_reader(mount_dir=mount_dir, volume_size=volume_size, snapshot_id=snapshot_id)
@@ -170,9 +168,7 @@ def test_ebs_existing(
 
     logging.info("Creating volume")
 
-    volume_id = snapshots_factory.create_existing_volume(
-        request, vpc_stacks_shared[region].cfn_outputs["PublicSubnetId"], region
-    )
+    volume_id = snapshots_factory.create_existing_volume(request, vpc_stacks_shared[region].get_public_subnet(), region)
 
     logging.info("Existing Volume id: %s" % volume_id)
     cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
