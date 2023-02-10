@@ -61,6 +61,51 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
+#
+# To ensure that each subnets has enough IP addresses to support current test parallelism
+# we will split the VPC address space into 32 subnets of 2046 (/21) addresses
+# The first 10 will be used for public subnets
+# The second 10 will be used for private subnets
+# The remaining 12 will be left for custom subnets
+CIDR_FOR_PUBLIC_SUBNETS = [
+    "192.168.0.0/21",
+    "192.168.8.0/21",
+    "192.168.16.0/21",
+    "192.168.24.0/21",
+    "192.168.32.0/21",
+    "192.168.40.0/21",
+    "192.168.48.0/21",
+    "192.168.56.0/21",
+    "192.168.64.0/21",
+    "192.168.72.0/21",
+]
+CIDR_FOR_PRIVATE_SUBNETS = [
+    "192.168.80.0/21",
+    "192.168.88.0/21",
+    "192.168.96.0/21",
+    "192.168.104.0/21",
+    "192.168.112.0/21",
+    "192.168.120.0/21",
+    "192.168.128.0/21",
+    "192.168.136.0/21",
+    "192.168.144.0/21",
+    "192.168.152.0/21",
+]
+CIDR_FOR_CUSTOM_SUBNETS = [
+    "192.168.160.0/21",
+    "192.168.168.0/21",
+    "192.168.176.0/21",
+    "192.168.184.0/21",
+    "192.168.192.0/21",
+    "192.168.200.0/21",
+    "192.168.208.0/21",
+    "192.168.216.0/21",
+    "192.168.224.0/21",
+    "192.168.232.0/21",
+    "192.168.240.0/21",
+    "192.168.248.0/21",
+]
+
 # Implements NamingConvention for Subnets
 # See: https://quip-amazon.com/xLgkAjTFgb7L/
 # Decision-Doc-Test-Runner-MultiAZ-requirements-and-improvements#temp:C:ZbZc1ead4e609ac455e821b5a7dc
@@ -201,7 +246,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
         public_subnet = SubnetConfig(
             name=subnet_name(visibility="Public"),
-            cidr="192.168.32.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_PUBLIC_SUBNETS[0],  # 2046 (/21) addresses
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             availability_zone=availability_zones[0],
@@ -209,7 +254,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
         private_subnet = SubnetConfig(
             name=subnet_name(visibility="Private"),
-            cidr="192.168.64.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_PRIVATE_SUBNETS[0],  # 2046 (/21) addresses
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
@@ -217,7 +262,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
         private_subnet_different_cidr = SubnetConfig(
             name=subnet_name(visibility="Private", special="AdditionalCidr"),
-            cidr="192.168.96.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_CUSTOM_SUBNETS[0],  # # 2046 (/21) addresses
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[1],
@@ -225,7 +270,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
         no_internet_subnet = SubnetConfig(
             name=subnet_name(visibility="Private", special="NoInternet"),
-            cidr="192.168.16.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_CUSTOM_SUBNETS[1],  # # 2046 (/21) addresses
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
@@ -233,7 +278,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
         public_subnet_az2 = SubnetConfig(
             name=subnet_name(visibility="Public", az_num=2),
-            cidr="192.168.128.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_PUBLIC_SUBNETS[1],  # 2046 (/21) addresses
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             availability_zone=availability_zones[1],
@@ -241,7 +286,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
         private_subnet_az2 = SubnetConfig(
             name=subnet_name(visibility="Private", az_num=2),
-            cidr="192.168.160.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_PRIVATE_SUBNETS[1],  # 2046 (/21) addresses
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[1],
@@ -249,7 +294,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
         public_subnet_az3 = SubnetConfig(
             name=subnet_name(visibility="Public", az_num=3),
-            cidr="192.168.192.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_PUBLIC_SUBNETS[2],  # 2046 (/21) addresses
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             availability_zone=availability_zones[2],
@@ -257,7 +302,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
         private_subnet_az3 = SubnetConfig(
             name=subnet_name(visibility="Private", az_num=3),
-            cidr="192.168.224.0/20",  # 4096 IPs
+            cidr=CIDR_FOR_PRIVATE_SUBNETS[1],  # 2046 (/21) addresses
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[2],
