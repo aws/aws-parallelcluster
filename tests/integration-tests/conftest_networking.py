@@ -326,7 +326,7 @@ def vpc_stack_with_endpoints(region, request, key_name):
 
     bastion_subnet = SubnetConfig(
         name=subnet_name(visibility="Public", az_id=default_az_id),
-        cidr="192.168.32.0/20",
+        cidr=CIDR_FOR_PUBLIC_SUBNETS[0],
         map_public_ip_on_launch=True,
         has_nat_gateway=True,
         availability_zone=default_az_name,
@@ -335,7 +335,7 @@ def vpc_stack_with_endpoints(region, request, key_name):
 
     no_internet_subnet = SubnetConfig(
         name=subnet_name(visibility="Private", flavor="NoInternet"),
-        cidr="192.168.16.0/20",  # 4096 IPs
+        cidr=CIDR_FOR_PRIVATE_SUBNETS[0],
         map_public_ip_on_launch=False,
         has_nat_gateway=False,
         availability_zone=default_az_name,

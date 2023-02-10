@@ -5,7 +5,13 @@ from collections import defaultdict
 
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
-from conftest_networking import DEFAULT_AVAILABILITY_ZONE, get_az_id_to_az_name_map
+from conftest_networking import (
+    CIDR_FOR_PRIVATE_SUBNETS,
+    CIDR_FOR_PUBLIC_SUBNETS,
+    DEFAULT_AVAILABILITY_ZONE,
+    get_az_id_to_az_name_map,
+    subnet_name,
+)
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import generate_stack_name
 
@@ -38,16 +44,16 @@ def vpc_stack_for_database(region, request):
     default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     public_subnet = SubnetConfig(
-        name="Public",
-        cidr="192.168.32.0/20",  # 4096 IPs
+        name=subnet_name(visibility="Public", az_id=default_az_id),
+        cidr=CIDR_FOR_PUBLIC_SUBNETS[0],
         map_public_ip_on_launch=True,
         has_nat_gateway=True,
         availability_zone=default_az_name,
         default_gateway=Gateways.INTERNET_GATEWAY,
     )
     private_subnet = SubnetConfig(
-        name="Private",
-        cidr="192.168.64.0/20",  # 4096 IPs
+        name=subnet_name(visibility="Private", az_id=default_az_id),
+        cidr=CIDR_FOR_PRIVATE_SUBNETS[0],
         map_public_ip_on_launch=False,
         has_nat_gateway=False,
         availability_zone=default_az_name,
