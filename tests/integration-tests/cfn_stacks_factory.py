@@ -70,27 +70,39 @@ class CfnVpcStack(CfnStack):
 
     def get_public_subnet(self):  # TODO add possibility to override default
         """Return the public subnet for a VPC stack."""
-        if self.default_az_id:
-            az_id_tag = to_pascal_from_kebab_case(self.default_az_id)
-        else:
-            # get random public subnet, if default is not set
-            assert_that(self.az_ids).is_not_none()
-            az_id_tag = to_pascal_from_kebab_case(random.choice(self.az_ids))
+        return self._get_subnet(visibility="Public")
 
-        assert_that(az_id_tag).is_not_none()
-        return self.cfn_outputs[f"{az_id_tag}PublicSubnetId"]
+    def get_all_public_subnets(self):
+        """Return all the public subnets for a VPC stack."""
+        return self._get_all_subnets(visibility="Public")
 
     def get_private_subnet(self):  # TODO add possibility to override default
         """Return the private subnet for a VPC stack."""
+        return self._get_subnet(visibility="Private")
+
+    def get_all_private_subnets(self):
+        """Return all the private subnets for a VPC stack."""
+        return self._get_all_subnets(visibility="Private")
+
+    def _get_subnet(self, visibility: str = "Public"):
         if self.default_az_id:
             az_id_tag = to_pascal_from_kebab_case(self.default_az_id)
         else:
-            # get random private subnet, if default is not set
+            # get random subnet, if default is not set
             assert_that(self.az_ids).is_not_none()
             az_id_tag = to_pascal_from_kebab_case(random.choice(self.az_ids))
 
         assert_that(az_id_tag).is_not_none()
-        return self.cfn_outputs[f"{az_id_tag}PrivateSubnetId"]
+        return self.cfn_outputs[f"{az_id_tag}{visibility}SubnetId"]
+
+    def _get_all_subnets(self, visibility: str = "Public"):
+        assert_that(self.az_ids).is_not_none()
+        subnet_ids = []
+        for az_id in self.az_ids:
+            az_id_tag = to_pascal_from_kebab_case(az_id)
+            subnet_ids.append(self.cfn_outputs[f"{az_id_tag}{visibility}SubnetId"])
+
+        return random.shuffle(subnet_ids)
 
 
 class CfnStacksFactory:

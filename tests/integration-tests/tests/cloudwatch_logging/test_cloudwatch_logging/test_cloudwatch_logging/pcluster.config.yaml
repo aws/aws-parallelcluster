@@ -24,9 +24,9 @@ Scheduling:
           {% if scheduler == "awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
           {% if scheduler == "slurm" %}
-          - {{ private_az2_subnet_id }}
+          - {{ private_subnet_ids[1] }}
           {% endif %}
 Monitoring:
   Logs:
