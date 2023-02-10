@@ -88,6 +88,13 @@ function vendor_cookbook
 }
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
+# Configure Amazon Linux 2 instance running in US isolated region.
+. /etc/os-release
+if [[ "${!ID}${!VERSION_ID}" == "amzn2" && "${AWS::Region}" == us-iso* ]]; then
+  configuration_script="/opt/parallelcluster/scripts/patch-iso-instance.sh"
+  [[ -f ${!configuration_script} ]] && bash ${!configuration_script} "${AWS::Region}" && . ~/.bash_profile
+fi
+
 # deploy config files
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 # Load ParallelCluster environment variables
@@ -102,7 +109,7 @@ export _region=${AWS::Region}
 s3_url=${AWS::URLSuffix}
 if [ "${!custom_cookbook}" != "NONE" ]; then
   if [[ "${!custom_cookbook}" =~ ^s3://([^/]*)(.*) ]]; then
-    bucket_region=$(aws s3api get-bucket-location --bucket ${!BASH_REMATCH[1]} | jq -r '.LocationConstraint')
+    bucket_region=$(aws s3api get-bucket-location --bucket ${!BASH_REMATCH[1]} --region ${AWS::Region} | jq -r '.LocationConstraint')
     if [[ "${!bucket_region}" == null ]]; then
       bucket_region="us-east-1"
     fi

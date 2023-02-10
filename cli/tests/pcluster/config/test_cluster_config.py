@@ -6,6 +6,8 @@ from pcluster.config.cluster_config import (
     AmiSearchFilters,
     BaseClusterConfig,
     ClusterDevSettings,
+    ComputeSettings,
+    Ebs,
     FlexibleInstanceType,
     HeadNode,
     HeadNodeImage,
@@ -13,6 +15,7 @@ from pcluster.config.cluster_config import (
     Image,
     PlacementGroup,
     QueueImage,
+    SharedEbs,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmComputeResourceNetworking,
@@ -54,6 +57,11 @@ mock_compute_resources = [
 
 
 @pytest.fixture
+def get_region(mocker):
+    mocker.patch("pcluster.config.cluster_config.get_region", return_value="WHATEVER_REGION")
+
+
+@pytest.fixture
 def instance_type_info_mock(aws_api_mock):
     aws_api_mock.ec2.get_instance_type_info.return_value = InstanceTypeInfo(
         {
@@ -67,6 +75,7 @@ def instance_type_info_mock(aws_api_mock):
 
 
 @pytest.mark.usefixtures("instance_type_info_mock")
+@pytest.mark.usefixtures("get_region")
 class TestBaseClusterConfig:
     @pytest.fixture()
     def base_cluster_config(self):
@@ -123,7 +132,6 @@ class TestBaseClusterConfig:
                 ),
             ),
         )
-        mocker.patch("pcluster.config.cluster_config.get_region", return_value="")
         cluster_config._register_validators()
         assert_that(cluster_config._validators).is_not_empty()
 
@@ -377,3 +385,71 @@ class TestBaseClusterConfig:
     def test_get_managed_placement_group_keys(self, queue, expected_result):
         actual = queue.get_managed_placement_group_keys()
         assert_that(actual).is_equal_to(expected_result)
+
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_head_node_root_volume(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        cluster_config = BaseClusterConfig(
+            cluster_name="clustername",
+            image=Image("alinux2"),
+            head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
+        )
+
+        assert_that(cluster_config.head_node.local_storage.root_volume.volume_type).is_equal_to(expected_volume_type)
+
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_compute_settings_root_volume(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        compute_settings = ComputeSettings()
+
+        assert_that(compute_settings.local_storage.root_volume.volume_type).is_equal_to(expected_volume_type)
+
+
+class TestSharedEbs:
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_shared_storage_ebs(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        shared_ebs = SharedEbs(mount_dir="/mount/dir", name="mount-name")
+
+        assert_that(shared_ebs.volume_type).is_equal_to(expected_volume_type)
+
+
+class TestEbs:
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_shared_storage_ebs(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        ebs = Ebs()
+
+        assert_that(ebs.volume_type).is_equal_to(expected_volume_type)

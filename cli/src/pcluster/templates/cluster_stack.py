@@ -99,7 +99,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
+from pcluster.utils import get_attr, get_http_tokens_setting, get_url_domain_suffix, join_shell_args
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -1059,6 +1059,8 @@ class ClusterCdkStack:
             indent=4,
         )
 
+        cloudformation_url = f"https://cloudformation.{self.stack.region}.{get_url_domain_suffix()}"
+
         cfn_init = {
             "configSets": {
                 "deployFiles": ["deployConfigFiles"],
@@ -1143,8 +1145,16 @@ class ClusterCdkStack:
                     },
                     "/etc/cfn/cfn-hup.conf": {
                         "content": Fn.sub(
-                            "[main]\nstack=${StackId}\nregion=${Region}\ninterval=2",
-                            {"StackId": self.stack.stack_id, "Region": self.stack.region},
+                            "[main]\n"
+                            "stack=${StackId}\n"
+                            "region=${Region}\n"
+                            "url=${CloudFormationUrl}\n"
+                            "interval=2\n",
+                            {
+                                "StackId": self.stack.stack_id,
+                                "Region": self.stack.region,
+                                "CloudFormationUrl": cloudformation_url,
+                            },
                         ),
                         "mode": "000400",
                         "owner": "root",
