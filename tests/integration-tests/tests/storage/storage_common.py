@@ -264,7 +264,7 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, ia
     # The value of the two parameters should be set according to cluster configuration parameters.
     logging.info("Checking efs {0} is correctly mounted".format(mount_dir))
     # Following EFS instruction to check https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html
-    result = remote_command_executor.run_remote_command("mount | column -t | grep '{0}'".format(mount_dir))
+    result = remote_command_executor.run_remote_command("mount")
     assert_that(result.stdout).contains(mount_dir)
     if tls:
         logging.info("Checking efs {0} enables in-transit encryption".format(mount_dir))
