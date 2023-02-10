@@ -325,6 +325,22 @@ def test_docs_base_url(mocker, partition, docs_base_url):
     assert_that(pcluster.utils.get_docs_base_url()).is_equal_to(docs_base_url)
 
 
+def test_get_service_endpoint(mocker):
+    service = "whatever-service"
+    region = "whatever-region"
+    mocked_partition = "correct_partition"
+    mocked_domain = "correct_domain"
+
+    mocked_get_partition = mocker.patch("pcluster.utils.get_partition", return_value=mocked_partition)
+    mocked_get_url_domain_suffix = mocker.patch("pcluster.utils.get_url_domain_suffix", return_value=mocked_domain)
+
+    actual_endpoint = pcluster.utils.get_service_endpoint(service, region)
+
+    assert_that(actual_endpoint).is_equal_to(f"https://{service}.{region}.{mocked_domain}")
+    mocked_get_partition.assert_called_once_with(region)
+    mocked_get_url_domain_suffix.assert_called_once_with(mocked_partition)
+
+
 @pytest.mark.parametrize(
     "region, s3_bucket_domain",
     [
