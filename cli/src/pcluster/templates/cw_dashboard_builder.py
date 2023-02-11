@@ -289,23 +289,30 @@ class CWDashboardConstruct(Construct):
         # Create a text widget for subtitle "Head Node Instance Metrics"
         self._add_text_widget("## Head Node Instance Metrics")
 
-        # EC2 metrics graph for head node instance
+        # EC2 metrics for graph for head node instance
         ec2_metrics = [
             new_pcluster_metric(title="CPU Utilization", metrics=["CPUUtilization"], namespace="AWS/EC2"),
-            new_pcluster_metric(title="Network Packets In/Out", metrics=["NetworkPacketsIn", "NetworkPacketsOut"], namespace="AWS/EC2"),
+            new_pcluster_metric(
+                title="Network Packets In/Out", metrics=["NetworkPacketsIn", "NetworkPacketsOut"], namespace="AWS/EC2"
+            ),
             new_pcluster_metric(title="Network In and Out", metrics=["NetworkIn", "NetworkOut"], namespace="AWS/EC2"),
-            new_pcluster_metric(title="Disk Read/Write Bytes", metrics=["DiskReadBytes", "DiskWriteBytes"], namespace="AWS/EC2"),
-            new_pcluster_metric(title="Disk Read/Write Ops", metrics=["DiskReadOps", "DiskWriteOps"], namespace="AWS/EC2"),
+            new_pcluster_metric(
+                title="Disk Read/Write Bytes", metrics=["DiskReadBytes", "DiskWriteBytes"], namespace="AWS/EC2"
+            ),
+            new_pcluster_metric(
+                title="Disk Read/Write Ops", metrics=["DiskReadOps", "DiskWriteOps"], namespace="AWS/EC2"
+            ),
         ]
 
+        # CW Agent metrics for graph for head node instance
         cwagent_metrics = [
             new_pcluster_metric(title="Disk Used Percent", metrics=["disk_used_percent"], namespace="CWAgent"),
             new_pcluster_metric(title="Memory Used Percent", metrics=["mem_used_percent"], namespace="CWAgent"),
         ]
 
-        # Create EC2 metrics graphs and update coordinates
+        # Create graphs for EC2 metrics and CW Agent metrics and update coordinates
         widgets_list = []
-        for metrics_param in (ec2_metrics + cwagent_metrics):
+        for metrics_param in ec2_metrics + cwagent_metrics:
             metrics_list = self._generate_metrics_list(metrics_param.metrics, metrics_param.namespace)
             graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list)
             widgets_list.append(graph_widget)
