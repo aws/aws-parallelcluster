@@ -53,6 +53,10 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
     print(output_yaml)
 
     if cluster_config.is_cw_dashboard_enabled:
+        assert_that(output_yaml).contains("CloudwatchDashboard")
+        assert_that(output_yaml).contains("Head Node EC2 Metrics")
+        _verify_head_node_instance_metrics_graphs(output_yaml)
+
         if cluster_config.shared_storage:
             _verify_ec2_metrics_conditions(cluster_config, output_yaml)
 
@@ -60,6 +64,21 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
             _verify_head_node_logs_conditions(cluster_config, output_yaml)
         else:
             assert_that(output_yaml).does_not_contain("Head Node Logs")
+    else:
+        assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
+        assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
+
+
+def _verify_head_node_instance_metrics_graphs(output_yaml):
+    """Verify CloudWatch graphs within the Head Node Instance Metrics section."""
+    assert_that(output_yaml).contains("Head Node Instance Metrics")
+    assert_that(output_yaml).contains("CPU Utilization")
+    assert_that(output_yaml).contains("Network Packets In/Out")
+    assert_that(output_yaml).contains("Network In and Out")
+    assert_that(output_yaml).contains("Disk Read/Write Bytes")
+    assert_that(output_yaml).contains("Disk Read/Write Ops")
+    assert_that(output_yaml).contains("Disk Used Percent")
+    assert_that(output_yaml).contains("Memory Used Percent")
 
 
 def _verify_ec2_metrics_conditions(cluster_config, output_yaml):
