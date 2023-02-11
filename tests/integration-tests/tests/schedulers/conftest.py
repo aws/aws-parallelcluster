@@ -5,13 +5,7 @@ from collections import defaultdict
 
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
-from conftest_networking import (
-    CIDR_FOR_PRIVATE_SUBNETS,
-    CIDR_FOR_PUBLIC_SUBNETS,
-    DEFAULT_AVAILABILITY_ZONE,
-    get_az_id_to_az_name_map,
-    subnet_name,
-)
+from conftest_networking import CIDR_FOR_PRIVATE_SUBNETS, CIDR_FOR_PUBLIC_SUBNETS, get_az_setup_for_region, subnet_name
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import generate_stack_name
 
@@ -39,9 +33,7 @@ def vpc_stack_for_database(region, request):
         return stack
 
     # tests with database are not using multi-AZ
-    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
-    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region))
-    default_az_name = az_id_to_az_name_map.get(default_az_id)
+    default_az_id, default_az_name, _ = get_az_setup_for_region(region, credential)
 
     public_subnet = SubnetConfig(
         name=subnet_name(visibility="Public", az_id=default_az_id),
