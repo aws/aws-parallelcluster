@@ -20,6 +20,7 @@ from datetime import datetime
 from typing import Dict, List, Union
 
 from aws_cdk import aws_cloudformation as cfn
+from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_dynamodb as dynamomdb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
@@ -27,7 +28,6 @@ from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
-from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk.core import (
     CfnCustomResource,
     CfnDeletionPolicy,
@@ -307,31 +307,32 @@ class ClusterCdkStack:
                 "Mem": cloudwatch.Metric(
                     namespace="CWAgent",
                     metric_name="mem_used_percent",
-                    dimensions_map={"InstanceId": self.head_node_instance.ref}
+                    dimensions_map={"InstanceId": self.head_node_instance.ref},
                 ),
                 "Disk": cloudwatch.Metric(
                     namespace="CWAgent",
                     metric_name="disk_used_percent",
-                    dimensions_map={"InstanceId": self.head_node_instance.ref}
-                )
+                    dimensions_map={"InstanceId": self.head_node_instance.ref},
+                ),
             }
 
             for metric_key, metric in metrics_for_alarms.items():
                 alarm_id = f"Pcluster{metric_key}Alarm"
                 alarm_name = f"{metric_key}Alarm_{self.stack.stack_name}_{self.head_node_instance.ref}"
-                self.alarms.append(cloudwatch.Alarm(
-                    scope=self.stack,
-                    id=alarm_id,
-                    metric=metric,
-                    period=Duration.seconds(60),
-                    evaluation_periods=1,
-                    threshold=90,
-                    alarm_name=alarm_name,
-                    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-                    datapoints_to_alarm=1,
-                    statistic="Maximum"
-                ))
-
+                self.alarms.append(
+                    cloudwatch.Alarm(
+                        scope=self.stack,
+                        id=alarm_id,
+                        metric=metric,
+                        period=Duration.seconds(60),
+                        evaluation_periods=1,
+                        threshold=90,
+                        alarm_name=alarm_name,
+                        comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                        datapoints_to_alarm=1,
+                        statistic="Maximum",
+                    )
+                )
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(
