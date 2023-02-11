@@ -3,6 +3,8 @@ CHANGELOG
 
 3.6.0
 ----
+**ENHANCEMENTS**
+- Add CloudWatch metrics, dashboard graphs and alarms to monitor head node memory and root volume disk utilization.
 
 **ENHANCEMENTS**
 - Add log rotation support for ParallelCluster managed logs.
