@@ -15,7 +15,6 @@
 
 import logging
 import random
-from functools import lru_cache
 
 import boto3
 import pytest
@@ -137,7 +136,6 @@ def get_availability_zones(region, credential):
     return az_list
 
 
-@lru_cache(maxsize=128)
 def get_az_id_to_az_name_map(region, credential):
     """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
     # credentials are managed manually rather than via setup_sts_credentials because this function
