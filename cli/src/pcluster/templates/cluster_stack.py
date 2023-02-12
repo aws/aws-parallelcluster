@@ -301,38 +301,43 @@ class ClusterCdkStack:
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
             )
 
-            self.alarms = []
+            self._add_alarms()
 
-            metrics_for_alarms = {
-                "Mem": cloudwatch.Metric(
-                    namespace="CWAgent",
-                    metric_name="mem_used_percent",
-                    dimensions_map={"InstanceId": self.head_node_instance.ref},
-                ),
-                "Disk": cloudwatch.Metric(
-                    namespace="CWAgent",
-                    metric_name="disk_used_percent",
-                    dimensions_map={"InstanceId": self.head_node_instance.ref},
-                ),
-            }
+    def _add_alarms(self):
+        self.alarms = []
 
-            for metric_key, metric in metrics_for_alarms.items():
-                alarm_id = f"Pcluster{metric_key}Alarm"
-                alarm_name = f"{metric_key}Alarm_{self.stack.stack_name}_{self.head_node_instance.ref}"
-                self.alarms.append(
-                    cloudwatch.Alarm(
-                        scope=self.stack,
-                        id=alarm_id,
-                        metric=metric,
-                        period=Duration.seconds(60),
-                        evaluation_periods=1,
-                        threshold=90,
-                        alarm_name=alarm_name,
-                        comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-                        datapoints_to_alarm=1,
-                        statistic="Maximum",
-                    )
+        metrics_for_alarms = {
+            "Mem": cloudwatch.Metric(
+                namespace="CWAgent",
+                metric_name="mem_used_percent",
+                dimensions_map={"InstanceId": self.head_node_instance.ref},
+                statistic="Maximum",
+                period=Duration.seconds(60),
+            ),
+            "Disk": cloudwatch.Metric(
+                namespace="CWAgent",
+                metric_name="disk_used_percent",
+                dimensions_map={"InstanceId": self.head_node_instance.ref},
+                statistic="Maximum",
+                period=Duration.seconds(60),
+            ),
+        }
+
+        for metric_key, metric in metrics_for_alarms.items():
+            alarm_id = f"Pcluster{metric_key}Alarm"
+            alarm_name = f"{metric_key}Alarm_{self.stack.stack_name}_{self.head_node_instance.ref}"
+            self.alarms.append(
+                cloudwatch.Alarm(
+                    scope=self.stack,
+                    id=alarm_id,
+                    metric=metric,
+                    evaluation_periods=1,
+                    threshold=90,
+                    alarm_name=alarm_name,
+                    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    datapoints_to_alarm=1,
                 )
+            )
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(

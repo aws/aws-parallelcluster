@@ -1,0 +1,69 @@
+Image:
+  Os: ubuntu1804
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: ec2-key-name
+  Dcv:
+    Enabled: true
+    Port: 8443
+    AllowedIps: 0.0.0.0/0
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+          MaxCount: 5
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
+SharedStorage:
+  - MountDir: /my/mount/ebs1
+    Name: name1
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+  - MountDir: /my/mount/ebs2
+    Name: name2
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: io1
+  - MountDir: /my/mount/ebs3
+    Name: name3
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: sc1
+  - MountDir: /my/mount/ebs4
+    Name: name4
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: st1
+  - MountDir: /my/mount/ebs5
+    Name: name5
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+Monitoring:
+  DetailedMonitoring: false
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14
+  Dashboards:
+    CloudWatch:
+      Enabled: false
