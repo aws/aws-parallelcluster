@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import ipaddress
 import os
 
 from pcluster.aws.aws_api import AWSApi
@@ -112,6 +113,9 @@ class _DummyCfnClient(CfnClient):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
+    def describe_stack_resources(self, stack_name: str):
+        return {}
+
 
 class _DummyEc2Client(Ec2Client):
     def __init__(self):
@@ -169,6 +173,14 @@ class _DummyEc2Client(Ec2Client):
 
     def get_eip_allocation_id(self, eip):
         return "eipalloc-123"
+
+    def get_subnet_cidr(self, subnet):
+        try:  # If the value of subnet is a CIDR, we know the test wants to mock the request.
+            # Therefore, we return the value directly.
+            ipaddress.ip_network(subnet)
+            return subnet
+        except ValueError:  # Otherwise, we call the real method
+            return super().get_subnet_cidr(subnet)
 
 
 class _DummyEfsClient(EfsClient):

@@ -298,7 +298,9 @@ efa:
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["eu-west-1"]
+      # Capacity Reservation for `c6gn.16xlarge` created in `us-east-1a` do not move unless the target region also
+      # has a Capacity Reservation for `c6gn.16xlarge`
+      - regions: ["us-east-1"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
@@ -515,6 +517,12 @@ schedulers:
 #        oss: ["alinux2"]
 #        schedulers: ["slurm_plugin"]
 #{%- endif %}
+  test_slurm.py::test_slurm_protected_mode_on_cluster_create:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
   test_slurm.py::test_fast_capacity_failover:
     dimensions:
       - regions: ["ap-east-1"]
@@ -537,6 +545,12 @@ schedulers:
     dimensions:
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_reboot_ec2_health_checks:
+    dimensions:
+      - regions: ["us-east-2"]
+        instances: ["t2.medium"]
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_overrides:

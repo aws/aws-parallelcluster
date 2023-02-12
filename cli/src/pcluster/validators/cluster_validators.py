@@ -12,7 +12,7 @@ import math
 import re
 from collections import defaultdict
 from enum import Enum
-from ipaddress import ip_network
+from ipaddress import collapse_addresses, ip_network
 from itertools import combinations, product
 from typing import List
 
@@ -23,6 +23,7 @@ from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     DELETE_POLICY,
+    EFS_PORT,
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
@@ -300,7 +301,6 @@ class MaxCountValidator(Validator):
     """Validate whether the number of resource exceeds the limits."""
 
     def _validate(self, resources_length, max_length, resource_name):
-
         if resources_length > max_length:
             self._add_failure(
                 "Invalid number of {resource_name} ({resources_length}) specified. Currently only supports "
@@ -318,7 +318,6 @@ class EfaValidator(Validator):
     """Check if EFA and EFA GDR are supported features in the given instance type."""
 
     def _validate(self, instance_type, efa_enabled, gdr_support, multiaz_enabled):
-
         instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
         if efa_enabled and not instance_type_supports_efa:
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
@@ -419,43 +418,87 @@ class EfaMultiAzValidator(Validator):
 # --------------- Storage validators --------------- #
 
 
-def _check_in_out_access(security_groups_ids, port, is_cidr_optional, protocol="tcp"):
+def _is_access_allowed(security_groups_ids, subnets, port, security_groups_by_nodes, protocol="tcp"):
     """
     Verify given list of security groups to check if they allow in and out access on the given port.
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
-    :param is_cidr_optional: if it is True, don't enforce check on CIDR.
+    :param security_groups_by_nodes: all security groups from cluster. This is a set of frozen sets.
+    Each frozen set contains sg combination of a queue.
     :param protocol: the IP protocol to be checked.
     :return: True if both in and out access are allowed
     :raise: ClientError if a given security group doesn't exist
     """
     in_access = False
     out_access = False
+    src_ip_ranges = []
+    dst_ip_ranges = []
+    src_security_groups = set()
+    dst_security_groups = set()
 
     for sec_group in AWSApi.instance().ec2.describe_security_groups(security_groups_ids):
-
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
-            if _check_sg_rules_for_port(rule, port, protocol):
-                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
-                    in_access = True
-                    break
+            if in_access:
+                break
+            if _is_port_allowed_by_sg_rule(rule, port, protocol):
+                in_access = _populate_allowed_src_or_dst(rule, src_ip_ranges, src_security_groups)
 
         # Check all outbound rules
         for rule in sec_group.get("IpPermissionsEgress"):
-            if _check_sg_rules_for_port(rule, port, protocol):
-                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
-                    out_access = True
-                    break
+            if out_access:
+                break
+            if _is_port_allowed_by_sg_rule(rule, port, protocol):
+                out_access = _populate_allowed_src_or_dst(rule, dst_ip_ranges, dst_security_groups)
 
         if in_access and out_access:
             return True
+    # If in_access or out_access is still False, check allowed ip ranges and security groups.
+    # The in_access or out_access could only have been true, if previous logics had found prefix list in SG rules.
+    # Rules of ip ranges have to be checked at the end because the union of all ip ranges may cover the subnets,
+    # even when individual ip ranges do not cover the subnets. The same reason applies to allowed security groups.
+    in_access = in_access or _are_ip_ranges_and_sg_accessible(
+        security_groups_by_nodes, src_ip_ranges, src_security_groups, subnets
+    )
+    out_access = out_access or _are_ip_ranges_and_sg_accessible(
+        security_groups_by_nodes, dst_ip_ranges, dst_security_groups, subnets
+    )
+    return in_access and out_access
 
+
+def _are_ip_ranges_and_sg_accessible(security_groups_by_nodes, allowed_ip_ranges, allowed_security_groups, subnets):
+    # For all cluster nodes, at least one of the security groups attached need to be in the UserIdGroupPairs.
+    return all(
+        node_security_groups & allowed_security_groups for node_security_groups in security_groups_by_nodes
+    ) or _are_subnets_covered_by_cidrs(allowed_ip_ranges, subnets)
+
+
+def _populate_allowed_src_or_dst(rule, ip_ranges, allowed_security_groups):
+    """
+    Collect Ip ranges or security groups allowed by the rule.
+
+    :param rule: A rule of a security group
+    :param ip_ranges: A list of ip ranges.
+    :param allowed_security_groups: A list of allowed security group.
+    :return: True if we can determine the current rule allows connection.
+    False if it does not allow connection or cannot be determined.
+    """
+    if rule.get("PrefixListIds"):
+        return True  # Always assume prefix list is properly set for code simplicity
+    elif rule.get("IpRanges"):
+        ip_ranges.extend(rule.get("IpRanges"))
+        return False  # Ip Ranges have to be checked later. Return False because the rule allowance is not determined.
+    elif rule.get("UserIdGroupPairs"):
+        allowed_security_groups.update(
+            {user_id_group_pair.get("GroupId") for user_id_group_pair in rule.get("UserIdGroupPairs")}
+        )
+        # Security groups have to be checked later. Return False because the rule allowance is not determined.
+        return False
     return False
 
 
-def _check_sg_rules_for_port(rule, port_to_check, protocol):
+def _is_port_allowed_by_sg_rule(rule, port_to_check, protocol):
     """
     Verify if the security group rule accepts connections on the given port.
 
@@ -486,6 +529,23 @@ def _check_sg_rules_for_port(rule, port_to_check, protocol):
     return False
 
 
+def _are_subnets_covered_by_cidrs(ip_ranges, subnets):
+    """Verify given list of security groups to check if they allow in and out access on cluster subnet CIDRs."""
+    # Collapse ip ranges for better performance and correctness
+    collapsed_ip_ranges = list(collapse_addresses([ip_network(ip_range["CidrIp"]) for ip_range in ip_ranges]))
+
+    for subnet in subnets:
+        subnet_cidr = ip_network(AWSApi.instance().ec2.get_subnet_cidr(subnet))
+        covered = False
+        for ip_range in collapsed_ip_ranges:
+            if ip_range.supernet_of(subnet_cidr):
+                covered = True
+                break
+        if not covered:
+            return False
+    return True
+
+
 class ExistingFsxNetworkingValidator(Validator):
     """
     FSx networking validator.
@@ -507,27 +567,23 @@ class ExistingFsxNetworkingValidator(Validator):
         else:
             return {}
 
-    def _validate(self, file_system_ids, head_node_subnet_id, are_all_security_groups_customized):
+    def _validate(self, file_system_ids, subnet_ids, security_groups_by_nodes):
         try:
-            # Check to see if there is any existing mt on the fs
             file_systems = AWSApi.instance().fsx.get_file_systems_info(file_system_ids)
-
-            vpc_id = AWSApi.instance().ec2.get_subnet_vpc(head_node_subnet_id)
-
-            network_interfaces_data = self._describe_network_interfaces(file_systems)
-
-            self._check_file_systems(are_all_security_groups_customized, file_systems, network_interfaces_data, vpc_id)
+            self._check_file_systems(security_groups_by_nodes, file_systems, subnet_ids)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
-    def _check_file_systems(self, are_all_security_groups_customized, file_systems, network_interfaces_data, vpc_id):
+    def _check_file_systems(self, security_groups_by_nodes, file_systems, subnet_ids):
+        vpc_id = AWSApi.instance().ec2.get_subnet_vpc(subnet_ids[0])
+        network_interfaces_data = self._describe_network_interfaces(file_systems)
         for file_system in file_systems:
             # Check to see if fs is in the same VPC as the stack
             file_system_id = file_system.file_system_id
             if file_system.vpc_id != vpc_id:
                 self._add_failure(
                     "Currently only support using FSx file system that is in the same VPC as the cluster. "
-                    "The file system provided is in {0}.".format(file_system.vpc_id),
+                    f"The file system {file_system_id} is in {file_system.vpc_id}.",
                     FailureLevel.ERROR,
                 )
 
@@ -548,7 +604,7 @@ class ExistingFsxNetworkingValidator(Validator):
 
                 for protocol, ports in FSX_PORTS[file_system.file_system_type].items():
                     missing_ports = self._get_missing_ports(
-                        are_all_security_groups_customized, network_interfaces, ports, protocol
+                        security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol
                     )
 
                     if missing_ports:
@@ -560,17 +616,18 @@ class ExistingFsxNetworkingValidator(Validator):
                             FailureLevel.ERROR,
                         )
 
-    def _get_missing_ports(self, are_all_security_groups_customized, network_interfaces, ports, protocol):
+    def _get_missing_ports(self, security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol):
         missing_ports = []
         for port in ports:
             fs_access = False
             for network_interface in network_interfaces:
                 # Get list of security group IDs
                 sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                if _check_in_out_access(
+                if _is_access_allowed(
                     sg_ids,
+                    subnet_ids,
                     port=port,
-                    is_cidr_optional=are_all_security_groups_customized,
+                    security_groups_by_nodes=security_groups_by_nodes,
                     protocol=protocol,
                 ):
                     fs_access = True
@@ -588,7 +645,6 @@ class FsxArchitectureOsValidator(Validator):
     """
 
     def _validate(self, architecture: str, os):
-
         if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
             self._add_failure(
                 FSX_MESSAGES["errors"]["unsupported_architecture"].format(
@@ -747,7 +803,7 @@ class EfsIdValidator(Validator):  # TODO add tests
     Validate if there are existing mount target in the cluster (head and computes) availability zone
     """
 
-    def _validate(self, efs_id, avail_zones_mapping: dict, are_all_security_groups_customized):
+    def _validate(self, efs_id, avail_zones_mapping: dict, security_groups_by_nodes):
         availability_zones = avail_zones_mapping.keys()
         if len(availability_zones) > 1 and not AWSApi.instance().efs.is_efs_standard(efs_id):
             self._add_failure(
@@ -764,7 +820,9 @@ class EfsIdValidator(Validator):  # TODO add tests
             if head_node_target_id:
                 # Get list of security group IDs of the mount target
                 sg_ids = AWSApi.instance().efs.get_efs_mount_target_security_groups(head_node_target_id)
-                if not _check_in_out_access(sg_ids, port=2049, is_cidr_optional=are_all_security_groups_customized):
+                if not _is_access_allowed(
+                    sg_ids, subnets, port=EFS_PORT, security_groups_by_nodes=security_groups_by_nodes
+                ):
                     self._add_failure(
                         "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
                         "but it does not have a security group that allows inbound and outbound rules to support NFS. "
@@ -773,8 +831,6 @@ class EfsIdValidator(Validator):  # TODO add tests
                         ),
                         FailureLevel.ERROR,
                     )
-                if not are_all_security_groups_customized:
-                    self._check_cidrs_cover_subnets(head_node_target_id, avail_zone, sg_ids, efs_id, subnets)
             else:
                 if AWSApi.instance().efs.is_efs_standard(efs_id):
                     avail_zones_missing_mount_target_for_efs_standard.append(avail_zone)
@@ -786,42 +842,6 @@ class EfsIdValidator(Validator):  # TODO add tests
                 ),
                 FailureLevel.ERROR,
             )
-
-    def _check_subnet_access(self, security_groups_ids, subnet_cidr, access_type):
-        permission = "IpPermissions" if access_type == "in" else "IpPermissionsEgress"
-        access = False
-        for sec_group in security_groups_ids:
-            for rule in sec_group.get(permission):
-                if rule.get("PrefixListIds"):
-                    access = True
-                    break
-                if rule.get("IpRanges"):
-                    for ip_range in rule.get("IpRanges"):
-                        if ip_network(ip_range.get("CidrIp")).supernet_of(subnet_cidr):
-                            access = True
-                            break
-        return access
-
-    def _check_cidrs_cover_subnets(self, head_node_target_id, avail_zone, security_groups_ids, efs_id, subnets):
-        """Verify given list of security groups to check if they allow in and out access on cluster subnet CIDRs."""
-        security_groups_ids = AWSApi.instance().ec2.describe_security_groups(security_groups_ids)
-        for subnet in subnets:
-            subnet_cidr = ip_network(AWSApi.instance().ec2.get_subnet_cidr(subnet))
-            in_access, out_access = self._check_subnet_access(
-                security_groups_ids, subnet_cidr, "in"
-            ), self._check_subnet_access(security_groups_ids, subnet_cidr, "out")
-
-            if not in_access or not out_access:
-                self._add_failure(
-                    "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
-                    "but it does not have a security group that allows inbound and outbound rules to allow traffic of "
-                    "subnet {3}. Please modify the Mount Target's security group, to allow traffic on subnet.".format(
-                        head_node_target_id, avail_zone, efs_id, subnet
-                    ),
-                    FailureLevel.WARNING,
-                )
-
-        return False
 
 
 class SharedStorageNameValidator(Validator):

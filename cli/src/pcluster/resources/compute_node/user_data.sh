@@ -149,10 +149,17 @@ write_files:
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
       custom_cookbook=${CustomChefCookbook}
       export _region=${AWS::Region}
+
       s3_url=${AWS::URLSuffix}
       if [ "${!custom_cookbook}" != "NONE" ]; then
         if [[ "${!custom_cookbook}" =~ ^s3://([^/]*)(.*) ]]; then
-          bucket_region=$(aws s3api get-bucket-location --bucket ${!BASH_REMATCH[1]} | jq -r '.LocationConstraint')
+          # Set the socket connection timeout to 15s. Emperically, it seems like the actual
+          # timeout is 8x(cli-connect-timeout). i.e. if cli-connection-timeout is set to
+          # 60s, the call will timeout the connect attempt at 8m. Setting it to 15s, causes
+          # each attempt to take 240s, so 2m * 3 attempts will result in a failure after 6
+          # minutes.
+          S3API_RESULT=$(AWS_RETRY_MODE=standard aws s3api get-bucket-location --cli-connect-timeout 15 --bucket ${!BASH_REMATCH[1]} 2>&1) || error_exit "${!S3API_RESULT}"
+          bucket_region=$(echo "${!S3API_RESULT}" | jq -r '.LocationConstraint')
           if [[ "${!bucket_region}" == null ]]; then
             bucket_region="us-east-1"
           fi

@@ -29,6 +29,14 @@ from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
 
+DEFAULT_PARTITION = "aws"
+PARTITION_MAP = {
+    "cn": "aws-cn",
+    "us-gov": "aws-us-gov",
+    "us-iso-": "aws-iso",
+    "us-isob": "aws-iso-b",
+}
+
 
 class InstanceTypesData:
     """Utility class to retrieve instance types information needed for integration tests."""
@@ -297,6 +305,18 @@ def to_snake_case(input):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
+def to_pascal_case(snake_case_word):
+    """Convert the given snake case word into a PascalCase one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
+
+
+def to_pascal_from_kebab_case(kebab_case_word):
+    """Convert the given kebab case word into a PascalCase one."""
+    parts = iter(kebab_case_word.split("-"))
+    return "".join(word.title() for word in parts)
+
+
 def create_s3_bucket(bucket_name, region):
     """
     Create a new S3 bucket.
@@ -509,12 +529,11 @@ def get_stack_id_tag_filter(stack_arn):
 
 
 def get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
+    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    return next(
+        (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
+        DEFAULT_PARTITION,
+    )
 
 
 def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):

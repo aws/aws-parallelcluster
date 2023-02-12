@@ -17,9 +17,9 @@ Scheduling:
     - Name: broken
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
           {% if scheduler == "slurm" %}
-          - {{ private_az2_subnet_id }}
+          - {{ private_subnet_ids[1] }}
           {% endif %}
       ComputeResources:
         - Name: broken-static
@@ -36,9 +36,9 @@ Scheduling:
     - Name: half-broken
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
           {% if scheduler == "slurm" %}
-          - {{ private_az2_subnet_id }}
+          - {{ private_subnet_ids[1] }}
           {% endif %}
       ComputeResources:
         - Name: broken-dynamic
@@ -62,9 +62,9 @@ Scheduling:
     - Name: normal
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
           {% if scheduler == "slurm" %}
-          - {{ private_az2_subnet_id }}
+          - {{ private_subnet_ids[1] }}
           {% endif %}
       ComputeResources:
         - Name: normal

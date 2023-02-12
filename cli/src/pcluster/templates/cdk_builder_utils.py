@@ -61,7 +61,7 @@ def create_hash_suffix(string_to_hash: str):
         # A nosec comment is appended to the following line in order to disable the B324 check.
         # The sha1 is used just as a hashing function.
         # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
-        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec B324 nosemgrep
+        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
     )
 
 
@@ -321,7 +321,7 @@ def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource)
     # A nosec comment is appended to the following line in order to disable the B324 check.
     # The sha1 is used just as a hashing function.
     # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
-    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec B324 nosemgrep
+    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
 
 
 class NodeIamResourcesBase(Construct):
@@ -707,13 +707,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         sid="AllowRunningReservedCapacity",
                         actions=["ec2:RunInstances"],
                         effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="ec2",
-                                resource=f"capacity-reservation/{capacity_reservation_id}",
-                            )
-                            for capacity_reservation_id in capacity_reservation_ids
-                        ],
+                        resources=self._config.capacity_reservation_arns,
                     )
                 )
             capacity_reservation_resource_group_arns = self._config.capacity_reservation_resource_group_arns
