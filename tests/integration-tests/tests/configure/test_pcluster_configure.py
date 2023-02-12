@@ -17,7 +17,6 @@ import pexpect
 import pytest
 import yaml
 from assertpy import assert_that
-
 from cfn_stacks_factory import CfnVpcStack
 from conftest import inject_additional_config_settings
 from conftest_networking import CIDR_FOR_CUSTOM_SUBNETS
@@ -99,7 +98,9 @@ def test_pcluster_configure_avoid_bad_subnets(
     assert_config_contains_expected_values(key_name, scheduler, os, instance, region, None, None, config_path)
 
 
-def test_region_without_t2micro(vpc_stack: CfnVpcStack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir):
+def test_region_without_t2micro(
+    vpc_stack: CfnVpcStack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir
+):
     """
     Verify the default instance type (free tier) is retrieved dynamically according to region.
     In other words, t3.micro is retrieved when the region does not contain t2.micro
@@ -193,7 +194,9 @@ def test_efa_unsupported(vpc_stack, key_name, region, os, instance, scheduler, c
     _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack)
 
 
-def _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack: CfnVpcStack):
+def _create_and_test_standard_configuration(
+    config_path, region, key_name, scheduler, os, instance, vpc_stack: CfnVpcStack
+):
     standard_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, instance)
         + standard_queue_prompts(scheduler, instance, region)
@@ -465,7 +468,7 @@ def subnet_in_use1_az3(vpc_stack):
     )
     assert_that(offerings).is_empty()
     subnet_id = ec2_client.create_subnet(
-        AvailabilityZoneId="use1-az3", CidrBlock="192.168.0.0/21", VpcId=vpc_stack.cfn_outputs["VpcId"]
+        AvailabilityZoneId="use1-az3", CidrBlock=CIDR_FOR_CUSTOM_SUBNETS[-1], VpcId=vpc_stack.cfn_outputs["VpcId"]
     )["Subnet"]["SubnetId"]
     yield subnet_id
     ec2_client.delete_subnet(SubnetId=subnet_id)
