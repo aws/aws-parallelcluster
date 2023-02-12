@@ -119,6 +119,33 @@ def _generate_template(cluster, capsys):
 
 
 @pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "centos7.slurm.full.yaml",
+        "ubuntu18.slurm.simple.yaml",
+        "ubuntu18.slurm.no_dashboard.yaml",
+    ],
+)
+def test_add_alarms(mocker, config_file_name, test_datadir):
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    output_yaml = yaml.dump(generated_template, width=float("inf"))
+
+    if cluster.is_cw_dashboard_enabled:
+        assert_that(output_yaml).contains("PclusterDiskAlarm")
+        assert_that(output_yaml).contains("PclusterMemAlarm")
+    else:
+        assert_that(output_yaml).does_not_contain("PclusterDiskAlarm")
+        assert_that(output_yaml).does_not_contain("PclusterMemAlarm")
+
+
+@pytest.mark.parametrize(
     "config_file_name, expected_scheduler_plugin_stack",
     [
         ("scheduler-plugin-without-template.yaml", {}),
