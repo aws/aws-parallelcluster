@@ -50,8 +50,8 @@ class SetupError(BaseException):
         if cluster_details:
             details_string = "\n\t".join(
                 [
-                    f"* {failure['failureCode']}:\n\t\t{failure['failureReason']}"
-                    for failure in cluster_details["failures"]
+                    f"* {failure['failureCode']}:\n\t\t{failure.get('failureReason')}"
+                    for failure in cluster_details.get("failures")
                 ],
             )
             formatted_message += f"\n\n- Cluster Errors:\n\t{details_string}"
@@ -59,9 +59,9 @@ class SetupError(BaseException):
         if stack_events:
             events_string = "\n\t".join(
                 [
-                    f"* {event['LogicalResourceId']}:\n\t\t{event['ResourceStatusReason']}"
+                    f"* {event['LogicalResourceId']}:\n\t\t{event.get('ResourceStatusReason')}"
                     for event in stack_events
-                    if event["ResourceStatus"] == "CREATE_FAILED"
+                    if event.get("ResourceStatus") == "CREATE_FAILED"
                 ]
             )
             formatted_message += f"\n\n- Stack Events:\n\t{events_string}"
