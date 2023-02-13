@@ -5,13 +5,14 @@ CHANGELOG
 ----
 
 **BUG FIXES**
-- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
+- Fix EFS, FSx network security groups validators to avoid reporting false errors.
 
 3.5.0
 -----
 
 **ENHANCEMENTS**
 - Add official versioned ParallelCluster policies in a CloudFormation template to allow customers to easily reference them in their workloads.
+- Add a Python library to allow customers to use ParallelCluster functionalities in their own code.
 - Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
 - Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
 - Add support for US isolated regions: us-iso-* and us-isob-*.
@@ -30,6 +31,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix cluster DB creation by verifying the cluster name is no longer than 40 characters when Slurm accounting is enabled.
 - Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be replaced if the EC2 instance status checks fail.
+- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
 
 3.4.1
 -----

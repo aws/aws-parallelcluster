@@ -26,7 +26,7 @@ Scheduling:
           MaxCount: 1
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
     - Name: queue-1
       Iam:
         S3Access:
@@ -39,7 +39,7 @@ Scheduling:
           MaxCount: 1
       Networking:
         SubnetIds:
-          - {{ private_az2_subnet_id }}
+          - {{ private_subnet_ids[1] }}
 SharedStorage:
   - MountDir: test-managed-fsx
     Name: fsx1

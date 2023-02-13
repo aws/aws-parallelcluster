@@ -9,13 +9,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import random
 from collections import OrderedDict
 
 import boto3
+from assertpy import assert_that
 from botocore.exceptions import ClientError
 from framework.credential_providers import aws_credential_provider
 from retrying import retry
-from utils import retrieve_cfn_outputs, retrieve_cfn_resources
+from utils import retrieve_cfn_outputs, retrieve_cfn_resources, to_pascal_from_kebab_case
 
 
 class CfnStack:
@@ -55,6 +57,53 @@ class CfnStack:
         if not self.__cfn_resources:
             self.__cfn_resources = retrieve_cfn_resources(self.name, self.region)
         return self.__cfn_resources
+
+
+class CfnVpcStack(CfnStack):
+    """Identify a CloudFormation VPC stack."""
+
+    # TODO add method to get N subnets
+    def __init__(self, default_az_id: str = None, az_ids: list = None, **kwargs):
+        super().__init__(**kwargs)
+        self.default_az_id = default_az_id
+        self.az_ids = az_ids
+
+    def get_public_subnet(self):  # TODO add possibility to override default
+        """Return the public subnet for a VPC stack."""
+        return self._get_subnet(visibility="Public")
+
+    def get_all_public_subnets(self):
+        """Return all the public subnets for a VPC stack."""
+        return self._get_all_subnets(visibility="Public")
+
+    def get_private_subnet(self):  # TODO add possibility to override default
+        """Return the private subnet for a VPC stack."""
+        return self._get_subnet(visibility="Private")
+
+    def get_all_private_subnets(self):
+        """Return all the private subnets for a VPC stack."""
+        return self._get_all_subnets(visibility="Private")
+
+    def _get_subnet(self, visibility: str = "Public"):
+        if self.default_az_id:
+            az_id_tag = to_pascal_from_kebab_case(self.default_az_id)
+        else:
+            # get random subnet, if default is not set
+            assert_that(self.az_ids).is_not_none()
+            az_id_tag = to_pascal_from_kebab_case(random.choice(self.az_ids))
+
+        assert_that(az_id_tag).is_not_none()
+        return self.cfn_outputs[f"{az_id_tag}{visibility}SubnetId"]
+
+    def _get_all_subnets(self, visibility: str = "Public"):
+        assert_that(self.az_ids).is_not_none()
+        subnet_ids = []
+        for az_id in self.az_ids:
+            az_id_tag = to_pascal_from_kebab_case(az_id)
+            subnet_ids.append(self.cfn_outputs[f"{az_id_tag}{visibility}SubnetId"])
+
+        random.shuffle(subnet_ids)
+        return subnet_ids
 
 
 class CfnStacksFactory:

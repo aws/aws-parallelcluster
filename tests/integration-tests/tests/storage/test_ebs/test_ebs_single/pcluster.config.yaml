@@ -28,7 +28,7 @@ Scheduling:
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
       {% if scheduler != "awsbatch" %}
       Iam:
         InstanceRole: {{ ec2_iam_role }}
@@ -43,7 +43,7 @@ Scheduling:
           MaxCount: 1
       Networking:
         SubnetIds:
-          - {{ private_az3_subnet_id }}
+          - {{ private_subnet_ids[1] }}
     {% endif %}
 SharedStorage:
   - MountDir: {{ mount_dir }}

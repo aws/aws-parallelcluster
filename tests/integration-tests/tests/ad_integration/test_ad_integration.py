@@ -23,7 +23,7 @@ from collections import defaultdict
 import boto3
 import pytest
 from assertpy import assert_that
-from cfn_stacks_factory import CfnStack
+from cfn_stacks_factory import CfnStack, CfnVpcStack
 from OpenSSL import crypto
 from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
 from paramiko import RSAKey
@@ -173,7 +173,9 @@ def store_secret_in_secret_manager(request, cfn_stacks_factory):
                 secrets_manager_client.delete_secret(SecretId=secret_arn)
 
 
-def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack):
+def _create_directory_stack(
+    cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack: CfnVpcStack
+):
     directory_stack_name = generate_stack_name(
         f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
     )
@@ -218,12 +220,12 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_re
     with open(render_jinja_template(directory_stack_template_path, **config_args)) as directory_stack_template:
         params = [
             {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
-            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": vpc_stack.cfn_outputs["PrivateSubnetId"]},
+            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": vpc_stack.get_private_subnet()},
             {
                 "ParameterKey": "PrivateSubnetTwo",
                 "ParameterValue": vpc_stack.cfn_outputs["PrivateAdditionalCidrSubnetId"],
             },
-            {"ParameterKey": "PublicSubnetOne", "ParameterValue": vpc_stack.cfn_outputs["PublicSubnetId"]},
+            {"ParameterKey": "PublicSubnetOne", "ParameterValue": vpc_stack.get_public_subnet()},
         ]
         directory_stack = CfnStack(
             name=directory_stack_name,

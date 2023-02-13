@@ -124,7 +124,7 @@ def test_cluster_in_no_internet_subnet(
     )
     cluster_config = pcluster_config_reader(
         default_vpc_security_group_id=vpc_stack_with_endpoints.cfn_outputs["DefaultVpcSecurityGroupId"],
-        no_internet_subnet_id=vpc_stack_with_endpoints.cfn_outputs["NoInternetSubnetId"],
+        no_internet_subnet_id=vpc_stack_with_endpoints.cfn_outputs["PrivateNoInternetSubnetId"],
         vpc_default_security_group_id=vpc_default_security_group_id,
         bucket_name=bucket_name,
         architecture=architecture,

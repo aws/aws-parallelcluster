@@ -20,7 +20,7 @@ import utils
 import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
-from cfn_stacks_factory import CfnStack
+from cfn_stacks_factory import CfnStack, CfnVpcStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
@@ -836,7 +836,7 @@ def _test_update_queue_strategy_with_running_job(
 
 
 @pytest.fixture
-def external_shared_storage_stack(request, test_datadir, region, vpc_stack, cfn_stacks_factory):
+def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
     def create_stack(bucket_name):
         template_path = os.path.join(str(test_datadir), "storage-stack.yaml")
         with open(template_path, encoding="utf-8") as template_file:
@@ -846,7 +846,7 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack, cfn_
                 stack = CfnStack(name=request.config.getoption(option), region=region, template=template)
             else:
                 # Choose subnets from different availability zones
-                subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
+                subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
                 subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
                 available_subnet_ids = [subnets[0]["SubnetId"]]
                 for subnet in subnets:
@@ -855,7 +855,7 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack, cfn_
                         break
 
                 vpc = vpc_stack.cfn_outputs["VpcId"]
-                public_subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
+                public_subnet_id = vpc_stack.get_public_subnet()
                 subnet_id0 = available_subnet_ids[0]
                 subnet_id1 = available_subnet_ids[1]
                 import_path = "s3://{0}".format(bucket_name)
@@ -1119,11 +1119,11 @@ def test_dynamic_file_systems_update(
 
 
 def _create_shared_storages_resources(
-    snapshots_factory, request, vpc_stack, region, bucket_name, external_shared_storage_stack
+    snapshots_factory, request, vpc_stack: CfnVpcStack, region, bucket_name, external_shared_storage_stack
 ):
     """Create existing EBS, EFS, FSX resources for test."""
     # create 1 existing ebs
-    ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.cfn_outputs["PublicSubnetId"], region)
+    ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.get_public_subnet(), region)
 
     # create external-shared-storage-stack
     storage_stack = external_shared_storage_stack(bucket_name)

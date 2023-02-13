@@ -4,8 +4,14 @@ import string
 from collections import defaultdict
 
 import pytest
-from cfn_stacks_factory import CfnStack, CfnStacksFactory
-from conftest import get_availability_zones
+from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
+from conftest_networking import (
+    CIDR_FOR_CUSTOM_SUBNETS,
+    CIDR_FOR_PRIVATE_SUBNETS,
+    CIDR_FOR_PUBLIC_SUBNETS,
+    get_az_setup_for_region,
+    subnet_name,
+)
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import generate_stack_name
 
@@ -21,30 +27,34 @@ def vpc_stack_for_database(region, request):
     credential = request.config.getoption("credential")
     stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    def _create_stack(request, template, region, stack_factory):
-        stack = CfnStack(
+    def _create_stack(request, template, region, default_az_id, az_ids, stack_factory):
+        stack = CfnVpcStack(
             name=generate_stack_name("integ-tests-vpc-database", request.config.getoption("stackname_suffix")),
             region=region,
             template=template.to_json(),
+            default_az_id=default_az_id,
+            az_ids=az_ids,
         )
         stack_factory.create_stack(stack)
         return stack
 
-    availability_zone = get_availability_zones(region, credential)[0]
+    # tests with database are not using multi-AZ
+    default_az_id, default_az_name, _ = get_az_setup_for_region(region, credential)
+
     public_subnet = SubnetConfig(
-        name="Public",
-        cidr="192.168.32.0/20",  # 4096 IPs
+        name=subnet_name(visibility="Public", az_id=default_az_id),
+        cidr=CIDR_FOR_PUBLIC_SUBNETS[0],
         map_public_ip_on_launch=True,
         has_nat_gateway=True,
-        availability_zone=availability_zone,
+        availability_zone=default_az_name,
         default_gateway=Gateways.INTERNET_GATEWAY,
     )
     private_subnet = SubnetConfig(
-        name="Private",
-        cidr="192.168.64.0/20",  # 4096 IPs
+        name=subnet_name(visibility="Private", az_id=default_az_id),
+        cidr=CIDR_FOR_PRIVATE_SUBNETS[0],
         map_public_ip_on_launch=False,
         has_nat_gateway=False,
-        availability_zone=availability_zone,
+        availability_zone=default_az_name,
         default_gateway=Gateways.NAT_GATEWAY,
     )
     vpc_config = VPCConfig(
@@ -58,10 +68,10 @@ def vpc_stack_for_database(region, request):
 
     template = NetworkTemplateBuilder(
         vpc_configuration=vpc_config,
-        default_availability_zone=availability_zone,
+        default_availability_zone=default_az_name,
     ).build()
 
-    yield _create_stack(request, template, region, stack_factory)
+    yield _create_stack(request, template, region, default_az_id, [default_az_id], stack_factory)
 
     if not request.config.getoption("no_delete"):
         stack_factory.delete_all_stacks()
@@ -92,8 +102,8 @@ def _create_database_stack(stack_factory, request, region, vpc_stack_for_databas
             {"ParameterKey": "ClusterName", "ParameterValue": cluster_name},
             {"ParameterKey": "Vpc", "ParameterValue": vpc_stack_for_database.cfn_outputs["VpcId"]},
             {"ParameterKey": "AdminPasswordSecretString", "ParameterValue": admin_password},
-            {"ParameterKey": "Subnet1CidrBlock", "ParameterValue": "192.168.8.0/23"},
-            {"ParameterKey": "Subnet2CidrBlock", "ParameterValue": "192.168.4.0/23"},
+            {"ParameterKey": "Subnet1CidrBlock", "ParameterValue": CIDR_FOR_CUSTOM_SUBNETS[-1]},
+            {"ParameterKey": "Subnet2CidrBlock", "ParameterValue": CIDR_FOR_CUSTOM_SUBNETS[-2]},
         ]
         database_stack = CfnStack(
             name=database_stack_name,
