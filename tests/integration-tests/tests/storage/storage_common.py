@@ -14,7 +14,7 @@ import re
 
 import boto3
 from assertpy import assert_that
-from cfn_stacks_factory import CfnStack
+from cfn_stacks_factory import CfnStack, CfnVpcStack
 from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -160,7 +160,7 @@ def test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size)
 
 
 def write_file_into_efs(
-    region, vpc_stack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
+    region, vpc_stack: CfnVpcStack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
 ):
     """Write file stack contains an instance to write an empty file with random name into each of the efs in efs_ids."""
     write_file_template = Template()
@@ -231,7 +231,7 @@ def write_file_into_efs(
             LaunchTemplate=LaunchTemplateSpecification(
                 LaunchTemplateId=Ref(launch_template), Version=GetAtt(launch_template, "LatestVersionNumber")
             ),
-            SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
+            SubnetId=vpc_stack.get_public_subnet(),
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
             IamInstanceProfile=Ref(iam_instance_profile),
