@@ -136,6 +136,18 @@ def get_availability_zones(region, credential):
     return az_list
 
 
+def get_az_setup_for_region(region: str, credential: list):
+    """Return a default AZ ID and its name, the list of all AZ IDs and names."""
+    # TODO Region can be AZ ID, in this case convert it to Region
+    # TODO remove DEFAULT_AVAILABILITY_ZONE
+    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
+    az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
+    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region, az_ids))
+    default_az_name = az_id_to_az_name_map.get(default_az_id)
+
+    return default_az_id, default_az_name, az_id_to_az_name_map
+
+
 def get_az_id_to_az_name_map(region, credential):
     """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
     # credentials are managed manually rather than via setup_sts_credentials because this function
@@ -212,18 +224,11 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
 
     vpc_stacks_dict = {}
     for region in regions:
-        # TODO Region can be AZ ID, in this case convert it to Region
-        az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
-        az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
-        az_names = [az_id_to_az_name_map.get(az_id) for az_id in az_id_to_az_name_map]
-        default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region))
-        default_az_name = az_id_to_az_name_map.get(default_az_id)
+        default_az_id, default_az_name, az_id_name_dict = get_az_setup_for_region(region, credential)
 
         subnets = []
-        assert_that(len(az_names)).is_greater_than(1)
-
-        for index, az_id in enumerate(az_ids):
-            az_name = az_id_to_az_name_map.get(az_id)
+        assert_that(len(az_id_name_dict)).is_greater_than(1)
+        for index, (az_id, az_name) in enumerate(az_id_name_dict.items()):
             # Subnets visual representation:
             # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
             subnets.append(
@@ -255,7 +260,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
                         cidr=CIDR_FOR_CUSTOM_SUBNETS[index],
                         map_public_ip_on_launch=False,
                         has_nat_gateway=False,
-                        availability_zone=az_names[index + 1],
+                        availability_zone=list(az_id_name_dict.values())[index + 1],
                         default_gateway=Gateways.NAT_GATEWAY,
                     )
                 )
@@ -287,7 +292,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             region=region,
         ).build()
         vpc_stacks_dict[region] = _create_vpc_stack(
-            request, template, region, default_az_id, az_ids, cfn_stacks_factory
+            request, template, region, default_az_id, list(az_id_name_dict), cfn_stacks_factory
         )
 
     return vpc_stacks_dict
@@ -318,9 +323,7 @@ def vpc_stack_with_endpoints(region, request, key_name):
         return stack
 
     # tests with VPC endpoints are not using multi-AZ
-    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
-    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region))
-    default_az_name = az_id_to_az_name_map.get(default_az_id)
+    default_az_id, default_az_name, _ = get_az_setup_for_region(region, credential)
 
     bastion_subnet = SubnetConfig(
         name=subnet_name(visibility="Public", az_id=default_az_id),

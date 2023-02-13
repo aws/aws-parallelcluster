@@ -38,6 +38,39 @@ PARTITION_MAP = {
 }
 
 
+class SetupError(BaseException):
+    """Exception to throw from infrastructure factory fixtures if the infrastructure setup fails"""
+
+    def __init__(self, *args, stack_events=None, cluster_details=None):
+        self.message = self._format_message(args[0], stack_events, cluster_details)
+
+    @staticmethod
+    def _format_message(message, stack_events, cluster_details) -> str:
+        formatted_message = message if message else "Error during setup."
+        if cluster_details:
+            details_string = "\n\t".join(
+                [
+                    f"* {failure['failureCode']}:\n\t\t{failure.get('failureReason')}"
+                    for failure in cluster_details.get("failures")
+                ],
+            )
+            formatted_message += f"\n\n- Cluster Errors:\n\t{details_string}"
+
+        if stack_events:
+            events_string = "\n\t".join(
+                [
+                    f"* {event['LogicalResourceId']}:\n\t\t{event.get('ResourceStatusReason')}"
+                    for event in stack_events
+                    if event.get("ResourceStatus") == "CREATE_FAILED"
+                ]
+            )
+            formatted_message += f"\n\n- Stack Events:\n\t{events_string}"
+        return formatted_message
+
+    def __str__(self):
+        return "SetupError: {0} ".format(self.message) if self.message else "SetupError has been raised"
+
+
 class InstanceTypesData:
     """Utility class to retrieve instance types information needed for integration tests."""
 
@@ -192,6 +225,27 @@ def retrieve_cfn_resources(stack_name, region):
     for resource in get_cfn_resources(stack_name, region):
         resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
     return resources
+
+
+def get_cfn_events(stack_name, region):
+    """Retrieve CloudFormation Stack Events from a give stack."""
+    if not stack_name:
+        logging.warning("stack_name not provided when retrieving events")
+        return []
+    if region is None:
+        region = os.environ.get("AWS_DEFAULT_REGION")
+    try:
+        logging.debug("Getting events for stack {}".format(stack_name))
+        cfn = boto3.client("cloudformation", region_name=region)
+        response = cfn.describe_stack_events(StackName=stack_name)
+        while response:
+            yield from response.get("StackEvents")
+            next_token = response.get("NextToken")
+            response = cfn.describe_stack_events(StackName=stack_name, NextToken=next_token) if next_token else None
+    except Exception as e:
+        logging.warning("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        raise
+    return None
 
 
 def get_substacks(stack_name, region=None, sub_stack_name=None):

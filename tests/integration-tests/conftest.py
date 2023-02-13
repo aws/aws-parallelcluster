@@ -27,6 +27,7 @@ from typing import Any, Optional, Tuple
 import boto3
 import pytest
 import yaml
+from _pytest._code import ExceptionInfo
 from _pytest.fixtures import FixtureDef, SubRequest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
@@ -63,6 +64,7 @@ from troposphere.fsx import (
 )
 from utils import (
     InstanceTypesData,
+    SetupError,
     create_s3_bucket,
     delete_s3_bucket,
     dict_add_nested_key,
@@ -1058,6 +1060,9 @@ def pytest_runtest_makereport(item, call):
     setattr(item, "rep_" + rep.when, rep)
 
     if rep.when in ["setup", "call"] and rep.failed:
+        exception_info: ExceptionInfo = call.excinfo
+        if exception_info.value and isinstance(exception_info.value, SetupError):
+            rep.when = "setup"
         try:
             update_failed_tests_config(item)
         except Exception as e:
@@ -1160,17 +1165,14 @@ def placement_group_stack(cfn_stacks_factory, request, region):
 
 
 @pytest.fixture(scope="class")
-def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack):
+def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack: CfnVpcStack):
     logging.info("Setting up the ODCR stack")
     odcr_template = Template()
     odcr_template.set_version()
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
-    availability_zone = (
-        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_subnet_id"]).availability_zone
-    )
-    availability_zone_2 = (
-        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_az2_subnet_id"]).availability_zone
-    )
+    public_subnets_list = vpc_stack.get_all_public_subnets()
+    availability_zone = boto3.resource("ec2").Subnet(public_subnets_list[0]).availability_zone
+    availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets_list[1]).availability_zone
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=availability_zone,
@@ -1502,7 +1504,7 @@ def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
 
 
 @pytest.fixture(scope="class")
-def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key_name):
     """
     Define a fixture to manage the creation and destruction of fsx.
 
@@ -1545,7 +1547,7 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
             fsx_filesystem = FileSystem(
                 title=f"{file_system_resource_name}{i}",
                 SecurityGroupIds=[Ref(fsx_sg)],
-                SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]],
+                SubnetIds=[vpc_stack.get_public_subnet()],
                 FileSystemType=file_system_type,
                 **kwargs,
                 **depends_on_arg,
@@ -1746,7 +1748,7 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
             )
 
         # Create mount targets
-        subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
+        subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
         _add_mount_targets(subnet_ids, efs_ids, security_group, template)
 
         stack_name = generate_stack_name("integ-tests-mount-targets", request.config.getoption("stackname_suffix"))

@@ -6,10 +6,10 @@ from collections import defaultdict
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from conftest_networking import (
+    CIDR_FOR_CUSTOM_SUBNETS,
     CIDR_FOR_PRIVATE_SUBNETS,
     CIDR_FOR_PUBLIC_SUBNETS,
-    DEFAULT_AVAILABILITY_ZONE,
-    get_az_id_to_az_name_map,
+    get_az_setup_for_region,
     subnet_name,
 )
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
@@ -39,9 +39,7 @@ def vpc_stack_for_database(region, request):
         return stack
 
     # tests with database are not using multi-AZ
-    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
-    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region))
-    default_az_name = az_id_to_az_name_map.get(default_az_id)
+    default_az_id, default_az_name, _ = get_az_setup_for_region(region, credential)
 
     public_subnet = SubnetConfig(
         name=subnet_name(visibility="Public", az_id=default_az_id),
@@ -104,8 +102,8 @@ def _create_database_stack(stack_factory, request, region, vpc_stack_for_databas
             {"ParameterKey": "ClusterName", "ParameterValue": cluster_name},
             {"ParameterKey": "Vpc", "ParameterValue": vpc_stack_for_database.cfn_outputs["VpcId"]},
             {"ParameterKey": "AdminPasswordSecretString", "ParameterValue": admin_password},
-            {"ParameterKey": "Subnet1CidrBlock", "ParameterValue": "192.168.8.0/23"},
-            {"ParameterKey": "Subnet2CidrBlock", "ParameterValue": "192.168.4.0/23"},
+            {"ParameterKey": "Subnet1CidrBlock", "ParameterValue": CIDR_FOR_CUSTOM_SUBNETS[-1]},
+            {"ParameterKey": "Subnet2CidrBlock", "ParameterValue": CIDR_FOR_CUSTOM_SUBNETS[-2]},
         ]
         database_stack = CfnStack(
             name=database_stack_name,

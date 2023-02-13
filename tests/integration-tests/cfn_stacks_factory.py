@@ -102,7 +102,8 @@ class CfnVpcStack(CfnStack):
             az_id_tag = to_pascal_from_kebab_case(az_id)
             subnet_ids.append(self.cfn_outputs[f"{az_id_tag}{visibility}SubnetId"])
 
-        return random.shuffle(subnet_ids)
+        random.shuffle(subnet_ids)
+        return subnet_ids
 
 
 class CfnStacksFactory:

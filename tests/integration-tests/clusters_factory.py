@@ -20,7 +20,9 @@ import yaml
 from framework.credential_providers import run_pcluster_command
 from retrying import retry
 from utils import (
+    SetupError,
     dict_add_nested_key,
+    get_cfn_events,
     get_stack_id_tag_filter,
     kebab_case,
     retrieve_cfn_outputs,
@@ -428,7 +430,7 @@ class ClustersFactory:
             result = run_pcluster_command(
                 command,
                 timeout=7200,
-                raise_on_error=raise_on_error,
+                raise_on_error=False,
                 log_error=log_error,
                 custom_cli_credentials=cluster.custom_cli_credentials,
             )
@@ -439,7 +441,11 @@ class ClustersFactory:
                     error = f"Cluster creation failed for {name}"
                     logging.error(error)
                     if raise_on_error:
-                        raise Exception(error)
+                        # Get the stack ID so that we can retrieve events even
+                        # in the case where the stack has been deleted.
+                        stack_id = response.get("cloudformationStackArn")
+                        events = get_cfn_events(stack_name=stack_id, region=cluster.region)
+                        raise SetupError(error, stack_events=events, cluster_details=response)
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
                     cluster.mark_as_created()
