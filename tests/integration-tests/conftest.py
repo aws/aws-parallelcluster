@@ -27,6 +27,7 @@ from typing import Any, Optional, Tuple
 import boto3
 import pytest
 import yaml
+from _pytest._code import ExceptionInfo
 from _pytest.fixtures import FixtureDef, SubRequest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
@@ -63,6 +64,7 @@ from troposphere.fsx import (
 )
 from utils import (
     InstanceTypesData,
+    SetupError,
     create_s3_bucket,
     delete_s3_bucket,
     dict_add_nested_key,
@@ -1058,6 +1060,9 @@ def pytest_runtest_makereport(item, call):
     setattr(item, "rep_" + rep.when, rep)
 
     if rep.when in ["setup", "call"] and rep.failed:
+        exception_info: ExceptionInfo = call.excinfo
+        if exception_info.value and isinstance(exception_info.value, SetupError):
+            rep.when = "setup"
         try:
             update_failed_tests_config(item)
         except Exception as e:
