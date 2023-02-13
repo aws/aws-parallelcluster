@@ -1502,7 +1502,7 @@ def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
 
 
 @pytest.fixture(scope="class")
-def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key_name):
     """
     Define a fixture to manage the creation and destruction of fsx.
 
@@ -1545,7 +1545,7 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
             fsx_filesystem = FileSystem(
                 title=f"{file_system_resource_name}{i}",
                 SecurityGroupIds=[Ref(fsx_sg)],
-                SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]],
+                SubnetIds=[vpc_stack.get_public_subnet()],
                 FileSystemType=file_system_type,
                 **kwargs,
                 **depends_on_arg,
@@ -1746,7 +1746,7 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
             )
 
         # Create mount targets
-        subnet_ids = [value for key, value in vpc_stack.cfn_outputs.items() if key.endswith("SubnetId")]
+        subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
         _add_mount_targets(subnet_ids, efs_ids, security_group, template)
 
         stack_name = generate_stack_name("integ-tests-mount-targets", request.config.getoption("stackname_suffix"))
