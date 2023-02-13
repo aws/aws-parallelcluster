@@ -110,7 +110,7 @@ def test_efa(
     if instance == "p4d.24xlarge" and os != "centos7":
         _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
 
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 def _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition=None):
