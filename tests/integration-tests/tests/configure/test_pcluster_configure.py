@@ -89,8 +89,8 @@ def test_pcluster_configure_avoid_bad_subnets(
             PROMPTS["vpc_creation"]("n"),
             PROMPTS["vpc_id"](vpc_stack.cfn_outputs["VpcId"]),
             PROMPTS["subnet_creation"]("n"),
-            prompt_head_node_subnet_id(subnet_id="", no_of_omitted_subnets=1),
-            prompt_compute_node_subnet_id(subnet_id="", head_node_subnet_id="", no_of_omitted_subnets=1),
+            prompt_head_node_subnet_id(subnet_id="", no_of_omitted_subnets=3),
+            prompt_compute_node_subnet_id(subnet_id="", head_node_subnet_id="", no_of_omitted_subnets=3),
         ]
     )
     stages = orchestrate_pcluster_configure_stages(prompts=bad_subnets_prompts, scheduler=scheduler)
