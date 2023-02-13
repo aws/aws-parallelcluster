@@ -224,7 +224,6 @@ class TestGetClusterStackEvents:
         ],
     )
     def test_successful_get_cluster_log_events_request(self, client, mocker, region, next_token):
-
         uid = "00000000-dddd-4444-bbbb-555555555555"
         cluster_name = "cluster"
         account_id = "012345678999"

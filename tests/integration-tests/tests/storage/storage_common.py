@@ -14,13 +14,13 @@ import re
 
 import boto3
 from assertpy import assert_that
-from cfn_stacks_factory import CfnStack
+from cfn_stacks_factory import CfnStack, CfnVpcStack
 from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from troposphere import Base64, Ref, Sub, Template
-from troposphere.ec2 import Instance
+from troposphere import Base64, GetAtt, Ref, Sub, Template
+from troposphere.ec2 import Instance, LaunchTemplate, LaunchTemplateSpecification
 from troposphere.fsx import (
     ClientConfigurations,
     NfsExports,
@@ -67,7 +67,9 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
     head_node_file = random_alphanumeric()
     logging.info(f"Writing HeadNode File: {head_node_file}")
     remote_command_executor.run_remote_command(
-        "touch {mount_dir}/{head_node_file}".format(mount_dir=mount_dir, head_node_file=head_node_file)
+        "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
+            mount_dir=mount_dir, head_node_file=head_node_file
+        )
     )
 
     # Submit a "Write" job to each partition
@@ -78,7 +80,9 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
     for partition in partitions:
         compute_file = "{}-{}".format(partition, random_alphanumeric())
         logging.info(f"Writing Compute File: {compute_file} from {partition}")
-        job_command = "touch {mount_dir}/{compute_file}".format(mount_dir=mount_dir, compute_file=compute_file)
+        job_command = "touch {mount_dir}/{compute_file} && cat {mount_dir}/{compute_file}".format(
+            mount_dir=mount_dir, compute_file=compute_file
+        )
         result = scheduler_commands.submit_command(job_command, partition=partition)
         job_id = scheduler_commands.assert_job_submitted(result.stdout)
         scheduler_commands.wait_job_completed(job_id)
@@ -156,7 +160,7 @@ def test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size)
 
 
 def write_file_into_efs(
-    region, vpc_stack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
+    region, vpc_stack: CfnVpcStack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
 ):
     """Write file stack contains an instance to write an empty file with random name into each of the efs in efs_ids."""
     write_file_template = Template()
@@ -210,13 +214,24 @@ def write_file_into_efs(
         )
     )
     iam_instance_profile = write_file_template.add_resource(InstanceProfile("IamTlsProfile", Roles=[Ref(role)]))
+    launch_template = LaunchTemplate.from_dict(
+        "LaunchTemplateIMDSv2",
+        {
+            "LaunchTemplateData": {"MetadataOptions": {"HttpTokens": "required", "HttpEndpoint": "enabled"}},
+        },
+    )
+    write_file_template.add_resource(launch_template)
+
     write_file_template.add_resource(
         Instance(
             "InstanceToWriteEFS",
             CreationPolicy={"ResourceSignal": {"Timeout": "PT10M"}},
             ImageId=retrieve_latest_ami(region, "alinux2"),
             InstanceType="c5.xlarge",
-            SubnetId=vpc_stack.cfn_outputs["PublicSubnetId"],
+            LaunchTemplate=LaunchTemplateSpecification(
+                LaunchTemplateId=Ref(launch_template), Version=GetAtt(launch_template, "LatestVersionNumber")
+            ),
+            SubnetId=vpc_stack.get_public_subnet(),
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
             IamInstanceProfile=Ref(iam_instance_profile),
@@ -249,7 +264,7 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, ia
     # The value of the two parameters should be set according to cluster configuration parameters.
     logging.info("Checking efs {0} is correctly mounted".format(mount_dir))
     # Following EFS instruction to check https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html
-    result = remote_command_executor.run_remote_command("mount | column -t | grep '{0}'".format(mount_dir))
+    result = remote_command_executor.run_remote_command("mount")
     assert_that(result.stdout).contains(mount_dir)
     if tls:
         logging.info("Checking efs {0} enables in-transit encryption".format(mount_dir))

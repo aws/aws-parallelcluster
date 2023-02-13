@@ -8,7 +8,12 @@
 
 # pylint: disable=W0613
 
-from pcluster.api.controllers.common import configure_aws_region, convert_errors, validate_timestamp
+from pcluster.api.controllers.common import (
+    assert_supported_operation,
+    configure_aws_region,
+    convert_errors,
+    validate_timestamp,
+)
 from pcluster.api.errors import BadRequestException
 from pcluster.api.models import (
     GetImageLogEventsResponseContent,
@@ -18,6 +23,7 @@ from pcluster.api.models import (
     LogStream,
     StackEvent,
 )
+from pcluster.constants import Operation
 from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.utils import to_iso_timestr, to_utc_datetime
 
@@ -61,6 +67,7 @@ def get_image_log_events(
 
     :rtype: GetImageLogEventsResponseContent
     """
+    assert_supported_operation(operation=Operation.GET_IMAGE_LOG_EVENTS, region=region)
     start_dt = start_time and validate_timestamp(start_time, "start_time")
     end_dt = end_time and validate_timestamp(end_time, "end_time")
 
@@ -106,6 +113,7 @@ def get_image_stack_events(image_id, region=None, next_token=None):
 
     :rtype: GetImageStackEventsResponseContent
     """
+    assert_supported_operation(operation=Operation.GET_IMAGE_STACK_EVENTS, region=region)
     imagebuilder = ImageBuilder(image_id=image_id)
     stack_events = imagebuilder.get_stack_events(next_token=next_token)
 
@@ -142,6 +150,7 @@ def list_image_log_streams(image_id, region=None, next_token=None):
             log[ts_name] = to_iso_timestr(to_utc_datetime(log[ts_name]))
         return LogStream.from_dict(log)
 
+    assert_supported_operation(operation=Operation.LIST_IMAGE_LOG_STREAMS, region=region)
     imagebuilder = ImageBuilder(image_id=image_id)
     logs = imagebuilder.list_log_streams(next_token=next_token)
     log_streams = [convert_log(log) for log in logs.log_streams]

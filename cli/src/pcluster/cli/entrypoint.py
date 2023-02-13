@@ -50,6 +50,13 @@ def re_validator(rexp_str, param, in_str):
     return in_str
 
 
+def string_validator(param, in_str):
+    """Take a string and validate the input format."""
+    if not isinstance(in_str, str):
+        exit_msg(f"Bad Request: Wrong type, expected 'string' for parameter '{param}'")
+    return in_str
+
+
 def read_file(_param, path):
     """Take file path, read the file and return the data as a string."""
     try:
@@ -106,6 +113,29 @@ def dispatch(model, args):
         return dispatch_func(**kwargs)
 
 
+def param_coerce(param):
+    """Take a parameter from the model and return a function that coerces it."""
+    type_map = {
+        "number": to_number,
+        "boolean": to_bool,
+        "integer": to_int,
+        "file": read_file,
+        "string": string_validator,
+    }
+
+    def identity(_param, x_in):
+        return x_in
+
+    # handle regexp parameter validation (or perform type coercion)
+    if "pattern" in param:
+        coerce_fn = partial(re_validator, param["pattern"], param["name"])
+    elif param.get("type") in type_map:
+        coerce_fn = partial(type_map[param["type"]], param["name"])
+    else:
+        coerce_fn = identity
+    return coerce_fn
+
+
 def gen_parser(model):
     """Take a model and returns an ArgumentParser for CLI parsing."""
     desc = (
@@ -116,7 +146,6 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", title="COMMANDS", dest="operation")
     subparsers.required = True
-    type_map = {"number": to_number, "boolean": to_bool, "integer": to_int, "file": read_file}
     parser_map = {"subparser": subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments
@@ -127,14 +156,6 @@ def gen_parser(model):
 
         for param in operation["params"]:
             help = param.get("description", "")
-
-            # handle regexp parameter validation (or perform type coercion)
-            if "pattern" in param:
-                type_coerce = partial(re_validator, param["pattern"], param["name"])
-            elif param.get("type") in type_map:
-                type_coerce = partial(type_map[param["type"]], param["name"])
-            else:
-                type_coerce = None
 
             abbrev_args = {
                 "cluster-name": "-n",
@@ -154,7 +175,7 @@ def gen_parser(model):
                 required=param.get("required", False),
                 choices=param.get("enum", None),
                 nargs="+" if "multi" in param else None,
-                type=type_coerce,
+                type=param_coerce(param),
                 help=help,
             )
 
@@ -194,7 +215,15 @@ def _run_operation(model, args, extra_args):
             error_encoded = encoder.JSONEncoder().encode(message)
             raise APIOperationException(json.loads(error_encoded))
     else:
-        return args.func(args, extra_args)
+        try:
+            return args.func(args, extra_args)
+        except pcluster.api.errors.ParallelClusterApiException as e:
+            # Format exception messages in the same manner as the api
+            message = pcluster.api.errors.exception_message(e)
+            error_encoded = encoder.JSONEncoder().encode(message)
+            raise APIOperationException(json.loads(error_encoded))
+        except Exception as e:
+            raise e
 
 
 def run(sys_args, model=None):

@@ -351,14 +351,12 @@ def test_iam_resource_prefix(
     s3_bucket,
     iam_resource_prefix,
 ):
-
     cli_credentials = initialize_resource_prefix_cli_creds(
         role_config_file=os_lib.path.join("..", "iam_policies", "user-role.cfn.yaml"),
         iam_resource_prefix=iam_resource_prefix,
     )
     if cli_credentials:
         for region, creds in cli_credentials.items():
-
             bucket_name = s3_bucket
             cfn_client, _, iam_client, _ = _create_boto3_clients(region)
             create_config, _ = _get_config_create_and_update(test_datadir)
@@ -676,7 +674,6 @@ def _create_iam_user_role_template(cluster_config, iam_resource_prefix):
 
     iam_path, iam_name_prefix = _split_resource_prefix(iam_resource_prefix)
     with open(cluster_config, "r", encoding="utf-8") as f:
-
         config_template = TemplateGenerator(load_yaml(f.read()))
 
     config_template.add_resource(_create_permission_boundary("IamResourcePrefixPermissionBoundary"))
@@ -734,7 +731,6 @@ def _test_iam_resource_in_cluster(cfn_client, iam_client, stack_name, iam_resour
     for resource in resources:
         resource_type = resource["ResourceType"]
         if resource_type == "AWS::IAM::Role":
-
             resource_arn_list.append(iam_client.get_role(RoleName=resource["PhysicalResourceId"])["Role"]["Arn"])
             resource_arn_list.extend(
                 iam_client.list_role_policies(RoleName=resource["PhysicalResourceId"])["PolicyNames"]

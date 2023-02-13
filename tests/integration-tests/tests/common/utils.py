@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import logging
 import os
 import pathlib
@@ -22,7 +23,7 @@ from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import get_instance_info
+from utils import get_instance_info, run_command
 
 LOGGER = logging.getLogger(__name__)
 
@@ -125,6 +126,7 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
                 {"Name": "architecture", "Values": [architecture]},
             ],
             Owners=["self", "amazon"],
+            IncludeDeprecated=True,
         ).get("Images", [])
         ami_id = client.copy_image(
             Description="This AMI is a copy from an official AMI but uses a different naming. "
@@ -169,7 +171,11 @@ def _assert_ami_is_available(region, ami_id):
 
 def get_installed_parallelcluster_version():
     """Get the version of the installed aws-parallelcluster package."""
-    return pkg_resources.get_distribution("aws-parallelcluster").version
+    try:
+        return pkg_resources.get_distribution("aws-parallelcluster").version
+    except Exception:
+        logging.info("aws-parallelcluster is not installed through Python. Getting version from `pcluster version`.")
+        return json.loads(run_command(["pcluster", "version"]).stdout.strip())["version"]
 
 
 def get_installed_parallelcluster_base_version():

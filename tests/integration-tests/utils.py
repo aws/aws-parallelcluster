@@ -29,6 +29,47 @@ from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
 
+DEFAULT_PARTITION = "aws"
+PARTITION_MAP = {
+    "cn": "aws-cn",
+    "us-gov": "aws-us-gov",
+    "us-iso-": "aws-iso",
+    "us-isob": "aws-iso-b",
+}
+
+
+class SetupError(BaseException):
+    """Exception to throw from infrastructure factory fixtures if the infrastructure setup fails"""
+
+    def __init__(self, *args, stack_events=None, cluster_details=None):
+        self.message = self._format_message(args[0], stack_events, cluster_details)
+
+    @staticmethod
+    def _format_message(message, stack_events, cluster_details) -> str:
+        formatted_message = message if message else "Error during setup."
+        if cluster_details:
+            details_string = "\n\t".join(
+                [
+                    f"* {failure['failureCode']}:\n\t\t{failure.get('failureReason')}"
+                    for failure in cluster_details.get("failures")
+                ],
+            )
+            formatted_message += f"\n\n- Cluster Errors:\n\t{details_string}"
+
+        if stack_events:
+            events_string = "\n\t".join(
+                [
+                    f"* {event['LogicalResourceId']}:\n\t\t{event.get('ResourceStatusReason')}"
+                    for event in stack_events
+                    if event.get("ResourceStatus") == "CREATE_FAILED"
+                ]
+            )
+            formatted_message += f"\n\n- Stack Events:\n\t{events_string}"
+        return formatted_message
+
+    def __str__(self):
+        return "SetupError: {0} ".format(self.message) if self.message else "SetupError has been raised"
+
 
 class InstanceTypesData:
     """Utility class to retrieve instance types information needed for integration tests."""
@@ -186,6 +227,27 @@ def retrieve_cfn_resources(stack_name, region):
     return resources
 
 
+def get_cfn_events(stack_name, region):
+    """Retrieve CloudFormation Stack Events from a give stack."""
+    if not stack_name:
+        logging.warning("stack_name not provided when retrieving events")
+        return []
+    if region is None:
+        region = os.environ.get("AWS_DEFAULT_REGION")
+    try:
+        logging.debug("Getting events for stack {}".format(stack_name))
+        cfn = boto3.client("cloudformation", region_name=region)
+        response = cfn.describe_stack_events(StackName=stack_name)
+        while response:
+            yield from response.get("StackEvents")
+            next_token = response.get("NextToken")
+            response = cfn.describe_stack_events(StackName=stack_name, NextToken=next_token) if next_token else None
+    except Exception as e:
+        logging.warning("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        raise
+    return None
+
+
 def get_substacks(stack_name, region=None, sub_stack_name=None):
     """Return the PhysicalResourceIds for all substacks created by the given stack."""
     if region is None:
@@ -295,6 +357,18 @@ def to_snake_case(input):
     """Convert a string into its snake case representation."""
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input)
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def to_pascal_case(snake_case_word):
+    """Convert the given snake case word into a PascalCase one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
+
+
+def to_pascal_from_kebab_case(kebab_case_word):
+    """Convert the given kebab case word into a PascalCase one."""
+    parts = iter(kebab_case_word.split("-"))
+    return "".join(word.title() for word in parts)
 
 
 def create_s3_bucket(bucket_name, region):
@@ -509,12 +583,11 @@ def get_stack_id_tag_filter(stack_arn):
 
 
 def get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
+    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    return next(
+        (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
+        DEFAULT_PARTITION,
+    )
 
 
 def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):

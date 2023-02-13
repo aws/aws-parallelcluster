@@ -5,16 +5,37 @@ CHANGELOG
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
 
+3.6.0
+----
+
+**BUG FIXES**
+- Fix EFS, FSx network security groups validators to avoid reporting false errors.
+
 3.5.0
 -----
 
 **ENHANCEMENTS**
+- Add official versioned ParallelCluster policies in a CloudFormation template to allow customers to easily reference them in their workloads.
+- Add a Python library to allow customers to use ParallelCluster functionalities in their own code.
 - Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
+- Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
+- Add support for US isolated regions: us-iso-* and us-isob-*.
 
 **CHANGES**
+- Upgrade Slurm to version 22.05.8.
+- Make Slurm controller logs more verbose and enable additional logging for the Slurm power save plugin.
+- Upgrade EFA installer to `1.21.0`
+  - Efa-driver: `efa-2.1.1-1`
+  - Efa-config: `efa-config-1.12-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1amzn3.0-1`
+  - Rdma-core: `rdma-core-43.0-1`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
 
 **BUG FIXES**
-- Add check in the validators to verify that the cluster name is not longer than 40 characters when Slurm accounting is enabled.
+- Fix cluster DB creation by verifying the cluster name is no longer than 40 characters when Slurm accounting is enabled.
+- Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be replaced if the EC2 instance status checks fail.
+- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
 
 3.4.1
 -----

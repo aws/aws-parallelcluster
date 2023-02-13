@@ -43,7 +43,7 @@ usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELI
                       [--pre-install PRE_INSTALL] [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF]
                       [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
                       [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--public-ecr-image-uri PUBLIC_ECR_IMAGE_URI] [--api-uri API_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER]
-                      [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME]
+                      [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME] [--external-shared-storage-stack-name SHARED_STORAGE_STACK_NAME]
 
 Run integration tests suite.
 
@@ -156,6 +156,8 @@ Debugging/Development options:
                         Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
   --ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME
                         Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
+  --external-shared-storage-stack-name 
+                        Name of an existing external shared storage stack. (default: None)
 ```
 
 Here is an example of tests submission:
@@ -611,6 +613,14 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-1
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_ids[0] }}
+          - {{ public_subnet_ids[1] }}
 SharedStorage:
   - MountDir: /shared
     Name: name1
@@ -622,7 +632,8 @@ available in the `pcluster.config.yaml` files:
 * Test dimensions for the specific parametrized test case: `{{ region }}`, `{{ instance }}`, `{{ os }}`,
 `{{ scheduler }}`
 * EC2 key name specified at tests submission time by the user: `{{ key_name }}`
-* Networking related parameters: `{{ public_subnet_id }}`, `{{ private_subnet_id }}`
+* Networking related parameters: `{{ public_subnet_id }}`, `{{ public_subnet_ids }}`, 
+`{{ private_subnet_id }}` and `{{ private_subnet_ids }}` 
 
 Additional parameters can be specified when calling the fixture to retrieve the rendered configuration
 as shown in the example above.
@@ -633,53 +644,58 @@ A VPC and the related subnets are automatically configured at the start of the i
 test. These resources are shared across all the tests and deleted when all tests are completed.
 
 The idea is to create a single VPC per region and have multiple subnets that allow to test different networking setups.
-At the moment three subnets are generated with the following configuration:
+A pair of subnets (public/private) for each available AZ, plus a subnet with VPC endpoints and no internet access, 
+are generated with the following configuration:
 
 ```python
 # Subnets visual representation:
 # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
-public_subnet = SubnetConfig(
-    name="Public",
-    cidr="192.168.32.0/19",  # 8190 IPs
-    map_public_ip_on_launch=True,
-    has_nat_gateway=True,
-    availability_zone=availability_zones[0],
-    default_gateway=Gateways.INTERNET_GATEWAY,
-)
-private_subnet = SubnetConfig(
-    name="Private",
-    cidr="192.168.64.0/18",  # 16382 IPs
-    map_public_ip_on_launch=False,
-    has_nat_gateway=False,
-    availability_zone=availability_zones[0],
-    default_gateway=Gateways.NAT_GATEWAY,
-)
-private_subnet_different_cidr = SubnetConfig(
-    name="PrivateAdditionalCidr",
-    cidr="192.168.128.0/17",  # 32766 IPs
-    map_public_ip_on_launch=False,
-    has_nat_gateway=False,
-    availability_zone=availability_zones[1],
-    default_gateway=Gateways.NAT_GATEWAY,
-)
-no_internet_subnet = SubnetConfig(
-    name="NoInternet",
-    cidr="192.168.16.0/20",  # 4094 IPs
-    map_public_ip_on_launch=False,
-    has_nat_gateway=False,
-    availability_zone=availability_zones[0],
-    default_gateway=Gateways.NONE,
-)
+for index, az_id in enumerate(az_ids):
+  az_name = az_id_to_az_name_map.get(az_id)
+  # Subnets visual representation:
+  # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
+  subnets.append(
+    SubnetConfig(
+      name=subnet_name(visibility="Public", az_id=az_id),
+      cidr=CIDR_FOR_PUBLIC_SUBNETS[index],
+      map_public_ip_on_launch=True,
+      has_nat_gateway=True,
+      availability_zone=az_name,
+      default_gateway=Gateways.INTERNET_GATEWAY,
+    )
+  )
+  subnets.append(
+    SubnetConfig(
+      name=subnet_name(visibility="Private", az_id=az_id),
+      cidr=CIDR_FOR_PRIVATE_SUBNETS[index],
+      map_public_ip_on_launch=False,
+      has_nat_gateway=False,
+      availability_zone=az_name,
+      default_gateway=Gateways.NAT_GATEWAY,
+    )
+  )
+  if index == 0:
+    subnets.append(
+      SubnetConfig(
+        name=subnet_name(visibility="Private", flavor="NoInternet"),
+        cidr=CIDR_FOR_CUSTOM_SUBNETS[index + 1],
+        map_public_ip_on_launch=False,
+        has_nat_gateway=False,
+        availability_zone=az_name,
+        default_gateway=Gateways.NONE,
+      )
+    )
+
 vpc_config = VPCConfig(
-    cidr="192.168.0.0/17",
-    additional_cidr_blocks=["192.168.128.0/17"],
-    subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
+  cidr="192.168.0.0/17",
+  additional_cidr_blocks=["192.168.128.0/17"],
+  subnets=subnets,
 )
 ```
 
 Behind the scenes a CloudFormation template is dynamically generated by the `NetworkTemplateBuilder`
 (leveraging a tool called [Troposphere](https://github.com/cloudtools/troposphere)) and a VPC is created in each region
-under test by the `vpc_stacks` autouse session fixture.
+under test by the `vpc_stacks_shared` autouse session fixture.
 
 Parameters related to the generated VPC and Subnets are automatically exported to the Jinja template engine and
 in particular are available when using the `pcluster_config_reader` fixture, as shown above. The only thing to do
@@ -696,6 +712,16 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+  ...
+    - Name: queue-1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_ids[0] }}
+  ...          
+    - Name: queue-2
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_ids[0] }}
   ...
 ```
 

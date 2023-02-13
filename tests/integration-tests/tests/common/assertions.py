@@ -10,6 +10,7 @@
 # limitations under the License.
 import logging
 import time
+from typing import List
 
 import boto3
 from assertpy import assert_that, soft_assertions
@@ -55,7 +56,7 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
             assert_that(log).does_not_contain(error_level)
 
 
-def assert_no_msg_in_logs(remote_command_executor, log_files, log_msg):
+def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_files: List[str], log_msg: List[str]):
     """Assert log msgs are not in logs."""
     __tracebackhide__ = True
     log = ""
@@ -65,14 +66,14 @@ def assert_no_msg_in_logs(remote_command_executor, log_files, log_msg):
         assert_that(log).does_not_contain(message)
 
 
-def assert_msg_in_log(remote_command_executor, log_file, message):
+def assert_msg_in_log(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str):
     """Assert message is in log_file."""
     __tracebackhide__ = True
     log = remote_command_executor.run_remote_command(f"sudo cat {log_file}", hide=True).stdout
     assert_that(log).contains(message)
 
 
-def assert_lines_in_logs(remote_command_executor, log_files, expected_errors):
+def assert_lines_in_logs(remote_command_executor: RemoteCommandExecutor, log_files, expected_errors):
     # assert every expected error exists in at least one of the log files
     __tracebackhide__ = True
 
@@ -223,3 +224,34 @@ def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_id
         assert_that(function["VpcConfig"]["SecurityGroupIds"]).is_equal_to(security_group_ids)
         assert_that(function["VpcConfig"]["SubnetIds"]).is_equal_to(subnet_ids)
         assert_that(policies).contains("AWSLambdaVPCAccessExecutionRole")
+
+
+def wait_for_slurm_rebooted_nodes(
+    compute_nodes,
+    remote_command_executor,
+    wait_fixed_secs: int = 10,
+    stop_max_delay_secs: int = 300,
+):
+    """
+    Wait for compute nodes to return to service in Slurm.
+
+    This function assumes that the "returned to service" line is not present in the slurmctld.log file
+    prior to its call.
+    """
+    retry(wait_fixed=seconds(wait_fixed_secs), stop_max_delay=seconds(stop_max_delay_secs))(
+        _assert_slurm_rebooted_nodes
+    )(compute_nodes, remote_command_executor)
+
+
+def _assert_slurm_rebooted_nodes(compute_nodes, remote_command_executor):
+    """
+    Assert that compute nodes have returned to service in Slurm.
+
+    Caution: this function will return true even if older "returned to service" lines are found for the requested node.
+    """
+    for node in compute_nodes:
+        assert_msg_in_log(
+            remote_command_executor,
+            "/var/log/slurmctld.log",
+            f"node {node} returned to service",
+        )

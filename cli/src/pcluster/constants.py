@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from enum import Enum
 
 from pkg_resources import packaging
 
@@ -80,6 +81,8 @@ FSX_PORTS = {
     ONTAP: {"tcp": [111, 635, 2049, 4046], "udp": [111, 635, 2049, 4046]},
 }
 
+EFS_PORT = 2049
+
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
     "io1": 100,
     "io2": 100,
@@ -98,8 +101,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.5.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.5.0",
+    "parallelcluster": "3.6.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.6.0",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",
@@ -180,6 +183,9 @@ SUPPORTED_REGIONS = [
     "sa-east-1",
     "us-east-1",
     "us-east-2",
+    "us-iso-east-1",
+    "us-iso-west-1",
+    "us-isob-east-1",
     "us-gov-east-1",
     "us-gov-west-1",
     "us-west-1",
@@ -206,3 +212,83 @@ LAMBDA_VPC_ACCESS_MANAGED_POLICY = "arn:${AWS::Partition}:iam::aws:policy/servic
 
 IAM_NAME_PREFIX_LENGTH_LIMIT = 30
 IAM_PATH_LENGTH_LIMIT = 512
+
+
+# Features support
+# By default, all features are considered supported.
+# To mark a feature as unsupported for certain regions,
+# add the entry to the map below by region prefixes.
+class Feature(Enum):
+    """
+    Enumeration of features.
+
+    We do not expect this enumeration to list all the features,
+    but at least those that are considered for feature flagging.
+    """
+
+    BATCH = "AWS Batch scheduler"
+    DCV = "NICE DCV"
+    FSX_LUSTRE = "FSx Lustre"
+    FSX_ONTAP = "FSx ONTAP"
+    FSX_OPENZFS = "FSx OpenZfs"
+
+
+UNSUPPORTED_FEATURES_MAP = {
+    Feature.BATCH: ["ap-northeast-3", "us-iso"],
+    Feature.DCV: ["us-iso"],
+    Feature.FSX_LUSTRE: ["us-iso"],
+    Feature.FSX_ONTAP: ["us-iso"],
+    Feature.FSX_OPENZFS: ["us-iso"],
+}
+
+
+# Operations support
+# By default, all operations are considered supported.
+# To mark an operation as unsupported for certain regions,
+# add the entry to the map below by region prefixes.
+class Operation(Enum):
+    """
+    Enumeration of operations.
+
+    We do not expect this enumeration to list all the operations,
+    but at least those that are considered for operations flagging.
+    """
+
+    BUILD_IMAGE = "build-image"
+    CONFIGURE = "configure"
+    CREATE_CLUSTER = "create-cluster"
+    DCV_CONNECT = "dcv-connect"
+    DELETE_CLUSTER = "delete-cluster"
+    DELETE_CLUSTER_INSTANCES = "delete-cluster-instances"
+    DELETE_IMAGE = "delete-image"
+    DESCRIBE_CLUSTER = "describe-cluster"
+    DESCRIBE_CLUSTER_INSTANCES = "describe-cluster-instances"
+    DESCRIBE_COMPUTE_FLEET = "describe-compute-fleet"
+    DESCRIBE_IMAGE = "describe-image"
+    EXPORT_CLUSTER_LOGS = "export-cluster-logs"
+    EXPORT_IMAGE_LOGS = "export-image-logs"
+    GET_CLUSTER_LOG_EVENTS = "get-cluster-log-events"
+    GET_CLUSTER_STACK_EVENTS = "get-cluster-stack-events"
+    GET_IMAGE_LOG_EVENTS = "get-image-log-events"
+    GET_IMAGE_STACK_EVENTS = "get-image-stack-events"
+    LIST_CLUSTER_LOG_STREAMS = "list-cluster-log-streams"
+    LIST_CLUSTERS = "list-clusters"
+    LIST_IMAGES = "list-images"
+    LIST_IMAGE_LOG_STREAMS = "list-image-log-streams"
+    LIST_OFFICIAL_IMAGES = "list-official-images"
+    SSH = "ssh"
+    UPDATE_CLUSTER = "update-cluster"
+    UPDATE_COMOPUTE_FLEET = "update-compute-fleet"
+    VERSION = "version"
+
+
+UNSUPPORTED_OPERATIONS_MAP = {
+    Operation.BUILD_IMAGE: ["us-iso"],
+    Operation.DELETE_IMAGE: ["us-iso"],
+    Operation.DESCRIBE_IMAGE: ["us-iso"],
+    Operation.LIST_IMAGES: ["us-iso"],
+    Operation.EXPORT_IMAGE_LOGS: ["us-iso"],
+    Operation.GET_IMAGE_LOG_EVENTS: ["us-iso"],
+    Operation.GET_IMAGE_STACK_EVENTS: ["us-iso"],
+    Operation.LIST_IMAGE_LOG_STREAMS: ["us-iso"],
+}

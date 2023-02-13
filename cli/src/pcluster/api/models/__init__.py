@@ -45,6 +45,7 @@ from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.ec2_ami_info_summary import Ec2AmiInfoSummary
 from pcluster.api.models.ec2_ami_state import Ec2AmiState
 from pcluster.api.models.ec2_instance import EC2Instance
+from pcluster.api.models.failure import Failure
 from pcluster.api.models.get_cluster_log_events_response_content import GetClusterLogEventsResponseContent
 from pcluster.api.models.get_cluster_stack_events_response_content import GetClusterStackEventsResponseContent
 from pcluster.api.models.get_image_log_events_response_content import GetImageLogEventsResponseContent

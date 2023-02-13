@@ -81,6 +81,22 @@ cloudwatch_logging:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+  test_compute_console_output_logging.py::test_custom_action_error:
+    dimensions:
+      - regions: ["ap-east-1"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["us-west-2"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
     dimensions:
@@ -141,6 +157,24 @@ create:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
+  test_create.py::test_cluster_creation_with_problematic_preinstall_script:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        schedulers: ["slurm"]
+        oss: ["centos7"]
+  test_create.py::test_cluster_creation_timeout:
+    dimensions:
+      - regions: ["ap-northeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm", "awsbatch"]
+        oss: ["alinux2"]
+  test_create.py::test_cluster_creation_with_invalid_ebs:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        schedulers: ["slurm"]
+        oss: ["ubuntu1804", "ubuntu2004"]
 createami:
   test_createami.py::test_invalid_config:
     dimensions:
@@ -264,7 +298,9 @@ efa:
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["eu-west-1"]
+      # Capacity Reservation for `c6gn.16xlarge` created in `us-east-1a` do not move unless the target region also
+      # has a Capacity Reservation for `c6gn.16xlarge`
+      - regions: ["us-east-1"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
@@ -481,6 +517,12 @@ schedulers:
 #        oss: ["alinux2"]
 #        schedulers: ["slurm_plugin"]
 #{%- endif %}
+  test_slurm.py::test_slurm_protected_mode_on_cluster_create:
+    dimensions:
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
   test_slurm.py::test_fast_capacity_failover:
     dimensions:
       - regions: ["ap-east-1"]
@@ -503,6 +545,12 @@ schedulers:
     dimensions:
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  test_slurm.py::test_scontrol_reboot_ec2_health_checks:
+    dimensions:
+      - regions: ["us-east-2"]
+        instances: ["t2.medium"]
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_overrides:

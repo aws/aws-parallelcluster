@@ -20,8 +20,8 @@ Scheduling:
             CapacityReservationResourceGroupArn: {{ multi_az_capacity_reservation_arn }}
       Networking:
         SubnetIds:
-          - {{ public_subnet_id }}
-          - {{ public_az2_subnet_id }}
+          - {{ public_subnet_ids[0] }}
+          - {{ public_subnet_ids[1] }}
     - Name: queue2
       ComputeResources:
         - Name: compute-resource-2
