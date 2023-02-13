@@ -33,7 +33,7 @@ def assert_instance_replaced_or_terminating(instance_id, region):
     assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in("shutting-down", "terminated")
 
 
-def assert_no_errors_in_logs(remote_command_executor, scheduler):
+def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False):
     __tracebackhide__ = True
     if scheduler == "slurm":
         log_files = [
@@ -52,6 +52,8 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
 
     for log_file in log_files:
         log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+        if skip_ice:
+            log = "\n".join([line for line in log.splitlines() if "InsufficientInstanceCapacity" not in line])
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
 
