@@ -15,8 +15,9 @@ import logging
 import boto3
 import pytest
 from assertpy import assert_that
+from cfn_stacks_factory import CfnVpcStack
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_arn_partition, get_vpc_snakecase_value
+from utils import get_arn_partition, get_compute_nodes_instance_ips
 
 from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
@@ -220,10 +221,13 @@ def _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_com
     verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
-    vpc = get_vpc_snakecase_value(vpc_stack)
-    head_node_subnet_id = vpc["public_subnet_id"]
-    compute_subnet_id = vpc["private_subnet_id"] if expected_in_same_az else vpc["private_additional_cidr_subnet_id"]
+def _assert_subnet_az_relations(region, vpc_stack: CfnVpcStack, expected_in_same_az):
+    head_node_subnet_id = vpc_stack.get_public_subnet()
+    compute_subnet_id = (
+        vpc_stack.get_private_subnet()
+        if expected_in_same_az
+        else vpc_stack.cfn_outputs["PrivateAdditionalCidrSubnetId"]
+    )
     head_node_subnet_az = boto3.resource("ec2", region_name=region).Subnet(head_node_subnet_id).availability_zone
     compute_subnet_az = boto3.resource("ec2", region_name=region).Subnet(compute_subnet_id).availability_zone
     if expected_in_same_az:

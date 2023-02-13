@@ -1160,17 +1160,14 @@ def placement_group_stack(cfn_stacks_factory, request, region):
 
 
 @pytest.fixture(scope="class")
-def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack):
+def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack: CfnVpcStack):
     logging.info("Setting up the ODCR stack")
     odcr_template = Template()
     odcr_template.set_version()
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
-    availability_zone = (
-        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_subnet_id"]).availability_zone
-    )
-    availability_zone_2 = (
-        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_az2_subnet_id"]).availability_zone
-    )
+    public_subnets_list = vpc_stack.get_all_public_subnets()
+    availability_zone = boto3.resource("ec2").Subnet(public_subnets_list[0]).availability_zone
+    availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets_list[1]).availability_zone
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=availability_zone,
