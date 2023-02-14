@@ -38,7 +38,7 @@ Scheduling:
           MaxCount: 1
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids | reject("==", private_subnet_id) | list | random }}
     {% endif %}
 # This compute subnet would be in a different AZ than head node for regions defined in AVAILABILITY_ZONE_OVERRIDES
 # See conftest for details
