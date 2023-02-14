@@ -136,7 +136,7 @@ def test_custom_action_error(
     bucket.upload_file(str(test_datadir / script), script_path)
 
     cluster_config = pcluster_config_reader(bucket=bucket_name, script_path=script_path)
-    cluster: Cluster = clusters_factory(cluster_config, raise_on_error=False, wait=False)
+    cluster: Cluster = clusters_factory(cluster_config, raise_on_error=True, wait=False)
 
     _verify_compute_console_output_log_exists_in_log_group(cluster)
 
