@@ -38,7 +38,7 @@ def test_trainium(
     # _test_allreduce_single_node(test_datadir, remote_command_executor, scheduler_commands)
     _test_ccl_two_nodes(test_datadir, remote_command_executor, scheduler_commands)
 
-    _test_primary_ip(test_datadir, scheduler_commands)
+    _test_primary_ip(test_datadir, remote_command_executor, scheduler_commands)
 
 
 def _test_allreduce_single_node(test_datadir, remote_command_executor, scheduler_commands):
@@ -67,11 +67,12 @@ def _test_ccl_two_nodes(test_datadir, remote_command_executor, scheduler_command
     print(result.stdout)
     assert_that(result.stdout).contains("CCL(1)", "CCL(50)", "CCL(99)", "CCL(100)")
 
-def _test_primary_ip(test_datadir, scheduler_commands):
+def _test_primary_ip(test_datadir, remote_command_executor, scheduler_commands):
     result = scheduler_commands.submit_script(str(test_datadir / "test-primary-ip.sh"), partition="queue-trn32")
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
+    result = remote_command_executor.run_remote_command("cat output-primary-ip.txt")
 
     print(result.stdout)
-    assert_that(result.stdout).does_not_contain("Error: Route53 IP does not match host IP")
+    assert_that(result.stdout).contains("PASSED")
