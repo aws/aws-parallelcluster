@@ -235,6 +235,8 @@ Monitoring:
       Enabled: true
       RetentionInDays: 30
       DeletionPolicy: Retain
+    Rotation:
+      Enabled: true
   Dashboards:
     CloudWatch:
       Enabled: true

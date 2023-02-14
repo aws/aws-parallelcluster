@@ -186,6 +186,7 @@ def test_custom_ami_validator(custom_ami, expected_message):
         # right value
         (1, None),
         (14, None),
+        (180, None),
         (3653, None),
         # invalid value
         (2, "Must be one of"),
