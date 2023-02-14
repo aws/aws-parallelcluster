@@ -31,6 +31,7 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    CW_LOGS_ROTATION_ENABLED_DEFAULT,
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
@@ -164,6 +165,7 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
+from pcluster.validators.monitoring_validators import LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     MultiAzPlacementGroupValidator,
@@ -755,6 +757,14 @@ class CloudWatchLogs(Resource):
         self.deletion_policy = Resource.init_param(deletion_policy, default="Retain")
 
 
+class LogRotation(Resource):
+    """Represent the Rotation configuration in Logs."""
+
+    def __init__(self, enabled: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.enabled = Resource.init_param(enabled, default=CW_LOGS_ROTATION_ENABLED_DEFAULT)
+
+
 class CloudWatchDashboards(Resource):
     """Represent the CloudWatch Dashboard."""
 
@@ -766,9 +776,13 @@ class CloudWatchDashboards(Resource):
 class Logs(Resource):
     """Represent the CloudWatch Logs configuration."""
 
-    def __init__(self, cloud_watch: CloudWatchLogs = None, **kwargs):
+    def __init__(self, cloud_watch: CloudWatchLogs = None, rotation: LogRotation = None, **kwargs):
         super().__init__(**kwargs)
         self.cloud_watch = cloud_watch or CloudWatchLogs(implied=True)
+        self.rotation = rotation or LogRotation(implied=True)
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(LogRotationValidator, log=self)
 
 
 class Dashboards(Resource):
@@ -1616,6 +1630,15 @@ class BaseClusterConfig(Resource):
         return (
             self.monitoring.logs.cloud_watch.enabled
             if self.monitoring and self.monitoring.logs and self.monitoring.logs.cloud_watch
+            else False
+        )
+
+    @property
+    def is_log_rotation_enabled(self):
+        """Return True if log rotation is enabled."""
+        return (
+            self.monitoring.logs.rotation.enabled
+            if self.monitoring and self.monitoring.logs and self.monitoring.logs.rotation
             else False
         )
 

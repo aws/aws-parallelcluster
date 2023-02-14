@@ -215,6 +215,8 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     kms_key_id_encrypted_validator = mocker.patch(
         kms_validators + ".KmsKeyIdEncryptedValidator._validate", return_value=[]
     )
+    monitoring_validators = validators_path + ".monitoring_validators"
+    log_rotation_validator = mocker.patch(monitoring_validators + ".LogRotationValidator._validate", return_value=[])
 
     mocker.patch(
         "pcluster.config.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
@@ -343,6 +345,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     deletion_policy_validator.assert_called()
     instance_type_accelerator_manufacturer_validator.assert_called()
     instance_type_placement_group_validator.assert_called()
+    log_rotation_validator.assert_called()
 
 
 def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
