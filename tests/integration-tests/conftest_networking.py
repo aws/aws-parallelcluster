@@ -254,13 +254,15 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             if index == 0:
                 # Creating private_subnet_different_cidr in a different AZ for test_efs
                 # TODO isolate this logic and create a compute subnet in different AZ than head node in test_efs
+                az_names_without_default = list(az_id_name_dict.values())
+                az_names_without_default.remove(default_az_name)
                 subnets.append(
                     SubnetConfig(
                         name=subnet_name(visibility="Private", flavor="AdditionalCidr"),
                         cidr=CIDR_FOR_CUSTOM_SUBNETS[index],
                         map_public_ip_on_launch=False,
                         has_nat_gateway=False,
-                        availability_zone=list(az_id_name_dict.values())[index + 1],
+                        availability_zone=random.choice(az_names_without_default),
                         default_gateway=Gateways.NAT_GATEWAY,
                     )
                 )
@@ -270,7 +272,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
                         cidr=CIDR_FOR_CUSTOM_SUBNETS[index + 1],
                         map_public_ip_on_launch=False,
                         has_nat_gateway=False,
-                        availability_zone=az_name,
+                        availability_zone=default_az_name,
                         default_gateway=Gateways.NONE,
                     )
                 )
