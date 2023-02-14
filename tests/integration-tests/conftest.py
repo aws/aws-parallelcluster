@@ -1400,7 +1400,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
         AvailabilityZone=availability_zone,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
-        InstanceType="c5.xlarge",
+        InstanceType="m5.2xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
