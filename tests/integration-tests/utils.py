@@ -43,6 +43,17 @@ def _format_stack_error(message, stack_events=None, cluster_details=None) -> str
         if "message" in cluster_details:
             message += f"\n\n- Message:\n\t{cluster_details.get('message')}"
 
+        if "configurationValidationErrors" in cluster_details:
+            validation_string = "\n\t".join(
+                [
+                    f"* {validation.get('level')} - {validation.get('type')}:\n\t\t{validation.get('message')}"
+                    for validation in cluster_details.get("configurationValidationErrors")
+                ],
+            )
+
+            if validation_string:
+                message += f"\n\n- Validation Failures:\n\t{validation_string}"
+
         if "failures" in cluster_details:
             details_string = "\n\t".join(
                 [

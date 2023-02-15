@@ -204,14 +204,14 @@ class CfnStacksFactory:
                     cfn_client = boto3.client("cloudformation", region_name=stack.region)
                     cfn_client.delete_stack(StackName=stack.name)
                     final_status = self.__wait_for_stack_deletion(stack.cfn_stack_id, cfn_client)
+                    self.__assert_stack_status(
+                        final_status, "DELETE_COMPLETE", stack_name=stack.cfn_stack_id, region=region
+                    )
                 except Exception as e:
                     logging.error(
                         "Deletion of stack {0} in region {1} failed with exception: {2}".format(name, region, e)
                     )
                     raise
-                self.__assert_stack_status(
-                    final_status, "DELETE_COMPLETE", stack_name=stack.cfn_stack_id, region=region
-                )
                 del self.__created_stacks[internal_id]
                 logging.info("Stack {0} deleted successfully in region {1}".format(name, region))
             else:
