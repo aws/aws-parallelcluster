@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ public_subnet_ids[0] }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -27,7 +27,7 @@ Scheduling:
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_additional_cidr_subnet_id }}
+          - {{ private_subnet_ids[1] }}
     {% if scheduler == "slurm" %}
     - Name: queue-1
       ComputeResources:
@@ -38,7 +38,7 @@ Scheduling:
           MaxCount: 1
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[2] }}
     {% endif %}
 # This compute subnet would be in a different AZ than head node for regions defined in AVAILABILITY_ZONE_OVERRIDES
 # See conftest for details
