@@ -42,7 +42,7 @@ phases:
                 OS='ubuntu1804'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
-              elif [ `echo "${!RELEASE}" | grep '^rhel\.8'` ]; then
+              elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
                 OS='rhel8'
               else
                 echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
