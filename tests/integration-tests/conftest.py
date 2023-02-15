@@ -1168,7 +1168,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     odcr_template.set_version()
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
     public_subnet = vpc_stack.get_public_subnet()
-    public_subnets = vpc_stack.get_all_public_subnets()
+    public_subnets = vpc_stack.get_all_public_subnets().copy()
     public_subnets.remove(public_subnet)
     availability_zone = boto3.resource("ec2").Subnet(public_subnet).availability_zone
     availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone
