@@ -67,6 +67,8 @@ class CfnVpcStack(CfnStack):
         super().__init__(**kwargs)
         self.default_az_id = default_az_id
         self.az_ids = az_ids
+        self.__public_subnet_ids = None
+        self.__private_subnet_ids = None
 
     def get_public_subnet(self):  # TODO add possibility to override default
         """Return the public subnet for a VPC stack."""
@@ -74,7 +76,10 @@ class CfnVpcStack(CfnStack):
 
     def get_all_public_subnets(self):
         """Return all the public subnets for a VPC stack."""
-        return self._get_all_subnets(visibility="Public")
+        if not self.__public_subnet_ids:
+            self.__public_subnet_ids, self.__private_subnet_ids = self._get_all_subnets()
+
+        return self.__public_subnet_ids
 
     def get_private_subnet(self):  # TODO add possibility to override default
         """Return the private subnet for a VPC stack."""
@@ -82,7 +87,10 @@ class CfnVpcStack(CfnStack):
 
     def get_all_private_subnets(self):
         """Return all the private subnets for a VPC stack."""
-        return self._get_all_subnets(visibility="Private")
+        if not self.__private_subnet_ids:
+            self.__public_subnet_ids, self.__private_subnet_ids = self._get_all_subnets()
+
+        return self.__private_subnet_ids
 
     def _get_subnet(self, visibility: str = "Public"):
         if self.default_az_id:
@@ -95,15 +103,24 @@ class CfnVpcStack(CfnStack):
         assert_that(az_id_tag).is_not_none()
         return self.cfn_outputs[f"{az_id_tag}{visibility}SubnetId"]
 
-    def _get_all_subnets(self, visibility: str = "Public"):
+    def _get_all_subnets(self):
         assert_that(self.az_ids).is_not_none()
-        subnet_ids = []
+        public_subnet_ids = []
+        private_subnet_ids = []
         for az_id in self.az_ids:
             az_id_tag = to_pascal_from_kebab_case(az_id)
-            subnet_ids.append(self.cfn_outputs[f"{az_id_tag}{visibility}SubnetId"])
+            public_subnet_ids.append(self.cfn_outputs[f"{az_id_tag}PublicSubnetId"])
+            private_subnet_ids.append(self.cfn_outputs[f"{az_id_tag}PrivateSubnetId"])
 
-        random.shuffle(subnet_ids)
-        return subnet_ids
+        # shuffle the two subnets list in unison
+        temp_subnets = list(zip(public_subnet_ids, private_subnet_ids))
+        random.shuffle(temp_subnets)
+        public_subnet_ids, private_subnet_ids = zip(*temp_subnets)
+
+        logging.info(
+            f"Setting public subnets list to {public_subnet_ids} and private subnets list to {private_subnet_ids}"
+        )
+        return list(public_subnet_ids), list(private_subnet_ids)
 
 
 class CfnStacksFactory:
