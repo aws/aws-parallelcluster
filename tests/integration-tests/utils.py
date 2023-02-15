@@ -47,10 +47,10 @@ class SetupError(BaseException):
     @staticmethod
     def _format_message(message, stack_events, cluster_details) -> str:
         formatted_message = message if message else "Error during setup."
-        if cluster_details:
+        if cluster_details and "failures" in cluster_details:
             details_string = "\n\t".join(
                 [
-                    f"* {failure['failureCode']}:\n\t\t{failure.get('failureReason')}"
+                    f"* {failure.get('failureCode')}:\n\t\t{failure.get('failureReason')}"
                     for failure in cluster_details.get("failures")
                 ],
             )
@@ -59,7 +59,7 @@ class SetupError(BaseException):
         if stack_events:
             events_string = "\n\t".join(
                 [
-                    f"* {event['LogicalResourceId']}:\n\t\t{event.get('ResourceStatusReason')}"
+                    f"* {event.get('LogicalResourceId')}:\n\t\t{event.get('ResourceStatusReason')}"
                     for event in stack_events
                     if event.get("ResourceStatus") == "CREATE_FAILED"
                 ]

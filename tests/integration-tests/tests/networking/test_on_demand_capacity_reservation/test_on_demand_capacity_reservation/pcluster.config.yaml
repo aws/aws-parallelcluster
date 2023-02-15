@@ -12,19 +12,19 @@ Scheduling:
     - Name: open-odcr-q
       ComputeResources:
         - Name: open-odcr-id-cr
-          InstanceType: c5.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
             CapacityReservationId: {{ open_capacity_reservation_id }}
         - Name: open-odcr-arn-cr
-          InstanceType: c5.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
             CapacityReservationResourceGroupArn: {{ open_capacity_reservation_arn }}
         - Name: open-odcr-id-pg-cr
-          InstanceType: c5.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           Networking:
@@ -33,7 +33,7 @@ Scheduling:
           CapacityReservationTarget:
             CapacityReservationId: {{ open_capacity_reservation_id }}
         - Name: open-odcr-arn-pg-cr
-          InstanceType: c5.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           Networking:

@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ public_subnet_ids[0] }}
   Ssh:
     KeyName: {{ key_name }}
   Iam:

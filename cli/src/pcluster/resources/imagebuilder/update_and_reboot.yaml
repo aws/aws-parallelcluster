@@ -10,7 +10,7 @@ constants:
 phases:
   - name: build
     steps:
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | amzn.2 | ubuntu.18.04
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | amzn.2 | ubuntu.18.04 | ubuntu.20.04 | rhel.8.7
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:
@@ -43,6 +43,8 @@ phases:
                 OS='ubuntu1804'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
+              elif [ `echo "${!RELEASE}" | grep '^rhel\.8'` ]; then
+                OS='rhel8'
               else
                 echo "Operating System '${!RELEASE}' is not supported. Failing build."
                 exit {{ FailExitCode }}
@@ -59,7 +61,7 @@ phases:
                set -v
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-               if [ `echo "${!OS}" | grep -E '^(alinux|centos)'` ]; then
+               if [ `echo "${!OS}" | grep -E '^(alinux|centos|rhel)'` ]; then
                  PLATFORM='RHEL'
                elif [ `echo "${!OS}" | grep -E '^ubuntu'` ]; then
                  PLATFORM='DEBIAN'
@@ -75,15 +77,15 @@ phases:
             - |
               set -v
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
-              if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu)'` ]; then
+              if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu|rhel)'` ]; then
                 echo "This component does not support '${!RELEASE}'. Failing build."
                 exit {{ FailExitCode }}
               fi
 
-              # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004 and Centos7
+              # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004, Centos7 and RHEL 8
               ARCH=$(uname -m)
               if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|ubuntu\.18\.04|ubuntu\.20\.04)'` ]; then
+                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|ubuntu\.18\.04|ubuntu\.20\.04|rhel\.8)'` ]; then
                   echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
                   exit {{ FailExitCode }}
                 fi
