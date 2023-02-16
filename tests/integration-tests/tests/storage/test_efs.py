@@ -222,11 +222,9 @@ def _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_com
 
 
 def _assert_subnet_az_relations(region, vpc_stack: CfnVpcStack, expected_in_same_az):
-    head_node_subnet_id = vpc_stack.get_public_subnet()
+    head_node_subnet_id = vpc_stack.get_public_subnets()[0]
     compute_subnet_id = (
-        vpc_stack.get_private_subnet()
-        if expected_in_same_az
-        else vpc_stack.cfn_outputs["PrivateAdditionalCidrSubnetId"]
+        vpc_stack.get_private_subnets()[0] if expected_in_same_az else vpc_stack.get_private_subnets()[1]
     )
     head_node_subnet_az = boto3.resource("ec2", region_name=region).Subnet(head_node_subnet_id).availability_zone
     compute_subnet_az = boto3.resource("ec2", region_name=region).Subnet(compute_subnet_id).availability_zone

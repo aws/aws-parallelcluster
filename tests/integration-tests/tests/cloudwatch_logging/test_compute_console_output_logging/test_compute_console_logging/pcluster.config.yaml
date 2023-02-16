@@ -20,7 +20,7 @@ Scheduling:
           MaxCount: 10
       Networking:
         SubnetIds:
-          - {{ no_internet_subnet_id }}
+          - {{ isolated_subnet_id }}
 Monitoring:
   Logs:
     CloudWatch:

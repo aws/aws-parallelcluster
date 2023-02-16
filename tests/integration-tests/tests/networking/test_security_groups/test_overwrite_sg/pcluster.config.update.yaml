@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ public_subnet_ids[0] }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -25,7 +25,7 @@ Scheduling:
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_additional_cidr_subnet_id }}
+          - {{ private_subnet_ids[1] }}
         SecurityGroups:
           - {{ vpc_security_group_id }}
           # Compute nodes use custom sg while the head node is using managed id
