@@ -873,11 +873,15 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
 
             vpc = vpc_stack.cfn_outputs["VpcId"]
             public_subnet_id = vpc_stack.get_public_subnet()
+            subnet_id0 = vpc_stack.cfn_outputs["PrivateSubnetId"]
+            subnet_id1 = vpc_stack.cfn_outputs["PublicAz2SubnetId"]
             import_path = "s3://{0}".format(bucket_name)
             export_path = "s3://{0}/export_dir".format(bucket_name)
             params = [
                 {"ParameterKey": "vpc", "ParameterValue": vpc},
                 {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
+                {"ParameterKey": "SubnetId0", "ParameterValue": subnet_id0},
+                {"ParameterKey": "SubnetId1", "ParameterValue": subnet_id1},
                 {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
                 {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
             ]
