@@ -17,7 +17,14 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 from framework.credential_providers import aws_credential_provider
 from retrying import retry
-from utils import retrieve_cfn_outputs, retrieve_cfn_resources, to_pascal_from_kebab_case
+from utils import (
+    StackError,
+    StackSetupError,
+    get_cfn_events,
+    retrieve_cfn_outputs,
+    retrieve_cfn_resources,
+    to_pascal_from_kebab_case,
+)
 
 
 class CfnStack:
@@ -130,11 +137,12 @@ class CfnStacksFactory:
         self.__created_stacks = OrderedDict()
         self.__credentials = credentials
 
-    def create_stack(self, stack):
+    def create_stack(self, stack, stack_is_under_test=False):
         """
         Create a cfn stack with a given template.
 
         :param stack: stack to create.
+        :param stack_is_under_test: indicates whether the creation of the stack is being tested or not.
         """
         name = stack.name
         region = stack.region
@@ -166,7 +174,11 @@ class CfnStacksFactory:
                 self.__created_stacks[id] = stack
                 final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
                 self.__assert_stack_status(
-                    final_status, "CREATE_COMPLETE", cfn_client=cfn_client, name=stack.cfn_stack_id
+                    final_status,
+                    "CREATE_COMPLETE",
+                    region=region,
+                    stack_name=stack.cfn_stack_id,
+                    stack_is_under_test=stack_is_under_test,
                 )
                 # Initialize the stack data while still in the credential context
                 stack.init_stack_data()
@@ -184,21 +196,23 @@ class CfnStacksFactory:
     def delete_stack(self, name, region):
         """Destroy a created cfn stack."""
         with aws_credential_provider(region, self.__credentials):
-            id = self.__get_stack_internal_id(name, region)
-            if id in self.__created_stacks:
+            internal_id = self.__get_stack_internal_id(name, region)
+            if internal_id in self.__created_stacks:
                 logging.info("Destroying stack {0} in region {1}".format(name, region))
                 try:
-                    stack = self.__created_stacks[id]
+                    stack = self.__created_stacks[internal_id]
                     cfn_client = boto3.client("cloudformation", region_name=stack.region)
                     cfn_client.delete_stack(StackName=stack.name)
                     final_status = self.__wait_for_stack_deletion(stack.cfn_stack_id, cfn_client)
-                    self.__assert_stack_status(final_status, "DELETE_COMPLETE")
+                    self.__assert_stack_status(
+                        final_status, "DELETE_COMPLETE", stack_name=stack.cfn_stack_id, region=region
+                    )
                 except Exception as e:
                     logging.error(
                         "Deletion of stack {0} in region {1} failed with exception: {2}".format(name, region, e)
                     )
                     raise
-                del self.__created_stacks[id]
+                del self.__created_stacks[internal_id]
                 logging.info("Stack {0} deleted successfully in region {1}".format(name, region))
             else:
                 logging.warning(
@@ -239,27 +253,17 @@ class CfnStacksFactory:
         return cfn_client.describe_stacks(StackName=name).get("Stacks")[0].get("StackStatus")
 
     @staticmethod
-    def __get_stack_resource_failures(name, cfn_client):
-        resources = cfn_client.list_stack_resources(StackName=name).get("StackResourceSummaries")
-        return (
-            {resource.get("LogicalResourceId"): resource.get("ResourceStatusReason")}
-            for resource in resources
-            if resource.get("ResourceStatus") == "CREATE_FAILED"
-        )
-
-    @staticmethod
-    def __assert_stack_status(status, expected_status, cfn_client=None, name=None):
+    def __assert_stack_status(status, expected_status, region, stack_name=None, stack_is_under_test=False):
         if status != expected_status:
-            if cfn_client and name:
-                failures = "\n\t".join(
-                    str(failure) for failure in CfnStacksFactory.__get_stack_resource_failures(name, cfn_client)
-                )
-                raise Exception(
-                    "Stack status {0} for {1} differs from expected one {2}:\n\t{3}".format(
-                        status, name, expected_status, failures
-                    )
-                )
-            raise Exception("Stack status {0} differs from expected one {1}".format(status, expected_status))
+            message = (
+                f"Stack status {status} for {stack_name} differs "
+                f"from the expected status of {expected_status} in region {region}"
+            )
+            stack_events = get_cfn_events(stack_name, region=region)
+            if stack_is_under_test:
+                raise StackError(message, stack_events=stack_events)
+            else:
+                raise StackSetupError(message, stack_events=stack_events)
 
     @staticmethod
     def __get_stack_internal_id(name, region):
