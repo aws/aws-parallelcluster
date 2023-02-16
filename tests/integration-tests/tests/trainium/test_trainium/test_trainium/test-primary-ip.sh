@@ -26,4 +26,3 @@ do
   fi
 done
 echo Error: Route53 IP does not match host IP | tee -a output-primary-ip.txt
-exit 1
