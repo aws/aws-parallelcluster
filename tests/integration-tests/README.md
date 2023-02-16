@@ -678,14 +678,14 @@ for index, az_id in enumerate(az_ids):
   )
   if index == 0:
     subnets.append(
-      SubnetConfig(
-        name=subnet_name(visibility="Private", flavor="NoInternet"),
-        cidr=CIDR_FOR_CUSTOM_SUBNETS[index + 1],
-        map_public_ip_on_launch=False,
-        has_nat_gateway=False,
-        availability_zone=az_name,
-        default_gateway=Gateways.NONE,
-      )
+        SubnetConfig(
+            name=subnet_name(visibility="Private", flavor="Isolated"),
+            cidr=CIDR_FOR_CUSTOM_SUBNETS[index],
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            availability_zone=default_az_name,
+            default_gateway=Gateways.NONE,
+        )
     )
 
 vpc_config = VPCConfig(
