@@ -177,8 +177,8 @@ write_files:
       if [ -f /opt/parallelcluster/.bootstrapped ]; then
         installed_version=$(cat /opt/parallelcluster/.bootstrapped)
         if [ "${!cookbook_version}" != "${!installed_version}" ]; then
-          cookbook_version_number=$(echo ${!cookbook_version} | cut -d "-" -f 4)
-          installed_version_number=$(echo ${!installed_version} | cut -d "-" -f 4)
+          cookbook_version_number=$(echo ${!cookbook_version} | awk -F- '{print $NF}')
+          installed_version_number=$(echo ${!installed_version} | awk -F- '{print $NF}')
           error_exit "This AMI was created with ParallelCluster ${!installed_version_number}, but is trying to be used with ParallelCluster ${!cookbook_version_number}. Please either use an AMI created with ParallelCluster ${!cookbook_version_number} or change your ParallelCluster to ${!installed_version_number}"
         fi
       else
