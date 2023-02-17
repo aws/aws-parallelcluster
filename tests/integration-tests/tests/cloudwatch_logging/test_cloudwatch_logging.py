@@ -28,7 +28,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_SHARED_DIR = "/shared"
-DEFAULT_RETENTION_DAYS = 14
+DEFAULT_RETENTION_DAYS = 180
 NODE_CONFIG_PATH = "/etc/chef/dna.json"
 HEAD_NODE_ROLE_NAME = "HeadNode"
 COMPUTE_NODE_ROLE_NAME = "ComputeFleet"

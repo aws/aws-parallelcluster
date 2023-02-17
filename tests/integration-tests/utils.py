@@ -38,37 +38,86 @@ PARTITION_MAP = {
 }
 
 
-class SetupError(BaseException):
-    """Exception to throw from infrastructure factory fixtures if the infrastructure setup fails"""
+def _format_stack_error(message, stack_events=None, cluster_details=None) -> str:
+    if cluster_details:
+        if "message" in cluster_details:
+            message += f"\n\n- Message:\n\t{cluster_details.get('message')}"
 
-    def __init__(self, *args, stack_events=None, cluster_details=None):
-        self.message = self._format_message(args[0], stack_events, cluster_details)
+        if "configurationValidationErrors" in cluster_details:
+            validation_string = "\n\t".join(
+                [
+                    f"* {validation.get('level')} - {validation.get('type')}:\n\t\t{validation.get('message')}"
+                    for validation in cluster_details.get("configurationValidationErrors")
+                ],
+            )
 
-    @staticmethod
-    def _format_message(message, stack_events, cluster_details) -> str:
-        formatted_message = message if message else "Error during setup."
-        if cluster_details:
+            if validation_string:
+                message += f"\n\n- Validation Failures:\n\t{validation_string}"
+
+        if "failures" in cluster_details:
             details_string = "\n\t".join(
                 [
-                    f"* {failure['failureCode']}:\n\t\t{failure.get('failureReason')}"
+                    f"* {failure.get('failureCode')}:\n\t\t{failure.get('failureReason')}"
                     for failure in cluster_details.get("failures")
                 ],
             )
-            formatted_message += f"\n\n- Cluster Errors:\n\t{details_string}"
+            if details_string:
+                message += f"\n\n- Cluster Errors:\n\t{details_string}"
 
-        if stack_events:
-            events_string = "\n\t".join(
-                [
-                    f"* {event['LogicalResourceId']}:\n\t\t{event.get('ResourceStatusReason')}"
-                    for event in stack_events
-                    if event.get("ResourceStatus") == "CREATE_FAILED"
-                ]
-            )
-            formatted_message += f"\n\n- Stack Events:\n\t{events_string}"
-        return formatted_message
+    if stack_events:
+        events_string = "\n\t".join(
+            [
+                f"* {event.get('LogicalResourceId')}:\n\t\t{event.get('ResourceStatusReason')}"
+                for event in stack_events
+                if event.get("ResourceStatus") == "CREATE_FAILED"
+            ]
+        )
+        if events_string:
+            message += f"\n\n- Stack Events:\n\t{events_string}"
+    return message
+
+
+class StackError(BaseException):
+    """Exception to throw when stack creation stack fails as part of a test."""
+
+    def __init__(self, message, stack_events=None):
+        message = message if message else "StackError has been raised"
+        self.message = _format_stack_error(message, stack_events=stack_events)
 
     def __str__(self):
-        return "SetupError: {0} ".format(self.message) if self.message else "SetupError has been raised"
+        return f"StackError: {self.message}"
+
+
+class SetupError(BaseException):
+    """Exception to throw if an error occurred during test setup."""
+
+    def __init__(self, message):
+        self.message = message if message else "SetupError has been raised"
+
+    def __str__(self):
+        return f"SetupError: {self.message}"
+
+
+class StackSetupError(SetupError):
+    """Exception to throw when stack creation fails during test setup."""
+
+    def __init__(self, message, stack_events):
+        message = message if message else "StackSetupError has been raised"
+        super().__init__(_format_stack_error(message, stack_events=stack_events))
+
+    def __str__(self):
+        return f"StackSetupError: {self.message}"
+
+
+class ClusterCreationError(SetupError):
+    """Exception to throw when cluster creation fails during test setup."""
+
+    def __init__(self, message, stack_events=None, cluster_details=None):
+        message = message if message else "ClusterCreationError has been raised"
+        super().__init__(_format_stack_error(message, stack_events=stack_events, cluster_details=cluster_details))
+
+    def __str__(self):
+        return f"ClusterCreationError: {self.message}"
 
 
 class InstanceTypesData:

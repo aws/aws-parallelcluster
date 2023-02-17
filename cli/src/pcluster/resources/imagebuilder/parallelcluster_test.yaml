@@ -42,6 +42,8 @@ phases:
                 OS='ubuntu1804'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
+              elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
+                OS='rhel8'
               else
                 echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
               fi
@@ -143,6 +145,8 @@ phases:
               set -vx
               OS="{{ test.OperatingSystemName.outputs.stdout }}"
               if [[ ${OS} =~ ^alinux ]]; then
+                username="ec2-user"
+              elif [[ ${OS} =~ ^rhel ]]; then
                 username="ec2-user"
               elif [[ ${OS} =~ ^centos ]]; then
                 username="centos"

@@ -61,7 +61,7 @@ EFS_MESSAGES = {
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSES,
-    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2", "centos7"],
+    "arm64": SUPPORTED_OSES,
 }
 
 FSX_MESSAGES = {

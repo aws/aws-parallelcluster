@@ -218,12 +218,16 @@ def _create_directory_stack(
     }
     logging.info("Creating stack %s", directory_stack_name)
     with open(render_jinja_template(directory_stack_template_path, **config_args)) as directory_stack_template:
+        private_subnet = vpc_stack.get_private_subnet()
+        private_subnets = vpc_stack.get_all_private_subnets().copy()
+        private_subnets.remove(private_subnet)
+
         params = [
             {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
-            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": vpc_stack.get_private_subnet()},
+            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
             {
                 "ParameterKey": "PrivateSubnetTwo",
-                "ParameterValue": vpc_stack.cfn_outputs["PrivateAdditionalCidrSubnetId"],
+                "ParameterValue": private_subnets[0],
             },
             {"ParameterKey": "PublicSubnetOne", "ParameterValue": vpc_stack.get_public_subnet()},
         ]
