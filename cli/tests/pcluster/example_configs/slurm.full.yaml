@@ -206,7 +206,7 @@ Monitoring:
       Enabled: true
   Dashboards:
     CloudWatch:
-      Enabled: true  # true
+      Enabled: false  # true
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
