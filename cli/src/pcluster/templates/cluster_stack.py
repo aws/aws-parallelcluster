@@ -62,6 +62,10 @@ from pcluster.config.cluster_config import (
 from pcluster.constants import (
     CW_LOG_GROUP_NAME_PREFIX,
     CW_LOGS_CFN_PARAM_NAME,
+    CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
+    CW_ALARM_EVALUATION_PERIODS_DEFAULT,
+    CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
+    CW_ALARM_PERIOD_DEFAULT,
     DEFAULT_EPHEMERAL_DIR,
     LUSTRE,
     NODE_BOOTSTRAP_TIMEOUT,
@@ -312,30 +316,30 @@ class ClusterCdkStack:
                 metric_name="mem_used_percent",
                 dimensions_map={"InstanceId": self.head_node_instance.ref},
                 statistic="Maximum",
-                period=Duration.seconds(60),
+                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
             ),
             "Disk": cloudwatch.Metric(
                 namespace="CWAgent",
                 metric_name="disk_used_percent",
                 dimensions_map={"InstanceId": self.head_node_instance.ref},
                 statistic="Maximum",
-                period=Duration.seconds(60),
+                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
             ),
         }
 
         for metric_key, metric in metrics_for_alarms.items():
-            alarm_id = f"Pcluster{metric_key}Alarm"
-            alarm_name = f"{metric_key}Alarm_{self.stack.stack_name}_{self.head_node_instance.ref}"
+            alarm_id = f"HeadNode{metric_key}Alarm"
+            alarm_name = f"{self.stack.stack_name}_{metric_key}Alarm_HeadNode"
             self.alarms.append(
                 cloudwatch.Alarm(
                     scope=self.stack,
                     id=alarm_id,
                     metric=metric,
-                    evaluation_periods=1,
-                    threshold=90,
+                    evaluation_periods=CW_ALARM_EVALUATION_PERIODS_DEFAULT,
+                    threshold=CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
                     alarm_name=alarm_name,
                     comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-                    datapoints_to_alarm=1,
+                    datapoints_to_alarm=CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
                 )
             )
 
