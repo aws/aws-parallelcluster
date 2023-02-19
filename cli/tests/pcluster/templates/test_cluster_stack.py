@@ -121,28 +121,31 @@ def _generate_template(cluster, capsys):
 @pytest.mark.parametrize(
     "config_file_name",
     [
-        "centos7.slurm.full.yaml",
-        "ubuntu18.slurm.simple.yaml",
-        "ubuntu18.slurm.no_dashboard.yaml",
+        "slurm.required.yaml",
+        "slurm.full.yaml",
+        "awsbatch.simple.yaml",
+        "awsbatch.full.yaml",
+        "scheduler_plugin.required.yaml",
+        "scheduler_plugin.full.yaml",
     ],
 )
-def test_add_alarms(mocker, config_file_name, test_datadir):
+def test_add_alarms(mocker, config_file_name):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
 
-    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     output_yaml = yaml.dump(generated_template, width=float("inf"))
 
     if cluster.is_cw_dashboard_enabled:
-        assert_that(output_yaml).contains("PclusterDiskAlarm")
-        assert_that(output_yaml).contains("PclusterMemAlarm")
+        assert_that(output_yaml).contains("HeadNodeDiskAlarm")
+        assert_that(output_yaml).contains("HeadNodeMemAlarm")
     else:
-        assert_that(output_yaml).does_not_contain("PclusterDiskAlarm")
-        assert_that(output_yaml).does_not_contain("PclusterMemAlarm")
+        assert_that(output_yaml).does_not_contain("HeadNodeDiskAlarm")
+        assert_that(output_yaml).does_not_contain("HeadNodeMemAlarm")
 
 
 @pytest.mark.parametrize(
