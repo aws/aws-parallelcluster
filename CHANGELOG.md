@@ -25,6 +25,8 @@ CHANGELOG
 - Fix cluster DB creation by verifying the cluster name is no longer than 40 characters when Slurm accounting is enabled.
 - Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be replaced if the EC2 instance status checks fail.
 - Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
+- Fix an issue where custom AMI creation failed in Ubuntu 20.04 on MySQL packages installation.
+- Fix an issue where pcluster configure command failed when the account had no IPv4 CIDR subnet.
 
 3.4.1
 -----
