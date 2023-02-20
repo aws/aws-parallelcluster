@@ -153,8 +153,9 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # the cluster:
     # queue1-st-c5xlarge-1
     # queue1-st-c5xlarge-2
-    assert_initial_conditions(slurm_commands, 2, 0, partition="queue1")
-
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_initial_conditions)(
+        slurm_commands, 2, 0, partition="queue1"
+    )
     updated_queues_config = {
         "queue1": {
             "compute_resources": {
