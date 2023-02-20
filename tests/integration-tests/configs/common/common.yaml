@@ -817,3 +817,14 @@ resource_bucket:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
+log_rotation:
+  test_log_rotation.py::test_log_rotation:
+    dimensions:
+      - regions: ["ap-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["ap-northeast-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2", "ubuntu1804"]
+        schedulers: ["slurm"]
