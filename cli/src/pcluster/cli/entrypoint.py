@@ -236,7 +236,7 @@ def run(sys_args, model=None):
     # some commands (e.g. ssh and those defined as CliCommand objects) require 'extra_args'
     if extra_args and (not hasattr(args, "expects_extra_args") or not args.expects_extra_args):
         parser.print_usage()
-        print(f"Invalid arguments {extra_args}")
+        print(f"Invalid arguments {extra_args}", file=sys.stderr)
         sys.exit(1)
 
     if args.debug:
@@ -273,11 +273,11 @@ def main():
         LOGGER.info("Received KeyboardInterrupt. Exiting.")
         sys.exit(1)
     except ParameterException as e:
-        print(json.dumps(e.data, indent=2))
+        print(json.dumps(e.data, indent=2), file=sys.stderr)
         sys.exit(1)
     except APIOperationException as e:
         LOGGER.error(json.dumps(e.data), exc_info=True)
-        print(json.dumps(e.data, indent=2))
+        print(json.dumps(e.data, indent=2), file=sys.stderr)
         sys.exit(1)
     except BrokenPipeError:
         pass
