@@ -58,6 +58,7 @@ def sts_credential_provider(region, credential_arn, credential_external_id=None,
 
     logging.info("Assuming STS credentials for region %s and role %s", region, credential_arn)
     aws_credentials = _retrieve_sts_credential(region, credential_arn, credential_external_id, credential_endpoint)
+    logging.info("Retrieved credentials %s", obfuscate_credentials(aws_credentials))
 
     try:
         logging.info("Unsetting current credentials %s", obfuscate_credentials(credentials_to_backup))
@@ -66,6 +67,7 @@ def sts_credential_provider(region, credential_arn, credential_external_id=None,
         os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
         os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
         os.environ["AWS_SESSION_TOKEN"] = aws_credentials["SessionToken"]
+        os.environ["AWS_CREDENTIAL_EXPIRATION"] = aws_credentials["Expiration"]
         boto3.setup_default_session()
 
         yield aws_credentials
