@@ -12,17 +12,17 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ resource_bucket }}/scripts/{{ postupdate_script }} # Updated parameter value
+      Args:
+        - UPDATE-ARG2 # Updated parameter value
   Iam:
     S3Access:
       - BucketName: {{ resource_bucket }}
-        EnableWriteAccess: true
-    AdditionalIamPolicies:
+        EnableWriteAccess: true  # New parameter
+    AdditionalIamPolicies: # New section
       - Policy: {{ additional_policy_arn }}
-  CustomActions:
-    OnNodeUpdated:
-      Script: s3://{{ resource_bucket }}/scripts/{{ postupdate_script }}
-      Args:
-        - UPDATE-ARG2
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
@@ -35,38 +35,40 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh # Updated parameter value
           Args:
-            - ABC
+            - ABC # Updated parameter value
         OnNodeConfigured:
-          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh # Updated parameter value
           Args:
-            - DEF
-      CapacityType: SPOT
+            - DEF # Updated parameter value
+      CapacityType: SPOT # Updated parameter value
       ComputeResources:
         - Name: queue1-i1
           Instances:
             - InstanceType: c5.xlarge
-          MinCount: 2
-          MaxCount: 4
+          MinCount: 2 # Increased parameter value
+          MaxCount: 4 # Increased parameter value
         - Name: queue1-i2
           Instances:
-            - InstanceType: c5.2xlarge
-          SpotPrice: 2.1
-        - Name: queue1-i3
+            - InstanceType: c5.2xlarge # Increased parameter value
+          SpotPrice: 2.1 # Increased parameter value
+          # Removed MinCount
+        - Name: queue1-i3 # New compute resource
           Instances:
             - InstanceType: t2.micro
+              # Removed MinCount
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
       Iam:
         S3Access:
           - BucketName: {{ resource_bucket }}
             EnableWriteAccess: true
-        AdditionalIamPolicies:
+        AdditionalIamPolicies: # New section
           - Policy: {{ additional_policy_arn }}
-      Networking:
-        SubnetIds:
-          - {{ private_subnet_id }}
     - Name: queue2
-      Iam:
+      Iam: # New section
         S3Access:
           - BucketName: {{ resource_bucket }}
             EnableWriteAccess: true
@@ -76,7 +78,7 @@ Scheduling:
         LocalStorage:
           RootVolume:
             Size: 40
-      CustomActions:
+      CustomActions: # New section
         OnNodeStart:
           Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
           Args:
@@ -87,18 +89,18 @@ Scheduling:
             - DEF
       ComputeResources:
         - Name: queue2-i1
-          Instances:
-            - InstanceType: c5n.18xlarge
-          MaxCount: 1
-          DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
+          Instances:
+            - InstanceType: c5n.18xlarge
+          MaxCount: 1 # New parameter
+          DisableSimultaneousMultithreading: true # New parameter
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
         PlacementGroup:
           Enabled: false
-    - Name: queue3
+    - Name: queue3 # New queue
       Iam:
         S3Access:
           - BucketName: {{ resource_bucket }}
@@ -137,13 +139,13 @@ Scheduling:
         PlacementGroup:
           Enabled: false
 SharedStorage:
-  - MountDir: raid
+  - MountDir: raid # Reordered the item from the middle of the shared storage list to the first
     StorageType: Ebs
     Name: raid
     EbsSettings:
       VolumeType: gp3
-      Iops: 3200
-      Throughput: 130
+      Iops: 3200 # New parameter
+      Throughput: 130 # New parameter
       Raid:
         Type: 0
         NumberOfVolumes: 2
@@ -152,12 +154,12 @@ SharedStorage:
     StorageType: Ebs
     EbsSettings:
       VolumeType: gp3
-      Iops: 3200
-      Throughput: 130
+      Iops: 3200 # New parameter
+      Throughput: 130 # New parameter
   - MountDir: efs
     Name: efs
     StorageType: Efs
-    EfsSettings:
+    EfsSettings: # New section
       ThroughputMode: provisioned
       ProvisionedThroughput: 1024
   - MountDir: fsx
@@ -165,14 +167,14 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 2400
-      WeeklyMaintenanceStartTime: "3:02:30"
+      WeeklyMaintenanceStartTime: "3:02:30" # New parameter
 Monitoring:
   DetailedMonitoring: false
   Logs:
     CloudWatch:
       Enabled: true
-      RetentionInDays: 1
-DevSettings:
+      RetentionInDays: 1 # New parameter
+DevSettings: # New section
   Cookbook:
     ExtraChefAttributes: |
       {"test_key" : "test_value"}
