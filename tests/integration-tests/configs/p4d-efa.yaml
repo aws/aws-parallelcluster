@@ -1,5 +1,5 @@
 {%- import 'common.jinja2' as common -%}
-{%- set regions = ["us-east-1"] -%}
+{%- set regions = ["use1-az6"] -%}   # do not move, unless capacity reservation is moved as well
 {%- set instances = ["p4d.24xlarge"] -%}
 
 ---
