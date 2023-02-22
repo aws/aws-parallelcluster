@@ -400,15 +400,15 @@ def test_convert_image(test_case):
     test_data.iam_test,
 )
 def test_convert_iam(test_case, mocker):
+    region, user_input, expected_output = test_case[0], test_case[1], test_case[2]
     mocker.patch(
         "pcluster3_config_converter.pcluster3_config_converter.Pcluster3ConfigConverter.get_region",
-        return_value="us-west-1",
+        return_value=region,
     )
     mocker.patch(
         "pcluster3_config_converter.pcluster3_config_converter._get_account_id",
         return_value="1234567",
     )
-    user_input, expected_output = test_case[0], test_case[1]
     expected_output_data = yaml.safe_load(expected_output)
     converter = Pcluster3ConfigConverter(
         config_file=user_input, cluster_template="default", output_file="dummy_output", input_as_string=True

@@ -210,7 +210,7 @@ def test_ebs_volume_size_snapshot_validator(
         )
     mocker.patch(
         "pcluster.validators.ebs_validators.get_partition",
-        return_value="aws-cn" if partition == "aws-cn" else "aws-us-gov",
+        return_value=partition,
     )
 
     actual_failures = EbsVolumeSizeSnapshotValidator().execute(snapshot_id, volume_size)

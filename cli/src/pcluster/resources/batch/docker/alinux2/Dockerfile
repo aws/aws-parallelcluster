@@ -9,7 +9,7 @@ COPY scripts/ /parallelcluster/bin/
 RUN chmod +x /parallelcluster/bin/*
 
 # Modify Amazon Linux yum repo configuration
-RUN /parallelcluster/bin/modify_china_yum_vars.sh "${AWS_REGION}"
+RUN /parallelcluster/bin/modify_yum_vars.sh "${AWS_REGION}"
 
 RUN yum update -y \
     && yum -y install \

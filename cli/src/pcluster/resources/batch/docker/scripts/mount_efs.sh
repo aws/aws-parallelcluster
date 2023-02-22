@@ -83,6 +83,10 @@ main() {
     aws_domain="amazonaws.com"
     if [[ ${aws_region} == cn-* ]]; then
         aws_domain="amazonaws.com.cn"
+    elif [[ ${aws_region} == us-iso-* ]]; then
+        aws_domain="c2s.ic.gov"
+    elif [[ ${aws_region} == us-isob-* ]]; then
+        aws_domain="sc2s.sgov.gov"
     fi
     efs_dir="${efs_fs_id}.efs.${aws_region}.${aws_domain}:/"
     shared_dir="/${3}"
