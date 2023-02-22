@@ -216,7 +216,7 @@ dcv:
   test_dcv.py::test_dcv_configuration:
     dimensions:
       # DCV on GPU enabled instance
-      - regions: ["us-east-1"]
+      - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g4dn.2xlarge"]
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
@@ -226,12 +226,12 @@ dcv:
         oss: ["alinux2", "ubuntu1804"]
         schedulers: ["slurm"]
       # DCV on ARM + GPU
-      - regions: ["us-east-1"]
+      - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g5g.2xlarge"]
         oss: ["alinux2", "ubuntu1804"]
         schedulers: ["slurm"]
       # DCV on Batch
-      - regions: ["us-east-1"]
+      - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g4dn.2xlarge"]
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
@@ -294,13 +294,11 @@ efa:
         instances: ["c5n.9xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-east-1"]
+      - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["p4d.24xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      # Capacity Reservation for `c6gn.16xlarge` created in `us-east-1a` do not move unless the target region also
-      # has a Capacity Reservation for `c6gn.16xlarge`
-      - regions: ["us-east-1"]
+      - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
@@ -806,7 +804,7 @@ update:
 # multiple_nics:
 #   test_multiple_nics.py::test_multiple_nics:
 #     dimensions:
-#       - regions: ["us-east-1"]
+#       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
 #         instances: ["p4d.24xlarge"]
 #         oss: {{ common.OSS_COMMERCIAL_X86 }}
 #         schedulers: ["slurm"]
