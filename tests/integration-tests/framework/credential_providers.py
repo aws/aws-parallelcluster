@@ -146,7 +146,10 @@ def obfuscate_credentials(creds_dict):
     obfuscated_dict = {}
     for key, value in creds_dict.items():
         if value:
-            obfuscated_dict[key] = value[0:3] + "*" * (len(value) - 3)
+            if key == "Expiration":
+                obfuscated_dict[key] = str(value)
+            else:
+                obfuscated_dict[key] = value[0:3] + "*" * (len(value) - 3)
         else:
             obfuscated_dict[key] = value
     return obfuscated_dict
