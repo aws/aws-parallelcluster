@@ -31,7 +31,7 @@ from tests.common.utils import retrieve_latest_ami
 
 DEFAULT_AVAILABILITY_ZONE = {
     # c5.xlarge is not supported in use1-az3
-    "us-east-1": ['use1-az1', 'use1-az2', 'use1-az4', 'use1-az6', 'use1-az5'],
+    "us-east-1": ["use1-az1", "use1-az2", "use1-az4", "use1-az6", "use1-az5"],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
     # FSx for Luster is not supported in apne1-az1
