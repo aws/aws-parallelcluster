@@ -23,6 +23,7 @@ import argparse
 import boto3
 import pytest
 from assertpy import assert_that
+from conftest_networking import unmarshal_az_override
 from framework.tests_configuration.config_renderer import dump_rendered_config_file, read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
@@ -645,7 +646,14 @@ def _run_parallel(args):
         enabled_regions = args.regions
     else:
         enabled_regions = get_all_regions(args.tests_config)
-    for region in enabled_regions:
+
+    # unmarshal az and collect unique regions
+    unique_regions = set()
+    for az in enabled_regions:
+        unmarshalled_region = unmarshal_az_override(az)
+        unique_regions.add(unmarshalled_region)
+
+    for region in unique_regions:
         p = multiprocessing.Process(target=_run_test_in_region, args=(region, args, OUT_DIR, LOGS_DIR))
         jobs.append(p)
         p.start()
