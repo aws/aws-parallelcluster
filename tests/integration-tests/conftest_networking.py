@@ -33,13 +33,7 @@ from tests.common.utils import retrieve_latest_ami
 
 DEFAULT_AVAILABILITY_ZONE = {
     # c5.xlarge is not supported in use1-az3
-    # FSx Lustre file system creation is currently not supported for use1-az3
-    # p4d.24xlarge targeted ODCR is only available on use1-az6
-    "us-east-1": ["use1-az6"],
-    # some instance type is only supported in use2-az2
-    "us-east-2": ["use2-az2"],
-    # trn available on usw2-az4
-    "us-west-2": ["usw2-az4"],
+    "us-east-1": ['use1-az1', 'use1-az2', 'use1-az4', 'use1-az6', 'use1-az5'],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
     # FSx for Luster is not supported in apne1-az1
@@ -225,7 +219,6 @@ def get_availability_zones(region, credential):
 
 def get_az_setup_for_region(region: str, credential: list):
     """Return a default AZ ID and its name, the list of all AZ IDs and names."""
-    # TODO remove DEFAULT_AVAILABILITY_ZONE
     az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
     az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
     default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region, az_ids))
