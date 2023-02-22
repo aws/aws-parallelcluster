@@ -25,11 +25,11 @@ test-suites:
           instances: ["c6gn.16xlarge"]
           oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
           schedulers: ["slurm"]
-        - regions: ["us-east-2"]
+        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: ["hpc6id.32xlarge"]
           oss: ["alinux2"]
           schedulers: [ "slurm" ]
-        - regions: ["us-east-2"]
+        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: [{{ common.instance("instance_type_1") }}]
           oss: [ "alinux2", "centos7", "ubuntu2004" ]
           schedulers: [ "slurm" ]
