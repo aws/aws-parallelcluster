@@ -65,24 +65,36 @@ DEFAULT_AVAILABILITY_ZONE = {
 }
 
 # used to map a ZoneId to the corresponding region
-# TODO: Add missing regions
-# Nice-To-Have: a python script that creates this mapping by invoking aws describe-regions / subnets and
-# read it from a file
+# Nice-To-Have: a python script that creates this mapping by invoking aws describe-regions / subnets
+# and then read it from a file
 ZONE_ID_MAPPING = {
+    "af-south-1": "^afs1-az[0-9]",
+    "ap-east-1": "^ape1-az[0-9]",
+    "ap-northeast-1": "^apne1-az[0-9]",
+    "ap-northeast-2": "^apne2-az[0-9]",
+    "ap-northeast-3": "^apne3-az[0-9]",
+    "ap-south-1": "^aps1-az[0-9]",
+    "ap-southeast-1": "^apse1-az[0-9]",
+    "ap-southeast-2": "^apse2-az[0-9]",
+    "ca-central-1": "^cac1-az[0-9]",
+    "cn-north-1": "^cnn1-az[0-9]",
+    "cn-northwest-1": "^cnnw1-az[0-9]",
+    "eu-central-1": "^euc1-az[0-9]",
+    "eu-north-1": "^eun1-az[0-9]",
+    "eu-west-1": "^euw1-az[0-9]",
+    "eu-west-2": "^euw2-az[0-9]",
+    "eu-west-3": "^euw3-az[0-9]",
+    "eu-south-1": "^eus1-az[0-9]",
+    "me-south-1": "^mes1-az[0-9]",
+    "sa-east-1": "^sae1-az[0-9]",
     "us-east-1": "^use1-az[0-9]",
     "us-east-2": "^use2-az[0-9]",
     "us-west-1": "^usw1-az[0-9]",
-    "ap-southeast-1": "^apse1-az[0-9]",
-    "ap-southeast-2": "^apse2-az[0-9]",
-    "ap-northeast-1": "^apne1-az[0-9]",
-    "ap-northeast-2": "^apne2-az[0-9]",
-    "eu-west-1": "^euw1-az[0-9]",
-    "eu-north-1": "^eun1-az[0-9]",
-    "eu-central-1": "^euc1-az[0-9]",
-    "ca-central-1": "^cac1-az[0-9]",
-    "cn-north-1": "^cnn1-az[0-9]",
-    "sa-east-1": "^sae1-az[0-9]",
+    "us-west-2": "^usw2-az[0-9]",
+    # "us-gov-east-1": "^usge1-az[0-9]", # double check
+    # "us-gov-west-1": "^usgw1-az[0-9]", # double check
 }
+
 
 # Split the VPC address space into 32 subnets of 2046 (/21) addresses
 # to ensure that each subnets has enough IP addresses to support enough tests parallelism.
@@ -131,9 +143,7 @@ CIDR_FOR_CUSTOM_SUBNETS = [
 
 @pytest.fixture(autouse=True)
 def az_id():
-    """
-    Removes the need to declare the fixture in all tests even if not needed.
-    """
+    """Removes the need to declare the fixture in all tests even if not needed."""
     pass
 
 
@@ -145,7 +155,10 @@ def unmarshal_az_override(az_override):
         elif region == az_override.lower():
             return az_override
 
-    raise ValueError(f"Unsupported region `{az_override}`")
+    # If no mapping was found return the input parameter assuming the region value set by the user is correct.
+    # This will fail while trying to make an AZ override for a region without a proper mapping.
+    # In this case add the mapping to the list above before attempting the override.
+    return az_override
 
 
 def unmarshal_az_params(argvalues, argnames):
@@ -212,7 +225,6 @@ def get_availability_zones(region, credential):
 
 def get_az_setup_for_region(region: str, credential: list):
     """Return a default AZ ID and its name, the list of all AZ IDs and names."""
-    # TODO Region can be AZ ID, in this case convert it to Region
     # TODO remove DEFAULT_AVAILABILITY_ZONE
     az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
     az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys

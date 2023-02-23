@@ -39,6 +39,7 @@ from conftest_markers import (
     check_marker_skip_dimensions,
     check_marker_skip_list,
 )
+from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from filelock import FileLock
@@ -94,7 +95,6 @@ from tests.common.utils import (
     retrieve_pcluster_ami_without_standard_naming,
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
-from conftest_networking import unmarshal_az_override
 
 pytest_plugins = ["conftest_networking"]
 
