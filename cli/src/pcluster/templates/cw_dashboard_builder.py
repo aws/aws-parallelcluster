@@ -27,7 +27,9 @@ class Coord:
         self.y_value = y_value
 
 
-_PclusterMetric = namedtuple("_PclusterMetric", ["title", "metrics", "supported_vol_types", "namespace"])
+_PclusterMetric = namedtuple(
+    "_PclusterMetric", ["title", "metrics", "supported_vol_types", "namespace", "additional_dimensions"]
+)
 _Filter = namedtuple("new_filter", ["pattern", "param"])
 _CWLogWidget = namedtuple(
     "_CWLogWidget",
@@ -35,8 +37,8 @@ _CWLogWidget = namedtuple(
 )
 
 
-def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None, namespace=None):
-    return _PclusterMetric(title, metrics, supported_vol_types, namespace)
+def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None, namespace=None, additional_dimensions={}):
+    return _PclusterMetric(title, metrics, supported_vol_types, namespace, additional_dimensions)
 
 
 class CWDashboardConstruct(Construct):
@@ -183,11 +185,13 @@ class CWDashboardConstruct(Construct):
         self._update_coord(self.graph_width, self.graph_height)
         return widget
 
-    def _generate_metrics_list(self, metrics, namespace):
+    def _generate_metrics_list(self, metrics_param):
         metric_list = []
-        for metric in metrics:
+        dimensions_map = {"InstanceId": self.head_node_instance.ref}
+        dimensions_map.update(metrics_param.additional_dimensions)
+        for metric in metrics_param.metrics:
             cloudwatch_metric = cloudwatch.Metric(
-                namespace=namespace, metric_name=metric, dimensions_map={"InstanceId": self.head_node_instance.ref}
+                namespace=metrics_param.namespace, metric_name=metric, dimensions_map=dimensions_map
             )
             metric_list.append(cloudwatch_metric)
         return metric_list
@@ -306,14 +310,19 @@ class CWDashboardConstruct(Construct):
 
         # CW Agent metrics for graph for head node instance
         cwagent_metrics = [
-            new_pcluster_metric(title="Disk Used Percent", metrics=["disk_used_percent"], namespace="CWAgent"),
+            new_pcluster_metric(
+                title="Disk Used Percent",
+                metrics=["disk_used_percent"],
+                namespace="CWAgent",
+                additional_dimensions={"path": "/"},
+            ),
             new_pcluster_metric(title="Memory Used Percent", metrics=["mem_used_percent"], namespace="CWAgent"),
         ]
 
         # Create graphs for EC2 metrics and CW Agent metrics and update coordinates
         widgets_list = []
         for metrics_param in ec2_metrics + cwagent_metrics:
-            metrics_list = self._generate_metrics_list(metrics_param.metrics, metrics_param.namespace)
+            metrics_list = self._generate_metrics_list(metrics_param)
             graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list)
             widgets_list.append(graph_widget)
 
