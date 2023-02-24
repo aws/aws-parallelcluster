@@ -53,6 +53,8 @@ phases:
                 OS='ubuntu1804'
               elif [ $(echo "${RELEASE}" | grep '^ubuntu\.20') ]; then
                 OS='ubuntu2004'
+              elif [ $(echo "${RELEASE}" | grep '^rhel\.8') ]; then
+                OS='rhel8'
               fi
 
               echo ${OS}
@@ -68,7 +70,7 @@ phases:
               which aws
               if [[ $? -ne 0 ]]; then
                 echo "Installing unzip"
-                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux) ]]; then
+                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux|rhel) ]]; then
                   yum -y install unzip
                 elif [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^ubuntu ]]; then
                   apt-get -y install unzip

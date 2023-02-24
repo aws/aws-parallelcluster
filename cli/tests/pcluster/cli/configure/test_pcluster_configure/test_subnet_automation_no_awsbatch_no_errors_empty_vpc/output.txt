@@ -34,6 +34,7 @@ Allowed values for Operating System:
 2. centos7
 3. ubuntu1804
 4. ubuntu2004
+5. rhel8
 Allowed values for VPC ID:
   #  id            name                                 number_of_subnets
 ---  ------------  ---------------------------------  -------------------

@@ -633,7 +633,9 @@ available in the `pcluster.config.yaml` files:
 `{{ scheduler }}`
 * EC2 key name specified at tests submission time by the user: `{{ key_name }}`
 * Networking related parameters: `{{ public_subnet_id }}`, `{{ public_subnet_ids }}`, 
-`{{ private_subnet_id }}` and `{{ private_subnet_ids }}` 
+`{{ private_subnet_id }}` and `{{ private_subnet_ids }}`, where `{{ public_subnet_ids }}` and `{{ private_subnet_ids }}`
+ contain a list of subnets for which the relative index points to subnets in the same AZ, e.g. 
+`{{ public_subnet_ids[2] }}` and `{{ private_subnet_ids[2] }}` will be in the same AZ   
 
 Additional parameters can be specified when calling the fixture to retrieve the rendered configuration
 as shown in the example above.
@@ -676,14 +678,14 @@ for index, az_id in enumerate(az_ids):
   )
   if index == 0:
     subnets.append(
-      SubnetConfig(
-        name=subnet_name(visibility="Private", flavor="NoInternet"),
-        cidr=CIDR_FOR_CUSTOM_SUBNETS[index + 1],
-        map_public_ip_on_launch=False,
-        has_nat_gateway=False,
-        availability_zone=az_name,
-        default_gateway=Gateways.NONE,
-      )
+        SubnetConfig(
+            name=subnet_name(visibility="Private", flavor="Isolated"),
+            cidr=CIDR_FOR_CUSTOM_SUBNETS[index],
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            availability_zone=default_az_name,
+            default_gateway=Gateways.NONE,
+        )
     )
 
 vpc_config = VPCConfig(

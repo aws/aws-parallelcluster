@@ -13,6 +13,7 @@ import logging
 import os.path
 import re
 import time
+from collections import defaultdict
 
 import boto3
 import pytest
@@ -153,7 +154,9 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # the cluster:
     # queue1-st-c5xlarge-1
     # queue1-st-c5xlarge-2
-    assert_initial_conditions(slurm_commands, 2, 0, partition="queue1")
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_initial_conditions)(
+        slurm_commands, 2, 0, partition="queue1"
+    )
 
     updated_queues_config = {
         "queue1": {
@@ -839,46 +842,44 @@ def _test_update_queue_strategy_with_running_job(
 def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
     def create_stack(bucket_name):
         template_path = os.path.join(str(test_datadir), "storage-stack.yaml")
-        with open(template_path, encoding="utf-8") as template_file:
-            template = template_file.read()
-            option = "external_shared_storage_stack_name"
-            if request.config.getoption(option):
-                stack = CfnStack(name=request.config.getoption(option), region=region, template=template)
-            else:
-                # Choose subnets from different availability zones
-                subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
-                subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
-                available_subnet_ids = [subnets[0]["SubnetId"]]
-                for subnet in subnets:
-                    if subnet["AvailabilityZone"] != subnets[0]["AvailabilityZone"]:
-                        available_subnet_ids.append(subnet["SubnetId"])
-                        break
+        option = "external_shared_storage_stack_name"
+        if request.config.getoption(option):
+            stack = CfnStack(name=request.config.getoption(option), region=region, template=None)
+        else:
+            # Choose subnets from different availability zones
+            subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
+            subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
+            subnets_by_az = defaultdict(list)
+            for subnet in subnets:
+                subnets_by_az[subnet["AvailabilityZone"]].append(subnet["SubnetId"])
 
-                vpc = vpc_stack.cfn_outputs["VpcId"]
-                public_subnet_id = vpc_stack.get_public_subnet()
-                subnet_id0 = available_subnet_ids[0]
-                subnet_id1 = available_subnet_ids[1]
-                import_path = "s3://{0}".format(bucket_name)
-                export_path = "s3://{0}/export_dir".format(bucket_name)
-                params = [
-                    {"ParameterKey": "vpc", "ParameterValue": vpc},
-                    {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
-                    {"ParameterKey": "SubnetId0", "ParameterValue": subnet_id0},
-                    {"ParameterKey": "SubnetId1", "ParameterValue": subnet_id1},
-                    {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
-                    {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
-                ]
-                stack = CfnStack(
-                    name=utils.generate_stack_name(
-                        "integ-tests-external-shared-storage", request.config.getoption("stackname_suffix")
-                    ),
-                    region=region,
-                    parameters=params,
-                    template=template,
-                    capabilities=["CAPABILITY_IAM"],
-                )
-                cfn_stacks_factory.create_stack(stack)
-            return stack
+            utils.render_jinja_template(
+                template_path, one_subnet_per_az=[subnets[0] for subnets in subnets_by_az.values()]
+            )
+
+            vpc = vpc_stack.cfn_outputs["VpcId"]
+            public_subnet_id = vpc_stack.get_public_subnet()
+            import_path = "s3://{0}".format(bucket_name)
+            export_path = "s3://{0}/export_dir".format(bucket_name)
+            params = [
+                {"ParameterKey": "vpc", "ParameterValue": vpc},
+                {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
+                {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
+                {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
+            ]
+            with open(template_path, encoding="utf-8") as template_file:
+                template = template_file.read()
+            stack = CfnStack(
+                name=utils.generate_stack_name(
+                    "integ-tests-external-shared-storage", request.config.getoption("stackname_suffix")
+                ),
+                region=region,
+                parameters=params,
+                template=template,
+                capabilities=["CAPABILITY_IAM"],
+            )
+            cfn_stacks_factory.create_stack(stack)
+        return stack
 
     yield create_stack
 

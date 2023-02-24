@@ -804,7 +804,9 @@ def parameterized_cfn_stacks_factory(request):
     """Define a fixture that returns a parameterized stack factory and manages the stack creation and deletion."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    def _create_stack(region, template_path, stack_prefix="", parameters=None, capabilities=None):
+    def _create_stack(
+        region, template_path, stack_prefix="", parameters=None, capabilities=None, stack_is_under_test=False
+    ):
         file_content = extract_template(template_path)
         stack = CfnStack(
             name=generate_stack_name(stack_prefix, request.config.getoption("stackname_suffix")),
@@ -813,7 +815,7 @@ def parameterized_cfn_stacks_factory(request):
             parameters=parameters or [],
             capabilities=capabilities or [],
         )
-        factory.create_stack(stack)
+        factory.create_stack(stack, stack_is_under_test=stack_is_under_test)
         return stack
 
     def extract_template(template_path):
@@ -1168,7 +1170,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     odcr_template.set_version()
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
     public_subnet = vpc_stack.get_public_subnet()
-    public_subnets = vpc_stack.get_all_public_subnets()
+    public_subnets = vpc_stack.get_all_public_subnets().copy()
     public_subnets.remove(public_subnet)
     availability_zone = boto3.resource("ec2").Subnet(public_subnet).availability_zone
     availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone

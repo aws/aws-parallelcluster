@@ -2,12 +2,6 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   This template creates EFS, FSX Lustre, FSX Ontap, FSX Open ZFS storage that can be attached to a cluster.
 Parameters:
-  SubnetId0:
-    Type: String
-    Default: ''
-  SubnetId1:
-    Type: String
-    Default: ''
   PublicSubnetId:
     Type: String
     Default: ''
@@ -23,20 +17,15 @@ Parameters:
 Resources:
   FileSystemResource0:
     Type: 'AWS::EFS::FileSystem'
-  MountTargetResourceEfs0Subnet0:
+{% for subnet in one_subnet_per_az %}
+  MountTargetResourceEfs0Subnet{{loop.index}}:
     Properties:
       FileSystemId: !Ref FileSystemResource0
       SecurityGroups:
         - !Ref SecurityGroupResource
-      SubnetId: !Ref SubnetId0
+      SubnetId: {{subnet}}
     Type: 'AWS::EFS::MountTarget'
-  MountTargetResourceEfs0Subnet1:
-    Properties:
-      FileSystemId: !Ref FileSystemResource0
-      SecurityGroups:
-        - !Ref SecurityGroupResource
-      SubnetId: !Ref SubnetId1
-    Type: 'AWS::EFS::MountTarget'
+{% endfor %}
   SecurityGroupIngressResource0:
     Properties:
       CidrIp: 192.168.0.0/17

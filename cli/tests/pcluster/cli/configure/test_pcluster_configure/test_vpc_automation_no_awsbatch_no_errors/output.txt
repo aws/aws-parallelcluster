@@ -34,6 +34,7 @@ Allowed values for Operating System:
 2. centos7
 3. ubuntu1804
 4. ubuntu2004
+5. rhel8
 Allowed values for Availability Zone:
 1. eu-west-1a
 2. eu-west-1b

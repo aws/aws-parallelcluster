@@ -162,7 +162,7 @@ create:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         schedulers: ["slurm"]
-        oss: ["centos7"]
+        oss: ["ubuntu2004"]
   test_create.py::test_cluster_creation_timeout:
     dimensions:
       - regions: ["ap-northeast-2"]

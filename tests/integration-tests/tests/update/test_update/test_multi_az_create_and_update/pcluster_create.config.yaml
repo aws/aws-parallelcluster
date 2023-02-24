@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: t2.micro
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ public_subnet_ids[0] }}
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
@@ -31,4 +31,4 @@ Scheduling:
           MaxCount: 4
       Networking:
         SubnetIds:
-          - {{ public_az3_subnet_id }}
+          - {{ public_subnet_ids[2] }}

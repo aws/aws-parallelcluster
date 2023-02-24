@@ -28,7 +28,7 @@ def test_public_network_topology(region, vpc_stack, parameterized_cfn_stacks_fac
     )
     path = os.path.join("..", "..", "cloudformation", "networking", "public.cfn.json")
     stack_prefix = "integ-tests-networking"
-    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters)
+    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters, stack_is_under_test=True)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
     _assert_subnet_cidr(ec2_client, public_subnet_id, expected_subnet_cidr=public_subnet_cidr)
@@ -56,7 +56,7 @@ def test_public_private_network_topology(region, vpc_stack, parameterized_cfn_st
     )
     path = os.path.join("..", "..", "cloudformation", "networking", "public-private.cfn.json")
     stack_prefix = "integ-tests-networking"
-    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters)
+    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters, stack_is_under_test=True)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
     private_subnet_id = stack.cfn_outputs["PrivateSubnetId"]
