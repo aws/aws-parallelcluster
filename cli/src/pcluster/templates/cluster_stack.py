@@ -321,7 +321,7 @@ class ClusterCdkStack:
             "Disk": cloudwatch.Metric(
                 namespace="CWAgent",
                 metric_name="disk_used_percent",
-                dimensions_map={"InstanceId": self.head_node_instance.ref},
+                dimensions_map={"InstanceId": self.head_node_instance.ref, "path": "/"},
                 statistic="Maximum",
                 period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
             ),
