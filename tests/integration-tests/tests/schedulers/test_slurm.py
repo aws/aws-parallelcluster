@@ -2166,7 +2166,7 @@ def _test_scontrol_reboot_nodes(
         wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["reboot^"])
 
     # Wait that nodes come back after a while, without having triggered clustermgtd
-    wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["idle"])
+    wait_for_compute_nodes_states(slurm_commands, nodes_in_queue, expected_states=["idle"], stop_max_delay_secs=600)
     assert_no_msg_in_logs(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
