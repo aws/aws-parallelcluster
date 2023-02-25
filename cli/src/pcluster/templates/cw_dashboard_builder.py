@@ -37,7 +37,7 @@ _CWLogWidget = namedtuple(
 )
 
 
-def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None, namespace=None, additional_dimensions={}):
+def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None, namespace=None, additional_dimensions=None):
     return _PclusterMetric(title, metrics, supported_vol_types, namespace, additional_dimensions)
 
 
@@ -188,7 +188,7 @@ class CWDashboardConstruct(Construct):
     def _generate_metrics_list(self, metrics_param):
         metric_list = []
         dimensions_map = {"InstanceId": self.head_node_instance.ref}
-        dimensions_map.update(metrics_param.additional_dimensions)
+        dimensions_map.update(metrics_param.additional_dimensions if metrics_param.additional_dimensions else {})
         for metric in metrics_param.metrics:
             cloudwatch_metric = cloudwatch.Metric(
                 namespace=metrics_param.namespace, metric_name=metric, dimensions_map=dimensions_map
