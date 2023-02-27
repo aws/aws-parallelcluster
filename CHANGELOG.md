@@ -3,6 +3,8 @@ CHANGELOG
 
 3.6.0
 ----
+**ENHANCEMENTS**
+- Add `mem_used_percent` and `disk_used_percent` metrics for head node memory and root volume disk utilization tracking on the ParallelCluster CloudWatch dashboard, and set up alarms for monitoring these metrics.
 
 **ENHANCEMENTS**
 - Add log rotation support for ParallelCluster managed logs.
