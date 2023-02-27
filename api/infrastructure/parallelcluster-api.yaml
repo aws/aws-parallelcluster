@@ -612,6 +612,11 @@ Resources:
               - cloudwatch:ListDashboards
               - cloudwatch:DeleteDashboards
               - cloudwatch:GetDashboard
+              - cloudwatch:PutMetricAlarm
+              - cloudwatch:DeleteAlarms
+              - cloudwatch:DescribeAlarmHistory
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:DescribeAlarmsForMetric
             Resource: '*'
             Effect: Allow
             Condition: !If
