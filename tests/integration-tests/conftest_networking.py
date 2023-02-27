@@ -31,7 +31,7 @@ from utils import generate_stack_name, to_pascal_from_kebab_case
 
 from tests.common.utils import retrieve_latest_ami
 
-AVAILABLE_AVAILABILITY_ZONE = {
+DEFAULT_AVAILABILITY_ZONE = {
     # c5.xlarge is not supported in use1-az3
     "us-east-1": ["use1-az1", "use1-az2", "use1-az4", "use1-az6", "use1-az5"],
     # c5.xlarge is not supported in apse2-az3
@@ -221,7 +221,7 @@ def get_az_setup_for_region(region: str, credential: list):
     """Return a default AZ ID and its name, the list of all AZ IDs and names."""
     az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
     az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
-    default_az_id = random.choice(AVAILABLE_AVAILABILITY_ZONE.get(region, az_ids))
+    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region, az_ids))
     default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     return default_az_id, default_az_name, az_id_to_az_name_map
@@ -274,7 +274,7 @@ def random_az_selector(request):
 
     def _get_random_availability_zones(region, num_azs=1, default_value=None):
         """Return num_azs random AZs (in the form of AZ names, e.g. 'us-east-1a') for the given region."""
-        az_ids = AVAILABLE_AVAILABILITY_ZONE.get(region, [])
+        az_ids = DEFAULT_AVAILABILITY_ZONE.get(region, [])
         if az_ids:
             az_id_to_az_name_map = get_az_id_to_az_name_map(region, request.config.getoption("credential"))
             sample = random.sample([az_id_to_az_name_map.get(az_id, default_value) for az_id in az_ids], k=num_azs)
