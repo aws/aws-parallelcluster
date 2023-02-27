@@ -54,7 +54,7 @@ def test_ebs_single(
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_ebs_snapshot(
     request,
-    vpc_stack,
+    vpc_stacks_shared,
     region,
     pcluster_config_reader,
     snapshots_factory,
@@ -69,7 +69,7 @@ def test_ebs_snapshot(
 
     logging.info("Creating snapshot")
 
-    snapshot_id = snapshots_factory.create_snapshot(request, vpc_stack.get_public_subnet(), region)
+    snapshot_id = snapshots_factory.create_snapshot(request, vpc_stacks_shared[region].get_public_subnet(), region)
 
     logging.info("Snapshot id: %s" % snapshot_id)
     cluster_config = pcluster_config_reader(mount_dir=mount_dir, volume_size=volume_size, snapshot_id=snapshot_id)
@@ -155,7 +155,7 @@ def _get_ebs_settings_by_name(config, name):
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
     request,
-    vpc_stack,
+    vpc_stacks_shared,
     region,
     scheduler,
     pcluster_config_reader,
@@ -168,7 +168,7 @@ def test_ebs_existing(
 
     logging.info("Creating volume")
 
-    volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.get_public_subnet(), region)
+    volume_id = snapshots_factory.create_existing_volume(request, vpc_stacks_shared[region].get_public_subnet(), region)
 
     logging.info("Existing Volume id: %s" % volume_id)
     cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
