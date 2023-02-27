@@ -408,7 +408,7 @@ Resources:
               - cloudwatch:PutDashboard
               - cloudwatch:ListDashboards
               - cloudwatch:DeleteDashboards
-              - cloudwatch:GetDashboar
+              - cloudwatch:GetDashboard
               - cloudwatch:PutMetricAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarmHistory
