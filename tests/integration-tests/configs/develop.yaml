@@ -13,32 +13,36 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        # Capacity Reservation for `c5n.18xlarge` created in `us-east-1a` do not move unless the target region/AZ also
+        # has a Capacity Reservation for `c5n.18xlarge`
+        - regions: ["us-east-1"]
           instances: ["c5n.18xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
+        - regions: ["us-east-1"]
           instances: ["p4d.24xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        # Capacity Reservation for `c6gn.16xlarge` created in `us-east-1a` do not move unless the target region/AZ also
+        # has a Capacity Reservation for `c6gn.16xlarge`
+        - regions: ["us-east-1"]
           instances: ["c6gn.16xlarge"]
           oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
           schedulers: ["slurm"]
-        - regions: ["us-east-2"]
+        - regions: [ "us-east-2" ]
           instances: ["hpc6id.32xlarge"]
           oss: ["alinux2"]
           schedulers: [ "slurm" ]
-        - regions: ["us-east-2"]
+        - regions: [ "us-east-2" ]
           instances: [{{ common.instance("instance_type_1") }}]
           oss: [ "alinux2", "centos7", "ubuntu2004" ]
           schedulers: [ "slurm" ]
     test_fabric.py::test_fabric:
       dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
-          instances: ["p4d.24xlarge"]
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
+        - regions: [ "us-east-1" ]
+          instances: [ "p4d.24xlarge" ]
+          oss: [ "alinux2" ]
+          schedulers: [ "slurm" ]
   # need to duplicate api section because test_official_images works only after release
   pcluster_api:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
