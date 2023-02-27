@@ -977,11 +977,6 @@ class ClusterCdkStack:
         # Metadata
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
-        pre_install_action, post_install_action, post_update_action = (None, None, None)
-        if head_node.custom_actions:
-            pre_install_action = head_node.custom_actions.on_node_start
-            post_install_action = head_node.custom_actions.on_node_configured
-            post_update_action = head_node.custom_actions.on_node_updated
 
         dna_json = json.dumps(
             {
@@ -999,18 +994,6 @@ class ClusterCdkStack:
                         self.shared_storage_attributes[SharedStorageType.RAID]["Type"]
                     ),
                     "base_os": self.config.image.os,
-                    "preinstall": pre_install_action.script if pre_install_action else "NONE",
-                    "preinstall_args": join_shell_args(pre_install_action.args)
-                    if pre_install_action and pre_install_action.args
-                    else "NONE",
-                    "postinstall": post_install_action.script if post_install_action else "NONE",
-                    "postinstall_args": join_shell_args(post_install_action.args)
-                    if post_install_action and post_install_action.args
-                    else "NONE",
-                    "postupdate": post_update_action.script if post_update_action else "NONE",
-                    "postupdate_args": join_shell_args(post_update_action.args)
-                    if post_update_action and post_update_action.args
-                    else "NONE",
                     "region": self.stack.region,
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
