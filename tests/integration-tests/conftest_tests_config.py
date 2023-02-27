@@ -86,7 +86,12 @@ def apply_cli_dimensions_filtering(config, items):
     """Filter tests based on dimensions passed as cli arguments."""
     allowed_values = {}
     for dimension in DIMENSIONS_MARKER_ARGS:
-        allowed_values[dimension] = config.getoption(dimension + "s")
+        value = config.getoption(dimension + "s")
+        if dimension == "region":
+            # value may contain a list of az_id/regions.
+            # We have to unmarshal any fo them in case if one or more overrides were specified
+            value = [unmarshal_az_override(v) for v in value]
+        allowed_values[dimension] = value
     for item in list(items):
         for dimension in DIMENSIONS_MARKER_ARGS:
             # callspec is not set if parametrization did not happen
