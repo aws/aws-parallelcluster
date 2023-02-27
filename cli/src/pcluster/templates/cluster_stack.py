@@ -989,11 +989,6 @@ class ClusterCdkStack:
         # Metadata
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
-        pre_install_action, post_install_action, post_update_action = (None, None, None)
-        if head_node.custom_actions:
-            pre_install_action = head_node.custom_actions.on_node_start
-            post_install_action = head_node.custom_actions.on_node_configured
-            post_update_action = head_node.custom_actions.on_node_updated
 
         dna_json = json.dumps(
             {
@@ -1011,18 +1006,6 @@ class ClusterCdkStack:
                         self.shared_storage_attributes[SharedStorageType.RAID]["Type"]
                     ),
                     "base_os": self.config.image.os,
-                    "preinstall": pre_install_action.script if pre_install_action else "NONE",
-                    "preinstall_args": join_shell_args(pre_install_action.args)
-                    if pre_install_action and pre_install_action.args
-                    else "NONE",
-                    "postinstall": post_install_action.script if post_install_action else "NONE",
-                    "postinstall_args": join_shell_args(post_install_action.args)
-                    if post_install_action and post_install_action.args
-                    else "NONE",
-                    "postupdate": post_update_action.script if post_update_action else "NONE",
-                    "postupdate_args": join_shell_args(post_update_action.args)
-                    if post_update_action and post_update_action.args
-                    else "NONE",
                     "region": self.stack.region,
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
@@ -1520,17 +1503,11 @@ class ComputeFleetStack(NestedStack):
         for queue in self._config.scheduling.queues:
             compute_launch_templates[queue.name] = {}
             queue_lt_security_groups = get_queue_security_groups_full(self._compute_security_group, queue)
-            queue_pre_install_action, queue_post_install_action = (None, None)
-            if queue.custom_actions:
-                queue_pre_install_action = queue.custom_actions.on_node_start
-                queue_post_install_action = queue.custom_actions.on_node_configured
 
             for resource in queue.compute_resources:
                 compute_launch_templates[queue.name][resource.name] = self._add_compute_resource_launch_template(
                     queue,
                     resource,
-                    queue_pre_install_action,
-                    queue_post_install_action,
                     queue_lt_security_groups,
                     self._get_placement_group_for_compute_resource(queue, managed_placement_groups, resource),
                     instance_profiles,
@@ -1541,8 +1518,6 @@ class ComputeFleetStack(NestedStack):
         self,
         queue,
         compute_resource,
-        queue_pre_install_action,
-        queue_post_install_action,
         queue_lt_security_groups,
         placement_group,
         instance_profiles,
@@ -1623,18 +1598,6 @@ class ComputeFleetStack(NestedStack):
                                 if compute_resource.disable_simultaneous_multithreading_manually
                                 else "false",
                                 "BaseOS": self._config.image.os,
-                                "PreInstallScript": queue_pre_install_action.script
-                                if queue_pre_install_action
-                                else "NONE",
-                                "PreInstallArgs": join_shell_args(queue_pre_install_action.args)
-                                if queue_pre_install_action and queue_pre_install_action.args
-                                else "NONE",
-                                "PostInstallScript": queue_post_install_action.script
-                                if queue_post_install_action
-                                else "NONE",
-                                "PostInstallArgs": join_shell_args(queue_post_install_action.args)
-                                if queue_post_install_action and queue_post_install_action.args
-                                else "NONE",
                                 "EFSIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.EFS
                                 ),
