@@ -74,15 +74,10 @@ class CfnVpcStack(CfnStack):
         super().__init__(**kwargs)
         self.default_az_id = default_az_id
         self.az_ids = az_ids
-        self.az_override = None
         self.__public_subnet_ids = None
         self.__private_subnet_ids = None
 
-    def set_az_override(self, az_override):
-        """Sets the az_id to override the default AZ used to pick the subnets."""
-        self.az_override = az_override
-
-    def get_public_subnet(self):
+    def get_public_subnet(self):  # TODO add possibility to override default
         """Return the public subnet for a VPC stack."""
         return self._get_subnet(visibility="Public")
 
@@ -93,7 +88,7 @@ class CfnVpcStack(CfnStack):
 
         return self.__public_subnet_ids
 
-    def get_private_subnet(self):
+    def get_private_subnet(self):  # TODO add possibility to override default
         """Return the private subnet for a VPC stack."""
         return self._get_subnet(visibility="Private")
 
@@ -105,9 +100,7 @@ class CfnVpcStack(CfnStack):
         return self.__private_subnet_ids
 
     def _get_subnet(self, visibility: str = "Public"):
-        if self.az_override is not None:
-            az_id_tag = to_pascal_from_kebab_case(self.az_override)
-        elif self.default_az_id:
+        if self.default_az_id:
             az_id_tag = to_pascal_from_kebab_case(self.default_az_id)
         else:
             # get random subnet, if default is not set

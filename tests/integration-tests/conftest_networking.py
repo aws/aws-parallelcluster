@@ -13,10 +13,8 @@
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
 
-import copy
 import logging
 import random
-import re
 
 import boto3
 import pytest
@@ -64,25 +62,6 @@ DEFAULT_AVAILABILITY_ZONE = {
     "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
-# used to map a ZoneId to the corresponding region
-# TODO: Add missing regions
-# Nice-To-Have: a python script that creates this mapping by invoking aws describe-regions / subnets and
-# read it from a file
-ZONE_ID_MAPPING = {
-    "us-east-1": "^use1-az[0-9]",
-    "us-east-2": "^use2-az[0-9]",
-    "us-west-1": "^usw1-az[0-9]",
-    "ap-southeast-1": "^apse1-az[0-9]",
-    "ap-southeast-2": "^apse2-az[0-9]",
-    "ap-northeast-1": "^apne1-az[0-9]",
-    "ap-northeast-2": "^apne2-az[0-9]",
-    "eu-west-1": "^euw1-az[0-9]",
-    "eu-north-1": "^eun1-az[0-9]",
-    "eu-central-1": "^euc1-az[0-9]",
-    "ca-central-1": "^cac1-az[0-9]",
-    "cn-north-1": "^cnn1-az[0-9]",
-    "sa-east-1": "^sae1-az[0-9]",
-}
 
 # Split the VPC address space into 32 subnets of 2046 (/21) addresses
 # to ensure that each subnets has enough IP addresses to support enough tests parallelism.
@@ -127,59 +106,6 @@ CIDR_FOR_CUSTOM_SUBNETS = [
     "192.168.240.0/21",
     "192.168.248.0/21",
 ]
-
-
-@pytest.fixture(autouse=True)
-def az_id():
-    """
-    Removes the need to declare the fixture in all tests even if not needed.
-    """
-    pass
-
-
-def unmarshal_az_override(az_override):
-    for region, regex in ZONE_ID_MAPPING.items():
-        pattern = re.compile(regex)
-        if pattern.match(az_override.lower()):
-            return region
-        elif region == az_override.lower():
-            return az_override
-
-    raise ValueError(f"Unsupported region `{az_override}`")
-
-
-def unmarshal_az_params(argvalues, argnames):
-    """
-    Given the list of tuple parameters defining the configured test dimensions, when an az-override is specified
-    it replaces the az with the corresponding region, and fill the az field with the proper value.
-
-    E.g.
-    argvalues = [('r1az-id1', 'inst1', 'os1', 's', ''), ('r1-az-id1', 'inst1', 'os2', 's', ''),
-                 ('r1az-id2', 'inst1', 'os1', 's', ''), ('r1-az-id2', 'inst1', 'os2', 's', ''),
-                 ('region2', 'inst1', 'os1', 's', ''), ('region2', 'inst1', 'os2', 's', '')]
-
-    Produces the following output:
-    argvalues = [('region1', 'inst1', 'os1', 's', 'az-id1'), ('region1', 'inst1', 'os2', 's', 'az-id1'),
-                 ('region1', 'inst1', 'os1', 's', 'az-id2'), ('region1', 'inst1', 'os2', 's', 'az-id2'),
-                 ('region2', 'inst1', 'os1', 's', ''), ('region2', 'inst1', 'os2', 's', '')]
-    """
-
-    unmarshalled_params = []
-    for tuple in argvalues:
-        param_set = list(tuple)
-        region = unmarshal_az_override(param_set[0])
-        if region != param_set[0]:  # found an override
-            param_set.append(param_set[0])  # set AZ as last value
-            param_set[0] = region  # override first value with unmarshalled region
-        else:
-            # we could set here the default_az if there is no override, but we aren't doing so because
-            # these values are set at each test execution and we want to keep the default_az consistent
-            # across tests and retries of the same test
-            param_set.append(None)  # set AZ to none
-
-        unmarshalled_params.append((*param_set,))
-
-    return unmarshalled_params, argnames + ["az_id"]
 
 
 def subnet_name(visibility="Public", az_id=None, flavor=None):
@@ -281,12 +207,8 @@ def random_az_selector(request):
 
 
 @pytest.fixture(scope="class")
-def vpc_stack(vpc_stacks_shared, region, az_id):
-    # Create a local copy fo the shared vpcs to avoid
-    # undesired effects on other tests.
-    local_vpc_stack = copy.deepcopy(vpc_stacks_shared.get(region))
-    local_vpc_stack.set_az_override(az_id)
-    return local_vpc_stack
+def vpc_stack(vpc_stacks_shared, region):
+    return vpc_stacks_shared.get(region)
 
 
 @xdist_session_fixture(autouse=True)
@@ -302,9 +224,6 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
 
     vpc_stacks_dict = {}
     for region in regions:
-        # region may contain an az_id if an override was specified
-        # here we ensure that we are using the region
-        region = unmarshal_az_override(region)
         default_az_id, default_az_name, az_id_name_dict = get_az_setup_for_region(region, credential)
 
         subnets = []
