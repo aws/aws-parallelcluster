@@ -59,7 +59,7 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
             dimensions_values.append(benchmarks_value)
         argvalues.extend(list(product(*dimensions_values)))
 
-    argvalues, argnames = unmarshal_az_params(argvalues, argnames)  # adds 'az_id' extra fixture
+        argvalues, argnames = unmarshal_az_params(argvalues, argnames)  # adds 'az_id' extra fixture
 
     return argnames, argvalues
 
