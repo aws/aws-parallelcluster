@@ -822,7 +822,7 @@ log_rotation:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
