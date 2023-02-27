@@ -31,6 +31,3 @@ Monitoring:
   Logs:
     Rotation:
       Enabled: true
-DevSettings:
-  Cookbook:
-    ChefCookbook: s3://delmeng-aws-parallelcluster-cookbook-development/parallelcluster/3.6.0/cookbooks/aws-parallelcluster-cookbook-3.6.0.tgz
