@@ -109,6 +109,6 @@ test-suites:
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
-        - regions: ["usw2-az4"]  # do not move, unless instance type support is moved as well
+        - regions: ["us-west-2"]
           schedulers: ["slurm"]
           oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
