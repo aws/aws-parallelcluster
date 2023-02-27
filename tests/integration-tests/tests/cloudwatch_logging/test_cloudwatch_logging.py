@@ -186,8 +186,8 @@ class CloudWatchLoggingClusterState:
         LOGGER.debug("After getting initial cluster state:\n{0}".format(self._dump_cluster_log_state()))
 
     def _read_log_configs_from_head_node(self):
-        """Read the log configs file at /usr/local/etc/cloudwatch_log_files.json."""
-        read_cmd = "cat /usr/local/etc/cloudwatch_log_files.json"
+        """Read the log configs file at /usr/local/etc/cloudwatch_agent_config.json."""
+        read_cmd = "cat /usr/local/etc/cloudwatch_agent_config.json"
         config = json.loads(self._run_command_on_head_node(read_cmd))
         return config.get("log_configs")
 

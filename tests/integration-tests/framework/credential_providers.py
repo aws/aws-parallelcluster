@@ -67,7 +67,7 @@ def sts_credential_provider(region, credential_arn, credential_external_id=None,
         os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
         os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
         os.environ["AWS_SESSION_TOKEN"] = aws_credentials["SessionToken"]
-        os.environ["AWS_CREDENTIAL_EXPIRATION"] = aws_credentials["Expiration"]
+        os.environ["AWS_CREDENTIAL_EXPIRATION"] = aws_credentials["Expiration"].isoformat()
         boto3.setup_default_session()
 
         yield aws_credentials
@@ -146,7 +146,10 @@ def obfuscate_credentials(creds_dict):
     obfuscated_dict = {}
     for key, value in creds_dict.items():
         if value:
-            obfuscated_dict[key] = value[0:3] + "*" * (len(value) - 3)
+            if key == "Expiration":
+                obfuscated_dict[key] = str(value)
+            else:
+                obfuscated_dict[key] = value[0:3] + "*" * (len(value) - 3)
         else:
             obfuscated_dict[key] = value
     return obfuscated_dict

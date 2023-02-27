@@ -27,7 +27,9 @@ class Coord:
         self.y_value = y_value
 
 
-_PclusterMetric = namedtuple("_PclusterMetric", ["title", "metrics", "supported_vol_types"])
+_PclusterMetric = namedtuple(
+    "_PclusterMetric", ["title", "metrics", "supported_vol_types", "namespace", "additional_dimensions"]
+)
 _Filter = namedtuple("new_filter", ["pattern", "param"])
 _CWLogWidget = namedtuple(
     "_CWLogWidget",
@@ -35,8 +37,8 @@ _CWLogWidget = namedtuple(
 )
 
 
-def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None):
-    return _PclusterMetric(title, metrics, supported_vol_types)
+def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None, namespace=None, additional_dimensions=None):
+    return _PclusterMetric(title, metrics, supported_vol_types, namespace, additional_dimensions)
 
 
 class CWDashboardConstruct(Construct):
@@ -183,11 +185,13 @@ class CWDashboardConstruct(Construct):
         self._update_coord(self.graph_width, self.graph_height)
         return widget
 
-    def _generate_ec2_metrics_list(self, metrics):
+    def _generate_metrics_list(self, metrics_param):
         metric_list = []
-        for metric in metrics:
+        dimensions_map = {"InstanceId": self.head_node_instance.ref}
+        dimensions_map.update(metrics_param.additional_dimensions if metrics_param.additional_dimensions else {})
+        for metric in metrics_param.metrics:
             cloudwatch_metric = cloudwatch.Metric(
-                namespace="AWS/EC2", metric_name=metric, dimensions_map={"InstanceId": self.head_node_instance.ref}
+                namespace=metrics_param.namespace, metric_name=metric, dimensions_map=dimensions_map
             )
             metric_list.append(cloudwatch_metric)
         return metric_list
@@ -289,21 +293,39 @@ class CWDashboardConstruct(Construct):
         # Create a text widget for subtitle "Head Node Instance Metrics"
         self._add_text_widget("## Head Node Instance Metrics")
 
-        # EC2 metrics graph for head node instance
+        # EC2 metrics for graph for head node instance
         ec2_metrics = [
-            new_pcluster_metric(title="CPU Utilization", metrics=["CPUUtilization"]),
-            new_pcluster_metric(title="Network Packets In/Out", metrics=["NetworkPacketsIn", "NetworkPacketsOut"]),
-            new_pcluster_metric(title="Network In and Out", metrics=["NetworkIn", "NetworkOut"]),
-            new_pcluster_metric(title="Disk Read/Write Bytes", metrics=["DiskReadBytes", "DiskWriteBytes"]),
-            new_pcluster_metric(title="Disk Read/Write Ops", metrics=["DiskReadOps", "DiskWriteOps"]),
+            new_pcluster_metric(title="CPU Utilization", metrics=["CPUUtilization"], namespace="AWS/EC2"),
+            new_pcluster_metric(
+                title="Network Packets In/Out", metrics=["NetworkPacketsIn", "NetworkPacketsOut"], namespace="AWS/EC2"
+            ),
+            new_pcluster_metric(title="Network In and Out", metrics=["NetworkIn", "NetworkOut"], namespace="AWS/EC2"),
+            new_pcluster_metric(
+                title="Disk Read/Write Bytes", metrics=["DiskReadBytes", "DiskWriteBytes"], namespace="AWS/EC2"
+            ),
+            new_pcluster_metric(
+                title="Disk Read/Write Ops", metrics=["DiskReadOps", "DiskWriteOps"], namespace="AWS/EC2"
+            ),
         ]
 
-        # Create EC2 metrics graphs and update coordinates
+        # CW Agent metrics for graph for head node instance
+        cwagent_metrics = [
+            new_pcluster_metric(
+                title="Disk Used Percent",
+                metrics=["disk_used_percent"],
+                namespace="CWAgent",
+                additional_dimensions={"path": "/"},
+            ),
+            new_pcluster_metric(title="Memory Used Percent", metrics=["mem_used_percent"], namespace="CWAgent"),
+        ]
+
+        # Create graphs for EC2 metrics and CW Agent metrics and update coordinates
         widgets_list = []
-        for metrics_param in ec2_metrics:
-            metrics_list = self._generate_ec2_metrics_list(metrics_param.metrics)
+        for metrics_param in ec2_metrics + cwagent_metrics:
+            metrics_list = self._generate_metrics_list(metrics_param)
             graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list)
             widgets_list.append(graph_widget)
+
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
         self._update_coord_after_section(self.graph_height)
 
