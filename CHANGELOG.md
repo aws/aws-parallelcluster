@@ -8,6 +8,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add log rotation support for ParallelCluster managed logs.
+- CLI tool error messages passed stderr instead of stdout.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
