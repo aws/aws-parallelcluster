@@ -1,5 +1,5 @@
 Flask
-2.2.2
+2.2.3
 BSD License
 Armin Ronacher
 https://palletsprojects.com/p/flask
@@ -131,7 +131,7 @@ SOFTWARE.
 
 
 Werkzeug
-2.2.2
+2.2.3
 BSD License
 Armin Ronacher
 https://palletsprojects.com/p/werkzeug/
@@ -219,7 +219,7 @@ SOFTWARE.
 
 
 boto3
-1.26.56
+1.26.76
 Apache Software License
 Amazon Web Services
 https://github.com/boto/boto3
@@ -403,7 +403,7 @@ https://github.com/boto/boto3
 
 
 botocore
-1.29.56
+1.29.76
 Apache Software License
 Amazon Web Services
 https://github.com/boto/botocore
@@ -703,7 +703,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 
 constructs
-3.4.225
+3.4.251
 Apache-2.0
 Amazon Web Services
 https://github.com/aws/constructs
@@ -1209,7 +1209,7 @@ IN THE SOFTWARE.
 
 
 jsii
-1.73.0
+1.75.0
 Apache Software License
 Amazon Web Services
 https://github.com/aws/jsii
@@ -2110,7 +2110,7 @@ SOFTWARE.
 
 
 zipp
-3.11.0
+3.14.0
 MIT License
 Jason R. Coombs
 https://github.com/jaraco/zipp
@@ -2285,7 +2285,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 typing_extensions 
-4.4.0 
+4.5.0 
 Python Software Foundation License 
 https://github.com/python/typing_extensions
 A. HISTORY OF THE SOFTWARE
@@ -3746,7 +3746,7 @@ Apache License 2.0
 
 
 aws-cdk 
-1.189.0 
+1.193.0 
 Apache License 
 https://raw.githubusercontent.com/aws/aws-cdk/main/LICENSE
                                  Apache License
