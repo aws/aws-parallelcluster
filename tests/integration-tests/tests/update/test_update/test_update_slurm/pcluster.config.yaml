@@ -84,7 +84,7 @@ SharedStorage:
     Name: ebs
     StorageType: Ebs
     EbsSettings:
-      VolumeType: gp3
+      VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
 #      Iops: 3200 #Initially not set
 #      Throughput: 130 #Initially not set
   - MountDir: efs
@@ -97,18 +97,20 @@ SharedStorage:
     StorageType: Ebs
     Name: raid
     EbsSettings:
-      VolumeType: gp3
+      VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
 #      Iops: 3200 #Initially not set
 #     Throughput: 130 #Initially not set
       Raid:
         Type: 0
         NumberOfVolumes: 2
+{% if "-iso" not in region %}
   - MountDir: fsx
     Name: fsx
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 2400
 #     WeeklyMaintenanceStartTime: "3:02:30" #Initially not set
+{% endif %}
 Monitoring:
   DetailedMonitoring: false
   Logs:
