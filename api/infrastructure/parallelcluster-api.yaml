@@ -8,11 +8,6 @@ Parameters:
     Type: String
     Default: '*'
 
-  EcrImageUri:
-    Description: When specified use this image for the Lambda function and skip the import phase
-    Type: String
-    Default: ''
-
   ParallelClusterFunctionRole:
     Description: |
       When specified, the ARN of the execution role for the ParallelCluster Lambda function
@@ -38,11 +33,6 @@ Parameters:
     Description: When specified, the id of the Hosted Zone where the custom domain record of the ParallelCluster API is registered
     Type: String
     Default: ''
-
-  PublicEcrImageUri:
-    Description: When specified, the URI of the Docker image for the Lambda of the ParallelCluster API
-    Type: String
-    Default: public.ecr.aws/parallelcluster/pcluster-api:3.6.0
 
   PoliciesStackUri:
     Description: S3 URI of the ParallelCluster Policies stack
@@ -100,16 +90,6 @@ Parameters:
       - true
       - false
 
-  ImageBuilderVpcId:
-    Description: Optional. Provide a specific vpc id to use for building the container images. Use this if you don't have a default vpc available.
-    Type: String
-    Default: ''
-
-  ImageBuilderSubnetId:
-    Description: Optional. Provide a specific public subnet id to use for building the container images. Use this if you don't have a default vpc available.
-    Type: String
-    Default: ''
-
 Mappings:
   ParallelCluster:
     Constants:
@@ -154,10 +134,8 @@ Globals:
         MetricsEnabled: true
 
 Conditions:
-  UseCustomEcrImageUri: !Not [!Equals [!Ref EcrImageUri, '']]
   UseCustomParallelClusterFunctionRole: !Not [!Equals [!Ref ParallelClusterFunctionRole, '']]
   CreateIamResources: !Not [!Condition UseCustomParallelClusterFunctionRole]
-  DoNotUseCustomEcrImageUri: !Not [!Condition UseCustomEcrImageUri]
   UseCustomDomain: !Not [!Equals [!Ref CustomDomainName, '']]
   UseRoute53Configuration: !Not [!Equals [!Ref CustomDomainHostedZoneId, '']]
   UseCustomDomainAndRoute53Configuration: !And
@@ -170,10 +148,6 @@ Conditions:
     - !Not [!Condition UsePrivateVpcEndpoint]
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
   CreateApiUserRoleCondition: !Equals [!Ref CreateApiUserRole, true]
-  NonDefaultVpc:
-    Fn::And:
-      - !Not [!Equals [!Ref ImageBuilderVpcId, ""]]
-      - !Not [!Equals [!Ref ImageBuilderSubnetId, ""]]
 
 Resources:
   # Policies nested stack
@@ -191,6 +165,20 @@ Resources:
         PermissionsBoundaryPolicy: !Ref PermissionsBoundaryPolicy
         EnableBatchAccess: true
 
+  PclusterLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub
+        - PCLayer-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
+      Description: Library which contains aws-parallelcluster python package and dependencies
+      Content:
+        S3Bucket: !Sub ${AWS::Region}-aws-parallelcluster
+        S3Key: !Sub
+          - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
+          - { Version: !FindInMap [ParallelCluster, Constants, Version]}
+      CompatibleRuntimes:
+        - python3.9
 
   # We need to define three AWS::Serverless::Api due to an issue with the handling of AWS::NoValue
   # See related GitHub issue: https://github.com/aws/serverless-application-model/issues/1435
@@ -268,23 +256,59 @@ Resources:
                Resource: !GetAtt ParallelClusterFunction.Arn
 
   ParallelClusterFunction:
-    Type: AWS::Serverless::Function
+    Type: AWS::Lambda::Function
     Properties:
-      Tracing: Active
-      PackageType: Image
+      TracingConfig:
+        Mode: Active
       MemorySize: 2048
+      Timeout: 60
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt [ PclusterPolicies, Outputs.ParallelClusterLambdaRoleArn ]]
       Tags:
-        'parallelcluster:resource': api
-      ImageUri: !If
-        - UseCustomEcrImageUri
-        - !Ref EcrImageUri
-        - !Sub
-          - ${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${Repository}:${Version}
-          - Repository: !Ref PrivateEcrRepository
-            Version: !Join
-              - '-'
-              - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
+        - Key: 'parallelcluster:resource'
+          Value: api
+      Runtime: python3.9
+      Handler: index.handler
+      Layers:
+        - !Ref PclusterLayer
+      Code:
+        ZipFile: |
+          import logging
+          import os
+          from os import environ
+          from typing import Any, Dict
+
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          from pcluster.api.awslambda.serverless_wsgi import handle_request
+          from pcluster.api.flask_app import ParallelClusterFlaskApp
+
+          pcluster_api = None  # pylint: disable=invalid-name
+
+          profile = environ.get("PROFILE", "prod")
+          is_dev_profile = profile == "dev"
+
+          if is_dev_profile:
+              logger.info("Running with dev profile")
+              environ["FLASK_ENV"] = "development"
+              environ["FLASK_DEBUG"] = "1"
+
+          def _init_flask_app():
+              return ParallelClusterFlaskApp(swagger_ui=is_dev_profile, validate_responses=is_dev_profile)
+
+          def handler(event: Dict[str, Any], context) -> Dict[str, Any]:
+              try:
+                  global pcluster_api  # pylint: disable=global-statement,invalid-name
+                  if not pcluster_api:
+                      logger.info("Initializing Flask Application")
+                      pcluster_api = _init_flask_app()
+                  os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
+                  return handle_request(pcluster_api.app, event, context)
+              except Exception as e:
+                  logger.critical("Unexpected exception: %s", e, exc_info=True)
+                  raise Exception("Unexpected fatal exception. Please look at API logs for details on the encountered failure.")
+
 
   ParallelClusterApiUserRole:
     Type: AWS::IAM::Role
@@ -326,342 +350,6 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${ParallelClusterFunction}
       RetentionInDays: 30
 
-  ImageBuilderInstanceRole:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns:
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilderECRContainerBuilds
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action:
-              - sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - !Sub ec2.${AWS::URLSuffix}
-        Version: '2012-10-17'
-      Path: /executionServiceEC2Role/
-
-  ImageBuilderInstanceProfile:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: /executionServiceEC2Role/
-      Roles:
-        - !Ref ImageBuilderInstanceRole
-
-  InfrastructureConfigurationSecurityGroup:
-    Condition: NonDefaultVpc
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      VpcId: !Ref ImageBuilderVpcId
-      GroupDescription: ParallelCluster image builder security group
-
-  InfrastructureConfiguration:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::ImageBuilder::InfrastructureConfiguration
-    Properties:
-      Name: !Sub
-        - ParallelClusterImageBuilderInfrastructureConfiguration-${Version}-${StackIdSuffix}
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-      InstanceProfileName: !Ref ImageBuilderInstanceProfile
-      TerminateInstanceOnFailure: true
-      SnsTopicArn: !Ref EcrImageBuilderSNSTopic
-      SubnetId:
-        Fn::If:
-          - NonDefaultVpc
-          - !Ref ImageBuilderSubnetId
-          - !Ref AWS::NoValue
-      SecurityGroupIds:
-        Fn::If:
-          - NonDefaultVpc
-          - [!Ref InfrastructureConfigurationSecurityGroup]
-          - !Ref AWS::NoValue
-      InstanceMetadataOptions:
-        HttpTokens: required
-
-  PrivateEcrRepository:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub
-        - 'aws-parallelcluster-${StackIdSuffix}'
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-      Tags:
-        - Key: 'parallelcluster:version'
-          Value: !FindInMap [ParallelCluster, Constants, Version]
-
-  EcrImageRecipe:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::ImageBuilder::ContainerRecipe
-    Properties:
-      Components:
-        - ComponentArn: !Sub arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:component/update-linux/x.x.x
-      ContainerType: DOCKER
-      Name: !Sub
-        - 'ImportPublicEcrImage-${Version}-${StackIdSuffix}'
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-      Version: !FindInMap [ParallelCluster, Constants, ShortVersion]
-      ParentImage: !Ref PublicEcrImageUri
-      PlatformOverride: Linux
-      TargetRepository:
-        Service: ECR
-        RepositoryName: !Ref PrivateEcrRepository
-      DockerfileTemplateData: 'FROM {{{ imagebuilder:parentImage }}}'
-      WorkingDirectory: '/tmp'
-
-  EcrImage:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::ImageBuilder::Image
-    Properties:
-      ContainerRecipeArn: !Ref EcrImageRecipe
-      EnhancedImageMetadataEnabled: true
-      InfrastructureConfigurationArn: !Ref InfrastructureConfiguration
-      ImageTestsConfiguration:
-        ImageTestsEnabled: false
-
-  EcrImagePipeline:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::ImageBuilder::ImagePipeline
-    Properties:
-      Name: !Sub
-        - 'EcrImagePipeline-${Version}-${StackIdSuffix}'
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-      Status: ENABLED
-      ContainerRecipeArn: !Ref EcrImageRecipe
-      InfrastructureConfigurationArn: !Ref InfrastructureConfiguration
-      ImageTestsConfiguration:
-        ImageTestsEnabled: false
-
-  EcrImageBuilderSNSTopic:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::SNS::Topic
-    Properties:
-      DisplayName: "ParallelCluster ECR Image Builder SNS topic"
-      KmsMasterKeyId: alias/aws/sns
-
-  UpdateParallelClusterLambda:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub
-        - UpdateParallelClusterLambda-${StackIdSuffix}
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-      MemorySize: 128
-      InlineCode: |
-        import boto3
-        import json
-        import os
-
-        client = boto3.client('lambda')
-
-        def handler(event, context):
-            for record in event['Records']:
-                print(event)
-                print('boto version {}'.format(boto3.__version__))
-
-                event_message = record['Sns']['Message']
-                message_json = json.loads(event_message)
-                image_state = message_json['state']['status']
-
-                if image_state == 'AVAILABLE':
-                    uri = message_json['outputResources']['containers'][0]['imageUris'][0]
-                    function_to_update = os.environ['LambdaFunctionToUpdate']
-                    client.update_function_code(FunctionName=function_to_update, ImageUri=uri, Publish=True)
-
-      Handler: index.handler
-      Runtime: python3.9
-      Role: !GetAtt UpdateParallelClusterLambdaRole.Arn
-      Environment:
-        Variables:
-          LambdaFunctionToUpdate: !GetAtt ParallelClusterFunction.Arn
-      Events:
-        SNSTopicEvent:
-          Type: SNS
-          Properties:
-            Topic: !Ref EcrImageBuilderSNSTopic
-
-  UpdateParallelClusterLambdaLogGroup:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub
-        - /aws/lambda/UpdateParallelClusterLambda-${StackIdSuffix}
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-
-  UpdateParallelClusterLambdaRole:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Policies:
-        - PolicyName: LoggingPolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: !Sub
-                  - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/UpdateParallelClusterLambda-${StackIdSuffix}:*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-        - PolicyName: UpdateParallelClusterLambdaPolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:UpdateFunctionCode
-                Resource: !GetAtt ParallelClusterFunction.Arn
-
-  EcrImageDeletionLambda:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::Lambda::Function
-    Properties:
-      MemorySize: 128
-      Code:
-        ZipFile: |
-          import cfnresponse
-          import boto3
-          import random
-          import string
-
-          ecr = boto3.client('ecr')
-          imagebuilder = boto3.client('imagebuilder')
-
-          def get_image_ids(repository_name, version):
-              image_digests = set()
-              paginator = ecr.get_paginator('list_images')
-              response_iterator = paginator.paginate(repositoryName=repository_name, filter={'tagStatus': 'TAGGED'})
-              for response in response_iterator:
-                  image_digests.update([image_id['imageDigest'] for image_id in response['imageIds'] if f"{version}-" in image_id['imageTag']])
-              return list({'imageDigest': image_digest} for image_digest in image_digests)
-
-          def get_imagebuilder_images(ecr_image_pipeline_arn):
-              response = imagebuilder.list_image_pipeline_images(imagePipelineArn=ecr_image_pipeline_arn)
-              images = [image['arn'] for image in response['imageSummaryList']]
-              while 'nextToken' in response:
-                  response = imagebuilder.list_image_pipeline_images(imagePipelineArn=ecr_image_pipeline_arn, nextToken=response['nextToken'])
-                  images.extend([image['arn'] for image in response['imageSummaryList']])
-              return images
-
-          def create_physical_resource_id():
-              alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
-              return ''.join(random.choice(alnum) for _ in range(16))
-
-          def handler(event, context):
-              print(event)
-              print('boto version {}'.format(boto3.__version__))
-
-              response_data = {}
-              reason = None
-              response_status = cfnresponse.SUCCESS
-
-              if event['RequestType'] == 'Create':
-                  response_data['Message'] = 'Resource creation successful!'
-                  physical_resource_id = create_physical_resource_id()
-              else:
-                  physical_resource_id = event['PhysicalResourceId']
-
-              if event['RequestType'] == 'Update' or event['RequestType'] == 'Delete':
-                  try:
-                      resource_key = 'OldResourceProperties' if 'OldResourceProperties' in event else 'ResourceProperties'
-                      ecr_repository_name = event[resource_key]['EcrRepositoryName']
-                      ecr_image_pipeline_arn = event[resource_key]['EcrImagePipelineArn']
-                      version = event[resource_key]['Version']
-
-                      image_ids = get_image_ids(ecr_repository_name, version)
-                      if image_ids:
-                          ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=image_ids)
-                          reason = 'Image deletion successful!'
-                      else:
-                          reason = 'No image found, considering image deletion successful'
-
-                      for imagebuilder_image in get_imagebuilder_images(ecr_image_pipeline_arn):
-                          imagebuilder.delete_image(imageBuildVersionArn=imagebuilder_image)
-
-                  except ecr.exceptions.RepositoryNotFoundException:
-                      reason = 'Repository was not found, considering image deletion successfull'
-                  except Exception as exception:
-                      response_status = cfnresponse.FAILED
-                      reason = 'Failed image deletion with error: {}'.format(exception)
-
-              cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
-
-      Handler: index.handler
-      Runtime: python3.9
-      Role: !GetAtt EcrImageDeletionLambdaRole.Arn
-
-  EcrImageDeletionLambdaLogGroup:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub /aws/lambda/${EcrImageDeletionLambda}
-
-  EcrImageDeletionLambdaRole:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Policies:
-        - PolicyName: LoggingPolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterApi-EcrImageDeletionLambda-*
-        - PolicyName: BatchDeletePolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecr:BatchDeleteImage
-                  - ecr:ListImages
-                Resource: !GetAtt PrivateEcrRepository.Arn
-              - Effect: Allow
-                Action:
-                  - imagebuilder:ListImagePipelineImages
-                Resource: !Sub
-                  - arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image-pipeline/ecrimagepipeline-*${StackIdSuffix}*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-              - Effect: Allow
-                Action:
-                  - imagebuilder:DeleteImage
-                Resource: !Sub
-                  - arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/*${StackIdSuffix}*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-
-  EcrImagesRemover:
-    Condition: DoNotUseCustomEcrImageUri
-    Type: Custom::EcrImagesRemover
-    Properties:
-      ServiceToken: !GetAtt EcrImageDeletionLambda.Arn
-      EcrRepositoryName: !Ref PrivateEcrRepository
-      Version: !FindInMap [ParallelCluster, Constants, ShortVersion]
-      EcrImagePipelineArn: !GetAtt EcrImagePipeline.Arn
-
-
 Outputs:
   ParallelClusterLambdaArn:
     Description: 'ARN of the ParallelCluster Lambda function'
@@ -686,27 +374,12 @@ Outputs:
             - !Ref ApiGatewayApiWithoutCustomDomain
           StageName: !FindInMap [ParallelCluster, Constants, Stage]
 
-  UriOfCopyOfPublicEcrImage:
-    Condition: DoNotUseCustomEcrImageUri
-    Description: 'Uri of the copy of the Public ParallelCluster API Lambda Container image'
-    Value: !Sub
-      - ${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${Repository}:${Version}
-      - Repository: !Ref PrivateEcrRepository
-        Version: !Join
-          - '-'
-          - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
-
   ParallelClusterApiUserRole:
     Condition: CreateApiUserRoleCondition
     Export:
       Name: !Sub ${AWS::StackName}-ParallelClusterApiUserRole
     Description: 'IAM Role with permissions to invoke the ParallelCluster API'
     Value: !GetAtt ParallelClusterApiUserRole.Arn
-
-  ParallelClusterDockerUpdateImagePipeline:
-    Condition: DoNotUseCustomEcrImageUri
-    Description: 'Image Builder pipeline that can be triggered to pull latest API Docker image for the deployed ParallelCluster version'
-    Value: !Ref EcrImagePipeline
 
   ParallelClusterLambdaLogGroup:
     Value: !Ref ParallelClusterFunctionLogGroup
