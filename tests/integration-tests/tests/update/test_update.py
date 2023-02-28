@@ -88,7 +88,13 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "instances": [
                         {
                             "instance_type": "c5.xlarge",
-                        }
+                        },
+                        {
+                            "instance_type": "c5a.xlarge",
+                        },
+                        {
+                            "instance_type": "c5d.xlarge",
+                        },
                     ],
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 1,
@@ -136,7 +142,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     _check_script(command_executor, slurm_commands, initial_compute_nodes[0], "postinstall", "RTY")
 
     # Submit a job in order to verify that jobs are not affected by an update of the queue size
-    result = slurm_commands.submit_command("sleep infinity", constraint="static&c5.xlarge")
+    result = slurm_commands.submit_command("sleep infinity", constraint="static")
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Update cluster with new configuration
@@ -165,7 +171,13 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "instances": [
                         {
                             "instance_type": "c5.xlarge",
-                        }
+                        },
+                        {
+                            "instance_type": "c5a.xlarge",
+                        },
+                        {
+                            "instance_type": "c5d.xlarge",
+                        },
                     ],
                     "expected_running_instances": 2,
                     "expected_power_saved_instances": 2,
