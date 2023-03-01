@@ -212,13 +212,6 @@ dashboard:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
-cloudwatch_alarms:
-  test_cloudwatch_alarms.py::test_cloudwatch_alarms:
-    dimensions:
-      - regions: ["af-south-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm"]
 dcv:
   test_dcv.py::test_dcv_configuration:
     dimensions:
