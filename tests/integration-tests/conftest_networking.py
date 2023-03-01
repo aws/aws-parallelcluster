@@ -91,8 +91,8 @@ ZONE_ID_MAPPING = {
     "us-east-2": "^use2-az[0-9]",
     "us-west-1": "^usw1-az[0-9]",
     "us-west-2": "^usw2-az[0-9]",
-    # "us-gov-east-1": "^usge1-az[0-9]", # double check
-    # "us-gov-west-1": "^usgw1-az[0-9]", # double check
+    "us-gov-east-1": "^usge1-az[0-9]",
+    "us-gov-west-1": "^usgw1-az[0-9]",
 }
 
 
