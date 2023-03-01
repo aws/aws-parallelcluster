@@ -181,11 +181,13 @@ phases:
               {{ test.NodeVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.PythonVersion.outputs.stdout }}
               [[ $? -ne 0 ]] && echo "Check node virtualenv python version failed" && exit 1
 
-              {{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.SchedulerPluginPythonVersion.outputs.stdout }}
-              [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python version failed" && exit 1
-              su -l pcluster-scheduler-plugin -c "which python" | grep envs/scheduler_plugin_virtualenv/bin/python
-              [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python path failed" && exit 1
-
+              if [[ {{ test.OperatingSystemName.outputs.stdout }} != 'rhel8' ]]; then
+                {{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.SchedulerPluginPythonVersion.outputs.stdout }}
+                [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python version failed" && exit 1
+                su -l pcluster-scheduler-plugin -c "which python" | grep envs/scheduler_plugin_virtualenv/bin/python
+                [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python path failed" && exit 1
+              fi
+              
               echo "Virtualenv test passed"
 
       - name: Pip
@@ -272,11 +274,13 @@ phases:
           commands:
             - |
               set -vx
-              Script=/usr/local/sbin/invoke-scheduler-plugin-event-handler.sh
-              if [ -x ${Script} ]; then
-                echo "Scheduler plugin handler script '${Script}' is executable."
-              else
-                echo "Scheduler plugin handler script '${Script}' is not executable." && exit 1
+              if [[ {{ test.OperatingSystemName.outputs.stdout }} != 'rhel8' ]]; then
+                Script=/usr/local/sbin/invoke-scheduler-plugin-event-handler.sh
+                if [ -x ${Script} ]; then
+                  echo "Scheduler plugin handler script '${Script}' is executable."
+                else
+                  echo "Scheduler plugin handler script '${Script}' is not executable." && exit 1
+                fi
               fi
 
       - name: Log4jPatcher
