@@ -1984,7 +1984,7 @@ class DirectoryServiceSchema(BaseSchema):
     domain_addr = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     password_secret_arn = fields.Str(
         required=True,
-        validate=validate.Regexp(r"^arn:.*:secret"),
+        validate=validate.Regexp(r"^arn:.*:(secretsmanager:.*:.*:secret:|ssm:.*:.*:parameter\/).*$"),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
     domain_read_only_user = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})

@@ -10,6 +10,7 @@
 # limitations under the License.
 import ipaddress
 import os
+from datetime import datetime
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import FsxFileSystemInfo, InstanceTypeInfo
@@ -27,6 +28,7 @@ from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
 from pcluster.aws.secretsmanager import SecretsManagerClient
+from pcluster.aws.ssm import SsmClient
 from pcluster.aws.sts import StsClient
 
 
@@ -106,6 +108,7 @@ class _DummyAWSApi(AWSApi):
         self._route53 = _DummyRoute53Client()
         self._resource_groups = _DummyResourceGroupsClient()
         self._secretsmanager = _DummySecretsManagerClient()
+        self._ssm = _DummySsmClient()
 
 
 class _DummyCfnClient(CfnClient):
@@ -352,6 +355,25 @@ class _DummySecretsManagerClient(SecretsManagerClient):
             "Tags": [],
             "VersionIdsToStages": {"12345678-1234-abcd-1234-567890abcdef": ["AWSCURRENT"]},
             "CreatedDate": "2022-08-01T10:00:00+00:00",
+        }
+
+
+class _DummySsmClient(SsmClient):
+    def __init__(self):
+        """Override parent constructor. No real boto3 client is created."""
+        self._client = None
+
+    def get_parameter(self, parameter_name):
+        return {
+            "Parameter": {
+                "Name": parameter_name,
+                "Type": "SecureString",
+                "Value": "EncryptedValue",
+                "Version": 1,
+                "LastModifiedDate": datetime(2023, 3, 3),
+                "ARN": f"arn:aws:ssm:us-east-1:111111111111:parameter/{parameter_name}",
+                "DataType": "text",
+            }
         }
 
 
