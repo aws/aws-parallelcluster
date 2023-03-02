@@ -35,6 +35,13 @@ export NO_PROXY="localhost,127.0.0.1,169.254.169.254"
 PROXY
 fi
 
+# Configure Amazon Linux 2 instance running in US isolated region.
+. /etc/os-release
+if [[ "${!ID}${!VERSION_ID}" == "amzn2" && "${AWS::Region}" == us-iso* ]]; then
+  configuration_script="/opt/parallelcluster/scripts/patch-iso-instance.sh"
+  [ -f ${!configuration_script} ] && bash ${!configuration_script}
+fi
+
 --==BOUNDARY==
 Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
@@ -88,12 +95,8 @@ function vendor_cookbook
 }
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
-# Configure Amazon Linux 2 instance running in US isolated region.
-. /etc/os-release
-if [[ "${!ID}${!VERSION_ID}" == "amzn2" && "${AWS::Region}" == us-iso* ]]; then
-  configuration_script="/opt/parallelcluster/scripts/patch-iso-instance.sh"
-  [[ -f ${!configuration_script} ]] && bash ${!configuration_script} "${AWS::Region}" && . ~/.bash_profile
-fi
+# Configure AWS CLI using the expected overrides, if any.
+[ -f /etc/profile.d/aws-cli-default-config.sh ] && . /etc/profile.d/aws-cli-default-config.sh
 
 # deploy config files
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
