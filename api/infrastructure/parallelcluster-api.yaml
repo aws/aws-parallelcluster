@@ -101,7 +101,7 @@ Parameters:
     Default: ''
 
   ImageBuilderSubnetId:
-    Description: Optional. Provide a specific subnet id to use for building the container images. Use this if you don't have a default vpc available.
+    Description: Optional. Provide a specific public subnet id to use for building the container images. Use this if you don't have a default vpc available.
     Type: String
     Default: ''
 
