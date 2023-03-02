@@ -268,6 +268,22 @@ Some tox commands are offered in order to simplify the generation and validation
 * `tox -e generate-test-config my-config-file` can be used to automatically generate a configuration file pre-filled
   with the list of all available files. The config file is generated in the `tests/integration-tests/configs` directory.
 
+#### AZ override
+By default, the TestRunner will run the test in a random AZ between the ones available in the region.
+There are cases where some resources (like `instance_type` or aws services) are not available in all AZ.
+In these cases to successfully run the test it is necessary to override the AZ where the test must run.
+
+To do so you can specify a ZoneId in the regions dimension. So for example if you set
+
+```
+      dimensions:
+        - regions: ["euw1-az1", "eu-central-1"]
+```
+
+the test will be executed in
+* `eu-west-1` using the AZ with ZoneId `euw1-az1` (ZoneId is consistent across accounts)
+* `eu-central-1` using a random AZ available in the region
+
 #### Using CLI options
 
 The following options can be used to control the parametrization of test cases:

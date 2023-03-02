@@ -3,6 +3,7 @@ import os
 from itertools import product
 
 from conftest_markers import DIMENSIONS_MARKER_ARGS
+from conftest_networking import unmarshal_az_override, unmarshal_az_params
 from framework.tests_configuration.config_utils import get_enabled_tests
 from xdist import get_xdist_worker_id
 
@@ -58,6 +59,8 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
             dimensions_values.append(benchmarks_value)
         argvalues.extend(list(product(*dimensions_values)))
 
+    argvalues, argnames = unmarshal_az_params(argvalues, argnames)  # adds 'az_id' extra fixture
+
     return argnames, argvalues
 
 
@@ -83,12 +86,21 @@ def apply_cli_dimensions_filtering(config, items):
     """Filter tests based on dimensions passed as cli arguments."""
     allowed_values = {}
     for dimension in DIMENSIONS_MARKER_ARGS:
-        allowed_values[dimension] = config.getoption(dimension + "s")
+        values = config.getoption(dimension + "s")
+        if dimension == "region":
+            # values may contain a list of az_id/regions.
+            # We have to unmarshal any of them in case one or more overrides were specified
+            values = [unmarshal_az_override(v) for v in values]
+        allowed_values[dimension] = values
     for item in list(items):
         for dimension in DIMENSIONS_MARKER_ARGS:
             # callspec is not set if parametrization did not happen
             if hasattr(item, "callspec"):
                 arg_value = item.callspec.params.get(dimension)
+                if dimension == "region":
+                    # arg_value may contain an az_id if an override was specified
+                    # here we ensure that we are using the region
+                    arg_value = unmarshal_az_override(arg_value)
                 if allowed_values[dimension]:
                     if arg_value not in allowed_values[dimension]:
                         items.remove(item)

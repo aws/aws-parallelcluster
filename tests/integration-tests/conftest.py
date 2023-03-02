@@ -39,6 +39,7 @@ from conftest_markers import (
     check_marker_skip_dimensions,
     check_marker_skip_list,
 )
+from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from filelock import FileLock
@@ -298,9 +299,11 @@ def _log_collected_tests(session):
     # get_xdist_worker_id returns the id of the current worker ('gw0', 'gw1', etc) or 'master'
     if get_xdist_worker_id(session) in ["master", "gw0"]:
         collected_tests = list(map(lambda item: item.nodeid, session.items))
+        region = session.config.getoption("regions") or get_all_regions(session.config.getoption("tests_config"))
+        region = [unmarshal_az_override(az) for az in region]
         logging.info(
             "Collected tests in regions %s (total=%d):\n%s",
-            session.config.getoption("regions") or get_all_regions(session.config.getoption("tests_config")),
+            region,
             len(session.items),
             json.dumps(collected_tests, indent=2),
         )
@@ -766,9 +769,9 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
 def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = get_vpc_snakecase_value(vpc_stack)
-    default_values["public_subnet_id"] = vpc_stack.get_public_subnet()  # TODO possibility to override default AZ
+    default_values["public_subnet_id"] = vpc_stack.get_public_subnet()
     default_values["public_subnet_ids"] = vpc_stack.get_all_public_subnets()
-    default_values["private_subnet_id"] = vpc_stack.get_private_subnet()  # TODO possibility to override default AZ
+    default_values["private_subnet_id"] = vpc_stack.get_private_subnet()
     default_values["private_subnet_ids"] = vpc_stack.get_all_private_subnets()
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
@@ -858,6 +861,9 @@ def initialize_cli_creds(request):
             stack_template_data = stack_template_file.read()
         cli_creds = {}
         for region in regions:
+            # region may contain an az_id if an override was specified
+            # here we ensure that we are using the region
+            region = unmarshal_az_override(region)
             if request.config.getoption("iam_user_role_stack_name"):
                 stack_name = request.config.getoption("iam_user_role_stack_name")
                 logging.info(f"Using stack {stack_name} in region {region}")
@@ -990,6 +996,9 @@ def s3_bucket_factory_shared(request):
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     s3_buckets_dict = {}
     for region in regions:
+        # region may contain an az_id if an override was specified
+        # here we ensure that we are using the region
+        region = unmarshal_az_override(region)
         with aws_credential_provider(region, request.config.getoption("credential")):
             s3_buckets_dict[region] = _create_bucket(region)
 

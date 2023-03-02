@@ -13,8 +13,10 @@
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
 
+import copy
 import logging
 import random
+import re
 
 import boto3
 import pytest
@@ -29,15 +31,9 @@ from utils import generate_stack_name, to_pascal_from_kebab_case
 
 from tests.common.utils import retrieve_latest_ami
 
-DEFAULT_AVAILABILITY_ZONE = {
+AVAILABLE_AVAILABILITY_ZONE = {
     # c5.xlarge is not supported in use1-az3
-    # FSx Lustre file system creation is currently not supported for use1-az3
-    # p4d.24xlarge targeted ODCR is only available on use1-az6
-    "us-east-1": ["use1-az6"],
-    # some instance type is only supported in use2-az2
-    "us-east-2": ["use2-az2"],
-    # trn available on usw2-az4
-    "us-west-2": ["usw2-az4"],
+    "us-east-1": ["use1-az1", "use1-az2", "use1-az4", "use1-az6", "use1-az5"],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
     # FSx for Luster is not supported in apne1-az1
@@ -60,6 +56,37 @@ DEFAULT_AVAILABILITY_ZONE = {
     "eu-central-1": ["euc1-az2", "euc1-az3"],
     # FSx not available in cnn1-az4
     "cn-north-1": ["cnn1-az1", "cnn1-az2"],
+}
+
+# used to map a ZoneId to the corresponding region
+# Nice-To-Have: a python script that creates this mapping by invoking aws describe-regions / subnets
+# and then read it from a file
+ZONE_ID_MAPPING = {
+    "af-south-1": "^afs1-az[0-9]",
+    "ap-east-1": "^ape1-az[0-9]",
+    "ap-northeast-1": "^apne1-az[0-9]",
+    "ap-northeast-2": "^apne2-az[0-9]",
+    "ap-northeast-3": "^apne3-az[0-9]",
+    "ap-south-1": "^aps1-az[0-9]",
+    "ap-southeast-1": "^apse1-az[0-9]",
+    "ap-southeast-2": "^apse2-az[0-9]",
+    "ca-central-1": "^cac1-az[0-9]",
+    "cn-north-1": "^cnn1-az[0-9]",
+    "cn-northwest-1": "^cnnw1-az[0-9]",
+    "eu-central-1": "^euc1-az[0-9]",
+    "eu-north-1": "^eun1-az[0-9]",
+    "eu-west-1": "^euw1-az[0-9]",
+    "eu-west-2": "^euw2-az[0-9]",
+    "eu-west-3": "^euw3-az[0-9]",
+    "eu-south-1": "^eus1-az[0-9]",
+    "me-south-1": "^mes1-az[0-9]",
+    "sa-east-1": "^sae1-az[0-9]",
+    "us-east-1": "^use1-az[0-9]",
+    "us-east-2": "^use2-az[0-9]",
+    "us-west-1": "^usw1-az[0-9]",
+    "us-west-2": "^usw2-az[0-9]",
+    "us-gov-east-1": "^usge1-az[0-9]",
+    "us-gov-west-1": "^usgw1-az[0-9]",
 }
 
 
@@ -108,6 +135,60 @@ CIDR_FOR_CUSTOM_SUBNETS = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def az_id():
+    """Removes the need to declare the fixture in all tests even if not needed."""
+    pass
+
+
+def unmarshal_az_override(az_override):
+    for region, regex in ZONE_ID_MAPPING.items():
+        pattern = re.compile(regex)
+        if pattern.match(az_override.lower()):
+            return region
+        elif region == az_override.lower():
+            return az_override
+
+    # If no mapping was found return the input parameter assuming the region value set by the user is correct.
+    # This will fail while trying to make an AZ override for a region without a proper mapping.
+    # In this case add the mapping to the list above before attempting the override.
+    return az_override
+
+
+def unmarshal_az_params(argvalues, argnames):
+    """
+    Given the list of tuple parameters defining the configured test dimensions, when an az-override is specified
+    it replaces the az with the corresponding region, and fill the az field with the proper value.
+
+    E.g.
+    argvalues = [('r1az-id1', 'inst1', 'os1', 's', ''), ('r1-az-id1', 'inst1', 'os2', 's', ''),
+                 ('r1az-id2', 'inst1', 'os1', 's', ''), ('r1-az-id2', 'inst1', 'os2', 's', ''),
+                 ('region2', 'inst1', 'os1', 's', ''), ('region2', 'inst1', 'os2', 's', '')]
+
+    Produces the following output:
+    argvalues = [('region1', 'inst1', 'os1', 's', 'az-id1'), ('region1', 'inst1', 'os2', 's', 'az-id1'),
+                 ('region1', 'inst1', 'os1', 's', 'az-id2'), ('region1', 'inst1', 'os2', 's', 'az-id2'),
+                 ('region2', 'inst1', 'os1', 's', ''), ('region2', 'inst1', 'os2', 's', '')]
+    """
+
+    unmarshalled_params = []
+    for tuple in argvalues:
+        param_set = list(tuple)
+        region = unmarshal_az_override(param_set[0])
+        if region != param_set[0]:  # found an override
+            param_set.append(param_set[0])  # set AZ as last value
+            param_set[0] = region  # override first value with unmarshalled region
+        else:
+            # we could set here the default_az if there is no override, but we aren't doing so because
+            # these values are set at each test execution and we want to keep the default_az consistent
+            # across tests and retries of the same test
+            param_set.append(None)  # set AZ to none
+
+        unmarshalled_params.append((*param_set,))
+
+    return unmarshalled_params, argnames + ["az_id"]
+
+
 def subnet_name(visibility="Public", az_id=None, flavor=None):
     az_id_pascal_case = "" if az_id is None else f"{to_pascal_from_kebab_case(az_id)}"
     flavor_string = "" if flavor is None else f"{flavor}"
@@ -138,11 +219,9 @@ def get_availability_zones(region, credential):
 
 def get_az_setup_for_region(region: str, credential: list):
     """Return a default AZ ID and its name, the list of all AZ IDs and names."""
-    # TODO Region can be AZ ID, in this case convert it to Region
-    # TODO remove DEFAULT_AVAILABILITY_ZONE
     az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
     az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
-    default_az_id = random.choice(DEFAULT_AVAILABILITY_ZONE.get(region, az_ids))
+    default_az_id = random.choice(AVAILABLE_AVAILABILITY_ZONE.get(region, az_ids))
     default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     return default_az_id, default_az_name, az_id_to_az_name_map
@@ -195,7 +274,7 @@ def random_az_selector(request):
 
     def _get_random_availability_zones(region, num_azs=1, default_value=None):
         """Return num_azs random AZs (in the form of AZ names, e.g. 'us-east-1a') for the given region."""
-        az_ids = DEFAULT_AVAILABILITY_ZONE.get(region, [])
+        az_ids = AVAILABLE_AVAILABILITY_ZONE.get(region, [])
         if az_ids:
             az_id_to_az_name_map = get_az_id_to_az_name_map(region, request.config.getoption("credential"))
             sample = random.sample([az_id_to_az_name_map.get(az_id, default_value) for az_id in az_ids], k=num_azs)
@@ -207,8 +286,12 @@ def random_az_selector(request):
 
 
 @pytest.fixture(scope="class")
-def vpc_stack(vpc_stacks_shared, region):
-    return vpc_stacks_shared.get(region)
+def vpc_stack(vpc_stacks_shared, region, az_id):
+    # Create a local copy fo the shared vpcs to avoid
+    # undesired effects on other tests.
+    local_vpc_stack = copy.deepcopy(vpc_stacks_shared.get(region))
+    local_vpc_stack.set_az_override(az_id)
+    return local_vpc_stack
 
 
 @xdist_session_fixture(autouse=True)
@@ -224,6 +307,9 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
 
     vpc_stacks_dict = {}
     for region in regions:
+        # region may contain an az_id if an override was specified
+        # here we ensure that we are using the region
+        region = unmarshal_az_override(region)
         default_az_id, default_az_name, az_id_name_dict = get_az_setup_for_region(region, credential)
 
         subnets = []

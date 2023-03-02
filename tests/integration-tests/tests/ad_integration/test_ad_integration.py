@@ -357,7 +357,7 @@ def _delete_certificate(certificate_arn, region):
 
 
 @pytest.fixture(scope="module")
-def directory_factory(request, cfn_stacks_factory, vpc_stacks_shared, store_secret_in_secret_manager):  # noqa: C901
+def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_secret_manager):  # noqa: C901
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
     created_certificates = defaultdict(dict)
@@ -384,7 +384,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks_shared, store_secr
                 directory_type,
                 test_resources_dir,
                 region,
-                vpc_stacks_shared[region],
+                vpc_stack,
             )
             directory_stack_name = directory_stack.name
             created_directory_stacks[region]["directory"] = directory_stack_name
