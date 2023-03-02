@@ -351,7 +351,12 @@ def assert_subnet_az_relations_from_config(
 
     if expected_in_same_az:
         assert_that(set(cluster_avail_zones)).is_length(1)
+    # If caller does not expect same az, we expect more availability zones.
+    elif "-iso" in region:
+        # For isolated regions, we only impose a weak check to make sure there are two or more availability zones.
+        assert_that(len(set(cluster_avail_zones))).is_greater_than_or_equal_to(2)
     else:
+        # For other regions, we impose a strong check to make sure each subnet is in a different availability zone.
         assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
 
 
