@@ -1,0 +1,76 @@
+{%- import 'common.jinja2' as common with context -%}
+{%- set REGIONS = ["us-isob-east-1"] -%}
+{%- set INSTANCES = ["c5.xlarge"] -%}
+{%- set OSS = ["alinux2"] -%}
+{%- set SCHEDULERS = ["slurm"] -%}
+---
+test-suites:
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  configure:
+    test_pcluster_configure.py::test_pcluster_configure:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  dashboard:
+    test_dashboard.py::test_dashboard:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  dns:
+    test_dns.py::test_hit_no_cluster_dns_mpi:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  iam:
+    test_iam.py::test_iam_policies:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  resource_bucket:
+    test_resource_bucket.py::test_resource_bucket:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  scaling:
+    test_mpi.py::test_mpi:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  storage:
+    test_efs.py::test_efs_compute_az:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_ebs.py::test_ebs_multiple:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
