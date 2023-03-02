@@ -25,6 +25,7 @@ from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
 from pcluster.aws.secretsmanager import SecretsManagerClient
+from pcluster.aws.ssm import SsmClient
 from pcluster.aws.sts import StsClient
 
 
@@ -58,6 +59,7 @@ class AWSApi:
         self._logs = None
         self._route53 = None
         self._secretsmanager = None
+        self._ssm = None
         self._resource_groups = None
 
     @property
@@ -164,6 +166,13 @@ class AWSApi:
         if not self._secretsmanager:
             self._secretsmanager = SecretsManagerClient()
         return self._secretsmanager
+
+    @property
+    def ssm(self):
+        """SSM client."""
+        if not self._ssm:
+            self._ssm = SsmClient()
+        return self._ssm
 
     @property
     def resource_groups(self):

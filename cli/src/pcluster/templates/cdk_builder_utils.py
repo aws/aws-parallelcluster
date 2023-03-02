@@ -19,7 +19,7 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.aws_iam import ManagedPolicy, PermissionsBoundary
-from aws_cdk.core import CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
+from aws_cdk.core import Arn, CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import (
     BaseClusterConfig,
@@ -752,10 +752,17 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         )
 
         if self._config.directory_service:
+            password_secret_arn = Arn.parse(self._config.directory_service.password_secret_arn)
             policy.append(
                 iam.PolicyStatement(
                     sid="AllowGettingDirectorySecretValue",
-                    actions=["secretsmanager:GetSecretValue"],
+                    actions=[
+                        "secretsmanager:GetSecretValue"
+                        if password_secret_arn.service == "secretsmanager"
+                        else "ssm:GetParameter"
+                        if password_secret_arn.service == "ssm"
+                        else None
+                    ],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
                 )
