@@ -23,6 +23,7 @@ CHANGELOG
 
 3.5.1
 -----
+**ENHANCEMENTS**
 - Add support for US isolated regions: us-iso-* and us-isob-*.
 
 3.5.0
