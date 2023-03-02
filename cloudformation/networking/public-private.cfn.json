@@ -9,6 +9,14 @@
         ""
       ]
     },
+    "CreateVpc": {
+      "Fn::Equals": [
+        {
+          "Ref": "VpcId"
+        },
+        ""
+      ]
+    },
     "ExistingInternetGateway": {
       "Fn::Not": [
         {
@@ -22,8 +30,34 @@
       ]
     }
   },
-  "Description": "Network build by NetworkTemplateBuilder",
+  "Description": "Public/Private Network for AWS ParallelCluster",
   "Outputs": {
+    "VpcId": {
+      "Value": {
+        "Fn::If": [
+          "CreateVpc",
+          {
+            "Ref": "Vpc"
+          },
+          {
+            "Ref": "VpcId"
+          }
+        ]
+      }
+    },
+    "InternetGatewayId": {
+      "Value": {
+        "Fn::If": [
+          "CreateInternetGateway",
+          {
+            "Ref": "InternetGateway"
+          },
+          {
+            "Ref": "InternetGatewayId"
+          }
+        ]
+      }
+    },
     "PrivateSubnetId": {
       "Value": {
         "Ref": "Private"
@@ -41,25 +75,44 @@
       "Type": "String"
     },
     "InternetGatewayId": {
-      "Description": "(Optional) The id of the gateway (will be created if not specified)",
-      "Type": "String"
+      "Description": "(Optional) The id of the gateway (will be created if not specified). Rquired if VpcId is specified.",
+      "Type": "String",
+      "Default": ""
     },
     "PrivateCIDR": {
       "AllowedPattern": "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/(1[6-9]|2[0-9]|3[0-2])$",
       "Description": "The CIDR of the Private",
+      "Default": "10.0.16.0/20",
       "Type": "String"
     },
     "PublicCIDR": {
       "AllowedPattern": "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/(1[6-9]|2[0-9]|3[0-2])$",
       "Description": "The CIDR of the Public",
+      "Default": "10.0.0.0/24",
       "Type": "String"
     },
     "VpcId": {
-      "Description": "The vpc id",
+      "Description": "(Optional) The VPC id to create subnets in. (will be created if not specified)",
+      "Default": "",
+      "Type": "String"
+    },
+    "VpcCIDR": {
+      "Description": "(Optional) The CIDR for the VPC if it will be created (only valid if VpcId is left blank)",
+      "Default": "10.0.0.0/16",
       "Type": "String"
     }
   },
   "Resources": {
+    "Vpc": {
+      "Condition": "CreateVpc",
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "VpcCIDR"
+        },
+        "EnableDnsHostnames": true
+      }
+    },
     "DefaultRouteDependsOnPublic": {
       "Condition": "CreateInternetGateway",
       "DependsOn": "VPCGatewayAttachment",
@@ -175,7 +228,15 @@
           }
         ],
         "VpcId": {
-          "Ref": "VpcId"
+          "Fn::If": [
+            "CreateVpc",
+            {
+              "Ref": "Vpc"
+            },
+            {
+              "Ref": "VpcId"
+            }
+          ]
         }
       },
       "Type": "AWS::EC2::Subnet"
@@ -202,7 +263,15 @@
           }
         ],
         "VpcId": {
-          "Ref": "VpcId"
+          "Fn::If": [
+            "CreateVpc",
+            {
+              "Ref": "Vpc"
+            },
+            {
+              "Ref": "VpcId"
+            }
+          ]
         }
       },
       "Type": "AWS::EC2::Subnet"
@@ -244,7 +313,15 @@
           }
         ],
         "VpcId": {
-          "Ref": "VpcId"
+          "Fn::If": [
+            "CreateVpc",
+            {
+              "Ref": "Vpc"
+            },
+            {
+              "Ref": "VpcId"
+            }
+          ]
         }
       },
       "Type": "AWS::EC2::RouteTable"
@@ -264,7 +341,15 @@
           }
         ],
         "VpcId": {
-          "Ref": "VpcId"
+          "Fn::If": [
+            "CreateVpc",
+            {
+              "Ref": "Vpc"
+            },
+            {
+              "Ref": "VpcId"
+            }
+          ]
         }
       },
       "Type": "AWS::EC2::RouteTable"
@@ -276,7 +361,15 @@
           "Ref": "InternetGateway"
         },
         "VpcId": {
-          "Ref": "VpcId"
+          "Fn::If": [
+            "CreateVpc",
+            {
+              "Ref": "Vpc"
+            },
+            {
+              "Ref": "VpcId"
+            }
+          ]
         }
       },
       "Type": "AWS::EC2::VPCGatewayAttachment"
