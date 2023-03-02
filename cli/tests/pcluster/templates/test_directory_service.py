@@ -21,12 +21,33 @@ from tests.pcluster.utils import get_head_node_policy, get_statement_by_sid
 
 
 @pytest.mark.parametrize(
-    "config_file_name",
+    "config_file_name, head_node_permissions",
     [
-        ("config.yaml"),
+        pytest.param(
+            "config.yaml",
+            [
+                {
+                    "Sid": "AllowGettingDirectorySecretValue",
+                    "Action": "secretsmanager:GetSecretValue",
+                    "Resource": "arn:aws:secretsmanager:eu-west-1:123456789:secret:a-secret-name",
+                }
+            ],
+            id="DirectoryService with PasswordSecretArn as Secret in Secrets Manager",
+        ),
+        pytest.param(
+            "config-ssm.yaml",
+            [
+                {
+                    "Sid": "AllowGettingDirectorySecretValue",
+                    "Action": "ssm:GetParameter",
+                    "Resource": "arn:aws:ssm:eu-west-1:123456789:parameter/a-parameter-name",
+                }
+            ],
+            id="DirectoryService with PasswordSecretArn as Parameter in SSM",
+        ),
     ],
 )
-def test_head_node_permissions(mocker, test_datadir, config_file_name):
+def test_head_node_permissions(mocker, test_datadir, config_file_name, head_node_permissions):
     mock_aws_api(mocker)
     mock_bucket_object_utils(mocker)
 
@@ -39,7 +60,9 @@ def test_head_node_permissions(mocker, test_datadir, config_file_name):
     )
 
     head_node_policy = get_head_node_policy(generated_template)
-    statement = get_statement_by_sid(policy=head_node_policy, sid="AllowGettingDirectorySecretValue")
-    assert_that(statement["Effect"]).is_equal_to("Allow")
-    assert_that(statement["Action"]).is_equal_to("secretsmanager:GetSecretValue")
-    assert_that(statement["Resource"]).is_equal_to("arn:aws:secretsmanager:eu-west-1:123456789:secret:a-secret-name")
+
+    for head_node_permission in head_node_permissions:
+        statement = get_statement_by_sid(policy=head_node_policy, sid=head_node_permission["Sid"])
+        assert_that(statement["Effect"]).is_equal_to("Allow")
+        assert_that(statement["Action"]).is_equal_to(head_node_permission["Action"])
+        assert_that(statement["Resource"]).is_equal_to(head_node_permission["Resource"])
