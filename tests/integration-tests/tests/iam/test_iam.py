@@ -587,6 +587,9 @@ def _create_permission_boundary(permission_boundary_name):
                         "cloudwatch:ListDashboards",
                         "cloudwatch:DeleteDashboards",
                         "cloudwatch:GetDashboard",
+                        "cloudwatch:PutMetricAlarm",
+                        "cloudwatch:DeleteAlarms",
+                        "cloudwatch:DescribeAlarms",
                     ],
                     "Condition": {
                         "Fn::If": [
