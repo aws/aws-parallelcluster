@@ -310,13 +310,13 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
             {
                 "Action": "s3:GetBucketAcl",
                 "Effect": "Allow",
-                "Resource": f"arn:aws:s3:::{bucket_name}",
+                "Resource": f"arn:{cluster.partition}:s3:::{bucket_name}",
                 "Principal": {"Service": f"logs.{cluster.region}.amazonaws.com"},
             },
             {
                 "Action": "s3:PutObject",
                 "Effect": "Allow",
-                "Resource": f"arn:aws:s3:::{bucket_name}/*",
+                "Resource": f"arn:{cluster.partition}:s3:::{bucket_name}/*",
                 "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}},
                 "Principal": {"Service": f"logs.{cluster.region}.amazonaws.com"},
             },

@@ -24,7 +24,7 @@ from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 from troposphere.iam import ManagedPolicy
 from troposphere.template_generator import TemplateGenerator
-from utils import generate_stack_name, wait_for_computefleet_changed
+from utils import generate_stack_name, get_arn_partition, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.schedulers.test_awsbatch import _test_job_submission as _test_job_submission_awsbatch
@@ -291,7 +291,9 @@ def _get_resource_name_from_resource_arn(resource_arn):
 @pytest.mark.usefixtures("os", "instance")
 def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factory):
     """Test IAM Policies"""
-    cluster_config = pcluster_config_reader(iam_policies=["arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"])
+    cluster_config = pcluster_config_reader(
+        iam_policies=[f"arn:{get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"]
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
@@ -365,7 +367,7 @@ def test_iam_resource_prefix(
             )
 
             cluster = clusters_factory(cluster_config, custom_cli_credentials=creds)
-            _test_iam_resource_in_cluster(cfn_client, iam_client, cluster.name, iam_resource_prefix)
+            _test_iam_resource_in_cluster(region, cfn_client, iam_client, cluster.name, iam_resource_prefix)
 
 
 def _update_paramters_and_conditions(parameters, conditions, iam_path, iam_name_prefix):
@@ -706,11 +708,11 @@ def _split_resource_prefix(resource_prefix):
     return None, None
 
 
-def _check_iam_resource_prefix(resource_arn_list, iam_resource_prefix):
+def _check_iam_resource_prefix(region, resource_arn_list, iam_resource_prefix):
     """Check the path and name of IAM resource ( Roles, policy and Instance profiles)."""
     iam_path, iam_name_prefix = _split_resource_prefix(iam_resource_prefix)
     for resource in resource_arn_list:
-        if "arn:aws:iam:" in resource:
+        if f"arn:{get_arn_partition(region)}:iam:" in resource:
             if iam_path:
                 assert_that(resource).contains(iam_path)
             else:
@@ -719,7 +721,7 @@ def _check_iam_resource_prefix(resource_arn_list, iam_resource_prefix):
             assert_that(resource).contains(iam_name_prefix)
 
 
-def _test_iam_resource_in_cluster(cfn_client, iam_client, stack_name, iam_resource_prefix):
+def _test_iam_resource_in_cluster(region, cfn_client, iam_client, stack_name, iam_resource_prefix):
     """Test IAM resources by checking the path and name prefix in AWS IAM and check cluster is created."""
 
     # Check for cluster Status
@@ -744,7 +746,7 @@ def _test_iam_resource_in_cluster(cfn_client, iam_client, stack_name, iam_resour
                     "Arn"
                 ]
             )
-    _check_iam_resource_prefix(resource_arn_list, iam_resource_prefix)
+    _check_iam_resource_prefix(region, resource_arn_list, iam_resource_prefix)
 
 
 @pytest.fixture(scope="class")
