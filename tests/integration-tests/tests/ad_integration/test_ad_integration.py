@@ -142,7 +142,7 @@ def zip_dir(path):
     return file_out
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def store_secret_in_secret_manager(request, cfn_stacks_factory):
     secret_arns = {}
 
@@ -356,7 +356,7 @@ def _delete_certificate(certificate_arn, region):
     boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_secret_manager):  # noqa: C901
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
