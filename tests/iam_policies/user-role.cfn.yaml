@@ -371,6 +371,7 @@ Resources:
               - cloudwatch:PutMetricAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
+              - cloudwatch:GetMetricData
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -1030,6 +1031,17 @@ Resources:
               - logs:TagResource
               - logs:UntagResource
             Resource: !Sub arn:${AWS::Partition}:logs:*:*:log-group:/aws/imagebuilder/*
+          - Effect: Allow
+            Action:
+              - cloudwatch:PutDashboard
+              - cloudwatch:ListDashboards
+              - cloudwatch:DeleteDashboards
+              - cloudwatch:GetDashboard
+              - cloudwatch:PutMetricAlarm
+              - cloudwatch:DeleteAlarms
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:GetMetricData
+            Resource: "*"
 
 Outputs:
   ParallelClusterUserRole:
