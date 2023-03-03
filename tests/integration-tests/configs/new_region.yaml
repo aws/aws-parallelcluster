@@ -62,8 +62,8 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-  dashboard:
-    test_dashboard.py::test_dashboard:
+  dashboard_and_alarms:
+    test_dashboard_and_alarms.py::test_dashboard_and_alarms:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
