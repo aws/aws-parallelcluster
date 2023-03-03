@@ -20,7 +20,9 @@ import yaml
 from framework.credential_providers import run_pcluster_command
 from retrying import retry
 from utils import (
+    ClusterCreationError,
     dict_add_nested_key,
+    get_cfn_events,
     get_stack_id_tag_filter,
     kebab_case,
     retrieve_cfn_outputs,
@@ -44,7 +46,7 @@ def suppress_and_log_exception(func):
 class Cluster:
     """Contain all static and dynamic data related to a cluster instance."""
 
-    def __init__(self, name, ssh_key, config_file, region):
+    def __init__(self, name, ssh_key, config_file, region, custom_cli_credentials=None):
         self.name = name
         self.config_file = config_file
         self.ssh_key = ssh_key
@@ -57,6 +59,7 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
         self.__cfn_stack_arn = None
+        self.custom_cli_credentials = custom_cli_credentials
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
@@ -89,7 +92,12 @@ class Cluster:
         # TODO Remove the validator suppression below once the plugin scheduler is officially supported
         if self.config["Scheduling"]["Scheduler"] == "plugin":
             command.extend(["--suppress-validators", "type:SchedulerValidator"])
-        result = run_pcluster_command(command, raise_on_error=raise_on_error, log_error=log_error)
+        result = run_pcluster_command(
+            command,
+            raise_on_error=raise_on_error,
+            log_error=log_error,
+            custom_cli_credentials=self.custom_cli_credentials,
+        )
         logging.info("update-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
         if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
@@ -130,7 +138,7 @@ class Cluster:
             logging.warning("CloudWatch logs for cluster %s are preserved due to failure.", self.name)
         try:
             self.cfn_stack_arn  # Cache cfn_stack_arn attribute before stack deletion
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             if "DELETE_FAILED" in result.stdout:
                 error = "Cluster deletion failed for {0} with output: {1}".format(self.name, result.stdout)
                 logging.error(error)
@@ -153,7 +161,7 @@ class Cluster:
         else:  # slurm and scheduler plugin case
             cmd_args.append("START_REQUESTED")
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} started successfully".format(self.name))
             return result.stdout
         except subprocess.CalledProcessError as e:
@@ -169,7 +177,7 @@ class Cluster:
         else:  # slurm and scheduler plugin case
             cmd_args.append("STOP_REQUESTED")
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} stopped successfully".format(self.name))
             return result.stdout
         except subprocess.CalledProcessError as e:
@@ -180,7 +188,7 @@ class Cluster:
         """Run pcluster describe-cluster and return the result."""
         cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Get cluster {0} status successfully".format(self.name))
             return response
@@ -192,7 +200,7 @@ class Cluster:
         """Run pcluster describe-compute-fleet and return the result."""
         cmd_args = ["pcluster", "describe-compute-fleet", "--cluster-name", self.name]
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Describe cluster %s compute fleet successfully", self.name)
             return response
@@ -216,7 +224,7 @@ class Cluster:
         if queue_name:
             cmd_args.extend(["--queue-name", queue_name])
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Get cluster {0} instances successfully".format(self.name))
             return response["instances"]
@@ -239,7 +247,7 @@ class Cluster:
         if filters:
             cmd_args += ["--filters", filters]
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Cluster's logs exported successfully")
             return response
@@ -253,7 +261,7 @@ class Cluster:
         if next_token:
             cmd_args.extend(["--next-token", next_token])
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Cluster's logs listed successfully")
             return response
@@ -281,7 +289,7 @@ class Cluster:
                 cmd_args.extend([f"--{kebab_case(k)}", str(val)])
 
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Log events retrieved successfully")
             return response
@@ -296,7 +304,7 @@ class Cluster:
             cmd_args.extend([f"--{kebab_case(k)}", str(val)])
 
         try:
-            result = run_pcluster_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Stack events retrieved successfully")
             return response
@@ -419,8 +427,13 @@ class ClustersFactory:
         logging.info("Creating cluster {0} with config {1}".format(name, cluster.config_file))
         command, wait = self._build_command(cluster, kwargs)
         try:
-            result = run_pcluster_command(command, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
-
+            result = run_pcluster_command(
+                command,
+                timeout=7200,
+                raise_on_error=False,
+                log_error=log_error,
+                custom_cli_credentials=cluster.custom_cli_credentials,
+            )
             logging.info("create-cluster response: %s", result.stdout)
             response = json.loads(result.stdout)
             if wait:
@@ -428,12 +441,20 @@ class ClustersFactory:
                     error = f"Cluster creation failed for {name}"
                     logging.error(error)
                     if raise_on_error:
-                        raise Exception(error)
+                        # Get the stack ID so that we can retrieve events even
+                        # in the case where the stack has been deleted.
+                        stack_id = response.get("cloudformationStackArn")
+                        events = get_cfn_events(stack_name=stack_id, region=cluster.region)
+                        raise ClusterCreationError(error, stack_events=events, cluster_details=response)
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
                     cluster.mark_as_created()
             else:
+                if raise_on_error and result.returncode:
+                    error = f"Cluster creation failed for {name} with error: {result.stderr}"
+                    raise ClusterCreationError(error, cluster_details=response)
                 logging.info("Cluster {0} creation started successfully".format(name))
+
             return response
         finally:
             # Only add cluster to created_clusters if stack creation started

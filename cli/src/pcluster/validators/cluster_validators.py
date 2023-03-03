@@ -12,7 +12,7 @@ import math
 import re
 from collections import defaultdict
 from enum import Enum
-from ipaddress import ip_network
+from ipaddress import collapse_addresses, ip_network
 from itertools import combinations, product
 from typing import List
 
@@ -23,9 +23,11 @@ from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     DELETE_POLICY,
+    EFS_PORT,
     FSX_PORTS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
+    PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING,
     PCLUSTER_NAME_REGEX,
     PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
@@ -35,7 +37,13 @@ from pcluster.constants import (
     SUPPORTED_REGIONS,
     SUPPORTED_SCHEDULERS,
 )
-from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
+from pcluster.launch_template_utils import _LaunchTemplateBuilder
+from pcluster.utils import (
+    get_installed_version,
+    get_supported_os_for_architecture,
+    get_supported_os_for_scheduler,
+    remove_none_values,
+)
 from pcluster.validators.common import FailureLevel, Validator
 
 # pylint: disable=C0302
@@ -53,7 +61,7 @@ EFS_MESSAGES = {
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSES,
-    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2", "centos7"],
+    "arm64": SUPPORTED_OSES,
 }
 
 FSX_MESSAGES = {
@@ -78,16 +86,29 @@ CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH = 255 - HOST_NAME_MAX_LENGTH - 1
 class ClusterNameValidator(Validator):
     """Cluster name validator."""
 
-    def _validate(self, name):
-        if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
-            self._add_failure(
-                (
-                    "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-                    "It must start with an alphabetic character and can't be longer "
-                    f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
-                ),
-                FailureLevel.ERROR,
-            )
+    def _validate(self, name, scheduling):
+        if scheduling.scheduler == "slurm" and scheduling.settings.database is not None:
+            if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING - 1), name):
+                self._add_failure(
+                    (
+                        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and "
+                        "hyphens. "
+                        "It must start with an alphabetic character and when using Slurm accounting it can't be longer "
+                        f"than {PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING} characters."
+                    ),
+                    FailureLevel.ERROR,
+                )
+        else:
+            if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
+                self._add_failure(
+                    (
+                        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and "
+                        "hyphens. "
+                        "It must start with an alphabetic character and can't be longer "
+                        f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
+                    ),
+                    FailureLevel.ERROR,
+                )
 
 
 class RegionValidator(Validator):
@@ -280,7 +301,6 @@ class MaxCountValidator(Validator):
     """Validate whether the number of resource exceeds the limits."""
 
     def _validate(self, resources_length, max_length, resource_name):
-
         if resources_length > max_length:
             self._add_failure(
                 "Invalid number of {resource_name} ({resources_length}) specified. Currently only supports "
@@ -297,12 +317,11 @@ class MaxCountValidator(Validator):
 class EfaValidator(Validator):
     """Check if EFA and EFA GDR are supported features in the given instance type."""
 
-    def _validate(self, instance_type, efa_enabled, gdr_support):
-
+    def _validate(self, instance_type, efa_enabled, gdr_support, multiaz_enabled):
         instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
         if efa_enabled and not instance_type_supports_efa:
             self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
-        if instance_type_supports_efa and not efa_enabled:
+        if instance_type_supports_efa and not efa_enabled and not multiaz_enabled:
             self._add_failure(
                 f"The EC2 instance selected ({instance_type}) supports enhanced networking capabilities using "
                 "Elastic Fabric Adapter (EFA). EFA enables you to run applications requiring high levels of "
@@ -317,12 +336,15 @@ class EfaValidator(Validator):
 class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
-    def _validate(self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool):
-        if efa_enabled and placement_group_disabled:
+    def _validate(
+        self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool, multi_az_enabled: bool
+    ):
+        # if multi_az is enabled suggestions about PlacementGroups will be suppressed
+        if efa_enabled and placement_group_disabled and not multi_az_enabled:
             self._add_failure(
                 "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
             )
-        elif efa_enabled and placement_group_key is None:
+        elif efa_enabled and placement_group_key is None and not multi_az_enabled:
             self._add_failure(
                 "The placement group for EFA-enabled compute resources must be explicit. "
                 "You may see better performance using a placement group, but if you don't wish to use one please add "
@@ -374,46 +396,109 @@ class EfaSecurityGroupValidator(Validator):
         return False
 
 
+class EfaMultiAzValidator(Validator):
+    """Validate MultiAZ if EFA is enabled."""
+
+    def _validate(
+        self, queue_name: str, multi_az_enabled: bool, compute_resource_name: str, compute_resource_efa_enabled: bool
+    ):
+        if multi_az_enabled and compute_resource_efa_enabled:
+            message = (
+                f"You have enabled the Elastic Fabric Adapter (EFA) for the '{compute_resource_name}' Compute Resource"
+                f" on the '{queue_name}' queue. EFA is not supported across Availability zones. Either disable EFA "
+                "to use multiple subnets on the queue or specify only one subnet to enable EFA on "
+                "the compute resources."
+            )
+            self._add_failure(
+                message,
+                FailureLevel.ERROR,
+            )
+
+
 # --------------- Storage validators --------------- #
 
 
-def _check_in_out_access(security_groups_ids, port, is_cidr_optional, protocol="tcp"):
+def _is_access_allowed(security_groups_ids, subnets, port, security_groups_by_nodes, protocol="tcp"):
     """
     Verify given list of security groups to check if they allow in and out access on the given port.
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
-    :param is_cidr_optional: if it is True, don't enforce check on CIDR.
+    :param security_groups_by_nodes: all security groups from cluster. This is a set of frozen sets.
+    Each frozen set contains sg combination of a queue.
     :param protocol: the IP protocol to be checked.
     :return: True if both in and out access are allowed
     :raise: ClientError if a given security group doesn't exist
     """
     in_access = False
     out_access = False
+    src_ip_ranges = []
+    dst_ip_ranges = []
+    src_security_groups = set()
+    dst_security_groups = set()
 
     for sec_group in AWSApi.instance().ec2.describe_security_groups(security_groups_ids):
-
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
-            if _check_sg_rules_for_port(rule, port, protocol):
-                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
-                    in_access = True
-                    break
+            if in_access:
+                break
+            if _is_port_allowed_by_sg_rule(rule, port, protocol):
+                in_access = _populate_allowed_src_or_dst(rule, src_ip_ranges, src_security_groups)
 
         # Check all outbound rules
         for rule in sec_group.get("IpPermissionsEgress"):
-            if _check_sg_rules_for_port(rule, port, protocol):
-                if is_cidr_optional or rule.get("IpRanges") or rule.get("PrefixListIds"):
-                    out_access = True
-                    break
+            if out_access:
+                break
+            if _is_port_allowed_by_sg_rule(rule, port, protocol):
+                out_access = _populate_allowed_src_or_dst(rule, dst_ip_ranges, dst_security_groups)
 
         if in_access and out_access:
             return True
+    # If in_access or out_access is still False, check allowed ip ranges and security groups.
+    # The in_access or out_access could only have been true, if previous logics had found prefix list in SG rules.
+    # Rules of ip ranges have to be checked at the end because the union of all ip ranges may cover the subnets,
+    # even when individual ip ranges do not cover the subnets. The same reason applies to allowed security groups.
+    in_access = in_access or _are_ip_ranges_and_sg_accessible(
+        security_groups_by_nodes, src_ip_ranges, src_security_groups, subnets
+    )
+    out_access = out_access or _are_ip_ranges_and_sg_accessible(
+        security_groups_by_nodes, dst_ip_ranges, dst_security_groups, subnets
+    )
+    return in_access and out_access
 
+
+def _are_ip_ranges_and_sg_accessible(security_groups_by_nodes, allowed_ip_ranges, allowed_security_groups, subnets):
+    # For all cluster nodes, at least one of the security groups attached need to be in the UserIdGroupPairs.
+    return all(
+        node_security_groups & allowed_security_groups for node_security_groups in security_groups_by_nodes
+    ) or _are_subnets_covered_by_cidrs(allowed_ip_ranges, subnets)
+
+
+def _populate_allowed_src_or_dst(rule, ip_ranges, allowed_security_groups):
+    """
+    Collect Ip ranges or security groups allowed by the rule.
+
+    :param rule: A rule of a security group
+    :param ip_ranges: A list of ip ranges.
+    :param allowed_security_groups: A list of allowed security group.
+    :return: True if we can determine the current rule allows connection.
+    False if it does not allow connection or cannot be determined.
+    """
+    if rule.get("PrefixListIds"):
+        return True  # Always assume prefix list is properly set for code simplicity
+    elif rule.get("IpRanges"):
+        ip_ranges.extend(rule.get("IpRanges"))
+        return False  # Ip Ranges have to be checked later. Return False because the rule allowance is not determined.
+    elif rule.get("UserIdGroupPairs"):
+        allowed_security_groups.update(
+            {user_id_group_pair.get("GroupId") for user_id_group_pair in rule.get("UserIdGroupPairs")}
+        )
+        # Security groups have to be checked later. Return False because the rule allowance is not determined.
+        return False
     return False
 
 
-def _check_sg_rules_for_port(rule, port_to_check, protocol):
+def _is_port_allowed_by_sg_rule(rule, port_to_check, protocol):
     """
     Verify if the security group rule accepts connections on the given port.
 
@@ -444,6 +529,23 @@ def _check_sg_rules_for_port(rule, port_to_check, protocol):
     return False
 
 
+def _are_subnets_covered_by_cidrs(ip_ranges, subnets):
+    """Verify given list of security groups to check if they allow in and out access on cluster subnet CIDRs."""
+    # Collapse ip ranges for better performance and correctness
+    collapsed_ip_ranges = list(collapse_addresses([ip_network(ip_range["CidrIp"]) for ip_range in ip_ranges]))
+
+    for subnet in subnets:
+        subnet_cidr = ip_network(AWSApi.instance().ec2.get_subnet_cidr(subnet))
+        covered = False
+        for ip_range in collapsed_ip_ranges:
+            if ip_range.supernet_of(subnet_cidr):
+                covered = True
+                break
+        if not covered:
+            return False
+    return True
+
+
 class ExistingFsxNetworkingValidator(Validator):
     """
     FSx networking validator.
@@ -465,27 +567,23 @@ class ExistingFsxNetworkingValidator(Validator):
         else:
             return {}
 
-    def _validate(self, file_system_ids, head_node_subnet_id, are_all_security_groups_customized):
+    def _validate(self, file_system_ids, subnet_ids, security_groups_by_nodes):
         try:
-            # Check to see if there is any existing mt on the fs
             file_systems = AWSApi.instance().fsx.get_file_systems_info(file_system_ids)
-
-            vpc_id = AWSApi.instance().ec2.get_subnet_vpc(head_node_subnet_id)
-
-            network_interfaces_data = self._describe_network_interfaces(file_systems)
-
-            self._check_file_systems(are_all_security_groups_customized, file_systems, network_interfaces_data, vpc_id)
+            self._check_file_systems(security_groups_by_nodes, file_systems, subnet_ids)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
-    def _check_file_systems(self, are_all_security_groups_customized, file_systems, network_interfaces_data, vpc_id):
+    def _check_file_systems(self, security_groups_by_nodes, file_systems, subnet_ids):
+        vpc_id = AWSApi.instance().ec2.get_subnet_vpc(subnet_ids[0])
+        network_interfaces_data = self._describe_network_interfaces(file_systems)
         for file_system in file_systems:
             # Check to see if fs is in the same VPC as the stack
             file_system_id = file_system.file_system_id
             if file_system.vpc_id != vpc_id:
                 self._add_failure(
                     "Currently only support using FSx file system that is in the same VPC as the cluster. "
-                    "The file system provided is in {0}.".format(file_system.vpc_id),
+                    f"The file system {file_system_id} is in {file_system.vpc_id}.",
                     FailureLevel.ERROR,
                 )
 
@@ -506,7 +604,7 @@ class ExistingFsxNetworkingValidator(Validator):
 
                 for protocol, ports in FSX_PORTS[file_system.file_system_type].items():
                     missing_ports = self._get_missing_ports(
-                        are_all_security_groups_customized, network_interfaces, ports, protocol
+                        security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol
                     )
 
                     if missing_ports:
@@ -518,17 +616,18 @@ class ExistingFsxNetworkingValidator(Validator):
                             FailureLevel.ERROR,
                         )
 
-    def _get_missing_ports(self, are_all_security_groups_customized, network_interfaces, ports, protocol):
+    def _get_missing_ports(self, security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol):
         missing_ports = []
         for port in ports:
             fs_access = False
             for network_interface in network_interfaces:
                 # Get list of security group IDs
                 sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                if _check_in_out_access(
+                if _is_access_allowed(
                     sg_ids,
+                    subnet_ids,
                     port=port,
-                    is_cidr_optional=are_all_security_groups_customized,
+                    security_groups_by_nodes=security_groups_by_nodes,
                     protocol=protocol,
                 ):
                     fs_access = True
@@ -540,13 +639,12 @@ class ExistingFsxNetworkingValidator(Validator):
 
 class FsxArchitectureOsValidator(Validator):
     """
-    FSx networking validator.
+    FSx architecture and OS validator.
 
-    Validate file system mount point according to the head node subnet.
+    Validate that OS and architecture are compatible with FSx.
     """
 
     def _validate(self, architecture: str, os):
-
         if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
             self._add_failure(
                 FSX_MESSAGES["errors"]["unsupported_architecture"].format(
@@ -658,21 +756,73 @@ class NumberOfStorageValidator(Validator):
             )
 
 
+class ManagedFsxMultiAzValidator(Validator):
+    """
+    Managed FSx Storage Vs Multiple Subnets validator.
+
+    Validate if managed storage of type FSx is set when using multiple subnets in queues configuration.
+    """
+
+    def _validate(self, compute_subnet_ids, new_storage_count):
+        if len(compute_subnet_ids) > 1 and new_storage_count.get("fsx") > 0:
+            self._add_failure(
+                "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids "
+                "under the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared "
+                "storage, properly configured to work across the target subnets or remove the managed FSx storage to "
+                "use multiple subnets for a queue.",
+                FailureLevel.ERROR,
+            )
+
+
+class UnmanagedFsxMultiAzValidator(Validator):
+    """
+    Unmanaged FSx Storage Vs Multiple Subnets validator.
+
+    Unmanaged FSx volumes can exist in AZ that are different from the ones defined in queues configuration.
+    In these cases we notify customers that they may incur in increased latency and costs.
+    """
+
+    def _validate(self, queues, fsx_az_list):
+        for queue in queues:
+            queue_az_set = set(queue.networking.az_list)
+            fs_az_set = set(fsx_az_list)
+            # we want to ensure that all the az defined in the queue are supported by the FS
+            if not queue_az_set.issubset(fs_az_set):
+                self._add_failure(
+                    "Your configuration for Queue '{0}' includes multiple subnets and external shared storage "
+                    "configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                    "networking latency and added inter-AZ data transfer costs.".format(queue.name),
+                    FailureLevel.INFO,
+                )
+
+
 class EfsIdValidator(Validator):  # TODO add tests
     """
     EFS id validator.
 
-    Validate if there are existing mount target in the head node availability zone
+    Validate if there are existing mount target in the cluster (head and computes) availability zone
     """
 
-    def _validate(self, efs_id, avail_zones_mapping: dict, are_all_security_groups_customized):
+    def _validate(self, efs_id, avail_zones_mapping: dict, security_groups_by_nodes):
+        availability_zones = avail_zones_mapping.keys()
+        if len(availability_zones) > 1 and not AWSApi.instance().efs.is_efs_standard(efs_id):
+            self._add_failure(
+                f"Cluster has subnets located in different availability zones but EFS ({efs_id}) uses OneZone EFS "
+                "storage class which works within a single Availability Zone. Please use subnets located in one "
+                "Availability Zone or use a standard storage class EFS.",
+                FailureLevel.ERROR,
+            )
+
+        avail_zones_missing_mount_target_for_efs_standard = []
         for avail_zone, subnets in avail_zones_mapping.items():
             head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, avail_zone)
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
             if head_node_target_id:
                 # Get list of security group IDs of the mount target
                 sg_ids = AWSApi.instance().efs.get_efs_mount_target_security_groups(head_node_target_id)
-                if not _check_in_out_access(sg_ids, port=2049, is_cidr_optional=are_all_security_groups_customized):
+                if not _is_access_allowed(
+                    sg_ids, subnets, port=EFS_PORT, security_groups_by_nodes=security_groups_by_nodes
+                ):
                     self._add_failure(
                         "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
                         "but it does not have a security group that allows inbound and outbound rules to support NFS. "
@@ -681,44 +831,17 @@ class EfsIdValidator(Validator):  # TODO add tests
                         ),
                         FailureLevel.ERROR,
                     )
-                if not are_all_security_groups_customized:
-                    self._check_cidrs_cover_subnets(head_node_target_id, avail_zone, sg_ids, efs_id, subnets)
-
-    def _check_subnet_access(self, security_groups_ids, subnet_cidr, access_type):
-        permission = "IpPermissions" if access_type == "in" else "IpPermissionsEgress"
-        access = False
-        for sec_group in security_groups_ids:
-            for rule in sec_group.get(permission):
-                if rule.get("PrefixListIds"):
-                    access = True
-                    break
-                if rule.get("IpRanges"):
-                    for ip_range in rule.get("IpRanges"):
-                        if ip_network(ip_range.get("CidrIp")).supernet_of(subnet_cidr):
-                            access = True
-                            break
-        return access
-
-    def _check_cidrs_cover_subnets(self, head_node_target_id, avail_zone, security_groups_ids, efs_id, subnets):
-        """Verify given list of security groups to check if they allow in and out access on cluster subnet CIDRs."""
-        security_groups_ids = AWSApi.instance().ec2.describe_security_groups(security_groups_ids)
-        for subnet in subnets:
-            subnet_cidr = ip_network(AWSApi.instance().ec2.get_subnet_cidr(subnet))
-            in_access, out_access = self._check_subnet_access(
-                security_groups_ids, subnet_cidr, "in"
-            ), self._check_subnet_access(security_groups_ids, subnet_cidr, "out")
-
-            if not in_access or not out_access:
-                self._add_failure(
-                    "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
-                    "but it does not have a security group that allows inbound and outbound rules to allow traffic of "
-                    "subnet {3}. Please modify the Mount Target's security group, to allow traffic on subnet.".format(
-                        head_node_target_id, avail_zone, efs_id, subnet
-                    ),
-                    FailureLevel.WARNING,
-                )
-
-        return False
+            else:
+                if AWSApi.instance().efs.is_efs_standard(efs_id):
+                    avail_zones_missing_mount_target_for_efs_standard.append(avail_zone)
+        if avail_zones_missing_mount_target_for_efs_standard:
+            self._add_failure(
+                "There is no existing Mount Target for EFS '{0}' in these Availability Zones: '{1}'. "
+                "Please create an EFS Mount Target for those availability zones.".format(
+                    efs_id, avail_zones_missing_mount_target_for_efs_standard
+                ),
+                FailureLevel.ERROR,
+            )
 
 
 class SharedStorageNameValidator(Validator):
@@ -775,7 +898,10 @@ class SharedStorageMountDirValidator(Validator):
             "/sbin",
             "/srv",
             "/sys",
-            "/tmp",  # nosec nosemgrep
+            # A nosec comment is appended to the following line in order to disable the B108 check.
+            # It is a false positive since is a list to check folder name
+            # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+            "/tmp",  # nosec B108
             "/usr",
             "/var",
         ]
@@ -941,16 +1067,21 @@ class MixedSecurityGroupOverwriteValidator(Validator):
 class _LaunchTemplateValidator(Validator):
     """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
 
+    def __init__(self):
+        super().__init__()
+        self._launch_template_builder = DictLaunchTemplateBuilder()
+
+    @staticmethod
     def _build_launch_network_interfaces(
-        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
+        network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
     ):
         """Build the needed NetworkInterfaces to launch an instance."""
         network_interfaces = []
-        for device_index in range(network_interfaces_count):
+        for network_interface_index in range(network_interfaces_count):
             network_interfaces.append(
                 {
-                    "DeviceIndex": device_index,
-                    "NetworkCardIndex": device_index,
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": network_interface_index,
                     "InterfaceType": "efa" if use_efa else "interface",
                     "Groups": security_group_ids,
                     "SubnetId": subnet,
@@ -965,7 +1096,7 @@ class _LaunchTemplateValidator(Validator):
     def _ec2_run_instance(self, availability_zone: str, **kwargs):  # noqa: C901 FIXME!!!
         """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
         try:
-            AWSApi.instance().ec2.run_instances(**kwargs)
+            AWSApi.instance().ec2.run_instances(**remove_none_values(kwargs))
         except AWSClientError as e:
             code = e.error_code
             message = str(e)
@@ -1031,7 +1162,7 @@ class _LaunchTemplateValidator(Validator):
 class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, head_node, ami_id, tags):
+    def _validate(self, head_node, os, ami_id, tags, imds_support):
         try:
             head_node_security_groups = []
             if head_node.networking.security_groups:
@@ -1056,6 +1187,13 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 NetworkInterfaces=head_node_network_interfaces,
                 DryRun=True,
                 TagSpecifications=self._generate_tag_specifications(tags),
+                KeyName=head_node.ssh.key_name,
+                BlockDeviceMappings=(
+                    self._launch_template_builder.get_block_device_mappings(head_node.local_storage.root_volume, os)
+                ),
+                MetadataOptions={
+                    "HttpTokens": "required" if imds_support == "v2.0" else "optional",
+                },
             )
         except Exception as e:
             self._add_failure(
@@ -1086,7 +1224,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, ami_id, tags):
+    def _validate(self, queue, os, ami_id, tags, imds_support):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1096,9 +1234,6 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             if queue.networking.additional_security_groups:
                 queue_security_groups.extend(queue.networking.additional_security_groups)
 
-            queue_placement_group_id = queue.networking.placement_group.id if queue.networking.placement_group else None
-            queue_placement_group = {"GroupName": queue_placement_group_id} if queue_placement_group_id else {}
-
             # Select the "best" compute resource to run dryrun tests against.
             # Resources with multiple NICs are preferred among others.
             # Temporarily limiting dryrun tests to 1 per queue to save boto3 calls.
@@ -1106,15 +1241,23 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 (compute_res for compute_res in queue.compute_resources if compute_res.max_network_interface_count > 1),
                 queue.compute_resources[0],
             )
+            compute_resource_placement_group = (
+                dry_run_compute_resource.networking.placement_group or queue.networking.placement_group
+            )
+
+            placement_group_name = compute_resource_placement_group.assignment
             # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
             self._test_compute_resource(
+                queue=queue,
+                os=os,
                 compute_resource=dry_run_compute_resource,
                 use_public_ips=bool(queue.networking.assign_public_ip),
                 ami_id=ami_id,
                 subnet_id=queue_subnet_id,
                 security_groups_ids=queue_security_groups,
-                placement_group=queue_placement_group,
+                placement_group={"GroupName": placement_group_name} if placement_group_name else {},
                 tags=tags,
+                imds_support=imds_support,
             )
         except Exception as e:
             self._add_failure(
@@ -1122,7 +1265,17 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
     def _test_compute_resource(
-        self, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
+        self,
+        queue,
+        os,
+        compute_resource,
+        use_public_ips,
+        ami_id,
+        subnet_id,
+        security_groups_ids,
+        placement_group,
+        tags,
+        imds_support,
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
@@ -1142,6 +1295,16 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             NetworkInterfaces=network_interfaces,
             DryRun=True,
             TagSpecifications=self._generate_tag_specifications(tags),
+            InstanceMarketOptions=self._launch_template_builder.get_instance_market_options(queue, compute_resource),
+            CapacityReservationSpecification=self._launch_template_builder.get_capacity_reservation(
+                queue, compute_resource
+            ),
+            BlockDeviceMappings=self._launch_template_builder.get_block_device_mappings(
+                queue.compute_settings.local_storage.root_volume, os
+            ),
+            MetadataOptions={
+                "HttpTokens": "required" if imds_support == "v2.0" else "optional",
+            },
         )
 
 
@@ -1201,3 +1364,47 @@ class SchedulerValidator(Validator):
                 f"{scheduler} scheduler is not supported. Supported schedulers are: {', '.join(SUPPORTED_SCHEDULERS)}.",
                 FailureLevel.ERROR,
             )
+
+
+class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
+    """Concrete class to build a dict with EC2 run instance properties to simulate our launch templates."""
+
+    def _block_device_mapping_for_ebs(self, device_name, volume):
+        return {
+            "DeviceName": device_name,
+            "Ebs": remove_none_values(
+                {
+                    "Encrypted": volume.encrypted,
+                    "VolumeType": volume.volume_type,
+                    "Iops": volume.iops,
+                    "Throughput": volume.throughput,
+                    "DeleteOnTermination": volume.delete_on_termination,
+                    "VolumeSize": volume.size,
+                }
+            ),
+        }
+
+    def _block_device_mapping_for_virt(self, device_name, virtual_name):
+        return {"DeviceName": device_name, "VirtualName": virtual_name}
+
+    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+        return {
+            "MarketType": market_type,
+            "SpotOptions": remove_none_values(
+                {
+                    "SpotInstanceType": spot_instance_type,
+                    "InstanceInterruptionBehavior": instance_interruption_behavior,
+                    "MaxPrice": max_price,
+                }
+            ),
+        }
+
+    def _capacity_reservation(self, cr_target):
+        return {
+            "CapacityReservationTarget": remove_none_values(
+                {
+                    "CapacityReservationId": cr_target.capacity_reservation_id,
+                    "CapacityReservationResourceGroupArn": cr_target.capacity_reservation_resource_group_arn,
+                }
+            )
+        }

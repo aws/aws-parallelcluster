@@ -22,8 +22,8 @@ import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.aws.common import get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
+from pcluster.aws.common import AWSClientError, get_region
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, DeploymentSettings
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -31,6 +31,7 @@ from pcluster.constants import (
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    CW_LOGS_ROTATION_ENABLED_DEFAULT,
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
@@ -50,6 +51,7 @@ from pcluster.constants import (
     SCHEDULER_PLUGIN_INTERFACE_VERSION,
     SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
     SUPPORTED_OSES,
+    Feature,
 )
 from pcluster.utils import (
     get_attr,
@@ -64,7 +66,6 @@ from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeResourceSizeValidator,
     AwsBatchFsxValidator,
     AwsBatchInstancesArchitectureCompatibilityValidator,
-    AwsBatchRegionValidator,
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
@@ -76,6 +77,7 @@ from pcluster.validators.cluster_validators import (
     DeletionPolicyValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
+    EfaMultiAzValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -89,6 +91,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
     NameValidator,
@@ -101,6 +104,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
+    UnmanagedFsxMultiAzValidator,
 )
 from pcluster.validators.common import ValidatorContext
 from pcluster.validators.database_validators import DatabaseUriValidator
@@ -117,6 +121,8 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
+    MultiAzEbsVolumeValidator,
+    MultiAzRootVolumeValidator,
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
@@ -127,11 +133,14 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeAcceleratorManufacturerValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
+    InstanceTypePlacementGroupValidator,
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
     PlacementGroupNamingValidator,
 )
+from pcluster.validators.efs_validators import EfsMountOptionsValidator
+from pcluster.validators.feature_validators import FeatureRegionValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
@@ -141,17 +150,30 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
-from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
-from pcluster.validators.instance_type_list_validators import (
-    InstanceTypeListAcceleratorsValidator,
-    InstanceTypeListAllocationStrategyValidator,
-    InstanceTypeListCPUValidator,
-    InstanceTypeListEFAValidator,
-    InstanceTypeListMemorySchedulingValidator,
-    InstanceTypeListNetworkingValidator,
+from pcluster.validators.iam_validators import (
+    IamPolicyValidator,
+    IamResourcePrefixValidator,
+    InstanceProfileValidator,
+    RoleValidator,
+)
+from pcluster.validators.instances_validators import (
+    InstancesAcceleratorsValidator,
+    InstancesAllocationStrategyValidator,
+    InstancesCPUValidator,
+    InstancesEFAValidator,
+    InstancesMemorySchedulingValidator,
+    InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
+from pcluster.validators.monitoring_validators import LogRotationValidator
+from pcluster.validators.networking_validators import (
+    ElasticIpValidator,
+    MultiAzPlacementGroupValidator,
+    QueueSubnetsValidator,
+    SecurityGroupsValidator,
+    SingleInstanceTypeSubnetValidator,
+    SubnetsValidator,
+)
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
     S3BucketUriValidator,
@@ -294,6 +316,19 @@ class SharedEbs(Ebs):
         self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
 
+    @property
+    def is_managed(self):
+        """Return True if the volume is managed."""
+        return self.volume_id is None
+
+    @property
+    def availability_zone(self):
+        """Return the availability zone of an existing EBS volume."""
+        if not self.is_managed:
+            return AWSApi.instance().ec2.describe_volume(self.volume_id)["AvailabilityZone"]
+        else:
+            return ""
+
 
 class SharedEfs(Resource):
     """Represent the shared EFS resource."""
@@ -309,6 +344,8 @@ class SharedEfs(Resource):
         provisioned_throughput: int = None,
         file_system_id: str = None,
         deletion_policy: str = None,
+        encryption_in_transit: bool = None,
+        iam_authorization: bool = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
@@ -323,6 +360,8 @@ class SharedEfs(Resource):
         self.deletion_policy = Resource.init_param(
             deletion_policy, default=DELETE_POLICY if not file_system_id else None
         )
+        self.encryption_in_transit = Resource.init_param(encryption_in_transit, default=False)
+        self.iam_authorization = Resource.init_param(iam_authorization, default=False)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SharedStorageNameValidator, name=self.name)
@@ -330,6 +369,12 @@ class SharedEfs(Resource):
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
+        self._register_validator(
+            EfsMountOptionsValidator,
+            encryption_in_transit=self.encryption_in_transit,
+            iam_authorization=self.iam_authorization,
+            name=self.name,
+        )
 
 
 class BaseSharedFsx(Resource):
@@ -346,16 +391,37 @@ class BaseSharedFsx(Resource):
         self._register_validator(SharedStorageNameValidator, name=self.name)
 
     @property
+    def is_unmanaged(self):
+        """Return true if using existing FSx."""
+        return self.file_system_id is not None
+
+    @property
     def file_system_data(self):
         """Return filesystem information if using existing FSx."""
-        if not self.__file_system_data and self.file_system_id:
+        if not self.__file_system_data and self.is_unmanaged:
             self.__file_system_data = AWSApi.instance().fsx.get_file_systems_info([self.file_system_id])[0]
         return self.__file_system_data
 
     @property
+    def file_system_subnets(self):
+        """Return list of subnets associated to existing FSx."""
+        return self.file_system_data.subnet_ids if self.is_unmanaged else []
+
+    @property
+    def file_system_availability_zones(self):
+        """Return list of AZ associated to existing FSx."""
+        availability_zones = []
+        if self.is_unmanaged:
+            mapping = AWSApi.instance().ec2.get_subnets_az_mapping(self.file_system_subnets)
+            for availability_zone in mapping.values():
+                availability_zones.append(availability_zone)
+
+        return availability_zones
+
+    @property
     def existing_dns_name(self):
         """Return DNSName if using existing FSx filesystem."""
-        return self.file_system_data.dns_name if self.file_system_id else ""
+        return self.file_system_data.dns_name if self.is_unmanaged else ""
 
 
 class SharedFsxLustre(BaseSharedFsx):
@@ -579,14 +645,14 @@ class PlacementGroup(Resource):
         self._register_validator(PlacementGroupNamingValidator, placement_group=self)
 
     @property
-    def is_enabled_and_unassigned(self) -> bool:
-        """Check if the PlacementGroup is enabled without a name or id."""
-        return not (self.id or self.name) and self.enabled
-
-    @property
     def assignment(self) -> str:
         """Check if the placement group has a name or id and get it, preferring the name if it exists."""
         return self.name or self.id
+
+    @property
+    def enabled_or_assigned(self):
+        """Check if a placement group was enabled or passed as parameter."""
+        return self.enabled or self.assignment is not None
 
 
 class SlurmComputeResourceNetworking(Resource):
@@ -604,6 +670,25 @@ class _QueueNetworking(_BaseNetworking):
         super().__init__(**kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
+        self._az_subnet_ids_mapping = None
+
+    @property
+    def subnet_id_az_mapping(self):
+        """Map queue subnet ids to availability zones."""
+        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
+    @property
+    def az_subnet_ids_mapping(self):
+        """Map queue subnet ids to availability zones."""
+        if not self._az_subnet_ids_mapping:
+            self._az_subnet_ids_mapping = defaultdict(set)
+            for subnet_id, _az in self.subnet_id_az_mapping.items():
+                self._az_subnet_ids_mapping[_az].add(subnet_id)
+        return self._az_subnet_ids_mapping
+
+    @property
+    def az_list(self):
+        return list(self.az_subnet_ids_mapping.keys())
 
 
 class SlurmQueueNetworking(_QueueNetworking):
@@ -672,6 +757,14 @@ class CloudWatchLogs(Resource):
         self.deletion_policy = Resource.init_param(deletion_policy, default="Retain")
 
 
+class LogRotation(Resource):
+    """Represent the Rotation configuration in Logs."""
+
+    def __init__(self, enabled: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.enabled = Resource.init_param(enabled, default=CW_LOGS_ROTATION_ENABLED_DEFAULT)
+
+
 class CloudWatchDashboards(Resource):
     """Represent the CloudWatch Dashboard."""
 
@@ -683,9 +776,13 @@ class CloudWatchDashboards(Resource):
 class Logs(Resource):
     """Represent the CloudWatch Logs configuration."""
 
-    def __init__(self, cloud_watch: CloudWatchLogs = None, **kwargs):
+    def __init__(self, cloud_watch: CloudWatchLogs = None, rotation: LogRotation = None, **kwargs):
         super().__init__(**kwargs)
         self.cloud_watch = cloud_watch or CloudWatchLogs(implied=True)
+        self.rotation = rotation or LogRotation(implied=True)
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(LogRotationValidator, log=self)
 
 
 class Dashboards(Resource):
@@ -862,14 +959,17 @@ class DirectoryService(Resource):
 class ClusterIam(Resource):
     """Represent the IAM configuration for Cluster."""
 
-    def __init__(self, roles: Roles = None, permissions_boundary: str = None):
+    def __init__(self, roles: Roles = None, permissions_boundary: str = None, resource_prefix: str = None):
         super().__init__()
         self.roles = roles
         self.permissions_boundary = Resource.init_param(permissions_boundary)
+        self.resource_prefix = Resource.init_param(resource_prefix)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         if self.permissions_boundary:
             self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
+        if self.resource_prefix:
+            self._register_validator(IamResourcePrefixValidator, resource_prefix=self.resource_prefix)
 
 
 class IntelSoftware(Resource):
@@ -998,10 +1098,16 @@ class CustomAction(Resource):
 class CustomActions(Resource):
     """Represent a custom action resource."""
 
-    def __init__(self, on_node_start: CustomAction = None, on_node_configured: CustomAction = None):
+    def __init__(
+        self,
+        on_node_start: CustomAction = None,
+        on_node_configured: CustomAction = None,
+        on_node_updated: CustomAction = None,
+    ):
         super().__init__()
         self.on_node_start = Resource.init_param(on_node_start)
         self.on_node_configured = Resource.init_param(on_node_configured)
+        self.on_node_updated = Resource.init_param(on_node_updated)
 
 
 class HeadNode(Resource):
@@ -1111,6 +1217,10 @@ class BaseQueue(Resource):
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
+    def is_spot(self):
+        """Return True if the queue has SPOT capacity."""
+        return self.capacity_type == CapacityType.SPOT
+
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
 
@@ -1135,6 +1245,7 @@ class BaseClusterConfig(Resource):
         imds: TopLevelImds = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
+        deployment_settings: DeploymentSettings = None,
     ):
         super().__init__()
         self.__region = None
@@ -1164,10 +1275,13 @@ class BaseClusterConfig(Resource):
         self.original_config_version = ""
         self._official_ami = None
         self.imds = imds or TopLevelImds(implied="v1.0")
+        self.deployment_settings = deployment_settings
+        self.managed_head_node_security_group = None
+        self.managed_compute_security_group = None
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
-        self._register_validator(ClusterNameValidator, name=self.cluster_name)
+        self._register_validator(ClusterNameValidator, name=self.cluster_name, scheduling=self.scheduling)
         self._register_validator(
             ArchitectureOsValidator,
             os=self.image.os,
@@ -1185,6 +1299,7 @@ class BaseClusterConfig(Resource):
             self._register_validator(
                 AmiOsCompatibleValidator, os=self.image.os, image_id=self.head_node.image.custom_ami
             )
+        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
         self._register_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
@@ -1192,10 +1307,13 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
             head_node=self.head_node,
+            os=self.image.os,
             ami_id=self.head_node_ami,
             tags=self.get_cluster_tags(),
+            imds_support=self.imds.imds_support,
         )
         if self.head_node.dcv:
+            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
             self._register_validator(
                 DcvValidator,
                 instance_type=self.head_node.instance_type,
@@ -1240,7 +1358,7 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
 
-    def _register_storage_validators(self):
+    def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:
             ebs_count = 0
             new_storage_count = defaultdict(int)
@@ -1269,12 +1387,18 @@ class BaseClusterConfig(Resource):
                         existing_fsx.add(storage.file_system_id)
                     else:
                         new_storage_count["fsx"] += 1
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_LUSTRE, region=self.region)
                     self._register_validator(
                         FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
-                elif isinstance(storage, (ExistingFsxOpenZfs, ExistingFsxOntap)):
+                elif isinstance(storage, ExistingFsxOpenZfs):
                     existing_storage_count["fsx"] += 1
                     existing_fsx.add(storage.file_system_id)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_OPENZFS, region=self.region)
+                elif isinstance(storage, ExistingFsxOntap):
+                    existing_storage_count["fsx"] += 1
+                    existing_fsx.add(storage.file_system_id)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_ONTAP, region=self.region)
                 elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
@@ -1287,18 +1411,21 @@ class BaseClusterConfig(Resource):
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
                             avail_zones_mapping=self.availability_zones_subnets_mapping,
-                            are_all_security_groups_customized=self.are_all_security_groups_customized,
+                            security_groups_by_nodes=self.security_groups_by_nodes,
                         )
                     else:
                         new_storage_count["efs"] += 1
             self._register_validator(
                 ExistingFsxNetworkingValidator,
                 file_system_ids=list(existing_fsx),
-                head_node_subnet_id=self.head_node.networking.subnet_id,
-                are_all_security_groups_customized=self.are_all_security_groups_customized,
+                subnet_ids=[self.head_node.networking.subnet_id] + self.compute_subnet_ids,
+                security_groups_by_nodes=self.security_groups_by_nodes,
             )
 
             self._validate_max_storage_count(ebs_count, existing_storage_count, new_storage_count)
+            self._validate_new_storage_multiple_subnets(
+                self.scheduling.queues, self.compute_subnet_ids, new_storage_count
+            )
 
         self._validate_mount_dirs()
 
@@ -1312,6 +1439,36 @@ class BaseClusterConfig(Resource):
             OverlappingMountDirValidator,
             shared_mount_dir_list=[mount_dir for mount_dir, _ in self.shared_storage_name_mount_dir_tuple_list],
             local_mount_dir_list=list(self.local_mount_dir_instance_types_dict.keys()),
+        )
+
+    def _validate_new_storage_multiple_subnets(self, queues, compute_subnet_ids, new_storage_count):
+        self._register_validator(
+            ManagedFsxMultiAzValidator,
+            compute_subnet_ids=compute_subnet_ids,
+            new_storage_count=new_storage_count,
+        )
+        ebs_volumes = []
+        head_node_az = self.head_node.networking.availability_zone
+        for storage in self.shared_storage:
+            if isinstance(storage, (SharedFsxLustre, ExistingFsxOpenZfs, ExistingFsxOntap)) and storage.is_unmanaged:
+                self._register_validator(
+                    UnmanagedFsxMultiAzValidator,
+                    queues=queues,
+                    fsx_az_list=storage.file_system_availability_zones,
+                )
+            if isinstance(storage, SharedEbs):
+                ebs_volumes.append(storage)
+
+        self._register_validator(
+            MultiAzEbsVolumeValidator,
+            head_node_az=head_node_az,
+            ebs_volumes=ebs_volumes,
+            queues=queues,
+        )
+        self._register_validator(
+            MultiAzRootVolumeValidator,
+            head_node_az=head_node_az,
+            queues=queues,
         )
 
     def _validate_max_storage_count(self, ebs_count, existing_storage_count, new_storage_count):
@@ -1411,15 +1568,12 @@ class BaseClusterConfig(Resource):
     @property
     def compute_subnet_ids(self):
         """Return the list of all compute subnet ids in the cluster."""
-        return list(
-            {
-                subnet_id
-                for queue in self.scheduling.queues
-                if queue.networking.subnet_ids
-                for subnet_id in queue.networking.subnet_ids
-                if queue.networking.subnet_ids
-            }
-        )
+        subnet_ids_list = []
+        for queue in self.scheduling.queues:
+            for subnet_id in queue.networking.subnet_ids:
+                if subnet_id not in subnet_ids_list:
+                    subnet_ids_list.append(subnet_id)
+        return subnet_ids_list
 
     @property
     def availability_zones_subnets_mapping(self):
@@ -1480,6 +1634,15 @@ class BaseClusterConfig(Resource):
         )
 
     @property
+    def is_log_rotation_enabled(self):
+        """Return True if log rotation is enabled."""
+        return (
+            self.monitoring.logs.rotation.enabled
+            if self.monitoring and self.monitoring.logs and self.monitoring.logs.rotation
+            else False
+        )
+
+    @property
     def is_cw_dashboard_enabled(self):
         """Return True if CloudWatch Dashboard is enabled."""
         return (
@@ -1494,17 +1657,34 @@ class BaseClusterConfig(Resource):
         return self.head_node.dcv and self.head_node.dcv.enabled
 
     @property
-    def are_all_security_groups_customized(self):
-        """Return True if all head node and queues have (additional) security groups specified."""
+    def security_groups_by_nodes(self):
+        """
+        Return Security groups by nodes.
+
+        The result is a set of frozenset,
+        e.g. {frozenset(security groups for head node), frozenset(security groups for queue 1), ...}
+        """
         head_node_networking = self.head_node.networking
-        if not (head_node_networking.security_groups or head_node_networking.additional_security_groups):
-            return False
+        security_groups_for_head_node = set()
+        if head_node_networking.security_groups:
+            security_groups_for_head_node.update(set(head_node_networking.security_groups))
+        else:
+            security_groups_for_head_node.add(self.managed_head_node_security_group)
+        if head_node_networking.additional_security_groups:
+            security_groups_for_head_node.update(set(head_node_networking.additional_security_groups))
+        security_groups_for_all_nodes = {frozenset(security_groups_for_head_node)}
         for queue in self.scheduling.queues:
             queue_networking = queue.networking
             if isinstance(queue_networking, _QueueNetworking):
-                if not (queue_networking.security_groups or queue_networking.additional_security_groups):
-                    return False
-        return True
+                security_groups_for_compute_node = set()
+                if queue_networking.security_groups:
+                    security_groups_for_compute_node.update(set(queue_networking.security_groups))
+                else:
+                    security_groups_for_compute_node.add(self.managed_compute_security_group)
+                if queue_networking.additional_security_groups:
+                    security_groups_for_compute_node.update(set(queue_networking.additional_security_groups))
+                security_groups_for_all_nodes.add(frozenset(security_groups_for_compute_node))
+        return security_groups_for_all_nodes
 
     @property
     def extra_chef_attributes(self):
@@ -1543,6 +1723,15 @@ class BaseClusterConfig(Resource):
                 self.image.os, self.head_node.architecture, ami_filters
             )
         return self._official_ami
+
+    @official_ami.setter
+    def official_ami(self, value):
+        self._official_ami = value
+
+    @property
+    def lambda_functions_vpc_config(self):
+        """Return the vpc config of the PCluster Lambda Functions or None."""
+        return self.deployment_settings.lambda_functions_vpc_config if self.deployment_settings else None
 
     def get_cluster_tags(self):
         """Return tags configured in the cluster configuration."""
@@ -1628,7 +1817,7 @@ class AwsBatchClusterConfig(BaseClusterConfig):
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
-        self._register_validator(AwsBatchRegionValidator, region=self.region)
+        self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
         if self.shared_storage:
@@ -1730,7 +1919,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
 
 
 class FlexibleInstanceType(Resource):
-    """Represent an instance type listed in the InstanceTypeList of a ComputeResources."""
+    """Represent an instance type listed in the Instances of a ComputeResources."""
 
     def __init__(self, instance_type: str, **kwargs):
         super().__init__(**kwargs)
@@ -1740,14 +1929,17 @@ class FlexibleInstanceType(Resource):
 class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
-    def __init__(self, instance_type_list: List[FlexibleInstanceType], **kwargs):
+    def __init__(self, instances: List[FlexibleInstanceType], **kwargs):
         super().__init__(**kwargs)
-        self.instance_type_list = Resource.init_param(instance_type_list)
+        self.instances = Resource.init_param(instances)
 
     @property
     def instance_types(self) -> List[str]:
         """Return list of instance type names in this compute resource."""
-        return [flexible_instance_type.instance_type for flexible_instance_type in self.instance_type_list]
+        return [
+            flexible_instance_type.instance_type
+            for flexible_instance_type in self.instances  # pylint: disable=not-an-iterable
+        ]
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
@@ -1792,12 +1984,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
-        self._register_validator(
-            EfaValidator,
-            instance_type=self.instance_type,
-            efa_enabled=self.efa.enabled,
-            gdr_support=self.efa.gdr_support,
-        )
         self._register_validator(
             SchedulableMemoryValidator,
             schedulable_memory=self.schedulable_memory,
@@ -1886,42 +2072,74 @@ class _CommonQueue(BaseQueue):
         else:
             return None
 
+    @property
+    def multi_az_enabled(self):
+        """Return true if more than one AZ are defined in the queue Networking section."""
+        return len(self.networking.az_list) > 1
+
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []
-        for resource in self.compute_resources:
-            chosen_pg = (
-                resource.networking.placement_group
-                if not resource.networking.placement_group.implied
-                else self.networking.placement_group
-            )
-            if chosen_pg.is_enabled_and_unassigned:
-                managed_placement_group_keys.append(f"{self.name}-{resource.name}")
+        for compute_resource in self.compute_resources:
+            placement_group_setting = self.get_placement_group_settings_for_compute_resource(compute_resource)
+            if placement_group_setting.get("is_managed"):
+                managed_placement_group_keys.append(placement_group_setting.get("key"))
         return managed_placement_group_keys
 
-    def get_placement_group_key_for_compute_resource(
+    def get_placement_group_settings_for_compute_resource(
         self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
-    ) -> (str, bool):
+    ) -> Dict[str, bool]:
+        # Placement Group key is None and not managed by default
+        placement_group_key, managed = None, False
         # prefer compute level groups over queue level groups
-        placement_group_key, managed = None, None
-        cr_pg = compute_resource.networking.placement_group
-        if cr_pg.assignment:
-            placement_group_key, managed = cr_pg.assignment, False
-        elif cr_pg.enabled:
+        chosen_pg = self.get_chosen_placement_group_setting_for_compute_resource(compute_resource)
+        if chosen_pg.assignment:
+            placement_group_key, managed = chosen_pg.assignment, False
+        elif chosen_pg.enabled:
             placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
-        elif cr_pg.enabled is False:
-            placement_group_key, managed = None, False
-        elif self.networking.placement_group.assignment:
-            placement_group_key, managed = self.networking.placement_group.assignment, False
-        elif self.networking.placement_group.enabled:
-            placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
-        return placement_group_key, managed
+        return {"key": placement_group_key, "is_managed": managed}
 
-    def is_placement_group_disabled_for_compute_resource(self, compute_resource_pg_enabled: bool) -> bool:
+    def is_placement_group_enabled_for_compute_resource(
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+    ) -> bool:
+        return self.get_placement_group_settings_for_compute_resource(compute_resource).get("key") is not None
+
+    def get_chosen_placement_group_setting_for_compute_resource(
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+    ) -> PlacementGroup:
+        """Handle logic that the Placement Group on compute resource level overrides queue level."""
         return (
-            compute_resource_pg_enabled is False
-            or self.networking.placement_group.enabled is False
-            and compute_resource_pg_enabled is None
+            compute_resource.networking.placement_group
+            if not compute_resource.networking.placement_group.implied
+            else self.networking.placement_group
         )
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        for compute_resource in self.compute_resources:
+            self._register_validator(
+                EfaMultiAzValidator,
+                queue_name=self.name,
+                multi_az_enabled=self.multi_az_enabled,
+                compute_resource_name=compute_resource.name,
+                compute_resource_efa_enabled=compute_resource.efa.enabled,
+            )
+            # SlurmFlexibleComputeResource are managed in SlurmClusterConfig since they have a different validator
+            if isinstance(compute_resource, SlurmComputeResource):
+                self._register_validator(
+                    EfaValidator,
+                    instance_type=compute_resource.instance_type,
+                    efa_enabled=compute_resource.efa.enabled,
+                    gdr_support=compute_resource.efa.gdr_support,
+                    multiaz_enabled=self.multi_az_enabled,
+                )
+            placement_group = self.get_chosen_placement_group_setting_for_compute_resource(compute_resource)
+            self._register_validator(
+                MultiAzPlacementGroupValidator,
+                multi_az_enabled=self.multi_az_enabled,
+                placement_group_enabled=placement_group.enabled_or_assigned,
+                compute_resource_name=compute_resource.name,
+                queue_name=self.name,
+            )
 
 
 class AllocationStrategy(Enum):
@@ -1978,6 +2196,18 @@ class SlurmQueue(_CommonQueue):
             max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES,
             resource_name="ComputeResources",
         )
+        self._register_validator(
+            QueueSubnetsValidator,
+            queue_name=self.name,
+            subnet_ids=self.networking.subnet_ids,
+            az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
+        )
+        if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
+            self._register_validator(
+                SingleInstanceTypeSubnetValidator,
+                queue_name=self.name,
+                subnet_ids=self.networking.subnet_ids,
+            )
         for compute_resource in self.compute_resources:
             self._register_validator(
                 EfaSecurityGroupValidator,
@@ -1988,10 +2218,12 @@ class SlurmQueue(_CommonQueue):
             self._register_validator(
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
-                placement_group_key=self.get_placement_group_key_for_compute_resource(compute_resource)[0],
-                placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
-                    compute_resource.networking.placement_group.enabled
-                ),
+                placement_group_key=self.get_placement_group_settings_for_compute_resource(compute_resource).get("key"),
+                placement_group_disabled=self.get_chosen_placement_group_setting_for_compute_resource(
+                    compute_resource
+                ).enabled
+                is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
@@ -2104,6 +2336,18 @@ class SchedulerPluginQueue(_CommonQueue):
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
         )
+        self._register_validator(
+            QueueSubnetsValidator,
+            queue_name=self.name,
+            subnet_ids=self.networking.subnet_ids,
+            az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
+        )
+        if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
+            self._register_validator(
+                SingleInstanceTypeSubnetValidator,
+                queue_name=self.name,
+                subnet_ids=self.networking.subnet_ids,
+            )
         for compute_resource in self.compute_resources:
             self._register_validator(
                 CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
@@ -2117,10 +2361,12 @@ class SchedulerPluginQueue(_CommonQueue):
             self._register_validator(
                 EfaPlacementGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
-                placement_group_key=self.get_placement_group_key_for_compute_resource(compute_resource)[0],
-                placement_group_disabled=self.is_placement_group_disabled_for_compute_resource(
-                    compute_resource.networking.placement_group.enabled
-                ),
+                placement_group_key=self.get_placement_group_settings_for_compute_resource(compute_resource).get("key"),
+                placement_group_disabled=self.get_chosen_placement_group_setting_for_compute_resource(
+                    compute_resource
+                ).enabled
+                is False,
+                multi_az_enabled=self.multi_az_enabled,
             )
 
     @property
@@ -2460,7 +2706,9 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 ComputeResourceLaunchTemplateValidator,
                 queue=queue,
                 ami_id=queue_image,
+                os=self.image.os,
                 tags=self.get_cluster_tags(),
+                imds_support=self.imds.imds_support,
             )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
             root_volume = queue.compute_settings.local_storage.root_volume
@@ -2516,14 +2764,20 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                         CapacityReservationResourceGroupValidator,
                         capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
                         instance_types=compute_resource.instance_types,
-                        subnet=queue.networking.subnet_ids[0],
+                        subnet_ids=queue.networking.subnet_ids,
+                        queue_name=queue.name,
+                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
                     self._register_validator(
                         PlacementGroupCapacityReservationValidator,
-                        placement_group=queue.get_placement_group_key_for_compute_resource(compute_resource)[0],
+                        placement_group=queue.get_placement_group_settings_for_compute_resource(compute_resource).get(
+                            "key"
+                        ),
                         odcr=cr_target,
                         subnet=queue.networking.subnet_ids[0],
                         instance_types=compute_resource.instance_types,
+                        multi_az_enabled=queue.multi_az_enabled,
+                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
 
     @property
@@ -2546,6 +2800,16 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
             if capacity_reservation_target.capacity_reservation_id:
                 result.add(capacity_reservation_target.capacity_reservation_id)
         return list(result)
+
+    @property
+    def capacity_reservation_arns(self):
+        """Return a list of capacity reservation ARNs specified in the config."""
+        return [
+            capacity_reservation["CapacityReservationArn"]
+            for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
+                self.capacity_reservation_ids
+            )
+        ]
 
     @property
     def capacity_reservation_resource_group_arns(self):
@@ -2576,8 +2840,14 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls
-        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        # Cache capacity reservations information together to reduce number of boto3 calls.
+        # Since this cache is only used for validation, if AWSClientError happens
+        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
+        # blocking CLI execution if the user want to suppress the validation.
+        try:
+            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""
@@ -2634,8 +2904,14 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls
-        AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        # Cache capacity reservations information together to reduce number of boto3 calls.
+        # Since this cache is only used for validation, if AWSClientError happens
+        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
+        # blocking CLI execution if the user want to suppress the validation.
+        try:
+            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""
@@ -2680,27 +2956,32 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         instance_type=instance_type,
                         instance_type_data=instance_types_data[instance_type],
                     )
+                    self._register_validator(
+                        InstanceTypePlacementGroupValidator,
+                        instance_type=instance_type,
+                        instance_type_data=instance_types_data[instance_type],
+                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
+                    )
                 if isinstance(compute_resource, SlurmFlexibleComputeResource):
                     validator_args = dict(
                         queue_name=queue.name,
+                        multiaz_queue=queue.multi_az_enabled,
                         capacity_type=queue.capacity_type,
                         allocation_strategy=queue.allocation_strategy,
                         compute_resource_name=compute_resource.name,
                         instance_types_info=compute_resource.instance_type_info_map,
                         disable_simultaneous_multithreading=compute_resource.disable_simultaneous_multithreading,
                         efa_enabled=compute_resource.efa and compute_resource.efa.enabled,
-                        placement_group_enabled=(
-                            queue.networking.placement_group and queue.networking.placement_group.enabled
-                        ),
+                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
                         memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
                     )
                     flexible_instance_types_validators = [
-                        InstanceTypeListCPUValidator,
-                        InstanceTypeListAcceleratorsValidator,
-                        InstanceTypeListEFAValidator,
-                        InstanceTypeListNetworkingValidator,
-                        InstanceTypeListAllocationStrategyValidator,
-                        InstanceTypeListMemorySchedulingValidator,
+                        InstancesCPUValidator,
+                        InstancesAcceleratorsValidator,
+                        InstancesEFAValidator,
+                        InstancesNetworkingValidator,
+                        InstancesAllocationStrategyValidator,
+                        InstancesMemorySchedulingValidator,
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)

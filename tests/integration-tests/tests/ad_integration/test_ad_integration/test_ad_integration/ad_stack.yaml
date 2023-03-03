@@ -12,6 +12,14 @@ Parameters:
     Description: Subnet ID of the public subnet.
     Type: String
 Resources:
+  DisableImdsv1LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpPutResponseHopLimit: 4
+          HttpTokens: required
   AdDomainAdminNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -103,6 +111,9 @@ Resources:
       ImageId: {{ admin_node_ami_id }}
       InstanceType: {{ admin_node_instance_type }}
       KeyName: {{ admin_node_key_name }}
+      LaunchTemplate:
+        LaunchTemplateId: !Ref 'DisableImdsv1LaunchTemplate'
+        Version: !GetAtt 'DisableImdsv1LaunchTemplate.LatestVersionNumber'
       SecurityGroupIds:
         - Ref: AdDomainAdminNodeSecurityGroup
       SubnetId:
@@ -155,12 +166,6 @@ Resources:
                 sed -ri 's/fallback_homedir =.*$/fallback_homedir = \/home\/%u/g' "$SSSD_CONFIG_PATH"
                 grep fallback_homedir "$SSSD_CONFIG_PATH"
                 systemctl restart sssd
-
-                # Configure SSHD
-                # SSHD: enable password auth
-                sed -ri 's/\s*PasswordAuthentication\s+no$/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-                grep -E '\s*PasswordAuthentication\s+yes' "$SSHD_CONFIG_PATH"
-                systemctl restart sshd
 
                 # Script to add a number of users
                 cat << EOF > /usr/local/bin/add_a_number_of_users.sh

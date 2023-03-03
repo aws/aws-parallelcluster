@@ -13,13 +13,14 @@ Scheduling:
     - Name: queue1
       ComputeResources:
         - Name: queue1-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge
           MinCount: 1
           MaxCount: 2
         - Name: queue1-i2
-          InstanceTypeList:
-            - InstanceType: t2.micro
+          Instances:
+            - InstanceType: t2.medium
+            - InstanceType: t3.micro
           MinCount: 1
           MaxCount: 2
       Networking:

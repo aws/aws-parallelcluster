@@ -73,6 +73,7 @@ The usual development workflow to follow when extending the ParallelCluster API 
    to the aws-parallelcluster source code:
    1. Changes to the API request/response model require changes to files under `cli/src/pcluster/api/models`. The
       newly generated models in the server stub can be imported as is, just mind fixing unused imports and formatting.
+      To avoid huge diffs import only models related to your modifications.
    2. Changes to the API operations and request/response model require an update to the controllers (namely the handlers
       of the various API endpoints). The updated controller signature can be retrieved from the generated stub files and
       relevant changes need to be applied to controllers under the `cli/src/pcluster/api/controllers` directory.

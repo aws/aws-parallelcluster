@@ -23,14 +23,15 @@ def register_cli_credentials_for_region(region, iam_role):
     cli_credentials[region] = iam_role
 
 
-def run_pcluster_command(*args, **kwargs):
+def run_pcluster_command(*args, custom_cli_credentials=None, **kwargs):
     """Run a command after assuming the role configured through register_cli_credentials_for_region."""
+
     region = kwargs.get("region")
     if not region:
         region = os.environ["AWS_DEFAULT_REGION"]
 
     if region in cli_credentials:
-        with sts_credential_provider(region, cli_credentials[region]):
+        with sts_credential_provider(region, credential_arn=custom_cli_credentials or cli_credentials.get(region)):
             return run_command(*args, **kwargs)
     else:
         return run_command(*args, **kwargs)
@@ -57,6 +58,7 @@ def sts_credential_provider(region, credential_arn, credential_external_id=None,
 
     logging.info("Assuming STS credentials for region %s and role %s", region, credential_arn)
     aws_credentials = _retrieve_sts_credential(region, credential_arn, credential_external_id, credential_endpoint)
+    logging.info("Retrieved credentials %s", obfuscate_credentials(aws_credentials))
 
     try:
         logging.info("Unsetting current credentials %s", obfuscate_credentials(credentials_to_backup))
@@ -65,6 +67,7 @@ def sts_credential_provider(region, credential_arn, credential_external_id=None,
         os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
         os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
         os.environ["AWS_SESSION_TOKEN"] = aws_credentials["SessionToken"]
+        os.environ["AWS_CREDENTIAL_EXPIRATION"] = aws_credentials["Expiration"].isoformat()
         boto3.setup_default_session()
 
         yield aws_credentials
@@ -143,7 +146,10 @@ def obfuscate_credentials(creds_dict):
     obfuscated_dict = {}
     for key, value in creds_dict.items():
         if value:
-            obfuscated_dict[key] = value[0:3] + "*" * (len(value) - 3)
+            if key == "Expiration":
+                obfuscated_dict[key] = str(value)
+            else:
+                obfuscated_dict[key] = value[0:3] + "*" * (len(value) - 3)
         else:
             obfuscated_dict[key] = value
     return obfuscated_dict

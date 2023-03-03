@@ -17,7 +17,10 @@ Scheduling:
     - Name: broken
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
+          {% if scheduler == "slurm" %}
+          - {{ private_subnet_ids[1] }}
+          {% endif %}
       CustomActions:
         OnNodeStart:
           # pre-install script to make c5.large instance type instance has bootstrap error
@@ -27,7 +30,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
           MinCount: 2
@@ -39,7 +42,10 @@ Scheduling:
     - Name: half-broken
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
+          {% if scheduler == "slurm" %}
+          - {{ private_subnet_ids[1] }}
+          {% endif %}
       CustomActions:
         OnNodeStart:
           # pre-install script to make c5.large instance type instance has bootstrap error
@@ -49,7 +55,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
           MaxCount: 250
@@ -57,7 +63,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
           MinCount: 1
@@ -69,7 +75,10 @@ Scheduling:
     - Name: normal
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
+          {% if scheduler == "slurm" %}
+          - {{ private_subnet_ids[1] }}
+          {% endif %}
       CustomActions:
         OnNodeStart:
           # pre-install script to make c5.large instance type instance has bootstrap error
@@ -79,7 +88,7 @@ Scheduling:
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
           MinCount: 1

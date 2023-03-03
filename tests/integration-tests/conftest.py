@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-import random
 import re
 from functools import partial
 from itertools import product
@@ -28,8 +27,9 @@ from typing import Any, Optional, Tuple
 import boto3
 import pytest
 import yaml
+from _pytest._code import ExceptionInfo
 from _pytest.fixtures import FixtureDef, SubRequest
-from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
     DIMENSIONS_MARKER_ARGS,
@@ -39,6 +39,7 @@ from conftest_markers import (
     check_marker_skip_dimensions,
     check_marker_skip_list,
 )
+from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from filelock import FileLock
@@ -49,11 +50,10 @@ from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
-from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
-from retrying import retry
 from troposphere import Ref, Sub, Template, ec2, resourcegroups
 from troposphere.ec2 import PlacementGroup
 from troposphere.efs import FileSystem as EFSFileSystem
+from troposphere.efs import MountTarget
 from troposphere.fsx import (
     ClientConfigurations,
     FileSystem,
@@ -65,6 +65,7 @@ from troposphere.fsx import (
 )
 from utils import (
     InstanceTypesData,
+    SetupError,
     create_s3_bucket,
     delete_s3_bucket,
     dict_add_nested_key,
@@ -73,21 +74,29 @@ from utils import (
     get_architecture_supported_by_instance_type,
     get_arn_partition,
     get_instance_info,
+    get_metadata,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
     scheduler_plugin_definition_uploader,
     set_logger_formatter,
+    to_pascal_case,
 )
 
 from tests.common.osu_common import run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.common.storage.constants import StorageType
+from tests.common.storage.ebs_utils import delete_ebs_volume
+from tests.common.storage.efs_utils import delete_efs_filesystem
+from tests.common.storage.fsx_utils import delete_fsx_filesystem
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
     retrieve_pcluster_ami_without_standard_naming,
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
+
+pytest_plugins = ["conftest_networking"]
 
 
 def pytest_addoption(parser):
@@ -164,6 +173,10 @@ def pytest_addoption(parser):
     parser.addoption(
         "--slurm-database-stack-name",
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
+    )
+    parser.addoption(
+        "--external-shared-storage-stack-name",
+        help="Name of existing external shared storage stack.",
     )
 
 
@@ -286,9 +299,11 @@ def _log_collected_tests(session):
     # get_xdist_worker_id returns the id of the current worker ('gw0', 'gw1', etc) or 'master'
     if get_xdist_worker_id(session) in ["master", "gw0"]:
         collected_tests = list(map(lambda item: item.nodeid, session.items))
+        region = session.config.getoption("regions") or get_all_regions(session.config.getoption("tests_config"))
+        region = [unmarshal_az_override(az) for az in region]
         logging.info(
             "Collected tests in regions %s (total=%d):\n%s",
-            session.config.getoption("regions") or get_all_regions(session.config.getoption("tests_config")),
+            region,
             len(session.items),
             json.dumps(collected_tests, indent=2),
         )
@@ -371,7 +386,7 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, upper_case_cluster_name=False, **kwargs):
+    def _cluster_factory(cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
@@ -384,6 +399,7 @@ def clusters_factory(request, region):
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
             region=region,
+            custom_cli_credentials=custom_cli_credentials,
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, **kwargs)
@@ -540,7 +556,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_p
     The config can be written by using Jinja2 template engine.
     The current renderer already replaces placeholders for current keys:
         {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
-        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
+        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}, {{ default_vpc_security_group_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
     Also sanity_check is set to true by default unless explicitly set in config.
@@ -606,6 +622,17 @@ def inject_additional_config_settings(  # noqa: C901
 ):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
+
+    if not dict_has_nested_key(config_content, ("HeadNode", "Ssh", "AllowedIps")):
+        # If the test is running in an EC2 instance limit SSH connection access from instance running the test
+        instance_ip = get_metadata("public-ipv4", raise_error=False)
+        if not instance_ip:
+            instance_ip = get_metadata("local-ipv4", raise_error=False)
+        if instance_ip:
+            logging.info(f"Limiting AllowedIps rule to IP: {instance_ip}")
+            dict_add_nested_key(config_content, f"{instance_ip}/32", ("HeadNode", "Ssh", "AllowedIps"))
+        else:
+            logging.info("Skipping AllowedIps rule because unable to find local and public IP for the instance.")
 
     if not dict_has_nested_key(config_content, ("Imds", "ImdsSupport")):
         dict_add_nested_key(config_content, "v2.0", ("Imds", "ImdsSupport"))
@@ -739,9 +766,13 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
                 dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
 
 
-def _get_default_template_values(vpc_stack, request):
+def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = get_vpc_snakecase_value(vpc_stack)
+    default_values["public_subnet_id"] = vpc_stack.get_public_subnet()
+    default_values["public_subnet_ids"] = vpc_stack.get_all_public_subnets()
+    default_values["private_subnet_id"] = vpc_stack.get_private_subnet()
+    default_values["private_subnet_ids"] = vpc_stack.get_all_private_subnets()
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
@@ -776,7 +807,9 @@ def parameterized_cfn_stacks_factory(request):
     """Define a fixture that returns a parameterized stack factory and manages the stack creation and deletion."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    def _create_stack(region, template_path, stack_prefix="", parameters=None, capabilities=None):
+    def _create_stack(
+        region, template_path, stack_prefix="", parameters=None, capabilities=None, stack_is_under_test=False
+    ):
         file_content = extract_template(template_path)
         stack = CfnStack(
             name=generate_stack_name(stack_prefix, request.config.getoption("stackname_suffix")),
@@ -785,7 +818,7 @@ def parameterized_cfn_stacks_factory(request):
             parameters=parameters or [],
             capabilities=capabilities or [],
         )
-        factory.create_stack(stack)
+        factory.create_stack(stack, stack_is_under_test=stack_is_under_test)
         return stack
 
     def extract_template(template_path):
@@ -795,57 +828,6 @@ def parameterized_cfn_stacks_factory(request):
 
     yield _create_stack
     factory.delete_all_stacks()
-
-
-AVAILABILITY_ZONE_OVERRIDES = {
-    # c5.xlarge is not supported in use1-az3
-    # FSx Lustre file system creation is currently not supported for use1-az3
-    # p4d.24xlarge targeted ODCR is only available on use1-az6
-    "us-east-1": ["use1-az6"],
-    # some instance type is only supported in use2-az2
-    "us-east-2": ["use2-az2"],
-    # trn available on usw2-az4
-    "us-west-2": ["usw2-az4"],
-    # c5.xlarge is not supported in apse2-az3
-    "ap-southeast-2": ["apse2-az1", "apse2-az2"],
-    # m6g.xlarge is not supported in apne1-az2
-    "ap-northeast-1": ["apne1-az4", "apne1-az1"],
-    # c4.xlarge is not supported in apne2-az2
-    "ap-northeast-2": ["apne2-az1", "apne2-az3"],
-    # c5.xlarge is not supported in apse1-az3
-    "ap-southeast-1": ["apse1-az2", "apse1-az1"],
-    # c4.xlarge is not supported in aps1-az2
-    "ap-south-1": ["aps1-az1", "aps1-az3"],
-    # NAT Gateway not available in sae1-az2 , c5n.18xlarge is not supported in sae1-az3
-    "sa-east-1": ["sae1-az1"],
-    # m6g.xlarge instances not available in euw1-az3
-    "eu-west-1": ["euw1-az1", "euw1-az2"],
-    # io2 EBS volumes not available in cac1-az4
-    "ca-central-1": ["cac1-az1", "cac1-az2"],
-    # instance can only be launch in placement group in eun1-az2
-    "eu-north-1": ["eun1-az2"],
-    # g3.8xlarge is not supported in euc1-az1
-    "eu-central-1": ["euc1-az2", "euc1-az3"],
-    # FSx not available in cnn1-az4
-    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
-}
-
-
-@pytest.fixture(scope="function")
-def random_az_selector(request):
-    """Select random AZs for a given region."""
-
-    def _get_random_availability_zones(region, num_azs=1, default_value=None):
-        """Return num_azs random AZs (in the form of AZ names, e.g. 'us-east-1a') for the given region."""
-        az_ids = AVAILABILITY_ZONE_OVERRIDES.get(region, [])
-        if az_ids:
-            az_id_to_az_name_map = get_az_id_to_az_name_map(region, request.config.getoption("credential"))
-            sample = random.sample([az_id_to_az_name_map.get(az_id, default_value) for az_id in az_ids], k=num_azs)
-        else:
-            sample = [default_value] * num_azs
-        return sample[0] if num_azs == 1 else sample
-
-    return _get_random_availability_zones
 
 
 @pytest.fixture(scope="class", autouse=True)
@@ -865,40 +847,6 @@ def setup_env_variable(region):
     del os.environ["AWS_DEFAULT_REGION"]
 
 
-def get_az_id_to_az_name_map(region, credential):
-    """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
-    # credentials are managed manually rather than via setup_sts_credentials because this function
-    # is called by a session-scoped fixture, which cannot make use of a class-scoped fixture.
-    with aws_credential_provider(region, credential):
-        ec2_client = boto3.client("ec2", region_name=region)
-        return {
-            entry.get("ZoneId"): entry.get("ZoneName")
-            for entry in ec2_client.describe_availability_zones().get("AvailabilityZones")
-        }
-
-
-def get_availability_zones(region, credential):
-    """
-    Return a list of availability zones for the given region.
-
-    Note that this function is called by the vpc_stacks fixture. Because vcp_stacks is session-scoped,
-    it cannot utilize setup_sts_credentials, which is required in opt-in regions in order to call
-    describe_availability_zones.
-    """
-    az_list = []
-    with aws_credential_provider(region, credential):
-        client = boto3.client("ec2", region_name=region)
-        response_az = client.describe_availability_zones(
-            Filters=[
-                {"Name": "region-name", "Values": [str(region)]},
-                {"Name": "zone-type", "Values": ["availability-zone"]},
-            ]
-        )
-        for az in response_az.get("AvailabilityZones"):
-            az_list.append(az.get("ZoneName"))
-    return az_list
-
-
 @xdist_session_fixture(autouse=True)
 def initialize_cli_creds(request):
     if request.config.getoption("use_default_iam_credentials"):
@@ -913,6 +861,9 @@ def initialize_cli_creds(request):
             stack_template_data = stack_template_file.read()
         cli_creds = {}
         for region in regions:
+            # region may contain an az_id if an override was specified
+            # here we ensure that we are using the region
+            region = unmarshal_az_override(region)
             if request.config.getoption("iam_user_role_stack_name"):
                 stack_name = request.config.getoption("iam_user_role_stack_name")
                 logging.info(f"Using stack {stack_name} in region {region}")
@@ -946,80 +897,6 @@ def register_cli_credentials(initialize_cli_creds):
             register_cli_credentials_for_region(region, creds)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def vpc_stacks(cfn_stacks_factory, request):
-    """Create VPC used by integ tests in all configured regions."""
-    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-    vpc_stacks = {}
-
-    for region in regions:
-        # Creating private_subnet_different_cidr in a different AZ for test_efs
-        # To-do: isolate this logic and create a compute subnet in different AZ than head node in test_efs
-
-        # if region has a non-empty list in AVAILABILITY_ZONE_OVERRIDES, select a subset of those AZs
-        credential = request.config.getoption("credential")
-        az_ids_for_region = AVAILABILITY_ZONE_OVERRIDES.get(region, [])
-        if az_ids_for_region:
-            az_id_to_az_name = get_az_id_to_az_name_map(region, credential)
-            az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
-            # if only one AZ can be used for the given region, use it multiple times
-            if len(az_names) == 1:
-                az_names *= 2
-            availability_zones = random.sample(az_names, k=2)
-        # otherwise, select a subset of all AZs in the region
-        else:
-            az_list = get_availability_zones(region, credential)
-            # if number of available zones is smaller than 2, available zones should be [None, None]
-            if len(az_list) < 2:
-                availability_zones = [None, None]
-            else:
-                availability_zones = random.sample(az_list, k=2)
-
-        # Subnets visual representation:
-        # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
-        public_subnet = SubnetConfig(
-            name="Public",
-            cidr="192.168.32.0/19",  # 8190 IPs
-            map_public_ip_on_launch=True,
-            has_nat_gateway=True,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.INTERNET_GATEWAY,
-        )
-        private_subnet = SubnetConfig(
-            name="Private",
-            cidr="192.168.64.0/18",  # 16382 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.NAT_GATEWAY,
-        )
-        private_subnet_different_cidr = SubnetConfig(
-            name="PrivateAdditionalCidr",
-            cidr="192.168.128.0/17",  # 32766 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[1],
-            default_gateway=Gateways.NAT_GATEWAY,
-        )
-        no_internet_subnet = SubnetConfig(
-            name="NoInternet",
-            cidr="192.168.16.0/20",  # 4094 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.NONE,
-        )
-        vpc_config = VPCConfig(
-            cidr="192.168.0.0/17",
-            additional_cidr_blocks=["192.168.128.0/17"],
-            subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
-        )
-        template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zones[0]).build()
-        vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
-
-    return vpc_stacks
-
-
 @pytest.fixture(scope="class")
 @pytest.mark.usefixtures("clusters_factory", "images_factory")
 def create_roles_stack(request, region):
@@ -1051,11 +928,6 @@ def create_roles_stack(request, region):
         logging.warning("Skipping deletion of IAM roles stack because --no-delete option is set")
 
 
-@pytest.fixture(scope="class")
-def vpc_stack(vpc_stacks, region):
-    return vpc_stacks[region]
-
-
 @pytest.fixture(scope="session")
 def public_ecr_image_uri(request):
     return request.config.getoption("public_ecr_image_uri")
@@ -1074,27 +946,6 @@ def api_definition_s3_uri(request):
 @pytest.fixture(scope="session")
 def api_infrastructure_s3_uri(request):
     return request.config.getoption("api_infrastructure_s3_uri")
-
-
-# If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
-# not available in randomly picked AZs.
-@retry(
-    stop_max_attempt_number=2,
-    wait_fixed=5000,
-    retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
-)
-def _create_vpc_stack(request, template, region, cfn_stacks_factory):
-    if request.config.getoption("vpc_stack"):
-        logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
-        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
-    else:
-        stack = CfnStack(
-            name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
-            region=region,
-            template=template.to_json(),
-        )
-        cfn_stacks_factory.create_stack(stack)
-    return stack
 
 
 @pytest.fixture(scope="class")
@@ -1145,6 +996,9 @@ def s3_bucket_factory_shared(request):
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     s3_buckets_dict = {}
     for region in regions:
+        # region may contain an az_id if an override was specified
+        # here we ensure that we are using the region
+        region = unmarshal_az_override(region)
         with aws_credential_provider(region, request.config.getoption("credential")):
             s3_buckets_dict[region] = _create_bucket(region)
 
@@ -1217,10 +1071,31 @@ def pytest_runtest_makereport(item, call):
     setattr(item, "rep_" + rep.when, rep)
 
     if rep.when in ["setup", "call"] and rep.failed:
+        exception_info: ExceptionInfo = call.excinfo
+        if exception_info.value and isinstance(exception_info.value, SetupError):
+            rep.when = "setup"
         try:
             update_failed_tests_config(item)
         except Exception as e:
             logging.error("Failed when generating config for failed tests: %s", e, exc_info=True)
+
+
+@pytest.fixture(scope="class")
+def serial_execution_by_instance(request, instance):
+    """Enforce serial execution of tests, according to the adopted instance."""
+    if instance in ["c5n.18xlarge", "p4d.24xlarge"]:
+        logging.info("Enforcing serial execution for instance %s", instance)
+        outdir = request.config.getoption("output_dir")
+        lock_file = f"{outdir}/{instance}.lock"
+        lock = FileLock(lock_file=lock_file)
+        logging.info("Acquiring lock file %s", lock.lock_file)
+        with lock.acquire(poll_interval=15, timeout=7200):
+            yield
+        logging.info("Releasing lock file %s", lock.lock_file)
+        lock.release()
+    else:
+        logging.info("Ignoring serial execution for instance %s", instance)
+        yield
 
 
 def update_failed_tests_config(item):
@@ -1298,27 +1173,29 @@ def placement_group_stack(cfn_stacks_factory, request, region):
 
 
 @pytest.fixture(scope="class")
-def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack):
+def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack: CfnVpcStack):
     logging.info("Setting up the ODCR stack")
     odcr_template = Template()
     odcr_template.set_version()
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
-    availability_zone = (
-        boto3.resource("ec2").Subnet(get_vpc_snakecase_value(vpc_stack)["public_subnet_id"]).availability_zone
-    )
+    public_subnet = vpc_stack.get_public_subnet()
+    public_subnets = vpc_stack.get_all_public_subnets().copy()
+    public_subnets.remove(public_subnet)
+    availability_zone = boto3.resource("ec2").Subnet(public_subnet).availability_zone
+    availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=availability_zone,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
-        InstanceType="c6gn.xlarge",
+        InstanceType="m5.2xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
         AvailabilityZone=availability_zone,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
-        InstanceType="c7g.xlarge",
+        InstanceType="r5.xlarge",
         InstanceMatchCriteria="targeted",
     )
     pg_name = placement_group_stack.cfn_resources["PlacementGroup"]
@@ -1327,7 +1204,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
         AvailabilityZone=availability_zone,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
-        InstanceType="m6g.xlarge",
+        InstanceType="m5.xlarge",
         InstanceMatchCriteria="targeted",
         PlacementGroupArn=boto3.resource("ec2").PlacementGroup(pg_name).group_arn,
     )
@@ -1369,10 +1246,59 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
             ),
         ],
     )
+    # odcr resources for MultiAZ integ-tests
+    az1_odcr = ec2.CapacityReservation(
+        "az1Odcr",
+        AvailabilityZone=availability_zone,
+        InstanceCount=2,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="t3.micro",
+    )
+    az2_odcr = ec2.CapacityReservation(
+        "az2Odcr",
+        AvailabilityZone=availability_zone_2,
+        InstanceCount=2,
+        InstancePlatform="Linux/UNIX",
+        InstanceType="t3.micro",
+    )
+    multi_az_odcr_group = resourcegroups.Group(
+        "multiAzOdcrGroup",
+        Name=generate_stack_name("multi-az-odcr-group", request.config.getoption("stackname_suffix")),
+        Configuration=[
+            resourcegroups.ConfigurationItem(Type="AWS::EC2::CapacityReservationPool"),
+            resourcegroups.ConfigurationItem(
+                Type="AWS::ResourceGroups::Generic",
+                Parameters=[
+                    resourcegroups.ConfigurationParameter(
+                        Name="allowed-resource-types", Values=["AWS::EC2::CapacityReservation"]
+                    )
+                ],
+            ),
+        ],
+        Resources=[
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(az1_odcr),
+            ),
+            Sub(
+                "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                partition=get_arn_partition(region),
+                region=region,
+                account_id=Ref("AWS::AccountId"),
+                odcr_id=Ref(az2_odcr),
+            ),
+        ],
+    )
     odcr_template.add_resource(open_odcr)
     odcr_template.add_resource(target_odcr)
     odcr_template.add_resource(pg_odcr)
     odcr_template.add_resource(odcr_group)
+    odcr_template.add_resource(az1_odcr)
+    odcr_template.add_resource(az2_odcr)
+    odcr_template.add_resource(multi_az_odcr_group)
 
     stack = CfnStack(
         name=generate_stack_name("integ-tests-odcr", request.config.getoption("stackname_suffix")),
@@ -1487,12 +1413,6 @@ def mpi_variants(architecture):
     return variants
 
 
-def to_pascal_case(snake_case_word):
-    """Convert the given snake case word into a PascalCase one."""
-    parts = iter(snake_case_word.split("_"))
-    return "".join(word.title() for word in parts)
-
-
 @pytest.fixture()
 def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, benchmarks):
     def _run_benchmarks(remote_command_executor, scheduler_commands, **kwargs):
@@ -1591,7 +1511,7 @@ def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
 
 
 @pytest.fixture(scope="class")
-def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key_name):
     """
     Define a fixture to manage the creation and destruction of fsx.
 
@@ -1634,7 +1554,7 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
             fsx_filesystem = FileSystem(
                 title=f"{file_system_resource_name}{i}",
                 SecurityGroupIds=[Ref(fsx_sg)],
-                SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]],
+                SubnetIds=[vpc_stack.get_public_subnet()],
                 FileSystemType=file_system_type,
                 **kwargs,
                 **depends_on_arg,
@@ -1792,3 +1712,117 @@ def efs_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
     if not request.config.getoption("no_delete"):
         for stack in created_stacks:
             cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.fixture(scope="class")
+def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
+    """
+    EFS mount target stack.
+
+    Create mount targets in all availability zones of vpc_stack
+    """
+    created_stacks = []
+
+    def create_mount_targets(efs_ids):
+        template = Template()
+        template.set_version("2010-09-09")
+        template.set_description("Mount targets stack")
+
+        # Create a security group that allows all communication between the mount targets and instances in the VPC
+        vpc_id = vpc_stack.cfn_outputs["VpcId"]
+        security_group = template.add_resource(
+            ec2.SecurityGroup(
+                "SecurityGroupResource",
+                GroupDescription="custom security group for EFS mount targets",
+                VpcId=vpc_id,
+            )
+        )
+        # Allow inbound connection though NFS port within the VPC
+        cidr_block_association_set = boto3.client("ec2").describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0][
+            "CidrBlockAssociationSet"
+        ]
+        for index, cidr_block_association in enumerate(cidr_block_association_set):
+            vpc_cidr = cidr_block_association["CidrBlock"]
+            template.add_resource(
+                ec2.SecurityGroupIngress(
+                    f"SecurityGroupIngressResource{index}",
+                    IpProtocol="-1",
+                    FromPort=2049,
+                    ToPort=2049,
+                    CidrIp=vpc_cidr,
+                    GroupId=Ref(security_group),
+                )
+            )
+
+        # Create mount targets
+        subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
+        _add_mount_targets(subnet_ids, efs_ids, security_group, template)
+
+        stack_name = generate_stack_name("integ-tests-mount-targets", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(name=stack_name, region=region, template=template.to_json())
+        cfn_stacks_factory.create_stack(stack)
+        created_stacks.append(stack)
+        return stack.name
+
+    yield create_mount_targets
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+def _add_mount_targets(subnet_ids, efs_ids, security_group, template):
+    subnet_response = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
+    for efs_index, efs_id in enumerate(efs_ids):
+        availability_zones_with_mount_target = set()
+        for mount_target in boto3.client("efs").describe_mount_targets(FileSystemId=efs_id)["MountTargets"]:
+            availability_zones_with_mount_target.add(mount_target["AvailabilityZoneName"])
+        for subnet_index, subnet in enumerate(subnet_response):
+            if subnet["AvailabilityZone"] not in availability_zones_with_mount_target:
+                # One and only one mount target should be created in each availability zone.
+                depends_on_arg = {}
+                resources = list(template.resources.keys())
+                max_concurrency = 10
+                if len(resources) >= max_concurrency:
+                    # Create at most 10 resources in parallel.
+                    depends_on_arg = {"DependsOn": [resources[-max_concurrency]]}
+                template.add_resource(
+                    MountTarget(
+                        f"MountTargetResourceEfs{efs_index}Subnet{subnet_index}",
+                        FileSystemId=efs_id,
+                        SubnetId=subnet["SubnetId"],
+                        SecurityGroups=[Ref(security_group)],
+                        **depends_on_arg,
+                    )
+                )
+                availability_zones_with_mount_target.add(subnet["AvailabilityZone"])
+
+
+@pytest.fixture(scope="class")
+def delete_storage_on_teardown(request, region):
+    supported_storage_types = [StorageType.STORAGE_EBS, StorageType.STORAGE_EFS, StorageType.STORAGE_FSX]
+    delete_storage_function = {
+        StorageType.STORAGE_EBS: delete_ebs_volume,
+        StorageType.STORAGE_EFS: delete_efs_filesystem,
+        StorageType.STORAGE_FSX: delete_fsx_filesystem,
+    }
+    storage_resources = {storage_type: set() for storage_type in supported_storage_types}
+
+    def _add_storage(storage_type: StorageType, storage_id: str):
+        logging.info(
+            f"Adding storage for deletion on teardown: storage of type {storage_type.name} with id {storage_id}"
+        )
+        storage_resources[storage_type].add(storage_id)
+
+    def _delete_storage_resources():
+        logging.info("Deleting storage resource on teardown")
+        for storage_type, storage_ids in storage_resources.items():
+            for storage_id in storage_ids:
+                delete_storage_function[storage_type](region, storage_id)
+
+    yield _add_storage
+
+    if request.config.getoption("no_delete"):
+        logging.info("Not deleting storage resources marked for removal because --no-delete option was specified")
+    else:
+        _delete_storage_resources()

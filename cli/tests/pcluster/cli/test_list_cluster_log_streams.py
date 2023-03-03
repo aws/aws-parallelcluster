@@ -35,8 +35,20 @@ class TestListClusterLogStreamsCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({"filters": ["Name=wrong,Value=test"]}, "filters parameter must be in the form"),
-            ({"filters": ["private-dns-name=test"]}, "filters parameter must be in the form"),
+            (
+                {"filters": ["Name=wrong,Value=test"]},
+                "provided filters parameter 'Name=wrong,Value=test' must be in the form",
+            ),
+            (
+                {"filters": ["private-dns-name=test"]},
+                "provided filters parameter 'private-dns-name=test' must be in the form",
+            ),
+            (
+                {"filters": ["Name=private-dns-name,Values=ip-10-10-10-10 Name=node-type,Values=HeadNode"]},
+                "provided filters parameter "
+                "'Name=private-dns-name,Values=ip-10-10-10-10 Name=node-type,Values=HeadNode' "
+                "must be in the form",
+            ),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -52,6 +64,8 @@ class TestListClusterLogStreamsCommand:
             {},
             {"filters": ["Name=private-dns-name,Values=ip-10-10-10-10"], "next_token": "123"},
             {"filters": ["Name=node-type,Values=HeadNode"]},
+            # The one below is a valid parameter to be passed to the CLI, then it will be stopped by the controller
+            {"filters": ["Name=private-dns-name,Values=ip-10-10-10-10", "Name=node-type,Values=HeadNode"]},
         ],
     )
     def test_execute(self, mocker, set_env, args):
@@ -123,6 +137,7 @@ class TestListClusterLogStreamsCommand:
     def _build_cli_args(args):
         cli_args = []
         for k, val in args.items():
-            val = " ".join(val) if k == "filters" else val
-            cli_args.extend([f"--{to_kebab_case(k)}", val])
+            val = val if k == "filters" else [val]
+            cli_args.append(f"--{to_kebab_case(k)}")
+            cli_args.extend(val)
         return cli_args

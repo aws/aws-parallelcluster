@@ -8,10 +8,15 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from enum import Enum
 
 from pkg_resources import packaging
 
 PCLUSTER_NAME_MAX_LENGTH = 60
+# When Slurm accounting is enabled, Slurm creates database tables with the format 'cluster_name' + 'suffix'.
+# MySQL and MariaDB have a maximum table name length of 64 characters.
+# The longest suffix used by Slurm is 24 chars, therefore the cluster name must be at most 40 chars long.
+PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING = 40
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 
@@ -19,7 +24,7 @@ CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "rhel8"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "plugin": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -35,6 +40,7 @@ OS_MAPPING = {
     "alinux2": {"user": "ec2-user", "root-device": "/dev/xvda"},
     "ubuntu1804": {"user": "ubuntu", "root-device": "/dev/sda1"},
     "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
+    "rhel8": {"user": "ec2-user", "root-device": "/dev/sda1"},
 }
 
 OS_TO_IMAGE_NAME_PART_MAP = {
@@ -76,6 +82,8 @@ FSX_PORTS = {
     ONTAP: {"tcp": [111, 635, 2049, 4046], "udp": [111, 635, 2049, 4046]},
 }
 
+EFS_PORT = 2049
+
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
     "io1": 100,
     "io2": 100,
@@ -94,8 +102,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.3.0b1",
-    "cookbook": "aws-parallelcluster-cookbook-3.3.0b1",
+    "parallelcluster": "3.6.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.6.0",
     "chef": "17.2.29",
     "berkshelf": "7.2.0",
     "ami": "dev",
@@ -103,9 +111,14 @@ COOKBOOK_PACKAGES_VERSIONS = {
 
 CW_DASHBOARD_ENABLED_DEFAULT = True
 CW_LOGS_ENABLED_DEFAULT = True
-CW_LOGS_RETENTION_DAYS_DEFAULT = 14
+CW_LOGS_ROTATION_ENABLED_DEFAULT = True
+CW_LOGS_RETENTION_DAYS_DEFAULT = 180
 CW_LOGS_CFN_PARAM_NAME = "ClusterCWLogGroup"
 CW_LOG_GROUP_NAME_PREFIX = "/aws/parallelcluster/"
+CW_ALARM_PERIOD_DEFAULT = 60
+CW_ALARM_PERCENT_THRESHOLD_DEFAULT = 90
+CW_ALARM_EVALUATION_PERIODS_DEFAULT = 1
+CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT = 1
 
 STACK_EVENTS_LOG_STREAM_NAME_FORMAT = "{}-cfn-events"
 
@@ -176,6 +189,9 @@ SUPPORTED_REGIONS = [
     "sa-east-1",
     "us-east-1",
     "us-east-2",
+    "us-iso-east-1",
+    "us-iso-west-1",
+    "us-isob-east-1",
     "us-gov-east-1",
     "us-gov-west-1",
     "us-west-1",
@@ -197,3 +213,88 @@ SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
 
 DEFAULT_EPHEMERAL_DIR = "/scratch"
+
+LAMBDA_VPC_ACCESS_MANAGED_POLICY = "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+
+IAM_NAME_PREFIX_LENGTH_LIMIT = 30
+IAM_PATH_LENGTH_LIMIT = 512
+
+
+# Features support
+# By default, all features are considered supported.
+# To mark a feature as unsupported for certain regions,
+# add the entry to the map below by region prefixes.
+class Feature(Enum):
+    """
+    Enumeration of features.
+
+    We do not expect this enumeration to list all the features,
+    but at least those that are considered for feature flagging.
+    """
+
+    BATCH = "AWS Batch scheduler"
+    DCV = "NICE DCV"
+    FSX_LUSTRE = "FSx Lustre"
+    FSX_ONTAP = "FSx ONTAP"
+    FSX_OPENZFS = "FSx OpenZfs"
+
+
+UNSUPPORTED_FEATURES_MAP = {
+    Feature.BATCH: ["ap-northeast-3", "us-iso"],
+    Feature.DCV: ["us-iso"],
+    Feature.FSX_LUSTRE: ["us-iso"],
+    Feature.FSX_ONTAP: ["us-iso"],
+    Feature.FSX_OPENZFS: ["us-iso"],
+}
+
+
+# Operations support
+# By default, all operations are considered supported.
+# To mark an operation as unsupported for certain regions,
+# add the entry to the map below by region prefixes.
+class Operation(Enum):
+    """
+    Enumeration of operations.
+
+    We do not expect this enumeration to list all the operations,
+    but at least those that are considered for operations flagging.
+    """
+
+    BUILD_IMAGE = "build-image"
+    CONFIGURE = "configure"
+    CREATE_CLUSTER = "create-cluster"
+    DCV_CONNECT = "dcv-connect"
+    DELETE_CLUSTER = "delete-cluster"
+    DELETE_CLUSTER_INSTANCES = "delete-cluster-instances"
+    DELETE_IMAGE = "delete-image"
+    DESCRIBE_CLUSTER = "describe-cluster"
+    DESCRIBE_CLUSTER_INSTANCES = "describe-cluster-instances"
+    DESCRIBE_COMPUTE_FLEET = "describe-compute-fleet"
+    DESCRIBE_IMAGE = "describe-image"
+    EXPORT_CLUSTER_LOGS = "export-cluster-logs"
+    EXPORT_IMAGE_LOGS = "export-image-logs"
+    GET_CLUSTER_LOG_EVENTS = "get-cluster-log-events"
+    GET_CLUSTER_STACK_EVENTS = "get-cluster-stack-events"
+    GET_IMAGE_LOG_EVENTS = "get-image-log-events"
+    GET_IMAGE_STACK_EVENTS = "get-image-stack-events"
+    LIST_CLUSTER_LOG_STREAMS = "list-cluster-log-streams"
+    LIST_CLUSTERS = "list-clusters"
+    LIST_IMAGES = "list-images"
+    LIST_IMAGE_LOG_STREAMS = "list-image-log-streams"
+    LIST_OFFICIAL_IMAGES = "list-official-images"
+    SSH = "ssh"
+    UPDATE_CLUSTER = "update-cluster"
+    UPDATE_COMOPUTE_FLEET = "update-compute-fleet"
+    VERSION = "version"
+
+
+UNSUPPORTED_OPERATIONS_MAP = {
+    Operation.BUILD_IMAGE: ["us-iso"],
+    Operation.DELETE_IMAGE: ["us-iso"],
+    Operation.DESCRIBE_IMAGE: ["us-iso"],
+    Operation.LIST_IMAGES: ["us-iso"],
+    Operation.EXPORT_IMAGE_LOGS: ["us-iso"],
+    Operation.GET_IMAGE_LOG_EVENTS: ["us-iso"],
+    Operation.GET_IMAGE_STACK_EVENTS: ["us-iso"],
+    Operation.LIST_IMAGE_LOG_STREAMS: ["us-iso"],
+}

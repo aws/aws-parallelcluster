@@ -24,9 +24,11 @@ from pcluster.aws.common import AWSClientError
 from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
+    HeadNodeCustomActionsSchema,
     HeadNodeIamSchema,
     HeadNodeRootVolumeSchema,
     ImageSchema,
+    QueueCustomActionsSchema,
     QueueIamSchema,
     SchedulerPluginCloudFormationClusterInfrastructureSchema,
     SchedulerPluginClusterSharedArtifactSchema,
@@ -212,6 +214,94 @@ DUMMY_AWSBATCH_QUEUE = {
 }
 
 
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"OnNodeUpdating": "test"}, "Unknown field"),
+        ({"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"}, "Invalid input type."),
+        ({"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}}, "Unknown field"),
+        # Successes
+        (
+            {
+                "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+                "OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2"},
+                "OnNodeUpdated": {"Script": "test3"},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+    ],
+)
+def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            HeadNodeCustomActionsSchema().load(config_dict)
+    else:
+        HeadNodeCustomActionsSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"OnNodeUpdated": "test"}, "Unknown field"),
+        (
+            {
+                "OnNodeStart": "test",
+                "OnNodeConfigured": "test",
+            },
+            "Invalid input type.",
+        ),
+        ({"OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]}}, "Unknown field"),
+        # Successes
+        (
+            {
+                "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2"},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+            },
+            None,
+        ),
+    ],
+)
+def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            QueueCustomActionsSchema().load(config_dict)
+    else:
+        QueueCustomActionsSchema().load(config_dict)
+
+
 def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):
     slurm_queue = {
         "Name": name,
@@ -274,23 +364,6 @@ def dummy_slurm_compute_resource(name, instance_type):
             },
             None,
         ),
-        (
-            {
-                "Scheduler": "slurm",
-                "SlurmQueues": [
-                    dummy_slurm_queue(),
-                    {
-                        "Name": "queue2",
-                        "Networking": {"SubnetIds": ["subnet-00000000"]},
-                        "ComputeResources": [
-                            {"Name": "compute_resource3", "InstanceType": "c5.2xlarge", "MaxCount": 5},
-                            {"Name": "compute_resource4", "InstanceType": "c4.2xlarge"},
-                        ],
-                    },
-                ],
-            },
-            "The SubnetIds used for all of the queues should be the same",
-        ),
         (  # maximum slurm queue length
             {
                 "Scheduler": "slurm",
@@ -341,7 +414,7 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                 "ComputeResources": [
                     {
                         "Name": "compute_resource1",
-                        "InstanceTypeList": [{"InstanceType": "c5.2xlarge"}],
+                        "Instances": [{"InstanceType": "c5.2xlarge"}],
                     }
                 ],
             },
@@ -356,14 +429,14 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                 "ComputeResources": [
                     {
                         "Name": "compute_resource1",
-                        "InstanceTypeList": [{"InstanceType": "c5.2xlarge"}, {"InstanceType": "c4.2xlarge"}],
+                        "Instances": [{"InstanceType": "c5.2xlarge"}, {"InstanceType": "c4.2xlarge"}],
                     },
                     {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
                 ],
             },
             "",
         ),
-        # Failing to specify either InstanceType or InstanceTypeList should return a validation error
+        # Failing to specify either InstanceType or Instances should return a validation error
         (
             {
                 "Name": "Flex-Queue",
@@ -375,9 +448,9 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                     }
                 ],
             },
-            "A Compute Resource needs to specify either InstanceType or InstanceTypeList.",
+            "A Compute Resource needs to specify either InstanceType or Instances.",
         ),
-        # Mixing InstanceType and InstanceTypeList in a Compute Resource should return a validation error
+        # Mixing InstanceType and Instances in a Compute Resource should return a validation error
         (
             {
                 "Name": "Mixed-Instance-Types",
@@ -387,20 +460,20 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                     {
                         "Name": "compute_resource1",
                         "InstanceType": "c5.2xlarge",
-                        "InstanceTypeList": [{"InstanceType": "c4.2xlarge"}],
+                        "Instances": [{"InstanceType": "c4.2xlarge"}],
                     },
                 ],
             },
-            "A Compute Resource needs to specify either InstanceType or InstanceTypeList.",
+            "A Compute Resource needs to specify either InstanceType or Instances.",
         ),
-        # InstanceTypeList in a Compute Resource should not have duplicate instance types
+        # Instances in a Compute Resource should not have duplicate instance types
         (
             {
                 "Name": "DuplicateInstanceTypes",
                 "ComputeResources": [
                     {
                         "Name": "compute_resource1",
-                        "InstanceTypeList": [
+                        "Instances": [
                             {"InstanceType": "c4.2xlarge"},
                             {"InstanceType": "c5.xlarge"},
                             {"InstanceType": "c5a.xlarge"},
@@ -497,10 +570,7 @@ def test_scheduler_constraints_for_intel_packages(
     mock_aws_api(mocker)
     config_file_name = f"{scheduler}.{'enabled' if install_intel_packages_enabled else 'disabled'}.yaml"
     if failure_message:
-        with pytest.raises(
-            ValidationError,
-            match=failure_message,
-        ):
+        with pytest.raises(ValidationError, match=failure_message):
             load_cluster_model_from_yaml(config_file_name, test_datadir)
     else:
         _, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
@@ -508,6 +578,34 @@ def test_scheduler_constraints_for_intel_packages(
         assert_that(cluster.additional_packages.intel_software.intel_hpc_platform).is_equal_to(
             install_intel_packages_enabled
         )
+
+
+@pytest.mark.parametrize(
+    "scheduler, custom_action, failure_message",
+    [
+        ("slurm", "no_actions", None),
+        ("slurm", "on_node_start", None),
+        ("slurm", "on_node_configured", None),
+        ("slurm", "on_node_updated", None),
+        ("awsbatch", "no_actions", None),
+        ("awsbatch", "on_node_start", None),
+        ("awsbatch", "on_node_configured", None),
+        (
+            "awsbatch",
+            "on_node_updated",
+            "The use of the OnNodeUpdated configuration is not supported when using awsbatch as the scheduler",
+        ),
+    ],
+)
+def test_scheduler_constraints_for_custom_actions(mocker, test_datadir, scheduler, custom_action, failure_message):
+    mock_aws_api(mocker)
+    config_file_name = f"{scheduler}.{custom_action}.yaml"
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            load_cluster_model_from_yaml(config_file_name, test_datadir)
+    else:
+        _, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
+        assert_that(cluster.scheduling.scheduler).is_equal_to(scheduler)
 
 
 @pytest.mark.parametrize(

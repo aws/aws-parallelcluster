@@ -99,7 +99,12 @@ def _get_vpcs_and_subnets():
 
 def _get_subnets(conn, vpc_id):
     subnet_options = []
-    subnet_list = conn.describe_subnets(Filters=[{"Name": "vpcId", "Values": [vpc_id]}]).get("Subnets")
+    subnet_list = conn.describe_subnets(
+        Filters=[
+            {"Name": "vpcId", "Values": [vpc_id]},
+            {"Name": "ipv6-native", "Values": ["false"]},
+        ]
+    ).get("Subnets")
     for subnet in subnet_list:
         subnet_options.append(
             OrderedDict(
@@ -115,7 +120,6 @@ def _get_subnets(conn, vpc_id):
 
 
 def configure(args):  # noqa: C901
-
     config_file_path = args.config
     # Check for invalid path (eg. a directory)
     if os.path.exists(config_file_path):
@@ -212,7 +216,7 @@ def configure(args):  # noqa: C901
                     if compute_instance_type not in [
                         instances["InstanceType"]
                         for compute_resource in compute_resources
-                        for instances in compute_resource["InstanceTypeList"]
+                        for instances in compute_resource["Instances"]
                     ]:
                         break
                     print(
@@ -247,7 +251,7 @@ def configure(args):  # noqa: C901
             else:
                 compute_resource = {
                     "Name": compute_resource_name,
-                    "InstanceTypeList": [{"InstanceType": compute_instance_type}],
+                    "Instances": [{"InstanceType": compute_instance_type}],
                     "MinCount": min_cluster_size,
                     "MaxCount": max_cluster_size,
                 }

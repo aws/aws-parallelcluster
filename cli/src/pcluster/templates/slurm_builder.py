@@ -23,6 +23,7 @@ from pcluster.constants import PCLUSTER_SLURM_DYNAMODB_PREFIX
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
+    add_cluster_iam_resource_prefix,
     add_lambda_cfn_role,
     create_hash_suffix,
     get_cloud_watch_logs_policy_statement,
@@ -113,7 +114,9 @@ class SlurmConstruct(Construct):
 
     def _add_policies_to_compute_node_role(self, node_name, role):
         suffix = create_hash_suffix(node_name)
-
+        _, policy_name = add_cluster_iam_resource_prefix(
+            self.config.cluster_name, self.config, "parallelcluster-slurm-compute", iam_type="AWS::IAM::Policy"
+        )
         policy_statements = [
             {
                 "sid": "SlurmDynamoDBTableQuery",
@@ -130,11 +133,11 @@ class SlurmConstruct(Construct):
                 ],
             },
         ]
-        policy_name = "parallelcluster-slurm-compute"
+
         iam.CfnPolicy(
             self.stack_scope,
             f"SlurmPolicies{suffix}",
-            policy_name=policy_name,
+            policy_name=policy_name or "parallelcluster-slurm-compute",
             policy_document=iam.PolicyDocument(
                 statements=[iam.PolicyStatement(**statement) for statement in policy_statements]
             ),
@@ -144,6 +147,9 @@ class SlurmConstruct(Construct):
     def _add_policies_to_head_node_role(self, node_name, role):
         suffix = create_hash_suffix(node_name)
 
+        _, policy_name = add_cluster_iam_resource_prefix(
+            self.config.cluster_name, self.config, "parallelcluster-slurm-head-node", iam_type="AWS::IAM::Policy"
+        )
         policy_statements = [
             {
                 "sid": "SlurmDynamoDBTable",
@@ -151,6 +157,7 @@ class SlurmConstruct(Construct):
                     "dynamodb:PutItem",
                     "dynamodb:BatchWriteItem",
                     "dynamodb:GetItem",
+                    "dynamodb:BatchGetItem",
                 ],
                 "effect": iam.Effect.ALLOW,
                 "resources": [
@@ -160,12 +167,10 @@ class SlurmConstruct(Construct):
                 ],
             },
         ]
-        policy_name = "parallelcluster-slurm-head-node"
-
         iam.CfnPolicy(
             self.stack_scope,
             f"SlurmPolicies{suffix}",
-            policy_name=policy_name,
+            policy_name=policy_name or "parallelcluster-slurm-head-node",
             policy_document=iam.PolicyDocument(
                 statements=[iam.PolicyStatement(**statement) for statement in policy_statements]
             ),
@@ -209,10 +214,13 @@ class SlurmConstruct(Construct):
 
         # If Headnode InstanceRole is created by ParallelCluster, add Route53 policy for InstanceRole
         if self.managed_head_node_instance_role:
+            _, policy_name = add_cluster_iam_resource_prefix(
+                self.config.cluster_name, self.config, "parallelcluster-slurm-route53", iam_type="AWS::IAM::Policy"
+            )
             iam.CfnPolicy(
                 self.stack_scope,
                 "ParallelClusterSlurmRoute53Policies",
-                policy_name="parallelcluster-slurm-route53",
+                policy_name=policy_name or "parallelcluster-slurm-route53",
                 policy_document=iam.PolicyDocument(
                     statements=[
                         iam.PolicyStatement(
@@ -237,6 +245,7 @@ class SlurmConstruct(Construct):
         if self.cleanup_lambda_role:
             cleanup_route53_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
+                config=self.config,
                 function_id="CleanupRoute53",
                 statements=[
                     iam.PolicyStatement(
@@ -261,6 +270,7 @@ class SlurmConstruct(Construct):
                         )
                     ),
                 ],
+                has_vpc_config=self.config.lambda_functions_vpc_config,
             )
 
         cleanup_route53_lambda = PclusterLambdaConstruct(

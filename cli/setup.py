@@ -20,12 +20,12 @@ def readme():
         return f.read()
 
 
-VERSION = "3.3.0b1"
+VERSION = "3.6.0"
 CDK_VERSION = "1.137,!=1.153.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "tabulate~=0.8",
+    "tabulate>=0.8.8,<=0.8.10",
     "PyYAML~=5.3",
     "jinja2~=3.0",
     "marshmallow~=3.10",

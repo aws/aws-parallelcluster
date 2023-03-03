@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
 from unittest.mock import PropertyMock
 
 import pytest
@@ -26,6 +27,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_buc
     "config_file_name",
     [
         "centos7.slurm.full.yaml",
+        "rhel8.slurm.full.yaml",
         "alinux2.slurm.conditional_vol.yaml",
         "ubuntu18.slurm.simple.yaml",
         "alinux2.batch.no_head_node_log.yaml",
@@ -51,6 +53,10 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
     print(output_yaml)
 
     if cluster_config.is_cw_dashboard_enabled:
+        assert_that(output_yaml).contains("CloudwatchDashboard")
+        assert_that(output_yaml).contains("Head Node EC2 Metrics")
+        _verify_head_node_instance_metrics_graphs(output_yaml)
+
         if cluster_config.shared_storage:
             _verify_ec2_metrics_conditions(cluster_config, output_yaml)
 
@@ -58,6 +64,21 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
             _verify_head_node_logs_conditions(cluster_config, output_yaml)
         else:
             assert_that(output_yaml).does_not_contain("Head Node Logs")
+    else:
+        assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
+        assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
+
+
+def _verify_head_node_instance_metrics_graphs(output_yaml):
+    """Verify CloudWatch graphs within the Head Node Instance Metrics section."""
+    assert_that(output_yaml).contains("Head Node Instance Metrics")
+    assert_that(output_yaml).contains("CPU Utilization")
+    assert_that(output_yaml).contains("Network Packets In/Out")
+    assert_that(output_yaml).contains("Network In and Out")
+    assert_that(output_yaml).contains("Disk Read/Write Bytes")
+    assert_that(output_yaml).contains("Disk Read/Write Ops")
+    assert_that(output_yaml).contains("Disk Used Percent")
+    assert_that(output_yaml).contains("Memory Used Percent")
 
 
 def _verify_ec2_metrics_conditions(cluster_config, output_yaml):
@@ -136,7 +157,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
         assert_that(output_yaml).does_not_contain("NICE DCV integration logs")
 
     # Conditional System logs
-    if cluster_config.image.os in ["alinux2", "centos7"]:
+    if cluster_config.image.os in ["alinux2", "centos7", "rhel8"]:
         assert_that(output_yaml).contains("system-messages")
         assert_that(output_yaml).does_not_contain("syslog")
     elif cluster_config.image.os in ["ubuntu1804"]:

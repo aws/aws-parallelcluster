@@ -115,7 +115,7 @@ Scheduling:
         - Name: compute_resource_1
           InstanceType: c4.2xlarge
         - Name: compute_resource_2
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.2xlarge
           MinCount: 1
           MaxCount: 15
@@ -160,8 +160,19 @@ SharedStorage:
       AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
+  - MountDir: /my/mount/point4
+    Name: name4
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: "fsvol-00e6e91b8898ec4ef"
+  - MountDir: /my/mount/point5
+    Name: name5
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: "fsvol-00e6e91b8898ec4ef"
 Iam:
   PermissionsBoundary: arn:aws:iam::aws:policy/boundary
+  ResourcePrefix: /path-prefix/name-prefix
   Roles:
     LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
@@ -169,7 +180,7 @@ Monitoring:
   Logs:
     CloudWatch:
       Enabled: true  # true
-      RetentionInDays: 30  # 14
+      RetentionInDays: 180  # 14
   Dashboards:
     CloudWatch:
       Enabled: true  # true
@@ -191,3 +202,7 @@ DevSettings:
       {"cluster": {"scheduler_slots": "cores"}}
   AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds: ["sg-028d73ae220157d96"]
+    SubnetIds: ["subnet-8e482ce8"]

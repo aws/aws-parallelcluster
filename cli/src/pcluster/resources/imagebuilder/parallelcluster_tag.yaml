@@ -5,7 +5,7 @@ schemaVersion: 1.0
 constants:
   - CookbookDefaultFile:
       type: string
-      value: /etc/chef/cookbooks/aws-parallelcluster/attributes/default.rb
+      value: /etc/chef/node_attributes.json
 
 phases:
   - name: test
@@ -53,6 +53,8 @@ phases:
                 OS='ubuntu1804'
               elif [ $(echo "${RELEASE}" | grep '^ubuntu\.20') ]; then
                 OS='ubuntu2004'
+              elif [ $(echo "${RELEASE}" | grep '^rhel\.8') ]; then
+                OS='rhel8'
               fi
 
               echo ${OS}
@@ -68,7 +70,7 @@ phases:
               which aws
               if [[ $? -ne 0 ]]; then
                 echo "Installing unzip"
-                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux) ]]; then
+                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux|rhel) ]]; then
                   yum -y install unzip
                 elif [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^ubuntu ]]; then
                   apt-get -y install unzip
@@ -136,12 +138,6 @@ phases:
                 echo "${VERSION}"
               }
 
-              get_cookbook_attribute () {
-                ATTRIBUTE_NAME="$1"
-                ATTRIBUTE_VALUE=$(grep -F "${ATTRIBUTE_NAME}" {{ CookbookDefaultFile }})
-                echo ${ATTRIBUTE_VALUE}
-              }
-
               # ParallelCluster bootstrap file
               if [[ -f /opt/parallelcluster/.bootstrapped ]]; then
                 add_tag "parallelcluster:bootstrap_file" "$(cat /opt/parallelcluster/.bootstrapped)"
@@ -195,7 +191,8 @@ phases:
               fi
               # ARM - No version file
               if [ -z "${CUDA_VERSION}" ] && [ -d /usr/local/cuda ]; then
-                CUDA_VERSION=$(get_cookbook_attribute "default['cluster']['nvidia']['cuda_version']" | tr -d '\n' | cut -d = -f 2 | xargs)
+                # Get cuda version from chef attributes
+                CUDA_VERSION=$(jq '.default.cluster.nvidia.cuda_version' {{ CookbookDefaultFile }} | tr -d '\n' | cut -d = -f 2 | xargs)
               fi
               add_tag "parallelcluster:cuda_version" "${CUDA_VERSION}"
               append_description "cuda" "${CUDA_VERSION}"

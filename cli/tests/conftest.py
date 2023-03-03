@@ -25,9 +25,10 @@ from pcluster.constants import CW_LOGS_CFN_PARAM_NAME
 
 
 @pytest.fixture(autouse=True)
-def clear_env():
+def clear_env(mocker):
     if "AWS_DEFAULT_REGION" in os.environ:
         del os.environ["AWS_DEFAULT_REGION"]
+    mocker.patch("botocore.session.Session.get_scoped_config", return_value={})
 
 
 @pytest.fixture(autouse=True)

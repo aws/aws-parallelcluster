@@ -6,6 +6,7 @@ HeadNode:
     SubnetId: {{ private_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+    AllowedIps: 0.0.0.0/0
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -18,7 +19,7 @@ Scheduling:
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 1
@@ -33,3 +34,9 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 1200
       DeploymentType: SCRATCH_2
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds:
+    - {{ default_vpc_security_group_id }}
+    SubnetIds:
+    - {{ private_subnet_id }}

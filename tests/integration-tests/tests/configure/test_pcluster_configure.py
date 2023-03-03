@@ -17,7 +17,10 @@ import pexpect
 import pytest
 import yaml
 from assertpy import assert_that
+from cfn_stacks_factory import CfnVpcStack
 from conftest import inject_additional_config_settings
+from conftest_networking import CIDR_FOR_CUSTOM_SUBNETS
+from utils import get_instance_info
 
 PROMPTS = {
     "region": lambda region: {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
@@ -81,13 +84,13 @@ def test_pcluster_configure_avoid_bad_subnets(
     config_path = test_datadir / "config.yaml"
     bad_subnets_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, instance)
-        + standard_queue_prompts(scheduler, instance)
+        + standard_queue_prompts(scheduler, instance, region)
         + [
             PROMPTS["vpc_creation"]("n"),
             PROMPTS["vpc_id"](vpc_stack.cfn_outputs["VpcId"]),
             PROMPTS["subnet_creation"]("n"),
-            prompt_head_node_subnet_id(subnet_id="", no_of_omitted_subnets=1),
-            prompt_compute_node_subnet_id(subnet_id="", head_node_subnet_id="", no_of_omitted_subnets=1),
+            prompt_head_node_subnet_id(subnet_id="", no_of_omitted_subnets=3),
+            prompt_compute_node_subnet_id(subnet_id="", head_node_subnet_id="", no_of_omitted_subnets=3),
         ]
     )
     stages = orchestrate_pcluster_configure_stages(prompts=bad_subnets_prompts, scheduler=scheduler)
@@ -95,7 +98,9 @@ def test_pcluster_configure_avoid_bad_subnets(
     assert_config_contains_expected_values(key_name, scheduler, os, instance, region, None, None, config_path)
 
 
-def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir):
+def test_region_without_t2micro(
+    vpc_stack: CfnVpcStack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir
+):
     """
     Verify the default instance type (free tier) is retrieved dynamically according to region.
     In other words, t3.micro is retrieved when the region does not contain t2.micro
@@ -103,7 +108,7 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
     config_path = test_datadir / "config.yaml"
     region_without_t2micro_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, "")
-        + standard_queue_prompts(scheduler, "")
+        + standard_queue_prompts(scheduler, "", region)
         + standard_vpc_subnet_prompts(vpc_stack)
     )
     stages = orchestrate_pcluster_configure_stages(region_without_t2micro_prompts, scheduler)
@@ -114,8 +119,8 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
         os,
         "",
         region,
-        vpc_stack.cfn_outputs["PublicSubnetId"],
-        vpc_stack.cfn_outputs["PrivateSubnetId"],
+        vpc_stack.get_public_subnet(),
+        vpc_stack.get_private_subnet(),
         config_path,
     )
 
@@ -130,7 +135,7 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
 )
 def test_efa_and_placement_group(
     request,
-    vpc_stack,
+    vpc_stack: CfnVpcStack,
     key_name,
     region,
     os,
@@ -174,8 +179,8 @@ def test_efa_and_placement_group(
         os,
         instance,
         region,
-        vpc_stack.cfn_outputs["PublicSubnetId"],
-        vpc_stack.cfn_outputs["PrivateSubnetId"],
+        vpc_stack.get_public_subnet(),
+        vpc_stack.get_private_subnet(),
         config_path,
         efa_config=efa_config,
         placement_group_config=placement_group_config["configuration"],
@@ -189,10 +194,12 @@ def test_efa_unsupported(vpc_stack, key_name, region, os, instance, scheduler, c
     _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack)
 
 
-def _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack):
+def _create_and_test_standard_configuration(
+    config_path, region, key_name, scheduler, os, instance, vpc_stack: CfnVpcStack
+):
     standard_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, instance)
-        + standard_queue_prompts(scheduler, instance)
+        + standard_queue_prompts(scheduler, instance, region)
         + standard_vpc_subnet_prompts(vpc_stack)
     )
     stages = orchestrate_pcluster_configure_stages(standard_prompts, scheduler)
@@ -203,8 +210,8 @@ def _create_and_test_standard_configuration(config_path, region, key_name, sched
         os,
         instance,
         region,
-        vpc_stack.cfn_outputs["PublicSubnetId"],
-        vpc_stack.cfn_outputs["PrivateSubnetId"],
+        vpc_stack.get_public_subnet(),
+        vpc_stack.get_private_subnet(),
         config_path,
     )
 
@@ -231,25 +238,37 @@ def standard_first_stage_prompts(region, key_name, scheduler, os, instance):
     ]
 
 
-def standard_queue_prompts(scheduler, instance, size=""):
-    return [
+def standard_queue_prompts(scheduler, instance, region, size=""):
+    queue_prompts = [
         PROMPTS["no_of_queues"](1),
         PROMPTS["queue_name"](queue=1, name="myqueue"),
         PROMPTS["no_of_compute_resources"](queue_name="myqueue", queue=1, n=1),
         PROMPTS["compute_instance_type"](resource=1, queue_name="myqueue", instance=instance),
-        prompt_max_size(scheduler=scheduler, size=size),
     ]
 
+    is_efa_supported = False
+    if instance:
+        is_efa_supported = get_instance_info(instance, region).get("NetworkInfo", {}).get("EfaSupported", False)
+    if is_efa_supported:
+        queue_prompts.append(PROMPTS["enable_efa"]("y"))
 
-def standard_vpc_subnet_prompts(vpc_stack):
+    queue_prompts.append(prompt_max_size(scheduler=scheduler, size=size))
+
+    if is_efa_supported:
+        queue_prompts.append(PROMPTS["placement_group"](""))
+
+    return queue_prompts
+
+
+def standard_vpc_subnet_prompts(vpc_stack: CfnVpcStack):
     return [
         PROMPTS["vpc_creation"]("n"),
         PROMPTS["vpc_id"](vpc_stack.cfn_outputs["VpcId"]),
         PROMPTS["subnet_creation"]("n"),
-        prompt_head_node_subnet_id(subnet_id=vpc_stack.cfn_outputs["PublicSubnetId"]),
+        prompt_head_node_subnet_id(subnet_id=vpc_stack.get_public_subnet()),
         prompt_compute_node_subnet_id(
-            subnet_id=vpc_stack.cfn_outputs["PrivateSubnetId"],
-            head_node_subnet_id=vpc_stack.cfn_outputs["PublicSubnetId"],
+            subnet_id=vpc_stack.get_private_subnet(),
+            head_node_subnet_id=vpc_stack.get_public_subnet(),
         ),
     ]
 
@@ -362,7 +381,7 @@ def assert_config_contains_expected_values(
                     0,
                     "ComputeResources",
                     0,
-                    "InstanceTypeList",
+                    "Instances",
                     0,
                     "InstanceType",
                 ],
@@ -425,7 +444,7 @@ def orchestrate_pcluster_configure_stages(prompts, scheduler):
     return [prompt for prompt in prompts if scheduler != "awsbatch" or not prompt.get("skip_for_batch")]
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def subnet_in_use1_az3(vpc_stack):
     # Subnet used to test the functionality of avoiding subnet in AZs that do not have user specified instance types
     # Hard coding implementation to run on us-east-1 and create subnet in use1_az3 without c5.xlarge
@@ -449,7 +468,7 @@ def subnet_in_use1_az3(vpc_stack):
     )
     assert_that(offerings).is_empty()
     subnet_id = ec2_client.create_subnet(
-        AvailabilityZoneId="use1-az3", CidrBlock="192.168.0.0/21", VpcId=vpc_stack.cfn_outputs["VpcId"]
+        AvailabilityZoneId="use1-az3", CidrBlock=CIDR_FOR_CUSTOM_SUBNETS[-1], VpcId=vpc_stack.cfn_outputs["VpcId"]
     )["Subnet"]["SubnetId"]
     yield subnet_id
     ec2_client.delete_subnet(SubnetId=subnet_id)

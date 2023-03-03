@@ -21,7 +21,7 @@ Scheduling:
           InstanceTypes:
             - {{ instance }}
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           {% endif %}
 Monitoring:

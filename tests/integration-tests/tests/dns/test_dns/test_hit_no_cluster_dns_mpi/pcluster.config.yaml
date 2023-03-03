@@ -21,7 +21,7 @@ Scheduling:
           - {{ public_subnet_id }}
       ComputeResources:
         - Name: default-queue-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ min_queue_size }}

@@ -21,12 +21,103 @@ import subprocess
 from hashlib import sha1
 
 import boto3
+import requests
 from assertpy import assert_that
 from constants import OS_TO_ROOT_VOLUME_DEVICE
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
+
+DEFAULT_PARTITION = "aws"
+PARTITION_MAP = {
+    "cn": "aws-cn",
+    "us-gov": "aws-us-gov",
+    "us-iso-": "aws-iso",
+    "us-isob": "aws-iso-b",
+}
+
+
+def _format_stack_error(message, stack_events=None, cluster_details=None) -> str:
+    if cluster_details:
+        if "message" in cluster_details:
+            message += f"\n\n- Message:\n\t{cluster_details.get('message')}"
+
+        if "configurationValidationErrors" in cluster_details:
+            validation_string = "\n\t".join(
+                [
+                    f"* {validation.get('level')} - {validation.get('type')}:\n\t\t{validation.get('message')}"
+                    for validation in cluster_details.get("configurationValidationErrors")
+                ],
+            )
+
+            if validation_string:
+                message += f"\n\n- Validation Failures:\n\t{validation_string}"
+
+        if "failures" in cluster_details:
+            details_string = "\n\t".join(
+                [
+                    f"* {failure.get('failureCode')}:\n\t\t{failure.get('failureReason')}"
+                    for failure in cluster_details.get("failures")
+                ],
+            )
+            if details_string:
+                message += f"\n\n- Cluster Errors:\n\t{details_string}"
+
+    if stack_events:
+        events_string = "\n\t".join(
+            [
+                f"* {event.get('LogicalResourceId')}:\n\t\t{event.get('ResourceStatusReason')}"
+                for event in stack_events
+                if event.get("ResourceStatus") == "CREATE_FAILED"
+            ]
+        )
+        if events_string:
+            message += f"\n\n- Stack Events:\n\t{events_string}"
+    return message
+
+
+class StackError(BaseException):
+    """Exception to throw when stack creation stack fails as part of a test."""
+
+    def __init__(self, message, stack_events=None):
+        message = message if message else "StackError has been raised"
+        self.message = _format_stack_error(message, stack_events=stack_events)
+
+    def __str__(self):
+        return f"StackError: {self.message}"
+
+
+class SetupError(BaseException):
+    """Exception to throw if an error occurred during test setup."""
+
+    def __init__(self, message):
+        self.message = message if message else "SetupError has been raised"
+
+    def __str__(self):
+        return f"SetupError: {self.message}"
+
+
+class StackSetupError(SetupError):
+    """Exception to throw when stack creation fails during test setup."""
+
+    def __init__(self, message, stack_events):
+        message = message if message else "StackSetupError has been raised"
+        super().__init__(_format_stack_error(message, stack_events=stack_events))
+
+    def __str__(self):
+        return f"StackSetupError: {self.message}"
+
+
+class ClusterCreationError(SetupError):
+    """Exception to throw when cluster creation fails during test setup."""
+
+    def __init__(self, message, stack_events=None, cluster_details=None):
+        message = message if message else "ClusterCreationError has been raised"
+        super().__init__(_format_stack_error(message, stack_events=stack_events, cluster_details=cluster_details))
+
+    def __str__(self):
+        return f"ClusterCreationError: {self.message}"
 
 
 class InstanceTypesData:
@@ -80,7 +171,15 @@ def retry_if_subprocess_error(exception):
     return isinstance(exception, subprocess.CalledProcessError)
 
 
-def run_command(command, capture_output=True, log_error=True, env=None, timeout=None, raise_on_error=True, shell=False):
+def run_command(
+    command,
+    capture_output=True,
+    log_error=True,
+    env=None,
+    timeout=None,
+    raise_on_error=True,
+    shell=False,
+):
     """Execute shell command."""
     if isinstance(command, str) and not shell:
         command = shlex.split(command)
@@ -177,6 +276,27 @@ def retrieve_cfn_resources(stack_name, region):
     return resources
 
 
+def get_cfn_events(stack_name, region):
+    """Retrieve CloudFormation Stack Events from a give stack."""
+    if not stack_name:
+        logging.warning("stack_name not provided when retrieving events")
+        return []
+    if region is None:
+        region = os.environ.get("AWS_DEFAULT_REGION")
+    try:
+        logging.debug("Getting events for stack {}".format(stack_name))
+        cfn = boto3.client("cloudformation", region_name=region)
+        response = cfn.describe_stack_events(StackName=stack_name)
+        while response:
+            yield from response.get("StackEvents")
+            next_token = response.get("NextToken")
+            response = cfn.describe_stack_events(StackName=stack_name, NextToken=next_token) if next_token else None
+    except Exception as e:
+        logging.warning("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        raise
+    return None
+
+
 def get_substacks(stack_name, region=None, sub_stack_name=None):
     """Return the PhysicalResourceIds for all substacks created by the given stack."""
     if region is None:
@@ -212,6 +332,20 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
     except Exception as e:
         logging.error("Failed retrieving instance ids with exception: %s", e)
         raise
+
+
+def get_compute_nodes_instance_ips(stack_name, region):
+    """Return a list of compute Instances Ip's."""
+    try:
+        instances = describe_cluster_instances(
+            stack_name,
+            region,
+            filter_by_node_type="Compute",
+        )
+        return [instance["PrivateIpAddress"] for instance in instances]
+    except Exception as e:
+        logging.error("Failed retrieving instance ips for stack %s in region %s", stack_name, region)
+        raise e
 
 
 def describe_cluster_instances(
@@ -272,6 +406,18 @@ def to_snake_case(input):
     """Convert a string into its snake case representation."""
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input)
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def to_pascal_case(snake_case_word):
+    """Convert the given snake case word into a PascalCase one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
+
+
+def to_pascal_from_kebab_case(kebab_case_word):
+    """Convert the given kebab case word into a PascalCase one."""
+    parts = iter(kebab_case_word.split("-"))
+    return "".join(word.title() for word in parts)
 
 
 def create_s3_bucket(bucket_name, region):
@@ -424,6 +570,33 @@ def get_root_volume_id(instance_id, region, os):
     return matching_devices[0].get("Ebs").get("VolumeId")
 
 
+def get_metadata(metadata_path, raise_error=True):
+    """
+    Get EC2 instance metadata.
+
+    :param raise_error: set to False if you want to return None in case of Exception (e.g. no EC2 instance)
+    :param metadata_path: the metadata relative path
+    :return: the metadata value.
+    """
+    metadata_value = None
+    try:
+        metadata_base_url = "http://169.254.169.254/latest"
+        token = requests.put(f"{metadata_base_url}/api/token", headers={"X-aws-ec2-metadata-token-ttl-seconds": "300"})
+
+        headers = {}
+        if token.status_code == requests.codes.ok:
+            headers["X-aws-ec2-metadata-token"] = token.content
+        metadata_value = requests.get(f"{metadata_base_url}/meta-data/{metadata_path}", headers=headers).text
+    except Exception as e:
+        error_msg = f"Unable to get {metadata_path} metadata. Failed with exception: {e}"
+        logging.critical(error_msg)
+        if raise_error:
+            raise Exception(error_msg)
+
+    logging.debug("%s=%s", metadata_path, metadata_value)
+    return metadata_value
+
+
 def dict_has_nested_key(d, keys):
     """Check if *keys (nested) exists in d (dict)."""
     _d = d
@@ -459,12 +632,11 @@ def get_stack_id_tag_filter(stack_arn):
 
 
 def get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
+    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    return next(
+        (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
+        DEFAULT_PARTITION,
+    )
 
 
 def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):

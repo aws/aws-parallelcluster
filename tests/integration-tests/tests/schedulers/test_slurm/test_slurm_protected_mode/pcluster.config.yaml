@@ -17,13 +17,16 @@ Scheduling:
     - Name: broken
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
+          {% if scheduler == "slurm" %}
+          - {{ private_subnet_ids[1] }}
+          {% endif %}
       ComputeResources:
         - Name: broken-static
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
       Iam:
@@ -33,20 +36,23 @@ Scheduling:
     - Name: half-broken
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
+          {% if scheduler == "slurm" %}
+          - {{ private_subnet_ids[1] }}
+          {% endif %}
       ComputeResources:
         - Name: broken-dynamic
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type has bootstrap failure
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
           {% endif %}
         - Name: working-static
           {% if scheduler == "plugin" %}
           InstanceType: c5.large # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
       Iam:
@@ -56,13 +62,16 @@ Scheduling:
     - Name: normal
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
+          {% if scheduler == "slurm" %}
+          - {{ private_subnet_ids[1] }}
+          {% endif %}
       ComputeResources:
         - Name: normal
           {% if scheduler == "plugin" %}
           InstanceType: c5.xlarge # instance type works as expected
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge # instance type works as expected
           {% endif %}
       Iam:

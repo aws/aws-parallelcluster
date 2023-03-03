@@ -8,9 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import os
 from copy import deepcopy
 
+from assertpy import assert_that
+
+from pcluster.constants import LAMBDA_VPC_ACCESS_MANAGED_POLICY
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 
@@ -46,3 +50,54 @@ def get_resources(
             )
         )
     )
+
+
+def get_head_node_policy(template, enforce_not_null=True):
+    policy = get_resources(template, type="AWS::IAM::Policy", name="ParallelClusterPoliciesHeadNode").get(
+        "ParallelClusterPoliciesHeadNode"
+    )
+    if enforce_not_null:
+        assert_that(policy).is_not_none()
+    return policy
+
+
+def get_statement_by_sid(policy, sid, enforce_not_null=True):
+    statements = policy["Properties"]["PolicyDocument"]["Statement"]
+    statement = next(filter(lambda s: s.get("Sid") == sid, statements), None)
+    if enforce_not_null:
+        assert_that(statement).is_not_none()
+    return statement
+
+
+def flatten(array):
+    return list(itertools.chain(array))
+
+
+def assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, expected_vpc_config):
+    resources = generated_template.get("Resources")
+
+    for lambda_function in _get_lambda_functions(resources):
+        role = resources.get(_get_role_name(lambda_function))
+
+        if expected_vpc_config:
+            assert_that(_get_vpc_config(lambda_function)).is_equal_to(expected_vpc_config)
+            assert_that(_get_managed_policy_arns(role)).contains(LAMBDA_VPC_ACCESS_MANAGED_POLICY)
+        else:
+            assert_that(_get_vpc_config(lambda_function)).is_none()
+            assert_that(_get_managed_policy_arns(role)).does_not_contain(LAMBDA_VPC_ACCESS_MANAGED_POLICY)
+
+
+def _get_vpc_config(lambda_function):
+    return lambda_function.get("Properties").get("VpcConfig")
+
+
+def _get_role_name(lambda_function):
+    return lambda_function.get("Properties").get("Role").get("Fn::GetAtt")[0]
+
+
+def _get_lambda_functions(resources):
+    return [res for res in resources.values() if res.get("Type") == "AWS::Lambda::Function"]
+
+
+def _get_managed_policy_arns(role):
+    return {arn.get("Fn::Sub") for arn in role.get("Properties").get("ManagedPolicyArns", [])}

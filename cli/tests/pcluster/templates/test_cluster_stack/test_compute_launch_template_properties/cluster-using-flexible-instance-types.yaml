@@ -14,7 +14,7 @@ Scheduling:
     AllocationStrategy: lowest-price
     ComputeResources:
     - Name: testcomputeresource
-      InstanceTypeList:
+      Instances:
         - InstanceType: t2.micro
         - InstanceType: c4.xlarge
       MinCount: 0

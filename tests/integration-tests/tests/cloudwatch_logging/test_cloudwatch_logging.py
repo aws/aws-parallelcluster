@@ -28,7 +28,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_SHARED_DIR = "/shared"
-DEFAULT_RETENTION_DAYS = 14
+DEFAULT_RETENTION_DAYS = 180
 NODE_CONFIG_PATH = "/etc/chef/dna.json"
 HEAD_NODE_ROLE_NAME = "HeadNode"
 COMPUTE_NODE_ROLE_NAME = "ComputeFleet"
@@ -186,8 +186,8 @@ class CloudWatchLoggingClusterState:
         LOGGER.debug("After getting initial cluster state:\n{0}".format(self._dump_cluster_log_state()))
 
     def _read_log_configs_from_head_node(self):
-        """Read the log configs file at /usr/local/etc/cloudwatch_log_files.json."""
-        read_cmd = "cat /usr/local/etc/cloudwatch_log_files.json"
+        """Read the log configs file at /usr/local/etc/cloudwatch_agent_config.json."""
+        read_cmd = "cat /usr/local/etc/cloudwatch_agent_config.json"
         config = json.loads(self._run_command_on_head_node(read_cmd))
         return config.get("log_configs")
 

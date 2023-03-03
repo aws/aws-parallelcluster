@@ -37,6 +37,7 @@ class StackInfo:
         self._params = self._stack_data.get("Parameters", [])
         self.tags = self._stack_data.get("Tags", [])
         self.outputs = self._stack_data.get("Outputs", [])
+        self.__resources = None
 
     @property
     def id(self):
@@ -47,6 +48,15 @@ class StackInfo:
     def name(self):
         """Return the name of the stack."""
         return self._stack_data.get("StackName")
+
+    @property
+    def resources(self):
+        """Return the resources of the stack."""
+        if not self.__resources:
+            from pcluster.aws.aws_api import AWSApi  # noqa: F401 pylint: disable=import-outside-toplevel
+
+            self.__resources = AWSApi.instance().cfn.describe_stack_resources(self.name)
+        return self.__resources
 
     @property
     def status(self):
@@ -89,6 +99,14 @@ class StackInfo:
         """
         param_value = next((par["ParameterValue"] for par in self._params if par["ParameterKey"] == key_name), None)
         return None if param_value is None else param_value.strip()
+
+    def get_resource_physical_id(self, resource_logical_id: str):
+        """Return the resource information."""
+        resource = self.resources.get(resource_logical_id)
+        if resource:
+            return resource["PhysicalResourceId"]
+        else:
+            return None
 
 
 class InstanceInfo:
@@ -311,6 +329,11 @@ class FsxFileSystemInfo:
     def network_interface_ids(self):
         """Return network interface ids of the file system."""
         return self.file_system_data.get("NetworkInterfaceIds")
+
+    @property
+    def subnet_ids(self):
+        """Return subnet ids of the file system."""
+        return self.file_system_data.get("SubnetIds")
 
 
 class ImageInfo:

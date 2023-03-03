@@ -10,8 +10,10 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
+from pcluster.constants import Operation
 from pcluster.models.common import LogStream
 from pcluster.utils import to_utc_datetime
+from tests.pcluster.api.controllers.utils import mock_assert_supported_operation, verify_unsupported_operation
 
 
 class TestGetImageLogEvents:
@@ -67,7 +69,6 @@ class TestGetImageLogEvents:
     def test_successful_get_image_log_events_request(
         self, client, mocker, region, next_token, start_from_head, limit, start_time, end_time
     ):
-
         log_stream_name = "logstream"
         mock_log_events = [
             {
@@ -177,6 +178,18 @@ class TestGetImageLogEvents:
         response = self._send_test_request(client, "image", "logstream", "us-east-2", None, None, None, None, None)
         self._assert_invalid_response(response, expected_response, 404)
 
+    def test_unsupported_operation_error(self, client, mocker):
+        mocked_assert_supported_operation = mock_assert_supported_operation(
+            mocker, "pcluster.api.controllers.image_logs_controller.assert_supported_operation"
+        )
+        response = self._send_test_request(client, "image", "logstream", "us-east-2", None, None, None, None, None)
+        verify_unsupported_operation(
+            mocked_assertion=mocked_assert_supported_operation,
+            operation=Operation.GET_IMAGE_LOG_EVENTS,
+            region="us-east-2",
+            response=response,
+        )
+
     @staticmethod
     def _assert_invalid_response(response, expected_response, response_code=400):
         assert_that(response.status_code).is_equal_to(response_code)
@@ -223,7 +236,6 @@ class TestGetImageStackEvents:
         ],
     )
     def test_successful_get_image_log_events_request(self, client, mocker, mock_image_stack, region, next_token):
-
         uid = "00000000-dddd-4444-bbbb-555555555555"
         image_id = "image"
         account_id = "012345678999"
@@ -280,6 +292,18 @@ class TestGetImageStackEvents:
         mock_image_stack(image_id="image", stack_exists=image_stack_found)
         response = self._send_test_request(client, "image", "us-east-2", None)
         self._assert_invalid_response(response, expected_response, 404)
+
+    def test_unsupported_operation_error(self, client, mocker):
+        mocked_assert_supported_operation = mock_assert_supported_operation(
+            mocker, "pcluster.api.controllers.image_logs_controller.assert_supported_operation"
+        )
+        response = self._send_test_request(client, "image", "us-east-2", None)
+        verify_unsupported_operation(
+            mocked_assertion=mocked_assert_supported_operation,
+            operation=Operation.GET_IMAGE_STACK_EVENTS,
+            region="us-east-2",
+            response=response,
+        )
 
     @staticmethod
     def _assert_invalid_response(response, expected_response, response_code=400):
@@ -407,6 +431,18 @@ class TestListImageLogStreams:
         )
         response = self._send_test_request(client, "image", "us-east-1", None)
         self._assert_invalid_response(response, expected_response, 404)
+
+    def test_unsupported_operation_error(self, client, mocker):
+        mocked_assert_supported_operation = mock_assert_supported_operation(
+            mocker, "pcluster.api.controllers.image_logs_controller.assert_supported_operation"
+        )
+        response = self._send_test_request(client, "image", "us-east-1", None)
+        verify_unsupported_operation(
+            mocked_assertion=mocked_assert_supported_operation,
+            operation=Operation.LIST_IMAGE_LOG_STREAMS,
+            region="us-east-1",
+            response=response,
+        )
 
     @staticmethod
     def _assert_invalid_response(response, expected_response, response_code=400):

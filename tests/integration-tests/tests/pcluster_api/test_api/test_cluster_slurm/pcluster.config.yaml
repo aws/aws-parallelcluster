@@ -17,7 +17,7 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource-1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 1
@@ -27,6 +27,6 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource-2
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1

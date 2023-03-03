@@ -42,6 +42,11 @@ HeadNode:
       Args:
         - arg1
         - arg2
+    OnNodeUpdated:
+      Script: https://test.tgz  # s3:// | https://
+      Args:
+        - arg1
+        - arg2
   Iam:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
   Imds:
@@ -154,6 +159,8 @@ SharedStorage:
     EfsSettings:
       ThroughputMode: provisioned  # bursting | provisioned
       ProvisionedThroughput: 1024
+      EncryptionInTransit: false
+      IamAuthorization: false
   - MountDir: /my/mount/point3
     Name: name3
     StorageType: FsxLustre
@@ -195,9 +202,11 @@ Monitoring:
       Enabled: true  # true
       RetentionInDays: 30  # 14
       DeletionPolicy: Retain
+    Rotation:
+      Enabled: true
   Dashboards:
     CloudWatch:
-      Enabled: true  # true
+      Enabled: false  # true
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false

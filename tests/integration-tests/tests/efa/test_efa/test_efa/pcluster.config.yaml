@@ -15,12 +15,12 @@ Scheduling:
     - Name: efa-enabled
       Networking:
         PlacementGroup:
-          Enabled: {% if instance != "p4d.24xlarge" %}true{% else %}false{% endif %}
+          Enabled: {% if instance not in ["p4d.24xlarge", "c6gn.16xlarge"] %}true{% else %}false{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: efa-enabled-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ max_queue_size }}

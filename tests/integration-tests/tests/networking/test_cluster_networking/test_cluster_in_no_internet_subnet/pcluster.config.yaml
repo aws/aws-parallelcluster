@@ -8,6 +8,7 @@ HeadNode:
       - {{ vpc_default_security_group_id }}
   Ssh:
     KeyName: {{ key_name }}
+    AllowedIps: 0.0.0.0/0
   Imds:
     Secured: {{ imds_secured }}
   CustomActions:
@@ -32,7 +33,7 @@ Scheduling:
   - Name: queue-0
     ComputeResources:
       - Name: compute-resource-0
-        InstanceTypeList:
+        Instances:
           - InstanceType: {{ instance }}
         MinCount: 1
         MaxCount: 2
@@ -77,3 +78,9 @@ Tags:
     Value: String
   - Key: two
     Value: two22
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds:
+    - {{ default_vpc_security_group_id }}
+    SubnetIds:
+    - {{ no_internet_subnet_id }}

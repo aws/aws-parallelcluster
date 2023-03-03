@@ -13,12 +13,13 @@ import os
 
 import boto3
 from assertpy import assert_that
+from conftest_networking import CIDR_FOR_CUSTOM_SUBNETS, CIDR_FOR_PRIVATE_SUBNETS, CIDR_FOR_PUBLIC_SUBNETS
 
 
 def test_public_network_topology(region, vpc_stack, parameterized_cfn_stacks_factory, random_az_selector):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    public_subnet_cidr = "192.168.3.0/24"
+    public_subnet_cidr = CIDR_FOR_CUSTOM_SUBNETS[-1]
     availability_zone = random_az_selector(region, default_value="")
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
@@ -27,7 +28,7 @@ def test_public_network_topology(region, vpc_stack, parameterized_cfn_stacks_fac
     )
     path = os.path.join("..", "..", "cloudformation", "networking", "public.cfn.json")
     stack_prefix = "integ-tests-networking"
-    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters)
+    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters, stack_is_under_test=True)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
     _assert_subnet_cidr(ec2_client, public_subnet_id, expected_subnet_cidr=public_subnet_cidr)
@@ -41,8 +42,8 @@ def test_public_network_topology(region, vpc_stack, parameterized_cfn_stacks_fac
 def test_public_private_network_topology(region, vpc_stack, parameterized_cfn_stacks_factory, random_az_selector):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    public_subnet_cidr = "192.168.5.0/24"
-    private_subnet_cidr = "192.168.4.0/24"
+    public_subnet_cidr = CIDR_FOR_PUBLIC_SUBNETS[-1]
+    private_subnet_cidr = CIDR_FOR_PRIVATE_SUBNETS[-1]
     availability_zone = random_az_selector(region, default_value="")
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
@@ -55,7 +56,7 @@ def test_public_private_network_topology(region, vpc_stack, parameterized_cfn_st
     )
     path = os.path.join("..", "..", "cloudformation", "networking", "public-private.cfn.json")
     stack_prefix = "integ-tests-networking"
-    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters)
+    stack = parameterized_cfn_stacks_factory(region, path, stack_prefix, parameters, stack_is_under_test=True)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
     private_subnet_id = stack.cfn_outputs["PrivateSubnetId"]

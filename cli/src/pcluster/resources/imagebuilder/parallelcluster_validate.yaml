@@ -5,7 +5,7 @@ schemaVersion: 1.0
 constants:
   - CookbookDefaultFile:
       type: string
-      value: /etc/chef/cookbooks/aws-parallelcluster/attributes/default.rb
+      value: /etc/chef/node_attributes.json
 
 phases:
   - name: validate
@@ -42,6 +42,8 @@ phases:
                 OS='ubuntu1804'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
+              elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
+                OS='rhel8'
               else
                 echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
               fi
@@ -77,7 +79,7 @@ phases:
               set -v
               OS='{{ validate.OperatingSystemName.outputs.stdout }}'
 
-              if [ `echo "${OS}" | grep -E '^(alinux|centos)'` ]; then
+              if [ `echo "${OS}" | grep -E '^(alinux|centos|rhel)'` ]; then
                 PLATFORM='RHEL'
               elif [ `echo "${OS}" | grep -E '^ubuntu'` ]; then
                 PLATFORM='DEBIAN'
@@ -104,7 +106,7 @@ phases:
           commands:
             - |
               set -v
-              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]] && echo "true" || echo "false"
+              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' && {{ validate.OperatingSystemName.outputs.stdout }} != 'rhel8' ]] && echo "true" || echo "false"
 
       - name: ArmPLSupported
         action: ExecuteBash
@@ -112,7 +114,7 @@ phases:
           commands:
             - |
               set -v
-              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]] && echo "true" || echo "false"
+              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' && {{ validate.OperatingSystemName.outputs.stdout }} != 'rhel8' ]] && echo "true" || echo "false"
 
       - name: FabricManagerSupported
         action: ExecuteBash
@@ -120,7 +122,7 @@ phases:
           commands:
             - |
               set -v
-              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]] && echo "false" || echo "true"
+              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' || {{ validate.OperatingSystemName.outputs.stdout }} == 'rhel8' ]] && echo "false" || echo "true"
 
       - name: LustreSupported
         action: ExecuteBash
@@ -130,7 +132,7 @@ phases:
               set -v
               ARCHITECTURE='{{ validate.OperatingSystemArchitecture.outputs.stdout }}'
               OS='{{ validate.OperatingSystemName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(18|20)04|alinux2)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(18|20)04|alinux2|rhel8)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"
@@ -143,7 +145,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['munge']['munge_version']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.munge.munge_version' {{ CookbookDefaultFile }})
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
@@ -153,7 +155,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['nvidia']['driver_version']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.nvidia.driver_version' {{ CookbookDefaultFile }})
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
@@ -163,7 +165,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_version']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.nvidia.cuda_version' {{ CookbookDefaultFile }})
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
@@ -175,7 +177,7 @@ phases:
               set -v
               cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
               if [ ${cuda_ver} \> '11.4' ]; then
-                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_samples_version']" {{ CookbookDefaultFile }})
+                PATTERN=$(jq '.default.cluster.nvidia.cuda_samples_version' {{ CookbookDefaultFile }})
                 VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
                 echo cuda-samples-${VERSION}/Samples
               else
@@ -190,7 +192,7 @@ phases:
               set -v
               cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
               if [ ${cuda_ver} \> '11.4' ]; then
-                PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_samples_version']" {{ CookbookDefaultFile }})
+                PATTERN=$(jq '.default.cluster.nvidia.cuda_samples_version' {{ CookbookDefaultFile }})
                 VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
                 echo cuda-samples-${VERSION}/bin
               else
@@ -203,10 +205,10 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['armpl']['major_minor_version']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.armpl.major_minor_version' {{ CookbookDefaultFile }})
               MAJOR_MINOR_VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               VERSION+="${MAJOR_MINOR_VERSION}."
-              PATTERN=$(grep -F "default['cluster']['armpl']['patch_version'] = '0'" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.armpl.patch_version' {{ CookbookDefaultFile }})
               PATCH_VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               VERSION+="${PATCH_VERSION}"
               echo ${VERSION}
@@ -217,7 +219,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['armpl']['gcc']['major_minor_version']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.armpl.gcc.major_minor_version' {{ CookbookDefaultFile }})
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
@@ -285,7 +287,7 @@ phases:
               set -vx
               PLATFORM='{{ validate.PlatformName.outputs.stdout }}'
 
-              if [ {{ validate.NvidiaEnabled.outputs.stdout }} == "no" ]; then
+              if [[ {{ validate.NvidiaEnabled.outputs.stdout }} == 'no' || {{ validate.OperatingSystemName.outputs.stdout }} == 'rhel8' ]]; then
                 echo "Nvidia recipe not enabled, skipping." && exit 0
               fi
               if [ {{ validate.HasGPU.outputs.stdout }} == "false" ]; then

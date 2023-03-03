@@ -82,8 +82,8 @@ def test_generate_random_prefix():
 @pytest.mark.parametrize(
     "architecture, supported_oses",
     [
-        ("x86_64", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
-        ("arm64", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
+        ("x86_64", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "rhel8"]),
+        ("arm64", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "rhel8"]),
     ],
 )
 def test_get_supported_os_for_architecture(architecture, supported_oses):
@@ -96,7 +96,7 @@ def test_get_supported_os_for_architecture(architecture, supported_oses):
 @pytest.mark.parametrize(
     "scheduler, supported_oses",
     [
-        ("slurm", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
+        ("slurm", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "rhel8"]),
         ("awsbatch", ["alinux2"]),
     ],
 )
@@ -278,12 +278,69 @@ def test_datetime_to_epoch(set_tz, time_isoformat, time_zone, expect_output):
 
 
 @pytest.mark.parametrize(
+    "region, partition",
+    [
+        ("cn-north-1", "aws-cn"),
+        ("cn-northwest-1", "aws-cn"),
+        ("us-gov-east-1", "aws-us-gov"),
+        ("us-gov-west-1", "aws-us-gov"),
+        ("us-iso-east-1", "aws-iso"),
+        ("us-iso-west-1", "aws-iso"),
+        ("us-isob-east-1", "aws-iso-b"),
+        ("WHATEVER-ELSE", "aws"),
+    ],
+)
+def test_get_partition(mocker, region, partition):
+    mocker.patch("pcluster.utils.get_region", return_value=region)
+    assert_that(pcluster.utils.get_partition()).is_equal_to(partition)
+
+
+@pytest.mark.parametrize(
     "partition, domain_suffix",
-    [("aws-cn", "amazonaws.com.cn"), ("aws", "amazonaws.com"), ("aws-us-gov", "amazonaws.com")],
+    [
+        ("aws-cn", "amazonaws.com.cn"),
+        ("aws", "amazonaws.com"),
+        ("aws-us-gov", "amazonaws.com"),
+        ("aws-iso", "c2s.ic.gov"),
+        ("aws-iso-b", "sc2s.sgov.gov"),
+        ("WHATEVER-ELSE", "amazonaws.com"),
+    ],
 )
 def test_get_url_domain_suffix(mocker, partition, domain_suffix):
     mocker.patch("pcluster.utils.get_partition", return_value=partition)
     assert_that(pcluster.utils.get_url_domain_suffix()).is_equal_to(domain_suffix)
+
+
+@pytest.mark.parametrize(
+    "partition, docs_base_url",
+    [
+        ("aws-cn", "docs.amazonaws.cn"),
+        ("aws-iso", "docs.c2shome.ic.gov"),
+        ("aws-iso-b", "docs.sc2shome.sgov.gov"),
+        ("WHATEVER-ELSE", "docs.aws.amazon.com"),
+    ],
+)
+def test_docs_base_url(mocker, partition, docs_base_url):
+    mocker.patch("pcluster.utils.get_partition", return_value=partition)
+    assert_that(pcluster.utils.get_docs_base_url()).is_equal_to(docs_base_url)
+
+
+@pytest.mark.parametrize(
+    "region, s3_bucket_domain",
+    [
+        ("cn-north-1", "cn-north-1-aws-parallelcluster.s3.cn-north-1.amazonaws.com.cn"),
+        ("cn-northwest-1", "cn-northwest-1-aws-parallelcluster.s3.cn-northwest-1.amazonaws.com.cn"),
+        ("us-iso-east-1", "us-iso-east-1-aws-parallelcluster.s3.us-iso-east-1.c2s.ic.gov"),
+        ("us-iso-west-1", "us-iso-west-1-aws-parallelcluster.s3.us-iso-west-1.c2s.ic.gov"),
+        ("us-isob-east-1", "us-isob-east-1-aws-parallelcluster.s3.us-isob-east-1.sc2s.sgov.gov"),
+        ("WHATEVER-REGION", "WHATEVER-REGION-aws-parallelcluster.s3.WHATEVER-REGION.amazonaws.com"),
+    ],
+)
+def test_get_templates_bucket_path(mocker, region, s3_bucket_domain):
+    mocker.patch("pcluster.utils.get_region", return_value=region)
+    mocker.patch("pcluster.utils.get_installed_version", return_value="INSTALLED_VERSION")
+    expected_template_path = f"https://{s3_bucket_domain}/parallelcluster/INSTALLED_VERSION/templates/"
+    assert_that(pcluster.utils.get_templates_bucket_path()).is_equal_to(expected_template_path)
 
 
 @pytest.mark.parametrize(
@@ -326,3 +383,27 @@ def test_yaml_load(yaml_string, expected_yaml_dict, expected_error):
 @pytest.mark.parametrize("imds_support, http_tokens", [("v1.0", "optional"), ("v2.0", "required")])
 def test_get_http_token_settings(imds_support, http_tokens):
     assert_that(utils.get_http_tokens_setting(imds_support)).is_equal_to(http_tokens)
+
+
+@pytest.mark.parametrize(
+    "original, response",
+    [({"test1": None, "test2": 2}, {"test2": 2}), ({"test1": 1, "test2": 2}, {"test1": 1, "test2": 2})],
+)
+def test_remove_none_values(original, response):
+    assert_that(utils.remove_none_values(original)).is_equal_to(response)
+
+
+@pytest.mark.parametrize(
+    "resource_prefix, expected_output",
+    [
+        ("/path-prefix/", ["/path-prefix/", None]),
+        ("/path-prefix/name-prefix", ["/path-prefix/", "name-prefix"]),
+        ("name-prefix", [None, "name-prefix"]),
+        ("/longerpath/path-prefix/name-prefix", ["/longerpath/path-prefix/", "name-prefix"]),
+        (None, [None, None]),
+    ],
+)
+def test_split_resource_prefix(resource_prefix, expected_output):
+    iam_path_prefix, iam_role_prefix = utils.split_resource_prefix(resource_prefix=resource_prefix)
+    assert_that(iam_path_prefix).is_equal_to(expected_output[0])
+    assert_that(iam_role_prefix).is_equal_to(expected_output[1])

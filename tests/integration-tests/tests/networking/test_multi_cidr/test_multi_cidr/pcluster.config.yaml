@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ public_subnet_ids[0] }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -20,11 +20,11 @@ Scheduling:
           MinvCpus: 4
           MaxvCpus: 4
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 1
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_additional_cidr_subnet_id }}
+          - {{ private_subnet_ids[1] }}

@@ -163,6 +163,8 @@ disable=print-statement,
         # FIXME Refactor/cleanup cli code to solve following warnings
         duplicate-code,
         consider-using-f-string,
+        broad-exception-raised,
+        use-dict-literal
 
 
 # Enable the message, report, category or checker with the given id(s). You can

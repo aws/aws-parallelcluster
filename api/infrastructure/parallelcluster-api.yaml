@@ -22,7 +22,7 @@ Parameters:
   ApiDefinitionS3Uri:
     Description: S3 URI of the ParallelCluster API spec
     Type: String
-    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.3.0b1/api/ParallelCluster.openapi.yaml
+    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.6.0/api/ParallelCluster.openapi.yaml
 
   CustomDomainName:
     Description: When specified, the custom domain name of the ParallelCluster API. Requires specifying a custom domain certificate
@@ -42,7 +42,7 @@ Parameters:
   PublicEcrImageUri:
     Description: When specified, the URI of the Docker image for the Lambda of the ParallelCluster API
     Type: String
-    Default: public.ecr.aws/parallelcluster/pcluster-api:3.3.0b1
+    Default: public.ecr.aws/parallelcluster/pcluster-api:3.6.0
 
   VpcEndpointId:
     Description: When specified, configure a private API with the specified endpoint
@@ -101,15 +101,15 @@ Parameters:
     Default: ''
 
   ImageBuilderSubnetId:
-    Description: Optional. Provide a specific subnet id to use for building the container images. Use this if you don't have a default vpc available.
+    Description: Optional. Provide a specific public subnet id to use for building the container images. Use this if you don't have a default vpc available.
     Type: String
     Default: ''
 
 Mappings:
   ParallelCluster:
     Constants:
-      Version: 3.3.0b1  # major.minor.patch+alpha/beta_identifier
-      ShortVersion: 3.3.0  # major.minor.patch
+      Version: 3.6.0  # major.minor.patch+alpha/beta_identifier
+      ShortVersion: 3.6.0  # major.minor.patch
       Stage: prod
 
 
@@ -263,7 +263,7 @@ Resources:
     Properties:
       Tracing: Active
       PackageType: Image
-      MemorySize: 1024
+      MemorySize: 2048
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt ParallelClusterUserRole.Arn]
       Tags:
         'parallelcluster:resource': api
@@ -612,6 +612,9 @@ Resources:
               - cloudwatch:ListDashboards
               - cloudwatch:DeleteDashboards
               - cloudwatch:GetDashboard
+              - cloudwatch:PutMetricAlarm
+              - cloudwatch:DeleteAlarms
+              - cloudwatch:DescribeAlarms
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -725,6 +728,8 @@ Resources:
               - logs:PutRetentionPolicy
               - logs:DescribeLogGroups
               - logs:CreateLogGroup
+              - logs:TagResource
+              - logs:UntagResource
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -788,6 +793,8 @@ Resources:
             Effect: Allow
             Action:
               - logs:CreateLogGroup
+              - logs:TagResource
+              - logs:UntagResource
             Resource:
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
           - Sid: CloudFormation

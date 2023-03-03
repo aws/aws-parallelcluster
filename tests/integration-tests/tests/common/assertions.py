@@ -10,13 +10,14 @@
 # limitations under the License.
 import logging
 import time
+from typing import List
 
 import boto3
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_count, get_compute_nodes_instance_ids
+from utils import get_cfn_resources, get_compute_nodes_count, get_compute_nodes_instance_ids
 
 from tests.common.scaling_common import get_compute_nodes_allocation
 
@@ -32,7 +33,7 @@ def assert_instance_replaced_or_terminating(instance_id, region):
     assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in("shutting-down", "terminated")
 
 
-def assert_no_errors_in_logs(remote_command_executor, scheduler):
+def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False):
     __tracebackhide__ = True
     if scheduler == "slurm":
         log_files = [
@@ -51,11 +52,13 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
 
     for log_file in log_files:
         log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+        if skip_ice:
+            log = "\n".join([line for line in log.splitlines() if "InsufficientInstanceCapacity" not in line])
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
 
 
-def assert_no_msg_in_logs(remote_command_executor, log_files, log_msg):
+def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_files: List[str], log_msg: List[str]):
     """Assert log msgs are not in logs."""
     __tracebackhide__ = True
     log = ""
@@ -65,14 +68,14 @@ def assert_no_msg_in_logs(remote_command_executor, log_files, log_msg):
         assert_that(log).does_not_contain(message)
 
 
-def assert_msg_in_log(remote_command_executor, log_file, message):
+def assert_msg_in_log(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str):
     """Assert message is in log_file."""
     __tracebackhide__ = True
     log = remote_command_executor.run_remote_command(f"sudo cat {log_file}", hide=True).stdout
     assert_that(log).contains(message)
 
 
-def assert_lines_in_logs(remote_command_executor, log_files, expected_errors):
+def assert_lines_in_logs(remote_command_executor: RemoteCommandExecutor, log_files, expected_errors):
     # assert every expected error exists in at least one of the log files
     __tracebackhide__ = True
 
@@ -199,3 +202,58 @@ def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_comm
         logging.info(f"user={user} and result.failed={result.failed}")
         logging.info(f"user={user} and result.stdout={result.stdout}")
         assert_that(result.failed).is_equal_to(not allowed)
+
+
+def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_ids, subnet_ids):
+    logging.info("Checking the cleanup lambda VPC config")
+
+    lambda_client = boto3.client("lambda", region_name=region)
+    iam_client = boto3.client("iam", region_name=region)
+
+    lambda_functions = [
+        res for res in get_cfn_resources(stack_name, region) if res["ResourceType"] == "AWS::Lambda::Function"
+    ]
+
+    for lambda_function in lambda_functions:
+        function = lambda_client.get_function(FunctionName=lambda_function["PhysicalResourceId"])["Configuration"]
+        policies = {
+            policy["PolicyName"]
+            for policy in iam_client.list_attached_role_policies(RoleName=function["Role"].split("/")[-1])[
+                "AttachedPolicies"
+            ]
+        }
+
+        assert_that(function["VpcConfig"]["SecurityGroupIds"]).is_equal_to(security_group_ids)
+        assert_that(function["VpcConfig"]["SubnetIds"]).is_equal_to(subnet_ids)
+        assert_that(policies).contains("AWSLambdaVPCAccessExecutionRole")
+
+
+def wait_for_slurm_rebooted_nodes(
+    compute_nodes,
+    remote_command_executor,
+    wait_fixed_secs: int = 10,
+    stop_max_delay_secs: int = 300,
+):
+    """
+    Wait for compute nodes to return to service in Slurm.
+
+    This function assumes that the "returned to service" line is not present in the slurmctld.log file
+    prior to its call.
+    """
+    retry(wait_fixed=seconds(wait_fixed_secs), stop_max_delay=seconds(stop_max_delay_secs))(
+        _assert_slurm_rebooted_nodes
+    )(compute_nodes, remote_command_executor)
+
+
+def _assert_slurm_rebooted_nodes(compute_nodes, remote_command_executor):
+    """
+    Assert that compute nodes have returned to service in Slurm.
+
+    Caution: this function will return true even if older "returned to service" lines are found for the requested node.
+    """
+    for node in compute_nodes:
+        assert_msg_in_log(
+            remote_command_executor,
+            "/var/log/slurmctld.log",
+            f"node {node} returned to service",
+        )

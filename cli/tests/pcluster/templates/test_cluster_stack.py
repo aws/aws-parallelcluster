@@ -11,6 +11,7 @@
 import json
 import os
 import re
+from abc import ABC, abstractmethod
 from datetime import datetime
 
 import pytest
@@ -31,7 +32,10 @@ from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
-from tests.pcluster.utils import load_cluster_model_from_yaml
+from tests.pcluster.utils import (
+    assert_lambdas_have_expected_vpc_config_and_managed_policy,
+    load_cluster_model_from_yaml,
+)
 
 EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
 
@@ -112,6 +116,36 @@ def _generate_template(cluster, capsys):
     _, err = capsys.readouterr()
     assert_that(err).is_empty()  # Assertion failure may become an update of dependency warning deprecations.
     return generated_template
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "slurm.required.yaml",
+        "slurm.full.yaml",
+        "awsbatch.simple.yaml",
+        "awsbatch.full.yaml",
+        "scheduler_plugin.required.yaml",
+        "scheduler_plugin.full.yaml",
+    ],
+)
+def test_add_alarms(mocker, config_file_name):
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    output_yaml = yaml.dump(generated_template, width=float("inf"))
+
+    if cluster.is_cw_dashboard_enabled:
+        assert_that(output_yaml).contains("HeadNodeDiskAlarm")
+        assert_that(output_yaml).contains("HeadNodeMemAlarm")
+    else:
+        assert_that(output_yaml).does_not_contain("HeadNodeDiskAlarm")
+        assert_that(output_yaml).does_not_contain("HeadNodeMemAlarm")
 
 
 @pytest.mark.parametrize(
@@ -279,31 +313,78 @@ def _mock_instance_type_info(instance_type):
     return instance_types_info[instance_type]
 
 
+def get_launch_template_data_property(lt_property, template, lt_name):
+    return (
+        template["Resources"]
+        .get(lt_name, {})
+        .get("Properties", {})
+        .get("LaunchTemplateData", {})
+        .get(lt_property, None)
+    )
+
+
+class LTPropertyAssertion(ABC):
+    def __init__(self, **assertion_params):
+        self.assertion_params = assertion_params
+
+    @abstractmethod
+    def assert_lt_properties(self, generated_template, lt_name):
+        pass
+
+
+class NetworkInterfaceLTAssertion(LTPropertyAssertion):
+    def assert_lt_properties(self, generated_template, lt_name):
+        network_interfaces = get_launch_template_data_property("NetworkInterfaces", generated_template, lt_name)
+        assert_that(network_interfaces).is_length(self.assertion_params.get("no_of_network_interfaces"))
+        for network_interface in network_interfaces:
+            assert_that(network_interface.get("SubnetId")).is_equal_to(self.assertion_params.get("subnet_id"))
+
+
+class InstanceTypeLTAssertion(LTPropertyAssertion):
+    def assert_lt_properties(self, generated_template, lt_name):
+        instance_type = get_launch_template_data_property("InstanceType", generated_template, lt_name)
+        if self.assertion_params.get("has_instance_type"):
+            assert_that(instance_type).is_not_none()
+        else:
+            assert_that(instance_type).is_none()
+
+
+class EbsLTAssertion(LTPropertyAssertion):
+    def assert_lt_properties(self, generated_template, lt_name):
+        ebs_optimized = get_launch_template_data_property("EbsOptimized", generated_template, lt_name)
+        if self.assertion_params.get("includes_ebs_optimized"):
+            assert_that(ebs_optimized).is_equal_to(self.assertion_params.get("is_ebs_optimized"))
+        else:
+            assert_that(ebs_optimized).is_none()
+
+
 @pytest.mark.parametrize(
-    "config_file_name, has_instance_type, no_of_network_interfaces, includes_ebs_optimized, is_ebs_optimized",
+    "config_file_name, lt_assertions",
     [
-        ("cluster-using-flexible-instance-types.yaml", False, 2, False, None),
-        ("cluster-using-single-instance-type.yaml", True, 3, True, True),
+        (
+            "cluster-using-flexible-instance-types.yaml",
+            [
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=2, subnet_id=None),
+                InstanceTypeLTAssertion(has_instance_type=False),
+                EbsLTAssertion(includes_ebs_optimized=False, is_ebs_optimized=None),
+            ],
+        ),
+        (
+            "cluster-using-single-instance-type.yaml",
+            [
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+                EbsLTAssertion(includes_ebs_optimized=True, is_ebs_optimized=True),
+            ],
+        ),
     ],
 )
 def test_compute_launch_template_properties(
     mocker,
     config_file_name,
-    has_instance_type,
-    no_of_network_interfaces,
-    includes_ebs_optimized,
-    is_ebs_optimized,
+    lt_assertions,
     test_datadir,
 ):
-    def get_launch_template_data_property(lt_property):
-        return (
-            generated_template["Resources"]
-            .get("ComputeFleetLaunchTemplate64e1c3597ca4c32652225395", {})
-            .get("Properties", {})
-            .get("LaunchTemplateData", {})
-            .get(lt_property, None)
-        )
-
     mock_aws_api(mocker, mock_instance_type_info=False)
 
     mocker.patch(
@@ -318,34 +399,66 @@ def test_compute_launch_template_properties(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
-    instance_type = get_launch_template_data_property("InstanceType")
-    if has_instance_type:
-        assert_that(instance_type).is_not_none()
-    else:
-        assert_that(instance_type).is_none()
-
-    network_interfaces = get_launch_template_data_property("NetworkInterfaces")
-    assert_that(network_interfaces).is_length(no_of_network_interfaces)
-
-    ebs_optimized = get_launch_template_data_property("EbsOptimized")
-    if includes_ebs_optimized:
-        assert_that(ebs_optimized).is_equal_to(is_ebs_optimized)
-    else:
-        assert_that(ebs_optimized).is_none()
+    for lt_assertion in lt_assertions:
+        lt_assertion.assert_lt_properties(generated_template, "ComputeFleetLaunchTemplate64e1c3597ca4c32652225395")
 
 
 @pytest.mark.parametrize(
-    "config_file_name, expected_head_node_dna_json_file_name",
+    "config_file_name, expected_head_node_dna_json_fields",
     [
-        ("slurm-imds-secured-true.yaml", "slurm-imds-secured-true.head-node.dna.json"),
-        ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
-        ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
-        ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
+        ("slurm-imds-secured-true.yaml", {"scheduler": "slurm", "head_node_imds_secured": "true"}),
+        (
+            "slurm-imds-secured-false.yaml",
+            {"scheduler": "slurm", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1000},
+        ),
+        (
+            "awsbatch-imds-secured-false.yaml",
+            {"scheduler": "awsbatch", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1201},
+        ),
+        ("scheduler-plugin-imds-secured-true.yaml", {"scheduler": "plugin", "head_node_imds_secured": "true"}),
+        (
+            "scheduler-plugin-headnode-hooks-partial.yaml",
+            {
+                "scheduler": "plugin",
+                "postinstall": "https://test.tgz",
+                "postinstall_args": "arg1 arg2",
+                "preinstall": "NONE",
+                "preinstall_args": "NONE",
+                "postupdate": "https://test2.tgz",
+                "postupdate_args": "arg3 arg4",
+            },
+        ),
+        (
+            "awsbatch-headnode-hooks-partial.yaml",
+            {
+                "scheduler": "awsbatch",
+                "postinstall": "NONE",
+                "postinstall_args": "NONE",
+                "preinstall": "https://test.tgz",
+                "preinstall_args": "arg1 arg2",
+                "postupdate": "NONE",
+                "postupdate_args": "NONE",
+            },
+        ),
+        (
+            "slurm-headnode-hooks-full.yaml",
+            {
+                "scheduler": "slurm",
+                "postinstall": "https://test2.tgz",
+                "postinstall_args": "arg3 arg4",
+                "preinstall": "https://test.tgz",
+                "preinstall_args": "arg1 arg2",
+                "postupdate": "https://test3.tgz",
+                "postupdate_args": "arg5 arg6",
+            },
+        ),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value
 @freeze_time("2021-01-01T01:01:01")
-def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_head_node_dna_json_file_name):
+def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_head_node_dna_json_fields):
+    default_head_node_dna_json = load_json_dict(test_datadir / "head_node_default.dna.json")
+
     mock_aws_api(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
@@ -359,9 +472,26 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     generated_head_node_dna_json = json.loads(
         _get_cfn_init_file_content(template=generated_template, resource="HeadNodeLaunchTemplate", file="/tmp/dna.json")
     )
-    expected_head_node_dna_json = load_json_dict(test_datadir / expected_head_node_dna_json_file_name)
+    plugin__specific_settings = {
+        "scheduler_plugin_substack_arn": "{'Ref': 'SchedulerPluginStack'}",
+        "ddb_table": "{'Ref': 'DynamoDBTable'}",
+    }
+    slurm_specific_settings = {
+        "ddb_table": "{'Ref': 'DynamoDBTable'}",
+        "dns_domain": "{'Ref': 'ClusterDNSDomain'}",
+        "hosted_zone": "{'Ref': 'Route53HostedZone'}",
+        "slurm_ddb_table": "{'Ref': 'SlurmDynamoDBTable'}",
+        "use_private_hostname": "false",
+    }
 
-    assert_that(generated_head_node_dna_json).is_equal_to(expected_head_node_dna_json)
+    if expected_head_node_dna_json_fields["scheduler"] == "slurm":
+        default_head_node_dna_json["cluster"].update(slurm_specific_settings)
+    elif expected_head_node_dna_json_fields["scheduler"] == "plugin":
+        default_head_node_dna_json["cluster"].update(plugin__specific_settings)
+
+    default_head_node_dna_json["cluster"].update(expected_head_node_dna_json_fields)
+
+    assert_that(generated_head_node_dna_json).is_equal_to(default_head_node_dna_json)
 
 
 @freeze_time("2021-01-01T01:01:01")
@@ -577,3 +707,34 @@ def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_toke
         assert_that(
             launch_template.get("Properties").get("LaunchTemplateData").get("MetadataOptions").get("HttpTokens")
         ).is_equal_to(http_tokens)
+
+
+@pytest.mark.parametrize(
+    "config_file_name, vpc_config",
+    [
+        ("slurm.required.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
+        ("awsbatch.simple.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
+        (
+            "scheduler_plugin.required.yaml",
+            {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]},
+        ),
+        ("slurm.required.yaml", None),
+        ("awsbatch.simple.yaml", None),
+        ("scheduler_plugin.required.yaml", None),
+    ],
+)
+def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_config):
+    mock_aws_api(mocker)
+
+    input_yaml = load_yaml_dict(f"{EXAMPLE_CONFIGS_DIR}/{config_file_name}")
+    if vpc_config:
+        input_yaml["DeploymentSettings"] = input_yaml.get("DeploymentSettings", {})
+        input_yaml["DeploymentSettings"]["LambdaFunctionsVpcConfig"] = vpc_config
+
+    cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, vpc_config)

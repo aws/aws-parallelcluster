@@ -111,7 +111,6 @@ class AwsBatchConstruct(Construct):
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
     def _add_resources(self):
-
         # Augment head node instance profile with Batch-specific policies, only add policies to Role craeted by
         # ParallelCluster
         if self.head_node_instance_role:
@@ -591,9 +590,9 @@ class AwsBatchConstruct(Construct):
     def _add_manage_docker_images_lambda(self):
         manage_docker_images_lambda_execution_role = None
         if self.create_lambda_roles:
-
             manage_docker_images_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
+                config=self.config,
                 function_id="ManageDockerImages",
                 statements=[
                     iam.PolicyStatement(
@@ -617,6 +616,7 @@ class AwsBatchConstruct(Construct):
                         )
                     ),
                 ],
+                has_vpc_config=self.config.lambda_functions_vpc_config,
             )
 
         return PclusterLambdaConstruct(
@@ -669,6 +669,7 @@ class AwsBatchConstruct(Construct):
         if self.create_lambda_roles:
             build_notification_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
+                config=self.config,
                 function_id="BuildNotification",
                 statements=[
                     get_cloud_watch_logs_policy_statement(
@@ -680,6 +681,7 @@ class AwsBatchConstruct(Construct):
                         )
                     )
                 ],
+                has_vpc_config=self.config.lambda_functions_vpc_config,
             )
 
         return PclusterLambdaConstruct(
@@ -827,7 +829,6 @@ class AwsBatchConstruct(Construct):
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
     def _add_outputs(self):
-
         CfnOutput(
             scope=self.stack_scope,
             id="BatchCliRequirements",

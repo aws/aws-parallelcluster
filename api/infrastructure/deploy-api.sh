@@ -8,7 +8,7 @@ set -ex
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-usage="$(basename "$0") [-h] --s3-bucket bucket-name --ecr-repo repo-name --region aws-region [--stack-name name] [--enable-iam-admin true|false] [--create-api-user  true|false])"
+usage="$(basename "$0") [-h] --s3-bucket bucket-name --ecr-repo repo-name --region aws-region [--stack-name name] [--enable-iam-admin true|false] [--create-api-user true|false] [--skip-image-import])"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
@@ -19,6 +19,7 @@ IMAGE_BUILDER_SUBNET_ID=
 STACK_NAME="ParallelClusterApi"
 ENABLE_IAM_ADMIN="true"
 CREATE_API_USER="false"
+SKIP_IMAGE_IMPORT="false" # if "true", uses the image uploaded to ECR directly, without creating a private copy
 while [[ $# -gt 0 ]]
 do
 key="$1"
@@ -57,6 +58,10 @@ case $key in
     export CREATE_API_USER=$2
     shift # past argument
     shift # past value
+    ;;
+    --skip-image-import)
+    export SKIP_IMAGE_IMPORT="true"
+    shift # past argument
     ;;
     --image-builder-vpc-id)
     export IMAGE_BUILDER_VPC_ID=$2
@@ -105,23 +110,33 @@ docker push "${ECR_ENDPOINT}/${ECR_REPO}:latest"
 echo "Publishing OpenAPI specs to S3"
 aws s3 cp "${SCRIPT_DIR}/../spec/openapi/ParallelCluster.openapi.yaml" "${S3_UPLOAD_URI}"
 
+echo ""
+if [ "$SKIP_IMAGE_IMPORT" = "true" ]; then
+  echo "Uploaded image will be used directly"
+  OVERRIDE_IMAGE_URI_PRM="EcrImageUri"
+  ECR_IMAGE_URI="${ECR_ENDPOINT}/${ECR_REPO}:latest"
+else
+  echo "Uploaded image will simulate a public image and will be therefore imported into a new private image"
+  OVERRIDE_IMAGE_URI_PRM="PublicEcrImageUri"
+fi
+
 echo "Deploying API template"
 aws cloudformation deploy \
-    --stack-name ${STACK_NAME} \
-    --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
-    --s3-bucket ${S3_BUCKET} \
+    --stack-name "${STACK_NAME}" \
+    --template-file "${SCRIPT_DIR}/parallelcluster-api.yaml" \
+    --s3-bucket "${S3_BUCKET}" \
     --s3-prefix "api/" \
-    --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
+    --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" "${OVERRIDE_IMAGE_URI_PRM}"="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
                           EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
                           ImageBuilderVpcId="${IMAGE_BUILDER_VPC_ID}" \
                           ImageBuilderSubnetId="${IMAGE_BUILDER_SUBNET_ID}" \
     --capabilities CAPABILITY_NAMED_IAM
 
 echo "Updating API Lambda since updates are not fully automated yet"
-LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ParallelClusterLambdaArn'].OutputValue" --output text)
-ECR_IMAGE_URI=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='UriOfCopyOfPublicEcrImage'].OutputValue" --output text)
+LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" --query "Stacks[0].Outputs[?OutputKey=='ParallelClusterLambdaArn'].OutputValue" --output text)
+IMPORTED_IMAGE_URI=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" --query "Stacks[0].Outputs[?OutputKey=='UriOfCopyOfPublicEcrImage'].OutputValue" --output text)
 
 aws lambda update-function-code \
-    --function-name ${LAMBDA_FUNCTION_ARN} \
-    --image-uri ${ECR_IMAGE_URI} \
+    --function-name "${LAMBDA_FUNCTION_ARN}" \
+    --image-uri "${ECR_IMAGE_URI:-${IMPORTED_IMAGE_URI}}" \
     --publish

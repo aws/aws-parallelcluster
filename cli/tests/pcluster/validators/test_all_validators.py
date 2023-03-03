@@ -14,6 +14,7 @@ from assertpy import assert_that
 from pkg_resources import packaging
 
 from pcluster.aws.aws_resources import ImageInfo
+from pcluster.constants import Feature
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import get_installed_version, load_yaml_dict
 from pcluster.validators import (
@@ -23,7 +24,7 @@ from pcluster.validators import (
     ec2_validators,
     fsx_validators,
     iam_validators,
-    instance_type_list_validators,
+    instances_validators,
     kms_validators,
     networking_validators,
     s3_validators,
@@ -42,7 +43,7 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
         fsx_validators,
         kms_validators,
         iam_validators,
-        instance_type_list_validators,
+        instances_validators,
         networking_validators,
         s3_validators,
     ]
@@ -72,15 +73,13 @@ def _load_and_validate(config_path):
 def _assert_instance_architecture(expected_instance_architecture_validator_input, validator):
     for call_index, validator_call in enumerate(validator.call_args_list):
         args, kwargs = validator_call
-        instance_type_list = [
-            instance_type_info.instance_type() for instance_type_info in kwargs.get("instance_type_info_list")
-        ]
+        instances = [instance_type_info.instance_type() for instance_type_info in kwargs.get("instance_type_info_list")]
         architecture = kwargs.get("architecture")
-        expected_instance_type_list = expected_instance_architecture_validator_input[call_index].get("instance_types")
+        expected_instances = expected_instance_architecture_validator_input[call_index].get("instance_types")
         expected_architecture = expected_instance_architecture_validator_input[call_index].get("architecture")
 
-        assert_that(instance_type_list).is_length(len(expected_instance_type_list))
-        assert_that(set(instance_type_list) - set(expected_instance_type_list)).is_length(0)
+        assert_that(instances).is_length(len(expected_instances))
+        assert_that(set(instances) - set(expected_instances)).is_length(0)
         assert_that(architecture).is_equal_to(expected_architecture)
 
 
@@ -164,12 +163,18 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     instance_type_accelerator_manufacturer_validator = mocker.patch(
         ec2_validators + ".InstanceTypeAcceleratorManufacturerValidator._validate", return_value=[]
     )
+    instance_type_placement_group_validator = mocker.patch(
+        ec2_validators + ".InstanceTypePlacementGroupValidator._validate", return_value=[]
+    )
 
     networking_validators = validators_path + ".networking_validators"
     security_groups_validator = mocker.patch(
         networking_validators + ".SecurityGroupsValidator._validate", return_value=[]
     )
     subnets_validator = mocker.patch(networking_validators + ".SubnetsValidator._validate", return_value=[])
+    single_instance_type_subnet_validator = mocker.patch(
+        networking_validators + ".SingleInstanceTypeSubnetValidator._validate", return_value=[]
+    )
 
     fsx_validators = validators_path + ".fsx_validators"
     fsx_s3_validator = mocker.patch(fsx_validators + ".FsxS3Validator._validate", return_value=[])
@@ -210,6 +215,8 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     kms_key_id_encrypted_validator = mocker.patch(
         kms_validators + ".KmsKeyIdEncryptedValidator._validate", return_value=[]
     )
+    monitoring_validators = validators_path + ".monitoring_validators"
+    log_rotation_validator = mocker.patch(monitoring_validators + ".LogRotationValidator._validate", return_value=[])
 
     mocker.patch(
         "pcluster.config.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
@@ -261,6 +268,18 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         any_order=True,
     )
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-23456789", "subnet-12345678"])])
+    single_instance_type_subnet_validator.assert_has_calls(
+        [
+            call(
+                queue_name="queue1",
+                subnet_ids=["subnet-23456789"],
+            ),
+            call(
+                queue_name="queue2",
+                subnet_ids=["subnet-23456789"],
+            ),
+        ]
+    )
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
@@ -325,6 +344,8 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     fsx_persistent_options_validator.assert_called()
     deletion_policy_validator.assert_called()
     instance_type_accelerator_manufacturer_validator.assert_called()
+    instance_type_placement_group_validator.assert_called()
+    log_rotation_validator.assert_called()
 
 
 def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
@@ -364,12 +385,12 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
 
     # FlexibleInstanceTypes Only supported in Slurm
     flexible_instance_types_validators = [
-        "InstanceTypeListCPUValidator",
-        "InstanceTypeListAcceleratorsValidator",
-        "InstanceTypeListEFAValidator",
-        "InstanceTypeListNetworkingValidator",
-        "InstanceTypeListAllocationStrategyValidator",
-        "InstanceTypeListMemorySchedulingValidator",
+        "InstancesCPUValidator",
+        "InstancesAcceleratorsValidator",
+        "InstancesEFAValidator",
+        "InstancesNetworkingValidator",
+        "InstancesAllocationStrategyValidator",
+        "InstancesMemorySchedulingValidator",
     ]
 
     # Assert validators are called
@@ -388,6 +409,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
                 "CapacityReservationValidator",
                 "CapacityReservationResourceGroupValidator",
                 "DatabaseUriValidator",
+                "InstanceTypePlacementGroupValidator",
             ]
             + flexible_instance_types_validators
         ):
@@ -407,6 +429,8 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
 
     cluster_validators = validators_path + ".cluster_validators"
     scheduler_os_validator = mocker.patch(cluster_validators + ".SchedulerOsValidator._validate", return_value=[])
+    feature_validators = validators_path + ".feature_validators"
+    feature_region_validator = mocker.patch(feature_validators + ".FeatureRegionValidator._validate", return_value=[])
     compute_resource_size_validator = mocker.patch(
         cluster_validators + ".ComputeResourceSizeValidator._validate", return_value=[]
     )
@@ -438,6 +462,9 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
         networking_validators + ".SecurityGroupsValidator._validate", return_value=[]
     )
     subnets_validator = mocker.patch(networking_validators + ".SubnetsValidator._validate", return_value=[])
+    single_instance_type_subnet_validator = mocker.patch(
+        networking_validators + ".SingleInstanceTypeSubnetValidator._validate", return_value=[]
+    )
 
     fsx_validators = validators_path + ".fsx_validators"
     fsx_s3_validator = mocker.patch(fsx_validators + ".FsxS3Validator._validate", return_value=[])
@@ -517,6 +544,10 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
 
     # Assert validators are called
     scheduler_os_validator.assert_has_calls([call(os="centos7", scheduler="plugin")])
+    feature_region_validator.assert_has_calls(
+        [call(feature=feature, region="us-east-1") for feature in Feature if feature is not Feature.BATCH],
+        any_order=True,
+    )
     compute_resource_size_validator.assert_has_calls(
         [
             # Defaults of min_count=0, max_count=10
@@ -548,6 +579,18 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
         any_order=True,
     )
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-12345678", "subnet-23456789"])])
+    single_instance_type_subnet_validator.assert_has_calls(
+        [
+            call(
+                queue_name="queue1",
+                subnet_ids=["subnet-12345678"],
+            ),
+            call(
+                queue_name="queue2",
+                subnet_ids=["subnet-12345678"],
+            ),
+        ]
+    )
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
@@ -577,7 +620,13 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
     ]
     shared_storage_name_mount_dir_tuple_list.sort(key=lambda tup: tup[1])
     assert_that(shared_storage_name_mount_dir_tuple_list).is_equal_to(
-        [("name1", "/my/mount/point1"), ("name2", "/my/mount/point2"), ("name3", "/my/mount/point3")]
+        [
+            ("name1", "/my/mount/point1"),
+            ("name2", "/my/mount/point2"),
+            ("name3", "/my/mount/point3"),
+            ("name4", "/my/mount/point4"),
+            ("name5", "/my/mount/point5"),
+        ]
     )
     local_mount_dir_instance_types_dict = duplicate_mount_dir_validator.call_args[1][
         "local_mount_dir_instance_types_dict"
@@ -587,7 +636,7 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
         [
             call(storage_type="EBS", max_number=5, storage_count=1),
             call(storage_type="existing EFS", max_number=20, storage_count=0),
-            call(storage_type="existing FSx", max_number=20, storage_count=0),
+            call(storage_type="existing FSx", max_number=20, storage_count=2),
             call(storage_type="new EFS", max_number=1, storage_count=1),
             call(storage_type="new FSx", max_number=1, storage_count=1),
             call(storage_type="new RAID", max_number=1, storage_count=0),

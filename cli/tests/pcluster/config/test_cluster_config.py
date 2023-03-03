@@ -127,7 +127,7 @@ class TestBaseClusterConfig:
         cluster_config._register_validators()
         assert_that(cluster_config._validators).is_not_empty()
 
-    def test_instance_type_list_in_slurm_queue(self):
+    def test_instances_in_slurm_queue(self):
         queue = SlurmQueue(
             name="queue0",
             networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
@@ -136,7 +136,7 @@ class TestBaseClusterConfig:
                 SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
                 SlurmFlexibleComputeResource(
                     name="compute_resource_3",
-                    instance_type_list=[
+                    instances=[
                         FlexibleInstanceType(instance_type="c5n.4xlarge"),
                         FlexibleInstanceType(instance_type="c5n.9xlarge"),
                         FlexibleInstanceType(instance_type="c5n.18xlarge"),
@@ -144,7 +144,7 @@ class TestBaseClusterConfig:
                 ),
                 SlurmFlexibleComputeResource(
                     name="compute_resource_4",
-                    instance_type_list=[
+                    instances=[
                         FlexibleInstanceType(instance_type="c5n.4xlarge"),
                     ],
                 ),
@@ -279,7 +279,13 @@ class TestBaseClusterConfig:
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
                     compute_resources=mock_compute_resources,
                 ),
-                [(None, None), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+                [
+                    {"key": None, "is_managed": False},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
             (
                 SlurmQueue(
@@ -287,7 +293,13 @@ class TestBaseClusterConfig:
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
                     compute_resources=mock_compute_resources,
                 ),
-                [("queue-test1", True), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+                [
+                    {"key": "queue-test1", "is_managed": True},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
             (
                 SlurmQueue(
@@ -295,7 +307,13 @@ class TestBaseClusterConfig:
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
                     compute_resources=mock_compute_resources,
                 ),
-                [("test-q", False), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+                [
+                    {"key": "test-q", "is_managed": False},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
             (
                 SlurmQueue(
@@ -303,14 +321,20 @@ class TestBaseClusterConfig:
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
                     compute_resources=mock_compute_resources,
                 ),
-                [(None, None), ("queue-test2", True), (None, False), ("test", False), ("test", False)],
+                [
+                    {"key": None, "is_managed": False},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
         ],
     )
-    def test_get_placement_group_key_for_compute_resource(self, queue, expected_result):
+    def test_get_placement_group_settings_for_compute_resource(self, queue, expected_result):
         actual = []
         for resource in queue.compute_resources:
-            actual.append(queue.get_placement_group_key_for_compute_resource(resource))
+            actual.append(queue.get_placement_group_settings_for_compute_resource(resource))
         assert_that(actual).is_equal_to(expected_result)
 
     @pytest.mark.parametrize(
@@ -352,69 +376,4 @@ class TestBaseClusterConfig:
     )
     def test_get_managed_placement_group_keys(self, queue, expected_result):
         actual = queue.get_managed_placement_group_keys()
-        assert_that(actual).is_equal_to(expected_result)
-
-    @pytest.mark.parametrize(
-        "queue, compute_resource_pg_enabled, expected_result",
-        [
-            (
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                    compute_resources=mock_compute_resources,
-                ),
-                None,
-                True,
-            ),
-            (
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
-                    compute_resources=mock_compute_resources,
-                ),
-                None,
-                False,
-            ),
-            (
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                    compute_resources=mock_compute_resources,
-                ),
-                False,
-                True,
-            ),
-            (
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
-                    compute_resources=mock_compute_resources,
-                ),
-                False,
-                True,
-            ),
-            (
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                    compute_resources=mock_compute_resources,
-                ),
-                True,
-                False,
-            ),
-            (
-                SlurmQueue(
-                    name="queue",
-                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
-                    compute_resources=mock_compute_resources,
-                ),
-                True,
-                False,
-            ),
-        ],
-    )
-    def test_is_placement_group_disabled_for_compute_resource(
-        self, queue, compute_resource_pg_enabled, expected_result
-    ):
-        actual = queue.is_placement_group_disabled_for_compute_resource(compute_resource_pg_enabled)
         assert_that(actual).is_equal_to(expected_result)

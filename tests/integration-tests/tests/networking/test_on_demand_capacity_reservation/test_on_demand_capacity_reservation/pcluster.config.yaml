@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: c7g.xlarge
+  InstanceType: r5.xlarge
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -12,19 +12,19 @@ Scheduling:
     - Name: open-odcr-q
       ComputeResources:
         - Name: open-odcr-id-cr
-          InstanceType: c6gn.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
             CapacityReservationId: {{ open_capacity_reservation_id }}
         - Name: open-odcr-arn-cr
-          InstanceType: c6gn.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
             CapacityReservationResourceGroupArn: {{ open_capacity_reservation_arn }}
         - Name: open-odcr-id-pg-cr
-          InstanceType: c6gn.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           Networking:
@@ -33,7 +33,7 @@ Scheduling:
           CapacityReservationTarget:
             CapacityReservationId: {{ open_capacity_reservation_id }}
         - Name: open-odcr-arn-pg-cr
-          InstanceType: c6gn.xlarge
+          InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 10
           Networking:
@@ -47,19 +47,19 @@ Scheduling:
     - Name: target-odcr-q
       ComputeResources:
         - Name: target-odcr-id-cr
-          InstanceType: c7g.xlarge
+          InstanceType: r5.xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
             CapacityReservationId: {{ target_capacity_reservation_id }}
         - Name: target-odcr-arn-cr
-          InstanceType: c7g.xlarge
+          InstanceType: r5.xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
             CapacityReservationResourceGroupArn: {{ target_capacity_reservation_arn }}
         - Name: target-odcr-id-pg-cr
-          InstanceType: c7g.xlarge
+          InstanceType: r5.xlarge
           MinCount: 1
           MaxCount: 10
           Networking:
@@ -68,7 +68,7 @@ Scheduling:
           CapacityReservationTarget:
             CapacityReservationId: {{ target_capacity_reservation_id }}
         - Name: target-odcr-arn-pg-cr
-          InstanceType: c7g.xlarge
+          InstanceType: r5.xlarge
           MinCount: 1
           MaxCount: 10
           CapacityReservationTarget:
@@ -79,7 +79,7 @@ Scheduling:
     - Name: pg-odcr-q
       ComputeResources:
         - Name: pg-odcr-id-cr
-          InstanceType: m6g.xlarge
+          InstanceType: m5.xlarge
           MinCount: 1
           MaxCount: 10
           Networking:
@@ -88,7 +88,7 @@ Scheduling:
           CapacityReservationTarget:
             CapacityReservationId: {{ pg_capacity_reservation_id }}
         - Name: pg-odcr-arn-cr
-          InstanceType: m6g.xlarge
+          InstanceType: m5.xlarge
           MinCount: 1
           MaxCount: 10
           Networking:

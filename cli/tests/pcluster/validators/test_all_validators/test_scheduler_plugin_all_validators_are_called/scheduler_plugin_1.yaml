@@ -233,8 +233,19 @@ SharedStorage:
       AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
+  - MountDir: /my/mount/point4
+    Name: name4
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: "fsvol-00e6e91b8898ec4ef"
+  - MountDir: /my/mount/point5
+    Name: name5
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: "fsvol-00e6e91b8898ec4ef"
 Iam:
   PermissionsBoundary: arn:aws:iam::aws:policy/boundary
+  ResourcePrefix: /path-prefix/name-prefix
   Roles:
     LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
@@ -267,3 +278,7 @@ DevSettings:
   Timeouts:
     HeadNodeBootstrapTimeout: 1201  # Default 1800 (seconds)
     ComputeNodeBootstrapTimeout: 1001  # Default 1800 (seconds)
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds: ["sg-028d73ae220157d96"]
+    SubnetIds: ["subnet-8e482ce8"]

@@ -19,6 +19,7 @@ from pcluster.templates.imagebuilder_stack import parse_bucket_url
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_imagebuilder_config import imagebuilder_factory
 from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, mock_bucket
+from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_managed_policy
 
 # TODO missing tests for the following configuration parameters:
 # UpdateOsAndReboot
@@ -3525,6 +3526,72 @@ def test_imagebuilder_imds_settings(mocker, resource, response, http_tokens):
         .get("InstanceMetadataOptions")
         .get("HttpTokens")
     ).is_equal_to(http_tokens)
+
+
+@pytest.mark.parametrize(
+    "resource",
+    [
+        {
+            "imagebuilder": {
+                "build": {
+                    "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                    "instance_type": "c5.xlarge",
+                },
+                "deployment_settings": {
+                    "lambda_functions_vpc_config": {
+                        "subnet_ids": ["subnet-8e482ce8"],
+                        "security_group_ids": ["sg-028d73ae220157d96"],
+                    }
+                },
+            }
+        },
+        {
+            "imagebuilder": {
+                "build": {
+                    "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                    "instance_type": "c5.xlarge",
+                },
+            }
+        },
+    ],
+)
+def test_imagebuilder_lambda_functions_vpc_config(mocker, resource):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_image",
+        return_value=ImageInfo(
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            }
+        ),
+    )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
+    imagebuild = imagebuilder_factory(resource).get("imagebuilder")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
+
+    assert_lambdas_have_expected_vpc_config_and_managed_policy(
+        generated_template, _lambda_functions_vpc_config_with_camel_cased_keys(resource)
+    )
+
+
+def _lambda_functions_vpc_config_with_camel_cased_keys(resource):
+    snake_case_config = resource.get("imagebuilder").get("deployment_settings", {}).get("lambda_functions_vpc_config")
+    return (
+        {key.title().replace("_", ""): value for key, value in snake_case_config.items()} if snake_case_config else None
+    )
 
 
 @pytest.mark.parametrize(

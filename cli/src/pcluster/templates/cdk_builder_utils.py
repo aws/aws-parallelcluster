@@ -26,7 +26,6 @@ from pcluster.config.cluster_config import (
     BaseComputeResource,
     BaseQueue,
     HeadNode,
-    LocalStorage,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmQueue,
@@ -35,11 +34,12 @@ from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
     IAM_ROLE_PATH,
-    OS_MAPPING,
+    LAMBDA_VPC_ACCESS_MANAGED_POLICY,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
 )
+from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
 from pcluster.utils import (
     get_attr,
@@ -47,37 +47,10 @@ from pcluster.utils import (
     get_resource_name_from_resource_arn,
     get_url_scheme,
     policy_name_to_arn,
+    split_resource_prefix,
 )
 
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
-
-
-def get_block_device_mappings(local_storage: LocalStorage, os: str):
-    """Return block device mapping."""
-    block_device_mappings = []
-    for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
-        device_name = "/dev/xvdb{0}".format(device_name_index)
-        virtual_name = "ephemeral{0}".format(virtual_name_index)
-        block_device_mappings.append(
-            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
-        )
-
-    root_volume = local_storage.root_volume
-
-    block_device_mappings.append(
-        ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
-            device_name=OS_MAPPING[os]["root-device"],
-            ebs=ec2.CfnLaunchTemplate.EbsProperty(
-                volume_size=root_volume.size,
-                encrypted=root_volume.encrypted,
-                volume_type=root_volume.volume_type,
-                iops=root_volume.iops,
-                throughput=root_volume.throughput,
-                delete_on_termination=root_volume.delete_on_termination,
-            ),
-        )
-    )
-    return block_device_mappings
 
 
 def create_hash_suffix(string_to_hash: str):
@@ -85,6 +58,9 @@ def create_hash_suffix(string_to_hash: str):
     return (
         string_to_hash
         if string_to_hash == "HeadNode"
+        # A nosec comment is appended to the following line in order to disable the B324 check.
+        # The sha1 is used just as a hashing function.
+        # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
         else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
     )
 
@@ -145,8 +121,12 @@ def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> d
     )
 
 
-def to_comma_separated_string(list):
-    return ",".join(str(item) for item in list)
+def to_comma_separated_string(list, use_lower_case=False):
+    result = ",".join(str(item) for item in list)
+    if use_lower_case:
+        return result.lower()
+    else:
+        return result
 
 
 def get_shared_storage_ids_by_type(shared_storage_infos: dict, storage_type: SharedStorageType):
@@ -278,19 +258,48 @@ def get_queue_security_groups_full(managed_compute_security_group: ec2.CfnSecuri
     return queue_security_groups
 
 
-def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement]):
+def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str):
+    """Return a path and Name prefix from the Resource prefix config option."""
+    full_resource_path = None
+    full_resource_name = None
+    if config.iam and config.iam.resource_prefix:
+        iam_path, iam_name_prefix = split_resource_prefix(config.iam.resource_prefix)
+        if iam_name_prefix:
+            # Creating a Globally Unique Hash using Region, Type, Name and stack name
+            resource_hash = (
+                hashlib.sha256((name + stack_name + iam_type + config.region).encode("utf-8")).hexdigest()[:12].upper()
+            )
+            full_resource_name = iam_name_prefix + name + "-" + resource_hash
+        if iam_path:
+            full_resource_path = iam_path
+
+    return full_resource_path, full_resource_name
+
+
+def add_lambda_cfn_role(scope, config, function_id: str, statements: List[iam.PolicyStatement], has_vpc_config: bool):
     """Return a CfnRole to be used for a Lambda function."""
+    role_path, role_name = add_cluster_iam_resource_prefix(
+        config.cluster_name, config, name=f"{function_id}Role", iam_type="AWS::IAM::Role"
+    )
+    _, policy_name = add_cluster_iam_resource_prefix(
+        config.cluster_name, config, "LambdaPolicy", iam_type="AWS::IAM::Policy"
+    )
+
+    role_id = f"{function_id}Role" if role_name else f"{function_id}FunctionExecutionRole"
+
     return iam.CfnRole(
         scope,
-        f"{function_id}FunctionExecutionRole",
-        path=IAM_ROLE_PATH,
+        role_id,
+        path=role_path or IAM_ROLE_PATH,
+        role_name=role_name,
         assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
         policies=[
             iam.CfnRole.PolicyProperty(
                 policy_document=iam.PolicyDocument(statements=statements),
-                policy_name="LambdaPolicy",
+                policy_name=policy_name or "LambdaPolicy",
             ),
         ],
+        managed_policy_arns=[Fn.sub(LAMBDA_VPC_ACCESS_MANAGED_POLICY)] if has_vpc_config else None,
     )
 
 
@@ -309,6 +318,9 @@ def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource)
     :param compute_resource
     :return: 16 chars string e.g. 2238a84ac8a74529
     """
+    # A nosec comment is appended to the following line in order to disable the B324 check.
+    # The sha1 is used just as a hashing function.
+    # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
     return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
 
 
@@ -316,15 +328,21 @@ class NodeIamResourcesBase(Construct):
     """Abstract construct defining IAM resources for a cluster node."""
 
     def __init__(
-        self, scope: Construct, id: str, config: BaseClusterConfig, node: Union[HeadNode, BaseQueue], name: str
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: Union[HeadNode, BaseQueue],
+        shared_storage_infos: dict,
+        name: str,
     ):
         super().__init__(scope, id)
         self._config = config
         self.instance_role = None
 
-        self._add_role_and_policies(node, name)
+        self._add_role_and_policies(node, shared_storage_infos, name)
 
-    def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
+    def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], shared_storage_infos: dict, name: str):
         """Create role and policies for the given node/queue."""
         suffix = create_hash_suffix(name)
         if node.instance_profile:
@@ -337,7 +355,9 @@ class NodeIamResourcesBase(Construct):
             self.instance_role = self._add_node_role(node, f"Role{suffix}")
 
             # ParallelCluster Policies
-            self._add_pcluster_policies_to_role(self.instance_role.ref, f"ParallelClusterPolicies{suffix}")
+            self._add_pcluster_policies_to_role(
+                self.instance_role.ref, shared_storage_infos, f"ParallelClusterPolicies{suffix}"
+            )
 
             # Custom Cookbook S3 url policy
             if self._condition_custom_cookbook_with_s3_url():
@@ -351,28 +371,72 @@ class NodeIamResourcesBase(Construct):
             self.instance_profile = self._add_instance_profile(self.instance_role.ref, f"InstanceProfile{suffix}")
 
     def _add_instance_profile(self, role_ref: str, name: str):
-        return iam.CfnInstanceProfile(Stack.of(self), name, roles=[role_ref], path=self._cluster_scoped_iam_path()).ref
+        instance_profile_path, instance_profile_name = add_cluster_iam_resource_prefix(
+            self._config.cluster_name, self._config, name, iam_type="AWS::IAM::InstanceProfile"
+        )
+        return iam.CfnInstanceProfile(
+            Stack.of(self),
+            name,
+            roles=[role_ref],
+            path=self._cluster_scoped_iam_path(iam_path=instance_profile_path),
+            instance_profile_name=instance_profile_name,
+        ).ref
 
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
+        role_path, role_name = add_cluster_iam_resource_prefix(
+            self._config.cluster_name, self._config, name, iam_type="AWS::IAM::Role"
+        )
         additional_iam_policies = set(node.iam.additional_iam_policy_arns)
         if self._config.monitoring.logs.cloud_watch.enabled:
             additional_iam_policies.add(policy_name_to_arn("CloudWatchAgentServerPolicy"))
         return iam.CfnRole(
             Stack.of(self),
             name,
-            path=self._cluster_scoped_iam_path(),
+            path=self._cluster_scoped_iam_path(iam_path=role_path),
             managed_policy_arns=list(additional_iam_policies),
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(Stack.of(self).url_suffix)),
+            role_name=role_name,
         )
 
-    def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
+    def _add_pcluster_policies_to_role(self, role_ref: str, shared_storage_infos: dict, name: str):
+        _, policy_name = add_cluster_iam_resource_prefix(
+            self._config.cluster_name, self._config, "parallelcluster", iam_type="AWS::IAM::Policy"
+        )
+        common_policies = []
+        if self._config.scheduling.scheduler != "awsbatch":
+            efs_with_iam_authorization_arns = self._get_efs_with_iam_authorization_arns(shared_storage_infos)
+            if efs_with_iam_authorization_arns:
+                common_policies.append(
+                    iam.PolicyStatement(
+                        sid="Efs",
+                        actions=[
+                            "elasticfilesystem:ClientMount",
+                            "elasticfilesystem:ClientRootAccess",
+                            "elasticfilesystem:ClientWrite",
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        resources=efs_with_iam_authorization_arns,
+                    ),
+                )
         iam.CfnPolicy(
             Stack.of(self),
             name,
-            policy_name="parallelcluster",
-            policy_document=iam.PolicyDocument(statements=self._build_policy()),
+            policy_name=policy_name or "parallelcluster",
+            policy_document=iam.PolicyDocument(statements=self._build_policy() + common_policies),
             roles=[role_ref],
         )
+
+    def _get_efs_with_iam_authorization_arns(self, shared_storage_infos):
+        return [
+            self._format_arn(
+                service="elasticfilesystem",
+                resource=f"file-system/{efs_id}",
+                region=Stack.of(self).region,
+                account=Stack.of(self).account,
+            )
+            for efs_id, efs_storage in shared_storage_infos[SharedStorageType.EFS]
+            if efs_storage.iam_authorization
+        ]
 
     def _condition_custom_cookbook_with_s3_url(self):
         try:
@@ -423,13 +487,16 @@ class NodeIamResourcesBase(Construct):
                     read_write_s3_resources.append(arn)
                 else:
                     read_only_s3_resources.append(arn)
+        _, policy_name = add_cluster_iam_resource_prefix(
+            self._config.cluster_name, self._config, "S3Access", iam_type="AWS::IAM::Policy"
+        )
 
         s3_access_policy = iam.CfnPolicy(
             Stack.of(self),
             name,
             policy_document=iam.PolicyDocument(statements=[]),
             roles=[role_ref],
-            policy_name="S3Access",
+            policy_name=policy_name or "S3Access",
         )
 
         if read_only_s3_resources:
@@ -449,9 +516,12 @@ class NodeIamResourcesBase(Construct):
                 )
             )
 
-    def _cluster_scoped_iam_path(self):
-        """Return a path to be associated IAM roles and instance profiles."""
-        return f"{IAM_ROLE_PATH}{Stack.of(self).stack_name}/"
+    def _cluster_scoped_iam_path(self, iam_path=None):
+        """Return a path to be associated with IAM roles and instance profiles."""
+        if iam_path:
+            return f"{iam_path}{Stack.of(self).stack_name}/"
+        else:
+            return f"{IAM_ROLE_PATH}{Stack.of(self).stack_name}/"
 
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
@@ -470,11 +540,12 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         id: str,
         config: BaseClusterConfig,
         node: Union[HeadNode, BaseQueue],
+        shared_storage_infos: dict,
         name: str,
         cluster_bucket: S3Bucket,
     ):
         self._cluster_bucket = cluster_bucket
-        super().__init__(scope, id, config, node, name)
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
         policy = [
@@ -625,20 +696,18 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     ),
                 ]
             )
+
+            self._add_compute_console_output_policy_statement(policy)
+
             capacity_reservation_ids = self._config.capacity_reservation_ids
 
             if capacity_reservation_ids:
                 policy.append(
                     iam.PolicyStatement(
+                        sid="AllowRunningReservedCapacity",
                         actions=["ec2:RunInstances"],
                         effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="ec2",
-                                resource=f"capacity-reservation/{capacity_reservation_id}",
-                            )
-                            for capacity_reservation_id in capacity_reservation_ids
-                        ],
+                        resources=self._config.capacity_reservation_arns,
                     )
                 )
             capacity_reservation_resource_group_arns = self._config.capacity_reservation_resource_group_arns
@@ -646,6 +715,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 policy.extend(
                     [
                         iam.PolicyStatement(
+                            sid="AllowManagingReservedCapacity",
                             actions=["ec2:RunInstances", "ec2:CreateFleet", "resource-groups:ListGroupResources"],
                             effect=iam.Effect.ALLOW,
                             resources=capacity_reservation_resource_group_arns,
@@ -684,6 +754,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         if self._config.directory_service:
             policy.append(
                 iam.PolicyStatement(
+                    sid="AllowGettingDirectorySecretValue",
                     actions=["secretsmanager:GetSecretValue"],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
@@ -693,6 +764,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         if self._config.scheduling.scheduler == "slurm" and self._config.scheduling.settings.database:
             policy.append(
                 iam.PolicyStatement(
+                    sid="AllowGettingSlurmDbSecretValue",
                     actions=["secretsmanager:GetSecretValue"],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.scheduling.settings.database.password_secret_arn],
@@ -701,12 +773,34 @@ class HeadNodeIamResources(NodeIamResourcesBase):
 
         return policy
 
+    def _add_compute_console_output_policy_statement(self, policy):
+        if self._config.monitoring.logs.cloud_watch.enabled:
+            queue_names = [queue.name for queue in self._config.scheduling.queues]
+            policy.append(
+                iam.PolicyStatement(
+                    sid="EC2GetComputeConsoleOutput",
+                    actions=["ec2:GetConsoleOutput"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._format_arn(service="ec2", resource="instance/*")],
+                    conditions={
+                        "StringEquals": {
+                            "aws:ResourceTag/parallelcluster:queue-name": queue_names,
+                            "aws:ResourceTag/parallelcluster:node-type": "Compute",
+                            "aws:ResourceTag/parallelcluster:cluster-name": Stack.of(self).stack_name,
+                        }
+                    },
+                )
+            )
+
     def _generate_head_node_pass_role_resources(self):
         """Return a unique list of ARNs that the head node should be able to use when calling PassRole."""
+        resource_iam_path, _ = add_cluster_iam_resource_prefix(
+            self._config.cluster_name, self._config, "", iam_type="AWS::IAM::Role"
+        )
         default_pass_role_resource = self._format_arn(
             service="iam",
             region="",
-            resource=f"role{self._cluster_scoped_iam_path()}*",
+            resource=f"role{self._cluster_scoped_iam_path(iam_path=resource_iam_path)}*",
         )
 
         # If there are any queues where a custom instance role was specified,
@@ -733,9 +827,15 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
     """Construct defining IAM resources for a compute node."""
 
     def __init__(
-        self, scope: Construct, id: str, config: BaseClusterConfig, node: Union[HeadNode, BaseQueue], name: str
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: Union[HeadNode, BaseQueue],
+        shared_storage_infos: dict,
+        name: str,
     ):
-        super().__init__(scope, id, config, node, name)
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
         return [
@@ -807,6 +907,12 @@ class PclusterLambdaConstruct(Construct):
             role=execution_role,
             runtime="python3.9",
             timeout=timeout,
+            vpc_config=awslambda.CfnFunction.VpcConfigProperty(
+                security_group_ids=config.lambda_functions_vpc_config.security_group_ids,
+                subnet_ids=config.lambda_functions_vpc_config.subnet_ids,
+            )
+            if config.lambda_functions_vpc_config
+            else None,
         )
 
     def _stack_unique_id(self):
@@ -814,3 +920,41 @@ class PclusterLambdaConstruct(Construct):
 
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
+
+
+class CdkLaunchTemplateBuilder(_LaunchTemplateBuilder):
+    """Concrete class for building a CDK launch template."""
+
+    def _block_device_mapping_for_ebs(self, device_name, volume):
+        return ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
+            device_name=device_name,
+            ebs=ec2.CfnLaunchTemplate.EbsProperty(
+                volume_size=volume.size,
+                encrypted=volume.encrypted,
+                volume_type=volume.volume_type,
+                iops=volume.iops,
+                throughput=volume.throughput,
+                delete_on_termination=volume.delete_on_termination,
+            ),
+        )
+
+    def _block_device_mapping_for_virt(self, device_name, virtual_name):
+        return ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
+
+    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+        return ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
+            market_type=market_type,
+            spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
+                spot_instance_type=spot_instance_type,
+                instance_interruption_behavior=instance_interruption_behavior,
+                max_price=max_price,
+            ),
+        )
+
+    def _capacity_reservation(self, cr_target):
+        return ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
+            capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
+                capacity_reservation_id=cr_target.capacity_reservation_id,
+                capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
+            )
+        )

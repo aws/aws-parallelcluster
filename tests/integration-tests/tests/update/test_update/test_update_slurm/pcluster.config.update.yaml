@@ -18,6 +18,11 @@ HeadNode:
         EnableWriteAccess: true
     AdditionalIamPolicies:
       - Policy: {{ additional_policy_arn }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ resource_bucket }}/scripts/{{ postupdate_script }}
+      Args:
+        - UPDATE-ARG2
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
@@ -30,26 +35,28 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       CapacityType: SPOT
       ComputeResources:
         - Name: queue1-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge
+            - InstanceType: c5a.xlarge
+            - InstanceType: c5d.xlarge
           MinCount: 2
           MaxCount: 4
         - Name: queue1-i2
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.2xlarge
           SpotPrice: 2.1
         - Name: queue1-i3
-          InstanceTypeList:
+          Instances:
             - InstanceType: t2.micro
       Iam:
         S3Access:
@@ -73,16 +80,16 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       ComputeResources:
         - Name: queue2-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5n.18xlarge
           MaxCount: 1
           DisableSimultaneousMultithreading: true
@@ -106,22 +113,22 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       ComputeResources:
         - Name: queue3-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5n.18xlarge
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
         - Name: queue3-i2
-          InstanceTypeList:
+          Instances:
             - InstanceType: t2.xlarge
           DisableSimultaneousMultithreading: true
           Efa:

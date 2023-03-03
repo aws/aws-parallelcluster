@@ -1,0 +1,39 @@
+Image:
+  Os: {{ os }}
+CustomS3Bucket: {{ bucket }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket }}
+        EnableWriteAccess: true
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: queue
+      ComputeResources:
+        - Name: compute
+          {% if scheduler == "plugin" %}
+          InstanceType: c5.large # instance type has bootstrap failure
+          {% else %}
+          Instances:
+            - InstanceType: c5.large # instance type has bootstrap failure
+          {% endif %}
+          MinCount: 3
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket }}
+            EnableWriteAccess: true

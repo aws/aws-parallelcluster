@@ -66,7 +66,10 @@ function error_exit
 {
   # wait logs flush before signaling the failure
   sleep 10
-  reason=$(cat /var/log/parallelcluster/chef_error_msg 2>/dev/null) || reason="$1"
+  # trim the error message because there is a size limit of 4096 bytes for cfn-signal
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
+  cutoff=$(expr 4096 - $(stat --printf="%s" /tmp/wait_condition_handle.txt))
+  reason=$(head --bytes=${!cutoff} /var/log/parallelcluster/bootstrap_error_msg 2>/dev/null) || reason="$1"
   cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}"
   exit 1
 }
@@ -115,7 +118,9 @@ export berkshelf_version=${BerkshelfVersion}
 if [ -f /opt/parallelcluster/.bootstrapped ]; then
   installed_version=$(cat /opt/parallelcluster/.bootstrapped)
   if [ "${!cookbook_version}" != "${!installed_version}" ]; then
-    error_exit "This AMI was created with ${!installed_version}, but is trying to be used with ${!cookbook_version}. Please either use an AMI created with ${!cookbook_version} or change your ParallelCluster to ${!installed_version}"
+    cookbook_version_number=$(echo ${!cookbook_version} | awk -F- '{print $NF}')
+    installed_version_number=$(echo ${!installed_version} | awk -F- '{print $NF}')
+    error_exit "This AMI was created with ${!installed_version_number}, but is trying to be used with ${!cookbook_version_number}. Please either use an AMI created with ${!cookbook_version_number} or change your ParallelCluster to ${!installed_version_number}"
   fi
 else
   error_exit "This AMI was not baked by ParallelCluster. Please use pcluster build-image command to create an AMI by providing your AMI as parent image."
@@ -126,7 +131,7 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
 fi
 
 # Call CloudFormation
-cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
+cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to bootstrap the head node. Please check /var/log/cfn-init.log or /var/log/chef-client.log in the head node, or check the cfn-init.log or chef-client.log in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
 cfn-signal --exit-code=0 --reason="HeadNode setup complete" "${!wait_condition_handle_presigned_url}"
 # End of file
 --==BOUNDARY==

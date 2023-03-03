@@ -1,0 +1,78 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+Scheduling:
+  SlurmSettings:
+    QueueUpdateStrategy: TERMINATE
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      ComputeResources:
+        - Name: queue1-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: queue2
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      ComputeResources:
+        - Name: queue2-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: {{ new_ebs_mount_dir }}
+    Name: {{ new_ebs_mount_dir }}
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp3
+      DeletionPolicy: Delete
+  - MountDir: {{ problematic_ebs_mount_dir }}
+    Name: {{ problematic_ebs_mount_dir }}
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+      VolumeId: {{ problematic_volume_id }}
+  - MountDir: {{ existing_ebs_mount_dir }}
+    Name: {{ existing_ebs_mount_dir }}
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+      VolumeId: {{ volume_id }}
+  - MountDir: {{ new_efs_mount_dir }}
+    Name: {{ new_efs_mount_dir }}
+    StorageType: Efs
+    EfsSettings:
+      Encrypted: true
+      PerformanceMode: maxIO
+      ThroughputMode: provisioned
+      ProvisionedThroughput: 200
+  - MountDir: {{ new_lustre_mount_dir }}
+    Name: {{ new_lustre_mount_dir }}
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      ImportPath: s3://{{ bucket_name }}
+      ExportPath: s3://{{ bucket_name }}/export_dir
+      DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200

@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import ipaddress
 import os
 
 from pcluster.aws.aws_api import AWSApi
@@ -15,6 +16,7 @@ from pcluster.aws.aws_resources import FsxFileSystemInfo, InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
+from pcluster.aws.efs import EfsClient
 from pcluster.aws.fsx import FSxClient
 from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
@@ -111,6 +113,9 @@ class _DummyCfnClient(CfnClient):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
+    def describe_stack_resources(self, stack_name: str):
+        return {}
+
 
 class _DummyEc2Client(Ec2Client):
     def __init__(self):
@@ -136,14 +141,49 @@ class _DummyEc2Client(Ec2Client):
             },
         ]
 
+    def describe_volume(self, volume_id):
+        return {
+            "Attachments": [
+                {
+                    "Device": "dev-01",
+                    "InstanceId": "instance-01",
+                    "State": "attached",
+                    "VolumeId": "vol-01",
+                    "DeleteOnTermination": True,
+                },
+            ],
+            "AvailabilityZone": "az-1",
+            "Encrypted": False,
+            "KmsKeyId": "kms-key",
+            "Size": 123,
+            "SnapshotId": "snapshot-123",
+            "State": "available",
+            "VolumeId": "vol-123",
+            "Iops": 123,
+            "Tags": [
+                {"Key": "string", "Value": "string"},
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": False,
+            "Throughput": 123,
+        }
+
     def get_subnet_vpc(self, subnet_id):
         return "vpc-123"
 
     def get_eip_allocation_id(self, eip):
         return "eipalloc-123"
 
+    def get_subnet_cidr(self, subnet):
+        try:  # If the value of subnet is a CIDR, we know the test wants to mock the request.
+            # Therefore, we return the value directly.
+            ipaddress.ip_network(subnet)
+            return subnet
+        except ValueError:  # Otherwise, we call the real method
+            return super().get_subnet_cidr(subnet)
 
-class _DummyEfsClient(Ec2Client):
+
+class _DummyEfsClient(EfsClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
@@ -170,7 +210,7 @@ class _DummyEfsClient(Ec2Client):
 class _DummyFSxClient(FSxClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-        pass
+        self.non_happy_describe_volumes_error = None
 
     def get_filesystem_info(self, fsx_fs_id):
         return {
@@ -180,8 +220,14 @@ class _DummyFSxClient(FSxClient):
             },
         }
 
+    def set_non_happy_describe_volumes(self, error):
+        self.non_happy_describe_volumes_error = error
+
     def describe_volumes(self, volume_ids):
         """Describe FSx volumes."""
+        if self.non_happy_describe_volumes_error is not None:
+            raise self.non_happy_describe_volumes_error
+
         result = []
         for volume_id in volume_ids:
             result.append(
@@ -203,6 +249,7 @@ class _DummyFSxClient(FSxClient):
                         "FileSystemType": "LUSTRE",
                         "LustreConfiguration": {"MountName": "abcdef"},
                         "FileSystemId": file_system_id,
+                        "SubnetIds": ["subnet-1"],
                     }
                 )
             )

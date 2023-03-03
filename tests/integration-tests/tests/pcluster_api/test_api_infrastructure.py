@@ -103,7 +103,7 @@ def _assert_parallelcluster_lambda(lambda_name, lambda_arn, lambda_image_uri):
     if "TracingConfig" in lambda_configuration:
         # When executed in GovCloud get_function does not return TracingConfig
         assert_that(lambda_configuration["TracingConfig"]["Mode"]).is_equal_to("Active")
-    assert_that(lambda_configuration["MemorySize"]).is_equal_to(1024)
+    assert_that(lambda_configuration["MemorySize"]).is_equal_to(2048)
     assert_that(lambda_resource["Tags"]).contains("parallelcluster:version")
     assert_that(lambda_resource["Tags"]).contains("parallelcluster:resource")
     assert_that(lambda_resource["Code"]["ImageUri"]).is_equal_to(lambda_image_uri)
@@ -205,6 +205,8 @@ def _test_docker_image_refresh(image_builder_pipeline, lambda_name):
 )
 def _wait_for_image_build(image_builder_pipeline):
     image_builder = boto3.client("imagebuilder")
-    return image_builder.list_image_pipeline_images(imagePipelineArn=image_builder_pipeline,)[
+    return image_builder.list_image_pipeline_images(
+        imagePipelineArn=image_builder_pipeline,
+    )[
         "imageSummaryList"
     ][0]

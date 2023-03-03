@@ -1,7 +1,7 @@
 openapi: 3.0.2
 info:
   title: ParallelCluster
-  version: 3.3.0
+  version: 3.6.0
   description: ParallelCluster API
 paths:
   /v3/clusters:
@@ -721,7 +721,7 @@ paths:
             Accepted filters are:
             private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).
             node-type - The node type, the only accepted value for this filter is HeadNode.
-          style: form
+          style: spaceDelimited
           schema:
             type: array
             items:
@@ -1904,9 +1904,11 @@ components:
           description: Tags associated with the cluster.
         headNode:
           $ref: '#/components/schemas/EC2Instance'
-        failureReason:
-          type: string
-          description: Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.
+        failures:
+          type: array
+          items:
+            $ref: '#/components/schemas/Failure'
+          description: Failures array containing failures reason and code when the stack is in CREATE_FAILED status.
       required:
         - cloudFormationStackStatus
         - cloudformationStackArn
@@ -2063,6 +2065,15 @@ components:
         - TRANSIENT
         - FAILED
         - ERROR
+    Failure:
+      type: object
+      properties:
+        failureCode:
+          type: string
+          description: Failure code when the cluster stack is in CREATE_FAILED status.
+        failureReason:
+          type: string
+          description: Failure reason when the cluster stack is in CREATE_FAILED status.
     GetClusterLogEventsResponseContent:
       type: object
       properties:

@@ -406,6 +406,12 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command(check_core_cmd)
         return re.search(r"(\d+)", result.stdout).group(1)
 
+    def get_partitions(self):
+        """Return partitions in the cluster."""
+        check_partitions_cmd = "sinfo --format=%R -h"
+        result = self._remote_command_executor.run_remote_command(check_partitions_cmd)
+        return result.stdout.splitlines()
+
     def get_job_info(self, job_id, field=None):
         """Return job details from slurm. If field is provided, only the field is returned"""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
@@ -444,6 +450,13 @@ class SlurmCommands(SchedulerCommands):
             if filter_by_nodes
             else current_node_states
         )
+
+    @retry(wait_fixed=seconds(15), stop_max_delay=minutes(6))
+    def wait_nodes_status(self, status, filter_by_nodes=None):
+        """Wait nodes to reach the status specified"""
+        nodes_status = self.get_nodes_status(filter_by_nodes)
+        for node_status in nodes_status.values():
+            assert_that(node_status).is_equal_to(status)
 
     def get_node_addr_host(self):
         """Return a list of nodename, nodeaddr, nodehostname entries."""

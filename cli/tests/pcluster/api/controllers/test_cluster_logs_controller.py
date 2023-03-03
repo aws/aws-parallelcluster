@@ -224,7 +224,6 @@ class TestGetClusterStackEvents:
         ],
     )
     def test_successful_get_cluster_log_events_request(self, client, mocker, region, next_token):
-
         uid = "00000000-dddd-4444-bbbb-555555555555"
         cluster_name = "cluster"
         account_id = "012345678999"
@@ -425,7 +424,7 @@ class TestListClusterLogStreams:
             ),
             (
                 ["Name=private-dns-name,Values=ip-10-0-0-101,ip-10-0-0-102", "Name=node-type,Value=HeadNode"],
-                "filters parameter must be in the form",
+                "provided filters parameter 'Name=node-type,Value=HeadNode' must be in the form",
             ),
         ],
     )

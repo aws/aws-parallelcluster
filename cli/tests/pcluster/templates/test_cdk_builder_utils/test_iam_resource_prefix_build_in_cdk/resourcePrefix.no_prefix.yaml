@@ -1,0 +1,29 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: String
+  Ssh:
+    KeyName: String
+  Networking:
+    SubnetId: subnet-12345678
+  Iam:
+    S3Access:
+      - BucketName: testbucketpball
+        EnableWriteAccess: True
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: t2.micro
+          MinCount: 1
+          MaxCount: 5
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      Iam:
+        S3Access:
+          - BucketName: testbucketpball
+            EnableWriteAccess: True
+ 

@@ -1,31 +1,128 @@
 CHANGELOG
 =========
 
+3.6.0
+----
+**ENHANCEMENTS**
+- Add `mem_used_percent` and `disk_used_percent` metrics for head node memory and root volume disk utilization tracking on the ParallelCluster CloudWatch dashboard, and set up alarms for monitoring these metrics.
+
+**ENHANCEMENTS**
+- Add log rotation support for ParallelCluster managed logs.
+
+**CHANGES**
+- Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
+
+**BUG FIXES**
+- Fix EFS, FSx network security groups validators to avoid reporting false errors.
+
+3.5.0
+-----
+
+**ENHANCEMENTS**
+- Add official versioned ParallelCluster policies in a CloudFormation template to allow customers to easily reference them in their workloads.
+- Add a Python library to allow customers to use ParallelCluster functionalities in their own code.
+- Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
+- Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
+- Add support for US isolated regions: us-iso-* and us-isob-*.
+
+**CHANGES**
+- Upgrade Slurm to version 22.05.8.
+- Make Slurm controller logs more verbose and enable additional logging for the Slurm power save plugin.
+- Upgrade EFA installer to `1.21.0`
+  - Efa-driver: `efa-2.1.1-1`
+  - Efa-config: `efa-config-1.12-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1amzn3.0-1`
+  - Rdma-core: `rdma-core-43.0-1`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
+
+**BUG FIXES**
+- Fix cluster DB creation by verifying the cluster name is no longer than 40 characters when Slurm accounting is enabled.
+- Fix an issue in clustermgtd that caused compute nodes rebooted via Slurm to be replaced if the EC2 instance status checks fail.
+- Fix an issue where compute nodes could not launch with capacity reservations shared by other accounts because of a wrong IAM policy on head node.
+- Fix an issue where custom AMI creation failed in Ubuntu 20.04 on MySQL packages installation.
+- Fix an issue where pcluster configure command failed when the account had no IPv4 CIDR subnet.
+
+3.4.1
+-----
+
+**BUG FIXES**
+- Fix an issue with the Slurm scheduler that might incorrectly apply updates to its internal registry of compute nodes. This might result in EC2 instances to become inaccessible or backed by an incorrect instance type.
+
+3.4.0
+-----
+
+**ENHANCEMENTS**
+- Add support for launching nodes across multiple availability zones to increase capacity availability.
+- Add support for specifying multiple subnets for each queue to increase capacity availability.
+- Add new configuration parameter in `Iam/ResourcePrefix` to specify a prefix for path and name of IAM resources created by ParallelCluster
+- Add new configuration section `DeploySettings/LambdaFunctionsVpcConfig` for specifying the Vpc config used by ParallelCluster Lambda Functions.
+- Add possibility to specify a custom script to be executed in the head node during the update of the cluster. The script can be specified with `OnNodeUpdated` parameter when using Slurm as scheduler.
+
+**CHANGES**
+- Remove creation of EFS mount targets for existing FS.
+- Mount EFS file systems using amazon-efs-utils. EFS files systems can be mounted using in-transit encryption and IAM authorized user.
+- Install stunnel 5.67 on CentOS7 and Ubuntu to support EFS in-transit encryption.
+- Upgrade EFA installer to `1.20.0`
+  - Efa-driver: `efa-2.1`
+  - Efa-config: `efa-config-1.11-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.1`
+  - Rdma-core: `rdma-core-43.0-2`
+  - Open MPI: `openmpi40-aws-4.1.4-3`
+- Upgrade Slurm to version 22.05.7.
+
+3.3.1
+-----
+
+**CHANGES**
+- Allow to use official product AMIs even after the two years EC2 deprecation time.
+- Increase memory size of ParallelCluster API Lambda to 2048 in order to reduce cold start penalty and avoid timeouts.
+
+**BUG FIXES**
+- Prevent managed FSx for Lustre file systems to be replaced during a cluster update avoiding to support changes on the compute fleet subnet id.
+- Apply the `DeletionPolicy` defined on shared storages also during the cluster update operations.
+
 3.3.0
 -----
 
 **ENHANCEMENTS**
-- Add support for updating `SharedStorage` configuration.
-- Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage
-  to support storage retention on deletion.
-- Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
-- Add support for on-demand capacity reservations.
-- Add support for specifying the supported IMDS version in cluster and build image configurations via the `Imds > ImdsSettings` property. A value of `v1.0` (the default) means that both IMDSv1 and IMDSv2 are supported, while a value of `v2.0` means that only IMDSv2 is supported.
-- Add support for Slurm Accounting.
+- Add possibility to specify multiple EC2 instance types for the same compute resource.
+- Add support for adding and removing shared storages at cluster update by updating `SharedStorage` configuration.
+- Add new configuration parameter `DeletionPolicy` for EFS and FSx for Lustre shared storage to support storage retention.
+- Add new configuration section `Scheduling/SlurmSettings/Database` to enable accounting functionality in Slurm.
+- Add support for On-Demand Capacity Reservations and Capacity Reservations Resource Groups.
+- Add new configuration parameter in `Imds/ImdsSettings` to specify the IMDS version to support in a cluster or build image infrastructure.
+- Add support for `Networking/PlacementGroup` in the `SlurmQueues/ComputeResources` section.
+- Add support for instances with multiple network interfaces that allows only one ENI per device.
+- Add support for hp6id instance type as compute nodes.
 - Improve validation of networking for external EFS file systems by checking the CIDR block in the attached security group.
+- Add validator to check if configured instance types support placement groups.
+- Configure NFS threads to be `min(256, max(8, num_cores * 4))` to ensure better stability and performance.
+- Move NFS installation at build time to reduce configuration time.
+- Enable server-side encryption for the EcrImageBuilder SNS topic created when deploying ParallelCluster API and used to notify on docker image build events.
 
 **CHANGES**
-- Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
-- Upgrade Python and NodeJS versions in API infrastructure, API Docker container and cluster Lambda resources.
+- Change behaviour of `SlurmQueues/Networking/PlacementGroup/Enabled`: now it creates a different managed placement
+  group for each compute resource instead of a single managed placement group for all compute resources.
+- Add support for `PlacementGroup/Name` as the preferred naming method.
 - Move head node tags from Launch Template to instance definition to avoid head node replacement on tags updates.
 - Disable Multithreading through script executed by cloud-init and not through CpuOptions set into Launch Template.
-- Add support for multiple instance types in the same Compute Resource.
-- Add support for a Name field in PlacementGroup as the preferred naming method.
-- Add support for Networking.PlacementGroup in the SlurmQueues.ComputeResources section
-- Upgrade Slurm to version 22.05.4.
-- SlurmQueues.Networking.PlacementGroup.Enabled alone will now create a unique managed placement for each compute resource instead of a single managed placement group for all compute resources
+- Upgrade Python to version 3.9 and NodeJS to version 16 in API infrastructure, API Docker container and cluster Lambda resources.
+- Remove support for Python 3.6 in aws-parallelcluster-batch-cli.
+- Upgrade Slurm to version 22.05.5.
+- Upgrade NVIDIA driver to version 470.141.03.
+- Upgrade NVIDIA Fabric Manager to version 470.141.03.
+- Upgrade NVIDIA CUDA Toolkit to version 11.7.1.
+- Upgrade Python used in ParallelCluster virtualenvs from 3.7.13 to 3.9.15.
+- Upgrade Slurm to version 22.05.5.
+- Upgrade EFA installer to version 1.18.0.
+- Upgrade NICE DCV to version 2022.1-13300.
+- Allow for suppressing the `SingleSubnetValidator` for `Queues`.
+- Remove usage of prolog/epilog Slurm configuration when `UseEc2Hostnames` is set to `true`.
 
 **BUG FIXES**
+- Fix validation of `filters` parameter in `ListClusterLogStreams` command to fail when incorrect filters are passed.
 - Fix validation of parameter `SharedStorage/EfsSettings`: now validation fails when `FileSystemId` is specified
   along with other `SharedStorage/EfsSettings` parameters, whereas it was previously ignoring them.
 - Fix cluster update when changing the order of SharedStorage together with other changes in the configuration.
@@ -99,6 +196,7 @@ CHANGELOG
 - Remove the trailing dot when configuring the compute node FQDN.
 
 **BUG FIXES**
+- Fix Slurm issue that prevents idle nodes termination.
 - Fix the default behavior to skip the ParallelCluster validation and test steps when building a custom AMI.
 - Fix file handle leak in `computemgtd`.
 - Fix race condition that was sporadically causing launched instances to be immediately terminated because not available yet in EC2 DescribeInstances response

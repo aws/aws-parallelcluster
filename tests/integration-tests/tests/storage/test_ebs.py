@@ -18,7 +18,11 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.storage.kms_key_factory import KMSKeyFactory
-from tests.storage.storage_common import test_ebs_correctly_mounted, verify_directory_correctly_shared
+from tests.storage.storage_common import (
+    assert_subnet_az_relations_from_config,
+    test_ebs_correctly_mounted,
+    verify_directory_correctly_shared,
+)
 
 
 @pytest.mark.usefixtures("instance")
@@ -31,6 +35,9 @@ def test_ebs_single(
         mount_dir=mount_dir, ec2_iam_role=kms_key_factory.iam_role_arn, ebs_kms_key_id=kms_key_id
     )
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -47,12 +54,13 @@ def test_ebs_single(
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_ebs_snapshot(
     request,
-    vpc_stacks,
+    vpc_stack,
     region,
     pcluster_config_reader,
     snapshots_factory,
     clusters_factory,
     scheduler_commands_factory,
+    scheduler,
 ):
     logging.info("Testing ebs snapshot")
     mount_dir = "ebs_mount_dir"
@@ -61,12 +69,15 @@ def test_ebs_snapshot(
 
     logging.info("Creating snapshot")
 
-    snapshot_id = snapshots_factory.create_snapshot(request, vpc_stacks[region].cfn_outputs["PublicSubnetId"], region)
+    snapshot_id = snapshots_factory.create_snapshot(request, vpc_stack.get_public_subnet(), region)
 
     logging.info("Snapshot id: %s" % snapshot_id)
     cluster_config = pcluster_config_reader(mount_dir=mount_dir, volume_size=volume_size, snapshot_id=snapshot_id)
 
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -96,6 +107,9 @@ def test_ebs_multiple(
     volume_sizes[4] = 500
     cluster_config = pcluster_config_reader(mount_dirs=mount_dirs, volume_sizes=volume_sizes)
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -141,7 +155,7 @@ def _get_ebs_settings_by_name(config, name):
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
     request,
-    vpc_stacks,
+    vpc_stack,
     region,
     scheduler,
     pcluster_config_reader,
@@ -154,14 +168,15 @@ def test_ebs_existing(
 
     logging.info("Creating volume")
 
-    volume_id = snapshots_factory.create_existing_volume(
-        request, vpc_stacks[region].cfn_outputs["PublicSubnetId"], region
-    )
+    volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.get_public_subnet(), region)
 
     logging.info("Existing Volume id: %s" % volume_id)
     cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
 
     cluster = clusters_factory(cluster_config)
+    assert_subnet_az_relations_from_config(
+        region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     existing_mount_dir = "/" + existing_mount_dir

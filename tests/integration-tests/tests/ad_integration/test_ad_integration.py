@@ -23,7 +23,7 @@ from collections import defaultdict
 import boto3
 import pytest
 from assertpy import assert_that
-from cfn_stacks_factory import CfnStack
+from cfn_stacks_factory import CfnStack, CfnVpcStack
 from OpenSSL import crypto
 from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
 from paramiko import RSAKey
@@ -142,9 +142,8 @@ def zip_dir(path):
     return file_out
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def store_secret_in_secret_manager(request, cfn_stacks_factory):
-
     secret_arns = {}
 
     def _store_secret(region, secret_string=None, secret_binary=None):
@@ -174,7 +173,9 @@ def store_secret_in_secret_manager(request, cfn_stacks_factory):
                 secrets_manager_client.delete_secret(SecretId=secret_arn)
 
 
-def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack):
+def _create_directory_stack(
+    cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack: CfnVpcStack
+):
     directory_stack_name = generate_stack_name(
         f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
     )
@@ -217,14 +218,18 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_re
     }
     logging.info("Creating stack %s", directory_stack_name)
     with open(render_jinja_template(directory_stack_template_path, **config_args)) as directory_stack_template:
+        private_subnet = vpc_stack.get_private_subnet()
+        private_subnets = vpc_stack.get_all_private_subnets().copy()
+        private_subnets.remove(private_subnet)
+
         params = [
             {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
-            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": vpc_stack.cfn_outputs["PrivateSubnetId"]},
+            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
             {
                 "ParameterKey": "PrivateSubnetTwo",
-                "ParameterValue": vpc_stack.cfn_outputs["PrivateAdditionalCidrSubnetId"],
+                "ParameterValue": private_subnets[0],
             },
-            {"ParameterKey": "PublicSubnetOne", "ParameterValue": vpc_stack.cfn_outputs["PublicSubnetId"]},
+            {"ParameterKey": "PublicSubnetOne", "ParameterValue": vpc_stack.get_public_subnet()},
         ]
         directory_stack = CfnStack(
             name=directory_stack_name,
@@ -351,8 +356,8 @@ def _delete_certificate(certificate_arn, region):
     boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
 
 
-@pytest.fixture(scope="module")
-def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_secret_manager):  # noqa: C901
+@pytest.fixture(scope="class")
+def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_secret_manager):  # noqa: C901
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
     created_certificates = defaultdict(dict)
@@ -374,7 +379,12 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_s
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
             directory_stack = _create_directory_stack(
-                cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stacks[region]
+                cfn_stacks_factory,
+                request,
+                directory_type,
+                test_resources_dir,
+                region,
+                vpc_stack,
             )
             directory_stack_name = directory_stack.name
             created_directory_stacks[region]["directory"] = directory_stack_name

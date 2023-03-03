@@ -1,14 +1,26 @@
 [flake8]
 ignore =
-    D105, # Missing docstring in magic method
-    D100, # Missing docstring in public module
-    D104, # Missing docstring in public package
-    D107, # Missing docstring in __init__
-    D103, # Missing docstring in public function
-    W503, # line break before binary operator => Conflicts with black style.
-    D413, # Missing blank line after last section
-    F821, # undefined name
-    N818, # exception name should be named with an Error suffix
+    # D105:  Missing docstring in magic method
+    D105,
+    # D100: Missing docstring in public module
+    D100,
+    # D104: Missing docstring in public package
+    D104,
+    # D107: Missing docstring in __init__
+    D107,
+    # D103: Missing docstring in public function
+    D103,
+    # W503: line break before binary operator => Conflicts with black style.
+    W503,
+    # D413: Missing blank line after last section
+    D413,
+    # F821: undefined name
+    F821,
+    # N818: exception name should be named with an Error suffix
+    N818,
+    # B028: Consider replacing f"'{foo}'" with f"{foo!r}".
+    # Currently being disabled by flake8-bugbear. See https://github.com/PyCQA/flake8-bugbear/pull/333
+    B028
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method
 # D202 No blank lines allowed after function docstring
@@ -38,4 +50,4 @@ max-complexity = 10
 max-line-length = 120
 import-order-style = google
 application-import-names = flake8
-format = ${cyan}%(path)s${reset}:${yellow_bold}%(row)d${reset}:${green_bold}%(col)d${reset}: ${red_bold}%(code)s${reset} %(text)s
+format = %(cyan)s%(path)s%(reset)s:%(bold)s%(yellow)s%(row)d%(reset)s:%(bold)s%(green)s%(col)d%(reset)s: %(bold)s%(red)s%(code)s%(reset)s %(text)s

@@ -10,7 +10,10 @@
 # limitations under the License.
 import logging
 import re
-import subprocess as sub
+
+# A nosec comment is appended to the following line in order to disable the B404 check.
+# In this file the input of the module subprocess is trusted.
+import subprocess as sub  # nosec B404
 import time
 import webbrowser
 from typing import List
@@ -35,8 +38,8 @@ class DCVConnectionError(Exception):
 def _check_command_output(cmd):
     # A nosec comment is appended to the following line in order to disable the B602 check.
     # This is done because it's needed to enable the desired functionality. The only caller
-    # of this function is _retrieve_dcv_session_url, which passes a command that should be safe.
-    return sub.check_output(cmd, shell=True, universal_newlines=True, stderr=sub.STDOUT).strip()  # nosec nosemgrep
+    # of this function is _retrieve_dcv_session_url, which passes a command that is safe.
+    return sub.check_output(cmd, shell=True, universal_newlines=True, stderr=sub.STDOUT).strip()  # nosec B602 nosemgrep
 
 
 def _dcv_connect(args):

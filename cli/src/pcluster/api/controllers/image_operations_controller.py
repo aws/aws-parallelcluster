@@ -11,6 +11,7 @@ import logging
 import os as os_lib
 
 from pcluster.api.controllers.common import (
+    assert_supported_operation,
     configure_aws_region,
     configure_aws_region_from_config,
     convert_errors,
@@ -50,7 +51,7 @@ from pcluster.api.util import assert_valid_node_js
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
-from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
+from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES, Operation
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     ConfigValidationError,
@@ -97,6 +98,7 @@ def build_image(
     :rtype: BuildImageResponseContent
     """
     assert_valid_node_js()
+    assert_supported_operation(operation=Operation.BUILD_IMAGE, region=region)
     configure_aws_region_from_config(region, build_image_request_content["imageConfiguration"])
     rollback_on_failure = rollback_on_failure if rollback_on_failure is not None else False
     disable_rollback = not rollback_on_failure
@@ -158,6 +160,7 @@ def delete_image(image_id, region=None, force=None):
 
     :rtype: DeleteImageResponseContent
     """
+    assert_supported_operation(operation=Operation.DELETE_IMAGE, region=region)
     force = force or False
     imagebuilder = ImageBuilder(image_id=image_id)
     image, stack = _get_underlying_image_or_stack(imagebuilder)
@@ -204,6 +207,7 @@ def describe_image(image_id, region=None):
 
     :rtype: DescribeImageResponseContent
     """
+    assert_supported_operation(operation=Operation.DESCRIBE_IMAGE, region=region)
     imagebuilder = ImageBuilder(image_id=image_id)
 
     try:
@@ -326,6 +330,7 @@ def list_images(image_status, region=None, next_token=None):
 
     :rtype: ListImagesResponseContent
     """
+    assert_supported_operation(operation=Operation.LIST_IMAGES, region=region)
     if image_status == ImageStatusFilteringOption.AVAILABLE:
         return ListImagesResponseContent(images=_get_available_images())
     else:

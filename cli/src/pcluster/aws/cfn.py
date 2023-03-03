@@ -32,7 +32,7 @@ class CfnClient(Boto3Client):
         return self._client.create_stack(
             StackName=stack_name,
             TemplateBody=template_body,
-            Capabilities=["CAPABILITY_IAM"],
+            Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
             Tags=tags,
         )
@@ -50,7 +50,7 @@ class CfnClient(Boto3Client):
         return self._client.create_stack(
             StackName=stack_name,
             TemplateURL=template_url,
-            Capabilities=[capabilities],
+            Capabilities=[capabilities, "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
             Tags=tags,
         )
@@ -67,7 +67,7 @@ class CfnClient(Boto3Client):
             StackName=stack_name,
             TemplateBody=json.dumps(updated_template, indent=2),  # Indent so it looks nice in the console
             Parameters=params,
-            Capabilities=["CAPABILITY_IAM"],
+            Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
         )
 
     @AWSExceptionHandler.handle_client_exception
@@ -77,12 +77,12 @@ class CfnClient(Boto3Client):
             return self._client.update_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
-                Capabilities=["CAPABILITY_IAM"],
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             )
         return self._client.update_stack(
             StackName=stack_name,
             TemplateURL=template_url,
-            Capabilities=["CAPABILITY_IAM"],
+            Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             Tags=tags,
         )
 
@@ -146,6 +146,12 @@ class CfnClient(Boto3Client):
             raise AWSClientError(
                 function_name="describe_stack_resource", message=f"No resource {logic_resource_id} found."
             )
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_stack_resources(self, stack_name: str):
+        """Get stack resources information."""
+        response = self._client.describe_stack_resources(StackName=stack_name).get("StackResources")
+        return {resource["LogicalResourceId"]: resource for resource in response}  # Build dictionary for better query.
 
     @AWSExceptionHandler.handle_client_exception
     def get_imagebuilder_stacks(self, next_token=None):

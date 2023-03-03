@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 import boto3
@@ -6,6 +7,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
+from time_utils import seconds
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 
@@ -30,7 +32,9 @@ def _get_slurm_database_config_parameters(database_stack_outputs):
 
 
 def _get_expected_users(remote_command_executor, test_resources_dir):
-    users = remote_command_executor.run_remote_script(str(test_resources_dir / "get_accounting_users.sh")).stdout
+    users = remote_command_executor.run_remote_script(
+        os.path.join(str(test_resources_dir), "get_accounting_users.sh")
+    ).stdout
     for user in users.splitlines():
         logging.info("  Expected User: %s", user)
     return users.splitlines()
@@ -38,6 +42,25 @@ def _get_expected_users(remote_command_executor, test_resources_dir):
 
 def _is_accounting_enabled(remote_command_executor):
     return remote_command_executor.run_remote_command("sacct", raise_on_error=False).ok
+
+
+def _require_server_identity(remote_command_executor, test_resources_dir, region):
+    ca_url = f"https://truststore.pki.rds.amazonaws.com/{region}/{region}-bundle.pem"
+    remote_command_executor.run_remote_script(
+        os.path.join(str(test_resources_dir), "require_server_identity.sh"),
+        args=[
+            ca_url,
+            f"{region}-bundle.pem",
+        ],
+        run_as_root=True,
+    )
+
+
+def _test_require_server_identity(remote_command_executor, test_resources_dir, region):
+    _require_server_identity(remote_command_executor, test_resources_dir, region)
+    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
+        remote_command_executor,
+    )
 
 
 def _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir):
@@ -104,6 +127,7 @@ def _test_that_slurmdbd_is_running(remote_command_executor):
 def test_slurm_accounting(
     region,
     pcluster_config_reader,
+    vpc_stack_for_database,
     database_factory,
     request,
     test_datadir,
@@ -120,7 +144,11 @@ def test_slurm_accounting(
     database_stack_outputs = get_infra_stack_outputs(database_stack_name)
 
     config_params = _get_slurm_database_config_parameters(database_stack_outputs)
-    cluster_config = pcluster_config_reader(**config_params)
+    public_subnet_id = vpc_stack_for_database.get_public_subnet()
+    private_subnet_id = vpc_stack_for_database.get_private_subnet()
+    cluster_config = pcluster_config_reader(
+        public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id, **config_params
+    )
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -130,6 +158,7 @@ def test_slurm_accounting(
     _test_successful_startup_in_log(remote_command_executor)
     _test_slurmdbd_log_exists_in_log_group(cluster)
     _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir)
+    _test_require_server_identity(remote_command_executor, test_resources_dir, region)
     _test_jobs_get_recorded(scheduler_commands)
 
 
@@ -138,6 +167,7 @@ def test_slurm_accounting_disabled_to_enabled_update(
     region,
     pcluster_config_reader,
     database_factory,
+    vpc_stack_for_database,
     request,
     test_datadir,
     test_resources_dir,
@@ -151,9 +181,11 @@ def test_slurm_accounting_disabled_to_enabled_update(
     )
 
     database_stack_outputs = get_infra_stack_outputs(database_stack_name)
+    public_subnet_id = vpc_stack_for_database.get_public_subnet()
+    private_subnet_id = vpc_stack_for_database.get_private_subnet()
 
     # First create a cluster without Slurm Accounting enabled
-    cluster_config = pcluster_config_reader(config_file="pcluster.config.yaml")
+    cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -163,7 +195,12 @@ def test_slurm_accounting_disabled_to_enabled_update(
     config_params = _get_slurm_database_config_parameters(database_stack_outputs)
 
     # Then update the cluster to enable Slurm Accounting
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", **config_params)
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        public_subnet_id=public_subnet_id,
+        private_subnet_id=private_subnet_id,
+        **config_params,
+    )
     cluster.update(str(updated_config_file), force_update="true")
 
     remote_command_executor = RemoteCommandExecutor(cluster)

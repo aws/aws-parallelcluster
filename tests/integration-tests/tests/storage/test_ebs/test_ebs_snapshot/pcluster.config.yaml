@@ -20,13 +20,25 @@ Scheduling:
           MinvCpus: 1
           DesiredvCpus: 1
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ private_subnet_ids[0] }}
+    {% if scheduler == "slurm" %}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_ids[1] }}
+    {% endif %}
 SharedStorage:
   - MountDir: {{ mount_dir }}
     StorageType: Ebs

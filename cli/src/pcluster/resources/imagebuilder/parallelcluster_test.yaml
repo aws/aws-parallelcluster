@@ -5,7 +5,7 @@ schemaVersion: 1.0
 constants:
   - CookbookDefaultFile:
       type: string
-      value: /etc/chef/cookbooks/aws-parallelcluster/attributes/default.rb
+      value: /etc/chef/node_attributes.json
 
 phases:
   - name: test
@@ -42,6 +42,8 @@ phases:
                 OS='ubuntu1804'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
+              elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
+                OS='rhel8'
               else
                 echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
               fi
@@ -55,7 +57,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['python-version']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster."python-version"' {{ CookbookDefaultFile }})
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
@@ -65,7 +67,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['scheduler_plugin']['python_version']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.scheduler_plugin.python_version' {{ CookbookDefaultFile }})
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
@@ -76,9 +78,8 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['base_dir']" {{ CookbookDefaultFile }})
-              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              PYENV_ROOT+="${BASE_DIR}/pyenv"
+              PATTERN=$(jq '.default.cluster.system_pyenv_root' {{ CookbookDefaultFile }})
+              PYENV_ROOT=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${PYENV_ROOT}
 
       - name: SchedulerPluginPyenvRoot
@@ -87,9 +88,8 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['base_dir']" {{ CookbookDefaultFile }})
-              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              PYENV_ROOT+="${BASE_DIR}/shared/scheduler-plugin/pyenv"
+              PATTERN=$(jq '.default.cluster.scheduler_plugin.pyenv_root' {{ CookbookDefaultFile }})
+              PYENV_ROOT=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${PYENV_ROOT}
 
       - name: CookbookVirtualenvPath
@@ -132,7 +132,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['reserved_base_uid']" {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.reserved_base_uid' {{ CookbookDefaultFile }})
               RESERVED_BASE_UID=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo "${RESERVED_BASE_UID}"
 
@@ -145,6 +145,8 @@ phases:
               set -vx
               OS="{{ test.OperatingSystemName.outputs.stdout }}"
               if [[ ${OS} =~ ^alinux ]]; then
+                username="ec2-user"
+              elif [[ ${OS} =~ ^rhel ]]; then
                 username="ec2-user"
               elif [[ ${OS} =~ ^centos ]]; then
                 username="centos"
@@ -179,11 +181,13 @@ phases:
               {{ test.NodeVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.PythonVersion.outputs.stdout }}
               [[ $? -ne 0 ]] && echo "Check node virtualenv python version failed" && exit 1
 
-              {{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.SchedulerPluginPythonVersion.outputs.stdout }}
-              [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python version failed" && exit 1
-              su -l pcluster-scheduler-plugin -c "which python" | grep envs/scheduler_plugin_virtualenv/bin/python
-              [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python path failed" && exit 1
-
+              if [[ {{ test.OperatingSystemName.outputs.stdout }} != 'rhel8' ]]; then
+                {{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.SchedulerPluginPythonVersion.outputs.stdout }}
+                [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python version failed" && exit 1
+                su -l pcluster-scheduler-plugin -c "which python" | grep envs/scheduler_plugin_virtualenv/bin/python
+                [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python path failed" && exit 1
+              fi
+              
               echo "Virtualenv test passed"
 
       - name: Pip
@@ -270,11 +274,13 @@ phases:
           commands:
             - |
               set -vx
-              Script=/usr/local/sbin/invoke-scheduler-plugin-event-handler.sh
-              if [ -x ${Script} ]; then
-                echo "Scheduler plugin handler script '${Script}' is executable."
-              else
-                echo "Scheduler plugin handler script '${Script}' is not executable." && exit 1
+              if [[ {{ test.OperatingSystemName.outputs.stdout }} != 'rhel8' ]]; then
+                Script=/usr/local/sbin/invoke-scheduler-plugin-event-handler.sh
+                if [ -x ${Script} ]; then
+                  echo "Scheduler plugin handler script '${Script}' is executable."
+                else
+                  echo "Scheduler plugin handler script '${Script}' is not executable." && exit 1
+                fi
               fi
 
       - name: Log4jPatcher

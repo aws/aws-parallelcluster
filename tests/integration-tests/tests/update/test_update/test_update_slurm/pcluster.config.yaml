@@ -12,6 +12,14 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ resource_bucket }}/scripts/postupdate.sh
+      Args:
+        - UPDATE-ARG1
+  Iam:
+    S3Access:
+      - BucketName: {{ resource_bucket }}
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
@@ -24,22 +32,24 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/preinstall.sh
           Args:
             - QWE
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Script: s3://{{ resource_bucket }}/scripts/postinstall.sh
           Args:
             - RTY
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: queue1-i1
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5.xlarge
+            - InstanceType: c5a.xlarge
+            - InstanceType: c5d.xlarge
           MinCount: 1
           MaxCount: 2
         - Name: queue1-i2
-          InstanceTypeList:
+          Instances:
             - InstanceType: t2.micro
           MinCount: 1
       Networking:
@@ -58,7 +68,7 @@ Scheduling:
         - Name: queue2-i1
           Efa:
             Enabled: true
-          InstanceTypeList:
+          Instances:
             - InstanceType: c5n.18xlarge
       Iam:
         S3Access:

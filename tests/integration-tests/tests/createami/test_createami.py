@@ -20,15 +20,19 @@ import time
 import boto3
 import pytest
 from assertpy import assert_that
+from botocore.exceptions import ClientError
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
 from remote_command_executor import RemoteCommandExecutor
+from retrying import retry
+from time_utils import minutes, seconds
 from troposphere import Template, iam
 from utils import generate_stack_name, get_arn_partition
 
 from tests.common.assertions import (
     assert_head_node_is_running,
     assert_instance_has_desired_imds_v2_setting,
+    assert_lambda_vpc_settings_are_correct,
     assert_no_msg_in_logs,
 )
 from tests.common.utils import (
@@ -127,6 +131,15 @@ def test_build_image(
     image = images_factory(image_id, image_config, region)
     _test_build_tag(image)
     _test_image_stack_events(image)
+
+    cfn_client = boto3.client("cloudformation", region_name=region)
+    _wait_for_creation_of_delete_stack_function(image.image_id, cfn_client)
+
+    lamda_vpc_config = image.config["DeploymentSettings"]["LambdaFunctionsVpcConfig"]
+    assert_lambda_vpc_settings_are_correct(
+        image.image_id, region, lamda_vpc_config["SecurityGroupIds"], lamda_vpc_config["SubnetIds"]
+    )
+
     _test_build_image_success(image)
     _test_build_imds_settings(image, "required", region)
     _test_image_tag_and_volume(image)
@@ -134,6 +147,25 @@ def test_build_image(
     _test_get_image_log_events(image)
     _test_list_images(image)
     _test_export_logs(s3_bucket_factory, image, region)
+
+
+@retry(
+    retry_on_result=lambda result: result == "CREATE_IN_PROGRESS",
+    retry_on_exception=lambda exception: (
+        isinstance(exception, ClientError)
+        and any(
+            message in str(exception) for message in {"Rate exceeded", "Resource DeleteStackFunction does not exist"}
+        )
+    ),
+    wait_fixed=seconds(10),
+    stop_max_delay=minutes(30),
+)
+def _wait_for_creation_of_delete_stack_function(stack_name, cfn_client):
+    return (
+        cfn_client.describe_stack_resource(StackName=stack_name, LogicalResourceId="DeleteStackFunction")
+        .get("StackResourceDetail")
+        .get("ResourceStatus")
+    )
 
 
 @pytest.mark.usefixtures("instance")
@@ -521,5 +553,5 @@ def _test_build_image_failed(image):
 def _keep_recent_logs(image):
     """Keep several lines of recent log to the console when creating an image fails."""
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
-    failure_logs = image.get_log_events(log_stream_name, start_from_head=True, query="events[*].message", limit=100)
+    failure_logs = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=100)
     logging.info(f"Image built failed for {image.image_id}, the last 100 lines of the log are: {failure_logs}")

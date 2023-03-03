@@ -81,4 +81,4 @@ def _test_mpi(
     assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
     assert_that(mpi_out).contains("Process 1 received token -1 from process 0")
 
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)

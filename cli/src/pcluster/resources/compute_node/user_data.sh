@@ -77,6 +77,8 @@ write_files:
           "region": "${AWS::Region}",
           "efs_fs_ids": "${EFSIds}",
           "efs_shared_dirs": "${EFSSharedDirs}",
+          "efs_encryption_in_transits": "${EFSEncryptionInTransits}",
+          "efs_iam_authorizations": "${EFSIamAuthorizations}",
           "fsx_fs_ids": "${FSXIds}",
           "fsx_mount_names": "${FSXMountNames}",
           "fsx_dns_names": "${FSXDNSNames}",
@@ -95,6 +97,7 @@ write_files:
           "cluster_user": "${OSUser}",
           "enable_intel_hpc_platform": "${IntelHPCPlatform}",
           "cw_logging_enabled": "${CWLoggingEnabled}",
+          "log_rotation_enabled": "${LogRotationEnabled}",
           "scheduler_queue_name": "${QueueName}",
           "scheduler_compute_resource_name": "${ComputeResourceName}",
           "enable_efa_gdr": "${EnableEfaGdr}",
@@ -147,10 +150,17 @@ write_files:
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
       custom_cookbook=${CustomChefCookbook}
       export _region=${AWS::Region}
+
       s3_url=${AWS::URLSuffix}
       if [ "${!custom_cookbook}" != "NONE" ]; then
         if [[ "${!custom_cookbook}" =~ ^s3://([^/]*)(.*) ]]; then
-          bucket_region=$(aws s3api get-bucket-location --bucket ${!BASH_REMATCH[1]} | jq -r '.LocationConstraint')
+          # Set the socket connection timeout to 15s. Emperically, it seems like the actual
+          # timeout is 8x(cli-connect-timeout). i.e. if cli-connection-timeout is set to
+          # 60s, the call will timeout the connect attempt at 8m. Setting it to 15s, causes
+          # each attempt to take 240s, so 2m * 3 attempts will result in a failure after 6
+          # minutes.
+          S3API_RESULT=$(AWS_RETRY_MODE=standard aws s3api get-bucket-location --cli-connect-timeout 15 --bucket ${!BASH_REMATCH[1]} 2>&1) || error_exit "${!S3API_RESULT}"
+          bucket_region=$(echo "${!S3API_RESULT}" | jq -r '.LocationConstraint')
           if [[ "${!bucket_region}" == null ]]; then
             bucket_region="us-east-1"
           fi
@@ -167,7 +177,9 @@ write_files:
       if [ -f /opt/parallelcluster/.bootstrapped ]; then
         installed_version=$(cat /opt/parallelcluster/.bootstrapped)
         if [ "${!cookbook_version}" != "${!installed_version}" ]; then
-          error_exit "This AMI was created with ${!installed_version}, but is trying to be used with ${!cookbook_version}. Please either use an AMI created with ${!cookbook_version} or change your ParallelCluster to ${!installed_version}"
+          cookbook_version_number=$(echo ${!cookbook_version} | awk -F- '{print $NF}')
+          installed_version_number=$(echo ${!installed_version} | awk -F- '{print $NF}')
+          error_exit "This AMI was created with ParallelCluster ${!installed_version_number}, but is trying to be used with ParallelCluster ${!cookbook_version_number}. Please either use an AMI created with ParallelCluster ${!cookbook_version_number} or change your ParallelCluster to ${!installed_version_number}"
         fi
       else
         error_exit "This AMI was not baked by ParallelCluster. Please use pcluster build-image command to create an AMI by providing your AMI as parent image."

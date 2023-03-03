@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ public_subnet_ids[0] }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -20,14 +20,26 @@ Scheduling:
           MinvCpus: 4
           DesiredvCpus: 4
           {% else %}
-          InstanceTypeList:
+          Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 30
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_additional_cidr_subnet_id }}
+          - {{ private_subnet_ids[1] }}
+    {% if scheduler == "slurm" %}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_ids[2] }}
+    {% endif %}
 # This compute subnet would be in a different AZ than head node for regions defined in AVAILABILITY_ZONE_OVERRIDES
 # See conftest for details
 SharedStorage:
@@ -45,4 +57,6 @@ SharedStorage:
     StorageType: Efs
     EfsSettings:
       FileSystemId: {{ efs_fs_id }}
+      IamAuthorization: {{ iam_authorizations[loop.index-1] }}
+      EncryptionInTransit: {{ encryption_in_transits[loop.index-1] }}
   {% endfor %}
