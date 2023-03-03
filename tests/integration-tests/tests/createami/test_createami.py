@@ -377,9 +377,10 @@ def build_image_custom_resource(cfn_stacks_factory, region, request):
         custom_resource_template.set_description("Create build image custom resource stack")
 
         # Create a instance role
+        partition = get_arn_partition(region)
         managed_policy_arns = [
-            "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-            "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder",
+            f"arn:{partition}:iam::aws:policy/AmazonSSMManagedInstanceCore",
+            f"arn:{partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder",
         ]
 
         policy_document = iam.Policy(

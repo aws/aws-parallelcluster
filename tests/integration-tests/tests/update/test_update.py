@@ -145,7 +145,9 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Update cluster with new configuration
-    additional_policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
+    additional_policy_arn = (
+        f"arn:{utils.get_arn_partition(region)}:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
+    )
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         output_file="pcluster.config.update.successful.yaml",

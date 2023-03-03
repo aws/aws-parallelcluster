@@ -13,7 +13,7 @@ HeadNode:
       MountDir: {{ head_ephemeral_mount }}
   Iam:
     AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore
 Scheduling:
   Scheduler: {{ scheduler }}
   {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
