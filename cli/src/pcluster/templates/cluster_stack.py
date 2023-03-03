@@ -923,7 +923,7 @@ class ClusterCdkStack:
                 )
             )
 
-        cloudformation_url = get_service_endpoint("cloudformation", self.stack.region)
+        cloudformation_url = get_service_endpoint("cloudformation", self.config.region)
 
         # Head node Launch Template
         head_node_launch_template = ec2.CfnLaunchTemplate(
