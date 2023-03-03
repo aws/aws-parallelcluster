@@ -498,6 +498,16 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: ResourceGroupRead
+          - Action:
+              - !Sub arn:${AWS::Partition}:secretsmanager:${Region}:${AWS::AccountId}:secret:*
+            Resource: '*'
+            Effect: Allow
+            Sid: DirectoryServicePasswordReadFromSecretsManager
+          - Action:
+              - !Sub arn:${AWS::Partition}:ssm:${Region}:${AWS::AccountId}:parameter/
+            Resource: '*'
+            Effect: Allow
+            Sid: DirectoryServicePasswordReadFromSsm
 
   ### IMAGE ACTIONS POLICIES
 

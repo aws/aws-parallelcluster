@@ -2386,7 +2386,7 @@ def test_multi_az_root_volume_validator(
 @pytest.mark.usefixtures("get_region")
 class TestDictLaunchTemplateBuilder:
     @pytest.mark.parametrize(
-        "root_volume_parameters, image_os, expected_response",
+        "root_volume_parameters, image_os, region, expected_response",
         [
             pytest.param(
                 dict(
@@ -2398,6 +2398,7 @@ class TestDictLaunchTemplateBuilder:
                     delete_on_termination=False,
                 ),
                 "centos7",
+                "WHATEVER-NON-US-ISO-REGION",
                 [
                     {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
                     {"DeviceName": "/dev/xvdbb", "VirtualName": "ephemeral1"},
@@ -2446,6 +2447,7 @@ class TestDictLaunchTemplateBuilder:
                     delete_on_termination=True,
                 ),
                 "alinux2",
+                "WHATEVER-NON-US-ISO-REGION",
                 [
                     {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
                     {"DeviceName": "/dev/xvdbb", "VirtualName": "ephemeral1"},
@@ -2484,9 +2486,59 @@ class TestDictLaunchTemplateBuilder:
                 ],
                 id="test with missing volume size",
             ),
+            pytest.param(
+                dict(
+                    encrypted=True,
+                    volume_type="mockVolumeType",
+                    iops=15,
+                    throughput=20,
+                    delete_on_termination=True,
+                ),
+                "alinux2",
+                "us-isoWHATEVER",
+                [
+                    {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
+                    {"DeviceName": "/dev/xvdbb", "VirtualName": "ephemeral1"},
+                    {"DeviceName": "/dev/xvdbc", "VirtualName": "ephemeral2"},
+                    {"DeviceName": "/dev/xvdbd", "VirtualName": "ephemeral3"},
+                    {"DeviceName": "/dev/xvdbe", "VirtualName": "ephemeral4"},
+                    {"DeviceName": "/dev/xvdbf", "VirtualName": "ephemeral5"},
+                    {"DeviceName": "/dev/xvdbg", "VirtualName": "ephemeral6"},
+                    {"DeviceName": "/dev/xvdbh", "VirtualName": "ephemeral7"},
+                    {"DeviceName": "/dev/xvdbi", "VirtualName": "ephemeral8"},
+                    {"DeviceName": "/dev/xvdbj", "VirtualName": "ephemeral9"},
+                    {"DeviceName": "/dev/xvdbk", "VirtualName": "ephemeral10"},
+                    {"DeviceName": "/dev/xvdbl", "VirtualName": "ephemeral11"},
+                    {"DeviceName": "/dev/xvdbm", "VirtualName": "ephemeral12"},
+                    {"DeviceName": "/dev/xvdbn", "VirtualName": "ephemeral13"},
+                    {"DeviceName": "/dev/xvdbo", "VirtualName": "ephemeral14"},
+                    {"DeviceName": "/dev/xvdbp", "VirtualName": "ephemeral15"},
+                    {"DeviceName": "/dev/xvdbq", "VirtualName": "ephemeral16"},
+                    {"DeviceName": "/dev/xvdbr", "VirtualName": "ephemeral17"},
+                    {"DeviceName": "/dev/xvdbs", "VirtualName": "ephemeral18"},
+                    {"DeviceName": "/dev/xvdbt", "VirtualName": "ephemeral19"},
+                    {"DeviceName": "/dev/xvdbu", "VirtualName": "ephemeral20"},
+                    {"DeviceName": "/dev/xvdbv", "VirtualName": "ephemeral21"},
+                    {"DeviceName": "/dev/xvdbw", "VirtualName": "ephemeral22"},
+                    {"DeviceName": "/dev/xvdbx", "VirtualName": "ephemeral23"},
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "Encrypted": True,
+                            "VolumeType": "mockVolumeType",
+                            "VolumeSize": 35,
+                            "Iops": 15,
+                            "Throughput": 20,
+                            "DeleteOnTermination": True,
+                        },
+                    },
+                ],
+                id="test with missing volume size in US isolated regions",
+            ),
         ],
     )
-    def test_get_block_device_mappings(self, root_volume_parameters, image_os, expected_response):
+    def test_get_block_device_mappings(self, mocker, root_volume_parameters, image_os, region, expected_response):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
         root_volume = RootVolume(**root_volume_parameters)
         assert_that(DictLaunchTemplateBuilder().get_block_device_mappings(root_volume, image_os)).is_equal_to(
             expected_response
