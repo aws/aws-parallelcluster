@@ -101,6 +101,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_shared_storage_ids_by_type,
     get_slurm_specific_dna_json_for_head_node,
     get_user_data_content,
+    scheduler_is_slurm,
     to_comma_separated_string,
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
@@ -189,7 +190,7 @@ class ClusterCdkStack:
         in Scheduler Plugin cfn substack template.
         """
         role_list = []
-        for _, instance_role in self._managed_compute_instance_roles.items():
+        for _, instance_role in self.compute_fleet_resources.managed_compute_instance_roles.items():
             if instance_role is None:
                 continue
             role_list.append(instance_role)
@@ -356,21 +357,6 @@ class ClusterCdkStack:
         self._head_node_instance_profile = head_node_iam_resources.instance_profile
         self._managed_head_node_instance_role = head_node_iam_resources.instance_role
 
-        if not self._condition_is_batch():
-            iam_resources = {}
-            for queue in self.config.scheduling.queues:
-                iam_resources[queue.name] = ComputeNodeIamResources(
-                    self.stack,
-                    f"ComputeNodeIamResources{queue.name}",
-                    self.config,
-                    queue,
-                    self.shared_storage_infos,
-                    queue.name,
-                )
-
-            self._compute_instance_profiles = {k: v.instance_profile for k, v in iam_resources.items()}
-            self._managed_compute_instance_roles = {k: v.instance_role for k, v in iam_resources.items()}
-
     def _add_cluster_log_group(self):
         log_group = logs.CfnLogGroup(
             self.stack,
@@ -392,7 +378,6 @@ class ClusterCdkStack:
                 cluster_config=self.config,
                 bucket=self.bucket,
                 managed_head_node_instance_role=self._managed_head_node_instance_role,
-                managed_compute_instance_roles=self._managed_compute_instance_roles,
                 cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
                 cleanup_lambda=cleanup_lambda,
             )
@@ -423,10 +408,10 @@ class ClusterCdkStack:
                 shared_storage_infos=self.shared_storage_infos,
                 shared_storage_mount_dirs=self.shared_storage_mount_dirs,
                 shared_storage_attributes=self.shared_storage_attributes,
-                compute_node_instance_profiles=self._compute_instance_profiles,
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
                 head_eni=self._head_eni,
+                slurm_construct=self.scheduler_resources,
             )
         self._add_scheduler_plugin_substack()
 
@@ -1414,10 +1399,10 @@ class ComputeFleetConstruct(Construct):
         shared_storage_infos: Dict,
         shared_storage_mount_dirs: Dict,
         shared_storage_attributes: Dict,
-        compute_node_instance_profiles: Dict[str, str],
         cluster_hosted_zone,
         dynamodb_table,
         head_eni,
+        slurm_construct: SlurmConstruct,
     ):
         super().__init__(scope, id)
         self._cleanup_lambda = cleanup_lambda
@@ -1430,9 +1415,9 @@ class ComputeFleetConstruct(Construct):
         self._log_group = log_group
         self._cluster_hosted_zone = cluster_hosted_zone
         self._dynamodb_table = dynamodb_table
-        self._compute_node_instance_profiles = compute_node_instance_profiles
         self._head_eni = head_eni
         self._launch_template_builder = CdkLaunchTemplateBuilder()
+        self._slurm_construct = slurm_construct
         self._add_resources()
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
@@ -1444,10 +1429,35 @@ class ComputeFleetConstruct(Construct):
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
+    def _add_compute_iam_resources(self):
+        iam_resources = {}
+        for queue in self._config.scheduling.queues:
+            iam_resources[queue.name] = ComputeNodeIamResources(
+                self,
+                f"ComputeNodeIamResources{queue.name}",
+                self._config,
+                queue,
+                self._shared_storage_infos,
+                queue.name,
+            )
+        self._compute_instance_profiles = {k: v.instance_profile for k, v in iam_resources.items()}
+        self._managed_compute_instance_roles = {k: v.instance_role for k, v in iam_resources.items()}
+        if scheduler_is_slurm(self._config):
+            self._slurm_construct.register_policies_with_role(
+                scope=Stack.of(self),
+                managed_compute_instance_roles=self._managed_compute_instance_roles,
+            )
+
+    @property
+    def managed_compute_instance_roles(self) -> Dict[str, iam.Role]:
+        """Mapping of each queue and the IAM role associated with its compute resources."""
+        return self._managed_compute_instance_roles
+
     def _add_resources(self):
+        self._add_compute_iam_resources()
         managed_placement_groups = self._add_placement_groups()
         self.compute_launch_templates = self._add_launch_templates(
-            managed_placement_groups, self._compute_node_instance_profiles
+            managed_placement_groups, self._compute_instance_profiles
         )
         custom_resource_deps = list(managed_placement_groups.values())
         if self._compute_security_group:
