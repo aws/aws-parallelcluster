@@ -5,6 +5,19 @@
 {%- set SCHEDULERS = ["slurm"] -%}
 ---
 test-suites:
+  cfn-init:
+    test_cfn_init.py::test_replace_compute_on_failure:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_cfn_init.py::test_install_args_quotes:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   cli_commands:
     test_cli_commands.py::test_slurm_cli_commands:
       dimensions:
@@ -56,6 +69,37 @@ test-suites:
           schedulers: {{ SCHEDULERS }}
   scaling:
     test_mpi.py::test_mpi:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_scaling.py::test_multiple_jobs_submission:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  schedulers:
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_scaling:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_error_handling:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_protected_mode:
       dimensions:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}
