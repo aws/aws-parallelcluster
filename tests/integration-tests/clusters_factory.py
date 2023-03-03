@@ -21,6 +21,7 @@ from framework.credential_providers import run_pcluster_command
 from retrying import retry
 from utils import (
     dict_add_nested_key,
+    get_arn_partition,
     get_stack_id_tag_filter,
     kebab_case,
     retrieve_cfn_outputs,
@@ -49,6 +50,7 @@ class Cluster:
         self.config_file = config_file
         self.ssh_key = ssh_key
         self.region = region
+        self.partition = get_arn_partition(region)
         with open(config_file, encoding="utf-8") as conf_file:
             self.config = yaml.safe_load(conf_file)
         self.has_been_deleted = False
