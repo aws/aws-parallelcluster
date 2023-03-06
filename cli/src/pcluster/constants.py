@@ -230,6 +230,7 @@ class Feature(Enum):
     FSX_LUSTRE = "FSx Lustre"
     FSX_ONTAP = "FSx ONTAP"
     FSX_OPENZFS = "FSx OpenZfs"
+    SLURM_DATABASE = "SLURM Database"
 
 
 UNSUPPORTED_FEATURES_MAP = {
@@ -238,6 +239,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.FSX_LUSTRE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
+    Feature.SLURM_DATABASE: ["us-iso"],
 }
 
 
