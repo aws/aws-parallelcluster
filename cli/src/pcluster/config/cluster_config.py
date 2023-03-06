@@ -966,7 +966,11 @@ class DirectoryService(Resource):
                 DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
             )
         if self.password_secret_arn:
-            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+            self._register_validator(
+                PasswordSecretArnValidator,
+                password_secret_arn=self.password_secret_arn,
+                region=get_region(),
+            )
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
         if self.additional_sssd_configs:
@@ -2319,7 +2323,11 @@ class Database(Resource):
         if self.uri:
             self._register_validator(DatabaseUriValidator, uri=self.uri)
         if self.password_secret_arn:
-            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+            self._register_validator(
+                PasswordSecretArnValidator,
+                password_secret_arn=self.password_secret_arn,
+                region=region,
+            )
 
 
 class SlurmSettings(Resource):
