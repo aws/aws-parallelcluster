@@ -45,7 +45,7 @@ SharedStorage:
     Name: {{ new_ebs_mount_dir }}
     StorageType: Ebs
     EbsSettings:
-      VolumeType: { % if "-iso" in region % }gp2{ % else % }gp3{ % endif % }
+      VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
       DeletionPolicy: Delete
   - MountDir: {{ problematic_ebs_mount_dir }}
     Name: {{ problematic_ebs_mount_dir }}
