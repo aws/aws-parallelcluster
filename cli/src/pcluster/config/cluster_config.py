@@ -2314,6 +2314,8 @@ class Database(Resource):
         self.password_secret_arn = Resource.init_param(password_secret_arn)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        region = get_region()
+        self._register_validator(FeatureRegionValidator, feature=Feature.SLURM_DATABASE, region=region)
         if self.uri:
             self._register_validator(DatabaseUriValidator, uri=self.uri)
         if self.password_secret_arn:
