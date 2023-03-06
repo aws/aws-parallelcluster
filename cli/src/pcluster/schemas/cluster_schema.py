@@ -774,7 +774,6 @@ class CloudWatchDashboardsSchema(BaseSchema):
     """Represent the schema of the CloudWatchDashboards section."""
 
     enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    enable_error_metrics = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

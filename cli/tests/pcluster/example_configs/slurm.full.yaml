@@ -207,7 +207,6 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: false  # true
-      EnableErrorMetrics: true
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false

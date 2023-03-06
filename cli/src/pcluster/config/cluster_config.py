@@ -770,10 +770,9 @@ class LogRotation(Resource):
 class CloudWatchDashboards(Resource):
     """Represent the CloudWatch Dashboard."""
 
-    def __init__(self, enabled: bool = None, enable_error_metrics: bool = None, **kwargs):
+    def __init__(self, enabled: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.enabled = Resource.init_param(enabled, default=CW_DASHBOARD_ENABLED_DEFAULT)
-        self.enable_error_metrics = Resource.init_param(enable_error_metrics, default=True)
 
 
 class Logs(Resource):
@@ -1647,17 +1646,12 @@ class BaseClusterConfig(Resource):
 
     @property
     def is_cw_dashboard_enabled(self):
-        """Return True if custom errors are enabled."""
+        """Return True if CloudWatch Dashboard is enabled."""
         return (
             self.monitoring.dashboards.cloud_watch.enabled
             if self.monitoring and self.monitoring.dashboards and self.monitoring.dashboards.cloud_watch
             else False
         )
-
-    @property
-    def are_custom_errors_enabled(self):
-        """Return True if CloudWatch Dashboard is enabled."""
-        return self.monitoring.dashboards.cloud_watch.enable_error_metrics
 
     @property
     def is_dcv_enabled(self):
