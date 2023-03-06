@@ -51,6 +51,7 @@ main() {
         NEW_VERSION_SHORT=$(echo ${NEW_VERSION} | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+")
         CURRENT_VERSION=$(sed -ne "s/^VERSION = \"\(.*\)\"/\1/p" cli/setup.py)
         CURRENT_VERSION_SHORT=$(echo ${CURRENT_VERSION} | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+")
+        PC_SUPPORT_DIR="./pc_support"
         sed -i "s/VERSION = \"$CURRENT_VERSION\"/VERSION = \"$NEW_VERSION\"/g" cli/setup.py
 
         sed -i "s/\"parallelcluster\": \"$CURRENT_VERSION\"/\"parallelcluster\": \"$NEW_VERSION\"/g" cli/src/pcluster/constants.py
@@ -63,6 +64,8 @@ main() {
         sed -i "s| ShortVersion: $CURRENT_VERSION_SHORT| ShortVersion: $NEW_VERSION_SHORT|g" api/infrastructure/parallelcluster-api.yaml
         sed -i "s| version: $CURRENT_VERSION_SHORT| version: $NEW_VERSION_SHORT|g" api/spec/openapi/ParallelCluster.openapi.yaml
         sed -i "s| version: \"$CURRENT_VERSION_SHORT\"| version: \"$NEW_VERSION_SHORT\"|g" api/spec/smithy/model/parallelcluster.smithy
+        cp "$PC_SUPPORT_DIR/os_$CURRENT_VERSION.json" "$PC_SUPPORT_DIR/os_$NEW_VERSION.json"
+        git add "$PC_SUPPORT_DIR/os_$NEW_VERSION.json"
 
         pushd api && ./gradlew generatePythonClient && popd
     fi

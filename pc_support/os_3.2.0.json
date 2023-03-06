@@ -1,0 +1,20 @@
+{
+  "os": [
+    {
+      "name": "alinux2",
+      "description": "Amazon Linux 2"
+    },
+    {
+      "name": "ubuntu1804",
+      "description": "Ubuntu 18.04 LTS"
+    },
+    {
+      "name": "ubuntu2004",
+      "description": "Ubuntu 20.04 LTS"
+    },
+    {
+      "name": "centos7",
+      "description": "CentOS 7"
+    }
+  ]
+}
