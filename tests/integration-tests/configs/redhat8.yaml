@@ -104,7 +104,7 @@ test-suites:
           instances: ["c5n.9xlarge"]
           oss: ["alinux2", "rhel8"]
           schedulers: ["slurm"]
-        - regions: ["us-east-1"]
+        - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
           oss: ["alinux2", "rhel8"]
           schedulers: ["slurm"]
