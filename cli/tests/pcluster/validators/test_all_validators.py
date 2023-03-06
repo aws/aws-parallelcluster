@@ -541,8 +541,13 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
 
     # Assert validators are called
     scheduler_os_validator.assert_has_calls([call(os="centos7", scheduler="plugin")])
+    # The following features are excluded from the verification
+    # because they are not implied by the cluster configuration under test:
+    #   1. Batch
+    #   2. Slurm Database
+    features_to_validate = [feature for feature in Feature if feature not in [Feature.BATCH, Feature.SLURM_DATABASE]]
     feature_region_validator.assert_has_calls(
-        [call(feature=feature, region="us-east-1") for feature in Feature if feature is not Feature.BATCH],
+        [call(feature=feature, region="us-east-1") for feature in features_to_validate],
         any_order=True,
     )
     compute_resource_size_validator.assert_has_calls(
