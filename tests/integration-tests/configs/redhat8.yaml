@@ -21,7 +21,7 @@ test-suites:
   arm_pl:
     test_arm_pl.py::test_arm_pl:
       dimensions:
-        - regions: ["ap-northeast-1"]
+        - regions: ["ap-southeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: ["slurm"]
@@ -176,7 +176,7 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ OSS_COMMERCIAL_X86_RH8 }}
           schedulers: ["slurm"]
-        - regions: ["ap-northeast-1"]
+        - regions: ["ap-southeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ OSS_COMMERCIAL_ARM_RH8 }}
           schedulers: ["slurm"]
@@ -238,13 +238,13 @@ test-suites:
           schedulers: ["slurm"]
     test_ebs.py::test_ebs_multiple:
       dimensions:
-        - regions: ["eu-west-2"]
+        - regions: ["me-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1804", "rhel8"]
           schedulers: ["slurm"]
     test_ebs.py::test_ebs_existing:
       dimensions:
-        - regions: ["eu-west-2"]
+        - regions: ["me-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7", "rhel8"]
           schedulers: ["slurm"]
