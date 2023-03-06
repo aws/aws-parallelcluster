@@ -145,8 +145,7 @@ class CWDashboardConstruct(Construct):
         # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
             self._add_cw_log()
-            if self.config.are_custom_errors_enabled:
-                self.add_custom_error_metrics()
+            self.add_custom_error_metrics()
 
     def _update_coord(self, d_x, d_y):
         """Calculate coordinates for the new graph."""
