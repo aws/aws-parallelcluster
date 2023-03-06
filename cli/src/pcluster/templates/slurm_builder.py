@@ -44,7 +44,6 @@ class SlurmConstruct(Construct):
         cluster_config: SlurmClusterConfig,
         bucket: S3Bucket,
         managed_head_node_instance_role: iam.CfnRole,
-        managed_compute_instance_roles: Dict[str, iam.CfnRole],
         cleanup_lambda_role: iam.CfnRole,
         cleanup_lambda: awslambda.CfnFunction,
     ):
@@ -56,7 +55,6 @@ class SlurmConstruct(Construct):
         self.cleanup_lambda_role = cleanup_lambda_role
         self.cleanup_lambda = cleanup_lambda
         self.managed_head_node_instance_role = managed_head_node_instance_role
-        self.managed_compute_instance_roles = managed_compute_instance_roles
 
         self._add_parameters()
         self._add_resources()
@@ -101,18 +99,24 @@ class SlurmConstruct(Construct):
         # DynamoDB to store cluster states
         self._add_dynamodb_table()
 
-        # Add Slurm Policies to new instances roles
         if self.managed_head_node_instance_role:
             self._add_policies_to_head_node_role("HeadNode", self.managed_head_node_instance_role.ref)
-        for queue_name, role in self.managed_compute_instance_roles.items():
-            if role:
-                self._add_policies_to_compute_node_role(queue_name, role.ref)
 
         self.cluster_hosted_zone = None
         if not self._condition_disable_cluster_dns():
             self.cluster_hosted_zone = self._add_private_hosted_zone()
 
-    def _add_policies_to_compute_node_role(self, node_name, role):
+    def register_policies_with_role(self, scope, managed_compute_instance_roles: Dict[str, iam.CfnRole]):
+        """
+        Associate the Slurm Policies to the compute node roles.
+
+        The Slurm Policies specify permissions for accessing Route53 and DynamoDB resources.
+        """
+        for queue_name, role in managed_compute_instance_roles.items():
+            if role:
+                self._add_policies_to_compute_node_role(scope, queue_name, role.ref)
+
+    def _add_policies_to_compute_node_role(self, scope, node_name, role):
         suffix = create_hash_suffix(node_name)
         _, policy_name = add_cluster_iam_resource_prefix(
             self.config.cluster_name, self.config, "parallelcluster-slurm-compute", iam_type="AWS::IAM::Policy"
@@ -135,7 +139,7 @@ class SlurmConstruct(Construct):
         ]
 
         iam.CfnPolicy(
-            self.stack_scope,
+            scope,
             f"SlurmPolicies{suffix}",
             policy_name=policy_name or "parallelcluster-slurm-compute",
             policy_document=iam.PolicyDocument(

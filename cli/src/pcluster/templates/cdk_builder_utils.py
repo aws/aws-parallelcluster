@@ -310,6 +310,10 @@ def apply_permissions_boundary(boundary, scope):
         PermissionsBoundary.of(scope).apply(boundary)
 
 
+def scheduler_is_slurm(config: BaseClusterConfig):
+    return config.scheduling.scheduler == "slurm"
+
+
 def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource):
     """
     Generate 16 characters hash for compute fleet launch template version cfn parameter.
