@@ -48,6 +48,7 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "centos7": "centos7-hvm",
     "ubuntu1804": "ubuntu-1804-lts-hvm",
     "ubuntu2004": "ubuntu-2004-lts-hvm",
+    "rhel8": "rhel8-hvm",
 }
 
 IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
