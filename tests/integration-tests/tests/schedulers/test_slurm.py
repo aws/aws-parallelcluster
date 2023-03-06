@@ -885,7 +885,7 @@ def _test_keep_or_replace_suspended_nodes(
     )
     job_id = submit_initial_job(
         scheduler_commands,
-        "sleep 500",
+        "sleep 550",
         partition,
         dynamic_instance_type,
         num_dynamic_nodes,
