@@ -41,6 +41,8 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
         "name": "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-*-server-*",
         "owners": ["099720109477"],
     },
+    # We need to specify the minor because the most recently created RHEL8 AMI is currently 8.4
+    "rhel8": {"name": "RHEL-8.7*_HVM*", "owners": ["309956199498", "841258680906", "219670896067"]},
 }
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
@@ -63,6 +65,7 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "centos7": {"name": "centos7-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu1804": {"name": "ubuntu-1804-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2004": {"name": "ubuntu-2004-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
+    "rhel8": {"name": "rhel8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
 }
 
 AMI_TYPE_DICT = {
