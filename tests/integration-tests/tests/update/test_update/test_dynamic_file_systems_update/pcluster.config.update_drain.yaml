@@ -57,7 +57,7 @@ SharedStorage:
     Name: /manage-ebs
     StorageType: Ebs
     EbsSettings:
-      VolumeType: { % if "-iso" in region % }gp2{ % else % }gp3{ % endif % }
+      VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
       DeletionPolicy: {{ new_ebs_deletion_policy }}
   - MountDir: {{ existing_ebs_mount_dir }}
     Name: existing_ebs

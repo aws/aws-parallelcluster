@@ -41,9 +41,9 @@
       RootVolume:
         Encrypted: true
         Size: null
-        VolumeType: { % if "-iso" in region % }gp2{ % else % }gp3{ % endif % }
-        Throughput: { % if "-iso" in region % }null{ % else % }125{ % endif % }
-        Iops: { % if "-iso" in region % }null{ % else % }3000{ % endif % }
+        VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
+        Throughput: {% if "-iso" in region %}null{% else %}125{% endif %}
+        Iops: {% if "-iso" in region %}null{% else %}3000{% endif %}
   CustomActions: null
   CustomSettings: null
   Iam:
@@ -91,8 +91,8 @@
         Encrypted: true
         Iops: 3000
         Size: null
-        VolumeType: { % if "-iso" in region % }gp2{ % else % }gp3{ % endif % }
-        Throughput: { % if "-iso" in region % }null{ % else % }125{ % endif % }
+        VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
+        Throughput: {% if "-iso" in region %}null{% else %}125{% endif %}
   CustomActions: null
   CustomSettings: null
   Iam:
