@@ -17,8 +17,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.assertions import assert_no_errors_in_logs
-from tests.common.utils import run_system_analyzer
-from tests.performance_tests.common import read_remote_file, wait_process_completion
+from tests.common.utils import read_remote_file, run_system_analyzer, wait_process_completion
 
 FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
 
