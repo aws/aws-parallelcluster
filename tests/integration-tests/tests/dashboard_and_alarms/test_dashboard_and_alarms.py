@@ -37,53 +37,67 @@ def test_dashboard_and_alarms(
     cw_client = boto3.client("cloudwatch", region_name=region)
     headnode_instance_id = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
     compute_instance_ids = cluster.get_cluster_instance_ids(node_type="Compute")
+    # the MinCount is set to 1, so we should have at least one compute node
+    assert_that(compute_instance_ids).is_not_empty()
 
     # test CWAgent metrics
-    # sleep for 2 minutes to ensure we can get metrics data
-    time.sleep(60 * 2)
-    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=2)
+    # set the evaluation time to be 2 minutes here so that
+    # we will first wait for 2 minutes to ensure we can get metrics data
+    # (the collection interval for these metrics is 1 minute)
+    # and then query for metrics from the past 2 minutes
+    _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_ids[0], minutes=2)
+
+    # test dashboard and alarms
+    _test_dashboard(cw_client, cluster.cfn_name, region, dashboard_enabled, cw_log_enabled)
+    _test_alarms(cw_client, cluster.cfn_name, headnode_instance_id, dashboard_enabled)
+
+
+def _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_id, minutes):
+    # sleep for given minutes to ensure we can get metrics data
+    time.sleep(60 * minutes)
+    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=minutes)
+
+    # test memory and disk metrics are collected for the head node
     metrics_response_headnode = _get_metric_data(headnode_instance_id, cw_client, start_timestamp, end_timestamp)
     mem_values = _get_metric_data_values(metrics_response_headnode, "mem")
     disk_values = _get_metric_data_values(metrics_response_headnode, "disk")
     assert_that(mem_values).is_not_empty()
     assert_that(disk_values).is_not_empty()
 
-    if compute_instance_ids:
-        metrics_response_compute = _get_metric_data(compute_instance_ids[0], cw_client, start_timestamp, end_timestamp)
-        mem_values = _get_metric_data_values(metrics_response_compute, "mem")
-        disk_values = _get_metric_data_values(metrics_response_compute, "disk")
-        assert_that(mem_values).is_empty()
-        assert_that(disk_values).is_empty()
+    # test memory and disk metrics are not collected for compute nodes
+    metrics_response_compute = _get_metric_data(compute_instance_id, cw_client, start_timestamp, end_timestamp)
+    mem_values = _get_metric_data_values(metrics_response_compute, "mem")
+    disk_values = _get_metric_data_values(metrics_response_compute, "disk")
+    assert_that(mem_values).is_empty()
+    assert_that(disk_values).is_empty()
 
-    # test dashboard and alarms
-    dashboard_name = "{0}-{1}".format(cluster.cfn_name, region)
+
+def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_enabled):
+    dashboard_name = "{0}-{1}".format(cluster_name, region)
     if dashboard_enabled:
-        # test dashboard
         dashboard_response = cw_client.get_dashboard(DashboardName=dashboard_name)
         assert_that(dashboard_response["DashboardName"]).is_equal_to(dashboard_name)
         if cw_log_enabled:
             assert_that(dashboard_response["DashboardBody"]).contains("Head Node Logs")
         else:
             assert_that(dashboard_response["DashboardBody"]).does_not_contain("Head Node Logs")
-
-        # test alarms
-        mem_alarm_name = f"{cluster.cfn_name}_MemAlarm_HeadNode"
-        disk_alarm_name = f"{cluster.cfn_name}_DiskAlarm_HeadNode"
-        alarm_response = cw_client.describe_alarms(AlarmNamePrefix=cluster.cfn_name)
-        mem_alarms = _get_alarm_records(alarm_response, mem_alarm_name)
-        disk_alarms = _get_alarm_records(alarm_response, disk_alarm_name)
-        _verify_alarms(mem_alarms, "mem_used_percent", headnode_instance_id)
-        _verify_alarms(disk_alarms, "disk_used_percent", headnode_instance_id)
-
     else:
-        # test dashboard
         try:
             cw_client.get_dashboard(DashboardName=dashboard_name)
         except ClientError as e:
             assert_that(e.response["Error"]["Code"]).is_equal_to("ResourceNotFound")
 
-        # test alarms
-        alarm_response = cw_client.describe_alarms(AlarmNamePrefix=cluster.cfn_name)
+
+def _test_alarms(cw_client, cluster_name, headnode_instance_id, dashboard_enabled):
+    alarm_response = cw_client.describe_alarms(AlarmNamePrefix=cluster_name)
+    if dashboard_enabled:
+        mem_alarm_name = f"{cluster_name}_MemAlarm_HeadNode"
+        disk_alarm_name = f"{cluster_name}_DiskAlarm_HeadNode"
+        mem_alarms = _get_alarm_records(alarm_response, mem_alarm_name)
+        disk_alarms = _get_alarm_records(alarm_response, disk_alarm_name)
+        _verify_alarms(mem_alarms, "mem_used_percent", headnode_instance_id)
+        _verify_alarms(disk_alarms, "disk_used_percent", headnode_instance_id)
+    else:
         assert_that(alarm_response["MetricAlarms"]).is_empty()
 
 

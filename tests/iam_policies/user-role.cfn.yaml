@@ -371,7 +371,6 @@ Resources:
               - cloudwatch:PutMetricAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
-              - cloudwatch:GetMetricData
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -815,6 +814,10 @@ Resources:
             Resource:
               - !Sub arn:${AWS::Partition}:s3:::integ-tests-*
             Effect: Allow
+          - Action:
+              - cloudwatch:GetMetricData
+            Resource: '*'
+            Effect: Allow
 
   ### PERMISSIONS BOUNDARY
 
@@ -1040,7 +1043,6 @@ Resources:
               - cloudwatch:PutMetricAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
-              - cloudwatch:GetMetricData
             Resource: "*"
 
 Outputs:
