@@ -257,7 +257,7 @@ class CWDashboardConstruct(Construct):
                 logs.CfnMetricFilter.MetricTransformationProperty(
                     metric_namespace=custom_namespace,
                     metric_name=metric_name,
-                    metric_value="1",
+                    metric_value="$detail.count",
                     default_value=0,
                 )
             ],
@@ -286,8 +286,7 @@ class CWDashboardConstruct(Construct):
             ),
             _CustomMetricFilter(
                 metric_name="Node Capacity Insufficient",
-                filter_pattern="?InsufficientInstanceCapacity ?InsufficientHostCapacity "
-                "?InsufficientReservedInstanceCapacity ?InsufficientCapacity",
+                filter_pattern='{ $.event-type = "insufficient-capacity-error-count" }',
             ),
         ]
 
