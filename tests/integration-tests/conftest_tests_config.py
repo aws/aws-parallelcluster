@@ -87,7 +87,7 @@ def apply_cli_dimensions_filtering(config, items):
     allowed_values = {}
     for dimension in DIMENSIONS_MARKER_ARGS:
         values = config.getoption(dimension + "s")
-        if dimension == "region":
+        if dimension == "region" and values is not None:
             # values may contain a list of az_id/regions.
             # We have to unmarshal any of them in case one or more overrides were specified
             values = [unmarshal_az_override(v) for v in values]
