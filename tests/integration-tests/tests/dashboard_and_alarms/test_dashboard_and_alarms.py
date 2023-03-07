@@ -12,13 +12,13 @@
 import datetime
 import math
 import time
-from retrying import retry
-from time_utils import minutes
 
 import boto3
 import pytest
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from retrying import retry
+from time_utils import minutes
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
