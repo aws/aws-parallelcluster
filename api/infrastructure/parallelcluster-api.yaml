@@ -615,7 +615,6 @@ Resources:
               - cloudwatch:PutMetricAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
-              - cloudwatch:GetMetricData
             Resource: '*'
             Effect: Allow
             Condition: !If
