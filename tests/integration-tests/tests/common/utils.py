@@ -295,3 +295,27 @@ def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=
         preserve_mode=False,
     )
     logging.info("Compute node system information correctly retrieved.")
+
+
+@retry(stop_max_attempt_number=5, wait_fixed=seconds(3))
+def read_remote_file(remote_command_executor, file_path):
+    """Reads the content of a remote file."""
+    logging.info(f"Retrieving remote file {file_path}")
+    result = remote_command_executor.run_remote_command(f"cat {file_path}")
+    assert_that(result.failed).is_false()
+    return result.stdout.strip()
+
+
+@retry(stop_max_attempt_number=60, wait_fixed=seconds(180))
+def wait_process_completion(remote_command_executor, pid):
+    """Waits for a process with the given pid to terminate."""
+    logging.info("Waiting for performance test to complete")
+    command = f"""
+    ps --pid {pid} > /dev/null
+    [ "$?" -ne 0 ] && echo "COMPLETE" || echo "RUNNING"
+    """
+    result = remote_command_executor.run_remote_command(command)
+    if result.stdout == "RUNNING":
+        raise Exception("The process is still running")
+    else:
+        return result.stdout.strip()
