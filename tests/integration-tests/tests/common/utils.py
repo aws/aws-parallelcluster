@@ -182,9 +182,21 @@ def get_installed_parallelcluster_base_version():
     return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
 
 
+def get_aws_domain(region: str):
+    """Get AWS domain for the given region."""
+    if region.startswith("cn-"):
+        return "amazonaws.com.cn"
+    elif region.startswith("us-iso-"):
+        return "c2s.ic.gov"
+    elif region.startswith("us-isob-"):
+        return "sc2s.sgov.gov"
+    else:
+        return "amazonaws.com"
+
+
 def get_sts_endpoint(region):
     """Get regionalized STS endpoint."""
-    return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
+    return "https://sts.{0}.{1}".format(region, get_aws_domain(region))
 
 
 def generate_random_string():
