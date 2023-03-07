@@ -12,6 +12,8 @@
 import datetime
 import math
 import time
+from retrying import retry
+from time_utils import minutes
 
 import boto3
 import pytest
@@ -36,26 +38,25 @@ def test_dashboard_and_alarms(
     cluster = clusters_factory(cluster_config)
     cw_client = boto3.client("cloudwatch", region_name=region)
     headnode_instance_id = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
-    compute_instance_ids = cluster.get_cluster_instance_ids(node_type="Compute")
-    # the MinCount is set to 1, so we should have at least one compute node
-    assert_that(compute_instance_ids).is_not_empty()
 
     # test CWAgent metrics
-    # set the evaluation time to be 2 minutes here so that
-    # we will first wait for 2 minutes to ensure we can get metrics data
-    # (the collection interval for these metrics is 1 minute)
-    # and then query for metrics from the past 2 minutes
-    _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_ids[0], minutes=2)
+    # we only perform this test for one of the 3 test conditions
+    # because this test could be time-consuming (we allow some retries to ensure we can get metrics data)
+    if dashboard_enabled and cw_log_enabled:
+        compute_instance_ids = cluster.get_cluster_instance_ids(node_type="Compute")
+        # the MinCount is set to 1, so we should have at least one compute node
+        assert_that(compute_instance_ids).is_not_empty()
+        _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_ids[0])
 
     # test dashboard and alarms
     _test_dashboard(cw_client, cluster.cfn_name, region, dashboard_enabled, cw_log_enabled)
     _test_alarms(cw_client, cluster.cfn_name, headnode_instance_id, dashboard_enabled)
 
 
-def _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_id, minutes):
-    # sleep for given minutes to ensure we can get metrics data
-    time.sleep(60 * minutes)
-    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=minutes)
+@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
+def _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_id):
+    # query for the past 20 minutes
+    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=20)
 
     # test memory and disk metrics are collected for the head node
     metrics_response_headnode = _get_metric_data(headnode_instance_id, cw_client, start_timestamp, end_timestamp)
@@ -64,6 +65,8 @@ def _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_id,
     assert_that(mem_values).is_not_empty()
     assert_that(disk_values).is_not_empty()
 
+    # wait for additional 1 minute to reduce the chance of false negative result for compute nodes
+    time.sleep(60)
     # test memory and disk metrics are not collected for compute nodes
     metrics_response_compute = _get_metric_data(compute_instance_id, cw_client, start_timestamp, end_timestamp)
     mem_values = _get_metric_data_values(metrics_response_compute, "mem")
@@ -164,7 +167,7 @@ def _get_metric_data(instance_id, cw_client, start_timestamp, end_timestamp):
 
 
 def _get_metric_data_values(response, query_id):
-    return [record["Values"] for record in response["MetricDataResults"] if record["Id"] == query_id]
+    return [record["Values"] for record in response["MetricDataResults"] if record["Id"] == query_id][0]
 
 
 def _get_alarm_records(response, alarm_name):
