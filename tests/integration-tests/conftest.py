@@ -994,10 +994,10 @@ def vpc_stacks(cfn_stacks_factory, request):
         # otherwise, select a subset of all AZs in the region
         else:
             az_list = get_availability_zones(region, credential)
-            # if number of available zones is smaller than 3, list is expanded to 3 and filled with [None, ...]
+            # if number of available zones is smaller than 3, list is expanded to 3 and filled with the last item.
             if len(az_list) < 3:
                 diff = 3 - len(az_list)
-                availability_zones = az_list + [None] * diff
+                availability_zones = az_list + [az_list[-1]] * diff
             else:
                 availability_zones = random.sample(az_list, k=3)
 
