@@ -149,7 +149,7 @@ class NetworkTemplateBuilder:
 
     def __build_template(self):
         internet_gateway = self.__build_internet_gateway(self.__vpc)
-        nat_gateway = None
+        nat_gateway_per_az_map = {}
         subnets = []
         subnet_refs = []
         bastion_subnet_ref = None
@@ -158,8 +158,10 @@ class NetworkTemplateBuilder:
             subnet = self.__build_subnet(subnet_config, self.__vpc, self.__additional_vpc_cidr_blocks)
             subnets.append(subnet)
             subnet_refs.append(Ref(subnet))
-            if subnet_config.has_nat_gateway and nat_gateway is None:
-                nat_gateway = self.__build_nat_gateway(subnet_config, subnet)
+            if subnet_config.has_nat_gateway and nat_gateway_per_az_map.get(subnet_config.availability_zone) is None:
+                nat_gateway_per_az_map[subnet_config.availability_zone] = self.__build_nat_gateway(
+                    subnet_config, subnet
+                )
             if subnet_config.default_gateway == Gateways.INTERNET_GATEWAY:
                 bastion_subnet_ref = Ref(subnet)
             if subnet_config.default_gateway == Gateways.NONE:
@@ -168,7 +170,11 @@ class NetworkTemplateBuilder:
         route_tables_refs = []
         for subnet_config, subnet in zip(self.__vpc_subnets, subnets):
             route_tables_refs.append(
-                Ref(self.__build_route_table(subnet_config, subnet, self.__vpc, internet_gateway, nat_gateway))
+                Ref(
+                    self.__build_route_table(
+                        subnet_config, subnet, self.__vpc, internet_gateway, nat_gateway_per_az_map
+                    )
+                )
             )
 
         if self.__create_vpc_endpoints:
@@ -389,7 +395,7 @@ class NetworkTemplateBuilder:
         )
 
     def __build_route_table(
-        self, subnet_config: SubnetConfig, subnet_ref: Subnet, vpc: VPC, internet_gateway, nat_gateway: NatGateway
+        self, subnet_config: SubnetConfig, subnet_ref: Subnet, vpc: VPC, internet_gateway, nat_gateway_per_az_map: dict
     ):
         internet_gateway = If(self.__create_ig, internet_gateway, self.__gateway_id)
         route_table = self.__template.add_resource(
@@ -430,7 +436,7 @@ class NetworkTemplateBuilder:
                     "NatRoute" + subnet_config.name,
                     RouteTableId=Ref(route_table),
                     DestinationCidrBlock="0.0.0.0/0",
-                    NatGatewayId=Ref(nat_gateway),
+                    NatGatewayId=Ref(nat_gateway_per_az_map.get(subnet_config.availability_zone)),
                 )
             )
 
