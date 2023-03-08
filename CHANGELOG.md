@@ -26,6 +26,13 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add support for US isolated regions: us-iso-* and us-isob-*.
 
+**CHANGES**
+- Upgrade NICE DCV to version `2022.2-14521`.
+  - server: `2022.2.14521-1`
+  - xdcv: `2022.2.519-1`
+  - gl: `2022.2.1012-1`
+  - web_viewer: `2022.2.14521-1`
+
 3.5.0
 -----
 
