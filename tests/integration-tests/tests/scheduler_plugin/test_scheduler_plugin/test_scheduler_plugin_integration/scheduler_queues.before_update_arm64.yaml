@@ -24,9 +24,9 @@
       RootVolume:
         Encrypted: true
         Size: null
-        VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
-        Throughput: {% if "-iso" in region %}null{% else %}125{% endif %}
-        Iops: {% if "-iso" in region %}null{% else %}3000{% endif %}
+        VolumeType: gp3
+        Throughput: 125
+        Iops: 3000
   CustomActions: null
   CustomSettings: null
   Iam:
