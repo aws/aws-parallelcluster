@@ -377,3 +377,6 @@ class TestBaseClusterConfig:
     def test_get_managed_placement_group_keys(self, queue, expected_result):
         actual = queue.get_managed_placement_group_keys()
         assert_that(actual).is_equal_to(expected_result)
+
+    def test_get_instance_types_data(self, base_cluster_config):
+        assert_that(base_cluster_config.get_instance_types_data()).is_equal_to({})
