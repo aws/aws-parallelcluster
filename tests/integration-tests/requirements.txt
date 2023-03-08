@@ -9,8 +9,8 @@ fabric==2.6.0
 filelock
 jinja2
 junitparser
-matplotlib
 pexpect
+psutil
 pykwalify
 pyOpenSSL
 pytest
@@ -24,5 +24,4 @@ requests
 retrying
 troposphere
 untangle
-psutil
 xmltodict
