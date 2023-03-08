@@ -99,12 +99,13 @@ def _get_vpcs_and_subnets():
 
 def _get_subnets(conn, vpc_id):
     subnet_options = []
-    subnet_list = conn.describe_subnets(
-        Filters=[
-            {"Name": "vpcId", "Values": [vpc_id]},
-            {"Name": "ipv6-native", "Values": ["false"]},
-        ]
-    ).get("Subnets")
+    subnet_filters = [{"Name": "vpcId", "Values": [vpc_id]}]
+    # US isolated regions do not support IPv6.
+    # Subnets in these regions do not have the field "Ipv6Native", so
+    # applying the filter ipv6-native=false would make the DescribeSubnets call to always return an empty set.
+    if not conn.meta.region_name.startswith("us-iso"):
+        subnet_filters += {"Name": "ipv6-native", "Values": ["false"]}
+    subnet_list = conn.describe_subnets(Filters=subnet_filters).get("Subnets")
     for subnet in subnet_list:
         subnet_options.append(
             OrderedDict(
