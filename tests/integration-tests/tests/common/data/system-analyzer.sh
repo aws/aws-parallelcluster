@@ -179,7 +179,7 @@ function main() {
     ubuntu)
       PACKAGE_REPORT_CMD="dpkg-query -l"
       ;;
-    amzn | centos)
+    amzn | centos | rhel)
       PACKAGE_REPORT_CMD="rpm -qa"
       ;;
     *)
