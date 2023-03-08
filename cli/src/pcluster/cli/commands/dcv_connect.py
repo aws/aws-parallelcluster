@@ -121,7 +121,7 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
     )
 
 
-def _retry(func, func_args, attempts=1, wait=0):
+def _retry(func, func_args, attempts=1, wait=0):  # pylint: disable=R1710
     """
     Call function and re-execute it if it raises an Exception.
 
