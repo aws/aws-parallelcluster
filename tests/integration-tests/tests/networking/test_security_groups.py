@@ -61,8 +61,8 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
     for instance in instances:
         assert_that(instance["SecurityGroups"]).is_length(1)
 
-    if scheduler != "awsbatch":
-        # FSx is not supported when using AWS Batch as a scheduler
+    # FSx is not supported in US isolated regions or when using AWS Batch as a scheduler
+    if "us-iso" not in region and scheduler != "awsbatch":
         logging.info("Collecting security groups of the FSx")
         fsx_id = cluster.cfn_resources[f"FSX{create_hash_suffix(fsx_name)}"]
         fsx_client = boto3.client("fsx", region_name=region)
