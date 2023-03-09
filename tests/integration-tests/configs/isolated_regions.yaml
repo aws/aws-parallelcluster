@@ -266,10 +266,14 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
-      dimensions:
-        - regions: {{ REGIONS }}
-          oss: {{ OSS }}
+# This test cannot be executed in US isolated regions
+# because it relies on a CloudFormation stack using resources
+# that are not supported by CloudFormation in ADC,
+# i.e. CapacityReservation and ResourceGroup.
+#    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          oss: {{ OSS }}
 # This test cannot be executed in US isolated regions
 # because ParallelCluster API is not supported in these regions.
 #  pcluster_api:
@@ -500,11 +504,14 @@ test-suites:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
-    test_update.py::test_update_compute_ami:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
+# This test cannot be executed in US isolated regions
+# because it relies on having different ParallelCluster AMIs in the region
+# and this is not the case in these regions.
+#    test_update.py::test_update_compute_ami:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
     test_update.py::test_update_instance_list:
       dimensions:
         - regions: {{ REGIONS }}
@@ -524,8 +531,12 @@ test-suites:
 #          instances: {{ INSTANCES }}
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
-    test_update.py::test_multi_az_create_and_update:
-      dimensions:
-        - regions: {{ REGIONS }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because it relies on a CloudFormation stack using resources
+# that are not supported by CloudFormation in ADC,
+# i.e. CapacityReservation and ResourceGroup.
+#    test_update.py::test_multi_az_create_and_update:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
