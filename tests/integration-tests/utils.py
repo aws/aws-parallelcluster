@@ -588,11 +588,15 @@ def get_metadata(metadata_path, raise_error=True):
     metadata_value = None
     try:
         metadata_base_url = "http://169.254.169.254/latest"
-        token = requests.put(f"{metadata_base_url}/api/token", headers={"X-aws-ec2-metadata-token-ttl-seconds": "300"})
+        token = requests.put(
+            f"{metadata_base_url}/api/token", headers={"X-aws-ec2-metadata-token-ttl-seconds": "300"}, timeout=3
+        )
 
         headers = {}
         if token.status_code == requests.codes.ok:
             headers["X-aws-ec2-metadata-token"] = token.content
+        elif token.status_code >= 300:
+            raise Exception("Imds not reachable")
         metadata_value = requests.get(f"{metadata_base_url}/meta-data/{metadata_path}", headers=headers).text
     except Exception as e:
         error_msg = f"Unable to get {metadata_path} metadata. Failed with exception: {e}"
