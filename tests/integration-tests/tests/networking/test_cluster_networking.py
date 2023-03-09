@@ -34,8 +34,15 @@ from tests.common.assertions import (
 )
 from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.storage.constants import StorageType
 from tests.common.utils import get_default_vpc_security_group, get_route_tables, retrieve_latest_ami
-from tests.storage.storage_common import assert_fsx_correctly_shared, assert_fsx_lustre_correctly_mounted, get_fsx_ids
+from tests.storage.storage_common import (
+    assert_fsx_lustre_correctly_mounted,
+    get_efs_ids,
+    get_fsx_ids,
+    test_efs_correctly_mounted,
+    verify_directory_correctly_shared,
+)
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -43,18 +50,18 @@ def test_cluster_in_private_subnet(
     region, pcluster_config_reader, clusters_factory, bastion_instance, scheduler_commands_factory
 ):
     # This test just creates a cluster in the private subnet and just checks that no failures occur
-    fsx_mount_dir = "/fsx_mount"
-    cluster_config = pcluster_config_reader(fsx_mount_dir=fsx_mount_dir)
+    storage_type = StorageType.STORAGE_EFS if "us-iso" in region else StorageType.STORAGE_FSX
+    mount_dir = "/private_storage_mount"
+    cluster_config = pcluster_config_reader(storage_type=storage_type.value, mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
     assert_that(cluster).is_not_none()
 
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(1)
     remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion_instance)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    _test_fsx_in_private_subnet(
-        cluster, region, fsx_mount_dir, bastion_instance, remote_command_executor, scheduler_commands
+    _test_shared_storage_in_private_subnet(
+        cluster, region, storage_type, mount_dir, bastion_instance, remote_command_executor, scheduler_commands
     )
-
     lambda_vpc_config = cluster.config["DeploymentSettings"]["LambdaFunctionsVpcConfig"]
     assert_lambda_vpc_settings_are_correct(
         cluster.cfn_name, region, lambda_vpc_config["SecurityGroupIds"], lambda_vpc_config["SubnetIds"]
@@ -96,16 +103,24 @@ def test_existing_eip(existing_eip, pcluster_config_reader, clusters_factory):
     connection.run("cat /var/log/cfn-init.log", timeout=60)
 
 
-def _test_fsx_in_private_subnet(
-    cluster, region, fsx_mount_dir, bastion_instance, remote_command_executor, scheduler_commands
+def _test_shared_storage_in_private_subnet(
+    cluster, region, storage_type, mount_dir, bastion_instance, remote_command_executor, scheduler_commands
 ):
     """Test FSx can be mounted in private subnet."""
     logging.info("Sleeping for 60 sec to wait for bastion ssh to become ready.")
     time.sleep(60)
     logging.info(f"Bastion: {bastion_instance}")
-    fsx_fs_id = get_fsx_ids(cluster, region)[0]
-    assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, region, fsx_fs_id)
-    assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
+    if storage_type == StorageType.STORAGE_EFS:
+        fs_id = get_efs_ids(cluster, region)[0]
+        test_efs_correctly_mounted(remote_command_executor, mount_dir, region, fs_id)
+    elif storage_type == StorageType.STORAGE_FSX:
+        fs_id = get_fsx_ids(cluster, region)[0]
+        assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fs_id)
+    else:
+        raise Exception(f"The storage type '{storage_type}' is not supported in this test.")
+    verify_directory_correctly_shared(
+        remote_command_executor, mount_dir, scheduler_commands, partitions=scheduler_commands.get_partitions()
+    )
 
 
 @pytest.mark.usefixtures("enable_vpc_endpoints")
