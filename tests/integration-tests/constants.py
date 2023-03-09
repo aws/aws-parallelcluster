@@ -14,7 +14,7 @@ OS_TO_ROOT_VOLUME_DEVICE = {
     "alinux2": "/dev/xvda",
     "ubuntu1804": "/dev/sda1",
     "ubuntu2004": "/dev/sda1",
-    "rhel8": "/dev/xvda",
+    "rhel8": "/dev/sda1",
 }
 
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
