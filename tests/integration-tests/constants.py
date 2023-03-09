@@ -9,14 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-OS_TO_ROOT_VOLUME_DEVICE = {
-    "centos7": "/dev/sda1",
-    "alinux2": "/dev/xvda",
-    "ubuntu1804": "/dev/sda1",
-    "ubuntu2004": "/dev/sda1",
-    "rhel8": "/dev/xvda",
-}
-
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
 
 OSU_BENCHMARK_VERSION = "5.7.1"
