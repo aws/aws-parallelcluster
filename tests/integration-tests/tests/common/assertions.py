@@ -197,7 +197,7 @@ def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_comm
 
     for user, allowed in users_allow_list.items():
         logging.info(f"Asserting access to AWS caller identity is {'allowed' if allowed else 'denied'} for user {user}")
-        command = f"sudo -u {user} aws sts get-caller-identity"
+        command = f"sudo -u {user} aws sts get-caller-identity --region {cluster.region}"
         result = remote_command_executor.run_remote_command(command, raise_on_error=False)
         logging.info(f"user={user} and result.failed={result.failed}")
         logging.info(f"user={user} and result.stdout={result.stdout}")
