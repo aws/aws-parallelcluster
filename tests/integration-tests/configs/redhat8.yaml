@@ -5,6 +5,13 @@
 
 ---
 test-suites:
+  pcluster_api:
+    test_api.py::test_cluster_slurm:
+      dimensions:
+        - regions: [ "sa-east-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "rhel8" ]
+          schedulers: [ "slurm" ]
   ad_integration:
     test_ad_integration.py::test_ad_integration:
       dimensions:
@@ -25,6 +32,13 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: ["slurm"]
+  cfn-init:
+    test_cfn_init.py::test_replace_compute_on_failure:
+      dimensions:
+        - regions: ["af-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: [ "slurm" ]
   cli_commands:
     test_cli_commands.py::test_slurm_cli_commands:
       dimensions:
@@ -45,6 +59,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: ["slurm"]
+    test_compute_console_output_logging.py::test_custom_action_error:
+      dimensions:
+        - regions: [ "ap-east-1" ]
+          oss: ["rhel8"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          schedulers: [ "slurm" ]
   configure:
     test_pcluster_configure.py::test_pcluster_configure:
       dimensions:
@@ -145,6 +165,32 @@ test-suites:
         - regions: [ "us-west-2" ]
           oss: [ "alinux2", "rhel8"]
   scaling:
+    test_scaling.py::test_multiple_jobs_submission:
+      dimensions:
+        - regions: {{ common.REGIONS_COMMERCIAL }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: [ "slurm" ]
+        - regions: {{ common.REGIONS_CHINA }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: [ "slurm" ]
+        - regions: {{ common.REGIONS_GOVCLOUD }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: [ "slurm" ]
+        - regions: [ "us-west-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["rhel8"]
+          schedulers: {{ common.SCHEDULERS_TRAD }}
+        - regions: [ "cn-north-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["rhel8"]
+          schedulers: [ "slurm" ]
+        - regions: [ "us-gov-east-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["rhel8"]
+          schedulers: [ "slurm" ]
     test_mpi.py::test_mpi:
       dimensions:
         - regions: ["eu-north-1"]
@@ -218,9 +264,15 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2", "rhel8"]
           schedulers: ["slurm"]
+    test_fsx_lustre.py::test_fsx_lustre_backup:
+      dimensions:
+        - regions: [ "eu-south-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: [ "slurm" ]
     test_efs.py::test_multiple_efs:
       dimensions:
-        - regions: [ "eu-west-2" ]
+        - regions: [ "ca-central-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ OSS_COMMERCIAL_ARM_RH8 }}
           schedulers: [ "slurm" ]
