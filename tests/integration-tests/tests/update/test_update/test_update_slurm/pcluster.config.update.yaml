@@ -47,7 +47,7 @@ Scheduling:
         - Name: queue1-i1
           Instances:
             - InstanceType: c5.xlarge
-            - InstanceType: c5a.xlarge
+            - InstanceType: c5n.xlarge
             - InstanceType: c5d.xlarge
           MinCount: 2 # Increased parameter value
           MaxCount: 4 # Increased parameter value

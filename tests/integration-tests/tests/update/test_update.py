@@ -90,7 +90,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                             "instance_type": "c5.xlarge",
                         },
                         {
-                            "instance_type": "c5a.xlarge",
+                            "instance_type": "c5n.xlarge",
                         },
                         {
                             "instance_type": "c5d.xlarge",
@@ -174,7 +174,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                             "instance_type": "c5.xlarge",
                         },
                         {
-                            "instance_type": "c5a.xlarge",
+                            "instance_type": "c5n.xlarge",
                         },
                         {
                             "instance_type": "c5d.xlarge",
