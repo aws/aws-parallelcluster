@@ -75,7 +75,7 @@ test-suites:
     test_pcluster_configure.py::test_efa_and_placement_group:
       dimensions:
         - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
+          instances: ["c5n.9xlarge"]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
     test_pcluster_configure.py::test_efa_unsupported:
