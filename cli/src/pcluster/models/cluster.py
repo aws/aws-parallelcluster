@@ -32,7 +32,7 @@ from marshmallow import ValidationError
 from pcluster.api.models import Metadata
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError, get_region
-from pcluster.config.cluster_config import BaseClusterConfig, SchedulerPluginScheduling, SlurmScheduling, Tag
+from pcluster.config.cluster_config import BaseClusterConfig, SchedulerPluginScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
@@ -533,13 +533,12 @@ class Cluster:
             if self.template_body:
                 self.bucket.upload_cfn_template(self.template_body, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
 
-            if isinstance(self.config.scheduling, (SlurmScheduling, SchedulerPluginScheduling)):
-                # upload instance types data
-                self.bucket.upload_config(
-                    self.config.get_instance_types_data(),
-                    PCLUSTER_S3_ARTIFACTS_DICT.get("instance_types_data_name"),
-                    format=S3FileFormat.JSON,
-                )
+            # upload instance types data
+            self.bucket.upload_config(
+                self.config.get_instance_types_data(),
+                PCLUSTER_S3_ARTIFACTS_DICT.get("instance_types_data_name"),
+                format=S3FileFormat.JSON,
+            )
 
             if isinstance(self.config.scheduling, SchedulerPluginScheduling):
                 self._render_and_upload_scheduler_plugin_template()

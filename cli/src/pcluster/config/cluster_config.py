@@ -1737,6 +1737,10 @@ class BaseClusterConfig(Resource):
         """Return tags configured in the cluster configuration."""
         return self.tags
 
+    def get_instance_types_data(self) -> dict:
+        """Get instance type infos for all instance types used in the configuration file."""
+        return {}
+
 
 class AwsBatchComputeResource(BaseComputeResource):
     """Represent the AwsBatch Compute Resource."""
