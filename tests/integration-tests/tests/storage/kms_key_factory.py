@@ -8,8 +8,9 @@ import boto3
 import pkg_resources
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
+from utils import get_arn_partition
 
-from tests.common.utils import get_sts_endpoint
+from tests.common.utils import get_aws_domain, get_sts_endpoint
 
 
 class KMSKeyFactory:
@@ -64,10 +65,8 @@ class KMSKeyFactory:
         # Create the iam role
         logging.info("creating iam role {0} for creating KMS key...".format(iam_role_name))
 
-        self.partition = next(
-            ("aws-" + partition for partition in ["us-gov", "cn"] if self.region.startswith(partition)), "aws"
-        )
-        domain_suffix = ".cn" if self.partition == "aws-cn" else ""
+        self.partition = get_arn_partition(region)
+        aws_domain = get_aws_domain(self.region)
 
         # Add EC2 as trust entity of the IAM role
         trust_relationship_policy_ec2 = {
@@ -75,7 +74,7 @@ class KMSKeyFactory:
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Principal": {"Service": "ec2.amazonaws.com{0}".format(domain_suffix)},
+                    "Principal": {"Service": "ec2.{0}".format(aws_domain)},
                     "Action": "sts:AssumeRole",
                 }
             ],
