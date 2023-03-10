@@ -52,6 +52,16 @@ def get_resources(
     )
 
 
+def get_asset_content_with_resource_name(assets, resource_name):
+    """Get the asset with a top-level resource matching the given logical ID from a list of assets."""
+    for asset in assets:
+        asset_content = asset.get("content")
+        if asset_content:
+            if asset_content["Resources"].get(resource_name):
+                return asset_content
+    return None
+
+
 def get_head_node_policy(template, enforce_not_null=True):
     policy = get_resources(template, type="AWS::IAM::Policy", name="ParallelClusterPoliciesHeadNode").get(
         "ParallelClusterPoliciesHeadNode"

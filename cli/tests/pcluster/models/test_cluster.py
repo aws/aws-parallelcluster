@@ -934,6 +934,43 @@ Scheduling:
         else:
             assert_that(bucket_object_utils_dict.get("upload_config").call_count).is_equal_to(0)
 
+    @pytest.mark.parametrize(
+        "assets_metadata, expected_parameters",
+        [
+            (
+                [
+                    {
+                        "hash_parameter": {"key": "AssetParameters12345ArtifactHashabcde", "value": ""},
+                        "s3_bucket_parameter": {"key": "AssetParameters12345S3Bucketabcde", "value": "AssetS3Bucket"},
+                        "s3_object_key_parameter": {
+                            "key": "AssetParameters12345S3VersionKeyabcde",
+                            "value": "AssetS3ObjectKey",
+                        },
+                    },
+                ],
+                [
+                    (
+                        {
+                            "ParameterKey": "AssetParameters12345ArtifactHashabcde",
+                            "ParameterValue": "",
+                        },
+                        {
+                            "ParameterKey": "AssetParameters12345S3Bucketabcde",
+                            "ParameterValue": "AssetS3Bucket",
+                        },
+                        {
+                            "ParameterKey": "AssetParameters12345S3VersionKeyabcde",
+                            "ParameterValue": "AssetS3ObjectKey||",
+                        },
+                    )
+                ],
+            )
+        ],
+    )
+    def test_assets_parameter_generation(self, assets_metadata, expected_parameters):
+        asset_parameters = Cluster._generate_asset_parameters(assets_metadata)
+        assert_that(asset_parameters).is_equal_to(expected_parameters)
+
 
 OLD_CONFIGURATION = """
 Image:

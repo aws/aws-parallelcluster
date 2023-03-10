@@ -27,7 +27,9 @@ class CfnClient(Boto3Client):
         super().__init__("cloudformation")
 
     @AWSExceptionHandler.handle_client_exception
-    def create_stack(self, stack_name: str, disable_rollback: bool, tags: list, template_body: str):
+    def create_stack(
+        self, stack_name: str, disable_rollback: bool, tags: list, template_body: str, parameters: list = ()
+    ):
         """Create CFN stack by using the given template."""
         return self._client.create_stack(
             StackName=stack_name,
@@ -35,6 +37,7 @@ class CfnClient(Boto3Client):
             Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
             Tags=tags,
+            Parameters=parameters,
         )
 
     @AWSExceptionHandler.handle_client_exception
@@ -45,6 +48,7 @@ class CfnClient(Boto3Client):
         tags: list,
         template_url: str,
         capabilities: str = "CAPABILITY_IAM",
+        parameters: list = (),
     ):
         """Create CFN stack by using the given template url."""
         return self._client.create_stack(
@@ -53,6 +57,7 @@ class CfnClient(Boto3Client):
             Capabilities=[capabilities, "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
             Tags=tags,
+            Parameters=parameters,
         )
 
     @AWSExceptionHandler.handle_client_exception
@@ -71,19 +76,21 @@ class CfnClient(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
-    def update_stack_from_url(self, stack_name: str, template_url: str, tags: list = None):
+    def update_stack_from_url(self, stack_name: str, template_url: str, tags: list = None, parameters=()):
         """Update CFN stack by using the given template url."""
         if tags is None:
             return self._client.update_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
                 Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                Parameters=parameters,
             )
         return self._client.update_stack(
             StackName=stack_name,
             TemplateURL=template_url,
             Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             Tags=tags,
+            Parameters=parameters,
         )
 
     @AWSExceptionHandler.handle_client_exception

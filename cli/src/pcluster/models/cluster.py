@@ -166,6 +166,7 @@ class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
 
     def __init__(self, name: str, config: str = None, stack: ClusterStack = None):
+        self.assets_metadata = None
         self.name = name
         self.__source_config_text = config
         self.__stack = stack
@@ -369,8 +370,9 @@ class Cluster:
             LOGGER.info("Generation and upload completed successfully")
 
             # Create template if not provided by the user
+            assets_metadata = None
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
-                self.template_body = CDKTemplateBuilder().build_cluster_template(
+                self.template_body, assets_metadata = CDKTemplateBuilder().build_cluster_template(
                     cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
                 )
 
@@ -380,6 +382,7 @@ class Cluster:
             LOGGER.info("Upload of cluster artifacts completed successfully")
 
             LOGGER.info("Creating stack named: %s", self.stack_name)
+            asset_parameters = self._generate_asset_parameters(assets_metadata) if assets_metadata else []
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
                 stack_name=self.stack_name,
                 template_url=self.bucket.get_cfn_template_url(
@@ -387,6 +390,12 @@ class Cluster:
                 ),
                 disable_rollback=disable_rollback,
                 tags=self._get_cfn_tags(),
+                parameters=[
+                    parameter_key_value
+                    for asset_parameter in asset_parameters
+                    for parameter_key_value in asset_parameter
+                    if asset_parameters
+                ],
             )
 
             return creation_result.get("StackId"), suppressed_validation_failures
@@ -398,6 +407,38 @@ class Cluster:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete_s3_artifacts()
             raise _cluster_error_mapper(e, str(e))
+
+    @staticmethod
+    def _generate_asset_parameters(assets_metadata):
+        """
+        Create cloud formation template parameters for assets.
+
+        CDK adds 3 parameters to the root stack after running a synthesis.
+        1. ArtifactHash (256-Hash of the asset - useful when running `cdk deploy` only, not relevant otherwise)
+        2. S3Bucket (S3 Bucket where asset is stored)
+        3. S3VersionKey (S3 object key and version of the asset in the form "key||version")
+        """
+        return [
+            (
+                {
+                    "ParameterKey": asset_metadata["hash_parameter"]["key"],
+                    "ParameterValue": asset_metadata["hash_parameter"]["value"],
+                },
+                {
+                    "ParameterKey": asset_metadata["s3_bucket_parameter"]["key"],
+                    "ParameterValue": asset_metadata["s3_bucket_parameter"]["value"],
+                },
+                # CDK builds the TemplateURL parameter of the NestedStack in the Root Template by concatenating
+                # the AssetParameter S3 Bucket, Object and Version
+                # The S3 Object and Version are passed as a string "ObjectKey||Version"
+                # In this case we don't need to specify a version, hence we pass "ObjectKey||"
+                {
+                    "ParameterKey": asset_metadata["s3_object_key_parameter"]["key"],
+                    "ParameterValue": f"{asset_metadata['s3_object_key_parameter']['value']}||",
+                },
+            )
+            for asset_metadata in assets_metadata
+        ]
 
     def _load_config(self, cluster_config: dict) -> BaseClusterConfig:
         """Load the config and catch / translate any errors that occur during loading."""
@@ -912,8 +953,9 @@ class Cluster:
             self._upload_change_set(changes)
 
             # Create template if not provided by the user
+            assets_metadata = None
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
-                self.template_body = CDKTemplateBuilder().build_cluster_template(
+                self.template_body, assets_metadata = CDKTemplateBuilder().build_cluster_template(
                     cluster_config=self.config,
                     bucket=self.bucket,
                     stack_name=self.stack_name,
@@ -923,6 +965,8 @@ class Cluster:
             # upload cluster artifacts and generated template
             self._upload_artifacts()
 
+            asset_parameters = self._generate_asset_parameters(assets_metadata) if assets_metadata else []
+
             LOGGER.info("Updating stack named: %s", self.stack_name)
             AWSApi.instance().cfn.update_stack_from_url(
                 stack_name=self.stack_name,
@@ -930,6 +974,12 @@ class Cluster:
                     template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("template_name")
                 ),
                 tags=self._get_cfn_tags(),
+                parameters=[
+                    parameter_key_value
+                    for asset_parameter in asset_parameters
+                    for parameter_key_value in asset_parameter
+                    if asset_parameters
+                ],
             )
 
             self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
