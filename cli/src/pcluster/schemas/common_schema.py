@@ -49,10 +49,19 @@ def validate_json_format(data):
 
 
 def validate_no_reserved_tag(tags):
-    """Validate there is no tag with reserved prefix."""
+    """
+    Validate there is no tag with reserved prefix.
+
+    If one tag in the config has a boolean value, tags will be a list of dict.
+    If all of them are strings, we'll have a list of BaseTag objects.
+    """
     if tags:
         for tag in tags:
-            if tag.key.startswith(PCLUSTER_PREFIX):
+            if isinstance(tag, BaseTag):
+                tag_key = tag.key
+            else:
+                tag_key = tag.get("key", "")
+            if tag_key.startswith(PCLUSTER_PREFIX):
                 raise ValidationError(message=f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved and cannot be used.")
 
 
