@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AWS ParallelCluster CloudFormation Template
+
+Parameters:
+  ClusterName:
+    Description: Name of cluster. Note this must be different than the stack name.
+    Type: String
+  HeadNodeSubnet:
+    Description: Subnet for the HeadNode
+    Type: String
+  ComputeNodeSubnet:
+    Description: Subnet for the ComputeNode
+    Type: String
+  ComputeInstanceMax:
+    Description: Maximum number of compute instances
+    Type: Number
+    Default: 10
+  ServiceToken:
+    Description: ARN of Lambda Function backing the Cluster Resource
+    Type: String
+  OnNodeConfigured:
+    Description: Script to run on HeadNode configured
+    Type: String
+    Default: ''
+
+Conditions:
+  OnNodeConfiguredCondition: !Not [!Equals [!Ref OnNodeConfigured, '']]
+
+Resources:
+  PclusterCluster:
+    Type: Custom::PclusterCluster
+    Properties:
+      ServiceToken: !Ref ServiceToken
+      ClusterName: !Ref ClusterName
+      ClusterConfiguration:
+        Image:
+          Os: alinux2
+        HeadNode:
+          InstanceType: t2.small
+          Networking:
+            SubnetId: !Ref HeadNodeSubnet
+          CustomActions: !If
+            - OnNodeConfiguredCondition
+            -
+              OnNodeConfigured:
+                Script: !Ref OnNodeConfigured
+            - !Ref AWS::NoValue
+        Scheduling:
+          Scheduler: slurm
+          SlurmQueues:
+          - Name: queue0
+            ComputeResources:
+            - Name: queue0-i0
+              InstanceType: t2.micro
+              MinCount: 0
+              MaxCount: !Ref ComputeInstanceMax
+            Networking:
+              SubnetIds:
+              - !Ref ComputeNodeSubnet

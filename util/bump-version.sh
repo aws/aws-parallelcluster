@@ -64,6 +64,7 @@ main() {
         sed -i "s| ShortVersion: $CURRENT_VERSION_SHORT| ShortVersion: $NEW_VERSION_SHORT|g" api/infrastructure/parallelcluster-api.yaml
         sed -i "s| version: $CURRENT_VERSION_SHORT| version: $NEW_VERSION_SHORT|g" api/spec/openapi/ParallelCluster.openapi.yaml
         sed -i "s| version: \"$CURRENT_VERSION_SHORT\"| version: \"$NEW_VERSION_SHORT\"|g" api/spec/smithy/model/parallelcluster.smithy
+        sed -i "s| Version: $CURRENT_VERSION| Version: $NEW_VERSION|g" cloudformation/custom_resource/cluster.yaml
         cp "$PC_SUPPORT_DIR/os_$CURRENT_VERSION.json" "$PC_SUPPORT_DIR/os_$NEW_VERSION.json"
         git add "$PC_SUPPORT_DIR/os_$NEW_VERSION.json"
 
