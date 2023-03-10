@@ -2839,7 +2839,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
         return list(capacity_reservation_ids)
 
     @property
-    def do_compute_nodes_have_custom_actions(self):
+    def has_custom_actions_in_queue(self):
         """Return True if any queues have custom scripts."""
         for queue in self.scheduling.queues:
             if queue.custom_actions:
