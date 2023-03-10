@@ -488,7 +488,7 @@ test-suites:
     test_ephemeral.py::test_head_node_stop:
       dimensions:
         - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
+          instances: ["m5d.xlarge", "h1.2xlarge"]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
   tags:
