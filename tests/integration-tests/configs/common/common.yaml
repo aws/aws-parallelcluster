@@ -32,11 +32,11 @@ scheduler_plugin:
     dimensions:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
         schedulers: ["plugin"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
         schedulers: ["plugin"]
 {%- endif %}
 cfn-init:
@@ -456,7 +456,7 @@ schedulers:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
         schedulers: ["slurm"]
 {%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
       - regions: ["eu-central-1"]
@@ -594,7 +594,7 @@ storage:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8"]
+        oss: ["alinux2"]
         schedulers: ["slurm"]
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
@@ -820,7 +820,7 @@ log_rotation:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
         schedulers: ["slurm"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
