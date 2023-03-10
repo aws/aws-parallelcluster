@@ -141,6 +141,7 @@ def _retry(func, func_args, attempts=1, wait=0):
 
             LOGGER.debug("%s, retrying in %s seconds..", e, wait)
             time.sleep(wait)
+    return None
 
 
 class DcvConnectCommand(CliCommand):

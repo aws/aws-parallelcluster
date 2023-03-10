@@ -23,6 +23,8 @@ Scheduling:
           {% else %}
           Instances:
             - InstanceType: {{ instance }}
+          # set MinCount to 1 in order to test compute node disk and memory metrics are not gathered
+          MinCount: 1
           {% endif %}
 Monitoring:
   DetailedMonitoring: true

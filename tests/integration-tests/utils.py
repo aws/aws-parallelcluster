@@ -23,7 +23,6 @@ from hashlib import sha1
 import boto3
 import requests
 from assertpy import assert_that
-from constants import OS_TO_ROOT_VOLUME_DEVICE
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
@@ -560,17 +559,19 @@ def get_network_interfaces_count(instance_type, region_name=None):
 def get_root_volume_id(instance_id, region, os):
     """Return the root EBS volume's ID for the given EC2 instance."""
     logging.info("Getting root volume for instance %s", instance_id)
-    block_device_mappings = (
+    instance = (
         boto3.client("ec2", region_name=region)
         .describe_instances(InstanceIds=[instance_id])
         .get("Reservations")[0]
         .get("Instances")[0]
-        .get("BlockDeviceMappings")
     )
+
+    root_device_name = instance.get("RootDeviceName")
+
     matching_devices = [
         device_mapping
-        for device_mapping in block_device_mappings
-        if device_mapping.get("DeviceName") == OS_TO_ROOT_VOLUME_DEVICE[os]
+        for device_mapping in instance.get("BlockDeviceMappings")
+        if device_mapping.get("DeviceName") == root_device_name
     ]
     assert_that(matching_devices).is_length(1)
     return matching_devices[0].get("Ebs").get("VolumeId")
