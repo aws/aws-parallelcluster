@@ -660,7 +660,14 @@ def test_queue_parameters_update(
     # Create cluster with initial configuration
     initial_compute_root_volume_size = 35
     updated_compute_root_volume_size = 40
-    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster", request=request)
+    # If you are running this test in your personal account, then you must have
+    # ParallelCluster AMIs following the official naming convention
+    # and set allow_private_ami to True.
+    # We allow private AMIs also in US isolated regions to facilitate testing.
+    allow_private_ami = True if "us-iso" in region else False
+    pcluster_ami_id = retrieve_latest_ami(
+        region, os, ami_type="pcluster", request=request, allow_private_ami=allow_private_ami
+    )
     pcluster_copy_ami_id = ami_copy(
         pcluster_ami_id, "-".join(["test", "update", "computenode", generate_random_string()])
     )
