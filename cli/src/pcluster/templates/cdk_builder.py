@@ -14,6 +14,7 @@
 import logging
 import os
 import tempfile
+import typing
 
 from pcluster.config.cluster_config import BaseClusterConfig
 from pcluster.config.imagebuilder_config import ImageBuilderConfig
@@ -43,6 +44,7 @@ class CDKTemplateBuilder:
             output_file = str(stack_name)
             app = App(outdir=str(cloud_assembly_dir))
             ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket, log_group_name)
+
             cloud_assembly = app.synth()
 
             cdk_artifacts_manager = CDKArtifactsManager(cloud_assembly)
@@ -68,3 +70,12 @@ class CDKTemplateBuilder:
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 
         return generated_template
+
+    @staticmethod
+    def load_manifest_json(
+        cloud_assembly_dir: typing.Union[str, os.PathLike], manifest_file_name: str = "manifest.json"
+    ):
+        """Load and return the content of the manifest.json file in a cloud assembly directory."""
+        with open(os.path.join(cloud_assembly_dir, manifest_file_name), "r", encoding="utf-8") as manifest:
+            manifest_json = json.load(manifest)
+        return manifest_json
