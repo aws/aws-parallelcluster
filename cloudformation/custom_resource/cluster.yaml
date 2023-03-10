@@ -99,7 +99,7 @@ Resources:
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       TracingConfig:
         Mode: Active
-      MemorySize: 1024
+      MemorySize: 2048
       Timeout: 60
       Code:
         ZipFile: |
