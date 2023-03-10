@@ -190,11 +190,13 @@ test-suites:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
-    test_iam_image.py::test_iam_roles:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
+# This test cannot be executed in US isolated regions
+# because it makes use of build-image, which is not supported in these regions.
+#    test_iam_image.py::test_iam_roles:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
     test_iam.py::test_s3_read_write_resource:
       dimensions:
         - regions: {{ REGIONS }}
