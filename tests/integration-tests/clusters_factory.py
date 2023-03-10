@@ -403,7 +403,7 @@ class Cluster:
         ec2_client = boto3.client("ec2", region_name=self.region)
         volumes = ec2_client.describe_volumes(Filters=[get_stack_id_tag_filter(self.cfn_stack_arn)])["Volumes"]
         for volume in volumes:
-            ec2_client.delete_snapshot(VolumeId=volume["VolumeId"])
+            ec2_client.delete_volume(VolumeId=volume["VolumeId"])
 
 
 class ClustersFactory:
