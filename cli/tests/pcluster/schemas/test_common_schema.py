@@ -12,7 +12,14 @@ import pytest
 from assertpy import assert_that
 from marshmallow import ValidationError
 
-from pcluster.schemas.common_schema import ImdsSchema, LambdaFunctionsVpcConfigSchema, validate_json_format
+from pcluster.config.common import BaseTag
+from pcluster.constants import PCLUSTER_PREFIX
+from pcluster.schemas.common_schema import (
+    ImdsSchema,
+    LambdaFunctionsVpcConfigSchema,
+    validate_json_format,
+    validate_no_reserved_tag,
+)
 
 
 @pytest.mark.parametrize(
@@ -83,3 +90,24 @@ def test_lambda_functions_vpc_config_schema(lambda_functions_vpc_config, failure
         config = LambdaFunctionsVpcConfigSchema().load(lambda_functions_vpc_config)
         assert_that(config.security_group_ids).is_equal_to(lambda_functions_vpc_config.get("SecurityGroupIds"))
         assert_that(config.subnet_ids).is_equal_to(lambda_functions_vpc_config.get("SubnetIds"))
+
+
+@pytest.mark.parametrize(
+    "tags, failure_message",
+    [
+        ([], None),
+        ([BaseTag(key="test", value="test")], None),
+        ([BaseTag(key=f"{PCLUSTER_PREFIX}test", value="test")], f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved"),
+        ([BaseTag(key=f"test{PCLUSTER_PREFIX}", value="test")], None),
+        ([{"key": "test", "value": "test"}], None),
+        ([{"key": f"{PCLUSTER_PREFIX}test", "value": "test"}], f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved"),
+        ([{"key": f"test{PCLUSTER_PREFIX}", "value": "test"}], None),
+        ([{"key": "test"}], None),
+    ],
+)
+def test_validate_no_reserved_tag(tags, failure_message):
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            validate_no_reserved_tag(tags)
+    else:
+        validate_no_reserved_tag(tags)
