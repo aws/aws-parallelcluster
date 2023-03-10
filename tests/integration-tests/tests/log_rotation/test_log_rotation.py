@@ -233,6 +233,12 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
                 f"echo '{before_log_rotation_message}' | sudo tee --append {log.get('log_path')}",
                 compute_node_ip,
             )
+    # Flush changes to the disk using sync to ensure file is not detected as empty by mistake and not rotate
+    _run_command_on_node(
+        remote_command_executor,
+        "sync",
+        compute_node_ip,
+    )
     # force log rotate without waiting for logs to reach certain size
     _run_command_on_node(remote_command_executor, "sudo logrotate -f /etc/logrotate.conf", compute_node_ip)
     # check if logs are rotated
