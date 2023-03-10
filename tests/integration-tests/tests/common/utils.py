@@ -78,7 +78,15 @@ AMI_TYPE_DICT = {
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None, request=None):
+def retrieve_latest_ami(
+    region,
+    os,
+    ami_type="official",
+    architecture="x86_64",
+    additional_filters=None,
+    request=None,
+    allow_private_ami=False,
+):
     if additional_filters is None:
         additional_filters = []
     try:
@@ -92,6 +100,7 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", 
                 and not request.config.getoption("pcluster_git_ref")
                 and not request.config.getoption("cookbook_git_ref")
                 and not request.config.getoption("node_git_ref")
+                and not allow_private_ami
             ):  # If none of Git refs is provided, the test is running against released version.
                 # Then retrieve public pcluster AMIs
                 additional_filters.append({"Name": "is-public", "Values": ["true"]})
