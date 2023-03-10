@@ -36,7 +36,7 @@ class Coord:
 _PclusterMetric = namedtuple(
     "_PclusterMetric", ["title", "metrics", "supported_vol_types", "namespace", "additional_dimensions"]
 )
-_CustomMetricFilter = namedtuple("MetricFilter", ["metric_name", "filter_pattern"])
+_CustomMetricFilter = namedtuple("MetricFilter", ["metric_name", "filter_pattern", "metric_value"])
 _Filter = namedtuple("new_filter", ["pattern", "param"])
 _CWLogWidget = namedtuple(
     "_CWLogWidget",
@@ -246,7 +246,7 @@ class CWDashboardConstruct(Construct):
                 widgets_list.append(graph_widget)
         return widgets_list
 
-    def custom_pcluster_metric_filter(self, metric_name, filter_pattern, custom_namespace):
+    def custom_pcluster_metric_filter(self, metric_name, filter_pattern, custom_namespace, metric_value):
         """Adding custom metric filter from named tuple."""
         metric_filter = logs.CfnMetricFilter(
             scope=self.stack_scope,
@@ -257,7 +257,7 @@ class CWDashboardConstruct(Construct):
                 logs.CfnMetricFilter.MetricTransformationProperty(
                     metric_namespace=custom_namespace,
                     metric_name=metric_name,
-                    metric_value="$detail.count",
+                    metric_value=metric_value,
                     default_value=0,
                 )
             ],
@@ -267,75 +267,102 @@ class CWDashboardConstruct(Construct):
 
     def add_custom_error_metrics(self):
         """Create custom error metric filter and outputs to cloudwatch graph."""
+        node_launch_failure_event_pattern = '{ $.event-type = "node-launch-failure-count" }'
         jobs_not_starting_errors = [
             _CustomMetricFilter(
-                metric_name="Mismatch between IAM Group",
-                filter_pattern="?UnauthorizedOperation ?AccessDeniedException",
+                metric_name="Iam Policy Errors",
+                filter_pattern=node_launch_failure_event_pattern,
+                metric_value="$.detail.iam-policy-errors.count",
             ),
             _CustomMetricFilter(
                 metric_name="AMI larger than root volume",
-                filter_pattern="InvalidBlockDeviceMapping",
+                filter_pattern=node_launch_failure_event_pattern,
+                metric_value="$.detail.custom-ami-errors.count",
             ),
             _CustomMetricFilter(
                 metric_name="Vcpu limit",
-                filter_pattern="VcpuLimitExceeded",
+                filter_pattern=node_launch_failure_event_pattern,
+                metric_value="$.detail.vcpu-limit-failures.count",
             ),
             _CustomMetricFilter(
                 metric_name="Volume Limit",
-                filter_pattern="?VolumeLimitExceeded ?InsufficientVolumeCapacity",
+                filter_pattern=node_launch_failure_event_pattern,
+                metric_value="$.detail.volume-limit-failures.count",
             ),
             _CustomMetricFilter(
                 metric_name="Node Capacity Insufficient",
-                filter_pattern='{ $.event-type = "insufficient-capacity-error-count" }',
+                filter_pattern=node_launch_failure_event_pattern,
+                metric_value="$.detail.ice-failures.count",
+            ),
+            _CustomMetricFilter(
+                metric_name="Other launched instance failures",
+                filter_pattern=node_launch_failure_event_pattern,
+                metric_value="$.detail.other-failure.count",
             ),
         ]
 
+        custom_scripts_failure_event_pattern = '{ $.event-type = "custom-scripts-failure-count" }'
         custom_script_errors = [
             _CustomMetricFilter(
                 metric_name="Cannot retrieve custom script",
-                filter_pattern="error occurred 403 when calling the HeadObject operation Forbidden",
+                filter_pattern=custom_scripts_failure_event_pattern,
+                metric_value="1",
             ),
             _CustomMetricFilter(
                 metric_name="Error With Custom Script",
-                filter_pattern="Failed to run bootstrap recipes",
+                filter_pattern=custom_scripts_failure_event_pattern,
+                metric_value="1",
             ),
             _CustomMetricFilter(
                 metric_name="Script Timeout",
-                filter_pattern="WARNING Node bootstrap error Resume timeout "
-                "expires state DOWN CLOUD POWERED DOWN NOT RESPONDING",
+                filter_pattern=custom_scripts_failure_event_pattern,
+                metric_value="1",
             ),
         ]
 
-        compute_node_events = [
-            _CustomMetricFilter(
-                metric_name="Terminated EC2 compute node before job submission",
-                filter_pattern="WARNING Node state check no corresponding instance in EC2 for node",
-            ),
-            _CustomMetricFilter(
-                metric_name="EC2 Health Check",
-                filter_pattern="Nodes not responding setting DOWN",
-            ),
+        ec2_health_check_event_pattern = '{ $.event-type = "fail-ec2-health-check-count" }'
+        ec2_health_check_events = [
             _CustomMetricFilter(
                 metric_name="EC2 Maintenance Events",
-                filter_pattern="Setting nodes failing health check type ec2_health_check to DRAIN",
+                filter_pattern=ec2_health_check_event_pattern,
+                metric_value="1",
             ),
             _CustomMetricFilter(
-                metric_name="Slurm Health Check Failure",
-                filter_pattern="Performing actions for health check type scheduled_events_check",
+                metric_name="EC2 scheduled maintenance event",
+                filter_pattern=ec2_health_check_event_pattern,
+                metric_value="1",
             ),
         ]
 
-        other_potential_issues = [
+        failed_slurm_nodes_event_pattern = '{ $.event-type = "fail-slurm-nodes-count" }'
+        failed_slurm_nodes_events = [
             _CustomMetricFilter(
-                metric_name="Errors and Warnings",
-                filter_pattern="?error ?Error ?ERROR ?WARNING ?Warning ?warning",
+                metric_name="No corresponding instance in EC2 for node",
+                filter_pattern=failed_slurm_nodes_event_pattern,
+                metric_value="1",
+            ),
+            # Use text matching here because it comes from slurmctld.log
+            _CustomMetricFilter(
+                metric_name="Slurm Node Not Responding",
+                filter_pattern="Nodes not responding setting DOWN",
+                metric_value="1",
             ),
         ]
+        bootstrap_failure_nodes_events = '{ $.event-type = "bootstrap-failure-count" }'
+        bootstrap_failure_nodes_events = [
+            _CustomMetricFilter(
+                metric_name="Bootstrap errors",
+                filter_pattern=bootstrap_failure_nodes_events,
+                metric_value="1",
+            ),
+        ]
+
         # TODO: Merge this with keys list using named tuple to reference the attributes instead of an index later
         error_metric_dict = {
-            "Other Error and Warning Messages": other_potential_issues,
             "Jobs Not Starting Errors": jobs_not_starting_errors,
-            "Issues with EC2 Instances": compute_node_events,
+            "Issues with EC2 Instances": ec2_health_check_events,
+            "Node Bootstrap Errors": bootstrap_failure_nodes_events,
+            "Failed Slurm Nodes": failed_slurm_nodes_events,
         }
 
         keys_list = list(error_metric_dict)
@@ -345,6 +372,8 @@ class CWDashboardConstruct(Construct):
             keys_list[1]: "Jobs not starting [Troubleshooting Resources]"
             "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html)",
             keys_list[2]: "Issues with EC2 [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
+            keys_list[3]: "Issues with EC2 [Troubleshooting Resources]"
             "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
         }
 
@@ -360,7 +389,7 @@ class CWDashboardConstruct(Construct):
                 }
             )
 
-        self._add_text_widget("## Metrics for Common Errors")
+        self._add_text_widget("## Cluster health metrics")  # TODO: Decision
         custom_namespace = "ParallelCluster/Errors/" + self.config.cluster_name
         widgets_list = []
         for title, metric_filters in error_metric_dict.items():
@@ -370,6 +399,7 @@ class CWDashboardConstruct(Construct):
                     metric_name=new_filter.metric_name,
                     filter_pattern=new_filter.filter_pattern,
                     custom_namespace=custom_namespace,
+                    metric_value=new_filter.metric_value,
                 )
                 cloudwatch_metric = cloudwatch.Metric(
                     namespace=custom_namespace,
@@ -378,7 +408,7 @@ class CWDashboardConstruct(Construct):
                     statistic="Sum",
                 )
                 metric_list.append(cloudwatch_metric)
-            graph_widget = self._generate_graph_widget(title, metric_list, True)
+            graph_widget = self._generate_graph_widget(title, metric_list, False)
             widgets_list.append(graph_widget)
 
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
