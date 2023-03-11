@@ -1,0 +1,55 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: String
+  Ssh:
+    KeyName: String
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: awsbatch
+  AwsBatchQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceTypes:
+            - c4.xlarge
+          MaxvCpus: 10
+SharedStorage:
+  - MountDir: /my/mount/ebs1
+    Name: name1
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: sc1
+  - MountDir: /my/mount/ebs2
+    Name: name2
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: st1
+  - MountDir: /my/mount/ebs3
+    Name: name3
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+  - MountDir: /my/mount/ebs4
+    Name: name4
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: sc1
+  - MountDir: /my/mount/ebs5
+    Name: name5
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: st1
+Monitoring:
+  DetailedMonitoring: true
+  Logs:
+    CloudWatch:
+      Enabled: True
+      RetentionInDays: 14
+  Dashboards:
+    CloudWatch:
+      Enabled: true
