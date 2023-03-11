@@ -32,6 +32,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_buc
         "ubuntu18.slurm.simple.yaml",
         "alinux2.batch.no_head_node_log.yaml",
         "ubuntu18.slurm.no_dashboard.yaml",
+        "alinux2.batch.head_node_log.yaml",
     ],
 )
 def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
@@ -63,8 +64,10 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
 
         if cluster_config.is_cw_logging_enabled:
             _verify_head_node_logs_conditions(cluster_config, output_yaml)
+            _verify_common_error_metrics_graphs(cluster_config, output_yaml)
         else:
             assert_that(output_yaml).does_not_contain("Head Node Logs")
+            assert_that(output_yaml).does_not_contain("Metrics for Common Errors")
     else:
         assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
         assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
@@ -169,3 +172,39 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
     assert_that(output_yaml).contains("chef-client")
     assert_that(output_yaml).contains("cloud-init")
     assert_that(output_yaml).contains("supervisord")
+
+
+def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
+    """Verify conditions related to the common error section."""
+    scheduler = cluster_config.scheduling.scheduler
+    slurm_related_metrics = [
+        "Metrics for Common Errors",
+        "Iam Policy Errors",
+        "AMI larger than root volume",
+        "Vcpu limit",
+        "Volume Limit",
+        "Node Capacity Insufficient",
+        "Other launched instance failures",
+        "Replacement Timeout Expires",
+        "EC2 Maintenance Events",
+        "EC2 scheduled maintenance event",
+        "No corresponding instance in EC2 for node",
+        "Slurm Node Not Responding",
+    ]
+    if scheduler == "slurm":
+        # Contains error metric title
+        assert_that(output_yaml).contains("Metrics for Common Errors")
+        for metric in slurm_related_metrics:
+            assert_that(output_yaml).contains(metric)
+        if cluster_config.has_custom_actions_in_queue:
+            assert_that(output_yaml).contains("Cannot retrieve custom script")
+            assert_that(output_yaml).contains("Error With Custom Script")
+        else:
+            assert_that(output_yaml).does_not_contain("Cannot retrieve custom script")
+            assert_that(output_yaml).does_not_contain("Error With Custom Script")
+    else:
+        for metric in slurm_related_metrics:
+            assert_that(output_yaml).does_not_contain(metric)
+            assert_that(output_yaml).does_not_contain("Metrics for Common Errors")
+            assert_that(output_yaml).does_not_contain("Cannot retrieve custom script")
+            assert_that(output_yaml).does_not_contain("Error With Custom Script")
