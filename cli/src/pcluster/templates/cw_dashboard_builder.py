@@ -140,9 +140,9 @@ class CWDashboardConstruct(Construct):
 
         # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
-            self._add_cw_log()
             if self.config.scheduling.scheduler == "slurm":
                 self._add_custom_error_metrics()
+            self._add_cw_log()
 
     def _update_coord(self, d_x, d_y):
         """Calculate coordinates for the new graph."""
@@ -353,13 +353,13 @@ class CWDashboardConstruct(Construct):
                 "Jobs Not Starting Errors",
                 jobs_not_starting_errors,
                 "General [Troubleshooting Resources]"
-                "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
+                "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",  # TODO: FIX ME
             ),
             _ErrorMetric(
                 "Issues with EC2 Instances",
                 compute_node_events,
                 "General [Troubleshooting Resources]"
-                "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
+                "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",  # TODO: FIX ME
             ),
         ]
         if self.config.head_node.custom_actions or self.config.has_custom_actions_in_queue:
@@ -368,10 +368,10 @@ class CWDashboardConstruct(Construct):
                     "Custom Script Errors",
                     custom_script_errors,
                     "Problems with custom actions [Troubleshooting Resources]"
-                    "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",
+                    "(https://docs.aws.amazon.com/parallelcluster/latest/ug/custom-bootstrap-actions-v3.html)",
                 )
             )
-        self._add_text_widget("## Metrics for Common Errors")  # TODO: Decision
+        self._add_text_widget("# Metrics for Common Errors")  # TODO: Decision
         self._add_error_metrics_graph_widgets(cluster_common_errors)
         self._add_error_metrics_troubleshooting_widgets(cluster_common_errors)
 
