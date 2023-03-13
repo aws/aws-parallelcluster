@@ -428,6 +428,12 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
     validators_path = "pcluster.validators"
 
     cluster_validators = validators_path + ".cluster_validators"
+    head_node_lt_validator = mocker.patch(
+        cluster_validators + ".HeadNodeLaunchTemplateValidator._validate", return_value=[]
+    )
+    compute_resources_lt_validator = mocker.patch(
+        cluster_validators + ".ComputeResourceLaunchTemplateValidator._validate", return_value=[]
+    )
     scheduler_os_validator = mocker.patch(cluster_validators + ".SchedulerOsValidator._validate", return_value=[])
     feature_validators = validators_path + ".feature_validators"
     feature_region_validator = mocker.patch(feature_validators + ".FeatureRegionValidator._validate", return_value=[])
@@ -673,6 +679,8 @@ def test_scheduler_plugin_validators_are_called_with_correct_argument(test_datad
     user_name_validator.assert_has_calls([call(user_name="user1"), call(user_name="user2")])
 
     # No assertion on the argument for minor validators
+    head_node_lt_validator.assert_called_once()
+    compute_resources_lt_validator.assert_called_once()
     name_validator.assert_called()
     fsx_s3_validator.assert_called()
     fsx_backup_options_validator.assert_called()
