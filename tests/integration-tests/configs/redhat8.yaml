@@ -303,7 +303,7 @@ test-suites:
     # Ephemeral test requires instance type with instance store
     test_ephemeral.py::test_head_node_stop:
       dimensions:
-        - regions: ["us-east-1"]
+        - regions: ["use1-az4"]
           instances: ["m5d.xlarge", "h1.2xlarge"]
           oss: ["alinux2", "rhel8"]
           schedulers: ["slurm"]
