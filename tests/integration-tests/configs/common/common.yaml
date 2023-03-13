@@ -44,7 +44,7 @@ cfn-init:
     dimensions:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO_NO_RHEL8 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
   test_cfn_init.py::test_install_args_quotes:
     dimensions:
