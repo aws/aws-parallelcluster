@@ -163,7 +163,7 @@ test-suites:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
       dimensions:
         - regions: [ "us-west-2" ]
-          oss: [ "alinux2", "rhel8"]
+          oss: [ "rhel8" ]
   scaling:
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
