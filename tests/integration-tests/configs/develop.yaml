@@ -84,27 +84,27 @@ test-suites:
       dimensions:
         - regions: {{ common.REGIONS_COMMERCIAL }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
         - regions: {{ common.REGIONS_CHINA }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_CHINA_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_CHINA_X86 }}
           schedulers: ["slurm"]
         - regions: {{ common.REGIONS_GOVCLOUD }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_GOVCLOUD_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_GOVCLOUD_X86 }}
           schedulers: ["slurm"]
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: {{ common.SCHEDULERS_TRAD }}
         - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_CHINA_ARM_NO_RHEL8 }}
+          oss: {{ common.OSS_CHINA_ARM }}
           schedulers: ["slurm"]
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_GOVCLOUD_ARM_NO_RHEL8 }}
+          oss: {{ common.OSS_GOVCLOUD_ARM }}
           schedulers: ["slurm"]
   trainium:
     test_trainium.py::test_trainium:
