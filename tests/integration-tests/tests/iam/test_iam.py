@@ -636,6 +636,9 @@ def _create_permission_boundary(permission_boundary_name):
                         "logs:CreateLogGroup",
                         "logs:TagResource",
                         "logs:UntagResource",
+                        "logs:DescribeMetricFilters",
+                        "logs:PutMetricFilter",
+                        "logs:deleteMetricFilter",
                     ],
                     "Condition": {
                         "Fn::If": [
