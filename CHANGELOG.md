@@ -25,9 +25,16 @@ CHANGELOG
 -----
 **ENHANCEMENTS**
 - Add a new way to distribute ParallelCluster as a self-contained executable shipped with a dedicated installer.
-- Add support for US isolated regions: us-iso-east-1 and us-isob-east-1.
+- Add support for US isolated region us-isob-east-1.
 
 **CHANGES**
+- Upgrade EFA installer to `1.22.0`
+  - Efa-driver: `efa-2.1.1g`
+  - Efa-config: `efa-config-1.13-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.17.0-1`
+  - Rdma-core: `rdma-core-43.0-1`
+  - Open MPI: `openmpi40-aws-4.1.5-1`
 - Upgrade NICE DCV to version `2022.2-14521`.
   - server: `2022.2.14521-1`
   - xdcv: `2022.2.519-1`
