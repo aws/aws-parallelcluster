@@ -642,11 +642,11 @@ storage:
     dimensions:
       - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO_NO_RHEL8 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
