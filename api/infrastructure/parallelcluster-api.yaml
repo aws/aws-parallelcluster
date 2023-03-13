@@ -730,6 +730,9 @@ Resources:
               - logs:CreateLogGroup
               - logs:TagResource
               - logs:UntagResource
+              - logs:DescribeMetricFilters
+              - logs:PutMetricFilter
+              - logs:deleteMetricFilter
             Resource: '*'
             Effect: Allow
             Condition: !If

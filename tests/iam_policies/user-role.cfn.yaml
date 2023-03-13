@@ -486,6 +486,9 @@ Resources:
               - logs:CreateLogGroup
               - logs:TagResource
               - logs:UntagResource
+              - logs:DescribeMetricFilters
+              - logs:PutMetricFilter
+              - logs:deleteMetricFilter
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -1043,6 +1046,12 @@ Resources:
               - cloudwatch:PutMetricAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - logs:DescribeMetricFilters
+              - logs:PutMetricFilter
+              - logs:deleteMetricFilter
             Resource: "*"
 
 Outputs:
