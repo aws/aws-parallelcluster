@@ -183,7 +183,6 @@ SUPPORTED_REGIONS = [
     "us-east-1",
     "us-east-2",
     "us-iso-east-1",
-    "us-iso-west-1",
     "us-isob-east-1",
     "us-gov-east-1",
     "us-gov-west-1",
