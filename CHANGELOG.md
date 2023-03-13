@@ -4,7 +4,8 @@ CHANGELOG
 3.5.1
 -----
 **ENHANCEMENTS**
-- Add support for US isolated regions: us-iso-* and us-isob-*.
+- Add a new way to distribute ParallelCluster as a self-contained executable shipped with a dedicated installer.
+- Add support for US isolated regions: us-iso-east-1 and us-isob-east-1.
 
 **CHANGES**
 - Upgrade NICE DCV to version `2022.2-14521`.
