@@ -190,6 +190,7 @@ test-suites:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
 # This test cannot be executed in US isolated regions
 # because it makes use of build-image, which is not supported in these regions.
 #    test_iam_image.py::test_iam_roles:
