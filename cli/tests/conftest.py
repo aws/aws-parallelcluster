@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from datetime import datetime
+from typing import List
 
 import boto3
 import pytest
@@ -22,6 +23,7 @@ from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.aws.common import StackNotFoundError
 from pcluster.cli.entrypoint import main
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME
+from pcluster.templates.cdk_assets_manager import ClusterAssetFile
 
 
 @pytest.fixture(autouse=True)
@@ -345,3 +347,14 @@ def mock_image_stack(mocker):
             mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
 
     return _mock_image_stack
+
+
+@pytest.fixture
+def mock_cloud_assembly(mocker):
+    def _mock_cloud_assembly(file_assets: List[ClusterAssetFile], directory="test_dir"):
+        cluster_cloud_assembly = mocker.patch("pcluster.templates.cdk_assets_manager.CDKV1ClusterCloudAssembly")
+        cluster_cloud_assembly.get_assets.return_value = file_assets
+        cluster_cloud_assembly.get_cloud_assembly_directory.return_value = directory
+        return cluster_cloud_assembly
+
+    return _mock_cloud_assembly
