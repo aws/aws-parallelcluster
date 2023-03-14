@@ -79,6 +79,7 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:UpdateItem
                   - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
                 Effect: Allow
               - Action: ec2:TerminateInstances
