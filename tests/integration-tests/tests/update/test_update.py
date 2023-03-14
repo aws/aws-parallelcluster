@@ -208,7 +208,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "enable_efa": False,
                 },
             },
-            "compute_type": "spot",
+            "compute_type": "ondemand" if "us-iso" in region else "spot",
         },
         "queue2": {
             "compute_resources": {
