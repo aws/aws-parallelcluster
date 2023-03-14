@@ -82,10 +82,10 @@ def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_e
         assert_that(dashboard_response["DashboardName"]).is_equal_to(dashboard_name)
         if cw_log_enabled:
             assert_that(dashboard_response["DashboardBody"]).contains("Head Node Logs")
-            assert_that(dashboard_response["DashboardBody"]).contains("Metrics for Common Errors")
+            assert_that(dashboard_response["DashboardBody"]).contains("Cluster Health Metrics")
         else:
             assert_that(dashboard_response["DashboardBody"]).does_not_contain("Head Node Logs")
-            assert_that(dashboard_response["DashboardBody"]).does_not_contain("Metrics for Common Errors")
+            assert_that(dashboard_response["DashboardBody"]).does_not_contain("Cluster Health Metrics")
     else:
         try:
             cw_client.get_dashboard(DashboardName=dashboard_name)

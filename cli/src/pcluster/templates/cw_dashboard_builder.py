@@ -31,13 +31,13 @@ class Coord:
 _PclusterMetric = namedtuple(
     "_PclusterMetric", ["title", "metrics", "supported_vol_types", "namespace", "additional_dimensions"]
 )
-_CustomMetricFilter = namedtuple("MetricFilter", ["metric_name", "filter_pattern", "metric_value"])
+_CustomMetricFilter = namedtuple("_CustomMetricFilter", ["metric_name", "filter_pattern", "metric_value"])
 _Filter = namedtuple("new_filter", ["pattern", "param"])
 _CWLogWidget = namedtuple(
     "_CWLogWidget",
     ["title", "conditions", "fields", "filters", "sort", "limit"],
 )
-_ErrorMetric = namedtuple("_ErrorMetric", ["title", "metric_filters", "troubleshooting_links"])
+_ErrorMetric = namedtuple("_ErrorMetric", ["title", "metric_filters"])
 
 
 def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None, namespace=None, additional_dimensions=None):
@@ -179,29 +179,15 @@ class CWDashboardConstruct(Construct):
         self.cloudwatch_dashboard.add_widgets(text_widget)
         self._update_coord_after_section(d_y=1)
 
-    def _generate_graph_widget(self, title, metric_list, error_label):
+    def _generate_graph_widget(self, title, metric_list):
         """Generate a graph widget and update the coordinates."""
-        if error_label:
-            widget = cloudwatch.GraphWidget(
-                title=title,
-                left=metric_list,
-                region=self._stack_region,
-                width=self.graph_width,
-                height=self.graph_height,
-                left_annotations=[
-                    cloudwatch.HorizontalAnnotation(
-                        value=1, label="github.com/aws/aws-parallelcluster/wiki#known-issues-"
-                    ),
-                ],
-            )
-        else:
-            widget = cloudwatch.GraphWidget(
-                title=title,
-                left=metric_list,
-                region=self._stack_region,
-                width=self.graph_width,
-                height=self.graph_height,
-            )
+        widget = cloudwatch.GraphWidget(
+            title=title,
+            left=metric_list,
+            region=self._stack_region,
+            width=self.graph_width,
+            height=self.graph_height,
+        )
         widget.position(x=self.coord.x_value, y=self.coord.y_value)
         self._update_coord(self.graph_width, self.graph_height)
         return widget
@@ -239,11 +225,11 @@ class CWDashboardConstruct(Construct):
                     metric_list.append(cloudwatch_metric)
 
             if len(metric_list) > 0:  # Add the metrics only if there exist support volumes for it
-                graph_widget = self._generate_graph_widget(metric_condition_params.title, metric_list, False)
+                graph_widget = self._generate_graph_widget(metric_condition_params.title, metric_list)
                 widgets_list.append(graph_widget)
         return widgets_list
 
-    def custom_pcluster_metric_filter(self, metric_name, filter_pattern, custom_namespace, metric_value):
+    def _add_custom_pcluster_metric_filter(self, metric_name, filter_pattern, custom_namespace, metric_value):
         """Adding custom metric filter from named tuple."""
         metric_filter = logs.CfnMetricFilter(
             scope=self.stack_scope,
@@ -258,122 +244,134 @@ class CWDashboardConstruct(Construct):
                 )
             ],
         )
+        # TODO: Override property since dimension is not supported in aws-cdk L1, change it once we move to aws-cdk L2
+        metric_filter.add_property_override(
+            "MetricTransformations.0.Dimensions", [{"Key": "ClusterName", "Value": "$.cluster-name"}]
+        )
         metric_filter.add_depends_on(self.cw_log_group)
         return metric_filter
 
     def _add_custom_error_metrics(self):
         """Create custom error metric filter and outputs to cloudwatch graph."""
-        node_launch_failure_event_pattern = '{ $.event-type = "node-launch-failure-count" && $.scheduler = "slurm" }'
+
+        def _generate_metric_filter_pattern(event_type, failure_type, failure_name="failure-type"):
+            return (
+                f"{{ $.event-type = {event_type} && $.detail.{failure_name} = {failure_type} && "
+                '$.scheduler = "slurm" }'
+            )
+
+        metric_value = "$.detail.count"
+        launch_failure_event_type = "node-launch-failure-count"
         jobs_not_starting_errors = [
             _CustomMetricFilter(
-                metric_name="Iam Policy Errors",
-                filter_pattern=node_launch_failure_event_pattern,
-                metric_value="$.detail.iam-policy-errors.count",
+                metric_name="IamPolicyErrors",
+                filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "iam-policy-errors"),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="AMI larger than root volume",
-                filter_pattern=node_launch_failure_event_pattern,
-                metric_value="$.detail.custom-ami-errors.count",
+                metric_name="AmiLargerThanRootVolume",
+                filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "custom-ami-errors"),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="Vcpu limit",
-                filter_pattern=node_launch_failure_event_pattern,
-                metric_value="$.detail.vcpu-limit-failures.count",
+                metric_name="VcpuLimit",
+                filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "vcpu-limit-failures"),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="Volume Limit",
-                filter_pattern=node_launch_failure_event_pattern,
-                metric_value="$.detail.volume-limit-failures.count",
+                metric_name="VolumeLimit",
+                filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "volume-limit-failures"),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="Node Capacity Insufficient",
-                filter_pattern=node_launch_failure_event_pattern,
-                metric_value="$.detail.ice-failures.count",
+                metric_name="NodeCapacityInsufficient",
+                filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "ice-failures"),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="Other launched instance failures",
-                filter_pattern=node_launch_failure_event_pattern,
-                metric_value="$.detail.other-failure.count",
+                metric_name="OtherLaunchedInstanceFailures",
+                filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "other-failures"),
+                metric_value=metric_value,
             ),
         ]
 
-        custom_scripts_failure_event_pattern = (
-            '{ $.event-type = "custom-scripts-failure-count" && $.scheduler = "slurm" }'
-        )
-        custom_script_errors = [  # TODO: Change Me
-            _CustomMetricFilter(
-                metric_name="Cannot retrieve custom script",
-                filter_pattern=custom_scripts_failure_event_pattern,
-                metric_value="1",
-            ),
-            _CustomMetricFilter(
-                metric_name="Error With Custom Script",
-                filter_pattern=custom_scripts_failure_event_pattern,
-                metric_value="1",
-            ),
-        ]
+        # custom_script_errors = [  # TODO: Change Me
+        #     _CustomMetricFilter(
+        #         metric_name="CannotRetrieveCustomScript",
+        #         filter_pattern=custom_scripts_failure_event_pattern,
+        #         metric_value="1",
+        #     ),
+        #     _CustomMetricFilter(
+        #         metric_name="ErrorWithCustomScript",
+        #         filter_pattern=custom_scripts_failure_event_pattern,
+        #         metric_value="1",
+        #     ),
+        # ]
 
         compute_node_events = [
             _CustomMetricFilter(
-                metric_name="Replacement Timeout Expires",
-                filter_pattern='{ $.event-type = "protected-mode-error-count" && $.scheduler = "slurm" }',
-                metric_value="$.detail.static-replacement-timeout-errors.count",
+                metric_name="ReplacementTimeoutExpires",
+                filter_pattern=_generate_metric_filter_pattern(
+                    "protected-mode-error-count", "static-replacement-timeout-error"
+                ),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="Resume Timeout Expires",
-                filter_pattern='{ $.event-type = "protected-mode-error-count" && $.scheduler = "slurm" }',
-                metric_value="$.detail.dynamic-resume-timeout-errors.count",
+                metric_name="ResumeTimeoutExpires",
+                filter_pattern=_generate_metric_filter_pattern(
+                    "protected-mode-error-count", "dynamic-resume-timeout-error"
+                ),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="EC2 Maintenance Events",
-                filter_pattern='{ $.event-type = "nodes-failing-health-check-count" && '
-                '$.detail.health-check-type = "ec2_health_check" && $.scheduler = "slurm" }',
-                metric_value="$.detail.count",
+                metric_name="EC2MaintenanceEvent",
+                filter_pattern=_generate_metric_filter_pattern(
+                    "nodes-failing-health-check-count", "ec2_health_check", failure_name="health-check-type"
+                ),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="EC2 scheduled maintenance event",
-                filter_pattern='{ $.event-type = "nodes-failing-health-check-count" && '
-                '$.detail.health-check-type = "scheduled_event_health_check" && $.scheduler = "slurm" }',
-                metric_value="1",
+                metric_name="EC2ScheduledMaintenanceEvent",
+                filter_pattern=_generate_metric_filter_pattern(
+                    "nodes-failing-health-check-count", "scheduled_event_health_check", failure_name="health-check-type"
+                ),
+                metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="No corresponding instance in EC2 for node",
+                metric_name="NoCorrespondingInstanceForNode",
                 filter_pattern='{ $.event-type = "invalid-backing-instance-count" && $.scheduler = "slurm" }',
-                metric_value="$.detail.count",
+                metric_value=metric_value,
             ),
             # Use text matching here because it comes from slurmctld.log
             _CustomMetricFilter(
-                metric_name="Slurm Node Not Responding",
-                filter_pattern="Nodes not responding setting DOWN",
-                metric_value="1",
+                metric_name="SlurmNodeNotResponding",
+                filter_pattern='{ $.event-type = "node-not-responding-down-count" && $.scheduler = "slurm" }',
+                metric_value=metric_value,
             ),
         ]
         cluster_common_errors = [
             _ErrorMetric(
-                "Jobs Not Starting Errors",
+                "JobsNot Starting Errors",
                 jobs_not_starting_errors,
-                "General [Troubleshooting Resources]"
-                "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",  # TODO: FIX ME
             ),
             _ErrorMetric(
                 "Issues with EC2 Instances",
                 compute_node_events,
-                "General [Troubleshooting Resources]"
-                "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)",  # TODO: FIX ME
             ),
         ]
-        if self.config.head_node.custom_actions or self.config.has_custom_actions_in_queue:
-            cluster_common_errors.append(
-                _ErrorMetric(
-                    "Custom Script Errors",
-                    custom_script_errors,
-                    "Problems with custom actions [Troubleshooting Resources]"
-                    "(https://docs.aws.amazon.com/parallelcluster/latest/ug/custom-bootstrap-actions-v3.html)",
-                )
-            )
-        self._add_text_widget("# Metrics for Common Errors")  # TODO: Decision
+        # if self.config.has_custom_actions_in_queue: # TODO: Uncomment here when custom script is implemented
+        #     cluster_common_errors.append(
+        #         _ErrorMetric(
+        #             "Custom Script Errors",
+        #             custom_script_errors,
+        #         )
+        #     )
+        self._add_text_widget("# Cluster Health Metrics")
         self._add_error_metrics_graph_widgets(cluster_common_errors)
-        self._add_error_metrics_troubleshooting_widgets(cluster_common_errors)
+        self._add_text_widget(
+            "General [Troubleshooting Resources]"
+            "(https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html)"
+        )
 
     def _add_storage_widgets(self, metrics, storages_list, namespace, dimension_name):
         widgets_list = []
@@ -387,7 +385,7 @@ class CWDashboardConstruct(Construct):
                         dimensions_map={dimension_name: storage.id},
                     )
                     metric_list.append(cloudwatch_metric)
-            graph_widget = self._generate_graph_widget(metrics_param.title, metric_list, False)
+            graph_widget = self._generate_graph_widget(metrics_param.title, metric_list)
             widgets_list.append(graph_widget)
         return widgets_list
 
@@ -439,7 +437,7 @@ class CWDashboardConstruct(Construct):
                     metric_list.append(cloudwatch_metric)
         widgets_list = []
         for title, metric_list in metric_graphs.items():
-            widgets_list.append(self._generate_graph_widget(title, metric_list, False))
+            widgets_list.append(self._generate_graph_widget(title, metric_list))
         return widgets_list
 
     def _add_head_node_instance_metrics_graphs(self):
@@ -476,7 +474,7 @@ class CWDashboardConstruct(Construct):
         widgets_list = []
         for metrics_param in ec2_metrics + cwagent_metrics:
             metrics_list = self._generate_metrics_list(metrics_param)
-            graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list, False)
+            graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list)
             widgets_list.append(graph_widget)
 
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
@@ -553,7 +551,7 @@ class CWDashboardConstruct(Construct):
 
     def _add_cw_log(self):
         # Create a text widget for subtitle "Head Node Logs"
-        self._add_text_widget("## Head Node Logs")
+        self._add_text_widget("# Head Node Logs")
 
         dcv_enabled = self.config.is_dcv_enabled
         scheduler = self.config.scheduling.scheduler
@@ -712,12 +710,12 @@ class CWDashboardConstruct(Construct):
 
     def _add_error_metrics_graph_widgets(self, cluster_common_errors):
         """Add cluster error metrics graph widgets."""
-        custom_namespace = "ParallelCluster/Errors/" + self.config.cluster_name  # TODO: Decision
+        custom_namespace = "ParallelCluster"
         widgets_list = []
         for error in cluster_common_errors:
             metric_list = []
             for new_filter in error.metric_filters:
-                self.custom_pcluster_metric_filter(
+                self._add_custom_pcluster_metric_filter(
                     metric_name=new_filter.metric_name,
                     filter_pattern=new_filter.filter_pattern,
                     custom_namespace=custom_namespace,
@@ -728,22 +726,11 @@ class CWDashboardConstruct(Construct):
                     metric_name=new_filter.metric_name,
                     period=Duration.minutes(1),
                     statistic="Sum",
+                    dimensions_map={"ClusterName": self.config.cluster_name},
                 )
                 metric_list.append(cloudwatch_metric)
-            graph_widget = self._generate_graph_widget(error.title, metric_list, False)
+            graph_widget = self._generate_graph_widget(error.title, metric_list)
             widgets_list.append(graph_widget)
 
         self.cloudwatch_dashboard.add_widgets(*widgets_list)
         self._update_coord_after_section(self.graph_height)
-
-    def _add_error_metrics_troubleshooting_widgets(self, cluster_common_errors):
-        """Add troubleshooting text widgets."""
-        text_widgets = []
-        for error in cluster_common_errors:
-            text_widget = cloudwatch.TextWidget(markdown="\n" + error.troubleshooting_links + "\n", height=1, width=6)
-            text_widget.position(x=self.coord.x_value, y=self.coord.y_value)
-            text_widgets.append(text_widget)
-            self.coord.x_value += self.graph_width
-        self.cloudwatch_dashboard.add_widgets(*text_widgets)
-        self.coord.x_value = 0
-        self.coord.y_value += 1
