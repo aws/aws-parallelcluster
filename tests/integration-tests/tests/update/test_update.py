@@ -532,7 +532,7 @@ def test_update_instance_list(
         submit_command_args={"command": "sleep 1000", "nodes": 1, "other_options": "--exclusive"}
     )
     # Check instance type is the expected for min count
-    _check_instance_type(ec2, instances, "c5.xlarge")
+    _check_instance_type(ec2, instances, "c5d.xlarge")
 
     # Update cluster with new configuration, adding new instance type with lower price
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
@@ -549,8 +549,8 @@ def test_update_instance_list(
     new_instances = cluster.get_cluster_instance_ids(node_type="Compute")
     logging.info(new_instances)
     new_instances.remove(instances[0])
-    # Check new instance type is the expected one
-    _check_instance_type(ec2, new_instances, "c5d.xlarge")
+    # Check new instance type is the expected one, i.e. the one with lower price.
+    _check_instance_type(ec2, new_instances, "c5.xlarge")
 
     # Update cluster removing instance type from the list
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.remove.yaml")
