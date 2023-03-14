@@ -735,7 +735,7 @@ storage:
     dimensions:
       - regions: ["us-east-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
   test_deletion_policy.py::test_retain_on_deletion:
     dimensions:
