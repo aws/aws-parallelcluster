@@ -30,7 +30,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   cfn-init:
     test_cfn_init.py::test_replace_compute_on_failure:
@@ -52,12 +52,12 @@ test-suites:
         # 2) run the test for all x86 OSes with slurm
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss:  ["ubuntu2004"]
           schedulers: ["slurm"]
         # 3) run the test for all ARM OSes on an ARM instance
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          oss:  ["alinux2"]
           schedulers: ["slurm"]
     test_compute_console_output_logging.py::test_custom_action_error:
       dimensions:
@@ -90,12 +90,12 @@ test-suites:
         # DCV on GPU enabled instance
         - regions: ["us-east-1"]
           instances: ["g4dn.2xlarge"]
-          oss: {{common.OSS_COMMERCIAL_X86}}
+          oss: ["ubuntu1804"]
           schedulers: ["slurm"]
         # DCV on ARM + GPU
         - regions: ["us-east-1"]
           instances: ["g5g.2xlarge"]
-          oss: ["alinux2", "ubuntu1804"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
   disable_hyperthreading:
     test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
@@ -163,7 +163,7 @@ test-suites:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
       dimensions:
         - regions: [ "us-west-2" ]
-          oss: [ "alinux2", "rhel8"]
+          oss: [ "rhel8" ]
   scaling:
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
@@ -214,7 +214,7 @@ test-suites:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ OSS_COMMERCIAL_X86_RH8 }}
+          oss: {{ OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_pmix:
       dimensions:
@@ -296,14 +296,14 @@ test-suites:
           schedulers: ["slurm"]
     test_ebs.py::test_ebs_existing:
       dimensions:
-        - regions: ["me-south-1"]
+        - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7", "rhel8"]
           schedulers: ["slurm"]
     # Ephemeral test requires instance type with instance store
     test_ephemeral.py::test_head_node_stop:
       dimensions:
-        - regions: ["us-east-1"]
+        - regions: ["use1-az4"]
           instances: ["m5d.xlarge", "h1.2xlarge"]
           oss: ["alinux2", "rhel8"]
           schedulers: ["slurm"]
@@ -312,7 +312,7 @@ test-suites:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204", "rhel8"]
+          oss: ["ubuntu2004", "rhel8"]
     test_update.py::test_update_compute_ami:
       dimensions:
         - regions: ["eu-west-1"]

@@ -2704,16 +2704,18 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         checked_images = []
-        for queue in self.scheduling.queues:
+        for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
-            self._register_validator(
-                ComputeResourceLaunchTemplateValidator,
-                queue=queue,
-                ami_id=queue_image,
-                os=self.image.os,
-                tags=self.get_cluster_tags(),
-                imds_support=self.imds.imds_support,
-            )
+            if index == 0:
+                # Execute LaunchTemplateValidator only for the first queue
+                self._register_validator(
+                    ComputeResourceLaunchTemplateValidator,
+                    queue=queue,
+                    ami_id=queue_image,
+                    os=self.image.os,
+                    tags=self.get_cluster_tags(),
+                    imds_support=self.imds.imds_support,
+                )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
             root_volume = queue.compute_settings.local_storage.root_volume
             root_volume_size = root_volume.size

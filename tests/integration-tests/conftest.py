@@ -1180,20 +1180,20 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     odcr_template.set_version()
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
     public_subnet = vpc_stack.get_public_subnet()
-    public_subnets = vpc_stack.get_all_public_subnets().copy()
-    public_subnets.remove(public_subnet)
-    availability_zone = boto3.resource("ec2").Subnet(public_subnet).availability_zone
-    availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone
+    public_subnets = vpc_stack.get_all_public_subnets()
+    default_public_az = boto3.resource("ec2").Subnet(public_subnet).availability_zone
+    availability_zone_1 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone
+    availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[1]).availability_zone
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=default_public_az,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
         InstanceType="m5.2xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=default_public_az,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
         InstanceType="r5.xlarge",
@@ -1202,7 +1202,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     pg_name = placement_group_stack.cfn_resources["PlacementGroup"]
     pg_odcr = ec2.CapacityReservation(
         "integTestsPgOdcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=default_public_az,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
         InstanceType="m5.xlarge",
@@ -1250,7 +1250,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     # odcr resources for MultiAZ integ-tests
     az1_odcr = ec2.CapacityReservation(
         "az1Odcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=availability_zone_1,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
         InstanceType="t3.micro",

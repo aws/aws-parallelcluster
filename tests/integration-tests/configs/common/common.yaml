@@ -44,7 +44,7 @@ cfn-init:
     dimensions:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO_NO_RHEL8 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
   test_cfn_init.py::test_install_args_quotes:
     dimensions:
@@ -642,11 +642,11 @@ storage:
     dimensions:
       - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO_NO_RHEL8 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
@@ -735,7 +735,7 @@ storage:
     dimensions:
       - regions: ["us-east-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
   test_deletion_policy.py::test_retain_on_deletion:
     dimensions:
@@ -746,7 +746,7 @@ storage:
   # Ephemeral test requires instance type with instance store
   test_ephemeral.py::test_head_node_stop:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["use1-az4"]
         instances: ["m5d.xlarge", "h1.2xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -789,11 +789,11 @@ update:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
   test_update.py::test_multi_az_create_and_update:
     dimensions:
