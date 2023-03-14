@@ -119,6 +119,11 @@ Resources:
                   - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
                   - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
               - Action:
+                  - ec2:GetConsoleOutput
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+              - Action:
                   - cloudformation:DescribeStackResource
                   - cloudformation:SignalResource
                   - cloudformation:DescribeStacks
