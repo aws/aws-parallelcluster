@@ -91,7 +91,7 @@
         Encrypted: true
         Size: null
         VolumeType: gp3
-        Throughput: 130
+        Throughput: 125
         Iops: 3000
   CustomActions: null
   CustomSettings: null
