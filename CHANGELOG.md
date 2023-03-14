@@ -41,6 +41,10 @@ CHANGELOG
   - gl: `2022.2.1012-1`
   - web_viewer: `2022.2.14521-1`
 
+**BUG FIXES**
+- Fix update cluster to remove shared EBS volumes can potentially cause node launching failures if `MountDir` match the same pattern in `/etc/exports`.
+- Fix for compute_console_output log file being truncated at every clustermgtd iteration.
+
 3.5.0
 -----
 
