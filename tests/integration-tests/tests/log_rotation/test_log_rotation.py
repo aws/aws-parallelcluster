@@ -259,7 +259,7 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
 
 
 def _test_logs_written_to_new_file(logs, remote_command_executor, compute_node_ip=None):
-    """Test newly genreated logs write to log_file.log instead of log_file.log.1."""
+    """Test newly generated logs write to log_file.log instead of log_file.log.1."""
     # test logs are written to new log files after rotation
     for log in logs:
         if log.get("trigger_new_entries"):
