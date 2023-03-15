@@ -1935,9 +1935,14 @@ class FlexibleInstanceType(Resource):
 class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
-    def __init__(self, instances: List[FlexibleInstanceType], **kwargs):
+    def __init__(self,
+                 instances: List[FlexibleInstanceType],
+                 custom_slurm_settings: Dict = None,
+                 **kwargs,
+    ):
         super().__init__(**kwargs)
         self.instances = Resource.init_param(instances)
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
 
     @property
     def instance_types(self) -> List[str]:
@@ -1972,10 +1977,15 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
 class SlurmComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with a Single Instance Type."""
 
-    def __init__(self, instance_type, **kwargs):
+    def __init__(self,
+                 instance_type,
+                 custom_slurm_settings: Dict = None,
+                 **kwargs,
+    ):
         super().__init__(**kwargs)
         self.instance_type = Resource.init_param(instance_type)
         self.__instance_type_info = None
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
 
     @property
     def instance_types(self) -> List[str]:
@@ -2161,9 +2171,11 @@ class SlurmQueue(_CommonQueue):
     def __init__(
         self,
         allocation_strategy: str = None,
+        custom_slurm_settings: Dict = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
