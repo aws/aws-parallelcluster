@@ -189,6 +189,18 @@ def assert_instance_has_desired_imds_v2_setting(instance, status):
     assert_that(imds_v2_status).is_equal_to(status)
 
 
+def assert_instance_has_desired_tags(instance, tags: List[dict]):
+    instance_id = instance.get("InstanceId")
+    instance_tags = instance.get("Tags")
+    instance_name = [tag["Value"] for tag in instance_tags if tag["Key"] == "Name"]
+    instance_name_part = f" ({instance_name[0]})" if instance_name else ""
+
+    logging.info(f"Instance {instance_id}{instance_name_part} has tags {instance_tags}")
+
+    for tag in tags:
+        assert_that(instance_tags).contains(tag)
+
+
 def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_command_executor=None):
     logging.info("Asserting access to AWS caller identity is correct")
 
