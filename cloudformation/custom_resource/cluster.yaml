@@ -33,7 +33,7 @@ Resources:
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Description: Library which contains aws-parallelcluster python package and dependencies
       Content:
-        S3Bucket: !Sub ${Region}-aws-parallelcluster
+        S3Bucket: !Sub ${AWS::Region}-aws-parallelcluster
         S3Key: !Sub
         - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
         - { Version: !FindInMap [ParallelCluster, Constants, Version] }
@@ -121,14 +121,14 @@ Resources:
           from pcluster.api.errors import exception_message, NotFoundException
           import pcluster.lib as pc
 
-          crhelper_path = "/opt/python//pcluster/resources/custom_resources/custom_resources_code"
+          crhelper_path = "/opt/python/pcluster/resources/custom_resources/custom_resources_code"
           sys.path.insert(0, crhelper_path)
           from crhelper import CfnResource
           helper = CfnResource()
 
           def update_response(response):
-              keep_keys = {"version", "creattionTime", "clusterName", "clusterStatus", "cloudformationStackArn", "lastUpdatedTime", "region"}
-              helper.Data.update({k: v for k, v in response.items() if k in keep_keys})
+              logger.info(response)
+              helper.Data.update(response)
 
           def serialize(val):
               return utils.to_iso_timestr(val) if isinstance(val, datetime.date) else val
@@ -141,7 +141,9 @@ Resources:
               elif event["RequestType"].upper() == "UPDATE" and event["PhysicalResourceId"] != properties.get("ClusterName"):
                   raise ValueError("Cannot update the ClusterName in the properties.")
 
-              physical_resource_id = properties["ClusterName"]
+              cluster_name = properties["ClusterName"]
+              logger.info(f"{event['RequestType'].upper()}: {cluster_name}")
+              physical_resource_id = cluster_name
 
               try:
                   kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in properties.items() if k not in {"ServiceToken"}}, "wait": False}
@@ -153,6 +155,7 @@ Resources:
                   message = pcluster.api.errors.exception_message(e)
                   str_msg = encoder.JSONEncoder().encode(message)
                   if not re.search(r"No changes found", str_msg):
+                    logger.info(f"No changes found to update: {cluster_name}")
                     raise ValueError(str_msg)
 
               return physical_resource_id
@@ -168,6 +171,7 @@ Resources:
           @helper.delete
           def delete(event, context):
               cluster_name = event["ResourceProperties"].get("ClusterName")
+              logger.info(f"Deleting: {cluster_name}")
               try:
                   update_response(pc.delete_cluster(cluster_name=cluster_name))
               except (ParameterException, NotFoundException): # cluster deleted or invalid name -- ignore here.
@@ -195,7 +199,9 @@ Resources:
               # only invalid parameter can be the name
               except (ParameterException, NotFoundException):
                   if event["RequestType"].upper() == "DELETE":
-                      return True
+                      # Returning a value here signifies that the delete is completed and we can stop polling
+                      # not returning a value here causes cfn resource helper to keep polling.
+                      return cluster_name
                   raise ValueError(f"{cluster_name} failed {event['RequestType'].upper()}. See substack for further details.")
 
           @helper.poll_create
