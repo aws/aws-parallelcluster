@@ -254,7 +254,9 @@ def reboot_head_node(cluster, remote_command_executor=None):
     logging.info(f"result.failed={result.failed}")
     logging.info(f"result.stdout={result.stdout}")
     wait_head_node_running(cluster)
-    time.sleep(120)  # Wait time is required for the head node to complete the reboot
+    # Wait time is required for the head node to complete the reboot.
+    # We observed that headnode in US isolated regions may take more time to reboot.
+    time.sleep(240 if "us-iso" in cluster.region else 120)
     logging.info(f"Rebooted head node for cluster: {cluster.name}")
 
 
