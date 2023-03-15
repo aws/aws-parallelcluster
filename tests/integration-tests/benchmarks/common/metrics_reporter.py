@@ -17,7 +17,7 @@ from time import sleep
 import boto3
 from retrying import RetryError, retry
 from time_utils import seconds
-from utils import _describe_cluster_instances
+from utils import describe_cluster_instances
 
 METRIC_WIDGET_TEMPLATE = """
     {{
@@ -93,7 +93,7 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
                 Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
                 MetricData=[{"MetricName": "ComputeNodesCount", "Value": compute_nodes, "Unit": "Count"}],
             )
-            ec2_instances_count = len(_describe_cluster_instances(cluster_name, region, filter_by_node_type="Compute"))
+            ec2_instances_count = len(describe_cluster_instances(cluster_name, region, filter_by_node_type="Compute"))
             logging.info("Publishing EC2 compute metric: count={0}".format(ec2_instances_count))
             cw_client.put_metric_data(
                 Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
