@@ -1408,6 +1408,30 @@ class DatabaseSchema(BaseSchema):
         return Database(**data)
 
 
+
+
+class BaseNodeSchema(BaseSchema):
+    name = fields.Str()
+    params = fields.Dict()
+
+class NodeSchema(BaseSchema):
+    name = fields.Str()
+    params = fields.Dict()
+
+class NodeSetSchema(BaseSchema):
+    name = fields.Str()
+    nodes = fields.List(fields.Str)
+class PartitionSchema(BaseSchema):
+    name = fields.Str()
+    nodes = fields.List(fields.Str)
+
+class CustomSlurmSchedulingSettingsSchema(BaseSchema):
+    """Represent the schema of the Custom Scheduling Settings."""
+    values = fields.Dict()
+    node_names = fields.List(NodeSchema)
+    node_sets = fields.List(NodeSetSchema)
+    partitions = fields.List(PartitionSchema)
+
 class SlurmSettingsSchema(BaseSchema):
     """Represent the schema of the Scheduling Settings."""
 
@@ -1419,6 +1443,7 @@ class SlurmSettingsSchema(BaseSchema):
     )
     enable_memory_based_scheduling = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     database = fields.Nested(DatabaseSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    custom_slurm_settings = fields.Nested(CustomSlurmSchedulingSettingsSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):
