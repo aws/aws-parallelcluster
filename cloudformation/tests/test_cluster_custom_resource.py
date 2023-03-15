@@ -38,7 +38,8 @@ def _delete_cluster(cluster_name):
 def _random_id():
     """Generate a random string."""
     alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
-    return "".join(random.choice(alnum) for _ in range(8))
+    start = random.choice(string.ascii_uppercase + string.ascii_lowercase)
+    return start + "".join(random.choice(alnum) for _ in range(8))
 
 
 def cluster_config(cluster_name):
