@@ -24,7 +24,7 @@ arm_pl:
     dimensions:
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
         schedulers: ["slurm"]
 {%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
 scheduler_plugin:
