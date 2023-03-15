@@ -8,7 +8,6 @@ import os
 import sys
 import time
 from datetime import datetime
-from typing import List
 
 import boto3
 import pytest
@@ -23,7 +22,6 @@ from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.aws.common import StackNotFoundError
 from pcluster.cli.entrypoint import main
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME
-from pcluster.templates.cdk_assets_manager import ClusterAssetFile
 
 
 @pytest.fixture(autouse=True)

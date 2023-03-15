@@ -166,7 +166,6 @@ class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
 
     def __init__(self, name: str, config: str = None, stack: ClusterStack = None):
-        self.assets_metadata = None
         self.name = name
         self.__source_config_text = config
         self.__stack = stack
