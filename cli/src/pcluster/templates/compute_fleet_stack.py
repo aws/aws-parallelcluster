@@ -33,7 +33,7 @@ from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import grouper, LOGGER
 
 
-class ComputeFleetStack(NestedStack):
+class ComputeFleetStack(Construct):
     """Construct defining compute fleet specific resources."""
 
     def __init__(
@@ -78,7 +78,7 @@ class ComputeFleetStack(NestedStack):
     @property
     def stack_name(self):
         """Name of the CFN stack."""
-        return Stack.of(self.nested_stack_parent).stack_name
+        return Stack.of(self).stack_name
 
     @property
     def managed_compute_instance_roles(self) -> Dict[str, iam.Role]:

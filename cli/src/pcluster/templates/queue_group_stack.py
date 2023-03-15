@@ -60,7 +60,7 @@ class QueueGroupStack(NestedStack):
     @property
     def stack_name(self):
         """Name of the CFN stack."""
-        return Stack.of(self.nested_stack_parent.nested_stack_parent).stack_name
+        return Stack.of(self.nested_stack_parent).stack_name
 
     def _add_resources(self):
         self._add_compute_iam_resources()
