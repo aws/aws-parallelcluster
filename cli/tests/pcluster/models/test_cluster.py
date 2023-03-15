@@ -964,7 +964,11 @@ Scheduling:
                         },
                     )
                 ],
-            )
+            ),
+            (
+                None,
+                [],
+            ),
         ],
     )
     def test_assets_parameter_generation(self, assets_metadata, expected_parameters):

@@ -28,7 +28,7 @@ class CfnClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def create_stack(
-        self, stack_name: str, disable_rollback: bool, tags: list, template_body: str, parameters: list = ()
+        self, stack_name: str, disable_rollback: bool, tags: list, template_body: str, parameters: list = None
     ):
         """Create CFN stack by using the given template."""
         return self._client.create_stack(
@@ -48,7 +48,7 @@ class CfnClient(Boto3Client):
         tags: list,
         template_url: str,
         capabilities: str = "CAPABILITY_IAM",
-        parameters: list = (),
+        parameters: list = None,
     ):
         """Create CFN stack by using the given template url."""
         return self._client.create_stack(
@@ -76,7 +76,7 @@ class CfnClient(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
-    def update_stack_from_url(self, stack_name: str, template_url: str, tags: list = None, parameters=()):
+    def update_stack_from_url(self, stack_name: str, template_url: str, tags: list = None, parameters: list = None):
         """Update CFN stack by using the given template url."""
         if tags is None:
             return self._client.update_stack(

@@ -166,7 +166,6 @@ class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
 
     def __init__(self, name: str, config: str = None, stack: ClusterStack = None):
-        self.assets_metadata = None
         self.name = name
         self.__source_config_text = config
         self.__stack = stack
@@ -382,7 +381,7 @@ class Cluster:
             LOGGER.info("Upload of cluster artifacts completed successfully")
 
             LOGGER.info("Creating stack named: %s", self.stack_name)
-            asset_parameters = self._generate_asset_parameters(assets_metadata) if assets_metadata else []
+            asset_parameters = self._generate_asset_parameters(assets_metadata)
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
                 stack_name=self.stack_name,
                 template_url=self.bucket.get_cfn_template_url(
@@ -418,27 +417,31 @@ class Cluster:
         2. S3Bucket (S3 Bucket where asset is stored)
         3. S3VersionKey (S3 object key and version of the asset in the form "key||version")
         """
-        return [
-            (
-                {
-                    "ParameterKey": asset_metadata["hash_parameter"]["key"],
-                    "ParameterValue": asset_metadata["hash_parameter"]["value"],
-                },
-                {
-                    "ParameterKey": asset_metadata["s3_bucket_parameter"]["key"],
-                    "ParameterValue": asset_metadata["s3_bucket_parameter"]["value"],
-                },
-                # CDK builds the TemplateURL parameter of the NestedStack in the Root Template by concatenating
-                # the AssetParameter S3 Bucket, Object and Version
-                # The S3 Object and Version are passed as a string "ObjectKey||Version"
-                # In this case we don't need to specify a version, hence we pass "ObjectKey||"
-                {
-                    "ParameterKey": asset_metadata["s3_object_key_parameter"]["key"],
-                    "ParameterValue": f"{asset_metadata['s3_object_key_parameter']['value']}||",
-                },
-            )
-            for asset_metadata in assets_metadata
-        ]
+        return (
+            [
+                (
+                    {
+                        "ParameterKey": asset_metadata["hash_parameter"]["key"],
+                        "ParameterValue": asset_metadata["hash_parameter"]["value"],
+                    },
+                    {
+                        "ParameterKey": asset_metadata["s3_bucket_parameter"]["key"],
+                        "ParameterValue": asset_metadata["s3_bucket_parameter"]["value"],
+                    },
+                    # CDK builds the TemplateURL parameter of the NestedStack in the Root Template by concatenating
+                    # the AssetParameter S3 Bucket, Object and Version
+                    # The S3 Object and Version are passed as a string "ObjectKey||Version"
+                    # In this case we don't need to specify a version, hence we pass "ObjectKey||"
+                    {
+                        "ParameterKey": asset_metadata["s3_object_key_parameter"]["key"],
+                        "ParameterValue": f"{asset_metadata['s3_object_key_parameter']['value']}||",
+                    },
+                )
+                for asset_metadata in assets_metadata
+            ]
+            if assets_metadata
+            else []
+        )
 
     def _load_config(self, cluster_config: dict) -> BaseClusterConfig:
         """Load the config and catch / translate any errors that occur during loading."""
@@ -965,7 +968,7 @@ class Cluster:
             # upload cluster artifacts and generated template
             self._upload_artifacts()
 
-            asset_parameters = self._generate_asset_parameters(assets_metadata) if assets_metadata else []
+            asset_parameters = self._generate_asset_parameters(assets_metadata)
 
             LOGGER.info("Updating stack named: %s", self.stack_name)
             AWSApi.instance().cfn.update_stack_from_url(

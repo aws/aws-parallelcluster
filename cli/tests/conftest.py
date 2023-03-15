@@ -8,7 +8,6 @@ import os
 import sys
 import time
 from datetime import datetime
-from typing import List
 
 import boto3
 import pytest
@@ -23,7 +22,6 @@ from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.aws.common import StackNotFoundError
 from pcluster.cli.entrypoint import main
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME
-from pcluster.templates.cdk_assets_manager import ClusterAssetFile
 
 
 @pytest.fixture(autouse=True)
@@ -351,10 +349,18 @@ def mock_image_stack(mocker):
 
 @pytest.fixture
 def mock_cloud_assembly(mocker):
-    def _mock_cloud_assembly(file_assets: List[ClusterAssetFile], directory="test_dir"):
-        cluster_cloud_assembly = mocker.patch("pcluster.templates.cdk_assets_manager.CDKV1ClusterCloudAssembly")
-        cluster_cloud_assembly.get_assets.return_value = file_assets
-        cluster_cloud_assembly.get_cloud_assembly_directory.return_value = directory
-        return cluster_cloud_assembly
+    def _mock_cloud_assembly(assets, directory="test_dir", template_content="test_template_content"):
+        cloud_assembly = mocker.patch("aws_cdk.cx_api.CloudAssembly")
+        cloud_assembly.directory = directory
+        cluster_cloud_artifact = mocker.patch("aws_cdk.cx_api.CloudFormationStackArtifact")
+        mocker.patch(
+            "pcluster.templates.cdk_artifacts_manager.CDKV1ClusterCloudAssembly._get_artifacts_class",
+            return_value=type(cluster_cloud_artifact),
+        )
+        cluster_cloud_artifact.template = template_content
+        cluster_cloud_artifact.assets = assets
+        cloud_assembly.artifacts = [cluster_cloud_artifact]
+
+        return cloud_assembly
 
     return _mock_cloud_assembly

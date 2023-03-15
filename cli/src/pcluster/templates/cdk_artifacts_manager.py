@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List
 
-from aws_cdk.cx_api import CloudFormationStackArtifact
+from aws_cdk.cx_api import CloudAssembly, CloudFormationStackArtifact
 
 from pcluster.models.s3_bucket import S3Bucket, S3FileType
 from pcluster.utils import LOGGER, load_yaml_dict
@@ -41,6 +41,10 @@ class ClusterCloudAssembly(ABC):
         self.cloud_assembly = cloud_assembly
 
     @abstractmethod
+    def _initialize_cloud_artifact(self, cloud_assembly: CloudAssembly) -> CloudFormationStackArtifact:
+        pass
+
+    @abstractmethod
     def get_assets(self) -> List[ClusterAssetFile]:
         """List of asset files info."""
         pass
@@ -50,16 +54,31 @@ class ClusterCloudAssembly(ABC):
         """Directory of the cloud assembly files."""
         pass
 
+    @abstractmethod
+    def get_template_body(self):
+        """Return the template content."""
+        pass
+
 
 class CDKV1ClusterCloudAssembly(ClusterCloudAssembly):
     """Implementation of with CDK V1 Cloud Assembly properties."""
 
+    def __init__(self, cloud_assembly):
+        super().__init__(cloud_assembly)
+        self.cloud_artifact = self._initialize_cloud_artifact(cloud_assembly)
+
+    def get_template_body(self):
+        """Return the template content."""
+        return self.cloud_artifact.template
+
+    def _initialize_cloud_artifact(self, cloud_assembly: CloudAssembly) -> CloudFormationStackArtifact:
+        return next(
+            artifact for artifact in cloud_assembly.artifacts if isinstance(artifact, self._get_artifacts_class())
+        )
+
     def get_assets(self) -> List[ClusterAssetFile]:
         """List of asset files info."""
-        cfn_stack_artifact = next(
-            artifact for artifact in self.cloud_assembly.artifacts if isinstance(artifact, self._get_artifacts_class())
-        )
-        assets = cfn_stack_artifact.assets
+        assets = self.cloud_artifact.assets
         cluster_assets_files = [
             ClusterAssetFile(
                 id=asset.id,
@@ -81,12 +100,15 @@ class CDKV1ClusterCloudAssembly(ClusterCloudAssembly):
         return CloudFormationStackArtifact
 
 
-class CDKAssetsManager:
+class CDKArtifactsManager:
     """Manage the discovery and upload of CDK Assets to the cluster S3 bucket."""
 
-    def __init__(self, cluster_cloud_assembly: ClusterCloudAssembly):
-        self._assets_metadata = {}
-        self.cluster_cdk_assembly = cluster_cloud_assembly
+    def __init__(self, cloud_assembly: CloudAssembly):
+        self.cluster_cdk_assembly = CDKV1ClusterCloudAssembly(cloud_assembly)
+
+    def get_template_body(self):
+        """Return the template content."""
+        return self.cluster_cdk_assembly.get_template_body()
 
     def upload_assets(self, bucket: S3Bucket):
         """
@@ -112,13 +134,13 @@ class CDKAssetsManager:
         ```
         """
         cdk_assets = self.cluster_cdk_assembly.get_assets()
-        self._assets_metadata = []
+        assets_metadata = []
 
         for cdk_asset in cdk_assets:
             asset_file_path = os.path.join(self.cluster_cdk_assembly.get_cloud_assembly_directory(), cdk_asset.path)
             asset_file_content = load_yaml_dict(asset_file_path)
             asset_id = cdk_asset.id
-            self._assets_metadata.append(
+            assets_metadata.append(
                 {
                     # `artifactHashParameter` only needed when using `cdk deploy` to check the integrity of files
                     # uploaded to S3
@@ -134,4 +156,4 @@ class CDKAssetsManager:
             LOGGER.info(f"Uploading asset {asset_id} to S3")
             bucket.upload_cfn_asset(asset_file_content=asset_file_content, asset_name=asset_id)
 
-        return self._assets_metadata
+        return assets_metadata

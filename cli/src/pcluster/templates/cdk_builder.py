@@ -11,16 +11,14 @@
 #
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
-import json
 import logging
 import os
 import tempfile
-import typing
 
 from pcluster.config.cluster_config import BaseClusterConfig
 from pcluster.config.imagebuilder_config import ImageBuilderConfig
 from pcluster.models.s3_bucket import S3Bucket
-from pcluster.templates.cdk_assets_manager import CDKAssetsManager, CDKV1ClusterCloudAssembly
+from pcluster.templates.cdk_artifacts_manager import CDKArtifactsManager
 from pcluster.utils import load_yaml_dict
 
 LOGGER = logging.getLogger(__name__)
@@ -47,10 +45,10 @@ class CDKTemplateBuilder:
             ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket, log_group_name)
             cloud_assembly = app.synth()
 
-            cdk_assets_upload_manager = CDKAssetsManager(CDKV1ClusterCloudAssembly(cloud_assembly))
-            assets_metadata = cdk_assets_upload_manager.upload_assets(bucket=bucket)
+            cdk_artifacts_manager = CDKArtifactsManager(cloud_assembly)
+            assets_metadata = cdk_artifacts_manager.upload_assets(bucket=bucket)
+            generated_template = cdk_artifacts_manager.get_template_body()
 
-            generated_template = load_yaml_dict(os.path.join(cloud_assembly_dir, f"{output_file}.template.json"))
         LOGGER.info("CDK template generation completed successfully")
 
         return generated_template, assets_metadata
@@ -70,12 +68,3 @@ class CDKTemplateBuilder:
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 
         return generated_template
-
-    @staticmethod
-    def load_manifest_json(
-        cloud_assembly_dir: typing.Union[str, os.PathLike], manifest_file_name: str = "manifest.json"
-    ):
-        """Load and return the content of the manifest.json file in a cloud assembly directory."""
-        with open(os.path.join(cloud_assembly_dir, manifest_file_name), "r", encoding="utf-8") as manifest:
-            manifest_json = json.load(manifest)
-        return manifest_json
