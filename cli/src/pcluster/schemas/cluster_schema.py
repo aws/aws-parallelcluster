@@ -1209,6 +1209,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     networking = fields.Nested(
         SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
+    custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @validates_schema
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
@@ -1332,6 +1333,7 @@ class SlurmQueueSchema(_CommonQueueSchema):
     networking = fields.Nested(
         SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
+    custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1369,7 +1371,6 @@ class SchedulerPluginQueueSchema(_CommonQueueSchema):
     networking = fields.Nested(
         SchedulerPluginQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
-    custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
