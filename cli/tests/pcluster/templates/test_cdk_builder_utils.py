@@ -33,7 +33,8 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.utils import load_yaml_dict, split_resource_prefix
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
+from tests.pcluster.utils import get_asset_content_with_resource_name
 
 
 @pytest.mark.parametrize(
@@ -438,10 +439,11 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, cdk_assets = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
@@ -449,13 +451,16 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     if cluster_config.iam and cluster_config.iam.resource_prefix:
         iam_path_prefix, iam_name_prefix = split_resource_prefix(cluster_config.iam.resource_prefix)
     generated_template = generated_template["Resources"]
-    role_name_ref = generated_template["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0][
+    asset_resource = get_asset_content_with_resource_name(cdk_assets, "InstanceProfile15b342af42246b70").get(
+        "Resources"
+    )
+    role_name_ref = asset_resource["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0][
         "Ref"
     ]  # Role15b342af42246b70
     role_name_hn_ref = generated_template["InstanceProfileHeadNode"]["Properties"]["Roles"][0]["Ref"]  # RoleHeadNode
 
     # Checking their Path
-    _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, role_name_ref, "RoleName")
+    _check_instance_roles_n_profiles(asset_resource, iam_path_prefix, iam_name_prefix, role_name_ref, "RoleName")
     _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, role_name_hn_ref, "RoleName")
 
     # Instance Profiles---> Checking Instance Profile Names and Instance profiles Path
@@ -463,11 +468,11 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
         generated_template, iam_path_prefix, iam_name_prefix, "InstanceProfileHeadNode", "InstanceProfileName"
     )
     _check_instance_roles_n_profiles(
-        generated_template, iam_path_prefix, iam_name_prefix, "InstanceProfile15b342af42246b70", "InstanceProfileName"
+        asset_resource, iam_path_prefix, iam_name_prefix, "InstanceProfile15b342af42246b70", "InstanceProfileName"
     )
     # PC Policies
     _check_policies(
-        generated_template, iam_name_prefix, "ParallelClusterPolicies15b342af42246b70", "parallelcluster", role_name_ref
+        asset_resource, iam_name_prefix, "ParallelClusterPolicies15b342af42246b70", "parallelcluster", role_name_ref
     )
     _check_policies(
         generated_template, iam_name_prefix, "ParallelClusterPoliciesHeadNode", "parallelcluster", role_name_hn_ref
@@ -489,7 +494,7 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     )
     #  Slurm Policies
     _check_policies(
-        generated_template,
+        asset_resource,
         iam_name_prefix,
         "SlurmPolicies15b342af42246b70",
         "parallelcluster-slurm-compute",
@@ -528,9 +533,7 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
         and cluster_config.scheduling.queues[0].iam
         and cluster_config.scheduling.queues[0].iam.s3_access
     ):
-        _check_policies(
-            generated_template, iam_name_prefix, "S3AccessPolicies15b342af42246b70", "S3Access", role_name_ref
-        )
+        _check_policies(asset_resource, iam_name_prefix, "S3AccessPolicies15b342af42246b70", "S3Access", role_name_ref)
 
 
 def _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, resource_name, key_name):

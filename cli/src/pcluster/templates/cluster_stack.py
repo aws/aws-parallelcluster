@@ -40,6 +40,7 @@ from aws_cdk.core import (
     CustomResource,
     Duration,
     Fn,
+    NestedStack,
     Stack,
 )
 
@@ -397,7 +398,7 @@ class ClusterCdkStack:
             self.dynamodb_table_status = _dynamodb_table_status
         self.compute_fleet_resources = None
         if not self._condition_is_batch():
-            self.compute_fleet_resources = ComputeFleetConstruct(
+            self.compute_fleet_resources = ComputeFleetStack(
                 scope=self.stack,
                 id="ComputeFleet",
                 cluster_config=self.config,
@@ -1384,7 +1385,7 @@ class ClusterCdkStack:
         )
 
 
-class ComputeFleetConstruct(Construct):
+class ComputeFleetStack(NestedStack):
     """Construct defining compute fleet specific resources."""
 
     def __init__(
@@ -1425,7 +1426,7 @@ class ComputeFleetConstruct(Construct):
     @property
     def stack_name(self):
         """Name of the CFN stack."""
-        return Stack.of(self).stack_name
+        return Stack.of(self.nested_stack_parent).stack_name
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 

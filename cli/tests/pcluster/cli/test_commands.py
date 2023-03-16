@@ -56,6 +56,7 @@ def _mock_cluster(
         "cluster_name",
         "expected_config",
         "expected_template",
+        "expected_asset",
         "expected_dirs",
         "mock_generated_bucket_name",
         "expected_bucket_name",
@@ -67,6 +68,7 @@ def _mock_cluster(
             "cluster1",
             "dummy_config1",
             "dummy_template1",
+            "dummy_asset1",
             ["models/../resources/custom_resources"],
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
@@ -77,6 +79,7 @@ def _mock_cluster(
             "cluster2",
             "dummy_config2",
             "dummy_template2",
+            "dummy_asset2",
             ["models/../resources/custom_resources", "models/../resources/batch"],
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
@@ -87,6 +90,7 @@ def _mock_cluster(
             "cluster3",
             "dummy_config3",
             "dummy_template3",
+            "dummy_asset3",
             [],
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
@@ -97,6 +101,7 @@ def _mock_cluster(
             "cluster4",
             "dummy_config4",
             "dummy_template4",
+            "dummy_asset4",
             ["models/../resources/custom_resources"],
             None,
             "user_provided_bucket",
@@ -110,6 +115,7 @@ def test_setup_bucket_with_resources_success(
     cluster_name,
     expected_config,
     expected_template,
+    expected_asset,
     expected_dirs,
     mock_generated_bucket_name,
     expected_bucket_name,
@@ -128,6 +134,7 @@ def test_setup_bucket_with_resources_success(
     mock_dict = mock_bucket_object_utils(mocker)
     upload_config_mock = mock_dict.get("upload_config")
     upload_template_mock = mock_dict.get("upload_cfn_template")
+    upload_asset_mock = mock_dict.get("upload_cfn_asset")
     upload_custom_resources_mock = mock_dict.get("upload_resources")
     # mock bucket utils
     check_bucket_mock = mock_bucket_utils(mocker, root_service_dir=f"{cluster_name}-abc123")["check_bucket_exists"]
@@ -142,6 +149,7 @@ def test_setup_bucket_with_resources_success(
 
     cluster.bucket.upload_config(expected_config, "fake_config_name")
     cluster.bucket.upload_cfn_template(expected_template, "fake_template_name")
+    cluster.bucket.upload_cfn_asset(expected_asset, "fake_asset_name")
     for dir in expected_dirs:
         cluster.bucket.upload_resources(dir)
 
@@ -150,6 +158,7 @@ def test_setup_bucket_with_resources_success(
     # assert upload has been called
     upload_config_mock.assert_called_with(expected_config, "fake_config_name")
     upload_template_mock.assert_called_with(expected_template, "fake_template_name")
+    upload_asset_mock.assert_called_with(expected_asset, "fake_asset_name")
     upload_custom_resources_mock.assert_has_calls([mocker.call(dir) for dir in expected_dirs])
 
     # assert bucket properties

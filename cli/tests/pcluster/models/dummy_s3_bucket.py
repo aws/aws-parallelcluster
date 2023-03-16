@@ -81,6 +81,7 @@ def mock_bucket_object_utils(
     upload_config_side_effect=None,
     get_config_side_effect=None,
     upload_template_side_effect=None,
+    upload_asset_side_effect=None,
     get_template_side_effect=None,
     upload_resources_side_effect=None,
     delete_s3_artifacts_side_effect=None,
@@ -100,6 +101,9 @@ def mock_bucket_object_utils(
     fake_template = {"Resources": "fake_resource"}
     upload_cfn_template_mock = mocker.patch(
         "pcluster.models.s3_bucket.S3Bucket.upload_cfn_template", side_effect=upload_template_side_effect
+    )
+    upload_cfn_asset_mock = mocker.patch(
+        "pcluster.models.s3_bucket.S3Bucket.upload_cfn_asset", side_effect=upload_asset_side_effect
     )
     get_cfn_template_mock = mocker.patch(
         "pcluster.models.s3_bucket.S3Bucket.get_cfn_template",
@@ -130,6 +134,7 @@ def mock_bucket_object_utils(
         "upload_config": upload_config_mock,
         "get_config": get_config_mock,
         "upload_cfn_template": upload_cfn_template_mock,
+        "upload_cfn_asset": upload_cfn_asset_mock,
         "get_cfn_template": get_cfn_template_mock,
         "upload_resources": upload_resources_mock,
         "delete_s3_artifacts": delete_s3_artifacts_mock,

@@ -40,6 +40,7 @@ class S3FileFormat(Enum):
 class S3FileType(Enum):
     """Define S3 file types."""
 
+    ASSETS = "assets"
     CONFIGS = "configs"
     TEMPLATES = "templates"
     CUSTOM_RESOURCES = "custom_resources"
@@ -204,6 +205,12 @@ class S3Bucket:
         """Upload cloudformation template to S3 bucket."""
         return self._upload_file(
             file_type=S3FileType.TEMPLATES, content=template_body, file_name=template_name, format=format
+        )
+
+    def upload_cfn_asset(self, asset_file_content, asset_name: str, format=S3FileFormat.YAML):
+        """Upload cloudformation assets to S3 bucket."""
+        return self._upload_file(
+            file_type=S3FileType.ASSETS, content=asset_file_content, file_name=asset_name, format=format
         )
 
     def upload_resources(self, resource_dir, custom_artifacts_name):
