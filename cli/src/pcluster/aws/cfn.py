@@ -16,6 +16,7 @@ from botocore.exceptions import ClientError
 from pcluster.aws.aws_resources import StackInfo
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, StackNotFoundError
 from pcluster.constants import PCLUSTER_IMAGE_ID_TAG, PCLUSTER_VERSION_TAG
+from pcluster.utils import remove_none_values
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,13 +32,17 @@ class CfnClient(Boto3Client):
         self, stack_name: str, disable_rollback: bool, tags: list, template_body: str, parameters: list = None
     ):
         """Create CFN stack by using the given template."""
+        optional_args = {
+            "Tags": tags,
+            "Parameters": parameters,
+        }
+        optional_args_with_value = remove_none_values(optional_args)
         return self._client.create_stack(
             StackName=stack_name,
             TemplateBody=template_body,
             Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
-            Tags=tags,
-            Parameters=parameters,
+            **optional_args_with_value,
         )
 
     @AWSExceptionHandler.handle_client_exception
@@ -51,13 +56,18 @@ class CfnClient(Boto3Client):
         parameters: list = None,
     ):
         """Create CFN stack by using the given template url."""
+        optional_args = {
+            "Tags": tags,
+            "Parameters": parameters,
+        }
+        optional_args_with_value = remove_none_values(optional_args)
+
         return self._client.create_stack(
             StackName=stack_name,
             TemplateURL=template_url,
             Capabilities=[capabilities, "CAPABILITY_NAMED_IAM"],
             DisableRollback=disable_rollback,
-            Tags=tags,
-            Parameters=parameters,
+            **optional_args_with_value,
         )
 
     @AWSExceptionHandler.handle_client_exception
@@ -78,19 +88,17 @@ class CfnClient(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def update_stack_from_url(self, stack_name: str, template_url: str, tags: list = None, parameters: list = None):
         """Update CFN stack by using the given template url."""
-        if tags is None:
-            return self._client.update_stack(
-                StackName=stack_name,
-                TemplateURL=template_url,
-                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
-                Parameters=parameters,
-            )
+        optional_args = {
+            "Tags": tags,
+            "Parameters": parameters,
+        }
+        optional_args_with_value = remove_none_values(optional_args)
+
         return self._client.update_stack(
             StackName=stack_name,
             TemplateURL=template_url,
             Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
-            Tags=tags,
-            Parameters=parameters,
+            **optional_args_with_value,
         )
 
     @AWSExceptionHandler.handle_client_exception
