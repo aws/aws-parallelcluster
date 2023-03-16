@@ -104,12 +104,14 @@ def test_create_imds_secured(
     cluster = clusters_factory(cluster_config, raise_on_error=True)
     status = "required" if imds_support == "v2.0" else "optional"
 
+    logging.info("Checking cluster access after cluster creation")
     assert_head_node_is_running(region, cluster)
     assert_aws_identity_access_is_correct(cluster, users_allow_list)
     assert_cluster_imds_v2_requirement_status(region, cluster, status)
 
     reboot_head_node(cluster)
 
+    logging.info("Checking cluster access after head node reboot")
     assert_head_node_is_running(region, cluster)
     assert_aws_identity_access_is_correct(cluster, users_allow_list)
     assert_cluster_imds_v2_requirement_status(region, cluster, status)
