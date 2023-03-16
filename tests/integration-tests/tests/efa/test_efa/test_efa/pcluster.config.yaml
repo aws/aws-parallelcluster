@@ -20,8 +20,12 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: efa-enabled-i1
+          {% if "us-iso" in region %}
+          InstanceType: {{ instance }}
+          {% else %}
           Instances:
             - InstanceType: {{ instance }}
+          {% endif %}
           MaxCount: {{ max_queue_size }}
           MinCount: {{ max_queue_size }}
           DisableSimultaneousMultithreading: true
