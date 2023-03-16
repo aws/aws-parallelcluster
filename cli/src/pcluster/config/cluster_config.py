@@ -94,6 +94,7 @@ from pcluster.validators.cluster_validators import (
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
@@ -2954,6 +2955,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             )
 
         instance_types_data = self.get_instance_types_data()
+        self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 if self.scheduling.settings.enable_memory_based_scheduling:
