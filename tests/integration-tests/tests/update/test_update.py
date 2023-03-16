@@ -668,9 +668,14 @@ def test_queue_parameters_update(
     pcluster_ami_id = retrieve_latest_ami(
         region, os, ami_type="pcluster", request=request, allow_private_ami=allow_private_ami
     )
+
+    logging.info(f"Latest AMI retrieved: {pcluster_ami_id}")
+
     pcluster_copy_ami_id = ami_copy(
         pcluster_ami_id, "-".join(["test", "update", "computenode", generate_random_string()])
     )
+
+    logging.info(f"Copy of the latest AMI {pcluster_ami_id}: {pcluster_copy_ami_id}")
 
     init_config_file = pcluster_config_reader(
         global_custom_ami=pcluster_ami_id, initial_compute_root_volume_size=initial_compute_root_volume_size
@@ -737,6 +742,7 @@ def _test_update_without_queue_strategy(
 
 def _check_queue_ami(cluster, ec2, ami, queue_name):
     """Check if the ami of the queue instances are expected"""
+    logging.info(f"Checking that queue {queue_name} is using the expected AMI {ami}")
     instances = cluster.get_cluster_instance_ids(node_type="Compute", queue_name=queue_name)
     _check_instance_ami_id(ec2, instances, ami)
 
@@ -838,7 +844,10 @@ def _test_update_queue_strategy_with_running_job(
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
 
     queue2_nodes = scheduler_commands.get_compute_nodes("queue2", all_nodes=True)
-    # assert queue2 node state are in expected status corresponding to the queue strategy
+
+    logging.info(
+        f"Checking queue2 node state are in expected status corresponding to the queue strategy {queue_update_strategy}"
+    )
     if queue_update_strategy == "DRAIN":
         scheduler_commands.assert_job_state(queue2_job_id, "RUNNING")
         _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue2")
@@ -852,7 +861,8 @@ def _test_update_queue_strategy_with_running_job(
     scheduler_commands.wait_job_running(queue2_job_id)
     # cancel job in queue1
     scheduler_commands.cancel_job(queue1_job_id)
-    # check the new launching instances are using new amis
+
+    logging.info("Checking that new compute nodes are using the new AMI")
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
     _check_queue_ami(cluster, ec2, pcluster_copy_ami_id, "queue2")
     assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
