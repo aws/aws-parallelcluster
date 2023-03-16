@@ -62,6 +62,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -2725,3 +2726,41 @@ class TestDictLaunchTemplateBuilder:
         assert_that(DictLaunchTemplateBuilder().get_capacity_reservation(queue, compute_resource)).is_equal_to(
             expected_response
         )
+
+
+@pytest.mark.parametrize(
+    "encryption_settings, expected_error_message",
+    [
+        (
+            [
+                ("queue1", True),
+                ("queue2", False),
+            ],
+            "The Encryption parameter of the root volume of the queue queue2 is not consistent with the "
+            "value set for the queue queue1, and may cause a problem in case of Service Control Policies "
+            "(SCPs) enforcing encryption.",
+        ),
+        (
+            [
+                ("queue1", False),
+                ("queue2", True),
+            ],
+            "The Encryption parameter of the root volume of the queue queue2 is not consistent with the "
+            "value set for the queue queue1, and may cause a problem in case of Service Control Policies "
+            "(SCPs) enforcing encryption.",
+        ),
+        ([("queue1", True), ("queue2", True)], None),
+        ([("queue1", False), ("queue2", False)], None),
+    ],
+)
+def test_root_volume_encryption_consistency_validator(
+    encryption_settings,
+    expected_error_message,
+):
+    actual_failures = RootVolumeEncryptionConsistencyValidator().execute(encryption_settings)
+
+    if expected_error_message:
+        assert_failure_messages(actual_failures, [expected_error_message])
+        assert_failure_level(actual_failures, FailureLevel.WARNING)
+    else:
+        assert_that(actual_failures).is_empty()
