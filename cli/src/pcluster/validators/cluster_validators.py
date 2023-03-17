@@ -1448,9 +1448,9 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
         for queue in multi_nic_queues:
             if queue.networking.assign_public_ip:
                 self._add_failure(
-                    f"The queue {queue.name} contains an instance type with multiple network interfaces and "
-                    f"the AssignPublicIp value can not be set to true. AWS public IPs can only be assigned to "
-                    f"instances launched with a single network interface.",
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
+                    f"AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances launched "
+                    f"with a single network interface.",
                     FailureLevel.ERROR,
                 )
 
@@ -1459,9 +1459,8 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
             )
             if queue_subnets_with_public_ips:
                 self._add_failure(
-                    f"The queue {queue.name} contains an instance type with multiple network interfaces but the "
-                    f"subnets {queue_subnets_with_public_ips} automatically assign public IPs and this can cause "
-                    f"bootstrap issues. AWS public IPs can only be assigned to instances launched with a single "
-                    f"network interface.",
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
+                    f"subnets {queue_subnets_with_public_ips} is configured to automatically assign public IPs. AWS "
+                    f"public IPs can only be assigned to instances launched with a single network interface.",
                     FailureLevel.ERROR,
                 )

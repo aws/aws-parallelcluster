@@ -2798,9 +2798,9 @@ def test_root_volume_encryption_consistency_validator(
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             [
-                "The queue queue_1 contains an instance type with multiple network interfaces and the AssignPublicIp "
-                "value can not be set to true. AWS public IPs can only be assigned to instances launched with a single "
-                "network interface."
+                "The queue queue_1 contains an instance type with multiple network interfaces however the "
+                "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
+                "launched with a single network interface."
             ],
             id="Test with multi nic queue with assigned public ip and no subnet with public ip",
         ),
@@ -2812,9 +2812,9 @@ def test_root_volume_encryption_consistency_validator(
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             [
-                "The queue queue_1 contains an instance type with multiple network interfaces but the subnets "
-                "['subnet_1'] automatically assign public IPs and this can cause bootstrap issues. AWS public IPs "
-                "can only be assigned to instances launched with a single network interface."
+                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
+                "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
+                "to instances launched with a single network interface."
             ],
             id="Test with multi nic queue with no assigned public ip and subnet with public ip",
         ),
@@ -2826,12 +2826,12 @@ def test_root_volume_encryption_consistency_validator(
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             [
-                "The queue queue_1 contains an instance type with multiple network interfaces and the AssignPublicIp "
-                "value can not be set to true. AWS public IPs can only be assigned to instances launched with a single "
-                "network interface.",
-                "The queue queue_1 contains an instance type with multiple network interfaces but the subnets "
-                "['subnet_1'] automatically assign public IPs and this can cause bootstrap issues. AWS public IPs "
-                "can only be assigned to instances launched with a single network interface.",
+                "The queue queue_1 contains an instance type with multiple network interfaces however the "
+                "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
+                "launched with a single network interface.",
+                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
+                "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
+                "to instances launched with a single network interface.",
             ],
             id="Test with multi nic queue with assigned public ip and subnet with public ip",
         ),
