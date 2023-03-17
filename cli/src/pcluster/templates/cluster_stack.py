@@ -91,6 +91,7 @@ from pcluster.templates.cdk_builder_utils import (
     generate_launch_template_version_cfn_parameter_hash,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
+    get_cluster_tags,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
@@ -981,6 +982,10 @@ class ClusterCdkStack:
                         resource_type="volume",
                         tags=get_default_volume_tags(self._stack_name, "HeadNode") + get_custom_tags(self.config),
                     ),
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="launch-template",
+                        tags=get_cluster_tags(self._stack_name) + get_custom_tags(self.config),
+                    ),
                 ],
             ),
         )
@@ -1730,6 +1735,10 @@ class ComputeFleetStack(NestedStack):
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
                         + get_custom_tags(self._config),
+                    ),
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="launch-template",
+                        tags=get_cluster_tags(self.stack_name) + get_custom_tags(self._config),
                     ),
                 ],
                 **conditional_template_properties,
