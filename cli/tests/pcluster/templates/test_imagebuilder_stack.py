@@ -2580,6 +2580,9 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         else:
             assert_that(resource.get("Properties").get("Tags")).is_equal_to(expected_imagebuilder_resource_tags)
 
+        if resource_name == "InfrastructureConfiguration":
+            assert_that(resource.get("Properties").get("ResourceTags")).is_equal_to(expected_imagebuilder_resource_tags)
+
 
 @pytest.mark.parametrize(
     "resource, response, expected_imagebuilder_subnet_id",

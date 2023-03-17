@@ -58,6 +58,7 @@ from pcluster.validators.cluster_validators import (
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
@@ -2762,5 +2763,100 @@ def test_root_volume_encryption_consistency_validator(
     if expected_error_message:
         assert_failure_messages(actual_failures, [expected_error_message])
         assert_failure_level(actual_failures, FailureLevel.WARNING)
+    else:
+        assert_that(actual_failures).is_empty()
+
+
+@pytest.mark.parametrize(
+    "num_cards, assign_public_ip, public_ip_subnets, expected_error_messages",
+    [
+        pytest.param(
+            1,
+            True,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            None,
+            id="Test with single nic queue with assigned public ip and subnet with public ip",
+        ),
+        pytest.param(
+            2,
+            False,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            None,
+            id="Test with multi nic queue with neither assigned public ip nor subnet with public ip",
+        ),
+        pytest.param(
+            2,
+            True,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            [
+                "The queue queue_1 contains an instance type with multiple network interfaces however the "
+                "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
+                "launched with a single network interface."
+            ],
+            id="Test with multi nic queue with assigned public ip and no subnet with public ip",
+        ),
+        pytest.param(
+            2,
+            False,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            [
+                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
+                "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
+                "to instances launched with a single network interface."
+            ],
+            id="Test with multi nic queue with no assigned public ip and subnet with public ip",
+        ),
+        pytest.param(
+            2,
+            True,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            [
+                "The queue queue_1 contains an instance type with multiple network interfaces however the "
+                "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
+                "launched with a single network interface.",
+                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
+                "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
+                "to instances launched with a single network interface.",
+            ],
+            id="Test with multi nic queue with assigned public ip and subnet with public ip",
+        ),
+    ],
+)
+def test_multi_network_interfaces_instances_validator(
+    aws_api_mock, num_cards, assign_public_ip, public_ip_subnets, expected_error_messages
+):
+    aws_api_mock.ec2.get_instance_type_info.return_value = InstanceTypeInfo(
+        {"NetworkInfo": {"MaximumNetworkCards": num_cards}}
+    )
+    aws_api_mock.ec2.describe_subnets.return_value = public_ip_subnets
+
+    queues = [
+        SlurmQueue(
+            name="queue_1",
+            compute_resources=[SlurmComputeResource(name="compute_resource_1", instance_type="instance_type")],
+            networking=SlurmQueueNetworking(subnet_ids=["subnet_1", "subnet_2"], assign_public_ip=assign_public_ip),
+        ),
+    ]
+
+    actual_failures = MultiNetworkInterfacesInstancesValidator().execute(queues)
+
+    if expected_error_messages:
+        assert_failure_messages(actual_failures, expected_error_messages)
+        assert_failure_level(actual_failures, FailureLevel.ERROR)
     else:
         assert_that(actual_failures).is_empty()

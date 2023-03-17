@@ -154,6 +154,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         cluster_validators + ".NumberOfStorageValidator._validate", return_value=[]
     )
     deletion_policy_validator = mocker.patch(cluster_validators + ".DeletionPolicyValidator._validate", return_value=[])
+    root_volume_encryption_consistency_validator = mocker.patch(
+        cluster_validators + ".RootVolumeEncryptionConsistencyValidator._validate", return_value=[]
+    )
     ec2_validators = validators_path + ".ec2_validators"
     key_pair_validator = mocker.patch(ec2_validators + ".KeyPairValidator._validate", return_value=[])
     instance_type_validator = mocker.patch(ec2_validators + ".InstanceTypeValidator._validate", return_value=[])
@@ -297,6 +300,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         validator=instance_architecture_compatibility_validator,
     )
 
+    root_volume_encryption_consistency_validator.assert_has_calls(
+        [call(encryption_settings=[("queue1", True), ("queue2", True)])]
+    )
     ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp3", volume_size=35)])
     kms_key_validator.assert_has_calls([call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab")])
     kms_key_id_encrypted_validator.assert_has_calls(
@@ -411,6 +417,7 @@ def test_scheduler_plugin_all_validators_are_called(test_datadir, mocker):
                 "DatabaseUriValidator",
                 "InstanceTypePlacementGroupValidator",
                 "RootVolumeEncryptionConsistencyValidator",
+                "MultiNetworkInterfacesInstancesValidator",
             ]
             + flexible_instance_types_validators
         ):

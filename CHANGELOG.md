@@ -4,6 +4,7 @@ CHANGELOG
 3.6.0
 ----
 **ENHANCEMENTS**
+- Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
 - Add `mem_used_percent` and `disk_used_percent` metrics for head node memory and root volume disk utilization tracking on the ParallelCluster CloudWatch dashboard, and set up alarms for monitoring these metrics.
 - Add log rotation support for ParallelCluster managed logs.
 - Track common errors of compute nodes on Cloudwatch Dashboard. 
@@ -13,6 +14,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
+- Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
 
 3.5.0
 -----

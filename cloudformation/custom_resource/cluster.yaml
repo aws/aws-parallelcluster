@@ -1,0 +1,231 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS ParallelCluster CloudFormation Template
+
+Parameters:
+
+  CustomLambdaRole:
+    Description: Custom role to use for PC Lambda
+    Type: String
+    Default: ''
+
+  AdditionalIamPolicies:
+    Description: Comma-delimited list of additional IAM Policies to add to the cluster (only used if CustomLambdaRole isn't provided).
+    Type: CommaDelimitedList
+    Default: ''
+
+Mappings:
+  ParallelCluster:
+    Constants:
+      Version: 3.6.0  # major.minor.patch+alpha/beta_identifier
+
+Conditions:
+  CustomRoleCondition: !Not [!Equals [!Ref CustomLambdaRole, '']]
+  UsePCPolicies: !Not [!Condition CustomRoleCondition ]
+  UseAdditionalIamPolicies: !Not [!Equals [!Join ['', !Ref AdditionalIamPolicies ], '']]
+
+Resources:
+  PclusterLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub
+        - PCLayer-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
+      Description: Library which contains aws-parallelcluster python package and dependencies
+      Content:
+        S3Bucket: !Sub ${AWS::Region}-aws-parallelcluster
+        S3Key: !Sub
+        - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
+        - { Version: !FindInMap [ParallelCluster, Constants, Version] }
+      CompatibleRuntimes:
+        - python3.9
+
+  PclusterPolicies:
+    Condition: UsePCPolicies
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - https://${Region}-aws-parallelcluster.s3.${Region}.amazonaws.com/parallelcluster/${Version}/templates/policies/policies.yaml
+        - { Version: !FindInMap [ParallelCluster, Constants, Version], Region: !Ref AWS::Region }
+      TimeoutInMinutes: 10
+      Parameters:
+        EnableIamAdminAccess: true
+
+  PclusterCfnFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${PclusterCfnFunction}
+
+  EventsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EventsPolicy
+            Effect: Allow
+            Action:
+              - events:PutRule
+              - events:DeleteRule
+              - events:PutTargets
+              - events:RemoveTargets
+            Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*
+
+  PclusterLambdaRole:
+    Condition: UsePCPolicies
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns: !Split
+        - ","
+        - !Sub
+          - ${LambdaExecutionPolicy},${ClusterPolicy},${DefaultAdminPolicy},${EventsPolicy}${AdditionalIamPolicies}
+          - { LambdaExecutionPolicy: !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ClusterPolicy: !GetAtt [ PclusterPolicies, Outputs.ParallelClusterClusterPolicy ],
+              DefaultAdminPolicy: !GetAtt [ PclusterPolicies, Outputs.DefaultParallelClusterIamAdminPolicy ],
+              EventsPolicy: !Ref EventsPolicy,
+              AdditionalIamPolicies: !If [UseAdditionalIamPolicies, !Sub [",${AdditionalPolicies}", AdditionalPolicies: !Join [',', !Ref AdditionalIamPolicies ]], ''] }
+
+  PclusterCfnFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub
+        - pcluster-cfn-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
+      TracingConfig:
+        Mode: Active
+      MemorySize: 2048
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import datetime
+          import json
+          import logging
+          import random
+          import re
+          import string
+          import sys
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          import pcluster.api.controllers.cluster_operations_controller
+          import pcluster.api.errors
+          import pcluster.utils
+          from pcluster.api import encoder
+          from pcluster.cli.exceptions import APIOperationException, ParameterException
+          from pcluster.api.errors import exception_message, NotFoundException
+          import pcluster.lib as pc
+
+          crhelper_path = "/opt/python/pcluster/resources/custom_resources/custom_resources_code"
+          sys.path.insert(0, crhelper_path)
+          from crhelper import CfnResource
+          helper = CfnResource()
+
+          def update_response(response):
+              logger.info(response)
+              helper.Data.update(response)
+
+          def serialize(val):
+              return utils.to_iso_timestr(val) if isinstance(val, datetime.date) else val
+
+          def create_or_update(event):
+              properties = event["ResourceProperties"]
+
+              if event["RequestType"].upper() == "CREATE" and "ClusterName" not in properties:
+                  raise ValueError("Couldn't find a ClusterName in the properties.")
+              elif event["RequestType"].upper() == "UPDATE" and event["PhysicalResourceId"] != properties.get("ClusterName"):
+                  raise ValueError("Cannot update the ClusterName in the properties.")
+
+              cluster_name = properties["ClusterName"]
+              logger.info(f"{event['RequestType'].upper()}: {cluster_name}")
+              physical_resource_id = cluster_name
+
+              try:
+                  kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in properties.items() if k not in {"ServiceToken"}}, "wait": False}
+                  func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[event["RequestType"].upper()]
+                  update_response(func(**kwargs))
+              except (APIOperationException, ParameterException, TypeError)  as e:
+                  raise ValueError(str(e))
+              except Exception as e:
+                  message = pcluster.api.errors.exception_message(e)
+                  str_msg = encoder.JSONEncoder().encode(message)
+                  if not re.search(r"No changes found", str_msg):
+                    logger.info(f"No changes found to update: {cluster_name}")
+                    raise ValueError(str_msg)
+
+              return physical_resource_id
+
+          @helper.create
+          def create(event, context):
+              return create_or_update(event)
+
+          @helper.update
+          def update(event, context):
+              return create_or_update(event)
+
+          @helper.delete
+          def delete(event, context):
+              cluster_name = event["ResourceProperties"].get("ClusterName")
+              logger.info(f"Deleting: {cluster_name}")
+              try:
+                  update_response(pc.delete_cluster(cluster_name=cluster_name))
+              except (ParameterException, NotFoundException): # cluster deleted or invalid name -- ignore here.
+                  pass
+              except Exception as e:
+                  message = exception_message(e)
+                  raise ValueError(encoder.JSONEncoder().encode(message))
+
+          # Polling functionality for async CUD operations
+
+          def poll(event):
+              cluster_name = event["ResourceProperties"].get("ClusterName")
+              try:
+                  cluster = pc.describe_cluster(cluster_name=cluster_name)
+                  status = cluster.get("clusterStatus")
+
+                  if status in {"CREATE_COMPLETE", "UPDATE_COMPLETE"}:
+                      update_response(cluster)
+                      return cluster_name
+                  elif status in {"CREATE_FAILED", "UPDATE_FAILED", "DELETE_FAILED"}:
+                      raise ValueError(f"{cluster_name} failed {event['RequestType'].upper()}. See substack for further details.")
+
+              # If create fails and we try to roll-back (e.g. delete),
+              # gracefully handle missing cluster. on the delete pathway, the
+              # only invalid parameter can be the name
+              except (ParameterException, NotFoundException):
+                  if event["RequestType"].upper() == "DELETE":
+                      # Returning a value here signifies that the delete is completed and we can stop polling
+                      # not returning a value here causes cfn resource helper to keep polling.
+                      return cluster_name
+                  raise ValueError(f"{cluster_name} failed {event['RequestType'].upper()}. See substack for further details.")
+
+          @helper.poll_create
+          def poll_create(event, context):
+              return poll(event)
+
+          @helper.poll_update
+          def poll_update(event, context):
+              return poll(event)
+
+          @helper.poll_delete
+          def poll_delete(event, context):
+              return poll(event)
+
+          def handler(event, context):
+              helper(event, context)
+
+      Handler: index.handler
+      Runtime: python3.9
+      Role: !If [CustomRoleCondition, !Ref CustomLambdaRole, !GetAtt PclusterLambdaRole.Arn]
+      Layers:
+        - !Ref PclusterLayer
+
+Outputs:
+  Function:
+    Description: Lambda for managing PCluster Resources
+    Value: !GetAtt PclusterCfnFunction.Arn
