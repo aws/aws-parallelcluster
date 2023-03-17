@@ -1408,3 +1408,19 @@ class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
                 }
             )
         }
+
+
+class RootVolumeEncryptionConsistencyValidator(Validator):
+    """Verify consistency on the Encryption parameter of all the specified RootVolumes of the queues."""
+
+    def _validate(self, encryption_settings: list):
+        reference_queue_name, reference_root_volume_encryption = encryption_settings.pop(0)
+        for queue in encryption_settings:
+            queue_name, root_volume_encryption = queue
+            if reference_root_volume_encryption != root_volume_encryption:
+                self._add_failure(
+                    f"The Encryption parameter of the root volume of the queue {queue_name} is not consistent "
+                    f"with the value set for the queue {reference_queue_name}, and may cause a problem in case "
+                    f"of Service Control Policies (SCPs) enforcing encryption.",
+                    FailureLevel.WARNING,
+                )
