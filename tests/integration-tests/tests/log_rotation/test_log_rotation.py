@@ -38,6 +38,7 @@ def test_log_rotation(
     common_logs = [
         {"log_name": "cloud-init", "log_path": "/var/log/cloud-init.log", "existence": True},
         {"log_name": "supervisord", "log_path": "/var/log/supervisord.log", "existence": True},
+        {"log_name": "bootstrap_error_msg", "log_path": "/var/log/parallelcluster/bootstrap_error_msg"},
     ]
     headnode_specified_logs = [
         {
@@ -88,6 +89,16 @@ def test_log_rotation(
             "trigger_new_entries": True,
         },
         {"log_name": "chef-client", "log_path": "/var/log/chef-client.log", "existence": True},
+        {
+            "log_name": "clustermgtd_events",
+            "log_path": "/var/log/parallelcluster/clustermgtd.events",
+            "existence": True,
+        },
+        {
+            "log_name": "slurm_resume_events",
+            "log_path": "/var/log/parallelcluster/slurm_resume.events",
+            "existence": True,
+        },
     ]
     compute_specified_logs = [
         {"log_name": "cloud-init-output", "log_path": "/var/log/cloud-init-output.log", "existence": True},
@@ -153,7 +164,7 @@ def _wait_log_in_log_stream(
         (
             stream_name
             for stream_name in stream_names
-            if private_ip.replace(".", "-") in stream_name and log_name in stream_name
+            if private_ip.replace(".", "-") in stream_name and stream_name.endswith(log_name)
         ),
         None,
     )
