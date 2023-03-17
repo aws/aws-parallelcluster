@@ -8,7 +8,7 @@ import pytest
 PUBPRIV_TEMPLATE = "../networking/public-private.cfn.json"
 
 
-def _random_str():
+def random_str():
     """Generate a random string."""
     alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
     start = random.choice(string.ascii_uppercase + string.ascii_lowercase)
@@ -54,7 +54,7 @@ def pytest_collection_modifyitems(items, config):
 @pytest.fixture(name="random_stack_name")
 def random_stack_name_fixture():
     """Provide a short random id that can be used in a aack name."""
-    return _random_str()
+    return random_str()
 
 
 @pytest.fixture(scope="session", name="cfn")
@@ -69,7 +69,7 @@ def default_vpc_fixture(cfn):
     """Create our default VPC networking and return the stack name."""
     ec2 = boto3.client("ec2")
     azs = ec2.describe_availability_zones()["AvailabilityZones"]
-    stack_name = _random_str()
+    stack_name = random_str()
     parameters = {"AvailabilityZone": azs[0]["ZoneName"]}
 
     yield from cfn_stack_generator(PUBPRIV_TEMPLATE, stack_name, parameters)

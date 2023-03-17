@@ -4,6 +4,7 @@ CHANGELOG
 3.6.0
 ----
 **ENHANCEMENTS**
+- Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
 - Add `mem_used_percent` and `disk_used_percent` metrics for head node memory and root volume disk utilization tracking on the ParallelCluster CloudWatch dashboard, and set up alarms for monitoring these metrics.
 
 **ENHANCEMENTS**

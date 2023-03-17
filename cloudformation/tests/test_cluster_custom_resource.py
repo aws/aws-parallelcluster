@@ -7,7 +7,7 @@ import pytest
 import urllib3
 import yaml
 from assertpy import assert_that
-from conftest import cfn_stack_generator
+from conftest import cfn_stack_generator, random_str
 
 CLUSTER_TEMPLATE = "../custom_resource/cluster.yaml"
 TEST_CLUSTER = "test_cluster.yaml"
@@ -35,13 +35,6 @@ def _delete_cluster(cluster_name):
     return pcluster.delete_cluster(cluster_name=cluster_name)
 
 
-def _random_id():
-    """Generate a random string."""
-    alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
-    start = random.choice(string.ascii_uppercase + string.ascii_lowercase)
-    return start + "".join(random.choice(alnum) for _ in range(8))
-
-
 def cluster_config(cluster_name):
     """Return the configuration for a cluster."""
     cluster = _describe_cluster(cluster_name)
@@ -56,13 +49,13 @@ def cluster_config(cluster_name):
 def cluster_custom_resource_fixture():
     """Create the cluster custom resource stack."""
     capabilities = ["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"]
-    yield from cfn_stack_generator(CLUSTER_TEMPLATE, _random_id(), None, capabilities)
+    yield from cfn_stack_generator(CLUSTER_TEMPLATE, random_str(), None, capabilities)
 
 
 @pytest.fixture(scope="module", name="cluster")
 def cluster_fixture(cfn, default_vpc, cluster_custom_resource):
     """Create a basic cluster through CFN, wait for it to start and return it."""
-    stack_name = random.choice(string.ascii_lowercase) + _random_id()
+    stack_name = random.choice(string.ascii_lowercase) + random_str()
     cluster_name = f"c-{stack_name}"
     parameters = {
         "ClusterName": cluster_name,
@@ -122,7 +115,7 @@ def cluster_fixture(cfn, default_vpc, cluster_custom_resource):
 @pytest.mark.local
 def test_cluster_create_invalid_syntax(cfn, default_vpc, cluster_custom_resource, parameters):
     """Try to create a cluster with invalid syntax and ensure that it fails."""
-    stack_name = random.choice(string.ascii_lowercase) + _random_id()
+    stack_name = random.choice(string.ascii_lowercase) + random_str()
     cluster_name = f"c-{stack_name}"
     parameters = {
         "ClusterName": cluster_name,
@@ -211,7 +204,7 @@ def test_update_invalid(cfn, cluster, update_parameters):
 @pytest.mark.local
 def test_cluster_delete_out_of_band(cfn, default_vpc, cluster_custom_resource):
     """Perform crud validation on cluster."""
-    stack_name = random.choice(string.ascii_lowercase) + _random_id()
+    stack_name = random.choice(string.ascii_lowercase) + random_str()
     cluster_name = f"c-{stack_name}"
     parameters = {
         "ClusterName": cluster_name,
