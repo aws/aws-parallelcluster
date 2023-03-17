@@ -221,12 +221,14 @@ test-suites:
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
   networking:
-    test_cluster_networking.py::test_cluster_in_private_subnet:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
+# This test is considered out of scope for isolated regions
+# We will evaluate to re-include it after release 3.5.1
+#    test_cluster_networking.py::test_cluster_in_private_subnet:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
     test_cluster_networking.py::test_existing_eip:
       dimensions:
         - regions: {{ REGIONS }}
