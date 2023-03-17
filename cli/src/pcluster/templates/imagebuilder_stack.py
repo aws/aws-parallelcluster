@@ -577,6 +577,7 @@ class ImageBuilderCdkStack(Stack):
             "InfrastructureConfiguration",
             name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             tags=build_tags,
+            resource_tags=build_tags,
             instance_profile_name=instance_profile_name or Fn.ref("InstanceProfile"),
             terminate_instance_on_failure=self.config.dev_settings.terminate_instance_on_failure
             if self.config.dev_settings and self.config.dev_settings.terminate_instance_on_failure is not None

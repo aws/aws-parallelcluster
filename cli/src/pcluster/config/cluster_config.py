@@ -98,6 +98,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -2313,6 +2314,12 @@ class SlurmScheduling(Resource):
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
+        )
+        self._register_validator(
+            RootVolumeEncryptionConsistencyValidator,
+            encryption_settings=[
+                (queue.name, queue.compute_settings.local_storage.root_volume.encrypted) for queue in self.queues
+            ],
         )
         self._register_validator(
             MaxCountValidator,

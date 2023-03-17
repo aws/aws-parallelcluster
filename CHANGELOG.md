@@ -15,6 +15,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
+- Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
 
 3.5.0
 -----
