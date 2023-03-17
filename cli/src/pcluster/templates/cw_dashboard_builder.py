@@ -254,11 +254,14 @@ class CWDashboardConstruct(Construct):
     def _add_custom_error_metrics(self):
         """Create custom error metric filter and outputs to cloudwatch graph."""
 
-        def _generate_metric_filter_pattern(event_type, failure_type, failure_name="failure-type"):
-            return (
-                f"{{ $.event-type = {event_type} && $.detail.{failure_name} = {failure_type} && "
-                '$.scheduler = "slurm" }'
-            )
+        def _generate_metric_filter_pattern(event_type, failure_type=None):
+            if failure_type:
+                return (
+                    f"{{ $.event-type = {event_type} && $.detail.failure-type = {failure_type} && "
+                    '$.scheduler = "slurm" }'
+                )
+            else:
+                return f'{{ $.event-type = {event_type} && $.scheduler = "slurm" }}'
 
         metric_value = "$.detail.count"
         launch_failure_event_type = "node-launch-failure-count"
@@ -325,27 +328,25 @@ class CWDashboardConstruct(Construct):
             ),
             _CustomMetricFilter(
                 metric_name="EC2MaintenanceEvent",
-                filter_pattern=_generate_metric_filter_pattern(
-                    "nodes-failing-health-check-count", "ec2_health_check", failure_name="health-check-type"
-                ),
+                filter_pattern=_generate_metric_filter_pattern("nodes-failing-health-check-count", "ec2_health_check"),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
                 metric_name="EC2ScheduledMaintenanceEvent",
                 filter_pattern=_generate_metric_filter_pattern(
-                    "nodes-failing-health-check-count", "scheduled_event_health_check", failure_name="health-check-type"
+                    "nodes-failing-health-check-count", "scheduled_event_health_check"
                 ),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
                 metric_name="NoCorrespondingInstanceForNode",
-                filter_pattern='{ $.event-type = "invalid-backing-instance-count" && $.scheduler = "slurm" }',
+                filter_pattern=_generate_metric_filter_pattern("invalid-backing-instance-count"),
                 metric_value=metric_value,
             ),
             # Use text matching here because it comes from slurmctld.log
             _CustomMetricFilter(
                 metric_name="SlurmNodeNotResponding",
-                filter_pattern='{ $.event-type = "node-not-responding-down-count" && $.scheduler = "slurm" }',
+                filter_pattern=_generate_metric_filter_pattern("node-not-responding-down-count"),
                 metric_value=metric_value,
             ),
         ]
