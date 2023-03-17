@@ -1424,3 +1424,44 @@ class RootVolumeEncryptionConsistencyValidator(Validator):
                     f"of Service Control Policies (SCPs) enforcing encryption.",
                     FailureLevel.WARNING,
                 )
+
+
+class MultiNetworkInterfacesInstancesValidator(Validator):
+    """Verify that queues with multi nic compute resources don't auto-assign public IPs or contain subnets that do."""
+
+    def _validate(self, queues):
+        multi_nic_queues = [
+            queue
+            for queue in queues
+            for compute_resource in queue.compute_resources
+            if compute_resource.max_network_interface_count > 1
+        ]
+
+        all_subnets_with_public_ips = {
+            subnet.get("SubnetId")
+            for subnet in AWSApi.instance().ec2.describe_subnets(
+                {subnet_id for queue in multi_nic_queues for subnet_id in queue.networking.subnet_ids}
+            )
+            if subnet.get("MapPublicIpOnLaunch")
+        }
+
+        for queue in multi_nic_queues:
+            if queue.networking.assign_public_ip:
+                self._add_failure(
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces and "
+                    f"the AssignPublicIp value can not be set to true. AWS public IPs can only be assigned to "
+                    f"instances launched with a single network interface.",
+                    FailureLevel.ERROR,
+                )
+
+            queue_subnets_with_public_ips = sorted(
+                [subnet_id for subnet_id in queue.networking.subnet_ids if subnet_id in all_subnets_with_public_ips]
+            )
+            if queue_subnets_with_public_ips:
+                self._add_failure(
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces but the "
+                    f"subnets {queue_subnets_with_public_ips} automatically assign public IPs and this can cause "
+                    f"bootstrap issues. AWS public IPs can only be assigned to instances launched with a single "
+                    f"network interface.",
+                    FailureLevel.ERROR,
+                )
