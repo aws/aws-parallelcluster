@@ -2317,7 +2317,7 @@ class SlurmScheduling(Resource):
         )
         self._register_validator(
             RootVolumeEncryptionConsistencyValidator,
-            enrcyption_settings=[
+            encryption_settings=[
                 (queue.name, queue.compute_settings.local_storage.root_volume.encrypted) for queue in self.queues
             ],
         )
