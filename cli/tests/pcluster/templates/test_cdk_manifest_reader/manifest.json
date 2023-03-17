@@ -1,0 +1,24 @@
+{
+  "artifacts": {
+    "TestStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://unknown-account/unknown-region",
+      "metadata": {
+        "/TestStack": [
+          {
+            "type": "aws:cdk:asset",
+            "data": {
+              "path": "asset_path",
+              "id": "asset_logical_id",
+              "packaging": "file",
+              "sourceHash": "asset_hash",
+              "s3BucketParameter": "asset_s3_bucket",
+              "s3KeyParameter": "asset_s3_key",
+              "artifactHashParameter": "asset_hash_parameter"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
