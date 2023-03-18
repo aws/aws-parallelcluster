@@ -190,13 +190,7 @@ def test_cluster_create_invalid(cfn, default_vpc, cluster_custom_resource, param
     cfn.get_waiter("stack_delete_complete").wait(StackName=stack_name)
 
 
-@pytest.mark.parametrize(
-    "external_update",
-    [
-        (False),
-        (True),
-    ],
-)
+@pytest.mark.parametrize("external_update", [(False), (True)])
 @pytest.mark.local
 # pylint: disable=too-many-locals
 def test_cluster_update(cfn, cluster, external_update):
