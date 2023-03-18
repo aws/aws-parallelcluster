@@ -15,7 +15,7 @@ Parameters:
   ComputeInstanceMax:
     Description: Maximum number of compute instances
     Type: Number
-    Default: 10
+    Default: 16
   ServiceToken:
     Description: ARN of Lambda Function backing the Cluster Resource
     Type: String
@@ -34,6 +34,9 @@ Resources:
       ServiceToken: !Ref ServiceToken
       ClusterName: !Ref ClusterName
       ClusterConfiguration:
+        DevSettings:
+          AmiSearchFilters:
+            Owner: self
         Image:
           Os: alinux2
         HeadNode:
@@ -51,10 +54,17 @@ Resources:
           SlurmQueues:
           - Name: queue0
             ComputeResources:
-            - Name: queue0-i0
+            - Name: queue0-cr0
               InstanceType: t2.micro
-              MinCount: 0
               MaxCount: !Ref ComputeInstanceMax
             Networking:
               SubnetIds:
               - !Ref ComputeNodeSubnet
+
+Outputs:
+  HeadNodeIp:
+    Description: The Public IP address of the HeadNode
+    Value: !GetAtt [ PclusterCluster, headNode.publicIpAddress ]
+  ValidationMessages:
+    Description: Any warnings from cluster create or update operations.
+    Value: !GetAtt PclusterCluster.validationMessages
