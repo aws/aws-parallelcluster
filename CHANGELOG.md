@@ -16,6 +16,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
 - Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
+- Fix Update policy for MaxCount to always perform numerical comparisons on MaxCount property.
 
 3.5.0
 -----
