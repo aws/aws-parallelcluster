@@ -23,6 +23,13 @@ Parameters:
     Description: Script to run on HeadNode configured
     Type: String
     Default: ''
+  DeletionPolicy:
+    Type: String
+    Default: Delete
+    AllowedValues:
+      - Delete
+      - Retain
+    Description: Enter Retain or Delete to define the operation when the stack is deleted. Default is to Delete.
 
 Conditions:
   OnNodeConfiguredCondition: !Not [!Equals [!Ref OnNodeConfigured, '']]
@@ -32,6 +39,7 @@ Resources:
     Type: Custom::PclusterCluster
     Properties:
       ServiceToken: !Ref ServiceToken
+      DeletionPolicy: !Ref DeletionPolicy
       ClusterName: !Ref ClusterName
       ClusterConfiguration:
         DevSettings:

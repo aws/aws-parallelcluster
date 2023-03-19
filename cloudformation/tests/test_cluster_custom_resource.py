@@ -320,3 +320,44 @@ def test_cluster_delete_out_of_band(cfn, default_vpc, cluster_custom_resource):
     cfn.get_waiter("stack_delete_complete").wait(StackName=stack_name)
     status = cfn.describe_stacks(StackName=stack_id)["Stacks"][0]["StackStatus"]
     assert_that(status).is_equal_to("DELETE_COMPLETE")
+
+
+@pytest.mark.local
+def test_cluster_delete_retain(cfn, default_vpc, cluster_custom_resource):
+    """Perform crud validation on cluster."""
+    stack_name = random.choice(string.ascii_lowercase) + random_str()
+    cluster_name = f"c-{stack_name}"
+    parameters = {
+        "ClusterName": cluster_name,
+        "HeadNodeSubnet": default_vpc["PublicSubnetId"],
+        "ComputeNodeSubnet": default_vpc["PrivateSubnetId"],
+        "ServiceToken": cluster_custom_resource["ServiceToken"],
+        "DeletionPolicy": "Retain",
+    }
+
+    with open(TEST_CLUSTER, encoding="utf-8") as templ:
+        template = templ.read()
+
+    # Create the cluster using CloudFormation directly
+    cfn.create_stack(
+        StackName=stack_name,
+        TemplateBody=template,
+        Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
+        Parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
+    )
+
+    stack = cfn.describe_stacks(StackName=stack_name)["Stacks"][0]
+    stack_id = stack["StackId"]
+
+    # Wait for it to create
+    cfn.get_waiter("stack_create_complete").wait(StackName=stack_name)
+
+    # Delete the stack through CFN and wait for delete to complete
+    cfn.delete_stack(StackName=stack_name)
+    cfn.get_waiter("stack_delete_complete").wait(StackName=stack_name)
+    status = cfn.describe_stacks(StackName=stack_id)["Stacks"][0]["StackStatus"]
+    assert_that(status).is_equal_to("DELETE_COMPLETE")
+
+    cluster = _describe_cluster(cluster_name)
+    assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
+    _delete_cluster(cluster_name)

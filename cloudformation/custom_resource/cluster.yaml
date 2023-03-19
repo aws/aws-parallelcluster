@@ -167,6 +167,8 @@ Resources:
               request_type = event["RequestType"].upper()
               helper.Data["validationMessages"] = "[]"  # default value
 
+              if properties.get("DeletionPolicy", "Delete") not in {"Retain", "Delete"}:
+                  raise ValueError("DeletionPolicy must be one of [\"Retain\", \"Delete\"].")
               if request_type == "CREATE" and "ClusterName" not in properties:
                   raise ValueError("Couldn't find a ClusterName in the properties.")
               elif request_type == "UPDATE" and event["PhysicalResourceId"] != properties.get("ClusterName"):
@@ -177,7 +179,7 @@ Resources:
               physical_resource_id = cluster_name
 
               try:
-                  meta_keys = {"ServiceToken"}
+                  meta_keys = {"ServiceToken", "DeletionPolicy"}
                   kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in properties.items() if k not in meta_keys}, "wait": False}
                   func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[request_type]
                   update_response(func(**kwargs))
@@ -208,6 +210,13 @@ Resources:
           def delete(event, context):
               properties = event["ResourceProperties"]
               cluster_name = properties.get("ClusterName")
+
+              deletion_policy = properties.get("DeletionPolicy", "Delete")
+              if deletion_policy not in {"Retain", "Delete"}:
+                  raise ValueError("DeleetionPolicy must be one of [\"Retain\", \"Delete\"].")
+              if deletion_policy == "Retain":
+                  return cluster_name
+
               logger.info(f"Deleting: {cluster_name}")
               try:
                   update_response(pc.delete_cluster(cluster_name=cluster_name))
