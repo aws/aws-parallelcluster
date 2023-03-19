@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template for the ParallelCluster Policies'
+Description: 'AWS ParallelCluster Policies'
 
 Parameters:
   Region:
