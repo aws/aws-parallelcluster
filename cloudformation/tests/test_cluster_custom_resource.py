@@ -65,10 +65,15 @@ def cluster_config(cluster_name):
 
 
 @pytest.fixture(scope="module", name="cluster_custom_resource")
-def cluster_custom_resource_fixture():
+def cluster_custom_resource_fixture(bucket, service_token):
     """Create the cluster custom resource stack."""
+    if service_token != "":
+        yield {"ServiceToken": service_token}
+        return
+
     capabilities = ["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"]
-    yield from cfn_stack_generator(CLUSTER_TEMPLATE, random_str(), None, capabilities)
+    params = {"CustomBucket": bucket}
+    yield from cfn_stack_generator(CLUSTER_TEMPLATE, random_str(), params, capabilities)
 
 
 @pytest.fixture(scope="module", name="cluster")

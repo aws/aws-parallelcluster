@@ -14,6 +14,12 @@ Parameters:
     Type: CommaDelimitedList
     Default: ''
 
+  CustomBucket:
+    Description: (Debug only) bucket to retrieve S3 artifacts for internal resources.
+    Type: String
+    Default: ''
+
+
 Mappings:
   ParallelCluster:
     Constants:
@@ -23,6 +29,7 @@ Conditions:
   CustomRoleCondition: !Not [!Equals [!Ref CustomLambdaRole, '']]
   UsePCPolicies: !Not [!Condition CustomRoleCondition ]
   UseAdditionalIamPolicies: !Not [!Equals [!Join ['', !Ref AdditionalIamPolicies ], '']]
+  UseCustomBucket: !Not [!Equals [!Ref CustomBucket, '']]
 
 Resources:
   PclusterLayer:
@@ -33,7 +40,7 @@ Resources:
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Description: Library which contains aws-parallelcluster python package and dependencies
       Content:
-        S3Bucket: !Sub ${AWS::Region}-aws-parallelcluster
+        S3Bucket: !If [ UseCustomBucket, !Ref CustomBucket, !Sub "${AWS::Region}-aws-parallelcluster" ]
         S3Key: !Sub
         - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
         - { Version: !FindInMap [ParallelCluster, Constants, Version] }
@@ -45,8 +52,10 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub
-        - https://${Region}-aws-parallelcluster.s3.${Region}.amazonaws.com/parallelcluster/${Version}/templates/policies/policies.yaml
-        - { Version: !FindInMap [ParallelCluster, Constants, Version], Region: !Ref AWS::Region }
+        - https://${Bucket}.s3.${Region}.amazonaws.com/parallelcluster/${Version}/templates/policies/policies.yaml
+        - { Version: !FindInMap [ParallelCluster, Constants, Version ],
+            Bucket: !If [UseCustomBucket, !Ref CustomBucket, !Sub "${AWS::Region}-aws-parallelcluster" ],
+            Region: !Ref AWS::Region }
       TimeoutInMinutes: 10
       Parameters:
         EnableIamAdminAccess: true
