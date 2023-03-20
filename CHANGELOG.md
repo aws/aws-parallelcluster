@@ -7,7 +7,8 @@ CHANGELOG
 - Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
 - Add `mem_used_percent` and `disk_used_percent` metrics for head node memory and root volume disk utilization tracking on the ParallelCluster CloudWatch dashboard, and set up alarms for monitoring these metrics.
 - Add log rotation support for ParallelCluster managed logs.
-- Track common errors of compute nodes on Cloudwatch Dashboard. 
+- Track common errors of compute nodes on Cloudwatch Dashboard.
+- Increase the limit on the maximum number of queues per cluster from 10 to 40.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.

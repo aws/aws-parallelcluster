@@ -8,6 +8,7 @@
 import pytest
 from aws_cdk.cloud_assembly_schema import FileAssetMetadataEntry
 
+from pcluster.models.s3_bucket import S3FileFormat
 from pcluster.templates.cdk_artifacts_manager import CDKArtifactsManager
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
 
@@ -42,4 +43,6 @@ def test_upload_assets(mocker, mock_cloud_assembly, file_assets, asset_content):
     cdk_assets_manager.upload_assets(bucket)
 
     bucket_upload_asset_mock = mock_dict.get("upload_cfn_asset")
-    bucket_upload_asset_mock.assert_called_with(asset_file_content=asset_content, asset_name=file_assets[0].id)
+    bucket_upload_asset_mock.assert_called_with(
+        asset_file_content=asset_content, asset_name=file_assets[0].id, format=S3FileFormat.MINIFIED_JSON
+    )

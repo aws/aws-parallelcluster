@@ -34,6 +34,7 @@ class S3FileFormat(Enum):
 
     YAML = "yaml"
     JSON = "json"
+    MINIFIED_JSON = "min.json"
     TEXT = "text"
 
 
@@ -281,6 +282,12 @@ class S3Bucket:
             result = AWSApi.instance().s3.put_object(
                 bucket_name=self.name,
                 body=json.dumps(content),
+                key=self.get_object_key(file_type, file_name),
+            )
+        elif format == S3FileFormat.MINIFIED_JSON:
+            result = AWSApi.instance().s3.put_object(
+                bucket_name=self.name,
+                body=json.dumps(content, separators=(",", ":")),
                 key=self.get_object_key(file_type, file_name),
             )
         else:

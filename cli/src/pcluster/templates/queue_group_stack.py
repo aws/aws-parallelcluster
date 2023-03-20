@@ -1,29 +1,50 @@
-from typing import List, Dict
+from typing import Dict, List
 
-from aws_cdk.aws_cloudformation import NestedStack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import Stack, Fn, CfnTag
+from aws_cdk.core import CfnTag, Fn, NestedStack, Stack
 from constructs import Construct
 
-from pcluster.config.cluster_config import SlurmQueue, SlurmComputeResource, SharedStorageType, SchedulerPluginQueue, \
-    SlurmClusterConfig
-from pcluster.constants import DEFAULT_EPHEMERAL_DIR, OS_MAPPING, NODE_BOOTSTRAP_TIMEOUT, PCLUSTER_QUEUE_NAME_TAG, \
-    PCLUSTER_COMPUTE_RESOURCE_NAME_TAG
-from pcluster.templates.cdk_builder_utils import create_hash_suffix, ComputeNodeIamResources, scheduler_is_slurm, \
-    get_queue_security_groups_full, get_user_data_content, to_comma_separated_string, get_shared_storage_ids_by_type, \
-    get_common_user_data_env, get_default_instance_tags, get_custom_tags, get_default_volume_tags, \
-    CdkLaunchTemplateBuilder
+from pcluster.config.cluster_config import (
+    SchedulerPluginQueue,
+    SharedStorageType,
+    SlurmClusterConfig,
+    SlurmComputeResource,
+    SlurmQueue,
+)
+from pcluster.constants import (
+    DEFAULT_EPHEMERAL_DIR,
+    NODE_BOOTSTRAP_TIMEOUT,
+    OS_MAPPING,
+    PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
+    PCLUSTER_QUEUE_NAME_TAG,
+)
+from pcluster.templates.cdk_builder_utils import (
+    CdkLaunchTemplateBuilder,
+    ComputeNodeIamResources,
+    create_hash_suffix,
+    get_common_user_data_env,
+    get_custom_tags,
+    get_default_instance_tags,
+    get_default_volume_tags,
+    get_queue_security_groups_full,
+    get_shared_storage_ids_by_type,
+    get_user_data_content,
+    scheduler_is_slurm,
+    to_comma_separated_string,
+)
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_http_tokens_setting, join_shell_args, get_attr
+from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
 
 
 class QueueGroupStack(NestedStack):
+    """Stack encapsulating a set of queues and the associated resources."""
 
     def __init__(
         self,
         scope: Construct,
-        id: str, queues: List[SlurmQueue],
+        id: str,
+        queues: List[SlurmQueue],
         slurm_construct: SlurmConstruct,
         cluster_config: SlurmClusterConfig,
         log_group: logs.CfnLogGroup,

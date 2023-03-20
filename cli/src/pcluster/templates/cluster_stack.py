@@ -92,7 +92,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_user_data_content,
     to_comma_separated_string,
 )
-from pcluster.templates.compute_fleet_stack import ComputeFleetStack
+from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
@@ -387,7 +387,7 @@ class ClusterCdkStack:
             self.dynamodb_table_status = _dynamodb_table_status
         self.compute_fleet_resources = None
         if not self._condition_is_batch():
-            self.compute_fleet_resources = ComputeFleetStack(
+            self.compute_fleet_resources = ComputeFleetConstruct(
                 scope=self.stack,
                 id="ComputeFleet",
                 cluster_config=self.config,
@@ -1278,9 +1278,9 @@ class ClusterCdkStack:
             return None
 
         lt_config = {"Queues": {}}
-        for queue, compute_resouces in self.compute_fleet_resources.compute_launch_templates.items():
+        for queue, compute_resources in self.compute_fleet_resources.launch_templates.items():
             lt_config["Queues"][queue] = {"ComputeResources": {}}
-            for compute_resource, launch_template in compute_resouces.items():
+            for compute_resource, launch_template in compute_resources.items():
                 lt_config["Queues"][queue]["ComputeResources"][compute_resource] = {
                     "LaunchTemplate": {"Id": launch_template.ref, "Version": launch_template.attr_latest_version_number}
                 }

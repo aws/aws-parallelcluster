@@ -19,7 +19,7 @@ from typing import List
 
 from aws_cdk.cx_api import CloudAssembly, CloudFormationStackArtifact
 
-from pcluster.models.s3_bucket import S3Bucket, S3FileType
+from pcluster.models.s3_bucket import S3Bucket, S3FileFormat, S3FileType
 from pcluster.utils import LOGGER, load_yaml_dict
 
 
@@ -154,6 +154,9 @@ class CDKArtifactsManager:
                 }
             )
             LOGGER.info(f"Uploading asset {asset_id} to S3")
-            bucket.upload_cfn_asset(asset_file_content=asset_file_content, asset_name=asset_id)
+
+            bucket.upload_cfn_asset(
+                asset_file_content=asset_file_content, asset_name=asset_id, format=S3FileFormat.MINIFIED_JSON
+            )
 
         return assets_metadata

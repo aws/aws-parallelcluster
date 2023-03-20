@@ -11,6 +11,7 @@
 # This module provides unit tests for the functions in the pcluster.utils module."""
 import os
 import time
+from collections import namedtuple
 
 import pytest
 from assertpy import assert_that
@@ -22,7 +23,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import Cache
 from pcluster.models.cluster import Cluster, ClusterStack
-from pcluster.utils import yaml_load
+from pcluster.utils import batch_by_property_callback, yaml_load
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_NAME = "cluster-name"
@@ -407,3 +408,82 @@ def test_split_resource_prefix(resource_prefix, expected_output):
     iam_path_prefix, iam_role_prefix = utils.split_resource_prefix(resource_prefix=resource_prefix)
     assert_that(iam_path_prefix).is_equal_to(expected_output[0])
     assert_that(iam_role_prefix).is_equal_to(expected_output[1])
+
+
+Item = namedtuple("Item", "property")
+
+
+@pytest.mark.parametrize(
+    "items, expected_batches, batch_size, raises",
+    [
+        (
+            [
+                Item(property=["test-1", "test-2", "test-3"]),
+                Item(property=["test-4", "test-5", "test-6"]),
+                Item(property=["test-7", "test-8", "test-9"]),
+                Item(property=["test-10", "test-11", "test-12"]),
+                Item(property=["test-13", "test-14", "test-15"]),
+            ],
+            [
+                [
+                    Item(property=["test-1", "test-2", "test-3"]),
+                    Item(property=["test-4", "test-5", "test-6"]),
+                    Item(property=["test-7", "test-8", "test-9"]),
+                ],
+                [
+                    Item(property=["test-10", "test-11", "test-12"]),
+                    Item(property=["test-13", "test-14", "test-15"]),
+                ],
+            ],
+            9,
+            False,
+        ),
+        (
+            [
+                Item(property=["test-1", "test-2"]),
+                Item(property=["test-3"]),
+                Item(property=["test-4"]),
+                Item(property=["test-5", "test-6"]),
+                Item(property=["test-7", "test-8", "test-9"]),
+            ],
+            [
+                [Item(property=["test-1", "test-2"]), Item(property=["test-3"])],
+                [Item(property=["test-4"]), Item(property=["test-5", "test-6"])],
+                [Item(property=["test-7", "test-8", "test-9"])],
+            ],
+            3,
+            False,
+        ),
+        (
+            [
+                Item(property=["test-1", "test-2", "test-3", "test-4"]),
+                Item(property=["test-5"]),
+            ],
+            None,
+            3,
+            True,
+        ),
+        (
+            [
+                Item(property=["test-1", "test-2"]),
+            ],
+            [[Item(property=["test-1", "test-2"])]],
+            3,
+            False,
+        ),
+    ],
+    ids=[
+        "last-batch-with-size-smaller-than-batch-size",
+        "all-item-property-sizes-within-range-of-batch-size",
+        "property-count-greater-than-batch-size",
+        "total-property-counts-less-than-batch-size",
+    ],
+)
+def test_batch_by_property_size(items, expected_batches, batch_size, raises):
+    if raises:
+        with pytest.raises(ValueError):
+            for _ in batch_by_property_callback(items, lambda item: len(item.property), batch_size):
+                pass
+    else:
+        batches = [batch for batch in batch_by_property_callback(items, lambda item: len(item.property), batch_size)]
+        assert_that(batches).is_equal_to(expected_batches)
