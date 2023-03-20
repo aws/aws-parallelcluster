@@ -8,10 +8,10 @@
  
  
  class ApiClient(object):
-@@ -603,6 +604,9 @@
-         if not auth_settings:
+@@ -633,6 +634,9 @@ class ApiClient(object):
+                     headers, queries, resource_path, method, body, auth_setting)
              return
- 
+
 +        if 'aws.auth.sigv4' in auth_settings:
 +            sigv4_auth(method, self.configuration.host, resource_path, queries, body, headers)
 +
