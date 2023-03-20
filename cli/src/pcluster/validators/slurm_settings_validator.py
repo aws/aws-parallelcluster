@@ -14,8 +14,10 @@ from enum import Enum
 from pcluster.validators.common import FailureLevel, Validator
 
 # SLURM SETTINGS are case-insensitive - keep them lowercase since they are compared with setting.lower()
-SLURM_SETTINGS_QUEUE_DENY_LIST = ["nodes", "state", "partitionname", "resumetimeout", "suspendtime"]
-SLURM_SETTINGS_COMPUTE_RESOURCE_DENY_LIST = ["nodename", "nodehostname", "nodeaddr", "state", "gres"]
+SLURM_SETTINGS_DENY_LIST = {
+    "Queue": ["nodes", "partitionname", "resumetimeout", "state", "suspendtime"],
+    "ComputeResource": ["cpus", "features", "gres", "nodeaddr", "nodehostname", "nodename", "state"],
+}
 
 
 class SlurmCustomSettingLevel(str, Enum):

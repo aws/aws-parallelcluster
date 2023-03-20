@@ -192,8 +192,7 @@ from pcluster.validators.scheduler_plugin_validators import (
     UserNameValidator,
 )
 from pcluster.validators.slurm_settings_validator import (
-    SLURM_SETTINGS_COMPUTE_RESOURCE_DENY_LIST,
-    SLURM_SETTINGS_QUEUE_DENY_LIST,
+    SLURM_SETTINGS_DENY_LIST,
     SlurmCustomSettingLevel,
     SlurmCustomSettingsValidator,
     SlurmCustomSettingsWarning,
@@ -2237,7 +2236,7 @@ class SlurmQueue(_CommonQueue):
             self._register_validator(
                 SlurmCustomSettingsValidator,
                 custom_settings=self.custom_slurm_settings,
-                deny_list=SLURM_SETTINGS_QUEUE_DENY_LIST,
+                deny_list=SLURM_SETTINGS_DENY_LIST["Queue"],
                 settings_level=SlurmCustomSettingLevel.QUEUE,
             )
             self._register_validator(SlurmCustomSettingsWarning)
@@ -2262,7 +2261,7 @@ class SlurmQueue(_CommonQueue):
                 self._register_validator(
                     SlurmCustomSettingsValidator,
                     custom_settings=compute_resource.custom_slurm_settings,
-                    deny_list=SLURM_SETTINGS_COMPUTE_RESOURCE_DENY_LIST,
+                    deny_list=SLURM_SETTINGS_DENY_LIST["ComputeResource"],
                     settings_level=SlurmCustomSettingLevel.COMPUTE_RESOURCE,
                 )
                 self._register_validator(SlurmCustomSettingsWarning)
