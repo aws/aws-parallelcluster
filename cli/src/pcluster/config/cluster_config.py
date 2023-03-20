@@ -194,6 +194,7 @@ from pcluster.validators.scheduler_plugin_validators import (
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
     CustomSlurmSettingLevel,
+    CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
     CustomSlurmSettingsWarning,
 )
@@ -2318,6 +2319,7 @@ class SlurmSettings(Resource):
         enable_memory_based_scheduling: bool = None,
         database: Database = None,
         custom_slurm_settings: List[Dict] = None,
+        custom_slurm_settings_include_file: str = None,
         **kwargs,
     ):
         super().__init__()
@@ -2329,6 +2331,7 @@ class SlurmSettings(Resource):
         self.enable_memory_based_scheduling = Resource.init_param(enable_memory_based_scheduling, default=False)
         self.database = database
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings)
+        self.custom_slurm_settings_include_file = Resource.init_param(custom_slurm_settings_include_file)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -2347,6 +2350,13 @@ class SlurmSettings(Resource):
                     deny_list=SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Accounting"],
                     settings_level=CustomSlurmSettingLevel.SLURM_CONF,
                 )
+        if self.custom_slurm_settings_include_file:
+            self._register_validator(UrlValidator, url=self.custom_slurm_settings_include_file)
+            self._register_validator(
+                CustomSlurmSettingsIncludeFileOnlyValidator,
+                custom_settings=self.custom_slurm_settings,
+                include_file_url=self.custom_slurm_settings_include_file,
+            )
 
 
 class QueueUpdateStrategy(Enum):
