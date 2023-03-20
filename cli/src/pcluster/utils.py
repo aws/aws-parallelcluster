@@ -21,7 +21,7 @@ import time
 import zipfile
 from io import BytesIO
 from shlex import quote
-from typing import NoReturn
+from typing import Callable, NoReturn
 from urllib.parse import urlparse
 
 import dateutil.parser
@@ -402,3 +402,45 @@ def get_http_tokens_setting(imds_support):
 def remove_none_values(original_dictionary):
     """Return a dictionary without entries with None value."""
     return {key: value for key, value in original_dictionary.items() if value is not None}
+
+
+def batch_by_property_callback(items, property_callback: Callable[..., int], batch_size):
+    """
+    Group a list of items into batches based on a property of each item and the specified `batch_size`.
+
+    The property of each item is obtained using the property_callback function. This way the caller of
+    `batch_by_property_size` defines which property to use for each item.
+    Example: (With batch_size of 2 and property_callback=lambda item: len(item.property))
+        [
+            Item(property=["test-1", "test-2"]),
+            Item(property=["test-3"]),
+            Item(property=["test-4"]),
+        ] --> [ [Item(property=["test-1", "test-2"])], [Item(property=["test-3"]), Item(property=["test-4"])] ]
+    :param items: list of items to organize into batches
+    :param property_callback: a callback function that returns the property(size) to use for batching
+    :param batch_size: maximum size of each batch
+    :return: batches of items as a list
+    """
+    # Avoid batching if total property count is already less than or equal to the batch_size
+    if sum(property_callback(item) for item in items) < batch_size:
+        yield items
+        return
+
+    batch_total_property_value, current_batch = 0, []
+    for item_index, item in enumerate(items):
+        property_value = property_callback(item)
+        if property_callback(item) > batch_size:
+            raise ValueError(
+                f"{item.__class__} property callback value of {property_value} is larger than "
+                f"the batch size ({batch_size}))"
+            )
+
+        if batch_total_property_value + property_value > batch_size:
+            yield current_batch
+            batch_total_property_value, current_batch = property_value, [item]
+        else:
+            batch_total_property_value += property_value
+            current_batch.append(item)
+        if item_index == len(items) - 1:
+            # If on the last time, yield the batch
+            yield current_batch

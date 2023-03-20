@@ -43,6 +43,7 @@ class CDKTemplateBuilder:
             output_file = str(stack_name)
             app = App(outdir=str(cloud_assembly_dir))
             ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket, log_group_name)
+
             cloud_assembly = app.synth()
 
             cdk_artifacts_manager = CDKArtifactsManager(cloud_assembly)

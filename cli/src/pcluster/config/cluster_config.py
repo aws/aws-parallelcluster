@@ -191,6 +191,12 @@ from pcluster.validators.scheduler_plugin_validators import (
     SupportedVersionsValidator,
     UserNameValidator,
 )
+from pcluster.validators.slurm_settings_validator import (
+    SLURM_SETTINGS_DENY_LIST,
+    SlurmCustomSettingLevel,
+    SlurmCustomSettingsValidator,
+    SlurmCustomSettingsWarning,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1858,6 +1864,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         schedulable_memory: int = None,
         capacity_reservation_target: CapacityReservationTarget = None,
         networking: SlurmComputeResourceNetworking = None,
+        custom_slurm_settings: Dict = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1873,6 +1880,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self._instance_types_with_instance_storage = []
         self._instance_type_info_map = {}
         self.networking = networking or SlurmComputeResourceNetworking(implied=True)
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
@@ -1935,7 +1943,11 @@ class FlexibleInstanceType(Resource):
 class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
-    def __init__(self, instances: List[FlexibleInstanceType], **kwargs):
+    def __init__(
+        self,
+        instances: List[FlexibleInstanceType],
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.instances = Resource.init_param(instances)
 
@@ -1972,7 +1984,11 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
 class SlurmComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with a Single Instance Type."""
 
-    def __init__(self, instance_type, **kwargs):
+    def __init__(
+        self,
+        instance_type,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.instance_type = Resource.init_param(instance_type)
         self.__instance_type_info = None
@@ -2161,9 +2177,11 @@ class SlurmQueue(_CommonQueue):
     def __init__(
         self,
         allocation_strategy: str = None,
+        custom_slurm_settings: Dict = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
@@ -2214,6 +2232,14 @@ class SlurmQueue(_CommonQueue):
                 queue_name=self.name,
                 subnet_ids=self.networking.subnet_ids,
             )
+        if self.custom_slurm_settings:
+            self._register_validator(
+                SlurmCustomSettingsValidator,
+                custom_settings=self.custom_slurm_settings,
+                deny_list=SLURM_SETTINGS_DENY_LIST["Queue"],
+                settings_level=SlurmCustomSettingLevel.QUEUE,
+            )
+            self._register_validator(SlurmCustomSettingsWarning)
         for compute_resource in self.compute_resources:
             self._register_validator(
                 EfaSecurityGroupValidator,
@@ -2231,6 +2257,14 @@ class SlurmQueue(_CommonQueue):
                 is False,
                 multi_az_enabled=self.multi_az_enabled,
             )
+            if compute_resource.custom_slurm_settings:
+                self._register_validator(
+                    SlurmCustomSettingsValidator,
+                    custom_settings=compute_resource.custom_slurm_settings,
+                    deny_list=SLURM_SETTINGS_DENY_LIST["ComputeResource"],
+                    settings_level=SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+                )
+                self._register_validator(SlurmCustomSettingsWarning)
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
                     CapacityTypeValidator,

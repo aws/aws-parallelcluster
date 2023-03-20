@@ -79,6 +79,11 @@ from pcluster.validators.ebs_validators import (
     MultiAzRootVolumeValidator,
     SharedEbsVolumeIdValidator,
 )
+from pcluster.validators.slurm_settings_validator import (
+    SlurmCustomSettingLevel,
+    SlurmCustomSettingsValidator,
+    SlurmCustomSettingsWarning,
+)
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 from tests.utils import MockedBoto3Request
@@ -185,6 +190,60 @@ def test_cluster_name_validator_slurm_accounting(cluster_name, scheduling, shoul
     )
     actual_failures = ClusterNameValidator().execute(cluster_name, scheduling)
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "description, custom_settings, deny_list, settings_level, expected_message",
+    [
+        (
+            "No error when custom settings are not in the deny_list",
+            {"Allowed1": "Value1", "Allowed2": "Value2"},
+            ["denied1", "denied2"],  # keep the deny-list lowercase
+            SlurmCustomSettingLevel.QUEUE,
+            "",
+        ),
+        (
+            "Fails when custom settings are in the deny_list, invalid parameters are reported",
+            {"Denied1": "Value1", "Denied2": "Value2"},
+            ["denied1", "denied2"],
+            SlurmCustomSettingLevel.QUEUE,
+            "Using the following custom Slurm settings at Queue level is not allowed: Denied1,Denied2",
+        ),
+        (
+            "No error when custom settings are not in the deny_list",
+            {"Allowed1": "Value1", "Allowed2": "Value2"},
+            ["denied1", "denied2"],
+            SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+            "",
+        ),
+        (
+            "Fails when custom settings are in the deny_list, invalid parameters are reported",
+            {"Denied1": "Value1", "Denied2": "Value2"},
+            ["denied1", "denied2"],
+            SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+            "Using the following custom Slurm settings at ComputeResource level is not allowed: Denied1,Denied2",
+        ),
+        (
+            "Case doesn't affect the result and duplicates are avoided, but only the first occurrence is reported",
+            {"Denied1": "Value1", "Denied2": "Value2", "dEnIeD1": "Value1", "deNIeD2": "Value2"},
+            ["denied1", "denied2"],
+            SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+            "Using the following custom Slurm settings at ComputeResource level is not allowed: Denied1,Denied2",
+        ),
+    ],
+)
+def test_custom_slurm_settings_validator(description, custom_settings, deny_list, settings_level, expected_message):
+    actual_failures = SlurmCustomSettingsValidator().execute(custom_settings, deny_list, settings_level)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+def test_custom_slurm_settings_warning():
+    # when multiple instances are invoked it should show the warning only once
+    actual_failures = SlurmCustomSettingsWarning().execute()
+    assert_failure_messages(actual_failures, "Custom Slurm settings are in use: please monitor the cluster carefully.")
+
+    actual_failures = SlurmCustomSettingsWarning().execute()
+    assert_failure_messages(actual_failures, None)
 
 
 @pytest.mark.parametrize(
