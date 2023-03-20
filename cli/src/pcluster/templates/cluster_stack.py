@@ -95,7 +95,7 @@ from pcluster.templates.cdk_builder_utils import (
 from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
+from pcluster.utils import get_attr, get_http_tokens_setting
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
