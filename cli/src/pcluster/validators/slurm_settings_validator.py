@@ -10,6 +10,7 @@
 # limitations under the License.
 
 from enum import Enum
+from typing import Dict, List
 
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -114,3 +115,20 @@ class CustomSlurmSettingsWarning(Validator):
                 FailureLevel.WARNING,
             )
             CustomSlurmSettingsWarning.signaled = True
+
+
+class CustomSlurmSettingsIncludeFileOnlyValidator(Validator):
+    """
+    Custom Slurm Settings Include File Only validator.
+
+    This validator returns an error if the CustomSlurmSettingsIncludeFile configuration parameter
+    is used together with the CustomSlurmSettings under SlurmSettings.
+    """
+
+    def _validate(self, custom_settings: List[Dict], include_file_url: str):
+        if custom_settings and include_file_url:
+            self._add_failure(
+                "CustomSlurmsettings and CustomSlurmSettingsIncludeFile cannot be used together "
+                "under SlurmSettings.",
+                FailureLevel.ERROR,
+            )

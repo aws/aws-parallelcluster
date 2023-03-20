@@ -82,6 +82,7 @@ from pcluster.validators.ebs_validators import (
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
     CustomSlurmSettingLevel,
+    CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
     CustomSlurmSettingsWarning,
 )
@@ -260,6 +261,28 @@ def test_custom_slurm_settings_warning():
 
     actual_failures = CustomSlurmSettingsWarning().execute()
     assert_failure_messages(actual_failures, None)
+
+
+@pytest.mark.parametrize(
+    "custom_slurm_settings, custom_slurm_settings_include_file, expected_message",
+    [
+        ([{"Param1": "Value1"}, {"Param2": "Value2"}], "", ""),
+        ([], "s3://test", ""),
+        (
+            [{"Param1": "Value1"}, {"Param2": "Value2"}],
+            "s3://test",
+            "CustomSlurmsettings and CustomSlurmSettingsIncludeFile cannot be used together under SlurmSettings.",
+        ),
+    ],
+)
+def test_custom_slurm_settings_include_file_only_validator(
+    custom_slurm_settings, custom_slurm_settings_include_file, expected_message
+):
+    actual_failures = CustomSlurmSettingsIncludeFileOnlyValidator().execute(
+        custom_slurm_settings,
+        custom_slurm_settings_include_file,
+    )
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

@@ -1421,6 +1421,7 @@ class SlurmSettingsSchema(BaseSchema):
     enable_memory_based_scheduling = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     database = fields.Nested(DatabaseSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     custom_slurm_settings = fields.List(fields.Dict, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    custom_slurm_settings_include_file = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
