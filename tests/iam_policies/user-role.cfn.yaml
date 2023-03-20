@@ -1047,12 +1047,12 @@ Resources:
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
             Resource: "*"
-          - Effect: Allow
-            Action:
-              - logs:DescribeMetricFilters
-              - logs:PutMetricFilter
-              - logs:deleteMetricFilter
-            Resource: "*"
+#          - Effect: Allow # TODO: Refactor it, comment it out now to workaround exceeds quota for PolicySize: 6144
+#            Action:
+#              - logs:DescribeMetricFilters
+#              - logs:PutMetricFilter
+#              - logs:deleteMetricFilter
+#            Resource: "*"
 
 Outputs:
   ParallelClusterUserRole:
