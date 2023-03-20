@@ -205,6 +205,25 @@ CHANGELOG
 - Fix ParallelCluster API stack update failure when upgrading from a previus version. Add resource pattern used for the `ListImagePipelineImages` action in the `EcrImageDeletionLambdaRole`.
 - Fix ParallelCluster API adding missing permissions needed to import/export from S3 when creating an FSx for Lustre storage.
 
+3.1.5
+------
+
+**CHANGES**
+- Upgrade EFA installer to `1.18.0`
+  - Efa-driver: `efa-1.16.0-1`
+  - Efa-config: `efa-config-1.11-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.16.0~amzn4.0-1`
+  - Rdma-core: `rdma-core-41.0-2`
+  - Open MPI: `openmpi40-aws-4.1.4-2`
+- Add `lambda:ListTags` and `lambda:UntagResource` to `ParallelClusterUserRole` used by ParallelCluster API stack for cluster update.
+- Upgrade Intel MPI Library to 2021.6.0.602.
+- Upgrade NVIDIA driver to version 470.141.03.
+- Upgrade NVIDIA Fabric Manager to version 470.141.03.
+
+**BUG FIXES**
+- Fix Slurm issue that prevents idle nodes termination.
+
 3.1.4
 ------
 
