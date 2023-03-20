@@ -180,7 +180,7 @@ Resources:
 
               try:
                   meta_keys = {"ServiceToken", "DeletionPolicy"}
-                  kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in properties.items() if k not in meta_keys}, "wait": False}
+                  kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in drop_keys(properties, meta_keys).items()}, "wait": False}
                   func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[request_type]
                   update_response(func(**kwargs))
               except (APIOperationException, ParameterException, TypeError)  as e:

@@ -70,8 +70,8 @@ def service_token(pytestconfig):
     return pytestconfig.getoption("service_token")
 
 
-@pytest.fixture(scope="session")
-def bucket(pytestconfig):
+@pytest.fixture(scope="session", name="bucket")
+def bucket_fixture(pytestconfig):
     """Bucket returned from pytest arguments for retrieving artifacts."""
     return pytestconfig.getoption("bucket")
 
