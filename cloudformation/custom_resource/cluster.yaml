@@ -105,6 +105,11 @@ Resources:
   PclusterCfnFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Tags:
+        - Key: "parallelcluster:version"
+          Value: !FindInMap [ParallelCluster, Constants, Version]
+        - Key: "parallelcluster:custom_resource"
+          Value: "cluster"
       FunctionName: !Sub
         - pcluster-cfn-${StackIdSuffix}
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
