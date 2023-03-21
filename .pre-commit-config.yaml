@@ -16,6 +16,7 @@ repos:
       - id: check-symlinks
       - id: end-of-file-fixer
       - id: pretty-format-json
+        args: ['--autofix']
       - id: requirements-txt-fixer
       - id: mixed-line-ending
         args: ['--fix=no']
