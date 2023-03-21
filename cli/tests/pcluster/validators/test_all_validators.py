@@ -26,6 +26,7 @@ from pcluster.validators import (
     kms_validators,
     networking_validators,
     s3_validators,
+    slurm_settings_validator,
 )
 from pcluster.validators.common import Validator, ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -43,6 +44,7 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
         instances_validators,
         networking_validators,
         s3_validators,
+        slurm_settings_validator,
     ]
     if additional_modules:
         modules += additional_modules

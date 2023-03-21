@@ -11,6 +11,11 @@ Scheduling:
   Scheduler: slurm
   SlurmSettings:
     EnableMemoryBasedScheduling: true
+    CustomSlurmSettings:
+      - Param1: Value1
+      - Param2: Value2
+      - NodeName: test-node[1-100]
+        CPUs: 100
     Database:
       Uri: test.databaseserver.com
       UserName: test_admin
