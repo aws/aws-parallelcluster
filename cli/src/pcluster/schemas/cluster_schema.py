@@ -1067,8 +1067,36 @@ class QueueImageSchema(BaseSchema):
         return QueueImage(**data)
 
 
-class HeadNodeCustomActionSchema(BaseSchema):
-    """Represent the schema of the custom action."""
+class OneOrManyCustomActionField(fields.Nested):
+    def __init__(self, **kwargs):
+        schema = (
+            UpdatableCustomActionScriptSchema
+            if kwargs.get("metadata", {}).get("update_policy") == UpdatePolicy.SUPPORTED
+            else CustomActionScriptSchema
+        )
+        super().__init__(schema, **kwargs)
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        if "Script" in value and "Sequence" in value:
+            raise ValidationError("Both Script and Sequence fields are provided. Only one is allowed.")
+
+        if "Script" in value:
+            return super()._deserialize(value, attr, data, **kwargs)
+
+        if "Sequence" in value:
+            sequence = value["Sequence"]
+            if not isinstance(sequence, list):
+                raise ValidationError("Invalid input type for Sequence, expected list.")
+            res = []
+            for item in sequence:
+                res.append(super()._deserialize(item, attr, data, **kwargs))
+            return res
+
+        raise ValidationError("Either Script or Sequence field must be provided.")
+
+
+class CustomActionScriptSchema(BaseSchema):
+    """Represent the schema of the custom action script that cannot be updated."""
 
     script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1079,8 +1107,8 @@ class HeadNodeCustomActionSchema(BaseSchema):
         return CustomAction(**data)
 
 
-class HeadNodeUpdatableCustomActionSchema(BaseSchema):
-    """Represent the schema of an updatable custom action."""
+class UpdatableCustomActionScriptSchema(BaseSchema):
+    """Represent the schema of the custom action script that can be updated."""
 
     script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.SUPPORTED})
@@ -1091,14 +1119,11 @@ class HeadNodeUpdatableCustomActionSchema(BaseSchema):
         return CustomAction(**data)
 
 
-class HeadNodeCustomActionsSchema(BaseSchema):
+class QueueCustomActionsSchema(BaseSchema):
     """Represent the schema for all available custom actions."""
 
-    on_node_start = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    on_node_configured = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    on_node_updated = fields.Nested(
-        HeadNodeUpdatableCustomActionSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
+    on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1106,27 +1131,10 @@ class HeadNodeCustomActionsSchema(BaseSchema):
         return CustomActions(**data)
 
 
-class QueueCustomActionSchema(BaseSchema):
-    """Represent the schema of the custom action."""
-
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return CustomAction(**data)
-
-
-class QueueCustomActionsSchema(BaseSchema):
+class HeadNodeCustomActionsSchema(QueueCustomActionsSchema):
     """Represent the schema for all available custom actions."""
 
-    on_node_start = fields.Nested(
-        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
-    )
-    on_node_configured = fields.Nested(
-        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
-    )
+    on_node_updated = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
