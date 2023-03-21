@@ -34,7 +34,7 @@ from pcluster.templates.cdk_builder_utils import (
     to_comma_separated_string,
 )
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
+from pcluster.utils import get_attr, get_http_tokens_setting
 
 
 class QueueGroupStack(NestedStack):
