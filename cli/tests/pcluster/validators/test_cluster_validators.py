@@ -81,6 +81,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
+    CustomSlurmNodeNamesValidator,
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
@@ -261,6 +262,44 @@ def test_custom_slurm_settings_warning():
 
     actual_failures = CustomSlurmSettingsWarning().execute()
     assert_failure_messages(actual_failures, None)
+
+
+@pytest.mark.parametrize(
+    "custom_slurm_settings, expected_message",
+    [
+        # Generic case without custom Slurm nodes
+        ([{"Param1": "Value1"}, {"Param2": "Value2"}], ""),
+        # Generic case with custom Slurm nodes
+        ([{"NodeName": "test-node[1-100]", "CPUs": "16"}], ""),
+        # Generic case with custom Slurm nodes with bad name
+        (
+            [{"NodeName": "test-st-node[1-100]", "CPUs": "16"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-st-node[1-100]",
+        ),
+        # Generic case with custom Slurm nodes with bad name
+        (
+            [{"NodeName": "test-dy-node[1-100]", "CPUs": "16"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-dy-node[1-100]",
+        ),
+        # Generic case with multiple custom Slurm nodelists with bad node name
+        (
+            [{"NodeName": "test-st-node[1-100]", "CPUs": "16"}, {"NodeName": "test-dy-node[1-100]", "CPUs": "16"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-dy-node[1-100], test-st-node[1-100]",
+        ),
+        # Unrealistic corner case with custom Slurm nodes with names defined multiple times
+        (
+            [{"NodeName": "test-dy-node[1-100]", "CPUs": "16", "nodename": "test-node[1-100]"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-dy-node[1-100]",
+        ),
+    ],
+)
+def test_custom_slurm_node_names_validator(custom_slurm_settings, expected_message):
+    actual_failures = CustomSlurmNodeNamesValidator().execute(custom_slurm_settings)
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

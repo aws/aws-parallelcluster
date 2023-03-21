@@ -117,6 +117,35 @@ class CustomSlurmSettingsWarning(Validator):
             CustomSlurmSettingsWarning.signaled = True
 
 
+class CustomSlurmNodeNamesValidator(Validator):
+    """
+    Custom Slurm Nodelists Names validator.
+
+    This validator ensures that any eventual custom node list passed via SlurmSettings/CustomSlurmSettings
+    does not contain the `-st-` or `-dy-` patterns in the node names, as this would cause the ParallelCluster
+    daemons to interfere with them.
+    """
+
+    def _validate(self, custom_settings: List[Dict]):
+        bad_nodelists = []
+
+        for custom_settings_dict in custom_settings:
+            # Here we validate also the corner case where users provide `NodeName` multiple times with more than
+            # one combination of cases (e.g. `NodeName` and `nodename`)
+            nodenames = [custom_settings_dict[key] for key in custom_settings_dict.keys() if key.lower() == "nodename"]
+            for nodename in nodenames:
+                if ("-st-" in nodename) or ("-dy-" in nodename):
+                    bad_nodelists.append(nodename)
+
+        if bad_nodelists:
+            nodelists = ", ".join(sorted(bad_nodelists))
+            self._add_failure(
+                f"Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+                f"Please rename the following custom Slurm nodes: {nodelists}",
+                FailureLevel.ERROR,
+            )
+
+
 class CustomSlurmSettingsIncludeFileOnlyValidator(Validator):
     """
     Custom Slurm Settings Include File Only validator.
