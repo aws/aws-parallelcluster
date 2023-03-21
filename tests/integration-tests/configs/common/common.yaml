@@ -1,3 +1,4 @@
+{%- set SCHEDULER_PLUGIN_TESTS = false -%}
 ad_integration:
   test_ad_integration.py::test_ad_integration:
     dimensions:
