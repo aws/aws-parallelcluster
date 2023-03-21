@@ -8,6 +8,7 @@ then
     exit 1
 fi
 pushd smithy && ../../gradlew build && popd
-GENERATED_YAML_PATH="smithy/build/smithyprojections/smithy/source/openapi/ParallelCluster.openapi.json"
-./spec_overrides.sh "$GENERATED_YAML_PATH"
-yq eval -P $GENERATED_YAML_PATH > openapi/ParallelCluster.openapi.yaml
+GENERATED_JSON_PATH="smithy/build/smithyprojections/smithy/source/openapi/ParallelCluster.openapi.json"
+./spec_overrides.sh "$GENERATED_JSON_PATH"
+# Convert json into yaml
+yq eval -P $GENERATED_JSON_PATH -o yaml > openapi/ParallelCluster.openapi.yaml
