@@ -1068,6 +1068,8 @@ class QueueImageSchema(BaseSchema):
 
 
 class OneOrManyCustomActionField(fields.Nested):
+    """Custom Marshmallow filed to handle backward compatible single script custom actions."""
+
     def __init__(self, **kwargs):
         schema = (
             UpdatableCustomActionScriptSchema
