@@ -1,0 +1,10 @@
+{%- import 'common.jinja2' as common with context -%}
+---
+test-suites:
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
+      dimensions:
+        - regions: [ "ap-northeast-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "ubuntu1804" ]
+          schedulers: [ "slurm" ]
