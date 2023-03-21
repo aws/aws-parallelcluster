@@ -146,12 +146,15 @@ Resources:
           def drop_keys(_dict, keys):
               return {k: v for k, v in _dict.items() if k not in keys}
 
-          def flatten(obj, path=""):
-              """Flatten a nested map using dot-notation for keys."""
-              _dict = obj if isinstance(obj, dict) else {str(i): v for i, v in enumerate(obj)}
-              ret = {path + str(k): v for k, v in _dict.items() if not isinstance(v, (dict, list))}
-              for k, v in filter(lambda x: isinstance(x[1], (dict, list)), list(_dict.items())):
-                  ret.update(flatten(v, f"{path}{k}."))
+          def flatten(obj, ret={}, path=""):
+              """flatten a nested map using dot-notation for keys."""
+              if isinstance(obj, list):  # convert list to dictionary for flattening
+                  return flatten({str(i): v for i, v in enumerate(obj)}, ret, path)
+              for k, v in obj.items():
+                  if isinstance(v, (dict, list)):  # recurse on complex objects
+                      flatten(v, ret, f"{path}{k}.")
+                  else:  # otherwise add with prefix
+                      ret[path + str(k)] = v
               return ret
 
           def update_response(data):
