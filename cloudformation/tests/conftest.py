@@ -1,4 +1,5 @@
 """Additional pytest configuration."""
+import os
 import random
 import string
 
@@ -6,6 +7,12 @@ import boto3
 import pytest
 
 PUBPRIV_TEMPLATE = "../networking/public-private.cfn.json"
+
+
+def pytest_addoption(parser):
+    """Add the pytest parameter options with defaults from environment."""
+    for arg in ["bucket", "private_subnet_id", "public_subnet_id", "service_token"]:
+        parser.addoption(f"--{arg}", action="store", default=os.environ.get(arg.upper(), ""))
 
 
 def random_str():
@@ -57,6 +64,30 @@ def random_stack_name_fixture():
     return random_str()
 
 
+@pytest.fixture(scope="session")
+def service_token(pytestconfig):
+    """Bucket returned from pytest arguments for retrieving artifacts."""
+    return pytestconfig.getoption("service_token")
+
+
+@pytest.fixture(scope="session", name="bucket")
+def bucket_fixture(pytestconfig):
+    """Bucket returned from pytest arguments for retrieving artifacts."""
+    return pytestconfig.getoption("bucket")
+
+
+@pytest.fixture(scope="session", name="private_subnet_id")
+def private_subnet_id_fixture(pytestconfig):
+    """public_subnet_id returned from pytest arguments for HeadNode."""
+    return pytestconfig.getoption("private_subnet_id")
+
+
+@pytest.fixture(scope="session", name="public_subnet_id")
+def public_subnet_id_fixture(pytestconfig):
+    """private_subnet_id returned from pytest argumenets for Compute Nodes."""
+    return pytestconfig.getoption("public_subnet_id")
+
+
 @pytest.fixture(scope="session", name="cfn")
 def cfn_fixture():
     """Create a CloudFormation Boto3 client."""
@@ -65,8 +96,12 @@ def cfn_fixture():
 
 
 @pytest.fixture(scope="module", name="default_vpc")
-def default_vpc_fixture(cfn):
+def default_vpc_fixture(private_subnet_id, public_subnet_id):
     """Create our default VPC networking and return the stack name."""
+    if private_subnet_id != "" and public_subnet_id != "":
+        yield {"PublicSubnetId": public_subnet_id, "PrivateSubnetId": private_subnet_id}
+        return
+
     ec2 = boto3.client("ec2")
     azs = ec2.describe_availability_zones()["AvailabilityZones"]
     stack_name = random_str()

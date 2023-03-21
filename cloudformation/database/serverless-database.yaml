@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: >-
-  This template is provided as part of a tutorial on how to enable Slurm Accounting using Parallel Cluster.
+Description: AWS ParallelCluster Slurm Accounting Database
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:

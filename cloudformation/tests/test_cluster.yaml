@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  AWS ParallelCluster CloudFormation Template
+Description: AWS ParallelCluster CloudFormation Cluster
 
 Parameters:
   ClusterName:
@@ -15,7 +14,7 @@ Parameters:
   ComputeInstanceMax:
     Description: Maximum number of compute instances
     Type: Number
-    Default: 10
+    Default: 16
   ServiceToken:
     Description: ARN of Lambda Function backing the Cluster Resource
     Type: String
@@ -23,6 +22,13 @@ Parameters:
     Description: Script to run on HeadNode configured
     Type: String
     Default: ''
+  DeletionPolicy:
+    Type: String
+    Default: Delete
+    AllowedValues:
+      - Delete
+      - Retain
+    Description: Enter Retain or Delete to define the operation when the stack is deleted. Default is to Delete.
 
 Conditions:
   OnNodeConfiguredCondition: !Not [!Equals [!Ref OnNodeConfigured, '']]
@@ -32,8 +38,12 @@ Resources:
     Type: Custom::PclusterCluster
     Properties:
       ServiceToken: !Ref ServiceToken
+      DeletionPolicy: !Ref DeletionPolicy
       ClusterName: !Ref ClusterName
       ClusterConfiguration:
+        DevSettings:
+          AmiSearchFilters:
+            Owner: self
         Image:
           Os: alinux2
         HeadNode:
@@ -51,10 +61,17 @@ Resources:
           SlurmQueues:
           - Name: queue0
             ComputeResources:
-            - Name: queue0-i0
+            - Name: queue0-cr0
               InstanceType: t2.micro
-              MinCount: 0
               MaxCount: !Ref ComputeInstanceMax
             Networking:
               SubnetIds:
               - !Ref ComputeNodeSubnet
+
+Outputs:
+  HeadNodeIp:
+    Description: The Public IP address of the HeadNode
+    Value: !GetAtt [ PclusterCluster, headNode.publicIpAddress ]
+  ValidationMessages:
+    Description: Any warnings from cluster create or update operations.
+    Value: !GetAtt PclusterCluster.validationMessages

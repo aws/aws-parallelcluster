@@ -30,7 +30,7 @@
       ]
     }
   },
-  "Description": "Public Network for AWS ParallelCluster",
+  "Description": "AWS ParallelCluster Public Network",
   "Outputs": {
     "VpcId": {
       "Value": {
