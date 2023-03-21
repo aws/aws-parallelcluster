@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: AWS ParallelCluster CloudFormation Template
+Description: AWS ParallelCluster Cluster Custom Resource Provider
 
 Parameters:
 
@@ -14,6 +14,12 @@ Parameters:
     Type: CommaDelimitedList
     Default: ''
 
+  CustomBucket:
+    Description: (Debug only) bucket to retrieve S3 artifacts for internal resources.
+    Type: String
+    Default: ''
+
+
 Mappings:
   ParallelCluster:
     Constants:
@@ -23,6 +29,7 @@ Conditions:
   CustomRoleCondition: !Not [!Equals [!Ref CustomLambdaRole, '']]
   UsePCPolicies: !Not [!Condition CustomRoleCondition ]
   UseAdditionalIamPolicies: !Not [!Equals [!Join ['', !Ref AdditionalIamPolicies ], '']]
+  UseCustomBucket: !Not [!Equals [!Ref CustomBucket, '']]
 
 Resources:
   PclusterLayer:
@@ -33,7 +40,7 @@ Resources:
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Description: Library which contains aws-parallelcluster python package and dependencies
       Content:
-        S3Bucket: !Sub ${AWS::Region}-aws-parallelcluster
+        S3Bucket: !If [ UseCustomBucket, !Ref CustomBucket, !Sub "${AWS::Region}-aws-parallelcluster" ]
         S3Key: !Sub
         - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
         - { Version: !FindInMap [ParallelCluster, Constants, Version] }
@@ -45,15 +52,19 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub
-        - https://${Region}-aws-parallelcluster.s3.${Region}.amazonaws.com/parallelcluster/${Version}/templates/policies/policies.yaml
-        - { Version: !FindInMap [ParallelCluster, Constants, Version], Region: !Ref AWS::Region }
+        - https://${Bucket}.s3.${Region}.amazonaws.com/parallelcluster/${Version}/templates/policies/policies.yaml
+        - { Version: !FindInMap [ParallelCluster, Constants, Version ],
+            Bucket: !If [UseCustomBucket, !Ref CustomBucket, !Sub "${AWS::Region}-aws-parallelcluster" ],
+            Region: !Ref AWS::Region }
       TimeoutInMinutes: 10
       Parameters:
         EnableIamAdminAccess: true
 
   PclusterCfnFunctionLogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
     Properties:
+      RetentionInDays: 90
       LogGroupName: !Sub /aws/lambda/${PclusterCfnFunction}
 
   EventsPolicy:
@@ -94,6 +105,11 @@ Resources:
   PclusterCfnFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Tags:
+        - Key: "parallelcluster:version"
+          Value: !FindInMap [ParallelCluster, Constants, Version]
+        - Key: "parallelcluster:custom_resource"
+          Value: "cluster"
       FunctionName: !Sub
         - pcluster-cfn-${StackIdSuffix}
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
@@ -106,6 +122,7 @@ Resources:
           import datetime
           import json
           import logging
+          import os
           import random
           import re
           import string
@@ -126,19 +143,43 @@ Resources:
           from crhelper import CfnResource
           helper = CfnResource()
 
-          def update_response(response):
-              logger.info(response)
-              helper.Data.update(response)
+          def drop_keys(_dict, keys):
+              return {k: v for k, v in _dict.items() if k not in keys}
+
+          def flatten(obj, ret={}, path=""):
+              """flatten a nested map using dot-notation for keys."""
+              if isinstance(obj, list):  # convert list to dictionary for flattening
+                  return flatten({str(i): v for i, v in enumerate(obj)}, ret, path)
+              for k, v in obj.items():
+                  if isinstance(v, (dict, list)):  # recurse on complex objects
+                      flatten(v, ret, f"{path}{k}.")
+                  else:  # otherwise add with prefix
+                      ret[path + str(k)] = v
+              return ret
+
+          def update_response(data):
+              logger.info(data)
+              # create / delete responses have cluster information nested in "cluster" key,
+              # flatten that portion while keeping other keys to propagate warnings.
+              if "cluster" in data:
+                  helper.Data.update(flatten(data["cluster"]))
+                  helper.Data["validationMessages"] = json.dumps(data.get("validationMessages", []))
+              else:  # without "cluster" in the keys, this is a cluster object.
+                  helper.Data.update(flatten(data))
 
           def serialize(val):
               return utils.to_iso_timestr(val) if isinstance(val, datetime.date) else val
 
           def create_or_update(event):
               properties = event["ResourceProperties"]
+              request_type = event["RequestType"].upper()
+              helper.Data["validationMessages"] = "[]"  # default value
 
-              if event["RequestType"].upper() == "CREATE" and "ClusterName" not in properties:
+              if properties.get("DeletionPolicy", "Delete") not in {"Retain", "Delete"}:
+                  raise ValueError("DeletionPolicy must be one of [\"Retain\", \"Delete\"].")
+              if request_type == "CREATE" and "ClusterName" not in properties:
                   raise ValueError("Couldn't find a ClusterName in the properties.")
-              elif event["RequestType"].upper() == "UPDATE" and event["PhysicalResourceId"] != properties.get("ClusterName"):
+              elif request_type == "UPDATE" and event["PhysicalResourceId"] != properties.get("ClusterName"):
                   raise ValueError("Cannot update the ClusterName in the properties.")
 
               cluster_name = properties["ClusterName"]
@@ -146,17 +187,22 @@ Resources:
               physical_resource_id = cluster_name
 
               try:
-                  kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in properties.items() if k not in {"ServiceToken"}}, "wait": False}
-                  func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[event["RequestType"].upper()]
+                  meta_keys = {"ServiceToken", "DeletionPolicy"}
+                  kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in drop_keys(properties, meta_keys).items()}, "wait": False}
+                  func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[request_type]
                   update_response(func(**kwargs))
               except (APIOperationException, ParameterException, TypeError)  as e:
+                  logger.info(str(e))
                   raise ValueError(str(e))
               except Exception as e:
                   message = pcluster.api.errors.exception_message(e)
-                  str_msg = encoder.JSONEncoder().encode(message)
+                  # StatusReason is truncated, so skip changeset in output, still logged below
+                  block_list = {"change_set"}
+                  str_msg = encoder.JSONEncoder().encode(drop_keys(message.to_dict(), block_list))
                   if not re.search(r"No changes found", str_msg):
-                    logger.info(f"No changes found to update: {cluster_name}")
-                    raise ValueError(str_msg)
+                      logger.info(encoder.JSONEncoder().encode(message))
+                      raise ValueError(str_msg)
+                  logger.info(f"No changes found to update: {cluster_name}")
 
               return physical_resource_id
 
@@ -170,7 +216,15 @@ Resources:
 
           @helper.delete
           def delete(event, context):
-              cluster_name = event["ResourceProperties"].get("ClusterName")
+              properties = event["ResourceProperties"]
+              cluster_name = properties.get("ClusterName")
+
+              deletion_policy = properties.get("DeletionPolicy", "Delete")
+              if deletion_policy not in {"Retain", "Delete"}:
+                  raise ValueError("DeleetionPolicy must be one of [\"Retain\", \"Delete\"].")
+              if deletion_policy == "Retain":
+                  return cluster_name
+
               logger.info(f"Deleting: {cluster_name}")
               try:
                   update_response(pc.delete_cluster(cluster_name=cluster_name))
@@ -183,6 +237,7 @@ Resources:
           # Polling functionality for async CUD operations
 
           def poll(event):
+              log_group = os.getenv("AWS_LAMBDA_LOG_GROUP_NAME")
               cluster_name = event["ResourceProperties"].get("ClusterName")
               try:
                   cluster = pc.describe_cluster(cluster_name=cluster_name)
@@ -192,7 +247,8 @@ Resources:
                       update_response(cluster)
                       return cluster_name
                   elif status in {"CREATE_FAILED", "UPDATE_FAILED", "DELETE_FAILED"}:
-                      raise ValueError(f"{cluster_name} failed {event['RequestType'].upper()}. See substack for further details.")
+                      reasons = ",".join(f["failureCode"] for f in cluster.get("failures", []))
+                      raise ValueError(f"{cluster_name}: {reasons} (LogGroup: {log_group})")
 
               # If create fails and we try to roll-back (e.g. delete),
               # gracefully handle missing cluster. on the delete pathway, the
@@ -202,7 +258,7 @@ Resources:
                       # Returning a value here signifies that the delete is completed and we can stop polling
                       # not returning a value here causes cfn resource helper to keep polling.
                       return cluster_name
-                  raise ValueError(f"{cluster_name} failed {event['RequestType'].upper()}. See substack for further details.")
+                  raise ValueError(f"{cluster_name} failed {event['RequestType'].upper()}. See LogGroup: {log_group}")
 
           @helper.poll_create
           def poll_create(event, context):
@@ -226,6 +282,12 @@ Resources:
         - !Ref PclusterLayer
 
 Outputs:
-  Function:
+  ServiceToken:
     Description: Lambda for managing PCluster Resources
     Value: !GetAtt PclusterCfnFunction.Arn
+  LogGroupArn:
+    Description: ARN of LogGroup for Lambda logging
+    Value: !GetAtt PclusterCfnFunctionLogGroup.Arn
+  LambaLayerArn:
+    Description: ARN for the ParallelCluster Lambda Layer
+    Value: !Ref PclusterLayer
