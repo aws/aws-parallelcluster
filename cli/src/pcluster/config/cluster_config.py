@@ -193,6 +193,7 @@ from pcluster.validators.scheduler_plugin_validators import (
 )
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
+    CustomSlurmNodeNamesValidator,
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
@@ -2343,6 +2344,7 @@ class SlurmSettings(Resource):
                 settings_level=CustomSlurmSettingLevel.SLURM_CONF,
             )
             self._register_validator(CustomSlurmSettingsWarning)
+            self._register_validator(CustomSlurmNodeNamesValidator, custom_settings=self.custom_slurm_settings)
             if self.database:
                 self._register_validator(
                     CustomSlurmSettingsValidator,
