@@ -34,7 +34,7 @@ from pcluster.templates.cdk_builder_utils import (
     to_comma_separated_string,
 )
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting, join_shell_args
+from pcluster.utils import get_attr, get_http_tokens_setting
 
 
 class QueueGroupStack(NestedStack):
@@ -122,17 +122,11 @@ class QueueGroupStack(NestedStack):
         for queue in self._queues:
             self.compute_launch_templates[queue.name] = {}
             queue_lt_security_groups = get_queue_security_groups_full(self._compute_security_group, queue)
-            queue_pre_install_action, queue_post_install_action = (None, None)
-            if queue.custom_actions:
-                queue_pre_install_action = queue.custom_actions.on_node_start
-                queue_post_install_action = queue.custom_actions.on_node_configured
 
             for resource in queue.compute_resources:
                 self.compute_launch_templates[queue.name][resource.name] = self._add_compute_resource_launch_template(
                     queue,
                     resource,
-                    queue_pre_install_action,
-                    queue_post_install_action,
                     queue_lt_security_groups,
                     self._get_placement_group_for_compute_resource(queue, self.managed_placement_groups, resource),
                     self._compute_instance_profiles,
@@ -142,8 +136,6 @@ class QueueGroupStack(NestedStack):
         self,
         queue,
         compute_resource,
-        queue_pre_install_action,
-        queue_post_install_action,
         queue_lt_security_groups,
         placement_group,
         instance_profiles,
@@ -224,18 +216,6 @@ class QueueGroupStack(NestedStack):
                                 if compute_resource.disable_simultaneous_multithreading_manually
                                 else "false",
                                 "BaseOS": self._config.image.os,
-                                "PreInstallScript": queue_pre_install_action.script
-                                if queue_pre_install_action
-                                else "NONE",
-                                "PreInstallArgs": join_shell_args(queue_pre_install_action.args)
-                                if queue_pre_install_action and queue_pre_install_action.args
-                                else "NONE",
-                                "PostInstallScript": queue_post_install_action.script
-                                if queue_post_install_action
-                                else "NONE",
-                                "PostInstallArgs": join_shell_args(queue_post_install_action.args)
-                                if queue_post_install_action and queue_post_install_action.args
-                                else "NONE",
                                 "EFSIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.EFS
                                 ),

@@ -1,3 +1,6 @@
+
+Description: AWS ParallelCluster ActiveDirectory Database
+
 Parameters:
   DomainName:
     Description: AD Domain Name.
