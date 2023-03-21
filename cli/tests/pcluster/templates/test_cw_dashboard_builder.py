@@ -179,7 +179,6 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
     scheduler = cluster_config.scheduling.scheduler
     slurm_related_metrics = [
         "IamPolicyErrors",
-        "AmiLargerThanRootVolume",
         "VcpuLimit",
         "VolumeLimit",
         "NodeCapacityInsufficient",
