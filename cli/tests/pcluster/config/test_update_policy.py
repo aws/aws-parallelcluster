@@ -30,6 +30,7 @@ from tests.pcluster.test_utils import dummy_cluster
     "is_fleet_stopped, old_max, new_max, expected_result",
     [
         pytest.param(True, 10, 9, True, id="stopped fleet and new_max < old_max"),
+        pytest.param(False, "10", "9", False, id="running fleet and new_max < old_max"),
         pytest.param(True, 10, 11, True, id="stopped fleet new_max > old_max"),
         pytest.param(False, 10, 9, False, id="running fleet and new_max < old_max"),
         pytest.param(False, 10, 11, True, id="running fleet and new_max > old_max"),
