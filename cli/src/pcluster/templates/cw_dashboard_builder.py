@@ -272,11 +272,6 @@ class CWDashboardConstruct(Construct):
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="AmiLargerThanRootVolume",
-                filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "custom-ami-errors"),
-                metric_value=metric_value,
-            ),
-            _CustomMetricFilter(
                 metric_name="VcpuLimit",
                 filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "vcpu-limit-failures"),
                 metric_value=metric_value,
@@ -352,7 +347,7 @@ class CWDashboardConstruct(Construct):
         ]
         cluster_common_errors = [
             _ErrorMetric(
-                "JobsNot Starting Errors",
+                "Jobs Not Starting Errors",
                 jobs_not_starting_errors,
             ),
             _ErrorMetric(
