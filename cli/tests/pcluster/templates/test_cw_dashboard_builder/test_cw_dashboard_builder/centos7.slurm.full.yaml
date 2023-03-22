@@ -22,6 +22,11 @@ Scheduling:
           InstanceType: c5.2xlarge
         - Name: compute_resource2
           InstanceType: c4.2xlarge
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ resource_bucket }}/scripts/preinstall.sh
+          Args:
+            - arg1
     - Name: queue2
       Networking:
         SubnetIds:

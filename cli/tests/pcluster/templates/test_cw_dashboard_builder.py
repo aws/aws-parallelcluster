@@ -190,20 +190,24 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
         "NoCorrespondingInstanceForNode",
         "SlurmNodeNotResponding",
     ]
+    custom_script_metrics = [
+        "OnNodeStartDownloadError",
+        "OnNodeStartExecutionError",
+        "OnNodeConfiguredDownloadError",
+        "OnNodeConfiguredExecutionError",
+    ]
     if scheduler == "slurm":
         # Contains error metric title
         assert_that(output_yaml).contains("Cluster Health Metrics")
         for metric in slurm_related_metrics:
             assert_that(output_yaml).contains(metric)
         if cluster_config.has_custom_actions_in_queue:
-            assert_that(output_yaml).contains("CannotRetrieveCustomScript")
-            assert_that(output_yaml).contains("ErrorWithCustomScript")
+            for metric in custom_script_metrics:
+                assert_that(output_yaml).contains(metric)
         else:
-            assert_that(output_yaml).does_not_contain("CannotRetrieveCustomScript")
-            assert_that(output_yaml).does_not_contain("ErrorWithCustomScript")
+            for metric in custom_script_metrics:
+                assert_that(output_yaml).does_not_contain(metric)
     else:
-        for metric in slurm_related_metrics:
+        assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
+        for metric in slurm_related_metrics + custom_script_metrics:
             assert_that(output_yaml).does_not_contain(metric)
-            assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
-            assert_that(output_yaml).does_not_contain("CannotRetrieveCustomScript")
-            assert_that(output_yaml).does_not_contain("ErrorWithCustomScript")
