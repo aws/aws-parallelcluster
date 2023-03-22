@@ -1122,7 +1122,7 @@ class CustomActionScriptSchemaBase(BaseSchema):
 
 
 class QueueCustomActionsSchema(BaseSchema):
-    """Represent the schema for all available custom actions."""
+    """Represent the schema for all available custom actions in the queues."""
 
     on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
     on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
@@ -1133,9 +1133,11 @@ class QueueCustomActionsSchema(BaseSchema):
         return CustomActions(**data)
 
 
-class HeadNodeCustomActionsSchema(QueueCustomActionsSchema):
-    """Represent the schema for all available custom actions."""
+class HeadNodeCustomActionsSchema(BaseSchema):
+    """Represent the schema for all available custom actions in the head node."""
 
+    on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     on_node_updated = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
