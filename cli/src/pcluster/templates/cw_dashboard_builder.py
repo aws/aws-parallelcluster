@@ -272,48 +272,48 @@ class CWDashboardConstruct(Construct):
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="VcpuLimit",
+                metric_name="VcpuLimitErrors",
                 filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "vcpu-limit-failures"),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="VolumeLimit",
+                metric_name="VolumeLimitErrors",
                 filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "volume-limit-failures"),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="NodeCapacityInsufficient",
+                metric_name="InsufficientCapacityErrors",
                 filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "ice-failures"),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="OtherLaunchedInstanceFailures",
+                metric_name="OtherLaunchedInstanceErrors",
                 filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "other-failures"),
                 metric_value=metric_value,
             ),
         ]
 
-        custom_script_errors = [
+        custom_action_errors = [
             _CustomMetricFilter(
-                metric_name="OnNodeStartDownloadError",
+                metric_name="OnNodeStartDownloadErrors",
                 filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                 '$.detail.action = "OnNodeStart" && $.detail.stage = "downloading"}',
                 metric_value="1",
             ),
             _CustomMetricFilter(
-                metric_name="OnNodeStartExecutionError",
+                metric_name="OnNodeStartExecutionErrors",
                 filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                 '$.detail.action = "OnNodeStart" && $.detail.stage = "executing"}',
                 metric_value="1",
             ),
             _CustomMetricFilter(
-                metric_name="OnNodeConfiguredDownloadError",
+                metric_name="OnNodeConfiguredDownloadErrors",
                 filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                 '$.detail.action = "OnNodeConfigured" && $.detail.stage = "downloading"}',
                 metric_value="1",
             ),
             _CustomMetricFilter(
-                metric_name="OnNodeConfiguredExecutionError",
+                metric_name="OnNodeConfiguredExecutionErrors",
                 filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                 '$.detail.action = "OnNodeConfigured" && $.detail.stage = "executing"}',
                 metric_value="1",
@@ -322,39 +322,39 @@ class CWDashboardConstruct(Construct):
 
         compute_node_events = [
             _CustomMetricFilter(
-                metric_name="ReplacementTimeoutExpires",
+                metric_name="ReplacementTimeoutExpiredErrors",
                 filter_pattern=_generate_metric_filter_pattern(
                     "protected-mode-error-count", "static-replacement-timeout-error"
                 ),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="ResumeTimeoutExpires",
+                metric_name="ResumeTimeoutExpiredErrors",
                 filter_pattern=_generate_metric_filter_pattern(
                     "protected-mode-error-count", "dynamic-resume-timeout-error"
                 ),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="EC2MaintenanceEvent",
+                metric_name="EC2HealthCheckErrors",
                 filter_pattern=_generate_metric_filter_pattern("nodes-failing-health-check-count", "ec2_health_check"),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="EC2ScheduledMaintenanceEvent",
+                metric_name="ScheduledEventHealthCheckErrors",
                 filter_pattern=_generate_metric_filter_pattern(
                     "nodes-failing-health-check-count", "scheduled_event_health_check"
                 ),
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="NoCorrespondingInstanceForNode",
+                metric_name="NoCorrespondingInstanceErrors",
                 filter_pattern=_generate_metric_filter_pattern("invalid-backing-instance-count"),
                 metric_value=metric_value,
             ),
             # Use text matching here because it comes from slurmctld.log
             _CustomMetricFilter(
-                metric_name="SlurmNodeNotResponding",
+                metric_name="SlurmNodeNotRespondingErrors",
                 filter_pattern=_generate_metric_filter_pattern("node-not-responding-down-count"),
                 metric_value=metric_value,
             ),
@@ -372,8 +372,8 @@ class CWDashboardConstruct(Construct):
         if self.config.has_custom_actions_in_queue:
             cluster_common_errors.append(
                 _ErrorMetric(
-                    "Custom Script Errors",
-                    custom_script_errors,
+                    "Custom Action Errors",
+                    custom_action_errors,
                 )
             )
         self._add_text_widget("# Cluster Health Metrics")
