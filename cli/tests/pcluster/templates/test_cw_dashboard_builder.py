@@ -179,18 +179,18 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
     scheduler = cluster_config.scheduling.scheduler
     slurm_related_metrics = [
         "IamPolicyErrors",
-        "VcpuLimit",
-        "VolumeLimit",
-        "NodeCapacityInsufficient",
-        "OtherLaunchedInstanceFailures",
-        "ReplacementTimeoutExpires",
-        "ResumeTimeoutExpires",
-        "EC2MaintenanceEvent",
-        "EC2ScheduledMaintenanceEvent",
-        "NoCorrespondingInstanceForNode",
-        "SlurmNodeNotResponding",
+        "VcpuLimitErrors",
+        "VolumeLimitErrors",
+        "InsufficientCapacityErrors",
+        "OtherLaunchedInstanceErrors",
+        "ReplacementTimeoutExpiredErrors",
+        "ResumeTimeoutExpiredErrors",
+        "EC2HealthCheckErrors",
+        "ScheduledEventHealthCheckErrors",
+        "NoCorrespondingInstanceErrors",
+        "SlurmNodeNotRespondingErrors",
     ]
-    custom_script_metrics = [
+    custom_action_metrics = [
         "OnNodeStartDownloadError",
         "OnNodeStartExecutionError",
         "OnNodeConfiguredDownloadError",
@@ -202,12 +202,12 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
         for metric in slurm_related_metrics:
             assert_that(output_yaml).contains(metric)
         if cluster_config.has_custom_actions_in_queue:
-            for metric in custom_script_metrics:
+            for metric in custom_action_metrics:
                 assert_that(output_yaml).contains(metric)
         else:
-            for metric in custom_script_metrics:
+            for metric in custom_action_metrics:
                 assert_that(output_yaml).does_not_contain(metric)
     else:
         assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
-        for metric in slurm_related_metrics + custom_script_metrics:
+        for metric in slurm_related_metrics + custom_action_metrics:
             assert_that(output_yaml).does_not_contain(metric)
