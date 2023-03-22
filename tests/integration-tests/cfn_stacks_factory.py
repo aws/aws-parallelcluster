@@ -226,6 +226,39 @@ class CfnStacksFactory:
                     "Couldn't find stack with name {0} in region {1}. Skipping deletion.".format(name, region)
                 )
 
+    @retry(
+        stop_max_attempt_number=10,
+        wait_fixed=5000,
+        retry_on_exception=lambda exception: isinstance(exception, ClientError),
+    )
+    def update_stack(self, name, region, parameters):
+        """Update a created cfn stack."""
+        with aws_credential_provider(region, self.__credentials):
+            internal_id = self.__get_stack_internal_id(name, region)
+            if internal_id in self.__created_stacks:
+                logging.info("Updating stack {0} in region {1}".format(name, region))
+                try:
+                    stack = self.__created_stacks[internal_id]
+                    cfn_client = boto3.client("cloudformation", region_name=stack.region)
+                    cfn_client.update_stack(StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters)
+                    final_status = self.__wait_for_stack_update(stack.cfn_stack_id, cfn_client)
+                    self.__assert_stack_status(
+                        final_status, "UPDATE_COMPLETE", stack_name=stack.cfn_stack_id, region=region
+                    )
+                    # Update the stack data while still in the credential context
+                    stack.init_stack_data()
+                except Exception as e:
+                    logging.error(
+                        "Update of stack {0} in region {1} failed with exception: {2}".format(name, region, e)
+                    )
+                    raise
+                del self.__created_stacks[internal_id]
+                logging.info("Stack {0} updated successfully in region {1}".format(name, region))
+            else:
+                logging.warning(
+                    "Couldn't find stack with name {0} in region {1}. Skipping update.".format(name, region)
+                )
+
     def delete_all_stacks(self):
         """Destroy all created stacks."""
         logging.debug("Destroying all cfn stacks")
@@ -253,6 +286,14 @@ class CfnStacksFactory:
         retry_on_exception=lambda exception: isinstance(exception, ClientError) and "Rate exceeded" in str(exception),
     )
     def __wait_for_stack_deletion(self, name, cfn_client):
+        return self.__get_stack_status(name, cfn_client)
+
+    @retry(
+        retry_on_result=lambda result: result == "UPDATE_IN_PROGRESS",
+        wait_fixed=5000,
+        retry_on_exception=lambda exception: isinstance(exception, ClientError) and "Rate exceeded" in str(exception),
+    )
+    def __wait_for_stack_update(self, name, cfn_client):
         return self.__get_stack_status(name, cfn_client)
 
     @staticmethod

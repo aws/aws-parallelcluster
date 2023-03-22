@@ -82,6 +82,7 @@ class StackError(BaseException):
     def __init__(self, message, stack_events=None):
         message = message if message else "StackError has been raised"
         self.message = _format_stack_error(message, stack_events=stack_events)
+        self.stack_events = stack_events
 
     def __str__(self):
         return f"StackError: {self.message}"

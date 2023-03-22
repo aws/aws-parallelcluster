@@ -1,0 +1,22 @@
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  custom_resource:
+    test_cluster_custom_resource.py::test_cluster_create:
+      dimensions:
+        - regions: ["us-east-2"]
+    test_cluster_custom_resource.py::test_cluster_create_invalid:
+      dimensions:
+        - regions: ["us-east-2"]
+    test_cluster_custom_resource.py::test_cluster_update:
+      dimensions:
+        - regions: ["us-east-2"]
+    test_cluster_custom_resource.py::test_cluster_update_invalid:
+      dimensions:
+        - regions: ["us-east-2"]
+    test_cluster_custom_resource.py::test_cluster_delete_out_of_band:
+      dimensions:
+        - regions: ["us-east-2"]
+    test_cluster_custom_resource.py::test_cluster_delete_retain:
+      dimensions:
+        - regions: ["us-east-2"]
