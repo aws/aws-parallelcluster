@@ -1071,12 +1071,27 @@ class OneOrManyCustomActionField(fields.Nested):
     """Custom Marshmallow filed to handle backward compatible single script custom actions."""
 
     def __init__(self, **kwargs):
-        schema = (
-            UpdatableCustomActionScriptSchema
-            if kwargs.get("metadata", {}).get("update_policy") == UpdatePolicy.SUPPORTED
-            else CustomActionScriptSchema
+        schema = self._build_dynamic_schema_class(
+            kwargs.get("metadata", {}).get("update_policy", UpdatePolicy.UNSUPPORTED)
         )
         super().__init__(schema, **kwargs)
+
+    @staticmethod
+    def _build_dynamic_schema_class(update_policy):
+        class_name = f"CustomActionScriptSchema{update_policy.name}"
+        if class_name not in globals():
+            schema_class_type = type(
+                class_name,
+                (CustomActionScriptSchemaBase,),
+                {
+                    "script": fields.Str(required=True, metadata={"update_policy": update_policy}),
+                    "args": fields.List(fields.Str(), metadata={"update_policy": update_policy}),
+                },
+            )
+            globals()[class_name] = schema_class_type
+        else:
+            schema_class_type = globals()[class_name]
+        return schema_class_type
 
     def _deserialize(self, value, attr, data, **kwargs):
         if "Script" in value and "Sequence" in value:
@@ -1097,23 +1112,8 @@ class OneOrManyCustomActionField(fields.Nested):
         raise ValidationError("Either Script or Sequence field must be provided.")
 
 
-class CustomActionScriptSchema(BaseSchema):
+class CustomActionScriptSchemaBase(BaseSchema):
     """Represent the schema of the custom action script that cannot be updated."""
-
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return CustomAction(**data)
-
-
-class UpdatableCustomActionScriptSchema(BaseSchema):
-    """Represent the schema of the custom action script that can be updated."""
-
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1124,8 +1124,8 @@ class UpdatableCustomActionScriptSchema(BaseSchema):
 class QueueCustomActionsSchema(BaseSchema):
     """Represent the schema for all available custom actions."""
 
-    on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):

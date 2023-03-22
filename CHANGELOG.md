@@ -9,7 +9,7 @@ CHANGELOG
 - Add log rotation support for ParallelCluster managed logs.
 - Track common errors of compute nodes on Cloudwatch Dashboard.
 - Increase the limit on the maximum number of queues per cluster from 10 to 40.
-- Allow to specify a sequence multiple custom actions scripts per event.
+- Allow to specify a sequence of multiple custom actions scripts per event.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.

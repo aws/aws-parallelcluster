@@ -231,6 +231,10 @@ DUMMY_AWSBATCH_QUEUE = {
             {"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}},
             "Either Script or Sequence field must be provided.",
         ),
+        (
+            {"OnNodeUpdated": {"Sequence": "test"}},
+            "Invalid input type for Sequence, expected list.",
+        ),
         # Successes
         ({}, None),
         (
