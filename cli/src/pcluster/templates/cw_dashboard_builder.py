@@ -293,18 +293,32 @@ class CWDashboardConstruct(Construct):
             ),
         ]
 
-        # custom_script_errors = [  # TODO: Change Me
-        #     _CustomMetricFilter(
-        #         metric_name="CannotRetrieveCustomScript",
-        #         filter_pattern=custom_scripts_failure_event_pattern,
-        #         metric_value="1",
-        #     ),
-        #     _CustomMetricFilter(
-        #         metric_name="ErrorWithCustomScript",
-        #         filter_pattern=custom_scripts_failure_event_pattern,
-        #         metric_value="1",
-        #     ),
-        # ]
+        custom_script_errors = [
+            _CustomMetricFilter(
+                metric_name="OnNodeStartDownloadError",
+                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                '$.detail.action = "OnNodeStart" && $.detail.stage = "downloading"}',
+                metric_value="1",
+            ),
+            _CustomMetricFilter(
+                metric_name="OnNodeStartExecutionError",
+                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                '$.detail.action = "OnNodeStart" && $.detail.stage = "executing"}',
+                metric_value="1",
+            ),
+            _CustomMetricFilter(
+                metric_name="OnNodeConfiguredDownloadError",
+                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                '$.detail.action = "OnNodeConfigured" && $.detail.stage = "downloading"}',
+                metric_value="1",
+            ),
+            _CustomMetricFilter(
+                metric_name="OnNodeConfiguredExecutionError",
+                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                '$.detail.action = "OnNodeConfigured" && $.detail.stage = "executing"}',
+                metric_value="1",
+            ),
+        ]
 
         compute_node_events = [
             _CustomMetricFilter(
@@ -355,13 +369,13 @@ class CWDashboardConstruct(Construct):
                 compute_node_events,
             ),
         ]
-        # if self.config.has_custom_actions_in_queue: # TODO: Uncomment here when custom script is implemented
-        #     cluster_common_errors.append(
-        #         _ErrorMetric(
-        #             "Custom Script Errors",
-        #             custom_script_errors,
-        #         )
-        #     )
+        if self.config.has_custom_actions_in_queue:
+            cluster_common_errors.append(
+                _ErrorMetric(
+                    "Custom Script Errors",
+                    custom_script_errors,
+                )
+            )
         self._add_text_widget("# Cluster Health Metrics")
         self._add_error_metrics_graph_widgets(cluster_common_errors)
         self._add_text_widget(
