@@ -12,9 +12,10 @@
 
 
 from pathlib import Path
+
+import boto3
 import pkg_resources
 import pytest
-import boto3
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from utils import generate_stack_name
 

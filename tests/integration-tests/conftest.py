@@ -96,7 +96,7 @@ from tests.common.utils import (
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
 
-pytest_plugins = ["conftest_networking"]
+pytest_plugins = ["conftest_networking", "conftest_resource_bucket"]
 
 
 def pytest_addoption(parser):
@@ -960,11 +960,6 @@ def api_infrastructure_s3_uri(request):
 @pytest.fixture(scope="session")
 def cluster_custom_resource_service_token(request):
     return request.config.getoption("cluster_custom_resource_service_token")
-
-
-@pytest.fixture(scope="session")
-def resource_bucket(request):
-    return request.config.getoption("resource_bucket")
 
 
 @pytest.fixture(scope="class")
