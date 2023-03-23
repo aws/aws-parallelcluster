@@ -133,7 +133,7 @@ def pytest_addoption(parser):
     parser.addoption("--post-install", help="url to post install script")
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
-    parser.addoption("--public-ecr-image-uri", help="S3 URI of the ParallelCluster API spec")
+    parser.addoption("--policies-uri", help="Use an existing policies URI instead of uploading one.")
     parser.addoption(
         "--cluster-custom-resource-service-token",
         help="(Optional) ServiceToken (ARN) of the CloudFormation Cluster custom resource provider.",
@@ -423,9 +423,9 @@ def clusters_factory(request, region):
         factory.destroy_all_clusters(test_passed=test_passed)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def api_server_factory(
-    cfn_stacks_factory, request, public_ecr_image_uri, api_definition_s3_uri, api_infrastructure_s3_uri
+    cfn_stacks_factory, request, resource_bucket, policies_uri, api_definition_s3_uri, api_infrastructure_s3_uri
 ):
     """Creates a factory for deploying API servers on-demand to each region."""
     api_servers = {}
@@ -439,12 +439,14 @@ def api_server_factory(
         ]
         if api_definition_s3_uri:
             params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
-        if public_ecr_image_uri:
-            params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
+        if policies_uri:
+            params.append({"ParameterKey": "PoliciesTemplateUri", "ParameterValue": policies_uri})
+        if resource_bucket:
+            params.append({"ParameterKey": "CustomBucket", "ParameterValue": resource_bucket})
 
         template = (
             api_infrastructure_s3_uri
-            or f"https://{server_region}-aws-parallelcluster.s3.{server_region}.amazonaws.com"
+            or f"https://{resource_bucket}.s3.{server_region}.amazonaws.com"
             f"{'.cn' if server_region.startswith('cn') else ''}"
             f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
         )
@@ -936,11 +938,6 @@ def create_roles_stack(request, region):
         factory.delete_all_stacks()
     else:
         logging.warning("Skipping deletion of IAM roles stack because --no-delete option is set")
-
-
-@pytest.fixture(scope="session")
-def public_ecr_image_uri(request):
-    return request.config.getoption("public_ecr_image_uri")
 
 
 @pytest.fixture(scope="session")

@@ -74,7 +74,7 @@ fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 S3_UPLOAD_URI="s3://${S3_BUCKET}/api/ParallelCluster.openapi.yaml"
 POLICIES_S3_URI="s3://${S3_BUCKET}/stacks/parallelcluster-policies.yaml"
-POLICIES_STACK_URI="http://${S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.amazonaws.com/stacks/parallelcluster-policies.yaml"
+POLICIES_TEMPLATE_URI="http://${S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.amazonaws.com/stacks/parallelcluster-policies.yaml"
 
 echo "Publishing OpenAPI specs to S3"
 aws s3 cp "${SCRIPT_DIR}/../spec/openapi/ParallelCluster.openapi.yaml" "${S3_UPLOAD_URI}"
@@ -89,6 +89,6 @@ aws cloudformation deploy \
     --s3-bucket "${S3_BUCKET}" \
     --s3-prefix "api/" \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" \
-                          PoliciesStackUri="${POLICIES_STACK_URI}" \
+                          PoliciesTemplateUri="${POLICIES_TEMPLATE_URI}" \
                           EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
     --capabilities CAPABILITY_NAMED_IAM

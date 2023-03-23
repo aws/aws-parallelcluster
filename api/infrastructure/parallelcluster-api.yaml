@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: 'Template for the ParallelCluster API'
+Description: 'AWS ParallelCluster API'
 
 Parameters:
   Region:
@@ -34,10 +34,10 @@ Parameters:
     Type: String
     Default: ''
 
-  PoliciesStackUri:
-    Description: S3 URI of the ParallelCluster Policies stack
+  PoliciesTemplateUri:
+    Description: S3 URI of the ParallelCluster Policies Template
     Type: String
-    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.5.0/stacks/parallelcluster-policies.yaml
+    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.5.0/templates/policies/policies.yaml
 
   VpcEndpointId:
     Description: When specified, configure a private API with the specified endpoint
@@ -89,6 +89,11 @@ Parameters:
     AllowedValues:
       - true
       - false
+
+  CustomBucket:
+    Description: (Debug only) bucket to retrieve S3 artifacts for internal resources.
+    Type: String
+    Default: ''
 
 Mappings:
   ParallelCluster:
@@ -148,6 +153,7 @@ Conditions:
     - !Not [!Condition UsePrivateVpcEndpoint]
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
   CreateApiUserRoleCondition: !Equals [!Ref CreateApiUserRole, true]
+  UseCustomBucket: !Not [!Equals [!Ref CustomBucket, '']]
 
 Resources:
   # Policies nested stack
@@ -155,7 +161,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Condition: CreateIamResources
     Properties:
-      TemplateURL: !Ref PoliciesStackUri
+      TemplateURL: !Ref PoliciesTemplateUri
       TimeoutInMinutes: 10
       Parameters:
         Region: !Ref Region
@@ -173,7 +179,7 @@ Resources:
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Description: Library which contains aws-parallelcluster python package and dependencies
       Content:
-        S3Bucket: !Sub ${AWS::Region}-aws-parallelcluster
+        S3Bucket: !If [ UseCustomBucket, !Ref CustomBucket, !Sub "${AWS::Region}-aws-parallelcluster" ]
         S3Key: !Sub
           - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
           - { Version: !FindInMap [ParallelCluster, Constants, Version]}
@@ -261,11 +267,13 @@ Resources:
       TracingConfig:
         Mode: Active
       MemorySize: 2048
-      Timeout: 60
+      Timeout: 30
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt [ PclusterPolicies, Outputs.ParallelClusterLambdaRoleArn ]]
       Tags:
         - Key: 'parallelcluster:resource'
           Value: api
+        - Key: 'parallelcluster:version'
+          Value: !FindInMap [ParallelCluster, Constants, Version]
       Runtime: python3.9
       Handler: index.handler
       Layers:

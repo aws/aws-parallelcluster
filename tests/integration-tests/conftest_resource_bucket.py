@@ -26,6 +26,8 @@ import pytest
 import urllib3
 from framework.fixture_utils import xdist_session_fixture
 
+from tests.common.utils import get_installed_parallelcluster_version
+
 logger = logging.getLogger()
 NODE_VERSION = "v16.19.0"  # maintenance version compatible with alinux2's GLIBC
 
@@ -75,9 +77,23 @@ def install_node(basepath, node_version):
         shutil.copy(f"{nodetmp}/node_install/{node_root}/bin/node", tempdir / "node")
 
 
+@pytest.fixture(scope="class", name="policies_uri")
+def policies_uri_fixture(request, region, resource_bucket):
+    if request.config.getoption("policies_uri"):
+        yield request.config.getoption("policies_uri")
+        return
+
+    yield (
+        f"https://{resource_bucket}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}"
+        f"/parallelcluster/{get_installed_parallelcluster_version()}/templates/policies/policies.yaml"
+    )
+
+
 def get_resource_map():
     prefix = f"parallelcluster/{get_version()}"
     resources = {
+        "api/infrastructure/parallelcluster-api.yaml": f"{prefix}/api/parallelcluster-api.yaml",
+        "api/spec/openapi/ParallelCluster.openapi.yaml": f"{prefix}/api/ParallelCluster.openapi.yaml",
         "cloudformation/custom_resource/cluster.yaml": f"{prefix}/templates/custom_resource/cluster.yaml",
         "cloudformation/networking/public.cfn.json": f"{prefix}/templates/networking/public.cfn.json",
         "cloudformation/networking/public-private.cfn.json": f"{prefix}/templates/networking/public-private.cfn.json",
