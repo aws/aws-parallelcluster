@@ -293,33 +293,6 @@ class CWDashboardConstruct(Construct):
             ),
         ]
 
-        custom_action_errors = [
-            _CustomMetricFilter(
-                metric_name="OnNodeStartDownloadErrors",
-                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
-                '$.detail.action = "OnNodeStart" && $.detail.stage = "downloading"}',
-                metric_value="1",
-            ),
-            _CustomMetricFilter(
-                metric_name="OnNodeStartExecutionErrors",
-                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
-                '$.detail.action = "OnNodeStart" && $.detail.stage = "executing"}',
-                metric_value="1",
-            ),
-            _CustomMetricFilter(
-                metric_name="OnNodeConfiguredDownloadErrors",
-                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
-                '$.detail.action = "OnNodeConfigured" && $.detail.stage = "downloading"}',
-                metric_value="1",
-            ),
-            _CustomMetricFilter(
-                metric_name="OnNodeConfiguredExecutionErrors",
-                filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
-                '$.detail.action = "OnNodeConfigured" && $.detail.stage = "executing"}',
-                metric_value="1",
-            ),
-        ]
-
         compute_node_events = [
             _CustomMetricFilter(
                 metric_name="ReplacementTimeoutExpiredErrors",
@@ -370,6 +343,33 @@ class CWDashboardConstruct(Construct):
             ),
         ]
         if self.config.has_custom_actions_in_queue:
+            custom_action_errors = [
+                _CustomMetricFilter(
+                    metric_name="OnNodeStartDownloadErrors",
+                    filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                    '$.detail.action = "OnNodeStart" && $.detail.stage = "downloading"}',
+                    metric_value="1",
+                ),
+                _CustomMetricFilter(
+                    metric_name="OnNodeStartExecutionErrors",
+                    filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                    '$.detail.action = "OnNodeStart" && $.detail.stage = "executing"}',
+                    metric_value="1",
+                ),
+                _CustomMetricFilter(
+                    metric_name="OnNodeConfiguredDownloadErrors",
+                    filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                    '$.detail.action = "OnNodeConfigured" && $.detail.stage = "downloading"}',
+                    metric_value="1",
+                ),
+                _CustomMetricFilter(
+                    metric_name="OnNodeConfiguredExecutionErrors",
+                    filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
+                    '$.detail.action = "OnNodeConfigured" && $.detail.stage = "executing"}',
+                    metric_value="1",
+                ),
+            ]
+
             cluster_common_errors.append(
                 _ErrorMetric(
                     "Custom Action Errors",
