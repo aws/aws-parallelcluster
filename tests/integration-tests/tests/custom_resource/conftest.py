@@ -73,7 +73,7 @@ def cluster_custom_resource_provider_fixture(
 
 @pytest.fixture(scope="class", name="cluster_custom_resource_factory")
 def cluster_custom_resource_factory_fixture(
-    request, region, cluster_custom_resource_template, cluster_custom_resource_provider, vpc_stack
+    request, region, os, cluster_custom_resource_template, cluster_custom_resource_provider, vpc_stack
 ):
     factory = CfnStacksFactory(request.config.getoption("credential"))
 
@@ -85,6 +85,7 @@ def cluster_custom_resource_factory_fixture(
             "HeadNodeSubnet": vpc_stack.get_public_subnet(),
             "ComputeNodeSubnet": vpc_stack.get_private_subnet(),
             "ServiceToken": cluster_custom_resource_provider,
+            "Os": os,
             **(parameters or {}),
         }
 
@@ -103,6 +104,6 @@ def cluster_custom_resource_factory_fixture(
         stack.factory = factory
         return stack
 
-    return _produce_cluster_custom_resource_stack
+    yield _produce_cluster_custom_resource_stack
 
     factory.delete_all_stacks()

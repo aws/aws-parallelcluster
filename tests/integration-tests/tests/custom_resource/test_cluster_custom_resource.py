@@ -103,17 +103,14 @@ def test_cluster_update(region, cluster_custom_resource_factory, external_update
     # Update the stack
     update_params = parameters | update_parameters
     stack_params = [{"ParameterKey": k, "ParameterValue": v} for k, v in update_params.items()]
-    stack.factory.update_stack(stack.name, stack.region, stack_params)
+    stack.factory.update_stack(stack.name, stack.region, stack_params, True)
 
-    outputs = stack.cfn_outputs
-    head_node_ip = next(filter(lambda x: x["OutputKey"] == "HeadNodeIp", outputs)).get("OutputValue")
-    assert_that(head_node_ip).is_not_none()
+    assert_that(stack.cfn_outputs["HeadNodeIp"]).is_not_none()
 
     # The underlying update doesn't happen if it was externally updated, so no
     # validations messages will be available in this case.
     if not external_update:
-        validation_messages = next(filter(lambda x: x["OutputKey"] == "ValidationMessages", outputs)).get("OutputValue")
-        assert_that(validation_messages).contains(validation_message)
+        assert_that(stack.cfn_outputs["ValidationMessages"]).contains(validation_message)
 
     cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")
     assert_that(cluster["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
@@ -146,7 +143,7 @@ def test_cluster_update_invalid(region, cluster_custom_resource_factory, update_
     parameters = [{"ParameterKey": k, "ParameterValue": v} for k, v in update_params.items()]
 
     with pytest.raises(StackError) as stack_error:
-        stack.factory.update_stack(stack.name, stack.region, parameters)
+        stack.factory.update_stack(stack.name, stack.region, parameters, True)
 
     reason = failure_reason(stack_error.stack_events)
     assert_that(reason).contains(error_message)
@@ -174,7 +171,7 @@ def test_cluster_delete_out_of_band(
     pc().delete_cluster(cluster_name=cluster_name)
 
     # Delete the stack through CFN and wait for delete to complete
-    stack.factory.delete_stack(stack.name)
+    stack.factory.delete_stack(stack.name, stack.region)
     status = cfn.describe_stacks(StackName=stack.cfn_stack_id)["Stacks"][0]["StackStatus"]
     assert_that(status).is_equal_to("DELETE_COMPLETE")
 

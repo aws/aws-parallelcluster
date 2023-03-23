@@ -315,7 +315,7 @@ def _init_argparser():
 
     custom_resource_group.add_argument(
         "--resource-bucket",
-        help="Name of bucket to use to to retrieve standard hoested resources like CloudFormation templates.",
+        help="Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates.",
         default=TEST_DEFAULTS.get("resource_bucket"),
     )
 

@@ -231,7 +231,7 @@ class CfnStacksFactory:
         wait_fixed=5000,
         retry_on_exception=lambda exception: isinstance(exception, ClientError),
     )
-    def update_stack(self, name, region, parameters):
+    def update_stack(self, name, region, parameters, stack_is_under_test=False):
         """Update a created cfn stack."""
         with aws_credential_provider(region, self.__credentials):
             internal_id = self.__get_stack_internal_id(name, region)
@@ -243,7 +243,11 @@ class CfnStacksFactory:
                     cfn_client.update_stack(StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters)
                     final_status = self.__wait_for_stack_update(stack.cfn_stack_id, cfn_client)
                     self.__assert_stack_status(
-                        final_status, "UPDATE_COMPLETE", stack_name=stack.cfn_stack_id, region=region
+                        final_status,
+                        "UPDATE_COMPLETE",
+                        stack_name=stack.cfn_stack_id,
+                        region=region,
+                        stack_is_under_test=stack_is_under_test,
                     )
                     # Update the stack data while still in the credential context
                     stack.init_stack_data()
