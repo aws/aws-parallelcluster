@@ -270,8 +270,17 @@ def get_cfn_resources(stack_name, region=None):
 def retrieve_cfn_resources(stack_name, region):
     """Retrieve CloudFormation Stack Resources from a given stack."""
     resources = {}
-    for resource in get_cfn_resources(stack_name, region):
-        resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
+
+    def _retrieve_cfn_resources(stack_name, region):
+        for resource in get_cfn_resources(stack_name, region):
+            if resource.get("ResourceType") == "AWS::CloudFormation::Stack":
+                nested_stack_arn = resource.get("PhysicalResourceId")
+                nested_stack_name = get_stack_name_from_stack_arn(nested_stack_arn)
+                _retrieve_cfn_resources(nested_stack_name, region)
+            else:
+                resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
+
+    _retrieve_cfn_resources(stack_name, region)
     return resources
 
 
@@ -648,6 +657,17 @@ def get_arn_partition(region):
         (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
         DEFAULT_PARTITION,
     )
+
+
+def get_stack_name_from_stack_arn(arn):
+    """
+    Return the Stack Name from a Stack ARN
+    E.g.
+    Stack ARN: "arn:aws:cloudformation:<region>:<account-id>:stack/<stack-name>/<uuid>"
+    :param arn:
+    :return:
+    """
+    return arn.rsplit("/", 2)[-2] if arn else ""
 
 
 def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):
