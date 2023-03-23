@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
-import time
 
 import boto3
 import botocore
@@ -27,40 +26,6 @@ from utils import generate_stack_name
 from tests.common.utils import get_installed_parallelcluster_version
 
 LOGGER = logging.getLogger(__name__)
-
-
-@pytest.fixture()
-def api_with_default_settings(
-    api_infrastructure_s3_uri, api_definition_s3_uri, policies_uri, request, region, resource_bucket
-):
-    factory = CfnStacksFactory(request.config.getoption("credential"))
-
-    params = []
-    if api_definition_s3_uri:
-        params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
-    if policies_uri:
-        params.append({"ParameterKey": "PoliciesTemplateUri", "ParameterValue": policies_uri})
-    if resource_bucket:
-        params.append({"ParameterKey": "CustomBucket", "ParameterValue": resource_bucket})
-
-    template = (
-        api_infrastructure_s3_uri
-        or f"https://{resource_bucket}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}"
-        f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
-    )
-    logging.info(f"Creating API Server stack in {region} with template {template}")
-    stack = CfnStack(
-        name=generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix")),
-        region=region,
-        parameters=params,
-        capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-        template=template,
-    )
-    try:
-        factory.create_stack(stack)
-        yield stack
-    finally:
-        factory.delete_all_stacks()
 
 
 @pytest.fixture()
