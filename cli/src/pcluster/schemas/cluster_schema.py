@@ -1067,50 +1067,63 @@ class QueueImageSchema(BaseSchema):
         return QueueImage(**data)
 
 
-class HeadNodeCustomActionSchema(BaseSchema):
-    """Represent the schema of the custom action."""
+class OneOrManyCustomActionField(fields.Nested):
+    """Custom Marshmallow filed to handle backward compatible single script custom actions."""
 
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    def __init__(self, **kwargs):
+        schema = self._build_dynamic_schema_class(
+            kwargs.get("metadata", {}).get("update_policy", UpdatePolicy.UNSUPPORTED)
+        )
+        super().__init__(schema, **kwargs)
 
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return CustomAction(**data)
+    @staticmethod
+    def _build_dynamic_schema_class(update_policy):
+        class_name = f"CustomActionScriptSchema{update_policy.name}"
+        if class_name not in globals():
+            schema_class_type = type(
+                class_name,
+                (CustomActionScriptSchemaBase,),
+                {
+                    "script": fields.Str(required=True, metadata={"update_policy": update_policy}),
+                    "args": fields.List(fields.Str(), metadata={"update_policy": update_policy}),
+                },
+            )
+            globals()[class_name] = schema_class_type
+        else:
+            schema_class_type = globals()[class_name]
+        return schema_class_type
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        if "Script" in value and "Sequence" in value:
+            raise ValidationError("Both Script and Sequence fields are provided. Only one is allowed.")
+
+        if "Script" in value:
+            return super()._deserialize(value, attr, data, **kwargs)
+
+        if "Sequence" in value:
+            sequence = value["Sequence"]
+            if not isinstance(sequence, list):
+                raise ValidationError("Invalid input type for Sequence, expected list.")
+            res = []
+            for item in sequence:
+                res.append(super()._deserialize(item, attr, data, **kwargs))
+            return res
+
+        raise ValidationError("Either Script or Sequence field must be provided.")
+
+    def _serialize(self, nested_obj, attr, obj, **kwargs):
+        if isinstance(nested_obj, list):
+            nested_serialized = []
+            for item in nested_obj:
+                nested_serialized.append(super()._serialize(item, attr, obj, **kwargs))
+            res = {"Sequence": nested_serialized}
+        else:
+            res = super()._serialize(nested_obj, attr, obj, **kwargs)
+        return res
 
 
-class HeadNodeUpdatableCustomActionSchema(BaseSchema):
-    """Represent the schema of an updatable custom action."""
-
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.SUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return CustomAction(**data)
-
-
-class HeadNodeCustomActionsSchema(BaseSchema):
-    """Represent the schema for all available custom actions."""
-
-    on_node_start = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    on_node_configured = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    on_node_updated = fields.Nested(
-        HeadNodeUpdatableCustomActionSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return CustomActions(**data)
-
-
-class QueueCustomActionSchema(BaseSchema):
-    """Represent the schema of the custom action."""
-
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-    args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+class CustomActionScriptSchemaBase(BaseSchema):
+    """Represent the schema of the custom action script that cannot be updated."""
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1119,14 +1132,23 @@ class QueueCustomActionSchema(BaseSchema):
 
 
 class QueueCustomActionsSchema(BaseSchema):
-    """Represent the schema for all available custom actions."""
+    """Represent the schema for all available custom actions in the queues."""
 
-    on_node_start = fields.Nested(
-        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
-    )
-    on_node_configured = fields.Nested(
-        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
-    )
+    on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomActions(**data)
+
+
+class HeadNodeCustomActionsSchema(BaseSchema):
+    """Represent the schema for all available custom actions in the head node."""
+
+    on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_updated = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

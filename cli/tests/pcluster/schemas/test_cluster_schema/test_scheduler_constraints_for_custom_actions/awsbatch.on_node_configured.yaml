@@ -8,10 +8,15 @@ HeadNode:
     KeyName: ec2-key-name
   CustomActions:
     OnNodeConfigured:
-      Script: https://test.tgz  # s3:// | https://
-      Args:
-        - arg1
-        - arg2
+      Sequence:
+        - Script: https://test.tgz  # s3:// | https://
+          Args:
+            - arg1
+            - arg2
+        - Script: https://test.tgz  # s3:// | https://
+          Args:
+            - arg1
+            - arg2
 Scheduling:
   Scheduler: awsbatch
   AwsBatchQueues:

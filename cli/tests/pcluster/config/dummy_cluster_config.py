@@ -18,6 +18,8 @@ from pcluster.config.cluster_config import (
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
     ClusterIam,
+    CustomAction,
+    CustomActions,
     Dcv,
     HeadNode,
     HeadNodeNetworking,
@@ -122,8 +124,22 @@ def dummy_head_node(mocker):
     head_node_imds = Imds(secured=True)
     ssh = Ssh(key_name="test")
 
+    custom_actions = CustomActions(
+        on_node_start=[
+            CustomAction(script="https://tests1", args=["arg1", "arg2"]),
+            CustomAction(script="https://tests2", args=["arg1", "arg2"]),
+        ],
+        on_node_updated=CustomAction(script="https://testus", args=["arg1", "arg2"]),
+        on_node_configured=None,
+    )
+
     head_node = HeadNode(
-        instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv, imds=head_node_imds
+        instance_type="fake",
+        networking=head_node_networking,
+        ssh=ssh,
+        dcv=head_node_dcv,
+        imds=head_node_imds,
+        custom_actions=custom_actions,
     )
 
     return head_node

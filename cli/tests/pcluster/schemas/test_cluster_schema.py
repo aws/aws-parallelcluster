@@ -219,14 +219,44 @@ DUMMY_AWSBATCH_QUEUE = {
     [
         # Failures
         ({"OnNodeUpdating": "test"}, "Unknown field"),
-        ({"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"}, "Invalid input type."),
-        ({"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}}, "Unknown field"),
+        (
+            {"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"},
+            "Either Script or Sequence field must be provided.",
+        ),
+        (
+            {"OnNodeConfigured": {"Script": "test3", "Args": ["5", "6"], "Sequence": []}},
+            "Both Script and Sequence fields are provided. Only one is allowed.",
+        ),
+        (
+            {"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}},
+            "Either Script or Sequence field must be provided.",
+        ),
+        (
+            {"OnNodeUpdated": {"Sequence": "test"}},
+            "Invalid input type for Sequence, expected list.",
+        ),
         # Successes
+        ({}, None),
         (
             {
                 "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
                 "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
                 "OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {
+                    "Sequence": [
+                        {"Script": "test1", "Args": ["1", "2"]},
+                        {"Script": "test2", "Args": ["1", "2", "3"]},
+                        {"Script": "test3"},
+                        {"Script": "test4", "Args": []},
+                    ]
+                },
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+                "OnNodeUpdated": {"Sequence": []},
             },
             None,
         ),
@@ -253,7 +283,8 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
         with pytest.raises(ValidationError, match=failure_message):
             HeadNodeCustomActionsSchema().load(config_dict)
     else:
-        HeadNodeCustomActionsSchema().load(config_dict)
+        conf = HeadNodeCustomActionsSchema().load(config_dict)
+        HeadNodeCustomActionsSchema().dump(conf)
 
 
 @pytest.mark.parametrize(
@@ -266,10 +297,15 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
                 "OnNodeStart": "test",
                 "OnNodeConfigured": "test",
             },
-            "Invalid input type.",
+            "Either Script or Sequence field must be provided.",
+        ),
+        (
+            {"OnNodeStart": {"Script": "test3", "Args": ["5", "6"], "Sequence": []}},
+            "Both Script and Sequence fields are provided. Only one is allowed.",
         ),
         ({"OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]}}, "Unknown field"),
         # Successes
+        ({}, None),
         (
             {
                 "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
@@ -291,6 +327,27 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
             },
             None,
         ),
+        (
+            {
+                "OnNodeStart": {
+                    "Sequence": [
+                        {"Script": "test1", "Args": ["1", "2"]},
+                        {"Script": "test2", "Args": ["1", "2", "3"]},
+                        {"Script": "test3"},
+                        {"Script": "test4", "Args": []},
+                    ]
+                },
+                "OnNodeConfigured": {"Sequence": []},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test1", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Sequence": []},
+            },
+            None,
+        ),
     ],
 )
 def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
@@ -299,7 +356,8 @@ def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
         with pytest.raises(ValidationError, match=failure_message):
             QueueCustomActionsSchema().load(config_dict)
     else:
-        QueueCustomActionsSchema().load(config_dict)
+        conf = QueueCustomActionsSchema().load(config_dict)
+        QueueCustomActionsSchema().dump(conf)
 
 
 def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):

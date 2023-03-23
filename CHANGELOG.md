@@ -9,6 +9,7 @@ CHANGELOG
 - Add log rotation support for ParallelCluster managed logs.
 - Track common errors of compute nodes on Cloudwatch Dashboard.
 - Increase the limit on the maximum number of queues per cluster from 10 to 40.
+- Allow to specify a sequence of multiple custom actions scripts per event.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
 
 **CHANGES**
