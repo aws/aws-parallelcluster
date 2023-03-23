@@ -45,15 +45,22 @@ Scheduling:
     Dns:
       DisableManagedDns: false
       HostedZoneId: 12345ABC
+    CustomSlurmSettingsIncludeFile: https://test.conf
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND
       Networking:
         SubnetIds:
           - subnet-12345678
+      CustomSlurmSettings:
+        Param1: Value1
+        Param2: Value2
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.xlarge
+          CustomSlurmSettings:
+            Param1: Value1
+            Param2: Value2
         - Name: compute_resource2
           InstanceType: c4.xlarge
       CustomActions:

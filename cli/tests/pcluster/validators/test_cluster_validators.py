@@ -80,9 +80,12 @@ from pcluster.validators.ebs_validators import (
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.slurm_settings_validator import (
-    SlurmCustomSettingLevel,
-    SlurmCustomSettingsValidator,
-    SlurmCustomSettingsWarning,
+    SLURM_SETTINGS_DENY_LIST,
+    CustomSlurmNodeNamesValidator,
+    CustomSlurmSettingLevel,
+    CustomSlurmSettingsIncludeFileOnlyValidator,
+    CustomSlurmSettingsValidator,
+    CustomSlurmSettingsWarning,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
@@ -197,53 +200,128 @@ def test_cluster_name_validator_slurm_accounting(cluster_name, scheduling, shoul
     [
         (
             "No error when custom settings are not in the deny_list",
-            {"Allowed1": "Value1", "Allowed2": "Value2"},
+            [{"Allowed1": "Value1"}, {"Allowed2": "Value2"}],
+            SLURM_SETTINGS_DENY_LIST["SlurmConf"],  # keep the deny-list lowercase
+            CustomSlurmSettingLevel.SLURM_CONF,
+            "",
+        ),
+        (
+            "Fails when custom settings at SlurmConf level are in the deny_list, invalid parameters are reported",
+            [{"SlurmctldParameters": "SubPar1,Subpar2=1"}, {"CommunicationParameters": "SubPar1"}],
+            SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Global"],  # keep the deny-list lowercase
+            CustomSlurmSettingLevel.SLURM_CONF,
+            "Using the following custom Slurm settings at SlurmConf level is not allowed: "
+            "CommunicationParameters,SlurmctldParameters",
+        ),
+        (
+            "No error when custom settings are not in the deny_list",
+            [{"Allowed1": "Value1", "Allowed2": "Value2"}],
             ["denied1", "denied2"],  # keep the deny-list lowercase
-            SlurmCustomSettingLevel.QUEUE,
+            CustomSlurmSettingLevel.QUEUE,
             "",
         ),
         (
             "Fails when custom settings are in the deny_list, invalid parameters are reported",
-            {"Denied1": "Value1", "Denied2": "Value2"},
+            [{"Denied1": "Value1", "Denied2": "Value2"}],
             ["denied1", "denied2"],
-            SlurmCustomSettingLevel.QUEUE,
+            CustomSlurmSettingLevel.QUEUE,
             "Using the following custom Slurm settings at Queue level is not allowed: Denied1,Denied2",
         ),
         (
             "No error when custom settings are not in the deny_list",
-            {"Allowed1": "Value1", "Allowed2": "Value2"},
+            [{"Allowed1": "Value1", "Allowed2": "Value2"}],
             ["denied1", "denied2"],
-            SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+            CustomSlurmSettingLevel.COMPUTE_RESOURCE,
             "",
         ),
         (
             "Fails when custom settings are in the deny_list, invalid parameters are reported",
-            {"Denied1": "Value1", "Denied2": "Value2"},
+            [{"Denied1": "Value1", "Denied2": "Value2"}],
             ["denied1", "denied2"],
-            SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+            CustomSlurmSettingLevel.COMPUTE_RESOURCE,
             "Using the following custom Slurm settings at ComputeResource level is not allowed: Denied1,Denied2",
         ),
         (
             "Case doesn't affect the result and duplicates are avoided, but only the first occurrence is reported",
-            {"Denied1": "Value1", "Denied2": "Value2", "dEnIeD1": "Value1", "deNIeD2": "Value2"},
+            [{"Denied1": "Value1", "Denied2": "Value2", "dEnIeD1": "Value1", "deNIeD2": "Value2"}],
             ["denied1", "denied2"],
-            SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+            CustomSlurmSettingLevel.COMPUTE_RESOURCE,
             "Using the following custom Slurm settings at ComputeResource level is not allowed: Denied1,Denied2",
         ),
     ],
 )
 def test_custom_slurm_settings_validator(description, custom_settings, deny_list, settings_level, expected_message):
-    actual_failures = SlurmCustomSettingsValidator().execute(custom_settings, deny_list, settings_level)
+    actual_failures = CustomSlurmSettingsValidator().execute(custom_settings, deny_list, settings_level)
     assert_failure_messages(actual_failures, expected_message)
 
 
 def test_custom_slurm_settings_warning():
     # when multiple instances are invoked it should show the warning only once
-    actual_failures = SlurmCustomSettingsWarning().execute()
+    actual_failures = CustomSlurmSettingsWarning().execute()
     assert_failure_messages(actual_failures, "Custom Slurm settings are in use: please monitor the cluster carefully.")
 
-    actual_failures = SlurmCustomSettingsWarning().execute()
+    actual_failures = CustomSlurmSettingsWarning().execute()
     assert_failure_messages(actual_failures, None)
+
+
+@pytest.mark.parametrize(
+    "custom_slurm_settings, expected_message",
+    [
+        # Generic case without custom Slurm nodes
+        ([{"Param1": "Value1"}, {"Param2": "Value2"}], ""),
+        # Generic case with custom Slurm nodes
+        ([{"NodeName": "test-node[1-100]", "CPUs": "16"}], ""),
+        # Generic case with custom Slurm nodes with bad name
+        (
+            [{"NodeName": "test-st-node[1-100]", "CPUs": "16"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-st-node[1-100]",
+        ),
+        # Generic case with custom Slurm nodes with bad name
+        (
+            [{"NodeName": "test-dy-node[1-100]", "CPUs": "16"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-dy-node[1-100]",
+        ),
+        # Generic case with multiple custom Slurm nodelists with bad node name
+        (
+            [{"NodeName": "test-st-node[1-100]", "CPUs": "16"}, {"NodeName": "test-dy-node[1-100]", "CPUs": "16"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-dy-node[1-100], test-st-node[1-100]",
+        ),
+        # Unrealistic corner case with custom Slurm nodes with names defined multiple times
+        (
+            [{"NodeName": "test-dy-node[1-100]", "CPUs": "16", "nodename": "test-node[1-100]"}],
+            "Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
+            "Please rename the following custom Slurm nodes: test-dy-node[1-100]",
+        ),
+    ],
+)
+def test_custom_slurm_node_names_validator(custom_slurm_settings, expected_message):
+    actual_failures = CustomSlurmNodeNamesValidator().execute(custom_slurm_settings)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "custom_slurm_settings, custom_slurm_settings_include_file, expected_message",
+    [
+        ([{"Param1": "Value1"}, {"Param2": "Value2"}], "", ""),
+        ([], "s3://test", ""),
+        (
+            [{"Param1": "Value1"}, {"Param2": "Value2"}],
+            "s3://test",
+            "CustomSlurmsettings and CustomSlurmSettingsIncludeFile cannot be used together under SlurmSettings.",
+        ),
+    ],
+)
+def test_custom_slurm_settings_include_file_only_validator(
+    custom_slurm_settings, custom_slurm_settings_include_file, expected_message
+):
+    actual_failures = CustomSlurmSettingsIncludeFileOnlyValidator().execute(
+        custom_slurm_settings,
+        custom_slurm_settings_include_file,
+    )
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

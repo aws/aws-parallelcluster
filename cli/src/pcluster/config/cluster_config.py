@@ -193,9 +193,11 @@ from pcluster.validators.scheduler_plugin_validators import (
 )
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
-    SlurmCustomSettingLevel,
-    SlurmCustomSettingsValidator,
-    SlurmCustomSettingsWarning,
+    CustomSlurmNodeNamesValidator,
+    CustomSlurmSettingLevel,
+    CustomSlurmSettingsIncludeFileOnlyValidator,
+    CustomSlurmSettingsValidator,
+    CustomSlurmSettingsWarning,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -2234,12 +2236,12 @@ class SlurmQueue(_CommonQueue):
             )
         if self.custom_slurm_settings:
             self._register_validator(
-                SlurmCustomSettingsValidator,
-                custom_settings=self.custom_slurm_settings,
-                deny_list=SLURM_SETTINGS_DENY_LIST["Queue"],
-                settings_level=SlurmCustomSettingLevel.QUEUE,
+                CustomSlurmSettingsValidator,
+                custom_settings=[self.custom_slurm_settings],
+                deny_list=SLURM_SETTINGS_DENY_LIST["Queue"]["Global"],
+                settings_level=CustomSlurmSettingLevel.QUEUE,
             )
-            self._register_validator(SlurmCustomSettingsWarning)
+            self._register_validator(CustomSlurmSettingsWarning)
         for compute_resource in self.compute_resources:
             self._register_validator(
                 EfaSecurityGroupValidator,
@@ -2259,12 +2261,12 @@ class SlurmQueue(_CommonQueue):
             )
             if compute_resource.custom_slurm_settings:
                 self._register_validator(
-                    SlurmCustomSettingsValidator,
-                    custom_settings=compute_resource.custom_slurm_settings,
-                    deny_list=SLURM_SETTINGS_DENY_LIST["ComputeResource"],
-                    settings_level=SlurmCustomSettingLevel.COMPUTE_RESOURCE,
+                    CustomSlurmSettingsValidator,
+                    custom_settings=[compute_resource.custom_slurm_settings],
+                    deny_list=SLURM_SETTINGS_DENY_LIST["ComputeResource"]["Global"],
+                    settings_level=CustomSlurmSettingLevel.COMPUTE_RESOURCE,
                 )
-                self._register_validator(SlurmCustomSettingsWarning)
+                self._register_validator(CustomSlurmSettingsWarning)
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
                     CapacityTypeValidator,
@@ -2317,6 +2319,8 @@ class SlurmSettings(Resource):
         queue_update_strategy: str = None,
         enable_memory_based_scheduling: bool = None,
         database: Database = None,
+        custom_slurm_settings: List[Dict] = None,
+        custom_slurm_settings_include_file: str = None,
         **kwargs,
     ):
         super().__init__()
@@ -2327,6 +2331,34 @@ class SlurmSettings(Resource):
         )
         self.enable_memory_based_scheduling = Resource.init_param(enable_memory_based_scheduling, default=False)
         self.database = database
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings)
+        self.custom_slurm_settings_include_file = Resource.init_param(custom_slurm_settings_include_file)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        if self.custom_slurm_settings:  # if not empty register validator
+            self._register_validator(
+                CustomSlurmSettingsValidator,
+                custom_settings=self.custom_slurm_settings,
+                deny_list=SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Global"],
+                settings_level=CustomSlurmSettingLevel.SLURM_CONF,
+            )
+            self._register_validator(CustomSlurmSettingsWarning)
+            self._register_validator(CustomSlurmNodeNamesValidator, custom_settings=self.custom_slurm_settings)
+            if self.database:
+                self._register_validator(
+                    CustomSlurmSettingsValidator,
+                    custom_settings=self.custom_slurm_settings,
+                    deny_list=SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Accounting"],
+                    settings_level=CustomSlurmSettingLevel.SLURM_CONF,
+                )
+        if self.custom_slurm_settings_include_file:
+            self._register_validator(UrlValidator, url=self.custom_slurm_settings_include_file)
+            self._register_validator(
+                CustomSlurmSettingsIncludeFileOnlyValidator,
+                custom_settings=self.custom_slurm_settings,
+                include_file_url=self.custom_slurm_settings_include_file,
+            )
 
 
 class QueueUpdateStrategy(Enum):
