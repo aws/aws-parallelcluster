@@ -1108,9 +1108,9 @@ class CustomActions(Resource):
 
     def __init__(
         self,
-        on_node_start: CustomAction = None,
-        on_node_configured: CustomAction = None,
-        on_node_updated: CustomAction = None,
+        on_node_start=None,
+        on_node_configured=None,
+        on_node_updated=None,
     ):
         super().__init__()
         self.on_node_start = Resource.init_param(on_node_start)

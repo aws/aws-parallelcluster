@@ -283,7 +283,8 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
         with pytest.raises(ValidationError, match=failure_message):
             HeadNodeCustomActionsSchema().load(config_dict)
     else:
-        HeadNodeCustomActionsSchema().load(config_dict)
+        conf = HeadNodeCustomActionsSchema().load(config_dict)
+        HeadNodeCustomActionsSchema().dump(conf)
 
 
 @pytest.mark.parametrize(
@@ -355,7 +356,8 @@ def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
         with pytest.raises(ValidationError, match=failure_message):
             QueueCustomActionsSchema().load(config_dict)
     else:
-        QueueCustomActionsSchema().load(config_dict)
+        conf = QueueCustomActionsSchema().load(config_dict)
+        QueueCustomActionsSchema().dump(conf)
 
 
 def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):

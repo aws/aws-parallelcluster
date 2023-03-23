@@ -1111,6 +1111,16 @@ class OneOrManyCustomActionField(fields.Nested):
 
         raise ValidationError("Either Script or Sequence field must be provided.")
 
+    def _serialize(self, nested_obj, attr, obj, **kwargs):
+        if isinstance(nested_obj, list):
+            nested_serialized = []
+            for item in nested_obj:
+                nested_serialized.append(super()._serialize(item, attr, obj, **kwargs))
+            res = {"Sequence": nested_serialized}
+        else:
+            res = super()._serialize(nested_obj, attr, obj, **kwargs)
+        return res
+
 
 class CustomActionScriptSchemaBase(BaseSchema):
     """Represent the schema of the custom action script that cannot be updated."""
