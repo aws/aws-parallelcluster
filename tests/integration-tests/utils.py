@@ -18,6 +18,7 @@ import shlex
 import socket
 import string
 import subprocess
+from datetime import datetime, timedelta
 from hashlib import sha1
 
 import boto3
@@ -723,3 +724,54 @@ def create_hash_suffix(string_to_hash: str):
         if string_to_hash == "HeadNode"
         else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
     )
+
+
+def _generate_metric_data_queries(metric_name, cluster_name):
+    return {
+        "Id": metric_name.lower(),
+        "MetricStat": {
+            "Metric": {
+                "Namespace": "ParallelCluster",
+                "MetricName": metric_name,
+                "Dimensions": [
+                    {
+                        "Name": "ClusterName",
+                        "Value": cluster_name,
+                    }
+                ],
+            },
+            "Period": 60,
+            "Stat": "Sum",
+        },
+    }
+
+
+def retrieve_metric_data(
+    cluster_name,
+    metric_names,
+    region,
+    collection_time_min=20,
+):
+    """Create Boto3 get_metric_data request and output the results."""
+    metric_queries = [_generate_metric_data_queries(name, cluster_name) for name in metric_names]
+
+    client = boto3.client("cloudwatch", region)
+
+    return client.get_metric_data(
+        MetricDataQueries=metric_queries,
+        StartTime=datetime.now() - timedelta(days=collection_time_min),
+        EndTime=datetime.now() + timedelta(days=collection_time_min),
+        ScanBy="TimestampDescending",
+    )
+
+
+def assert_metrics_has_data(response):
+    """
+    Iterates through get_metric_data query output and check for desired results,
+    output in MetricDataResults format which is described here
+    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudwatch.html#CloudWatch.Client.get_metric_data
+    """
+    list_of_responses = response["MetricDataResults"]
+    for response in list_of_responses:
+        assert_that(response["Values"]).is_not_empty()
+        assert_that(max(response["Values"])).is_greater_than(0)

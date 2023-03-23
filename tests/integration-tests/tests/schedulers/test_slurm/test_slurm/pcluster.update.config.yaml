@@ -22,6 +22,7 @@ Scheduling:
         - Name: same-name-diff-queue
           Instances:
             - InstanceType: c5.xlarge
+          MinCount: 1
           MaxCount: 5
     - Name: gpu
       Networking:

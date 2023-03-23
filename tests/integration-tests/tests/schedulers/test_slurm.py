@@ -22,7 +22,14 @@ from remote_command_executor import RemoteCommandExecutionError, RemoteCommandEx
 from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
-from utils import check_status, get_compute_nodes_instance_ids, get_instance_info, wait_for_computefleet_changed
+from utils import (
+    assert_metrics_has_data,
+    check_status,
+    get_compute_nodes_instance_ids,
+    get_instance_info,
+    retrieve_metric_data,
+    wait_for_computefleet_changed,
+)
 
 from tests.common.assertions import (
     assert_lines_in_logs,
@@ -120,6 +127,7 @@ def test_slurm(
             gpu_instance_type,
             clustermgtd_conf_path,
             slurm_root_path,
+            slurm_commands,
         )
 
 
@@ -288,6 +296,8 @@ def test_slurm_protected_mode(
     )
     pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path)
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
+    # TODO: Add OnNodeStartExecutionError
+    _test_cluster_health_metric(["NoCorrespondingInstanceErrors"], cluster.cfn_name, region)
     _test_job_run_in_working_queue(scheduler_commands)
     _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
 
@@ -329,6 +339,7 @@ def test_fast_capacity_failover(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    region,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -349,6 +360,7 @@ def test_fast_capacity_failover(
         static_nodes_in_ice_compute_resource,
         ice_dynamic_nodes,
     )
+    _test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
     # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
@@ -938,13 +950,11 @@ def _test_cloud_node_health_check(
     _assert_slurmd_timeout(remote_command_executor, timeout=180)
     # Nodes with networking failures should fail slurm health check before failing ec2_status_check
     # Test on freshly launched dynamic nodes
-    kill_job_id = _submit_kill_networking_job(
+    _submit_kill_networking_job(
         remote_command_executor, scheduler_commands, partition, node_type="dynamic", num_nodes=num_dynamic_nodes
     )
     # Sleep for a bit so the command to detach network interface can be run
     time.sleep(15)
-    # Job will hang, cancel it manually to avoid waiting for job failing
-    scheduler_commands.cancel_job(kill_job_id)
     # Assert nodes are put into DOWN for not responding
     # TO-DO: this test only works with num_dynamic = 1 because slurm will record this error in nodelist format
     # i.e. error: Nodes q2-st-t2large-[1-2] not responding, setting DOWN
@@ -954,6 +964,7 @@ def _test_cloud_node_health_check(
         ["/var/log/slurmctld.log"],
         ["Nodes {} not responding, setting DOWN".format(",".join(dynamic_nodes))],
     )
+    _test_cluster_health_metric(["SlurmNodeNotRespondingErrors"], cluster_name, region)
     # Assert dynamic nodes are reset
     _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -989,6 +1000,7 @@ def _test_ec2_status_check_replacement(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Setting nodes failing health check type ec2_health_check to DRAIN"],
     )
+    _test_cluster_health_metric(["EC2HealthCheckErrors"], cluster_name, region)
     scheduler_commands.cancel_job(kill_job_id)
     # Assert static nodes are reset
     _wait_for_node_reset(
@@ -1716,6 +1728,7 @@ def _test_compute_node_bootstrap_timeout(
     gpu_instance_type,
     clustermgtd_conf_path,
     slurm_root_path,
+    slurm_commands,
 ):
     """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
     slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
@@ -1725,7 +1738,7 @@ def _test_compute_node_bootstrap_timeout(
     clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
     # Update cluster
-    update_compute_node_bootstrap_timeout = 1200
+    update_compute_node_bootstrap_timeout = 10
     updated_config_file = pcluster_config_reader(
         scaledown_idletime=scaledown_idletime,
         gpu_instance_type=gpu_instance_type,
@@ -1740,6 +1753,17 @@ def _test_compute_node_bootstrap_timeout(
     clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
     assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
+
+    slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "partition": "ondemand",
+            "constraint": "c5.xlarge",
+            "nodes": 2,
+        }
+    )
+    _test_cluster_health_metric(["ResumeTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
+    _test_cluster_health_metric(["ReplacementTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
 
 
 def _retrieve_slurm_root_path(remote_command_executor):
@@ -2323,3 +2347,11 @@ def _test_scontrol_reboot_powerdown_reboot_issued_node(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Found the following unhealthy static nodes"],
     )
+
+
+@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
+def _test_cluster_health_metric(metric_names, cluster_name, region):
+    """Test metric value is greater than 0 when the compute node error happens."""
+    logging.info(f"Testing that {metric_names} have data.")
+    response = retrieve_metric_data(cluster_name, metric_names, region)
+    assert_metrics_has_data(response)
