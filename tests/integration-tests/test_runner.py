@@ -86,6 +86,8 @@ TEST_DEFAULTS = {
     "ldaps_nlb_stack_name": None,
     "slurm_database_stack_name": None,
     "external_shared_storage_stack_name": None,
+    "cluster_custom_resource_service_token": None,
+    "resource_bucket": None,
 }
 
 
@@ -304,6 +306,19 @@ def _init_argparser():
         type=int,
     )
 
+    custom_resource_group = parser.add_argument_group("CloudFormation / Custom Resource options")
+    custom_resource_group.add_argument(
+        "--cluster-custom-resource-service-token",
+        help="ServiceToken (ARN) Cluster CloudFormation custom resource provider",
+        default=TEST_DEFAULTS.get("cluster_custom_resource_service_token"),
+    )
+
+    custom_resource_group.add_argument(
+        "--resource-bucket",
+        help="Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates.",
+        default=TEST_DEFAULTS.get("resource_bucket"),
+    )
+
     api_group = parser.add_argument_group("API options")
     api_group.add_argument(
         "--api-definition-s3-uri",
@@ -509,6 +524,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     _set_ami_args(args, pytest_args)
     _set_custom_stack_args(args, pytest_args)
     _set_api_args(args, pytest_args)
+    _set_custom_resource_args(args, pytest_args)
 
     return pytest_args
 
@@ -577,6 +593,13 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.external_shared_storage_stack_name:
         pytest_args.extend(["--external-shared-storage-stack-name", args.external_shared_storage_stack_name])
+
+
+def _set_custom_resource_args(args, pytest_args):
+    if args.cluster_custom_resource_service_token:
+        pytest_args.extend(["--cluster-custom-resource-service-token", args.cluster_custom_resource_service_token])
+    if args.resource_bucket:
+        pytest_args.extend(["--resource-bucket", args.resource_bucket])
 
 
 def _set_api_args(args, pytest_args):
