@@ -32,13 +32,6 @@ logger = logging.getLogger()
 NODE_VERSION = "v16.19.0"  # maintenance version compatible with alinux2's GLIBC
 
 
-def get_version():
-    """Get the ParalelCluster version."""
-    import pcluster.utils
-
-    return pcluster.utils.get_installed_version()
-
-
 def install_pc(basepath, pc_version):
     """Install ParallelCluster to a temporary directory"""
     tempdir = Path(basepath) / "python"
@@ -49,7 +42,7 @@ def install_pc(basepath, pc_version):
         subprocess.check_call([sys.executable, "-m", "pip", "install", cli_dir, "-t", tempdir])
         shutil.rmtree(tempdir / "botocore")
     except subprocess.CalledProcessError:
-        logger.info(f"Error while installing ParallelCluster {get_version()}")
+        logger.info(f"Error while installing ParallelCluster {get_installed_parallelcluster_version()}")
         sys.exit(-1)
 
 
@@ -90,7 +83,7 @@ def policies_uri_fixture(request, region, resource_bucket):
 
 
 def get_resource_map():
-    prefix = f"parallelcluster/{get_version()}"
+    prefix = f"parallelcluster/{get_installed_parallelcluster_version()}"
     resources = {
         "api/infrastructure/parallelcluster-api.yaml": f"{prefix}/api/parallelcluster-api.yaml",
         "api/spec/openapi/ParallelCluster.openapi.yaml": f"{prefix}/api/ParallelCluster.openapi.yaml",
@@ -115,10 +108,12 @@ def resource_bucket_shared(request, s3_bucket_factory_shared):
             boto3.resource("s3").Bucket(s3_bucket).upload_file(str(root / file), key)
 
         with tempfile.TemporaryDirectory() as basepath:
-            install_pc(basepath, get_version())
+            install_pc(basepath, get_installed_parallelcluster_version())
             install_node(basepath, NODE_VERSION)
 
-            layer_key = f"parallelcluster/{get_version()}/layers/aws-parallelcluster/lambda-layer.zip"
+            layer_key = (
+                f"parallelcluster/{get_installed_parallelcluster_version()}/layers/aws-parallelcluster/lambda-layer.zip"
+            )
             with tempfile.NamedTemporaryFile(suffix=".zip") as zipfile:
                 zipfilename = Path(zipfile.name)
                 logger.info(f"    {zipfilename} -> {s3_bucket}/{layer_key}")

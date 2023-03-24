@@ -143,6 +143,14 @@ def pytest_addoption(parser):
         help="(Optional) Name of bucket to use to look for standard resources like hosted CloudFormation templates.",
     )
     parser.addoption(
+        "--cluster-custom-resource-service-token",
+        help="(Optional) ServiceToken (ARN) of the CloudFormation Cluster custom resource provider.",
+    )
+    parser.addoption(
+        "--resource-bucket",
+        help="(Optional) Name of bucket to use to look for standard resources like hosted CloudFormation templates.",
+    )
+    parser.addoption(
         "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
     )
     parser.addoption(
