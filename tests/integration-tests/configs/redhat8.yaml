@@ -17,7 +17,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu1804"]
+          oss: ["rhel8", "ubuntu2004"]
           schedulers: ["slurm"]
           benchmarks:
             - mpi_variants: [ "openmpi", "intelmpi" ]
