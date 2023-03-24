@@ -126,12 +126,6 @@ AMI selection parameters:
 Benchmarks:
   --benchmarks          Run benchmarks tests. Benchmarks tests will be run together with functionality tests. (default: False)
 
-CloudFormation / Custom Resource options:
-  --cluster-custom-resource-service-token CLUSTER_CUSTOM_RESOURCE_SERVICE_TOKEN
-                        ServiceToken (ARN) Cluster CloudFormation custom resource provider (default: None)
-  --resource-bucket RESOURCE_BUCKET
-                        Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates. (default: None)
-
 API options:
   --api-definition-s3-uri API_DEFINITION_S3_URI
                         URI of the Docker image for the Lambda of the ParallelCluster API (default: None)

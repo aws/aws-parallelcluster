@@ -96,7 +96,7 @@ from tests.common.utils import (
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
 
-pytest_plugins = ["conftest_networking", "conftest_resource_bucket"]
+pytest_plugins = ["conftest_networking"]
 
 
 def pytest_addoption(parser):
@@ -133,14 +133,6 @@ def pytest_addoption(parser):
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
     parser.addoption("--public-ecr-image-uri", help="S3 URI of the ParallelCluster API spec")
-    parser.addoption(
-        "--cluster-custom-resource-service-token",
-        help="(Optional) ServiceToken (ARN) of the CloudFormation Cluster custom resource provider.",
-    )
-    parser.addoption(
-        "--resource-bucket",
-        help="(Optional) Name of bucket to use to look for standard resources like hosted CloudFormation templates.",
-    )
     parser.addoption(
         "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
     )
@@ -955,11 +947,6 @@ def api_definition_s3_uri(request):
 @pytest.fixture(scope="session")
 def api_infrastructure_s3_uri(request):
     return request.config.getoption("api_infrastructure_s3_uri")
-
-
-@pytest.fixture(scope="session")
-def cluster_custom_resource_service_token(request):
-    return request.config.getoption("cluster_custom_resource_service_token")
 
 
 @pytest.fixture(scope="class")

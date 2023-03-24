@@ -28,7 +28,7 @@ Resources:
       Parameters:
         CustomBucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Ref AWS::NoValue ]
       TemplateURL: !Sub
-        - https://${Bucket}.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${Version}/templates/custom_resource/cluster.yaml
+        - https://${Bucket}.s3.${AWS::Region}.amazonaws.com/parallelcluster/${Version}/templates/custom_resource/cluster.yaml
         - { Version: !FindInMap [ParallelCluster, Constants, Version ],
             Bucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Sub "${AWS::Region}-aws-parallelcluster" ]
           }
@@ -41,7 +41,7 @@ Resources:
         PrivateCIDR: 10.0.16.0/20
         AvailabilityZone: !Ref AvailabilityZone
       TemplateURL: !Sub
-        - https://${Bucket}.s3.${AWS::Region}.${AWS::URLSuffix}.com/parallelcluster/${Version}/templates/networking/public-private.cfn.json
+        - https://${Bucket}.s3.${AWS::Region}.amazonaws.com/parallelcluster/${Version}/templates/networking/public-private.cfn.json
         - { Version: !FindInMap [ParallelCluster, Constants, Version],
             Bucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Sub "${AWS::Region}-aws-parallelcluster" ]
           }
