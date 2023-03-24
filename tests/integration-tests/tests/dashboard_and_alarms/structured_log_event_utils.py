@@ -12,9 +12,10 @@
 import json
 import logging
 import re
-from typing import Dict, Iterator, Tuple
+from typing import AnyStr, Dict, Iterator, Tuple
 
 from assertpy import assert_that
+from clusters_factory import Cluster
 from retrying import retry
 from time_utils import minutes, seconds
 
@@ -27,7 +28,7 @@ from tests.cloudwatch_logging.cloudwatch_logging_boto3_utils import (
 logger = logging.getLogger(__name__)
 
 
-def get_log_stream_events(cluster, stream_name_pattern) -> Iterator[Tuple[str, Dict]]:
+def get_log_stream_events(cluster: Cluster, stream_name_pattern: AnyStr) -> Iterator[Tuple[str, Dict]]:
     pattern = re.compile(stream_name_pattern)
     log_group_name = get_cluster_log_groups_from_boto3(f"/aws/parallelcluster/{cluster.name}")[0].get("logGroupName")
     for log_stream in get_log_streams(log_group_name):
@@ -36,7 +37,9 @@ def get_log_stream_events(cluster, stream_name_pattern) -> Iterator[Tuple[str, D
             yield from ((log_stream_name, event) for event in get_log_events(log_group_name, log_stream_name))
 
 
-def get_log_stream_events_by_event_type(cluster, stream_name_pattern, event_type_pattern) -> Iterator[Tuple[str, Dict]]:
+def get_log_stream_events_by_event_type(
+    cluster: Cluster, stream_name_pattern: AnyStr, event_type_pattern: AnyStr
+) -> Iterator[Tuple[str, Dict[str, Dict]]]:
     pattern = re.compile(event_type_pattern)
     for stream_name, log_event in get_log_stream_events(cluster, stream_name_pattern):
         json_event = json.loads(log_event.get("message", {}))
@@ -48,7 +51,7 @@ def get_log_stream_events_by_event_type(cluster, stream_name_pattern, event_type
             yield stream_name, json_event
 
 
-def get_node_info_from_stream_name(stream_name) -> Dict:
+def get_node_info_from_stream_name(stream_name: str) -> Dict[str, str]:
     match = re.match(r"ip-(\d{1,3}(-\d{1,3}){3})\.(i-[0-9a-f]+)\.(.+)", stream_name)
     return {
         "ip": match.group(1).replace("-", "."),
@@ -58,7 +61,7 @@ def get_node_info_from_stream_name(stream_name) -> Dict:
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
-def assert_that_event_exists(cluster, stream_name_pattern, event_type_pattern):
+def assert_that_event_exists(cluster: Cluster, stream_name_pattern: str, event_type_pattern: str):
     stream_name, event = next(get_log_stream_events_by_event_type(cluster, stream_name_pattern, event_type_pattern))
     logger.info("Found event %s for %s", event, event_type_pattern)
     info = get_node_info_from_stream_name(stream_name)

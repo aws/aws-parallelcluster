@@ -55,6 +55,7 @@ from tests.common.hit_common import (
 )
 from tests.common.mpi_common import compile_mpi_ring
 from tests.common.schedulers_common import TorqueCommands
+from tests.dashboard_and_alarms import structured_log_event_utils
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -360,6 +361,9 @@ def test_fast_capacity_failover(
         clustermgtd_conf_path,
         static_nodes_in_ice_compute_resource,
         ice_dynamic_nodes,
+    )
+    structured_log_event_utils.assert_that_event_exists(
+        cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
     )
     _test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
     # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
