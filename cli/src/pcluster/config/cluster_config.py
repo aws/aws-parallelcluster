@@ -764,6 +764,25 @@ class Efa(Resource):
         self.gdr_support = Resource.init_param(gdr_support, default=False)
 
 
+# ---------------------- Health Checks ---------------------- #
+
+
+class GpuHealthCheck(Resource):
+    """Represent the configuration for the GPU Health Check."""
+
+    def __init__(self, enabled: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.enabled = enabled
+
+
+class HealthChecks(Resource):
+    """Represent the health checks configuration."""
+
+    def __init__(self, gpu: GpuHealthCheck = None, **kwargs):
+        super().__init__(**kwargs)
+        self.gpu = gpu or GpuHealthCheck(implied=True)
+
+
 # ---------------------- Monitoring ---------------------- #
 
 
@@ -1880,6 +1899,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         schedulable_memory: int = None,
         capacity_reservation_target: CapacityReservationTarget = None,
         networking: SlurmComputeResourceNetworking = None,
+        health_checks: HealthChecks = None,
         custom_slurm_settings: Dict = None,
         **kwargs,
     ):
@@ -1896,6 +1916,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self._instance_types_with_instance_storage = []
         self._instance_type_info_map = {}
         self.networking = networking or SlurmComputeResourceNetworking(implied=True)
+        self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
 
     @staticmethod
@@ -2194,9 +2215,11 @@ class SlurmQueue(_CommonQueue):
         self,
         allocation_strategy: str = None,
         custom_slurm_settings: Dict = None,
+        health_checks: HealthChecks = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources

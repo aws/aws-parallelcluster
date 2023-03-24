@@ -9,9 +9,11 @@ from pcluster.config.cluster_config import (
     ComputeSettings,
     Ebs,
     FlexibleInstanceType,
+    GpuHealthCheck,
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
+    HealthChecks,
     Image,
     PlacementGroup,
     QueueImage,
@@ -32,11 +34,13 @@ mock_compute_resources = [
         instance_type="test",
         name="test1",
         networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(implied=True)),
+        health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=True)),
     ),
     SlurmComputeResource(
         instance_type="test",
         name="test2",
         networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=True)),
+        health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=False)),
     ),
     SlurmComputeResource(
         instance_type="test",
@@ -390,6 +394,60 @@ class TestBaseClusterConfig:
 
     def test_get_instance_types_data(self, base_cluster_config):
         assert_that(base_cluster_config.get_instance_types_data()).is_equal_to({})
+
+    @pytest.mark.parametrize(
+        "queue_parameters, expected_result",
+        [
+            # At ComputeResource level the Health Check is enabled for CR test1, disabled for CR test2
+            # undefined otherwise
+            (
+                # Health Checks section is not defined at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "", "", ""],
+            ),
+            (
+                # Health Checks section is enabled at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "queue", "queue", "queue"],
+            ),
+            (
+                # Health Checks section is disabled at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "", "", ""],
+            ),
+        ],
+    )
+    def test_get_enabled_health_checks_section(self, queue_parameters, expected_result):
+        queue = SlurmQueue(**queue_parameters)
+        health_check_gpu_enabled = []
+        queue_gpu_check_enabled = queue.health_checks.gpu is not None and queue.health_checks.gpu.enabled
+        for compute_resource in queue.compute_resources:
+            compute_resource_gpu_check_enabled = (
+                compute_resource.health_checks.gpu is not None and compute_resource.health_checks.gpu.enabled
+            )
+            if compute_resource_gpu_check_enabled:
+                health_check_gpu_enabled.append(compute_resource.name)
+            elif compute_resource_gpu_check_enabled is False:
+                health_check_gpu_enabled.append("")
+            elif queue_gpu_check_enabled:
+                health_check_gpu_enabled.append(queue.name)
+            else:
+                health_check_gpu_enabled.append("")
+        assert_that(health_check_gpu_enabled).is_equal_to(expected_result)
 
     @pytest.mark.parametrize(
         "region, expected_volume_type",
