@@ -61,5 +61,5 @@ def _get_launch_template_name(cluster, queue_name, compute_resource):
 
 def _get_slurm_placement_group_from_stack(cluster, region):
     stack_resources = utils.retrieve_cfn_resources(cluster.cfn_name, region)
-    placement_group = next(v for k, v in stack_resources.items() if k.startswith("ComputeFleetPlacementGroup"))
+    placement_group = next(v for k, v in stack_resources.items() if k.startswith("PlacementGroup"))
     return placement_group
