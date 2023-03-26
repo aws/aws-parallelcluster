@@ -12,8 +12,8 @@ from unittest.mock import PropertyMock
 
 import pytest
 from assertpy import assert_that
+from aws_cdk import CfnTag
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk.core import CfnTag
 
 from pcluster.config.cluster_config import (
     BaseQueue,

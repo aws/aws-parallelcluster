@@ -61,6 +61,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -112,6 +113,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -162,6 +164,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -210,6 +213,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceProfile": {},
@@ -260,6 +264,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InfrastructureConfiguration": {},
@@ -309,6 +314,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -357,6 +363,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -407,6 +414,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -456,6 +464,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -513,6 +522,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -563,6 +573,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -612,6 +623,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},
@@ -661,6 +673,7 @@ from tests.pcluster.utils import assert_lambdas_have_expected_vpc_config_and_man
                     "CfnParamCincInstaller": {},
                     "CfnParamCookbookVersion": {},
                     "CfnParamUpdateOsAndReboot": {},
+                    "BootstrapVersion": {},
                 },
                 "Resources": {
                     "InstanceRole": {},

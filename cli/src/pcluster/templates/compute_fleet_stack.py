@@ -16,11 +16,12 @@
 #
 from typing import Dict, List
 
+from aws_cdk import CfnCustomResource, CfnResource, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import CfnCustomResource, CfnResource, Construct, Stack
+from constructs import Construct
 
 from pcluster.config.cluster_config import SlurmClusterConfig
 from pcluster.constants import (
@@ -205,7 +206,7 @@ class ComputeFleetConstruct(Construct):
         terminate_compute_fleet_custom_resource.add_property_override("StackName", self.stack_name)
         terminate_compute_fleet_custom_resource.add_property_override("Action", "TERMINATE_EC2_INSTANCES")
         for dep in dependencies:
-            terminate_compute_fleet_custom_resource.add_depends_on(dep)
+            terminate_compute_fleet_custom_resource.add_dependency(dep)
 
         if self._cleanup_lambda_role:
             self._add_policies_to_cleanup_resources_lambda_role()
