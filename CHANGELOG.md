@@ -14,6 +14,7 @@ CHANGELOG
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
+- Switch to CDK v2 (requires NodeJS 14.21 or later).
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
