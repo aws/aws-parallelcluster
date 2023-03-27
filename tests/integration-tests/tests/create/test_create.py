@@ -134,13 +134,13 @@ def test_cluster_creation_with_problematic_preinstall_script(
     assert_lines_in_logs(
         remote_command_executor,
         ["/var/log/cfn-init.log"],
-        [f"Failed to execute OnNodeStart script s3://{ bucket_name }/scripts/{script_name}"],
+        [f"Failed to execute OnNodeStart script 1 s3://{ bucket_name }/scripts/{script_name}"],
     )
     logging.info("Verifying error in cloudformation failure reason")
     stack_events = cluster.get_stack_events().get("events")
     cfn_failure_reason = _get_failure_reason(stack_events)
     expected_cfn_failure_reason = (
-        "Failed to execute OnNodeStart script, "
+        "Failed to execute OnNodeStart script 1, "
         "return code: 1. Please check /var/log/cfn-init.log in the head node, or check the "
         "cfn-init.log in CloudWatch logs. Please refer to https://docs.aws.amazon.com/"
         "parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for "
