@@ -263,6 +263,7 @@ class QueueGroupStack(NestedStack):
                                 if self._cluster_hosted_zone
                                 else "",
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
+                                "ClusterName": self.stack_name,
                                 "SlurmDynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
                                 "LogGroupName": self._log_group.log_group_name
                                 if self._config.monitoring.logs.cloud_watch.enabled
