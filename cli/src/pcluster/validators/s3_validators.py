@@ -6,18 +6,19 @@ from urllib.request import urlopen
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.utils import get_url_scheme
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.validators.common import AsyncValidator, FailureLevel, Validator
 from pcluster.validators.utils import get_bucket_name_from_s3_url
 
 
-class UrlValidator(Validator):
+class UrlValidator(AsyncValidator):
     """
     Url Validator.
 
     Validate given url with s3 or https prefix.
     """
 
-    def _validate(
+    # TODO reimplement retries with annotation @retry(stop_max_attempt_number=3)
+    async def _validate_async(
         self,
         url,
         retries=3,
@@ -39,7 +40,7 @@ class UrlValidator(Validator):
             except ConnectionError as e:
                 if retries > 0:
                     time.sleep(5)
-                    self._validate(url, retries=retries - 1)
+                    await self._validate_async(url, retries=retries - 1)
                 else:
                     self._add_failure(f"The url '{url}' causes ConnectionError: {e}.", FailureLevel.WARNING)
 

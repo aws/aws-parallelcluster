@@ -12,9 +12,10 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-
+import asyncio
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import List
 
 
 class FailureLevel(Enum):
@@ -41,7 +42,7 @@ class ValidationResult:
 
 
 class Validator(ABC):
-    """Abstract validator. The children must implement the validate method."""
+    """Abstract validator. The children must implement the _validate method."""
 
     def __init__(self):
         self._failures = []
@@ -55,14 +56,43 @@ class Validator(ABC):
         """Identify the type of validator."""
         return self.__class__.__name__
 
-    def execute(self, *arg, **kwargs):
+    def execute(self, *arg, **kwargs) -> List[ValidationResult]:
         """Entry point of all validators to verify all input params are valid."""
         self._validate(*arg, **kwargs)
         return self._failures
 
     @abstractmethod
     def _validate(self, *args, **kwargs):
-        """Must be implemented with specific validation logic."""
+        """
+        Must be implemented with specific validation logic.
+
+        Use _add_failure to add failures to the list of failures returned by execute.
+        """
+        pass
+
+
+class AsyncValidator(Validator):
+    """Abstract validator that supports *also* async execution. Children must implement the _validate_async method."""
+
+    def __init__(self):
+        super().__init__()
+
+    def _validate(self, *arg, **kwargs):
+        asyncio.get_event_loop().run_until_complete(self._validate_async(*arg, **kwargs))
+        return self._failures
+
+    async def execute_async(self, *arg, **kwargs) -> List[ValidationResult]:
+        """Entry point of all async validators to verify all input params are valid."""
+        await self._validate_async(*arg, **kwargs)
+        return self._failures
+
+    @abstractmethod
+    async def _validate_async(self, *args, **kwargs):
+        """
+        Must be implemented with specific validation logic.
+
+        Use _add_failure to add failures to the list of failures returned by execute or execute_async when awaited.
+        """
         pass
 
 
