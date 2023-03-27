@@ -3043,6 +3043,7 @@ def test_root_volume_encryption_consistency_validator(
         ),
     ],
 )
+@pytest.mark.usefixtures("get_region")
 def test_multi_network_interfaces_instances_validator(
     aws_api_mock, num_cards, assign_public_ip, public_ip_subnets, expected_error_messages
 ):
