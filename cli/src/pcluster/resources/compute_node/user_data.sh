@@ -64,6 +64,7 @@ write_files:
     content: |
       {
         "cluster": {
+          "cluster_name": "${ClusterName}",
           "stack_name": "${AWS::StackName}",
           "stack_arn": "${AWS::StackId}",
           "enable_efa": "${EnableEfa}",

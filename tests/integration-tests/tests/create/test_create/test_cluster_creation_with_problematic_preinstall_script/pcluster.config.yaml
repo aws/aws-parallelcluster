@@ -31,3 +31,6 @@ Scheduling:
     Networking:
       SubnetIds:
         - {{ private_subnet_id }}
+DevSettings:
+  Cookbook:
+    ChefCookbook: s3://davprat-aws-parallelcluster-cookbook-development/parallelcluster/3.6.0/cookbooks/aws-parallelcluster-cookbook-3.6.0.tgz
