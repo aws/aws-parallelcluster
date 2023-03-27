@@ -86,7 +86,7 @@ def get_resource_map():
     return resources
 
 
-@xdist_session_fixture(autouse=True)
+@xdist_session_fixture()
 def resource_bucket_shared(request, s3_bucket_factory_shared):
     root = Path(pkg_resources.resource_filename(__name__, "/../.."))
     if request.config.getoption("resource_bucket"):
@@ -95,8 +95,8 @@ def resource_bucket_shared(request, s3_bucket_factory_shared):
     for region, s3_bucket in s3_bucket_factory_shared.items():
         logger.info(f"Uploading artifacts to: {s3_bucket}[{region}]")
         for file, key in get_resource_map().items():
-            logger.info(f"  {root / file} -> {key}")
-            boto3.resource("s3").Bucket(s3_bucket).upload_file(root / file, key)
+            logger.info(f"  {root / file} -> {s3_bucket}/{key}")
+            boto3.resource("s3").Bucket(s3_bucket).upload_file(str(root / file), key)
 
         with tempfile.TemporaryDirectory() as basepath:
             install_pc(basepath, get_version())
@@ -105,9 +105,9 @@ def resource_bucket_shared(request, s3_bucket_factory_shared):
             layer_key = f"parallelcluster/{get_version()}/layers/aws-parallelcluster/lambda-layer.zip"
             with tempfile.NamedTemporaryFile(suffix=".zip") as zipfile:
                 zipfilename = Path(zipfile.name)
-                logger.info(f"    {zipfilename} -> {layer_key}")
+                logger.info(f"    {zipfilename} -> {s3_bucket}/{layer_key}")
                 shutil.make_archive(zipfilename.with_suffix(""), format="zip", root_dir=basepath)
-                boto3.resource("s3").Bucket(s3_bucket).upload_file(zipfilename, layer_key)
+                boto3.resource("s3").Bucket(s3_bucket).upload_file(str(zipfilename), layer_key)
 
     logger.info(s3_bucket_factory_shared)
     return s3_bucket_factory_shared
