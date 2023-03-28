@@ -12,12 +12,14 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
+import asyncio
+import itertools
 import json
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Set
 
-from pcluster.validators.common import FailureLevel, ValidationResult, Validator, ValidatorContext
+from pcluster.validators.common import AsyncValidator, FailureLevel, ValidationResult, Validator, ValidatorContext
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
 from pcluster.validators.networking_validators import LambdaFunctionsVpcConfigValidator
 from pcluster.validators.s3_validators import UrlValidator
@@ -122,6 +124,7 @@ class Resource:
     def __init__(self, implied: bool = False):
         # Parameters registry
         self.__params = {}
+        self._validation_futures = []
         self._validation_failures: List[ValidationResult] = []
         self._validators: List = []
         self.implied = implied
@@ -167,16 +170,35 @@ class Resource:
         """Create a resource attribute backed by a Configuration Parameter."""
         return Resource.Param(value, default=default, update_policy=update_policy)
 
-    def _validator_execute(self, validator_class, validator_args, suppressors):
+    @staticmethod
+    def _validator_execute(validator_class, validator_args, suppressors, validation_executor):
         validator = validator_class()
+
         if any(suppressor.suppress_validator(validator) for suppressor in (suppressors or [])):
             LOGGER.debug("Suppressing validator %s", validator_class.__name__)
             return []
+
         LOGGER.debug("Executing validator %s", validator_class.__name__)
+        return validation_executor(validator_args, validator)
+
+    @staticmethod
+    def _validator_execute_sync(validator_args, validator):
         try:
             return validator.execute(**validator_args)
         except Exception as e:
+            LOGGER.debug("Validator %s unexpected failure: %s", validator.type, e)
             return [ValidationResult(str(e), FailureLevel.ERROR, validator.type)]
+
+    @staticmethod
+    def _validator_execute_async(validator_args, validator):
+        return validator.execute_async(**validator_args)
+
+    def _await_async_validators(self):
+        return list(
+            itertools.chain.from_iterable(
+                asyncio.get_event_loop().run_until_complete(asyncio.gather(*self._validation_futures))
+            )
+        )
 
     def _nested_resources(self):
         nested_resources = []
@@ -188,34 +210,60 @@ class Resource:
         return nested_resources
 
     def validate(
-        self, suppressors: List[ValidatorSuppressor] = None, context: ValidatorContext = None
-    ) -> List[ValidationResult]:
+        self, suppressors: List[ValidatorSuppressor] = None, context: ValidatorContext = None, nested: bool = False
+    ):
         """Execute registered validators."""
-        # Cleanup failures and validators
+        self._validation_futures.clear()
         self._validation_failures.clear()
 
+        self._validate_nested_resources(context, suppressors)
+        self._validate_self(context, suppressors)
+
+        if nested:
+            return self._validation_failures, self._validation_futures
+        else:
+            self._validation_failures.extend(self._await_async_validators())
+            return self._validation_failures
+
+    def _validate_nested_resources(self, context, suppressors):
         # Call validators for nested resources
         for nested_resource in self._nested_resources():
-            self._validation_failures.extend(nested_resource.validate(suppressors, context))
+            failures, futures = nested_resource.validate(suppressors, context, nested=True)
+            self._validation_futures.extend(futures)
+            self._validation_failures.extend(failures)
 
-        # Update validators to be executed according to current status of the model and order by priority
+    def _validate_self(self, context, suppressors):
         self._validators.clear()
         self._register_validators(context)
         for validator in self._validators:
-            self._validation_failures.extend(self._validator_execute(*validator, suppressors))
-
-        return self._validation_failures
+            if issubclass(validator[0], AsyncValidator):
+                self._validation_futures.extend(
+                    [self._validator_execute(*validator, suppressors, self._validator_execute_async)]
+                )
+            else:
+                self._validation_failures.extend(
+                    self._validator_execute(*validator, suppressors, self._validator_execute_sync)
+                )
 
     def _register_validators(self, context: ValidatorContext = None):
         """
-        Execute validators.
+        Register all the validators that contribute to ensure that the resource parameters are valid.
 
-        Method to be implemented in Resources.
+        Method to be implemented in Resource subclasses that need to register validators by invoking the internal
+        _register_validator method.
+        :param context:
+        :return:
         """
         pass
 
     def _register_validator(self, validator_class, **validator_args):
-        """Execute the validator."""
+        """Add a validator with the specified arguments.
+
+        The validator will be executed according to the current status of the model and ordered by priority.
+        :param validator_class: Validator class to be executed
+        :param validator_args: Arguments to be passed to the validator
+        :return:
+        """
         self._validators.append((validator_class, validator_args))
 
     def __repr__(self):
