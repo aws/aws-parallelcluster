@@ -108,7 +108,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
 )
-from pcluster.validators.common import ValidatorContext
+from pcluster.validators.common import ValidatorContext, get_async_timed_validator_type_for
 from pcluster.validators.database_validators import DatabaseUriValidator
 from pcluster.validators.directory_service_validators import (
     AdditionalSssdConfigsValidator,
@@ -1094,7 +1094,7 @@ class QueueImage(Resource):
 
 
 class CustomAction(Resource):
-    """Represent a custom action resource."""
+    """Represent a custom action script resource."""
 
     def __init__(self, script: str, args: List[str] = None):
         super().__init__()
@@ -1102,7 +1102,7 @@ class CustomAction(Resource):
         self.args = Resource.init_param(args)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(UrlValidator, url=self.script)
+        self._register_validator(get_async_timed_validator_type_for(UrlValidator), url=self.script, timeout=5)
 
 
 class CustomActions(Resource):
