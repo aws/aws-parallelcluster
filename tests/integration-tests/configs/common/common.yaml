@@ -213,6 +213,12 @@ dashboard_and_alarms:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
+  test_structured_log_events.py::test_custom_compute_action_failure:
+    dimensions:
+      - regions: ["af-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2", "ubuntu2004"]
+        schedulers: ["slurm"]
 dcv:
   test_dcv.py::test_dcv_configuration:
     dimensions:
