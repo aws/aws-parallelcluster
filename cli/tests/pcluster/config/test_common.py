@@ -15,7 +15,13 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.config.common import Resource
-from pcluster.validators.common import AsyncValidator, FailureLevel, Validator, ValidatorContext
+from pcluster.validators.common import (
+    AsyncValidator,
+    FailureLevel,
+    Validator,
+    ValidatorContext,
+    get_async_timed_validator_type_for,
+)
 
 
 class FakeInfoValidator(Validator):
@@ -152,6 +158,48 @@ def test_async_resource_validation():
 
     assert_validation_result(validation_failures[0], FailureLevel.ERROR, "Error fake-value.")
     assert_validation_result(validation_failures[1], FailureLevel.INFO, "Wrong value other-value.")
+    assert_validation_result(validation_failures[2], FailureLevel.ERROR, "Error async fake-value.")
+    assert_validation_result(validation_failures[3], FailureLevel.INFO, "Wrong async value other-value.")
+
+
+def test_async_resource_validation_with_timeout():
+    """Verify that async validators can fail due to timeout."""
+
+    class FakeResource(Resource):
+        """Fake resource class to test validators."""
+
+        def __init__(self):
+            super().__init__()
+            self.fake_attribute = "fake-value"
+            self.other_attribute = "other-value"
+
+        def _register_validators(self, context: ValidatorContext = None):
+            self._register_validator(
+                get_async_timed_validator_type_for(FakeAsyncErrorValidator), param=self.fake_attribute, timeout=0.1
+            )
+            self._register_validator(
+                get_async_timed_validator_type_for(FakeAsyncInfoValidator), param=self.other_attribute, timeout=0
+            )
+            self._register_validator(
+                get_async_timed_validator_type_for(FakeAsyncErrorValidator), param=self.fake_attribute, timeout=3
+            )
+            self._register_validator(
+                get_async_timed_validator_type_for(FakeAsyncInfoValidator), param=self.other_attribute, timeout=4
+            )
+
+    fake_resource = FakeResource()
+    validation_failures = fake_resource.validate()
+
+    assert_validation_result(
+        validation_failures[0],
+        FailureLevel.WARNING,
+        'Validation of "AsyncTimedFakeAsyncErrorValidator" timed out after 0.1 seconds.',
+    )
+    assert_validation_result(
+        validation_failures[1],
+        FailureLevel.WARNING,
+        'Validation of "AsyncTimedFakeAsyncInfoValidator" timed out after 0 seconds.',
+    )
     assert_validation_result(validation_failures[2], FailureLevel.ERROR, "Error async fake-value.")
     assert_validation_result(validation_failures[3], FailureLevel.INFO, "Wrong async value other-value.")
 

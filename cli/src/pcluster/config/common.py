@@ -194,6 +194,10 @@ class Resource:
         return validator.execute_async(**validator_args)
 
     def _await_async_validators(self):
+        # here could be a good spot to add a cascading timeout for the async validators
+        # if they are taking too long to execute for a resource and its children since the use of
+        # get_async_timed_validator_type_for allows to decorate only on single validator at a time and
+        # does not cascade to child resources
         return list(
             itertools.chain.from_iterable(
                 asyncio.get_event_loop().run_until_complete(asyncio.gather(*self._validation_futures))
