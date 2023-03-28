@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest.mock import PropertyMock, call
+from unittest.mock import AsyncMock, PropertyMock, call
 
 from assertpy import assert_that
 
@@ -28,11 +28,24 @@ from pcluster.validators import (
     s3_validators,
     slurm_settings_validator,
 )
-from pcluster.validators.common import Validator, ValidatorContext
+from pcluster.validators.common import AsyncValidator, Validator, ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
-def _mock_all_validators(mocker, mockers, additional_modules=None):
+def _is_validator_of_type(cls, name, validator_type):
+    return (
+        isinstance(cls, type)
+        and issubclass(cls, validator_type)
+        and name != "Validator"
+        and name != "AsyncValidator"
+        and not name.startswith("_")
+    )
+
+
+def _mock_all_validators(mocker, additional_modules=None):
+    mockers = []
+    async_mockers = []
+
     modules = [
         cluster_validators,
         database_validators,
@@ -51,15 +64,20 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
     for module in modules:
         module_name = module.__name__
         for name, cls in module.__dict__.items():
-            if (
-                isinstance(cls, type)
-                and issubclass(cls, Validator)
-                and name != "Validator"
-                and not name.startswith("_")
-            ):
+            if _is_validator_of_type(cls, name, AsyncValidator):
+                async_mockers.append(
+                    {
+                        "name": name,
+                        "mocker": mocker.patch(
+                            f"{module_name}.{name}._validate_async", return_value=AsyncMock(side_effect=[])
+                        ),
+                    }
+                )
+            elif _is_validator_of_type(cls, name, Validator):
                 mockers.append(
                     {"name": name, "mocker": mocker.patch(f"{module_name}.{name}._validate", return_value=[])}
                 )
+    return mockers, async_mockers
 
 
 def _load_and_validate(config_path):
@@ -84,8 +102,7 @@ def _assert_instance_architecture(expected_instance_architecture_validator_input
 
 def test_slurm_all_validators_are_called(test_datadir, mocker):
     """Verify that all validators are called during validation."""
-    mockers = []
-    _mock_all_validators(mocker, mockers)
+    mockers, async_mockers = _mock_all_validators(mocker)
 
     # mock properties that use boto3 calls
     mocker.patch(
@@ -122,13 +139,18 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
         if m["name"] in ["TagKeyValidator", "ClusterNameValidator", "InstanceProfileValidator", "RoleValidator"]:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue
-        print("Checking " + m["name"] + " is called")
+        print(f"Checking validator of class \"{m['name']}\" is called")
         m["mocker"].assert_called()
+
+    for m in async_mockers:
+        print(f"Checking validator of class \"{m['name']}\" is awaited")
+        m["mocker"].assert_awaited()
 
 
 def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker):
     """Verify that validators are called with proper argument during validation."""
-    _mock_all_validators(mocker, [])  # To avoid failure of the test as soon as a new validator is added.
+    # To avoid failure of the test as soon as a new validator is added.
+    _mock_all_validators(mocker)
 
     validators_path = "pcluster.validators"
 
