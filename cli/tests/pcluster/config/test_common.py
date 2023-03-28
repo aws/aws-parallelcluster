@@ -52,7 +52,6 @@ class FakeAsyncErrorValidator(AsyncValidator):
     async def _validate_async(self, param):
         await asyncio.sleep(0.5)
         self._add_failure(f"Error async {param}.", FailureLevel.ERROR)
-        pass
 
 
 class FakeComplexValidator(Validator):
