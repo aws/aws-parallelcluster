@@ -1766,8 +1766,7 @@ def _test_compute_node_bootstrap_timeout(
             "nodes": 2,
         }
     )
-    test_cluster_health_metric(["ResumeTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
-    test_cluster_health_metric(["ReplacementTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
+    test_cluster_health_metric(["InstanceBootstrapTimeoutErrors"], cluster.cfn_name, cluster.region)
 
 
 def _retrieve_slurm_root_path(remote_command_executor):
