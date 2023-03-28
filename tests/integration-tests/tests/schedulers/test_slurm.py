@@ -23,11 +23,10 @@ from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
 from utils import (
-    assert_metrics_has_data,
     check_status,
     get_compute_nodes_instance_ids,
     get_instance_info,
-    retrieve_metric_data,
+    test_cluster_health_metric,
     wait_for_computefleet_changed,
 )
 
@@ -297,7 +296,7 @@ def test_slurm_protected_mode(
     )
     pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path)
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
-    _test_cluster_health_metric(
+    test_cluster_health_metric(
         ["NoCorrespondingInstanceErrors", "OnNodeStartExecutionErrors"], cluster.cfn_name, region
     )
     _test_job_run_in_working_queue(scheduler_commands)
@@ -365,7 +364,7 @@ def test_fast_capacity_failover(
     structured_log_event_utils.assert_that_event_exists(
         cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
     )
-    _test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
+    test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
     # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
@@ -969,7 +968,7 @@ def _test_cloud_node_health_check(
         ["/var/log/slurmctld.log"],
         ["Nodes {} not responding, setting DOWN".format(",".join(dynamic_nodes))],
     )
-    _test_cluster_health_metric(["SlurmNodeNotRespondingErrors"], cluster_name, region)
+    test_cluster_health_metric(["SlurmNodeNotRespondingErrors"], cluster_name, region)
     # Assert dynamic nodes are reset
     _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -1005,7 +1004,7 @@ def _test_ec2_status_check_replacement(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Setting nodes failing health check type ec2_health_check to DRAIN"],
     )
-    _test_cluster_health_metric(["EC2HealthCheckErrors"], cluster_name, region)
+    test_cluster_health_metric(["EC2HealthCheckErrors"], cluster_name, region)
     scheduler_commands.cancel_job(kill_job_id)
     # Assert static nodes are reset
     _wait_for_node_reset(
@@ -1767,8 +1766,8 @@ def _test_compute_node_bootstrap_timeout(
             "nodes": 2,
         }
     )
-    _test_cluster_health_metric(["ResumeTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
-    _test_cluster_health_metric(["ReplacementTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
+    test_cluster_health_metric(["ResumeTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
+    test_cluster_health_metric(["ReplacementTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
 
 
 def _retrieve_slurm_root_path(remote_command_executor):
@@ -2352,11 +2351,3 @@ def _test_scontrol_reboot_powerdown_reboot_issued_node(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Found the following unhealthy static nodes"],
     )
-
-
-@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
-def _test_cluster_health_metric(metric_names, cluster_name, region):
-    """Test metric value is greater than 0 when the compute node error happens."""
-    logging.info(f"Testing that {metric_names} have data.")
-    response = retrieve_metric_data(cluster_name, metric_names, region)
-    assert_metrics_has_data(response)

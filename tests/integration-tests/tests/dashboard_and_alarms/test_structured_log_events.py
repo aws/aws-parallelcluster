@@ -9,26 +9,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-from typing import Iterable
 
 import boto3
 import pytest
-from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
-from retrying import retry
-from time_utils import minutes
-from utils import assert_metrics_has_data, retrieve_metric_data
+from utils import test_cluster_health_metric
 
 from tests.dashboard_and_alarms.structured_log_event_utils import assert_that_event_exists
-
-
-@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
-def _test_cluster_health_metric(metric_names: Iterable[str], cluster: Cluster, region: str):
-    """Test metric value is greater than 0 when the compute node error happens."""
-    logging.info(f"Testing that {metric_names} have data.")
-    response = retrieve_metric_data(cluster.name, metric_names, region)
-    assert_metrics_has_data(response)
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
@@ -44,7 +31,7 @@ def test_custom_compute_action_failure(
     bucket_name = s3_bucket_factory()
 
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bad_script = "on_compute_start_error.sh"
+    bad_script = "on_compute_configured_error.sh"
     bad_script_path = f"test_metric_logging/{bad_script}"
     bucket.upload_file(str(test_datadir / bad_script), bad_script_path)
 
@@ -60,4 +47,4 @@ def test_custom_compute_action_failure(
     assert_that_event_exists(cluster, r".+\.clustermgtd_events", "protected-mode-error-count")
     assert_that_event_exists(cluster, r".+\.bootstrap_error_msg", "custom-action-error")
 
-    _test_cluster_health_metric(["OnNodeConfiguredExecutionErrors"], cluster, region)
+    test_cluster_health_metric(["OnNodeConfiguredExecutionErrors"], cluster.name, region)
