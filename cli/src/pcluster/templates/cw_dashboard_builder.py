@@ -288,7 +288,7 @@ class CWDashboardConstruct(Construct):
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="OtherLaunchedInstanceErrors",
+                metric_name="OtherInstanceLaunchFailures",
                 filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "other-failures"),
                 metric_value=metric_value,
             ),
@@ -296,17 +296,11 @@ class CWDashboardConstruct(Construct):
 
         compute_node_events = [
             _CustomMetricFilter(
-                metric_name="ReplacementTimeoutExpiredErrors",
-                filter_pattern=_generate_metric_filter_pattern(
-                    "protected-mode-error-count", "static-replacement-timeout-error"
-                ),
-                metric_value=metric_value,
-            ),
-            _CustomMetricFilter(
-                metric_name="ResumeTimeoutExpiredErrors",
-                filter_pattern=_generate_metric_filter_pattern(
-                    "protected-mode-error-count", "dynamic-resume-timeout-error"
-                ),
+                metric_name="InstanceBootstrapTimeoutErrors",
+                filter_pattern='{ $.event-type = "protected-mode-error-count" && '
+                '($.detail.failure-type = "static-replacement-timeout-error" || '
+                '$.detail.failure-type = "dynamic-resume-timeout-error" ) && '
+                '$.scheduler = "slurm" }',
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
@@ -335,11 +329,11 @@ class CWDashboardConstruct(Construct):
         ]
         cluster_common_errors = [
             _ErrorMetric(
-                "Jobs Not Starting Errors",
+                "Instance Provisioning Errors",
                 jobs_not_starting_errors,
             ),
             _ErrorMetric(
-                "Issues with EC2 Instances",
+                "Unhealthy Instance Errors",
                 compute_node_events,
             ),
         ]
