@@ -242,12 +242,14 @@ class CWDashboardConstruct(Construct):
                     metric_namespace=custom_namespace,
                     metric_name=metric_name,
                     metric_value=metric_value,
+                    dimensions=[
+                        logs.CfnMetricFilter.DimensionProperty(
+                            key="ClusterName",
+                            value="$.cluster-name",
+                        ),
+                    ],
                 )
             ],
-        )
-        # TODO: Override property since dimension is not supported in aws-cdk L1, change it once we move to aws-cdk L2
-        metric_filter.add_property_override(
-            "MetricTransformations.0.Dimensions", [{"Key": "ClusterName", "Value": "$.cluster-name"}]
         )
         metric_filter.add_dependency(self.cw_log_group)
         return metric_filter

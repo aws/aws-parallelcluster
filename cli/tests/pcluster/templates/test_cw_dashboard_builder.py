@@ -68,9 +68,35 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
         else:
             assert_that(output_yaml).does_not_contain("Head Node Logs")
             assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
+
+        metric_filters = _extract_metric_filters(generated_template)
+        _verify_metric_filter_dimensions(metric_filters)
     else:
         assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
         assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
+
+
+def _extract_metric_filters(generated_template):
+    return {
+        key: val["Properties"]
+        for key, val in generated_template["Resources"].items()
+        if val["Type"] == "AWS::Logs::MetricFilter"
+    }
+
+
+def _verify_metric_filter_dimensions(metric_filters):
+    for name, properties in metric_filters.items():
+        dimensions = next(
+            property["Dimensions"]
+            for property in properties["MetricTransformations"]
+            if type(property) is dict and "Dimensions" in property
+        )
+
+        expected_dimensions = [{"Key": "ClusterName", "Value": "$.cluster-name"}]
+
+        assert_that(dimensions, description=f"{name} should have dimensions {expected_dimensions}").is_equal_to(
+            expected_dimensions
+        )
 
 
 def _verify_head_node_instance_metrics_graphs(output_yaml):
