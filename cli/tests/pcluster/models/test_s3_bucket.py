@@ -9,12 +9,13 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import textwrap
 
 import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
-from pcluster.models.s3_bucket import S3Bucket
+from pcluster.models.s3_bucket import S3Bucket, S3FileFormat, S3FileType, format_content
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
@@ -206,3 +207,97 @@ def test_get_resource_url(region, bucket_name, cluster_name, resource_name, expe
     )
 
     assert_that(bucket.get_resource_url(resource_name)).is_equal_to(expected_url)
+
+
+@pytest.mark.parametrize(
+    "content, s3_file_format, expected_output",
+    [
+        (
+            {
+                "A": {
+                    "A1": "X",
+                    "A2": "Y",
+                },
+                "B": {"B1": "M"},
+            },
+            S3FileFormat.YAML,
+            textwrap.dedent(
+                """\
+                A:
+                  A1: X
+                  A2: Y
+                B:
+                  B1: M
+                """
+            ),
+        ),
+        (
+            {
+                "A": {
+                    "A1": "X",
+                    "A2": "Y",
+                },
+                "B": {"B1": "M"},
+            },
+            S3FileFormat.JSON,
+            '{"A": {"A1": "X", "A2": "Y"}, "B": {"B1": "M"}}',
+        ),
+        (
+            {
+                "A": {
+                    "A1": "X",
+                    "A2": "Y",
+                },
+                "B": {"B1": "M"},
+            },
+            S3FileFormat.MINIFIED_JSON,
+            '{"A":{"A1":"X","A2":"Y"},"B":{"B1":"M"}}',
+        ),
+        (
+            {
+                "A": {
+                    "A1": "X",
+                    "A2": "Y",
+                },
+                "B": {"B1": "M"},
+            },
+            None,
+            {"A": {"A1": "X", "A2": "Y"}, "B": {"B1": "M"}},
+        ),
+    ],
+)
+def test_format_content(content, s3_file_format, expected_output):
+    formatted_content = format_content(content=content, s3_file_format=s3_file_format)
+    assert_that(formatted_content).is_equal_to(expected_output)
+    assert_that(formatted_content).is_type_of(type(expected_output))
+
+
+@pytest.mark.parametrize(
+    "content, file_name, file_type, s3_file_format, expected_object_key, expected_object_body",
+    [
+        (
+            {"Test": "Content"},
+            "test_file_name",
+            S3FileType.ASSETS,
+            S3FileFormat.YAML,
+            "assets/test_file_name",
+            "Test: Content\n",
+        )
+    ],
+)
+def test_upload_file(mocker, content, file_name, file_type, s3_file_format, expected_object_key, expected_object_body):
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+
+    bucket_name = "test-bucket"
+    artifact_directory = "pcluster_artifact_directory"
+    bucket = dummy_cluster_bucket(bucket_name=bucket_name, artifact_directory=artifact_directory)
+    s3_put_object_patch = mocker.patch("pcluster.aws.s3.S3Client.put_object")
+
+    bucket.upload_file(content, file_name, file_type, s3_file_format)
+
+    s3_put_object_patch.assert_called_once_with(
+        bucket_name=bucket_name,
+        body=expected_object_body,
+        key=f"{artifact_directory}/{expected_object_key}",
+    )
