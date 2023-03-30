@@ -82,6 +82,7 @@ from utils import (
     set_logger_formatter,
     to_pascal_case,
 )
+from xdist import get_xdist_worker_id
 
 from tests.common.osu_common import run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
@@ -1103,9 +1104,10 @@ def serial_execution_by_instance(request, instance):
         lock_file = f"{outdir}/{instance}.lock"
         lock = FileLock(lock_file=lock_file)
         logging.info("Acquiring lock file %s", lock.lock_file)
-        with lock.acquire(poll_interval=15, timeout=7200):
+        with lock.acquire(poll_interval=15, timeout=12000):
+            logging.info(f"The lock is acquired by worker ID {get_xdist_worker_id(request)}: {os.getpid()}")
             yield
-        logging.info("Releasing lock file %s", lock.lock_file)
+        logging.info(f"Releasing lock file {lock.lock_file} by {get_xdist_worker_id(request)}: {os.getpid()}")
         lock.release()
     else:
         logging.info("Ignoring serial execution for instance %s", instance)
