@@ -102,6 +102,28 @@ Monitoring:
     CloudWatch:
       Enabled: true
 CustomS3Bucket: String
+Budgets:
+  - Name: budget1
+    BudgetLimitAmount: 30.0
+    TimeUnit: MONTHLY
+    Tags:
+      - Key: user:parallelcluster:cluster-name
+        Value: budget3
+      - Key: user:parallelcluster:node-type
+        Value: HeadNode
+      - Key: user:parallelcluster:queue-name
+        Value: my_queue_name
+      - Key: user:parallelcluster:compute-resource-name
+        Value: my_compute-resource-name
+    NotificationsWithSubscribers:
+      - Notification:
+          Threshold: 40.0
+          NotificationType: ACTUAL
+        Subscribers:
+          - SubscriptionType: EMAIL
+            Address: example1@email.com
+          - SubscriptionType: SNS
+            Address: example@email.com
 Tags:
   - Key: String
     Value: String

@@ -1052,6 +1052,61 @@ class ClusterDevSettings(BaseDevSettings):
             self._register_validator(UrlValidator, url=self.cluster_template)
 
 
+# ---------------------- Budgets ---------------------- #
+
+
+class BudgetNotification(Resource):
+    """Represent the configuration of each notification under the NotificationsWithSubscribers field of a budget."""
+
+    def __init__(
+        self,
+        threshold: float,
+        notification_type: str = None,
+    ):
+        super().__init__()
+        self.notification_type = Resource.init_param(notification_type, default="ACTUAL")
+        self.threshold = Resource.init_param(threshold)
+
+
+class BudgetSubscriber(Resource):
+    """Represent the configuration of an individual subscriber of a budget notification."""
+
+    def __init__(self, address: str, subscription_type: str = None):
+        super().__init__()
+        self.subscription_type = Resource.init_param(subscription_type, default="EMAIL")
+        self.address = Resource.init_param(address)
+
+
+class BudgetNotificationWithSubscribers(Resource):
+    """Represent the configuration of the NotificationWithSubscribers field of a budget."""
+
+    def __init__(self, notification: BudgetNotification, subscribers: List[BudgetSubscriber] = None):
+        super().__init__()
+        self.notification = notification
+        self.subscribers = subscribers
+
+
+class Budget(Resource):
+    """Represent the configuration of a Budget."""
+
+    def __init__(
+        self,
+        name: str,
+        budget_limit_amount: float,
+        time_unit: str = None,
+        time_period_start: str = None,
+        tags: List[Tag] = None,
+        notifications_with_subscribers: List[BudgetNotificationWithSubscribers] = None,
+    ):
+        super().__init__()
+        self.name = Resource.init_param(name)
+        self.budget_limit_amount = Resource.init_param(budget_limit_amount)
+        self.time_unit = Resource.init_param(time_unit, default="MONTHLY")
+        self.time_period_start = Resource.init_param(time_period_start)
+        self.tags = tags
+        self.notifications_with_subscribers = notifications_with_subscribers
+
+
 # ---------------------- Nodes and Cluster ---------------------- #
 
 
@@ -1256,6 +1311,7 @@ class BaseClusterConfig(Resource):
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
         deployment_settings: DeploymentSettings = None,
+        budgets: List[Budget] = None,
     ):
         super().__init__()
         self.__region = None
@@ -1288,6 +1344,7 @@ class BaseClusterConfig(Resource):
         self.deployment_settings = deployment_settings
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
+        self.budgets = Resource.init_param(budgets)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)

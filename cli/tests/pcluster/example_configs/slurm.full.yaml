@@ -210,6 +210,33 @@ Monitoring:
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
+Budgets:
+  - Name: budget1
+    BudgetLimitAmount: 30.0
+    TimeUnit: MONTHLY
+    Tags:
+      - Key: user:parallelcluster:cluster-name
+        Value: budget3
+      - Key: user:parallelcluster:node-type
+        Value: HeadNode
+      - Key: user:parallelcluster:queue-name
+        Value: my_queue_name
+      - Key: user:parallelcluster:compute-resource-name
+        Value: my_compute-resource-name
+    NotificationsWithSubscribers:
+      - Notification:
+          Threshold: 40.0
+          NotificationType: ACTUAL
+        Subscribers:
+          - SubscriptionType: EMAIL
+            Address: example1@email.com
+          - SubscriptionType: SNS
+            Address: example@email.com
+  - Name: budget2
+    BudgetLimitAmount: 30.0
+    Tags:
+      - Key: user:parallelcluster:cluster-name
+        Value: budget3
 Tags:
   - Key: String
     Value: String

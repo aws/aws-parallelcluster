@@ -23,6 +23,7 @@ from yaml.parser import ParserError
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
+    BudgetSchema,
     ClusterSchema,
     HeadNodeCustomActionsSchema,
     HeadNodeIamSchema,
@@ -1124,3 +1125,43 @@ def test_timeouts_schema(head_node_bootstrap_timeout, compute_node_bootstrap_tim
         assert_that(timeouts.compute_node_bootstrap_timeout).is_equal_to(
             compute_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
         )
+
+
+@pytest.mark.parametrize(
+    "name, budget_limit_amount, time_unit, tags, failure_message",
+    [
+        ("ClusterBudget", -100, "MONTHLY", None, "Must be greater than or equal to 0."),
+        ("QueueBudget", 150, "ANNUALLY", None, None),
+        ("1wrongbudgetnamecustom", 200, "QUARTERLY", [], "String does not match expected pattern."),
+        (
+            "budgetnametoolongbudgetnametoolongbudgetnametoolongbudgetnametoolongbudgetnametoolongbudgetnametoolong",
+            200,
+            "QUARTERLY",
+            [],
+            "String does not match expected pattern.",
+        ),
+        ("cluster", 300, None, None, None),
+    ],
+)
+def test_budget_schema_validators(
+    name,
+    budget_limit_amount,
+    time_unit,
+    tags,
+    failure_message,
+):
+    budget_schema = {"Name": name}
+    if budget_limit_amount:
+        budget_schema["BudgetLimitAmount"] = budget_limit_amount
+    if time_unit:
+        budget_schema["TimeUnit"] = time_unit
+    if tags:
+        budget_schema["Tags"] = tags
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            BudgetSchema().load(budget_schema)
+    else:
+        budget = BudgetSchema().load(budget_schema)
+        assert_that(budget.name).is_equal_to(name)
+        assert_that(budget.time_unit).is_equal_to(time_unit or "MONTHLY")

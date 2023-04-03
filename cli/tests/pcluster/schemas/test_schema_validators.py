@@ -17,6 +17,8 @@ from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
     AwsBatchQueueNetworkingSchema,
     AwsBatchQueueSchema,
+    BudgetNotificationSchema,
+    BudgetSubscriberSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
@@ -658,3 +660,45 @@ def test_instance_role_validator(instance_role, expected_message):
 )
 def test_password_secret_arn_validator(password_secret_arn, expected_message):
     _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "notification_type, threshold, expected_message",
+    [
+        (None, 50, None),
+        ("Actual", 30.0, "Must be one of"),
+        ("FORECASTED", -20, "Must be greater than or equal to 0."),
+        (None, 5.2, None),
+        (None, 3, None),
+    ],
+)
+def test_budget_notification_schema_validators(
+    notification_type,
+    threshold,
+    expected_message,
+):
+    section_dict = {}
+    if notification_type:
+        section_dict["NotificationType"] = notification_type
+    if threshold:
+        section_dict["Threshold"] = threshold
+
+    _validate_and_assert_error(BudgetNotificationSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "subscription_type, address, expected_message",
+    [
+        (None, "alias@amazon.com", None),
+        ("EMAIL", "alias@amazon.com", None),
+        ("SNS", "arn:aws:sns:us-east-1:444455556666:MyTopic", None),
+        ("GMAIL", "email@gmail.com", "Must be one of"),
+    ],
+)
+def test_budget_subscriber_schema_validators(subscription_type, address, expected_message):
+    section_dict = {}
+    if address:
+        section_dict["Address"] = address
+    if subscription_type:
+        section_dict["SubscriptionType"] = subscription_type
+    _validate_and_assert_error(BudgetSubscriberSchema(), section_dict, expected_message)

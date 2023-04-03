@@ -59,6 +59,7 @@ from pcluster.constants import (
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
+from pcluster.templates.budget_builder import CostBudgets
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     HeadNodeIamResources,
@@ -287,6 +288,10 @@ class ClusterCdkStack:
             )
 
             self._add_alarms()
+
+        # Budgets
+        if self.config.budgets:
+            self.budgets = CostBudgets(self.stack, self.config)
 
     def _add_alarms(self):
         self.alarms = []

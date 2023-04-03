@@ -36,6 +36,10 @@ from pcluster.config.cluster_config import (
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
     AwsBatchSettings,
+    Budget,
+    BudgetNotification,
+    BudgetNotificationWithSubscribers,
+    BudgetSubscriber,
     CapacityReservationTarget,
     CapacityType,
     CloudWatchDashboards,
@@ -109,6 +113,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Ssh,
     SudoerConfiguration,
+    Tag,
     Timeouts,
 )
 from pcluster.config.update_policy import UpdatePolicy
@@ -1017,6 +1022,116 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return ClusterDevSettings(**data)
+
+
+# ---------------------- Budget Schema ---------------------- #
+
+
+class BudgetNotificationSchema(BaseSchema):
+    """Represent the schema of each notification under the NotificationsWithSubscribers field of a budget."""
+
+    notification_type = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["ACTUAL", "FORECASTED"]),
+    )
+    threshold = fields.Float(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.Range(min=0),
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BudgetNotification(**data)
+
+
+class BudgetSubscriberSchema(BaseSchema):
+    """Represent the schema of an individual subscriber of a budget notification."""
+
+    subscription_type = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["EMAIL", "SNS"]),
+    )
+    address = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BudgetSubscriber(**data)
+
+
+class BudgetNotificationWithSubscribersSchema(BaseSchema):
+    """Represent the schema of the NotificationsWithSubscriber field of a budget."""
+
+    notification = fields.Nested(
+        BudgetNotificationSchema,
+        required=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
+    subscribers = fields.Nested(
+        BudgetSubscriberSchema,
+        required=True,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Name"},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BudgetNotificationWithSubscribers(**data)
+
+
+class BudgetTagSchema(BaseSchema):
+    """Represent the schema of Tag section."""
+
+    key = fields.Str(
+        required=True,
+        validate=validate.Length(max=128),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    value = fields.Str(
+        required=True,
+        validate=validate.Length(max=256),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Tag(**data)
+
+
+class BudgetSchema(BaseSchema):
+    """Represent the schema of an aws budget."""
+
+    name = fields.Str(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.Regexp(r"^[A-Za-z][A-Za-z0-9]{1,70}$"),
+    )
+    budget_limit_amount = fields.Float(
+        required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Range(min=0)
+    )
+    time_unit = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.OneOf(["MONTHLY", "QUARTERLY", "ANNUALLY"]),
+    )
+    time_period_start = fields.Str(required=False, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    tags = fields.Nested(
+        BudgetTagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"}
+    )
+    notifications_with_subscribers = fields.Nested(
+        BudgetNotificationWithSubscribersSchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Name"},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Budget(**data)
 
 
 # ---------------------- Node and Cluster Schema ---------------------- #
@@ -2033,6 +2148,11 @@ class ClusterSchema(BaseSchema):
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     deployment_settings = fields.Nested(DeploymentSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    budgets = fields.Nested(
+        BudgetSchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Name"},
+    )
 
     def __init__(self, cluster_name: str):
         super().__init__()
