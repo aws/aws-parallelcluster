@@ -149,7 +149,7 @@ class CWDashboardConstruct(Construct):
         # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
             if self.config.scheduling.scheduler == "slurm":
-                self._add_custom_error_metrics()
+                self._add_custom_health_metrics()
             self._add_cw_log()
 
     def _update_coord(self, d_x, d_y):
@@ -265,8 +265,8 @@ class CWDashboardConstruct(Construct):
         metric_filter.add_dependency(self.cw_log_group)
         return metric_filter
 
-    def _add_custom_error_metrics(self):
-        """Create custom error metric filter and outputs to cloudwatch graph."""
+    def _add_custom_health_metrics(self):
+        """Create custom health metric filters and outputs to cloudwatch graph."""
 
         def _generate_metric_filter_pattern(event_type, failure_type=None):
             if failure_type:
@@ -394,7 +394,7 @@ class CWDashboardConstruct(Construct):
                 "Compute Fleet Idle Time",
                 [
                     _CustomMetricFilter(
-                        metric_name="LongestDynamicNodeIdleTime",
+                        metric_name="MaxDynamicNodeIdleTime",
                         filter_pattern='{ $.event-type = "compute-node-idle-time" && $.scheduler = "slurm" && '
                         '$.detail.node-type = "dynamic"}',
                         metric_value="$.detail.longest-idle-time",

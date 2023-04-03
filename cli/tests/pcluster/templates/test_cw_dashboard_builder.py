@@ -221,7 +221,7 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
         "OnNodeConfiguredDownloadErrors",
         "OnNodeConfiguredRunErrors",
     ]
-    idle_node_metrics = ["LongestDynamicNodeIdleTime"]
+    idle_node_metrics = ["MaxDynamicNodeIdleTime"]
     if scheduler == "slurm":
         # Contains error metric title
         assert_that(output_yaml).contains("Cluster Health Metrics")
