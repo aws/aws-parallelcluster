@@ -8,7 +8,9 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
+import functools
 import itertools
 import json
 import logging
@@ -19,6 +21,7 @@ import string
 import sys
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from shlex import quote
 from typing import Callable, NoReturn
@@ -444,3 +447,85 @@ def batch_by_property_callback(items, property_callback: Callable[..., int], bat
         if item_index == len(items) - 1:
             # If on the last time, yield the batch
             yield current_batch
+
+
+class AsyncUtils:
+    """Utility class for async functions."""
+
+    @staticmethod
+    def async_retry(stop_max_attempt_number=5, wait_fixed=1, retry_on_exception=None):
+        """
+        Decorate an async coroutine function to retry its execution when an exception is risen.
+
+        :param stop_max_attempt_number: Max number of retries.
+        :param wait_fixed: Wait time (in seconds) between retries.
+        :param retry_on_exception: Exception to retry on.
+        :return:
+        """
+        if retry_on_exception is None:
+            retry_on_exception = (Exception,)
+
+        def decorator(func):
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                attempt = 0
+                while attempt < stop_max_attempt_number + 1:
+                    try:
+                        return await func(*args, **kwargs)
+                    except retry_on_exception as err:
+                        if attempt < stop_max_attempt_number:
+                            attempt += 1
+                            await asyncio.sleep(wait_fixed)
+                        else:
+                            raise err
+
+            return wrapper
+
+        return decorator
+
+    @staticmethod
+    def async_timeout_cache(timeout=10):
+        """
+        Decorate a function to cache the result of a call for a given time period.
+
+        :param timeout: Timeout in seconds.
+        :return:
+        """
+
+        def decorator(func):
+            _cache = {}
+
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                cache_key = (func.__name__, args, frozenset(kwargs.items()))
+                current_time = time.time()
+
+                if cache_key not in _cache:
+                    _cache[cache_key] = (await func(*args, **kwargs), current_time + timeout)
+                elif _cache[cache_key][1] < current_time:
+                    _cache[cache_key] = (await func(*args, **kwargs), current_time + timeout)
+
+                return _cache[cache_key][0]
+
+            return wrapper
+
+        return decorator
+
+    _thread_pool_executor: ThreadPoolExecutor = ThreadPoolExecutor()
+
+    @staticmethod
+    def async_from_sync(func):
+        """
+        Convert a synchronous function to an async one.
+
+        :param func:
+        :return:
+        """
+
+        @functools.wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            return await asyncio.get_event_loop().run_in_executor(
+                AsyncUtils._thread_pool_executor, lambda: func(self, *args, **kwargs)
+            )
+
+        return wrapper
