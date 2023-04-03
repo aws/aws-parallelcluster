@@ -47,4 +47,4 @@ def test_custom_compute_action_failure(
     assert_that_event_exists(cluster, r".+\.clustermgtd_events", "protected-mode-error-count")
     assert_that_event_exists(cluster, r".+\.bootstrap_error_msg", "custom-action-error")
 
-    test_cluster_health_metric(["OnNodeConfiguredExecutionErrors"], cluster.name, region)
+    test_cluster_health_metric(["OnNodeConfiguredRunErrors"], cluster.name, region)
