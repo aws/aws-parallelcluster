@@ -19,7 +19,7 @@ from typing import List
 from aws_cdk.cx_api import CloudAssembly, CloudFormationStackArtifact
 
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat, S3FileType
-from pcluster.utils import LOGGER, load_yaml_dict
+from pcluster.utils import LOGGER, load_json_dict
 
 
 @dataclass
@@ -111,7 +111,7 @@ class CDKArtifactsManager:
 
         for cdk_asset in cdk_assets:
             asset_file_path = os.path.join(self.cluster_cdk_assembly.get_cloud_assembly_directory(), cdk_asset.path)
-            asset_file_content = load_yaml_dict(asset_file_path)
+            asset_file_content = load_json_dict(asset_file_path)
             asset_id = cdk_asset.id
             assets_metadata.append(
                 {

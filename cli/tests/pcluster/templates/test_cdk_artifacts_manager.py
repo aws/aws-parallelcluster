@@ -36,7 +36,7 @@ def test_upload_assets(mocker, mock_cloud_assembly, file_assets, asset_content):
     cloud_assembly = mock_cloud_assembly(assets=file_assets)
     mock_bucket(mocker)
     mock_dict = mock_bucket_object_utils(mocker)
-    mocker.patch("pcluster.templates.cdk_artifacts_manager.load_yaml_dict", return_value=asset_content)
+    mocker.patch("pcluster.templates.cdk_artifacts_manager.load_json_dict", return_value=asset_content)
     bucket = dummy_cluster_bucket()
 
     cdk_assets_manager = CDKArtifactsManager(cloud_assembly)
