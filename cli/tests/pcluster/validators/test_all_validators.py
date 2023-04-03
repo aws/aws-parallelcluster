@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest.mock import AsyncMock, PropertyMock, call
+from unittest.mock import PropertyMock, call
 
 from assertpy import assert_that
 
@@ -46,6 +46,18 @@ def _mock_all_validators(mocker, additional_modules=None):
     mockers = []
     async_mockers = []
 
+    def create_validate_async_mock():
+        _awaited = False
+
+        async def _validate_async(*args, **kwargs):
+            nonlocal _awaited
+            _awaited = True
+            return []
+
+        _validate_async.assert_awaited = lambda: assert_that(_awaited).is_true()
+
+        return _validate_async
+
     modules = [
         cluster_validators,
         database_validators,
@@ -65,12 +77,12 @@ def _mock_all_validators(mocker, additional_modules=None):
         module_name = module.__name__
         for name, cls in module.__dict__.items():
             if _is_validator_of_type(cls, name, AsyncValidator):
+                mock = create_validate_async_mock()
+                mocker.patch(f"{module_name}.{name}._validate_async", side_effect=mock)
                 async_mockers.append(
                     {
                         "name": name,
-                        "mocker": mocker.patch(
-                            f"{module_name}.{name}._validate_async", return_value=AsyncMock(side_effect=[])
-                        ),
+                        "mocker": mock,
                     }
                 )
             elif _is_validator_of_type(cls, name, Validator):
