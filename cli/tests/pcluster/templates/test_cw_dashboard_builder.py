@@ -221,10 +221,13 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
         "OnNodeConfiguredDownloadErrors",
         "OnNodeConfiguredRunErrors",
     ]
+    idle_node_metrics = ["LongestDynamicNodeIdleTime"]
     if scheduler == "slurm":
         # Contains error metric title
         assert_that(output_yaml).contains("Cluster Health Metrics")
         for metric in slurm_related_metrics:
+            assert_that(output_yaml).contains(metric)
+        for metric in idle_node_metrics:
             assert_that(output_yaml).contains(metric)
         if cluster_config.has_custom_actions_in_queue:
             for metric in custom_action_metrics:
@@ -234,5 +237,5 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
                 assert_that(output_yaml).does_not_contain(metric)
     else:
         assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
-        for metric in slurm_related_metrics + custom_action_metrics:
+        for metric in slurm_related_metrics + custom_action_metrics + idle_node_metrics:
             assert_that(output_yaml).does_not_contain(metric)
