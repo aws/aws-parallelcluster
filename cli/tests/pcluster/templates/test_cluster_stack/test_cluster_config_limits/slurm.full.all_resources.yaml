@@ -139,6 +139,10 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
+          Networking:
+            PlacementGroup:
+              Enabled: true
+              Id: String
         {% endfor %}
       Iam:
         InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
