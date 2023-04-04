@@ -354,7 +354,7 @@ def mock_cloud_assembly(mocker):
         cloud_assembly.directory = directory
         cluster_cloud_artifact = mocker.patch("aws_cdk.cx_api.CloudFormationStackArtifact")
         mocker.patch(
-            "pcluster.templates.cdk_artifacts_manager.CDKV1ClusterCloudAssembly._get_artifacts_class",
+            "pcluster.templates.cdk_artifacts_manager.ClusterCloudAssembly._get_artifacts_class",
             return_value=type(cluster_cloud_artifact),
         )
         cluster_cloud_artifact.template = template_content

@@ -83,6 +83,12 @@ def get_docs_base_url(partition: str = None):
     return DOCS_URL_MAP.get(_partition, DEFAULT_DOCS_URL)
 
 
+def get_service_endpoint(service: str, region: str):
+    partition = get_partition(region)
+    domain = get_url_domain_suffix(partition)
+    return f"https://{service}.{region}.{domain}"
+
+
 def replace_url_parameters(url):
     """Replace ${Region} and ${URLSuffix} in url."""
     return url.replace("${Region}", get_region()).replace("${URLSuffix}", get_url_domain_suffix())

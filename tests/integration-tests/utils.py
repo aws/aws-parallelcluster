@@ -82,7 +82,9 @@ class StackError(BaseException):
 
     def __init__(self, message, stack_events=None):
         message = message if message else "StackError has been raised"
-        self.message = _format_stack_error(message, stack_events=stack_events)
+        _stack_events = list(stack_events)  # resolve all events so that we can return them
+        self.message = _format_stack_error(message, stack_events=_stack_events)
+        self.stack_events = _stack_events
 
     def __str__(self):
         return f"StackError: {self.message}"
@@ -775,3 +777,11 @@ def assert_metrics_has_data(response):
     for response in list_of_responses:
         assert_that(response["Values"]).is_not_empty()
         assert_that(max(response["Values"])).is_greater_than(0)
+
+
+@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
+def test_cluster_health_metric(metric_names, cluster_name, region):
+    """Test metric value is greater than 0 when the compute node error happens."""
+    logging.info(f"Testing that {metric_names} have data.")
+    response = retrieve_metric_data(cluster_name, metric_names, region)
+    assert_metrics_has_data(response)

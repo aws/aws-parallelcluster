@@ -38,6 +38,7 @@ from pcluster.constants import (
     DELETE_POLICY,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
+    EBS_VOLUME_TYPE_DEFAULT_US_ISO,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
     LUSTRE,
     MAX_EBS_COUNT,
@@ -220,7 +221,10 @@ class Ebs(Resource):
     ):
         super().__init__(**kwargs)
         self.encrypted = Resource.init_param(encrypted, default=True)
-        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
+        self.volume_type = Resource.init_param(
+            volume_type,
+            default=EBS_VOLUME_TYPE_DEFAULT_US_ISO if get_region().startswith("us-iso") else EBS_VOLUME_TYPE_DEFAULT,
+        )
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
@@ -241,7 +245,14 @@ class RootVolume(Ebs):
 
     def __init__(self, size: int = None, delete_on_termination: bool = None, **kwargs):
         super().__init__(**kwargs)
-        self.size = Resource.init_param(size)
+        # When the RootVolume size is None, EC2 implicitly sets it as the AMI size.
+        # In US Isolated regions, the root volume size cannot be left unspecified,
+        # so we consider it as the default EBS volume size.
+        # In theory, the default value should be maximum between the default EBS volume size (35GB) and the AMI size,
+        # but in US Isolated region this is fine because the only supported AMI as of 2023 Feb
+        # is the official ParallelCluster AMI for Amazon Linux 2, which has size equal to
+        # the default EBS volume size (35GB).
+        self.size = Resource.init_param(size, EBS_VOLUME_SIZE_DEFAULT if get_region().startswith("us-iso") else None)
         # The default delete_on_termination takes effect both on head and compute nodes.
         # If the default of the head node is to be changed, please separate this class for different defaults.
         self.delete_on_termination = Resource.init_param(delete_on_termination, default=True)
@@ -955,7 +966,11 @@ class DirectoryService(Resource):
                 DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
             )
         if self.password_secret_arn:
-            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+            self._register_validator(
+                PasswordSecretArnValidator,
+                password_secret_arn=self.password_secret_arn,
+                region=get_region(),
+            )
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
         if self.additional_sssd_configs:
@@ -2303,10 +2318,16 @@ class Database(Resource):
         self.password_secret_arn = Resource.init_param(password_secret_arn)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        region = get_region()
+        self._register_validator(FeatureRegionValidator, feature=Feature.SLURM_DATABASE, region=region)
         if self.uri:
             self._register_validator(DatabaseUriValidator, uri=self.uri)
         if self.password_secret_arn:
-            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+            self._register_validator(
+                PasswordSecretArnValidator,
+                password_secret_arn=self.password_secret_arn,
+                region=region,
+            )
 
 
 class SlurmSettings(Resource):

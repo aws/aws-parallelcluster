@@ -13,14 +13,13 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 import os
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List
 
 from aws_cdk.cx_api import CloudAssembly, CloudFormationStackArtifact
 
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat, S3FileType
-from pcluster.utils import LOGGER, load_yaml_dict
+from pcluster.utils import LOGGER, load_json_dict
 
 
 @dataclass
@@ -34,37 +33,11 @@ class ClusterAssetFile:
     s3_key_parameter: str
 
 
-class ClusterCloudAssembly(ABC):
+class ClusterCloudAssembly:
     """Wrapper for cloud assembly of a cluster after running `app.synth()`."""
 
     def __init__(self, cloud_assembly):
         self.cloud_assembly = cloud_assembly
-
-    @abstractmethod
-    def _initialize_cloud_artifact(self, cloud_assembly: CloudAssembly) -> CloudFormationStackArtifact:
-        pass
-
-    @abstractmethod
-    def get_assets(self) -> List[ClusterAssetFile]:
-        """List of asset files info."""
-        pass
-
-    @abstractmethod
-    def get_cloud_assembly_directory(self) -> str:
-        """Directory of the cloud assembly files."""
-        pass
-
-    @abstractmethod
-    def get_template_body(self):
-        """Return the template content."""
-        pass
-
-
-class CDKV1ClusterCloudAssembly(ClusterCloudAssembly):
-    """Implementation of with CDK V1 Cloud Assembly properties."""
-
-    def __init__(self, cloud_assembly):
-        super().__init__(cloud_assembly)
         self.cloud_artifact = self._initialize_cloud_artifact(cloud_assembly)
 
     def get_template_body(self):
@@ -104,7 +77,7 @@ class CDKArtifactsManager:
     """Manage the discovery and upload of CDK Assets to the cluster S3 bucket."""
 
     def __init__(self, cloud_assembly: CloudAssembly):
-        self.cluster_cdk_assembly = CDKV1ClusterCloudAssembly(cloud_assembly)
+        self.cluster_cdk_assembly = ClusterCloudAssembly(cloud_assembly)
 
     def get_template_body(self):
         """Return the template content."""
@@ -138,7 +111,7 @@ class CDKArtifactsManager:
 
         for cdk_asset in cdk_assets:
             asset_file_path = os.path.join(self.cluster_cdk_assembly.get_cloud_assembly_directory(), cdk_asset.path)
-            asset_file_content = load_yaml_dict(asset_file_path)
+            asset_file_content = load_json_dict(asset_file_path)
             asset_id = cdk_asset.id
             assets_metadata.append(
                 {

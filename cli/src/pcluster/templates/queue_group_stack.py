@@ -1,8 +1,8 @@
 from typing import Dict, List
 
+from aws_cdk import CfnTag, Fn, NestedStack, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import CfnTag, Fn, NestedStack, Stack
 from constructs import Construct
 
 from pcluster.config.cluster_config import (

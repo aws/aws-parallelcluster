@@ -31,6 +31,7 @@ SLURM_SETTINGS_DENY_LIST = {
             "slurmctldparameters",
             "slurmdlogfile",
             "slurmuser",
+            "suspendexcnodes",
             "suspendprogram",
             "suspendtime",
             "taskplugin",

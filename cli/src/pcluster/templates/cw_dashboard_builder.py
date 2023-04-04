@@ -10,10 +10,11 @@
 # limitations under the License.
 from collections import defaultdict, namedtuple
 
+from aws_cdk import Duration, Stack
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import Construct, Duration, Stack
+from constructs import Construct
 
 from pcluster.config.cluster_config import BaseClusterConfig, SharedFsxLustre, SharedStorageType
 
@@ -241,14 +242,16 @@ class CWDashboardConstruct(Construct):
                     metric_namespace=custom_namespace,
                     metric_name=metric_name,
                     metric_value=metric_value,
+                    dimensions=[
+                        logs.CfnMetricFilter.DimensionProperty(
+                            key="ClusterName",
+                            value="$.cluster-name",
+                        ),
+                    ],
                 )
             ],
         )
-        # TODO: Override property since dimension is not supported in aws-cdk L1, change it once we move to aws-cdk L2
-        metric_filter.add_property_override(
-            "MetricTransformations.0.Dimensions", [{"Key": "ClusterName", "Value": "$.cluster-name"}]
-        )
-        metric_filter.add_depends_on(self.cw_log_group)
+        metric_filter.add_dependency(self.cw_log_group)
         return metric_filter
 
     def _add_custom_error_metrics(self):
@@ -287,7 +290,7 @@ class CWDashboardConstruct(Construct):
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
-                metric_name="OtherLaunchedInstanceErrors",
+                metric_name="OtherInstanceLaunchFailures",
                 filter_pattern=_generate_metric_filter_pattern(launch_failure_event_type, "other-failures"),
                 metric_value=metric_value,
             ),
@@ -295,17 +298,11 @@ class CWDashboardConstruct(Construct):
 
         compute_node_events = [
             _CustomMetricFilter(
-                metric_name="ReplacementTimeoutExpiredErrors",
-                filter_pattern=_generate_metric_filter_pattern(
-                    "protected-mode-error-count", "static-replacement-timeout-error"
-                ),
-                metric_value=metric_value,
-            ),
-            _CustomMetricFilter(
-                metric_name="ResumeTimeoutExpiredErrors",
-                filter_pattern=_generate_metric_filter_pattern(
-                    "protected-mode-error-count", "dynamic-resume-timeout-error"
-                ),
+                metric_name="InstanceBootstrapTimeoutErrors",
+                filter_pattern='{ $.event-type = "protected-mode-error-count" && '
+                '($.detail.failure-type = "static-replacement-timeout-error" || '
+                '$.detail.failure-type = "dynamic-resume-timeout-error" ) && '
+                '$.scheduler = "slurm" }',
                 metric_value=metric_value,
             ),
             _CustomMetricFilter(
@@ -334,11 +331,11 @@ class CWDashboardConstruct(Construct):
         ]
         cluster_common_errors = [
             _ErrorMetric(
-                "Jobs Not Starting Errors",
+                "Instance Provisioning Errors",
                 jobs_not_starting_errors,
             ),
             _ErrorMetric(
-                "Issues with EC2 Instances",
+                "Unhealthy Instance Errors",
                 compute_node_events,
             ),
         ]
@@ -351,7 +348,7 @@ class CWDashboardConstruct(Construct):
                     metric_value="1",
                 ),
                 _CustomMetricFilter(
-                    metric_name="OnNodeStartExecutionErrors",
+                    metric_name="OnNodeStartRunErrors",
                     filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                     '$.detail.action = "OnNodeStart" && $.detail.stage = "executing"}',
                     metric_value="1",
@@ -363,7 +360,7 @@ class CWDashboardConstruct(Construct):
                     metric_value="1",
                 ),
                 _CustomMetricFilter(
-                    metric_name="OnNodeConfiguredExecutionErrors",
+                    metric_name="OnNodeConfiguredRunErrors",
                     filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                     '$.detail.action = "OnNodeConfigured" && $.detail.stage = "executing"}',
                     metric_value="1",

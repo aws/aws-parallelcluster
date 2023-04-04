@@ -92,6 +92,7 @@ EBS_VOLUME_TYPE_IOPS_DEFAULT = {
 }
 EBS_VOLUME_SIZE_DEFAULT = 35
 EBS_VOLUME_TYPE_DEFAULT = "gp3"
+EBS_VOLUME_TYPE_DEFAULT_US_ISO = "gp2"
 
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0
@@ -193,7 +194,6 @@ SUPPORTED_REGIONS = [
     "us-east-1",
     "us-east-2",
     "us-iso-east-1",
-    "us-iso-west-1",
     "us-isob-east-1",
     "us-gov-east-1",
     "us-gov-west-1",
@@ -204,8 +204,7 @@ SUPPORTED_REGIONS = [
 SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS = 10
 
 # see https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html
-NODEJS_MIN_VERSION = "10.13.0"
-NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
+NODEJS_MIN_VERSION = "14.21.0"
 
 NODE_BOOTSTRAP_TIMEOUT = 1800
 
@@ -240,6 +239,7 @@ class Feature(Enum):
     FSX_LUSTRE = "FSx Lustre"
     FSX_ONTAP = "FSx ONTAP"
     FSX_OPENZFS = "FSx OpenZfs"
+    SLURM_DATABASE = "SLURM Database"
 
 
 UNSUPPORTED_FEATURES_MAP = {
@@ -248,6 +248,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.FSX_LUSTRE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
+    Feature.SLURM_DATABASE: ["us-iso"],
 }
 
 

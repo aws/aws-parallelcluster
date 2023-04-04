@@ -18,6 +18,10 @@ Parameters:
   ServiceToken:
     Description: ARN of Lambda Function backing the Cluster Resource
     Type: String
+  Os:
+    Description: Operating system for nodes
+    Type: String
+    Default: 'alinux2'
   OnNodeConfigured:
     Description: Script to run on HeadNode configured
     Type: String
@@ -45,7 +49,7 @@ Resources:
           AmiSearchFilters:
             Owner: self
         Image:
-          Os: alinux2
+          Os: !Ref Os
         HeadNode:
           InstanceType: t2.small
           Networking:

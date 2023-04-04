@@ -307,7 +307,7 @@ def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factor
 
 def _test_s3_access(remote_command_executor, region):
     logging.info("Testing S3 Access")
-    result = remote_command_executor.run_remote_command(f"AWS_DEFAULT_REGION={region} sudo aws s3 ls").stdout
+    result = remote_command_executor.run_remote_command(f"sudo aws s3 ls --region {region}").stdout
     # An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
     assert_that(result).does_not_contain("AccessDenied")
 
@@ -315,7 +315,7 @@ def _test_s3_access(remote_command_executor, region):
 def _test_batch_access(remote_command_executor, region):
     logging.info("Testing AWS Batch Access")
     result = remote_command_executor.run_remote_command(
-        f"AWS_DEFAULT_REGION={region} aws batch describe-compute-environments"
+        f"aws batch describe-compute-environments --region {region}"
     ).stdout
     # An error occurred (AccessDeniedException) when calling the DescribeComputeEnvironments operation: ...
     assert_that(result).does_not_contain("AccessDeniedException")
