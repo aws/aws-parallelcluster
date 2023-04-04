@@ -479,6 +479,7 @@ class AsyncUtils:
                 while attempt < stop_max_attempt_number + 1:
                     try:
                         result = await func(*args, **kwargs)
+                        break
                     except retry_on_exception as err:
                         if attempt < stop_max_attempt_number:
                             attempt += 1
