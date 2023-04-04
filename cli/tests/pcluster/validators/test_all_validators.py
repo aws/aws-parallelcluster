@@ -46,6 +46,7 @@ def _mock_all_validators(mocker, additional_modules=None):
     mockers = []
     async_mockers = []
 
+    # when python 3.7 support is dropped, this can be substituted with AsyncMockc
     def create_validate_async_mock():
         _awaited = False
 
