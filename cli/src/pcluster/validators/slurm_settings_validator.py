@@ -19,9 +19,11 @@ SLURM_SETTINGS_DENY_LIST = {
     "SlurmConf": {
         "Global": [
             "communicationparameters",
+            "epilog",
             "grestypes",
             "jobcomppass",
             "launchparameters",
+            "prolog",
             "reconfigflags",
             "resumefailprogram",
             "resumeprogram",
