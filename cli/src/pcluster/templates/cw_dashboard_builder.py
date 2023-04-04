@@ -348,7 +348,7 @@ class CWDashboardConstruct(Construct):
                     metric_value="1",
                 ),
                 _CustomMetricFilter(
-                    metric_name="OnNodeStartExecutionErrors",
+                    metric_name="OnNodeStartRunErrors",
                     filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                     '$.detail.action = "OnNodeStart" && $.detail.stage = "executing"}',
                     metric_value="1",
@@ -360,7 +360,7 @@ class CWDashboardConstruct(Construct):
                     metric_value="1",
                 ),
                 _CustomMetricFilter(
-                    metric_name="OnNodeConfiguredExecutionErrors",
+                    metric_name="OnNodeConfiguredRunErrors",
                     filter_pattern='{ $.event-type = "custom-action-error" && $.scheduler = "slurm" && '
                     '$.detail.action = "OnNodeConfigured" && $.detail.stage = "executing"}',
                     metric_value="1",

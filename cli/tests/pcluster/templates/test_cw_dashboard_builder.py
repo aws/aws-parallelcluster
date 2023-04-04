@@ -217,9 +217,9 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
     ]
     custom_action_metrics = [
         "OnNodeStartDownloadErrors",
-        "OnNodeStartExecutionErrors",
+        "OnNodeStartRunErrors",
         "OnNodeConfiguredDownloadErrors",
-        "OnNodeConfiguredExecutionErrors",
+        "OnNodeConfiguredRunErrors",
     ]
     if scheduler == "slurm":
         # Contains error metric title
