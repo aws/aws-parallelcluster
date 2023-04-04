@@ -475,15 +475,17 @@ class AsyncUtils:
             @functools.wraps(func)
             async def wrapper(*args, **kwargs):
                 attempt = 0
+                result = None
                 while attempt < stop_max_attempt_number + 1:
                     try:
-                        return await func(*args, **kwargs)
+                        result = await func(*args, **kwargs)
                     except retry_on_exception as err:
                         if attempt < stop_max_attempt_number:
                             attempt += 1
                             await asyncio.sleep(wait_fixed)
                         else:
                             raise err
+                return result
 
             return wrapper
 
