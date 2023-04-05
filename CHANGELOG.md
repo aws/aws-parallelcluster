@@ -11,6 +11,7 @@ CHANGELOG
 - Increase the limit on the maximum number of queues per cluster from 10 to 40.
 - Allow to specify a sequence of multiple custom actions scripts per event.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
+- Track the longest dynamic node idle time in CloudWatch Dashboard.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
