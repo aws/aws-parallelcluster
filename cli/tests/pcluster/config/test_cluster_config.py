@@ -483,6 +483,16 @@ class TestBaseClusterConfig:
 
         assert_that(compute_settings.local_storage.root_volume.volume_type).is_equal_to(expected_volume_type)
 
+    def test_tags_in_slurm_queue(self):
+        tags = [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")]
+        queue = SlurmQueue(
+            name="queue0",
+            networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+            compute_resources=mock_compute_resources,
+            tags=tags,
+        )
+        assert_that(queue.get_tags()).is_equal_to(tags)
+
 
 class TestSharedEbs:
     @pytest.mark.parametrize(

@@ -113,6 +113,7 @@ from pcluster.config.cluster_config import (
     SudoerConfiguration,
     Timeouts,
 )
+from pcluster.config.common import BaseTag
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
@@ -1342,6 +1343,26 @@ class ComputeSettingsSchema(BaseSchema):
         return ComputeSettings(**data)
 
 
+class QueueTagSchema(BaseSchema):
+    """Represent the schema of Tag section."""
+
+    key = fields.Str(
+        required=True,
+        validate=validate.Length(max=128),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+    value = fields.Str(
+        required=True,
+        validate=validate.Length(max=256),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BaseTag(**data)
+
+
 class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
@@ -1385,11 +1406,19 @@ class SlurmQueueSchema(_CommonQueueSchema):
     )
     health_checks = fields.Nested(HealthChecksSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    tags = fields.Nested(
+        QueueTagSchema, many=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY, "update_key": "Key"}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return SlurmQueue(**data)
+
+    @validates("tags")
+    def validate_tags(self, tags):
+        """Validate tags."""
+        validate_no_reserved_tag(tags)
 
 
 class AwsBatchQueueSchema(BaseQueueSchema):

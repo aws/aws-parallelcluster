@@ -30,6 +30,7 @@ from pcluster.schemas.cluster_schema import (
     ImageSchema,
     QueueCustomActionsSchema,
     QueueIamSchema,
+    QueueTagSchema,
     SchedulerPluginCloudFormationClusterInfrastructureSchema,
     SchedulerPluginClusterSharedArtifactSchema,
     SchedulerPluginDefinitionSchema,
@@ -1339,3 +1340,29 @@ def test_slurm_gpu_health_checks(
         assert_that(queue.health_checks.gpu.enabled).is_equal_to(expected_queue_gpu_hc)
         assert_that(queue.compute_resources[0].health_checks.gpu.enabled).is_equal_to(expected_cr1_gpu_hc)
         assert_that(queue.compute_resources[1].health_checks.gpu.enabled).is_equal_to(expected_cr2_gpu_hc)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"Keys": "my_key", "Value": "my_value"}, "Unknown field"),
+        ({"Key": "my_key"}, "Missing data for required field"),
+        ({"Value": "my_value"}, "Missing data for required field"),
+        (
+            {
+                "Key": "my_test",
+                "Value": "my_value",
+            },
+            None,
+        ),
+    ],
+)
+def test_queue_tag_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            QueueTagSchema().load(config_dict)
+    else:
+        conf = QueueTagSchema().load(config_dict)
+        QueueTagSchema().dump(conf)
