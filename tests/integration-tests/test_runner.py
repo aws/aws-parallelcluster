@@ -333,6 +333,9 @@ def _init_argparser():
     api_group.add_argument(
         "--api-uri", help="URI of an existing ParallelCluster API", default=TEST_DEFAULTS.get("api_uri")
     )
+    api_group.add_argument(
+        "--policies-uri", help="Use an existing policies URI instead of uploading one.", default=TEST_DEFAULTS.get("policies_uri")
+    )
 
     debug_group = parser.add_argument_group("Debugging/Development options")
     debug_group.add_argument(
