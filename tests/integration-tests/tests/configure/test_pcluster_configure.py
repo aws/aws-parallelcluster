@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+from datetime import datetime
 from os import environ
 
 import boto3
@@ -58,13 +59,14 @@ def test_pcluster_configure(
     skip_if_unsupported_test_options_were_used(request)
     config_path = test_datadir / "config.yaml"
 
-    _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack)
+    _create_and_test_standard_configuration(request, config_path, region, key_name, scheduler, os, instance, vpc_stack)
 
     inject_additional_config_settings(config_path, request, region)
     clusters_factory(config_path)
 
 
 def test_pcluster_configure_avoid_bad_subnets(
+    request,
     vpc_stack,
     subnet_in_use1_az3,
     pcluster_config_reader,
@@ -94,12 +96,12 @@ def test_pcluster_configure_avoid_bad_subnets(
         ]
     )
     stages = orchestrate_pcluster_configure_stages(prompts=bad_subnets_prompts, scheduler=scheduler)
-    assert_configure_workflow(region, stages, config_path)
+    assert_configure_workflow(request, region, stages, config_path)
     assert_config_contains_expected_values(key_name, scheduler, os, instance, region, None, None, config_path)
 
 
 def test_region_without_t2micro(
-    vpc_stack: CfnVpcStack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir
+    request, vpc_stack: CfnVpcStack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir
 ):
     """
     Verify the default instance type (free tier) is retrieved dynamically according to region.
@@ -112,7 +114,7 @@ def test_region_without_t2micro(
         + standard_vpc_subnet_prompts(vpc_stack)
     )
     stages = orchestrate_pcluster_configure_stages(region_without_t2micro_prompts, scheduler)
-    assert_configure_workflow(region, stages, config_path)
+    assert_configure_workflow(request, region, stages, config_path)
     assert_config_contains_expected_values(
         key_name,
         scheduler,
@@ -172,7 +174,7 @@ def test_efa_and_placement_group(
         + standard_vpc_subnet_prompts(vpc_stack)
     )
     stages = orchestrate_pcluster_configure_stages(standard_prompts, scheduler)
-    assert_configure_workflow(region, stages, config_path)
+    assert_configure_workflow(request, region, stages, config_path)
     assert_config_contains_expected_values(
         key_name,
         scheduler,
@@ -189,13 +191,13 @@ def test_efa_and_placement_group(
     clusters_factory(config_path)
 
 
-def test_efa_unsupported(vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir):
+def test_efa_unsupported(request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir):
     config_path = test_datadir / "config.yaml"
-    _create_and_test_standard_configuration(config_path, region, key_name, scheduler, os, instance, vpc_stack)
+    _create_and_test_standard_configuration(request, config_path, region, key_name, scheduler, os, instance, vpc_stack)
 
 
 def _create_and_test_standard_configuration(
-    config_path, region, key_name, scheduler, os, instance, vpc_stack: CfnVpcStack
+    request, config_path, region, key_name, scheduler, os, instance, vpc_stack: CfnVpcStack
 ):
     standard_prompts = (
         standard_first_stage_prompts(region, key_name, scheduler, os, instance)
@@ -203,7 +205,7 @@ def _create_and_test_standard_configuration(
         + standard_vpc_subnet_prompts(vpc_stack)
     )
     stages = orchestrate_pcluster_configure_stages(standard_prompts, scheduler)
-    assert_configure_workflow(region, stages, config_path)
+    assert_configure_workflow(request, region, stages, config_path)
     assert_config_contains_expected_values(
         key_name,
         scheduler,
@@ -306,19 +308,24 @@ def get_unsupported_test_runner_options(request):
     return [option for option in unsupported_options if request.config.getoption(option) is not None]
 
 
-def assert_configure_workflow(region, stages, config_path):
+def assert_configure_workflow(request, region, stages, config_path):
     logging.info(f"Using `pcluster configure` to write a configuration to {config_path}")
     environ["AWS_DEFAULT_REGION"] = region
-    configure_process = pexpect.spawn(f"pcluster configure --config {config_path}")
-    for stage in stages:
-        configure_prompt_status = configure_process.expect(stage.get("prompt"))
-        assert_that(configure_prompt_status).is_equal_to(0)
-        configure_process.sendline(stage.get("response"))
+    configure_process = pexpect.spawn(f"pcluster configure --config {config_path}", encoding="utf-8")
+    output_dir = request.config.getoption("output_dir")
+    with open(
+        f"{output_dir}/spawned-process-log-{datetime.now().strftime('%d-%m-%Y-%H:%M:%S.%f')}", "w", encoding="utf-8"
+    ) as spawned_process_log:
+        configure_process.logfile = spawned_process_log
+        for stage in stages:
+            configure_prompt_status = configure_process.expect(stage.get("prompt"))
+            assert_that(configure_prompt_status).is_equal_to(0)
+            configure_process.sendline(stage.get("response"))
 
-    # Expecting EOF verifies that `pcluster configure` finished as expected.
-    configure_process.expect(pexpect.EOF)
-    configure_process.close()
-    assert_that(configure_process.exitstatus).is_equal_to(0)
+        # Expecting EOF verifies that `pcluster configure` finished as expected.
+        configure_process.expect(pexpect.EOF)
+        configure_process.close()
+        assert_that(configure_process.exitstatus).is_equal_to(0)
 
     # Log the generated config's contents so debugging doesn't always require digging through Jenkins artifacts
     with open(config_path, encoding="utf-8") as config_file:
