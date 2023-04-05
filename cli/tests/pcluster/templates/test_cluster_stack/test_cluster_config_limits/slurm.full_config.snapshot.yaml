@@ -248,6 +248,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -397,6 +400,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -546,6 +552,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -695,6 +704,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -844,6 +856,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -993,6 +1008,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -1142,6 +1160,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -1291,6 +1312,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -1440,6 +1464,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -1589,6 +1616,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -1738,6 +1768,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -1887,6 +1920,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -2036,6 +2072,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -2185,6 +2224,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -2334,6 +2376,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -2483,6 +2528,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -2632,6 +2680,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -2781,6 +2832,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -2930,6 +2984,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3079,6 +3136,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3178,6 +3238,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3277,6 +3340,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3376,6 +3442,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3475,6 +3544,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3574,6 +3646,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3673,6 +3748,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3772,6 +3850,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3871,6 +3952,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -3970,6 +4054,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4069,6 +4156,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4168,6 +4258,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4267,6 +4360,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4366,6 +4462,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4465,6 +4564,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4564,6 +4666,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4663,6 +4768,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4762,6 +4870,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4861,6 +4972,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -4960,6 +5074,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   - CapacityReservationTarget: null
     CapacityType: ONDEMAND
     ComputeResources:
@@ -5059,6 +5176,9 @@ Scheduling:
       - sg-34567890
       SubnetIds:
       - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
   SlurmSettings:
     CustomSlurmSettings: null
     CustomSlurmSettingsIncludeFile: null

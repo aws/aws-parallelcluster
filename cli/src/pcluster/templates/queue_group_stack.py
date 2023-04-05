@@ -305,14 +305,16 @@ class QueueGroupStack(NestedStack):
                         )
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + get_custom_tags(self._config),
+                        + get_custom_tags(self._config)
+                        + get_custom_tags(queue),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "Compute")
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + get_custom_tags(self._config),
+                        + get_custom_tags(self._config)
+                        + get_custom_tags(queue),
                     ),
                 ],
                 **conditional_template_properties,

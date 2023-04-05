@@ -33,6 +33,11 @@ Scheduling:
           MaxCount: {{max_count}}
       Image:
         CustomAmi: {{queue_custom_ami}}
+      {% if queue_tag_value %}
+      Tags:
+        - Key: tag1
+          Value: {{queue_tag_value}}
+      {% endif %}
 SharedStorage:
   - MountDir: vol1
     Name: ebs1
