@@ -101,25 +101,6 @@ class CustomSlurmSettingsValidator(Validator):
             )
 
 
-class CustomSlurmSettingsWarning(Validator):
-    """
-    Custom Slurm Settings Warning.
-
-    This validator emits a warning message if custom settings are enabled.
-    The message is displayed only once no matter how many times instances of the validator are created.
-    """
-
-    signaled = False
-
-    def _validate(self):
-        if not CustomSlurmSettingsWarning.signaled:
-            self._add_failure(
-                "Custom Slurm settings are in use: please monitor the cluster carefully.",
-                FailureLevel.WARNING,
-            )
-            CustomSlurmSettingsWarning.signaled = True
-
-
 class CustomSlurmNodeNamesValidator(Validator):
     """
     Custom Slurm Nodelists Names validator.
