@@ -85,7 +85,6 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
-    CustomSlurmSettingsWarning,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
@@ -258,15 +257,6 @@ def test_cluster_name_validator_slurm_accounting(cluster_name, scheduling, shoul
 def test_custom_slurm_settings_validator(description, custom_settings, deny_list, settings_level, expected_message):
     actual_failures = CustomSlurmSettingsValidator().execute(custom_settings, deny_list, settings_level)
     assert_failure_messages(actual_failures, expected_message)
-
-
-def test_custom_slurm_settings_warning():
-    # when multiple instances are invoked it should show the warning only once
-    actual_failures = CustomSlurmSettingsWarning().execute()
-    assert_failure_messages(actual_failures, "Custom Slurm settings are in use: please monitor the cluster carefully.")
-
-    actual_failures = CustomSlurmSettingsWarning().execute()
-    assert_failure_messages(actual_failures, None)
 
 
 @pytest.mark.parametrize(

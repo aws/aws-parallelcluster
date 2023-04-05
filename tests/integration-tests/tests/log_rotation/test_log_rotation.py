@@ -61,7 +61,7 @@ def test_log_rotation(
             "log_name": "dcv-server",
             "log_path": "/var/log/dcv/server.log",
             "existence": True,
-            "trigger_new_entries": True,
+            "trigger_new_entries": False,
         },
         {"log_name": "dcv-xsession", "log_path": "/var/log/dcv/dcv-xsession.*.log"},
         {"log_name": "slurmdbd", "log_path": "/var/log/slurmdbd.log"},

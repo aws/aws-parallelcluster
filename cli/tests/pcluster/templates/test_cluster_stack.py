@@ -69,6 +69,27 @@ def test_cluster_builder_from_configuration_file(
     _generate_template(cluster, capsys)
 
 
+def _assert_config_snapshot(config, expected_full_config_path):
+    """
+    Confirm that no new configuration sections were added / removed.
+
+    If any sections were added/removed:
+    - If the new section involves creation of managed resources (i.e. CDK/CFN resources)
+        1. Add the section to the "slurm.full.all_resources.yaml" file
+        2. Generate a new snapshot using the test output
+    - If the new section does not create any managed resource (CDK/CFN resources), go ahead and update the
+        "slurm.full_config.snapshot.yaml" file with the new config file contents
+        1. Add the section to the "slurm.full.all_resources.yaml" file
+        2. Generate a new snapshot using the test output
+    TODO: Use a snapshot testing library
+    """
+    cluster_name = "test_cluster"
+    full_config = ClusterSchema(cluster_name).dump(config)
+    full_config_yaml = yaml.dump(full_config)
+    with open(expected_full_config_path, "r") as expected_full_config:
+        assert_that(full_config_yaml).is_equal_to(expected_full_config.read())
+
+
 def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, test_datadir):
     """
     Build CFN template starting from config examples and assert CFN limits (file size and number of resources).
@@ -100,6 +121,10 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
         dev_settings_enabled=False,  # these shouldn't be used by most of the users
     )
     input_yaml, cluster = load_cluster_model_from_yaml(rendered_config_file, test_datadir)
+
+    # Confirm that the configuration file is not missing sections that would impact the size of the templates
+    expected_full_config_path = test_datadir / "slurm.full_config.snapshot.yaml"
+    _assert_config_snapshot(cluster, expected_full_config_path)
 
     # Generate CFN template file
     cluster_template, assets = _generate_template(cluster, capsys)

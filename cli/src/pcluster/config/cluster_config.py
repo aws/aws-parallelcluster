@@ -198,7 +198,6 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
-    CustomSlurmSettingsWarning,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -2256,7 +2255,6 @@ class SlurmQueue(_CommonQueue):
                 deny_list=SLURM_SETTINGS_DENY_LIST["Queue"]["Global"],
                 settings_level=CustomSlurmSettingLevel.QUEUE,
             )
-            self._register_validator(CustomSlurmSettingsWarning)
         for compute_resource in self.compute_resources:
             self._register_validator(
                 EfaSecurityGroupValidator,
@@ -2281,7 +2279,6 @@ class SlurmQueue(_CommonQueue):
                     deny_list=SLURM_SETTINGS_DENY_LIST["ComputeResource"]["Global"],
                     settings_level=CustomSlurmSettingLevel.COMPUTE_RESOURCE,
                 )
-                self._register_validator(CustomSlurmSettingsWarning)
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
                     CapacityTypeValidator,
@@ -2364,7 +2361,6 @@ class SlurmSettings(Resource):
                 deny_list=SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Global"],
                 settings_level=CustomSlurmSettingLevel.SLURM_CONF,
             )
-            self._register_validator(CustomSlurmSettingsWarning)
             self._register_validator(CustomSlurmNodeNamesValidator, custom_settings=self.custom_slurm_settings)
             if self.database:
                 self._register_validator(
