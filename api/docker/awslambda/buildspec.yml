@@ -1,0 +1,30 @@
+version: 0.2
+
+env:
+  variables:
+    # REQUIRED VARIABLES
+    ECR_ENDPOINT: ""  # ecr endpoint where the image is pushed (e.g. 12345667.dkr.ecr.eu-west-1.amazonaws.com)
+    GIT_REF: "develop"  # branch name or commit id to build
+    IMAGE_REPO_NAME: ""  # name of the ECR repo where the image is pushed
+    IMAGE_TAG: "develop"  # tag for the Docker images
+phases:
+  pre_build:
+    commands:
+      - echo Validating environment
+      - if [ -z "${ECR_ENDPOINT}" ] || [ -z "${GIT_REF}" ] || [ -z "${IMAGE_REPO_NAME}" ] || [ -z "${IMAGE_TAG}" ]; then echo "Invalid environment. Please set required variables"; exit 1; fi
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_ENDPOINT
+      - echo Cloning ParallelCluster GitHub repository...
+      - git clone https://github.com/aws/aws-parallelcluster aws-parallelcluster && cd aws-parallelcluster && git checkout $GIT_REF
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - sh api/docker/awslambda/docker-build.sh
+      - echo Build completed on `date`
+  post_build:
+    commands:
+      - if [ $CODEBUILD_BUILD_SUCCEEDING = 0 ]; then echo Build failed; exit 1; fi
+      - echo Pushing the Docker images...
+      - docker tag pcluster-lambda:latest $ECR_ENDPOINT/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker push $ECR_ENDPOINT/$IMAGE_REPO_NAME:$IMAGE_TAG

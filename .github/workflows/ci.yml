@@ -164,6 +164,13 @@ jobs:
       - name: Verify Generation of API client
         run: |
           git diff --exit-code --quiet -- api/client/src/ ':!api/client/src/.openapi-generator/FILES'
+  api-docker-test:
+    name: API Docker Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: mikefarah/yq@v4.32.2
+      - run: api/docker/awslambda/docker-build.sh
   shellcheck:
     name: Shellcheck
     runs-on: ubuntu-latest
