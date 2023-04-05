@@ -275,48 +275,12 @@ Resources:
         - Key: 'parallelcluster:version'
           Value: !FindInMap [ParallelCluster, Constants, Version]
       Runtime: python3.9
-      Handler: index.handler
+      Handler: pcluster.api.awslambda.entrypoint.lambda_handler
       Layers:
         - !Ref PclusterLayer
+      # Lambda fails creation without specifying a non-empty code or container
       Code:
-        ZipFile: |
-          import logging
-          import os
-          from os import environ
-          from typing import Any, Dict
-
-
-          logger = logging.getLogger()
-          logger.setLevel(logging.INFO)
-
-          from pcluster.api.awslambda.serverless_wsgi import handle_request
-          from pcluster.api.flask_app import ParallelClusterFlaskApp
-
-          pcluster_api = None  # pylint: disable=invalid-name
-
-          profile = environ.get("PROFILE", "prod")
-          is_dev_profile = profile == "dev"
-
-          if is_dev_profile:
-              logger.info("Running with dev profile")
-              environ["FLASK_ENV"] = "development"
-              environ["FLASK_DEBUG"] = "1"
-
-          def _init_flask_app():
-              return ParallelClusterFlaskApp(swagger_ui=is_dev_profile, validate_responses=is_dev_profile)
-
-          def handler(event: Dict[str, Any], context) -> Dict[str, Any]:
-              try:
-                  global pcluster_api  # pylint: disable=global-statement,invalid-name
-                  if not pcluster_api:
-                      logger.info("Initializing Flask Application")
-                      pcluster_api = _init_flask_app()
-                  os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
-                  return handle_request(pcluster_api.app, event, context)
-              except Exception as e:
-                  logger.critical("Unexpected exception: %s", e, exc_info=True)
-                  raise Exception("Unexpected fatal exception. Please look at API logs for details on the encountered failure.")
-
+        ZipFile: " "
 
   ParallelClusterApiUserRole:
     Type: AWS::IAM::Role

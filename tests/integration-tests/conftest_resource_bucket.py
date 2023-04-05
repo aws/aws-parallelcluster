@@ -39,8 +39,10 @@ def install_pc(basepath, pc_version):
     cli_dir = root / "cli"
     try:
         logger.info("installing ParallelCluster packages...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", cli_dir, "-t", tempdir])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{cli_dir}[awslambda]", "-t", tempdir])
+        # The following are provided by the lambda runtime
         shutil.rmtree(tempdir / "botocore")
+        shutil.rmtree(tempdir / "boto3")
     except subprocess.CalledProcessError:
         logger.info(f"Error while installing ParallelCluster {get_installed_parallelcluster_version()}")
         sys.exit(-1)

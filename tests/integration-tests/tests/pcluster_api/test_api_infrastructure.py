@@ -95,6 +95,9 @@ def _assert_parallelcluster_lambda(lambda_name, lambda_arn):
     lambda_configuration = lambda_resource["Configuration"]
     assert_that(lambda_configuration["FunctionArn"]).is_equal_to(lambda_arn)
     assert_that(lambda_configuration["Timeout"]).is_equal_to(30)
+    assert_that(lambda_configuration).contains("Layers")
+    assert_that(len(lambda_configuration["Layers"])).is_equal_to(1)
+    assert_that(lambda_configuration["Layers"][0]).contains("Arn")
     if "TracingConfig" in lambda_configuration:
         # When executed in GovCloud get_function does not return TracingConfig
         assert_that(lambda_configuration["TracingConfig"]["Mode"]).is_equal_to("Active")
