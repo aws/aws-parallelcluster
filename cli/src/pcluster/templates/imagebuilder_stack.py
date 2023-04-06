@@ -21,13 +21,12 @@ import os
 from typing import List
 
 import yaml
-from aws_cdk import ArnFormat, CfnParameter, CfnTag, Fn, Stack
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_imagebuilder as imagebuilder
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_sns as sns
-from constructs import Construct
+from aws_cdk.core import CfnParameter, CfnTag, Construct, Fn, Stack
 
 from pcluster import imagebuilder_utils, utils
 from pcluster.aws.aws_api import AWSApi
@@ -123,8 +122,8 @@ class ImageBuilderCdkStack(Stack):
         log_group_arn = self.format_arn(
             service="logs",
             resource="log-group",
-            arn_format=ArnFormat.COLON_RESOURCE_NAME,
             region=get_region(),
+            sep=":",
             resource_name=f"/aws/imagebuilder/{self._build_image_recipe_name()}",
         )
         return log_group_arn
@@ -257,7 +256,7 @@ class ImageBuilderCdkStack(Stack):
 
         if lambda_cleanup_execution_role:
             for resource in resource_dependency_list:
-                resource.add_dependency(lambda_cleanup_execution_role)
+                resource.add_depends_on(lambda_cleanup_execution_role)
 
     def _add_imagebuilder_resources(
         self, build_tags, ami_tags, instance_profile_name, lambda_cleanup_policy_statements, resource_dependency_list
@@ -670,7 +669,7 @@ class ImageBuilderCdkStack(Stack):
                     self.format_arn(
                         service="lambda",
                         resource="function",
-                        arn_format=ArnFormat.COLON_RESOURCE_NAME,
+                        sep=":",
                         resource_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                     )
                 ],
@@ -683,7 +682,7 @@ class ImageBuilderCdkStack(Stack):
                     self.format_arn(
                         service="logs",
                         resource="log-group",
-                        arn_format=ArnFormat.COLON_RESOURCE_NAME,
+                        sep=":",
                         resource_name="/aws/lambda/{0}:*".format(
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX)
                         ),
@@ -803,7 +802,7 @@ class ImageBuilderCdkStack(Stack):
             function_name=lambda_cleanup.attr_arn,
             source_arn=Fn.ref("BuildNotificationTopic"),
         )
-        lambda_cleanup.add_dependency(lambda_log)
+        lambda_cleanup.add_depends_on(lambda_log)
 
         return lambda_cleanup, permission, lambda_cleanup_execution_role, lambda_log
 

@@ -10,7 +10,6 @@
 # limitations under the License.
 from datetime import datetime
 
-from aws_cdk import CfnOutput, CfnResource, Fn, Stack
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_cloudformation as cfn
 from aws_cdk import aws_codebuild as codebuild
@@ -21,7 +20,7 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.aws_ec2 import CfnSecurityGroup
-from constructs import Construct
+from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
 from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS, CW_LOG_GROUP_NAME_PREFIX, IAM_ROLE_PATH
@@ -144,13 +143,13 @@ class AwsBatchConstruct(Construct):
         self._manage_docker_images_lambda = self._add_manage_docker_images_lambda()
         self._manage_docker_images_custom_resource = self._add_manage_docker_images_custom_resource()
         self._docker_build_wait_condition = self._add_docker_build_wait_condition()
-        self._docker_build_wait_condition.add_dependency(self._manage_docker_images_custom_resource)
+        self._docker_build_wait_condition.add_depends_on(self._manage_docker_images_custom_resource)
 
         # Code build notification
         self._code_build_notification_lambda = self._add_code_build_notification_lambda()
-        self._code_build_notification_lambda.add_dependency(self._docker_build_wait_condition_handle)
+        self._code_build_notification_lambda.add_depends_on(self._docker_build_wait_condition_handle)
         self._code_build_notification_rule = self._add_code_build_notification_rule()
-        self._manage_docker_images_custom_resource.add_dependency(self._code_build_notification_rule)
+        self._manage_docker_images_custom_resource.add_depends_on(self._code_build_notification_rule)
 
     def _launch_template(self, http_tokens):
         launch_template = ec2.CfnLaunchTemplate(

@@ -11,12 +11,11 @@
 from collections import namedtuple
 from typing import Dict
 
-from aws_cdk import CfnCustomResource, CfnDeletionPolicy, CfnOutput, CfnParameter, Fn, Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_route53 as route53
-from constructs import Construct
+from aws_cdk.core import CfnCustomResource, CfnDeletionPolicy, CfnOutput, CfnParameter, Construct, Fn, Stack
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import SlurmClusterConfig
