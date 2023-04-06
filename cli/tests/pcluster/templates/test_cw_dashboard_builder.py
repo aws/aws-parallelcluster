@@ -68,9 +68,35 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
         else:
             assert_that(output_yaml).does_not_contain("Head Node Logs")
             assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
+
+        metric_filters = _extract_metric_filters(generated_template)
+        _verify_metric_filter_dimensions(metric_filters)
     else:
         assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
         assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
+
+
+def _extract_metric_filters(generated_template):
+    return {
+        key: val["Properties"]
+        for key, val in generated_template["Resources"].items()
+        if val["Type"] == "AWS::Logs::MetricFilter"
+    }
+
+
+def _verify_metric_filter_dimensions(metric_filters):
+    for name, properties in metric_filters.items():
+        dimensions = next(
+            property["Dimensions"]
+            for property in properties["MetricTransformations"]
+            if type(property) is dict and "Dimensions" in property
+        )
+
+        expected_dimensions = [{"Key": "ClusterName", "Value": "$.cluster-name"}]
+
+        assert_that(dimensions, description=f"{name} should have dimensions {expected_dimensions}").is_equal_to(
+            expected_dimensions
+        )
 
 
 def _verify_head_node_instance_metrics_graphs(output_yaml):
@@ -182,9 +208,8 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
         "VcpuLimitErrors",
         "VolumeLimitErrors",
         "InsufficientCapacityErrors",
-        "OtherLaunchedInstanceErrors",
-        "ReplacementTimeoutExpiredErrors",
-        "ResumeTimeoutExpiredErrors",
+        "OtherInstanceLaunchFailures",
+        "InstanceBootstrapTimeoutError",
         "EC2HealthCheckErrors",
         "ScheduledEventHealthCheckErrors",
         "NoCorrespondingInstanceErrors",
@@ -192,14 +217,17 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
     ]
     custom_action_metrics = [
         "OnNodeStartDownloadErrors",
-        "OnNodeStartExecutionErrors",
+        "OnNodeStartRunErrors",
         "OnNodeConfiguredDownloadErrors",
-        "OnNodeConfiguredExecutionErrors",
+        "OnNodeConfiguredRunErrors",
     ]
+    idle_node_metrics = ["MaxDynamicNodeIdleTime"]
     if scheduler == "slurm":
         # Contains error metric title
         assert_that(output_yaml).contains("Cluster Health Metrics")
         for metric in slurm_related_metrics:
+            assert_that(output_yaml).contains(metric)
+        for metric in idle_node_metrics:
             assert_that(output_yaml).contains(metric)
         if cluster_config.has_custom_actions_in_queue:
             for metric in custom_action_metrics:
@@ -209,5 +237,5 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
                 assert_that(output_yaml).does_not_contain(metric)
     else:
         assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
-        for metric in slurm_related_metrics + custom_action_metrics:
+        for metric in slurm_related_metrics + custom_action_metrics + idle_node_metrics:
             assert_that(output_yaml).does_not_contain(metric)

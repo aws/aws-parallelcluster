@@ -19,9 +19,11 @@ SLURM_SETTINGS_DENY_LIST = {
     "SlurmConf": {
         "Global": [
             "communicationparameters",
+            "epilog",
             "grestypes",
             "jobcomppass",
             "launchparameters",
+            "prolog",
             "reconfigflags",
             "resumefailprogram",
             "resumeprogram",
@@ -31,6 +33,7 @@ SLURM_SETTINGS_DENY_LIST = {
             "slurmctldparameters",
             "slurmdlogfile",
             "slurmuser",
+            "suspendexcnodes",
             "suspendprogram",
             "suspendtime",
             "taskplugin",
@@ -96,25 +99,6 @@ class CustomSlurmSettingsValidator(Validator):
                 f"Using the following custom Slurm settings at {settings_level} level is not allowed: {settings}",
                 FailureLevel.ERROR,
             )
-
-
-class CustomSlurmSettingsWarning(Validator):
-    """
-    Custom Slurm Settings Warning.
-
-    This validator emits a warning message if custom settings are enabled.
-    The message is displayed only once no matter how many times instances of the validator are created.
-    """
-
-    signaled = False
-
-    def _validate(self):
-        if not CustomSlurmSettingsWarning.signaled:
-            self._add_failure(
-                "Custom Slurm settings are in use: please monitor the cluster carefully.",
-                FailureLevel.WARNING,
-            )
-            CustomSlurmSettingsWarning.signaled = True
 
 
 class CustomSlurmNodeNamesValidator(Validator):

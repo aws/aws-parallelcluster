@@ -32,19 +32,22 @@ def test_custom_compute_action_failure(
 
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bad_script = "on_compute_configured_error.sh"
-    bad_script_path = f"test_metric_logging/{bad_script}"
+    bad_script_path = f"test_structured_logging/{bad_script}"
     bucket.upload_file(str(test_datadir / bad_script), bad_script_path)
 
-    # Create S3 bucket for pre-install scripts
     cluster_config = pcluster_config_reader(bucket=bucket_name, bad_script_path=bad_script_path)
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    scheduler_commands.submit_command("hostname", nodes=1)
+    scheduler_commands.submit_command("hostname", nodes=1, partition="queue-1")
+    scheduler_commands.submit_command("hostname", nodes=1, partition="queue-2")
+
     assert_that_event_exists(cluster, r".+\.clustermgtd_events", "invalid-backing-instance-count")
     assert_that_event_exists(cluster, r".+\.clustermgtd_events", "protected-mode-error-count")
     assert_that_event_exists(cluster, r".+\.bootstrap_error_msg", "custom-action-error")
+    assert_that_event_exists(cluster, r".+\.clustermgtd_events", "compute-node-idle-time")
 
-    test_cluster_health_metric(["OnNodeConfiguredExecutionErrors"], cluster.name, region)
+    test_cluster_health_metric(["OnNodeConfiguredRunErrors"], cluster.name, region)
+    test_cluster_health_metric(["MaxDynamicNodeIdleTime"], cluster.name, region)

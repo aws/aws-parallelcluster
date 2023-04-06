@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
+from assertpy import fail
 
 from pcluster.aws.common import AWSClientError
 from pcluster.validators.common import FailureLevel
@@ -115,44 +116,160 @@ def test_ldap_tls_reqcert_validator(ldap_tls_reqcert, expected_message):
 
 
 @pytest.mark.parametrize(
-    "password_secret_arn, error_from_secrets_manager, expected_message, expected_failure_level",
+    "password_secret_arn, region, aws_service, error_from_aws_service, expected_message, expected_failure_level",
     [
-        (
+        pytest.param(
             "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET",
+            "WHATEVER-NOT-us-isob-east-1",
+            "secretsmanager",
             "ResourceNotFoundExceptionSecrets",
             "The secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET does not exist.",
             FailureLevel.ERROR,
+            id="PasswordSecretArn as a Secret in Secrets Manager that does not exist, "
+            "in regions other than us-isob-east-1",
         ),
-        (
+        pytest.param(
             "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:ANY_SECRET",
+            "WHATEVER-NOT-us-isob-east-1",
+            "secretsmanager",
             "AccessDeniedException",
             "Cannot validate secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:ANY_SECRET "
             "due to lack of permissions. Please refer to ParallelCluster official documentation for more information.",
             FailureLevel.WARNING,
+            id="PasswordSecretArn as a Secret in Secrets Manager that is not accessible due to lack of permissions, "
+            "in regions other than us-isob-east-1",
         ),
-        (
+        pytest.param(
             "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET",
+            "WHATEVER-NOT-us-isob-east-1",
+            "secretsmanager",
             "ANOTHER_ERROR",
             "Cannot validate secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:NOT_ACCESSIBLE_SECRET. "
             "Please refer to ParallelCluster official documentation for more information.",
             FailureLevel.WARNING,
+            id="PasswordSecretArn as a Secret in Secrets Manager that is not accessible due to unexpected exception, "
+            "in regions other than us-isob-east-1",
         ),
-        (
+        pytest.param(
+            "arn:PARTITION:secretsmanager:REGION:ACCOUNT:UNSUPPORTED_RESOURCE",
+            "WHATEVER-NOT-us-isob-east-1",
+            "secretsmanager",
+            None,
+            "The secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:UNSUPPORTED_RESOURCE is not supported "
+            "in region WHATEVER-NOT-us-isob-east-1.",
+            FailureLevel.ERROR,
+            id="PasswordSecretArn as an unsupported resource of Secrets Manager, in regions other than us-isob-east-1",
+        ),
+        pytest.param(
             "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:ACCESSIBLE_SECRET",
+            "WHATEVER-NOT-us-isob-east-1",
+            "secretsmanager",
             None,
             None,
             None,
+            id="PasswordSecretArn as a Secret in Secrets Manager that is accessible, "
+            "in regions other than us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:WHATEVER_SECRET",
+            "us-isob-east-1",
+            "secretsmanager",
+            None,
+            "The secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:WHATEVER_SECRET is not supported "
+            "in region us-isob-east-1.",
+            FailureLevel.ERROR,
+            id="PasswordSecretArn as a Secret in Secrets Manager, in us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:ssm:REGION:ACCOUNT:parameter/NOT_ACCESSIBLE_SECRET",
+            "us-isob-east-1",
+            "ssm",
+            "ParameterNotFound",
+            "The secret arn:PARTITION:ssm:REGION:ACCOUNT:parameter/NOT_ACCESSIBLE_SECRET does not exist.",
+            FailureLevel.ERROR,
+            id="PasswordSecretArn as a Parameter in SSM that does not exist, in us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:ssm:REGION:ACCOUNT:parameter/ANY_SECRET",
+            "us-isob-east-1",
+            "ssm",
+            "AccessDeniedException",
+            "Cannot validate secret arn:PARTITION:ssm:REGION:ACCOUNT:parameter/ANY_SECRET "
+            "due to lack of permissions. Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+            id="PasswordSecretArn as a Parameter in SSM that is not accessible due to lack of permissions, "
+            "in us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:ssm:REGION:ACCOUNT:parameter/NOT_ACCESSIBLE_SECRET",
+            "us-isob-east-1",
+            "ssm",
+            "ANOTHER_ERROR",
+            "Cannot validate secret arn:PARTITION:ssm:REGION:ACCOUNT:parameter/NOT_ACCESSIBLE_SECRET. "
+            "Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+            id="PasswordSecretArn as a Parameter in SSM that is not accessible due to unexpected exception, "
+            "in us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:ssm:REGION:ACCOUNT:parameter/ACCESSIBLE_SECRET",
+            "us-isob-east-1",
+            "ssm",
+            None,
+            None,
+            None,
+            id="PasswordSecretArn as a Parameter in SSM that is accessible, in us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:ssm:REGION:ACCOUNT:UNSUPPORTED_RESOURCE",
+            "us-isob-east-1",
+            "ssm",
+            None,
+            "The secret arn:PARTITION:ssm:REGION:ACCOUNT:UNSUPPORTED_RESOURCE is not supported.",
+            FailureLevel.ERROR,
+            id="PasswordSecretArn as an unsupported resource of SSM, in us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:UNSUPPORTED_SERVICE:REGION:ACCOUNT:RESOURCE",
+            "us-isob-east-1",
+            "UNSUPPORTED_SERVICE",
+            None,
+            "The secret arn:PARTITION:UNSUPPORTED_SERVICE:REGION:ACCOUNT:RESOURCE is not supported.",
+            FailureLevel.ERROR,
+            id="PasswordSecretArn as a resource of an unsupported service, in us-isob-east-1",
+        ),
+        pytest.param(
+            "arn:PARTITION:ssm:REGION:ACCOUNT:parameter/WHATEVER_SECRET",
+            "WHATEVER-NOT-us-isob-east-1",
+            "UNSUPPORTED_SERVICE",
+            None,
+            "The secret arn:PARTITION:ssm:REGION:ACCOUNT:parameter/WHATEVER_SECRET is not supported "
+            "in region WHATEVER-NOT-us-isob-east-1.",
+            FailureLevel.ERROR,
+            id="PasswordSecretArn as a Parameter in SSM, in regions other than us-isob-east-1",
         ),
     ],
 )
 def test_password_secret_arn_validator(
-    password_secret_arn, error_from_secrets_manager, expected_message, expected_failure_level, aws_api_mock
+    password_secret_arn,
+    region,
+    aws_service,
+    error_from_aws_service,
+    expected_message,
+    expected_failure_level,
+    aws_api_mock,
 ):
-    if error_from_secrets_manager:
-        aws_api_mock.secretsmanager.describe_secret.side_effect = AWSClientError(
-            function_name="A_FUNCTION_NAME", error_code=error_from_secrets_manager, message="AN_ERROR_MESSAGE"
+    if error_from_aws_service:
+        if aws_service == "secretsmanager":
+            aws_api_mocked_call = aws_api_mock.secretsmanager.describe_secret
+        elif aws_service == "ssm":
+            aws_api_mocked_call = aws_api_mock.ssm.get_parameter
+        else:
+            fail(f"Unsupported aws_service: {aws_service}")
+        aws_api_mocked_call.side_effect = AWSClientError(
+            function_name="A_FUNCTION_NAME", error_code=str(error_from_aws_service), message="AN_ERROR_MESSAGE"
         )
-    actual_failures = PasswordSecretArnValidator().execute(password_secret_arn=password_secret_arn)
+    actual_failures = PasswordSecretArnValidator().execute(password_secret_arn=password_secret_arn, region=region)
     assert_failure_messages(actual_failures, expected_message)
     assert_failure_level(actual_failures, expected_failure_level)
 

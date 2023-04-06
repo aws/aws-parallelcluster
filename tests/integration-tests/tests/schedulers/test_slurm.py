@@ -296,9 +296,7 @@ def test_slurm_protected_mode(
     )
     pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path)
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
-    test_cluster_health_metric(
-        ["NoCorrespondingInstanceErrors", "OnNodeStartExecutionErrors"], cluster.cfn_name, region
-    )
+    test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
     _test_job_run_in_working_queue(scheduler_commands)
     _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
 
@@ -901,7 +899,7 @@ def _test_keep_or_replace_suspended_nodes(
     )
     job_id = submit_initial_job(
         scheduler_commands,
-        "sleep 500",
+        "sleep 550",
         partition,
         dynamic_instance_type,
         num_dynamic_nodes,
@@ -1766,8 +1764,7 @@ def _test_compute_node_bootstrap_timeout(
             "nodes": 2,
         }
     )
-    test_cluster_health_metric(["ResumeTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
-    test_cluster_health_metric(["ReplacementTimeoutExpiredErrors"], cluster.cfn_name, cluster.region)
+    test_cluster_health_metric(["InstanceBootstrapTimeoutErrors"], cluster.cfn_name, cluster.region)
 
 
 def _retrieve_slurm_root_path(remote_command_executor):

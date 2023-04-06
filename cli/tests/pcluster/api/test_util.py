@@ -18,9 +18,12 @@ class TestParallelClusterApiUtil:
     @pytest.mark.parametrize(
         "version, error, expected_message",
         [
-            ("14.21.0", None, None),
+            ("13.7.0", None, None),
+            ("10.13.0", None, None),
             ("v18.12.0", None, None),
             ("10.1.0", Exception(), "requires Node.js version >="),
+            ("13.0.0", Exception(), "Node.js version 13.0.0 is within this range"),
+            ("13.6.0", Exception(), "Node.js version 13.6.0 is within this range"),
             (Exception(), Exception(), "Unable to check Node.js version"),
         ],
     )

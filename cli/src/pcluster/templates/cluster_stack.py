@@ -19,7 +19,6 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 from typing import Union
 
-from aws_cdk import CfnDeletionPolicy, CfnOutput, CfnParameter, CfnStack, CfnTag, CustomResource, Duration, Fn, Stack
 from aws_cdk import aws_cloudformation as cfn
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_dynamodb as dynamomdb
@@ -28,7 +27,18 @@ from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
-from constructs import Construct
+from aws_cdk.core import (
+    CfnDeletionPolicy,
+    CfnOutput,
+    CfnParameter,
+    CfnStack,
+    CfnTag,
+    Construct,
+    CustomResource,
+    Duration,
+    Fn,
+    Stack,
+)
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
@@ -85,7 +95,7 @@ from pcluster.templates.cdk_builder_utils import (
 from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting
+from pcluster.utils import get_attr, get_http_tokens_setting, get_service_endpoint
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -255,7 +265,7 @@ class ClusterCdkStack:
         self.head_node_instance = self._add_head_node()
         # Add a dependency to the cleanup Route53 resource, so that Route53 Hosted Zone is cleaned after node is deleted
         if self._condition_is_slurm() and hasattr(self.scheduler_resources, "cleanup_route53_custom_resource"):
-            self.head_node_instance.add_dependency(self.scheduler_resources.cleanup_route53_custom_resource)
+            self.head_node_instance.add_depends_on(self.scheduler_resources.cleanup_route53_custom_resource)
 
         # AWS Batch related resources
         if self._condition_is_batch():
@@ -643,7 +653,7 @@ class ClusterCdkStack:
             to_port=65535,
             cidr_ip="0.0.0.0/0",
             group_id=compute_security_group.ref,
-        ).add_dependency(compute_security_group_egress)
+        ).add_depends_on(compute_security_group_egress)
 
         # ComputeSecurityGroupIngress
         # Access to compute nodes from other compute nodes
@@ -899,7 +909,7 @@ class ClusterCdkStack:
             ),
         )
         if self.scheduler_plugin_stack:
-            wait_condition.add_dependency(self.scheduler_plugin_stack)
+            wait_condition.add_depends_on(self.scheduler_plugin_stack)
         return wait_condition, wait_condition_handle
 
     def _add_head_node(self):
@@ -922,6 +932,8 @@ class ClusterCdkStack:
                     subnet_id=head_node.networking.subnet_id,
                 )
             )
+
+        cloudformation_url = get_service_endpoint("cloudformation", self.config.region)
 
         # Head node Launch Template
         head_node_launch_template = ec2.CfnLaunchTemplate(
@@ -950,6 +962,7 @@ class ClusterCdkStack:
                                 "DisableMultiThreadingManually": "true"
                                 if head_node.disable_simultaneous_multithreading_manually
                                 else "false",
+                                "CloudFormationUrl": cloudformation_url,
                             },
                             **get_common_user_data_env(head_node, self.config),
                         },
@@ -1125,10 +1138,16 @@ class ClusterCdkStack:
                                 "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
                                 ". /etc/profile.d/pcluster.sh; "
                                 "cfn-init -v --stack ${StackName} "
-                                "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
+                                "--resource HeadNodeLaunchTemplate --configsets update "
+                                "--region ${Region} "
+                                "--url ${CloudFormationUrl}\n"
                                 "runas=root\n"
                             ),
-                            {"StackName": self._stack_name, "Region": self.stack.region},
+                            {
+                                "StackName": self._stack_name,
+                                "Region": self.stack.region,
+                                "CloudFormationUrl": cloudformation_url,
+                            },
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1136,8 +1155,16 @@ class ClusterCdkStack:
                     },
                     "/etc/cfn/cfn-hup.conf": {
                         "content": Fn.sub(
-                            "[main]\nstack=${StackId}\nregion=${Region}\ninterval=2",
-                            {"StackId": self.stack.stack_id, "Region": self.stack.region},
+                            "[main]\n"
+                            "stack=${StackId}\n"
+                            "region=${Region}\n"
+                            "url=${CloudFormationUrl}\n"
+                            "interval=2\n",
+                            {
+                                "StackId": self.stack.stack_id,
+                                "Region": self.stack.region,
+                                "CloudFormationUrl": cloudformation_url,
+                            },
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1206,9 +1233,11 @@ class ClusterCdkStack:
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
                             " --override-runlist aws-parallelcluster::update &&"
                             " /opt/parallelcluster/scripts/fetch_and_run -postupdate &&"
-                            " cfn-signal --exit-code=0 --reason='Update complete'"
+                            f" cfn-signal --exit-code=0 --reason='Update complete'"
+                            f" --region {self.stack.region} --url {cloudformation_url}"
                             f" '{self.wait_condition_handle.ref}' ||"
-                            " cfn-signal --exit-code=1 --reason='Update failed'"
+                            f" cfn-signal --exit-code=1 --reason='Update failed'"
+                            f" --region {self.stack.region} --url {cloudformation_url}"
                             f" '{self.wait_condition_handle.ref}'"
                         ),
                         "cwd": "/etc/chef",
@@ -1242,7 +1271,7 @@ class ClusterCdkStack:
             head_node_instance.node.add_dependency(self.compute_fleet_resources)
 
         if self._condition_is_scheduler_plugin() and self.scheduler_plugin_stack:
-            head_node_instance.add_dependency(self.scheduler_plugin_stack)
+            head_node_instance.add_depends_on(self.scheduler_plugin_stack)
 
         return head_node_instance
 

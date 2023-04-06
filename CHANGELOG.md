@@ -11,15 +11,39 @@ CHANGELOG
 - Increase the limit on the maximum number of queues per cluster from 10 to 40.
 - Allow to specify a sequence of multiple custom actions scripts per event.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
+- Track the longest dynamic node idle time in CloudWatch Dashboard.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
-- Switch to CDK v2 (requires NodeJS 14.21 or later).
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
 - Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
 - Fix Update policy for MaxCount to always perform numerical comparisons on MaxCount property.
+
+3.5.1
+-----
+**ENHANCEMENTS**
+- Add a new way to distribute ParallelCluster as a self-contained executable shipped with a dedicated installer.
+- Add support for US isolated region us-isob-east-1.
+
+**CHANGES**
+- Upgrade EFA installer to `1.22.0`
+  - Efa-driver: `efa-2.1.1g`
+  - Efa-config: `efa-config-1.13-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.17.0-1`
+  - Rdma-core: `rdma-core-43.0-1`
+  - Open MPI: `openmpi40-aws-4.1.5-1`
+- Upgrade NICE DCV to version `2022.2-14521`.
+  - server: `2022.2.14521-1`
+  - xdcv: `2022.2.519-1`
+  - gl: `2022.2.1012-1`
+  - web_viewer: `2022.2.14521-1`
+
+**BUG FIXES**
+- Fix update cluster to remove shared EBS volumes can potentially cause node launching failures if `MountDir` match the same pattern in `/etc/exports`.
+- Fix for compute_console_output log file being truncated at every clustermgtd iteration.
 
 3.5.0
 -----
@@ -29,7 +53,6 @@ CHANGELOG
 - Add a Python library to allow customers to use ParallelCluster functionalities in their own code.
 - Add logging of compute node console output to CloudWatch on compute node bootstrap failure.
 - Add failures field containing failure code and reason to `describe-cluster` output when cluster creation fails.
-- Add support for US isolated regions: us-iso-* and us-isob-*.
 
 **CHANGES**
 - Upgrade Slurm to version 22.05.8.

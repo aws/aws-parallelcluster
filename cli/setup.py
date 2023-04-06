@@ -21,6 +21,7 @@ def readme():
 
 
 VERSION = "3.6.0"
+CDK_VERSION = "1.137,!=1.153.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
@@ -28,9 +29,23 @@ REQUIRES = [
     "PyYAML~=5.3",
     "jinja2~=3.0",
     "marshmallow~=3.10",
-    "aws-cdk-lib~=2.61.1",
-    "aws-xray-sdk~=2.11.0",
-    "constructs~=10.1.225",
+    "aws-cdk.core~=" + CDK_VERSION,
+    "aws-cdk.aws-batch~=" + CDK_VERSION,
+    "aws_cdk.aws-cloudwatch~=" + CDK_VERSION,
+    "aws-cdk.aws-codebuild~=" + CDK_VERSION,
+    "aws-cdk.aws-dynamodb~=" + CDK_VERSION,
+    "aws-cdk.aws-ec2~=" + CDK_VERSION,
+    "aws-cdk.aws-efs~=" + CDK_VERSION,
+    "aws-cdk.aws-events~=" + CDK_VERSION,
+    "aws-cdk.aws-fsx~=" + CDK_VERSION,
+    "aws-cdk.aws-imagebuilder~=" + CDK_VERSION,
+    "aws-cdk.aws-iam~=" + CDK_VERSION,
+    "aws_cdk.aws-lambda~=" + CDK_VERSION,
+    "aws-cdk.aws-logs~=" + CDK_VERSION,
+    "aws-cdk.aws-route53~=" + CDK_VERSION,
+    "aws-cdk.aws-ssm~=" + CDK_VERSION,
+    "aws-cdk.aws-sqs~=" + CDK_VERSION,
+    "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
     "werkzeug~=2.0",
     "connexion~=2.13.0",
     "flask~=2.0",

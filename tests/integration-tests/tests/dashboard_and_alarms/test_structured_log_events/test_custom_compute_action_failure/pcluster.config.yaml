@@ -21,6 +21,16 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+    - Name: queue-2
+      ComputeResources:
+        - Name: compute-b
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 0
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
       Iam:
         S3Access:
           - BucketName: {{ bucket }}

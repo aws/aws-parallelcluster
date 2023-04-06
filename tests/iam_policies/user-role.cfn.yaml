@@ -504,6 +504,14 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: ResourceGroupRead
+          - Action: "secretsmanager:GetSecretValue"
+            Resource: !Sub arn:${AWS::Partition}:secretsmanager:${Region}:${AWS::AccountId}:secret:*
+            Effect: Allow
+            Sid: DirectoryServicePasswordReadFromSecretsManager
+          - Action: "ssm:GetParameter"
+            Resource: !Sub arn:${AWS::Partition}:ssm:${Region}:${AWS::AccountId}:parameter/*
+            Effect: Allow
+            Sid: DirectoryServicePasswordReadFromSsm
 
   ### IMAGE ACTIONS POLICIES
 

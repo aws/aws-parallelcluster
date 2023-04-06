@@ -14,13 +14,12 @@ from hashlib import sha1
 from typing import List, Union
 
 import pkg_resources
-from aws_cdk import CfnDeletionPolicy, CfnTag, Fn, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.aws_iam import ManagedPolicy, PermissionsBoundary
-from constructs import Construct
+from aws_cdk.core import Arn, ArnFormat, CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import (
     BaseClusterConfig,
@@ -757,10 +756,19 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         )
 
         if self._config.directory_service:
+            password_secret_arn = Arn.split(
+                self._config.directory_service.password_secret_arn, ArnFormat.COLON_RESOURCE_NAME
+            )
             policy.append(
                 iam.PolicyStatement(
                     sid="AllowGettingDirectorySecretValue",
-                    actions=["secretsmanager:GetSecretValue"],
+                    actions=[
+                        "secretsmanager:GetSecretValue"
+                        if password_secret_arn.service == "secretsmanager"
+                        else "ssm:GetParameter"
+                        if password_secret_arn.service == "ssm"
+                        else None
+                    ],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
                 )

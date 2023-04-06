@@ -27,6 +27,7 @@ from pcluster.constants import (
     MAX_NUMBER_OF_COMPUTE_RESOURCES,
     MAX_NUMBER_OF_QUEUES,
 )
+from pcluster.models.s3_bucket import S3FileFormat, format_content
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
@@ -39,6 +40,8 @@ from tests.pcluster.utils import (
 )
 
 EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
+MAX_SIZE_OF_CFN_TEMPLATE = 1024 * 1024
+MAX_RESOURCES_PER_TEMPLATE = 500
 
 
 @pytest.mark.parametrize(
@@ -64,6 +67,27 @@ def test_cluster_builder_from_configuration_file(
     # Search config file from example_configs folder to test standard configuration
     _, cluster = load_cluster_model_from_yaml(config_file_name)
     _generate_template(cluster, capsys)
+
+
+def _assert_config_snapshot(config, expected_full_config_path):
+    """
+    Confirm that no new configuration sections were added / removed.
+
+    If any sections were added/removed:
+    - If the new section involves creation of managed resources (i.e. CDK/CFN resources)
+        1. Add the section to the "slurm.full.all_resources.yaml" file
+        2. Generate a new snapshot using the test output
+    - If the new section does not create any managed resource (CDK/CFN resources), go ahead and update the
+        "slurm.full_config.snapshot.yaml" file with the new config file contents
+        1. Add the section to the "slurm.full.all_resources.yaml" file
+        2. Generate a new snapshot using the test output
+    TODO: Use a snapshot testing library
+    """
+    cluster_name = "test_cluster"
+    full_config = ClusterSchema(cluster_name).dump(config)
+    full_config_yaml = yaml.dump(full_config)
+    with open(expected_full_config_path, "r") as expected_full_config:
+        assert_that(full_config_yaml).is_equal_to(expected_full_config.read())
 
 
 def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, test_datadir):
@@ -98,27 +122,45 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
     )
     input_yaml, cluster = load_cluster_model_from_yaml(rendered_config_file, test_datadir)
 
-    # Generate CFN template file
-    output_yaml = yaml.dump(_generate_template(cluster, capsys))
-    output_path = str(tmpdir / "generated_cfn_template.yaml")
-    with open(output_path, "w") as output_file:
-        output_file.write(output_yaml)
+    # Confirm that the configuration file is not missing sections that would impact the size of the templates
+    expected_full_config_path = test_datadir / "slurm.full_config.snapshot.yaml"
+    _assert_config_snapshot(cluster, expected_full_config_path)
 
-    # Assert that size of the template doesn't exceed 1MB and number of resources doesn't exceed 500
-    # Note the configuration file defined in the test_datadir is very close to the limit of 500 resources
-    assert_that(os.stat(output_path).st_size).is_less_than(1024 * 1024)
-    matches = len(re.findall("Type.*AWS::", str(output_yaml)))
-    assert_that(matches).is_less_than(500)
+    # Generate CFN template file
+    cluster_template, assets = _generate_template(cluster, capsys)
+    cluster_template_as_yaml = format_content(cluster_template, S3FileFormat.YAML)  # Main template is YAML formatted
+    assets_as_json = [
+        format_content(asset, S3FileFormat.MINIFIED_JSON)  # Nested templates/assets as JSON Minified
+        for asset in assets
+    ]
+
+    for template in [cluster_template_as_yaml] + assets_as_json:
+        output_path = str(tmpdir / "generated_cfn_template")
+        with open(output_path, "w") as output_file:
+            output_file.write(template)
+        _assert_template_limits(output_path, template)
+
+
+def _assert_template_limits(template_path: str, template_content: str):
+    """
+    Assert that size of the template doesn't exceed 1MB and number of resources doesn't exceed 500.
+
+    :param template_path: path to the generated cfn template
+    """
+    assert_that(os.stat(template_path).st_size).is_less_than(MAX_SIZE_OF_CFN_TEMPLATE)
+    matches = len(re.findall("Type.*AWS::", str()))
+    assert_that(matches).is_less_than(MAX_RESOURCES_PER_TEMPLATE)
 
 
 def _generate_template(cluster, capsys):
     # Try to build the template
-    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+    generated_template, assets_metadata = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
+    cluster_assets = [asset["content"] for asset in assets_metadata]
     _, err = capsys.readouterr()
     assert_that(err).is_empty()  # Assertion failure may become an update of dependency warning deprecations.
-    return generated_template
+    return generated_template, cluster_assets
 
 
 @pytest.mark.parametrize(
