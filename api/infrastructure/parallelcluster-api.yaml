@@ -35,9 +35,9 @@ Parameters:
     Default: ''
 
   PoliciesTemplateUri:
-    Description: S3 URI of the ParallelCluster Policies Template
+    Description: "S3 URI of the ParallelCluster Policies Template. Defaults to: s3://<REGION>-aws-parallelcluster/parallelcluster/3.6.0/templates/policies/policies.yaml"
     Type: String
-    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.5.0/templates/policies/policies.yaml
+    Default: ''
 
   VpcEndpointId:
     Description: When specified, configure a private API with the specified endpoint
@@ -154,6 +154,7 @@ Conditions:
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
   CreateApiUserRoleCondition: !Equals [!Ref CreateApiUserRole, true]
   UseCustomBucket: !Not [!Equals [!Ref CustomBucket, '']]
+  UseCustomPoliciesTemplateUri: !Not [!Equals [!Ref PoliciesTemplateUri, '']]
 
 Resources:
   # Policies nested stack
@@ -161,7 +162,12 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Condition: CreateIamResources
     Properties:
-      TemplateURL: !Ref PoliciesTemplateUri
+      TemplateURL: !If
+        - UseCustomPoliciesTemplateUri
+        - !Ref PoliciesTemplateUri
+        - !Sub
+          - "s3://${AWS::Region}-aws-parallelcluster/parallelcluster/${Version}/templates/policies/policies.yaml"
+          - { Version: !FindInMap [ParallelCluster, Constants, Version] }
       TimeoutInMinutes: 10
       Parameters:
         Region: !Ref Region
