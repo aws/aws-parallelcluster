@@ -19,7 +19,6 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 from typing import Union
 
-from aws_cdk import CfnDeletionPolicy, CfnOutput, CfnParameter, CfnStack, CfnTag, CustomResource, Duration, Fn, Stack
 from aws_cdk import aws_cloudformation as cfn
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_dynamodb as dynamomdb
@@ -28,7 +27,18 @@ from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
-from constructs import Construct
+from aws_cdk.core import (
+    CfnDeletionPolicy,
+    CfnOutput,
+    CfnParameter,
+    CfnStack,
+    CfnTag,
+    Construct,
+    CustomResource,
+    Duration,
+    Fn,
+    Stack,
+)
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
@@ -255,7 +265,7 @@ class ClusterCdkStack:
         self.head_node_instance = self._add_head_node()
         # Add a dependency to the cleanup Route53 resource, so that Route53 Hosted Zone is cleaned after node is deleted
         if self._condition_is_slurm() and hasattr(self.scheduler_resources, "cleanup_route53_custom_resource"):
-            self.head_node_instance.add_dependency(self.scheduler_resources.cleanup_route53_custom_resource)
+            self.head_node_instance.add_depends_on(self.scheduler_resources.cleanup_route53_custom_resource)
 
         # AWS Batch related resources
         if self._condition_is_batch():
@@ -643,7 +653,7 @@ class ClusterCdkStack:
             to_port=65535,
             cidr_ip="0.0.0.0/0",
             group_id=compute_security_group.ref,
-        ).add_dependency(compute_security_group_egress)
+        ).add_depends_on(compute_security_group_egress)
 
         # ComputeSecurityGroupIngress
         # Access to compute nodes from other compute nodes
@@ -899,7 +909,7 @@ class ClusterCdkStack:
             ),
         )
         if self.scheduler_plugin_stack:
-            wait_condition.add_dependency(self.scheduler_plugin_stack)
+            wait_condition.add_depends_on(self.scheduler_plugin_stack)
         return wait_condition, wait_condition_handle
 
     def _add_head_node(self):
@@ -1261,7 +1271,7 @@ class ClusterCdkStack:
             head_node_instance.node.add_dependency(self.compute_fleet_resources)
 
         if self._condition_is_scheduler_plugin() and self.scheduler_plugin_stack:
-            head_node_instance.add_dependency(self.scheduler_plugin_stack)
+            head_node_instance.add_depends_on(self.scheduler_plugin_stack)
 
         return head_node_instance
 

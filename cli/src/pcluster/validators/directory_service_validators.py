@@ -12,7 +12,7 @@
 import re
 from urllib.parse import urlparse
 
-from aws_cdk import Arn, ArnFormat
+from aws_cdk.core import Arn, ArnFormat
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
