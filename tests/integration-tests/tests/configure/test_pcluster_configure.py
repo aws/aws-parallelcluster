@@ -311,7 +311,7 @@ def get_unsupported_test_runner_options(request):
 def assert_configure_workflow(request, region, stages, config_path):
     logging.info(f"Using `pcluster configure` to write a configuration to {config_path}")
     environ["AWS_DEFAULT_REGION"] = region
-    configure_process = pexpect.spawn(f"pcluster configure --config {config_path}", encoding="utf-8")
+    configure_process = pexpect.spawn(f"pcluster configure --config {config_path}", encoding="utf-8", timeout=90)
     output_dir = request.config.getoption("output_dir")
     with open(
         f"{output_dir}/spawned-process-log-{datetime.now().strftime('%d-%m-%Y-%H:%M:%S.%f')}", "w", encoding="utf-8"
