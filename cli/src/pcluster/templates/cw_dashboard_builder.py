@@ -11,11 +11,10 @@
 from collections import defaultdict, namedtuple
 from typing import Iterable
 
-from aws_cdk import Duration, Stack
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_logs as logs
-from constructs import Construct
+from aws_cdk.core import Construct, Duration, Stack
 
 from pcluster.config.cluster_config import BaseClusterConfig, SharedFsxLustre, SharedStorageType
 
@@ -262,7 +261,7 @@ class CWDashboardConstruct(Construct):
                 )
             ],
         )
-        metric_filter.add_dependency(self.cw_log_group)
+        metric_filter.add_depends_on(self.cw_log_group)
         return metric_filter
 
     def _add_custom_health_metrics(self):

@@ -1,7 +1,8 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ instance }}
+# Add multi-NIC instance type from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html  
+  InstanceType: r6in.metal
   Networking:
     SubnetId: {{ public_subnet_id }}
     ElasticIp: true

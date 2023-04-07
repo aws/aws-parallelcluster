@@ -1,8 +1,8 @@
 from typing import Dict, List
 
-from aws_cdk import CfnTag, Fn, NestedStack, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_logs as logs
+from aws_cdk.core import CfnTag, Fn, NestedStack, Stack
 from constructs import Construct
 
 from pcluster.config.cluster_config import (
@@ -263,6 +263,7 @@ class QueueGroupStack(NestedStack):
                                 if self._cluster_hosted_zone
                                 else "",
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
+                                "ClusterName": self.stack_name,
                                 "SlurmDynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
                                 "LogGroupName": self._log_group.log_group_name
                                 if self._config.monitoring.logs.cloud_watch.enabled
