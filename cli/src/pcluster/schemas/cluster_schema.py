@@ -55,9 +55,11 @@ from pcluster.config.cluster_config import (
     ExistingFsxOntap,
     ExistingFsxOpenZfs,
     FlexibleInstanceType,
+    GpuHealthCheck,
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
+    HealthChecks,
     Iam,
     Image,
     Imds,
@@ -1019,6 +1021,31 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
         return ClusterDevSettings(**data)
 
 
+# ---------------------- Health Checks ---------------------- #
+
+
+class GpuHealthCheckSchema(BaseSchema):
+    """Represent the schema of gpu health check."""
+
+    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return GpuHealthCheck(**data)
+
+
+class HealthChecksSchema(BaseSchema):
+    """Represent the HealthChecks schema."""
+
+    gpu = fields.Nested(GpuHealthCheckSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return HealthChecks(**data)
+
+
 # ---------------------- Node and Cluster Schema ---------------------- #
 
 
@@ -1231,6 +1258,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     networking = fields.Nested(
         SlurmComputeResourceNetworkingSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
+    health_checks = fields.Nested(HealthChecksSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @validates_schema
@@ -1355,6 +1383,7 @@ class SlurmQueueSchema(_CommonQueueSchema):
     networking = fields.Nested(
         SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
+    health_checks = fields.Nested(HealthChecksSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load

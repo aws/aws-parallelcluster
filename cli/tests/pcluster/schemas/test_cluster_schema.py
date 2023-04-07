@@ -1124,3 +1124,218 @@ def test_timeouts_schema(head_node_bootstrap_timeout, compute_node_bootstrap_tim
         assert_that(timeouts.compute_node_bootstrap_timeout).is_equal_to(
             compute_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
         )
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message, expected_queue_gpu_hc, expected_cr1_gpu_hc, expected_cr2_gpu_hc",
+    [
+        # HealthChecks dictionary is empty
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {},
+            },
+            "",
+            None,
+            None,
+            None,
+        ),
+        # Health Checks sections are not defined
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+            },
+            "",
+            None,
+            None,
+            None,
+        ),
+        # Health Checks section is defined at queue level
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": True}},
+            },
+            "",
+            True,
+            None,
+            None,
+        ),
+        # Health Checks section is defined in a single compute resource
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {
+                        "Name": "compute_resource2",
+                        "InstanceType": "c4.2xlarge",
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                ],
+            },
+            "",
+            None,
+            None,
+            True,
+        ),
+        # Health Checks sections are defined at queue level and a single compute resource
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {
+                        "Name": "compute_resource2",
+                        "InstanceType": "c4.2xlarge",
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": True}},
+            },
+            "",
+            True,
+            None,
+            True,
+        ),
+        # Health Checks sections are defined at queue level and in both compute resource
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                        "InstanceType": "c5.2xlarge",
+                        "MaxCount": 5,
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                    {
+                        "Name": "compute_resource2",
+                        "InstanceType": "c4.2xlarge",
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": True}},
+            },
+            "",
+            True,
+            True,
+            True,
+        ),
+        # Gpu Health Check enable is defined using the true string value instead of the boolean value
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": "true"}},
+            },
+            "",
+            True,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is defined using the true integer value instead of the boolean value
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": 1}},
+            },
+            "",
+            True,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is defined using a string, and it doesn't represent a boolean
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": "vero"}},
+            },
+            "Not a valid boolean",
+            None,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is defined using an integer, and it doesn't represent a boolean
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": -1}},
+            },
+            "Not a valid boolean",
+            None,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is not defined
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu"},
+            },
+            "Invalid input type",
+            None,
+            None,
+            None,
+        ),
+    ],
+)
+def test_slurm_gpu_health_checks(
+    mocker,
+    config_dict,
+    failure_message,
+    expected_queue_gpu_hc,
+    expected_cr1_gpu_hc,
+    expected_cr2_gpu_hc,
+):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SlurmQueueSchema().load(config_dict)
+    else:
+        queue = SlurmQueueSchema().load(config_dict)
+        assert_that(queue.health_checks.gpu.enabled).is_equal_to(expected_queue_gpu_hc)
+        assert_that(queue.compute_resources[0].health_checks.gpu.enabled).is_equal_to(expected_cr1_gpu_hc)
+        assert_that(queue.compute_resources[1].health_checks.gpu.enabled).is_equal_to(expected_cr2_gpu_hc)

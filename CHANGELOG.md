@@ -12,6 +12,7 @@ CHANGELOG
 - Allow to specify a sequence of multiple custom actions scripts per event.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
 - Track the longest dynamic node idle time in CloudWatch Dashboard.
+- Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job submission.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
