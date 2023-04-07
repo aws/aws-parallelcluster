@@ -33,7 +33,7 @@ test-suites:
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
-        - regions: ["use1-az6"] # do not move, unless capacity reservation is moved as well
+        - regions: ["us-east-1"] 
           instances: ["p4d.24xlarge"]
           oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: [ "slurm" ]
