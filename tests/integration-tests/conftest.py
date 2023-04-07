@@ -133,7 +133,7 @@ def pytest_addoption(parser):
     parser.addoption("--post-install", help="url to post install script")
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
-    parser.addoption("--public-ecr-image-uri", help="S3 URI of the ParallelCluster API spec")
+    parser.addoption("--policies-uri", help="Use an existing policies URI instead of uploading one.")
     parser.addoption(
         "--cluster-custom-resource-service-token",
         help="(Optional) ServiceToken (ARN) of the CloudFormation Cluster custom resource provider.",
@@ -166,10 +166,7 @@ def pytest_addoption(parser):
         help="use default IAM creds when running pcluster commands",
         action="store_true",
     )
-    parser.addoption(
-        "--iam-user-role-stack-name",
-        help="Name of CFN stack providing IAM user roles.",
-    )
+    parser.addoption("--iam-user-role-stack-name", help="Name of CFN stack providing IAM user roles.")
     parser.addoption(
         "--directory-stack-name",
         help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
@@ -183,10 +180,7 @@ def pytest_addoption(parser):
         "--slurm-database-stack-name",
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
     )
-    parser.addoption(
-        "--external-shared-storage-stack-name",
-        help="Name of existing external shared storage stack.",
-    )
+    parser.addoption("--external-shared-storage-stack-name", help="Name of existing external shared storage stack.")
 
 
 def pytest_generate_tests(metafunc):
@@ -423,9 +417,9 @@ def clusters_factory(request, region):
         factory.destroy_all_clusters(test_passed=test_passed)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def api_server_factory(
-    cfn_stacks_factory, request, public_ecr_image_uri, api_definition_s3_uri, api_infrastructure_s3_uri
+    cfn_stacks_factory, request, resource_bucket, policies_uri, api_definition_s3_uri, api_infrastructure_s3_uri
 ):
     """Creates a factory for deploying API servers on-demand to each region."""
     api_servers = {}
@@ -439,12 +433,14 @@ def api_server_factory(
         ]
         if api_definition_s3_uri:
             params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
-        if public_ecr_image_uri:
-            params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
+        if policies_uri:
+            params.append({"ParameterKey": "PoliciesTemplateUri", "ParameterValue": policies_uri})
+        if resource_bucket:
+            params.append({"ParameterKey": "CustomBucket", "ParameterValue": resource_bucket})
 
         template = (
             api_infrastructure_s3_uri
-            or f"https://{server_region}-aws-parallelcluster.s3.{server_region}.amazonaws.com"
+            or f"https://{resource_bucket}.s3.{server_region}.amazonaws.com"
             f"{'.cn' if server_region.startswith('cn') else ''}"
             f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
         )
@@ -573,12 +569,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_p
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(
-        config_file="pcluster.config.yaml",
-        benchmarks=None,
-        output_file=None,
-        **kwargs,
-    ):
+    def _config_renderer(config_file="pcluster.config.yaml", benchmarks=None, output_file=None, **kwargs):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
@@ -791,11 +782,9 @@ def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     ):
         default_values["scheduler"] = "plugin"
     default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
-    default_values["scheduler_prefix"] = {
-        "slurm": "Slurm",
-        "awsbatch": "AwsBatch",
-        "plugin": "Scheduler",
-    }.get(default_values.get("scheduler"))
+    default_values["scheduler_prefix"] = {"slurm": "Slurm", "awsbatch": "AwsBatch", "plugin": "Scheduler"}.get(
+        default_values.get("scheduler")
+    )
 
     return default_values
 
@@ -939,18 +928,18 @@ def create_roles_stack(request, region):
 
 
 @pytest.fixture(scope="session")
-def public_ecr_image_uri(request):
-    return request.config.getoption("public_ecr_image_uri")
-
-
-@pytest.fixture(scope="session")
 def api_uri(request):
     return request.config.getoption("api_uri")
 
 
-@pytest.fixture(scope="session")
-def api_definition_s3_uri(request):
-    return request.config.getoption("api_definition_s3_uri")
+@pytest.fixture(scope="class")
+def api_definition_s3_uri(request, resource_bucket):
+    if request.config.getoption("api_definition_s3_uri"):
+        return request.config.getoption("api_definition_s3_uri")
+    return (
+        f"s3://{resource_bucket}/parallelcluster/{get_installed_parallelcluster_version()}/"
+        f"api/ParallelCluster.openapi.yaml"
+    )
 
 
 @pytest.fixture(scope="session")
@@ -1390,18 +1379,10 @@ def ami_copy(region):
 
         # Created tag for copied image to be filtered by cleanup ami pipeline
         client.create_tags(
-            Resources=[
-                f"{copy_ami_id}",
-            ],
+            Resources=[f"{copy_ami_id}"],
             Tags=[
-                {
-                    "Key": "parallelcluster:image_id",
-                    "Value": f"aws-parallelcluster-copied-image-{test_name}",
-                },
-                {
-                    "Key": "parallelcluster:build_status",
-                    "Value": "available",
-                },
+                {"Key": "parallelcluster:image_id", "Value": f"aws-parallelcluster-copied-image-{test_name}"},
+                {"Key": "parallelcluster:build_status", "Value": "available"},
             ],
         )
         return copy_ami_id
@@ -1471,10 +1452,7 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
                         dimensions,
                     )
                     for metric_data in metric_data_list:
-                        cloudwatch_client.put_metric_data(
-                            Namespace=metric_namespace,
-                            MetricData=metric_data,
-                        )
+                        cloudwatch_client.put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
         logging.info("Finished benchmarks for %s", function_name)
 
     yield _run_benchmarks
@@ -1490,9 +1468,7 @@ def scheduler_plugin_configuration(request, region, scheduler_plugin_definitions
     scheduler_definition_url = scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
     if scheduler_definition_url:
         logging.info(
-            "Adding scheduler plugin (%s) scheduler-definition-url to be (%s)",
-            scheduler,
-            scheduler_definition_url,
+            "Adding scheduler plugin (%s) scheduler-definition-url to be (%s)", scheduler, scheduler_definition_url
         )
         scheduler_plugin["scheduler-definition-url"] = scheduler_definition_url
 
@@ -1549,12 +1525,7 @@ def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key
             "FSxSecurityGroup",
             GroupDescription="SecurityGroup for testing existing FSx",
             SecurityGroupIngress=[
-                ec2.SecurityGroupRule(
-                    IpProtocol=ip_protocol,
-                    FromPort=port,
-                    ToPort=port,
-                    CidrIp="0.0.0.0/0",
-                )
+                ec2.SecurityGroupRule(IpProtocol=ip_protocol, FromPort=port, ToPort=port, CidrIp="0.0.0.0/0")
                 for port in ports
                 for ip_protocol in ip_protocols
             ],
@@ -1608,9 +1579,7 @@ def svm_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
         fsx_svm_template.set_description("Create Storage Virtual Machine stack")
 
         fsx_svm = StorageVirtualMachine(
-            title="StorageVirtualMachineFileSystemResource",
-            Name="fsx",
-            FileSystemId=file_system_id,
+            title="StorageVirtualMachineFileSystemResource", Name="fsx", FileSystemId=file_system_id
         )
         fsx_svm_template.add_resource(fsx_svm)
 
@@ -1748,9 +1717,7 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
         vpc_id = vpc_stack.cfn_outputs["VpcId"]
         security_group = template.add_resource(
             ec2.SecurityGroup(
-                "SecurityGroupResource",
-                GroupDescription="custom security group for EFS mount targets",
-                VpcId=vpc_id,
+                "SecurityGroupResource", GroupDescription="custom security group for EFS mount targets", VpcId=vpc_id
             )
         )
         # Allow inbound connection though NFS port within the VPC

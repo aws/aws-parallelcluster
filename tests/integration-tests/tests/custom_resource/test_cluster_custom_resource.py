@@ -103,7 +103,7 @@ def test_cluster_update(region, cluster_custom_resource_factory, external_update
     # Update the stack
     update_params = parameters | update_parameters
     stack_params = [{"ParameterKey": k, "ParameterValue": v} for k, v in update_params.items()]
-    stack.factory.update_stack(stack.name, stack.region, stack_params, True)
+    stack.factory.update_stack(stack.name, stack.region, stack_params, stack_is_under_test=True)
 
     assert_that(stack.cfn_outputs["HeadNodeIp"]).is_not_none()
 
@@ -143,7 +143,7 @@ def test_cluster_update_invalid(region, cluster_custom_resource_factory, update_
     parameters = [{"ParameterKey": k, "ParameterValue": v} for k, v in update_params.items()]
 
     with pytest.raises(StackError) as stack_error:
-        stack.factory.update_stack(stack.name, stack.region, parameters, True)
+        stack.factory.update_stack(stack.name, stack.region, parameters, stack_is_under_test=True)
 
     reason = failure_reason(stack_error.stack_events)
     assert_that(reason).contains(error_message)

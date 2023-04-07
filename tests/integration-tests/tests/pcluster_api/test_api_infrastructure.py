@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
-import time
 
 import boto3
 import botocore
@@ -30,18 +29,22 @@ LOGGER = logging.getLogger(__name__)
 
 
 @pytest.fixture()
-def api_with_default_settings(api_infrastructure_s3_uri, public_ecr_image_uri, api_definition_s3_uri, request, region):
+def api_with_default_settings(
+    api_infrastructure_s3_uri, api_definition_s3_uri, policies_uri, request, region, resource_bucket
+):
     factory = CfnStacksFactory(request.config.getoption("credential"))
 
     params = []
     if api_definition_s3_uri:
         params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
-    if public_ecr_image_uri:
-        params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
+    if policies_uri:
+        params.append({"ParameterKey": "PoliciesTemplateUri", "ParameterValue": policies_uri})
+    if resource_bucket:
+        params.append({"ParameterKey": "CustomBucket", "ParameterValue": resource_bucket})
 
     template = (
         api_infrastructure_s3_uri
-        or f"https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}"
+        or f"https://{resource_bucket}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}"
         f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
     )
     logging.info(f"Creating API Server stack in {region} with template {template}")
@@ -67,31 +70,23 @@ def test_api_infrastructure_with_default_parameters(region, api_with_default_set
     """
     parallelcluster_lambda_name = api_with_default_settings.cfn_resources["ParallelClusterFunction"]
     parallelcluster_lambda_arn = api_with_default_settings.cfn_outputs["ParallelClusterLambdaArn"]
-    parallelcluster_api_copied_image_uri = api_with_default_settings.cfn_outputs["UriOfCopyOfPublicEcrImage"]
 
     parallelcluster_api_id = api_with_default_settings.cfn_resources["ApiGatewayApiWithoutCustomDomain"]
     parallelcluster_api_url = api_with_default_settings.cfn_outputs["ParallelClusterApiInvokeUrl"]
     parallelcluster_user_role = api_with_default_settings.cfn_outputs["ParallelClusterApiUserRole"]
-    image_builder_pipeline = api_with_default_settings.cfn_outputs["ParallelClusterDockerUpdateImagePipeline"]
 
-    _assert_parallelcluster_lambda(
-        lambda_name=parallelcluster_lambda_name,
-        lambda_arn=parallelcluster_lambda_arn,
-        lambda_image_uri=parallelcluster_api_copied_image_uri,
-    )
+    _assert_parallelcluster_lambda(lambda_name=parallelcluster_lambda_name, lambda_arn=parallelcluster_lambda_arn)
     _assert_parallelcluster_api(api_id=parallelcluster_api_id, api_url=parallelcluster_api_url)
     _test_auth(region, parallelcluster_user_role, parallelcluster_api_url)
-    _test_docker_image_refresh(image_builder_pipeline, parallelcluster_lambda_name)
     _test_api_deletion(api_with_default_settings)
 
 
-def _assert_parallelcluster_lambda(lambda_name, lambda_arn, lambda_image_uri):
+def _assert_parallelcluster_lambda(lambda_name, lambda_arn):
     """Check that the ParallelCluster Lambda is correctly configured
 
     :param client: the Lambda client
     :param lambda_name: the name of the ParallelCluster Lambda
     :param lambda_arn: the ARN of the ParallelCluster Lambda
-    :param lambda_image_uri: the URI of the local copy of the ParallelCluster Lambda Docker image
     """
     logging.info("Checking Lambda configuration")
 
@@ -100,13 +95,15 @@ def _assert_parallelcluster_lambda(lambda_name, lambda_arn, lambda_image_uri):
     lambda_configuration = lambda_resource["Configuration"]
     assert_that(lambda_configuration["FunctionArn"]).is_equal_to(lambda_arn)
     assert_that(lambda_configuration["Timeout"]).is_equal_to(30)
+    assert_that(lambda_configuration).contains("Layers")
+    assert_that(len(lambda_configuration["Layers"])).is_equal_to(1)
+    assert_that(lambda_configuration["Layers"][0]).contains("Arn")
     if "TracingConfig" in lambda_configuration:
         # When executed in GovCloud get_function does not return TracingConfig
         assert_that(lambda_configuration["TracingConfig"]["Mode"]).is_equal_to("Active")
     assert_that(lambda_configuration["MemorySize"]).is_equal_to(2048)
     assert_that(lambda_resource["Tags"]).contains("parallelcluster:version")
     assert_that(lambda_resource["Tags"]).contains("parallelcluster:resource")
-    assert_that(lambda_resource["Code"]["ImageUri"]).is_equal_to(lambda_image_uri)
 
 
 def _assert_parallelcluster_api(api_id, api_url):
@@ -167,35 +164,7 @@ def _test_api_deletion(api_stack):
 
     cfn = boto3.client("cloudformation")
     cfn.delete_stack(StackName=api_stack.name)
-    cfn.get_waiter("stack_delete_complete").wait(
-        StackName=api_stack.name,
-    )
-
-
-def _test_docker_image_refresh(image_builder_pipeline, lambda_name):
-    logging.info("Testing ImageBuilder pipeline and docker image refresh")
-
-    image_builder = boto3.client("imagebuilder")
-    image_builder.start_image_pipeline_execution(
-        imagePipelineArn=image_builder_pipeline,
-    )
-    response = image_builder.list_image_pipeline_images(
-        imagePipelineArn=image_builder_pipeline,
-    )
-
-    assert_that(response["imageSummaryList"]).is_length(1)
-    image = _wait_for_image_build(image_builder_pipeline)
-    logging.info("Image %s", image)
-    assert_that(image["state"]["status"]).is_equal_to("AVAILABLE")
-
-    # Wait for 2 minutes for the Lambda to be updated
-    time.sleep(120)
-    lambda_client = boto3.client("lambda")
-    lambda_resource = lambda_client.get_function(FunctionName=lambda_name)
-    logging.info("API Lambda %s", lambda_resource)
-    assert_that(lambda_resource["Code"]["ImageUri"]).is_equal_to(
-        image["outputResources"]["containers"][0]["imageUris"][0]
-    )
+    cfn.get_waiter("stack_delete_complete").wait(StackName=api_stack.name)
 
 
 @retry(

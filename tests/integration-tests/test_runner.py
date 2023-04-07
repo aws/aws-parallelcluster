@@ -69,9 +69,9 @@ TEST_DEFAULTS = {
     "vpc_stack": None,
     "api_uri": None,
     "cluster": None,
+    "policies_uri": None,
     "api_definition_s3_uri": None,
     "api_infrastructure_s3_uri": None,
-    "public_ecr_image_uri": None,
     "no_delete": False,
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
@@ -331,14 +331,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("api_definition_s3_uri"),
     )
     api_group.add_argument(
-        "--public-ecr-image-uri",
-        help="S3 URI of the ParallelCluster API spec",
-        default=TEST_DEFAULTS.get("public_ecr_image_uri"),
+        "--api-uri", help="URI of an existing ParallelCluster API", default=TEST_DEFAULTS.get("api_uri")
     )
     api_group.add_argument(
-        "--api-uri",
-        help="URI of an existing ParallelCluster API",
-        default=TEST_DEFAULTS.get("api_uri"),
+        "--policies-uri",
+        help="Use an existing policies URI instead of uploading one.",
+        default=TEST_DEFAULTS.get("policies_uri"),
     )
 
     debug_group = parser.add_argument_group("Debugging/Development options")
@@ -605,9 +603,6 @@ def _set_custom_resource_args(args, pytest_args):
 def _set_api_args(args, pytest_args):
     if args.api_definition_s3_uri:
         pytest_args.extend(["--api-definition-s3-uri", args.api_definition_s3_uri])
-
-    if args.public_ecr_image_uri:
-        pytest_args.extend(["--public-ecr-image-uri", args.public_ecr_image_uri])
 
     if args.api_uri:
         pytest_args.extend(["--api-uri", args.api_uri])
