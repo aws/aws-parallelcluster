@@ -188,7 +188,7 @@ Iam:
   Roles:
     LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
-  DetailedMonitoring: true  # false
+  EnableDetailedMonitoring: true  # false
   Logs:
     CloudWatch:
       Enabled: true  # true

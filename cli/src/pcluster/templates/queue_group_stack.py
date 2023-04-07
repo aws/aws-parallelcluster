@@ -131,6 +131,7 @@ class QueueGroupStack(NestedStack):
                     queue_lt_security_groups,
                     self._get_placement_group_for_compute_resource(queue, self.managed_placement_groups, resource),
                     self._compute_instance_profiles,
+                    self._config.is_detailed_monitoring_enabled,
                 )
 
     def _get_custom_compute_resource_tags(self, queue_config):
@@ -147,6 +148,7 @@ class QueueGroupStack(NestedStack):
         queue_lt_security_groups,
         placement_group,
         instance_profiles,
+        is_detailed_monitoring_enabled,
     ):
         # LT network interfaces
         compute_lt_nw_interfaces = [
@@ -279,6 +281,9 @@ class QueueGroupStack(NestedStack):
                                 "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
                                 "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
+                                "DetailedMonitoringEnabled": "true"
+                                if self._config.is_detailed_monitoring_enabled
+                                else "false",
                                 "QueueName": queue.name,
                                 "ComputeResourceName": compute_resource.name,
                                 "EnableEfaGdr": "compute"
@@ -304,7 +309,7 @@ class QueueGroupStack(NestedStack):
                         },
                     )
                 ),
-                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=False),
+                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=is_detailed_monitoring_enabled),
                 tag_specifications=[
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
