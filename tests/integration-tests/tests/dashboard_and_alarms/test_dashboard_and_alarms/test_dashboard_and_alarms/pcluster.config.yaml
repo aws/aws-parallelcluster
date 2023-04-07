@@ -27,7 +27,7 @@ Scheduling:
           MinCount: 1
           {% endif %}
 Monitoring:
-  DetailedMonitoring: true
+  EnableDetailedMonitoring: true
   Logs:
     CloudWatch:
       Enabled: {{ cw_log_enabled }}

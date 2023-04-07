@@ -67,7 +67,7 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 1200
 Monitoring:
-  DetailedMonitoring: true
+  EnableDetailedMonitoring: true
   Logs:
     CloudWatch:
       Enabled: true

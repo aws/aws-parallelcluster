@@ -59,7 +59,7 @@ SharedStorage:
     EbsSettings:
       VolumeType: gp2
 Monitoring:
-  DetailedMonitoring: false
+  EnableDetailedMonitoring: false
   Logs:
     CloudWatch:
       Enabled: true

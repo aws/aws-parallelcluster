@@ -36,6 +36,7 @@ from pcluster.constants import (
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
     DELETE_POLICY,
+    DETAILED_MONITORING_ENABLED_DEFAULT,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT_US_ISO,
@@ -836,9 +837,13 @@ class Dashboards(Resource):
 class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
-    def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
+    def __init__(
+        self, enable_detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs
+    ):
         super().__init__(**kwargs)
-        self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
+        self.enable_detailed_monitoring = Resource.init_param(
+            enable_detailed_monitoring, default=DETAILED_MONITORING_ENABLED_DEFAULT
+        )
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
 
@@ -1694,6 +1699,11 @@ class BaseClusterConfig(Resource):
             if self.monitoring and self.monitoring.dashboards and self.monitoring.dashboards.cloud_watch
             else False
         )
+
+    @property
+    def is_detailed_monitoring_enabled(self):
+        """Return True if Detailed Monitoring is enabled."""
+        return self.monitoring.enable_detailed_monitoring
 
     @property
     def is_dcv_enabled(self):

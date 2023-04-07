@@ -1039,6 +1039,7 @@ class ClusterCdkStack:
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
                     "log_rotation_enabled": "true" if self.config.is_log_rotation_enabled else "false",
+                    "detailed_monitoring_enabled": "true" if self.config.is_detailed_monitoring_enabled else "false",
                     "cluster_s3_bucket": self.bucket.name,
                     "cluster_config_s3_key": "{0}/configs/{1}".format(
                         self.bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
