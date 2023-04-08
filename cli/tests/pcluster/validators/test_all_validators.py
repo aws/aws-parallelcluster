@@ -27,6 +27,7 @@ from pcluster.validators import (
     networking_validators,
     s3_validators,
     slurm_settings_validator,
+    tags_validators,
 )
 from pcluster.validators.common import Validator, ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -45,6 +46,7 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
         networking_validators,
         s3_validators,
         slurm_settings_validator,
+        tags_validators,
     ]
     if additional_modules:
         modules += additional_modules
@@ -219,7 +221,10 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
     monitoring_validators = validators_path + ".monitoring_validators"
     log_rotation_validator = mocker.patch(monitoring_validators + ".LogRotationValidator._validate", return_value=[])
-
+    tags_validators = validators_path + ".tags_validators"
+    compute_resource_tags_validator = mocker.patch(
+        tags_validators + ".ComputeResourceTagsValidator._validate", return_value=[]
+    )
     mocker.patch(
         "pcluster.config.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
     )
@@ -351,3 +356,4 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     instance_type_accelerator_manufacturer_validator.assert_called()
     instance_type_placement_group_validator.assert_called()
     log_rotation_validator.assert_called()
+    compute_resource_tags_validator.assert_called()
