@@ -199,6 +199,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
 )
+from pcluster.validators.tags_validators import ComputeResourceTagsValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -3124,6 +3125,13 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)
+                self._register_validator(
+                    ComputeResourceTagsValidator,
+                    queue_name=queue.name,
+                    compute_resource_name=compute_resource.name,
+                    cluster_tags=self.get_tags(),
+                    queue_tags=queue.get_tags(),
+                )
 
     @property
     def image_dict(self):

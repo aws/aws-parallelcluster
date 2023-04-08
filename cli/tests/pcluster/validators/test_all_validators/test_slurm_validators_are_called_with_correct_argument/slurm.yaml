@@ -37,6 +37,11 @@ Scheduling:
         - Name: compute_resource3
           InstanceType: t2.large
           DisableSimultaneousMultithreading: true
+      Tags:
+        - Key: queue_tag1
+          Value: String
+        - Key: queue_tag2
+          Value: String
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1
@@ -54,3 +59,8 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 3600
+Tags:
+  - Key: cluster_tag1
+    Value: String
+  - Key: cluster_tag2
+    Value: String
