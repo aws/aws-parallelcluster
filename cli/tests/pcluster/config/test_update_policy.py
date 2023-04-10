@@ -249,6 +249,26 @@ def test_max_count_policy(mocker, is_fleet_stopped, old_max, new_max, expected_r
             True,
             id="Stop fleet and queue tag unset without queue update strategy",
         ),
+        pytest.param(
+            False,
+            "Tags",
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources", "Tags[computetag1]"],
+            '{"Key": "compute_tag2","Value": "compute_tag_value_1"}',
+            None,
+            QueueUpdateStrategy.DRAIN.value,
+            True,
+            id="running fleet and compute tag unset with update strategy DRAIN",
+        ),
+        pytest.param(
+            False,
+            "Value",
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]", "Tags[computetag1]"],
+            "value_1",
+            "value_2",
+            None,
+            False,
+            id="running fleet and change compute tag without update strategy DRAIN",
+        ),
     ],
 )
 def test_queue_update_strategy_condition_checker(

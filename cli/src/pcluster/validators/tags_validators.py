@@ -14,18 +14,50 @@ from pcluster.validators.common import FailureLevel, Validator
 class ComputeResourceTagsValidator(Validator):
     """Compute resources tags validator."""
 
-    def _validate(self, queue_name, compute_resource_name, cluster_tags, queue_tags):
-        cluster_tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
-        queue_tags = {tag.key: tag.value for tag in queue_tags} if queue_tags else {}
+    def _validate(self, queue_name, compute_resource_name, cluster_tags, queue_tags, compute_resource_tags):
+        cluster_tag_keys = {tag.key for tag in cluster_tags} if cluster_tags else set()
+        queue_tag_keys = {tag.key for tag in queue_tags} if queue_tags else set()
+        compute_resource_tag_keys = {tag.key for tag in compute_resource_tags} if compute_resource_tags else set()
 
-        if cluster_tags and queue_tags:
-            cluster_keys = set(cluster_tags.keys())
-            queue_keys = set(queue_tags.keys())
-            overlapping_keys = sorted(list(cluster_keys.intersection(queue_keys)))
-            if overlapping_keys:
-                self._add_failure(
-                    f"The following Tag keys are defined in both under `Tags` and `SlurmQueue/Tags`: {overlapping_keys}"
-                    f" and will be overridden by the value set in `SlurmQueue/Tags` for "
-                    f"ComputeResource '{compute_resource_name}' in queue '{queue_name}'.",
-                    FailureLevel.WARNING,
-                )
+        overlapping_keys = cluster_tag_keys & queue_tag_keys & compute_resource_tag_keys
+        overlapping_keys_list = sorted(list(overlapping_keys))
+        queue_cluster_overlapping_keys_list = sorted(list(cluster_tag_keys & queue_tag_keys - overlapping_keys))
+        compute_resource_queue_overlapping_key_list = sorted(
+            list(queue_tag_keys & compute_resource_tag_keys - overlapping_keys)
+        )
+        cluster_compute_resource_overlapping_key_list = sorted(
+            list(cluster_tag_keys & compute_resource_tag_keys - overlapping_keys)
+        )
+
+        if overlapping_keys_list:
+            self._add_failure(
+                "The following Tag keys are defined under `Tags`, `SlurmQueue/Tags` and "
+                f"`SlurmQueue/ComputeResources/Tags`: {overlapping_keys_list}"
+                " and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for "
+                f"ComputeResource '{compute_resource_name}' in queue '{queue_name}'.",
+                FailureLevel.WARNING,
+            )
+        if queue_cluster_overlapping_keys_list:
+            self._add_failure(
+                "The following Tag keys are defined in both under `Tags` and `SlurmQueue/Tags`: "
+                f"{queue_cluster_overlapping_keys_list} and will be overridden by the value set in `SlurmQueue/Tags` "
+                f"for ComputeResource '{compute_resource_name}' in queue '{queue_name}'.",
+                FailureLevel.WARNING,
+            )
+        if compute_resource_queue_overlapping_key_list:
+            self._add_failure(
+                "The following Tag keys are defined in both under `SlurmQueue/Tags` and "
+                f"`SlurmQueue/ComputeResources/Tags`: {compute_resource_queue_overlapping_key_list} and will be "
+                f"overridden by the value set in `SlurmQueue/ComputeResources/Tags` for "
+                f"ComputeResource '{compute_resource_name}' in queue '{queue_name}'.",
+                FailureLevel.WARNING,
+            )
+
+        if cluster_compute_resource_overlapping_key_list:
+            self._add_failure(
+                "The following Tag keys are defined in both under `Tags` and `SlurmQueue/ComputeResources/Tags`: "
+                f"{cluster_compute_resource_overlapping_key_list} and will be overridden by the value set in "
+                f"`SlurmQueue/ComputeResources/Tags` for ComputeResource '{compute_resource_name}' in queue"
+                f" '{queue_name}'.",
+                FailureLevel.WARNING,
+            )

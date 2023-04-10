@@ -18,6 +18,7 @@ from pcluster.schemas.common_schema import (
     ImdsSchema,
     LambdaFunctionsVpcConfigSchema,
     validate_json_format,
+    validate_no_duplicate_tag,
     validate_no_reserved_tag,
 )
 
@@ -111,3 +112,21 @@ def test_validate_no_reserved_tag(tags, failure_message):
             validate_no_reserved_tag(tags)
     else:
         validate_no_reserved_tag(tags)
+
+
+@pytest.mark.parametrize(
+    "tags, failure_message",
+    [
+        ([BaseTag(key="test1", value="test"), BaseTag(key="test2", value="test")], None),
+        (
+            [BaseTag(key="test1", value="test"), BaseTag(key="test1", value="test")],
+            "Duplicate tag key \\(test1\\) detected. Tags keys should be unique within the Tags section.",
+        ),
+    ],
+)
+def test_validate_no_duplicate_tag(tags, failure_message):
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            validate_no_duplicate_tag(tags)
+    else:
+        validate_no_duplicate_tag(tags)

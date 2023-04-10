@@ -65,6 +65,18 @@ def validate_no_reserved_tag(tags):
                 raise ValidationError(message=f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved and cannot be used.")
 
 
+def validate_no_duplicate_tag(tags):
+    """Validate there is no duplicate tag keys in the same tag section."""
+    all_tags = set()
+    for tag in tags:
+        tag_key = tag.key
+        if tag_key in all_tags:
+            raise ValidationError(
+                f"Duplicate tag key ({tag_key}) detected. Tags keys should be unique within the Tags section."
+            )
+        all_tags.add(tag_key)
+
+
 def get_field_validator(field_name):
     allowed_values = ALLOWED_VALUES[field_name]
     return validate.OneOf(allowed_values) if isinstance(allowed_values, list) else validate.Regexp(allowed_values)
