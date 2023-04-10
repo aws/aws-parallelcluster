@@ -11,7 +11,7 @@
 import pytest
 
 from pcluster.config.cluster_config import CloudWatchLogs, LogRotation, Logs
-from pcluster.validators.monitoring_validators import LogRotationValidator
+from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -32,4 +32,22 @@ from tests.pcluster.validators.utils import assert_failure_messages
 )
 def test_compute_console_logging_validator(logs, expected_message):
     actual_failures = LogRotationValidator().execute(logs)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "is_detailed_monitoring_enabled, expected_message",
+    [
+        (False, None),
+        (
+            True,
+            "Detailed Monitoring is enabled for EC2 instances in your compute fleet. The Amazon EC2 console will "
+            "display monitoring graphs with a 1-minute period for these instances. Note that this will increase "
+            "the cost. If you want to avoid this and use basic monitoring instead, please set "
+            "`Monitoring / EnableDetailedMonitoring` to false.",
+        ),
+    ],
+)
+def test_detailed_monitoring_validator(is_detailed_monitoring_enabled, expected_message):
+    actual_failures = DetailedMonitoringValidator().execute(is_detailed_monitoring_enabled)
     assert_failure_messages(actual_failures, expected_message)

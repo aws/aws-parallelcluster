@@ -847,7 +847,7 @@ class Monitoring(Resource):
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
 
-    def _register_validators(self, context: ValidatorContext = None):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             DetailedMonitoringValidator, is_detailed_monitoring_enabled=self.enable_detailed_monitoring
         )
