@@ -1911,6 +1911,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         networking: SlurmComputeResourceNetworking = None,
         health_checks: HealthChecks = None,
         custom_slurm_settings: Dict = None,
+        tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1928,6 +1929,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.networking = networking or SlurmComputeResourceNetworking(implied=True)
         self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
+        self.tags = tags
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
@@ -1977,6 +1979,10 @@ class _BaseSlurmComputeResource(BaseComputeResource):
     @abstractmethod
     def instance_types(self) -> List[str]:
         pass
+
+    def get_tags(self):
+        """Return tags configured in the slurm compute resource configuration."""
+        return self.tags
 
 
 class FlexibleInstanceType(Resource):
@@ -3140,6 +3146,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     compute_resource_name=compute_resource.name,
                     cluster_tags=self.get_tags(),
                     queue_tags=queue.get_tags(),
+                    compute_resource_tags=compute_resource.get_tags(),
                 )
 
     @property

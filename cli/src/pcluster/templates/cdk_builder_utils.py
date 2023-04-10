@@ -28,6 +28,7 @@ from pcluster.config.cluster_config import (
     HeadNode,
     SharedStorageType,
     SlurmClusterConfig,
+    SlurmComputeResource,
     SlurmQueue,
 )
 from pcluster.constants import (
@@ -145,7 +146,7 @@ def get_cluster_tags(stack_name: str, raw_dict: bool = False):
     return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
-def get_custom_tags(config: Union[BaseClusterConfig, SlurmQueue], raw_dict: bool = False):
+def get_custom_tags(config: Union[BaseClusterConfig, SlurmQueue, SlurmComputeResource], raw_dict: bool = False):
     """Return a list of tags set by the user."""
     custom_tags = config.get_tags()
     tags = {tag.key: tag.value for tag in custom_tags} if custom_tags else {}

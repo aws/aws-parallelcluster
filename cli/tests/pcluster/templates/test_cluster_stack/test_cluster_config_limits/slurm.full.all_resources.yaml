@@ -78,6 +78,11 @@ Scheduling:
         {% for j in range(max_number_of_ondemand_crs) %}
         - Name: compute-resource-ondemand-{{ i }}{{ j }}
           InstanceType: c5.xlarge
+          Tags:
+            {% for i in range(number_of_tags) %}
+            - Key: computetag{{ i }}
+              Value: computetag{{ i }}
+            {% endfor %}
         {% endfor %}
       CustomActions:
         OnNodeStart:
@@ -148,6 +153,11 @@ Scheduling:
             PlacementGroup:
               Enabled: true
               Id: String
+          Tags:
+            {% for i in range(number_of_tags) %}
+            - Key: computetag{{ i }}
+              Value: computetag{{ i }}
+            {% endfor %}
         {% endfor %}
       Iam:
         InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
