@@ -12,7 +12,7 @@ from pcluster.validators.common import FailureLevel, Validator
 
 
 class LogRotationValidator(Validator):
-    """Security groups validator."""
+    """Log Rotation validator."""
 
     def _validate(self, log):
         if not log.cloud_watch.enabled and log.rotation.enabled:
@@ -20,5 +20,19 @@ class LogRotationValidator(Validator):
                 "Cloudwatch Logging is disabled but Log Rotation is enabled. Logs will be rotated and removed from the "
                 "cluster once they reach a certain size. If you want to keep logs locally within the cluster, please "
                 "set `Monitoring / Logs / Rotation / Enabled` to false.",
+                FailureLevel.WARNING,
+            )
+
+
+class DetailedMonitoringValidator(Validator):
+    """Detailed Monitoring validator."""
+
+    def _validate(self, is_detailed_monitoring_enabled):
+        if is_detailed_monitoring_enabled:
+            self._add_failure(
+                "Detailed Monitoring is enabled for EC2 instances in your compute fleet. The Amazon EC2 console will "
+                "display monitoring graphs with a 1-minute period for these instances. Note that this will increase "
+                "the cost. If you want to avoid this and use basic monitoring instead, please set "
+                "`Monitoring / EnableDetailedMonitoring` to false.",
                 FailureLevel.WARNING,
             )

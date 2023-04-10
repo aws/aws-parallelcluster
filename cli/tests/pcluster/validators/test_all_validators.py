@@ -24,6 +24,7 @@ from pcluster.validators import (
     iam_validators,
     instances_validators,
     kms_validators,
+    monitoring_validators,
     networking_validators,
     s3_validators,
     slurm_settings_validator,
@@ -43,6 +44,7 @@ def _mock_all_validators(mocker, mockers, additional_modules=None):
         kms_validators,
         iam_validators,
         instances_validators,
+        monitoring_validators,
         networking_validators,
         s3_validators,
         slurm_settings_validator,
@@ -221,6 +223,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
     monitoring_validators = validators_path + ".monitoring_validators"
     log_rotation_validator = mocker.patch(monitoring_validators + ".LogRotationValidator._validate", return_value=[])
+    detailed_monitoring_validator = mocker.patch(
+        monitoring_validators + ".DetailedMonitoringValidator._validate", return_value=[]
+    )
     tags_validators = validators_path + ".tags_validators"
     compute_resource_tags_validator = mocker.patch(
         tags_validators + ".ComputeResourceTagsValidator._validate", return_value=[]
@@ -356,4 +361,5 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     instance_type_accelerator_manufacturer_validator.assert_called()
     instance_type_placement_group_validator.assert_called()
     log_rotation_validator.assert_called()
+    detailed_monitoring_validator.assert_called()
     compute_resource_tags_validator.assert_called()
