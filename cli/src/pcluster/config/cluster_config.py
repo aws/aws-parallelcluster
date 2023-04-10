@@ -169,7 +169,7 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.monitoring_validators import LogRotationValidator
+from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     MultiAzPlacementGroupValidator,
@@ -846,6 +846,11 @@ class Monitoring(Resource):
         )
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        self._register_validator(
+            DetailedMonitoringValidator, is_detailed_monitoring_enabled=self.enable_detailed_monitoring
+        )
 
 
 # ---------------------- Others ---------------------- #

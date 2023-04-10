@@ -102,7 +102,6 @@ write_files:
           "enable_intel_hpc_platform": "${IntelHPCPlatform}",
           "cw_logging_enabled": "${CWLoggingEnabled}",
           "log_rotation_enabled": "${LogRotationEnabled}",
-          "detailed_monitoring_enabled": "${DetailedMonitoringEnabled}",
           "scheduler_queue_name": "${QueueName}",
           "scheduler_compute_resource_name": "${ComputeResourceName}",
           "enable_efa_gdr": "${EnableEfaGdr}",
