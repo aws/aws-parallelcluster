@@ -13,6 +13,7 @@
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -98,7 +99,7 @@ def get_resource_map():
 
 
 @xdist_session_fixture()
-def resource_bucket_shared(request, s3_bucket_factory_shared):
+def resource_bucket_shared(request, s3_bucket_factory_shared, lambda_layer_source):
     root = Path(pkg_resources.resource_filename(__name__, "/../.."))
     if request.config.getoption("resource_bucket"):
         return request.config.getoption("resource_bucket")
@@ -109,18 +110,24 @@ def resource_bucket_shared(request, s3_bucket_factory_shared):
             logger.info(f"  {root / file} -> {s3_bucket}/{key}")
             boto3.resource("s3").Bucket(s3_bucket).upload_file(str(root / file), key)
 
-        with tempfile.TemporaryDirectory() as basepath:
-            install_pc(basepath, get_installed_parallelcluster_version())
-            install_node(basepath, NODE_VERSION)
+        layer_key = (
+            f"parallelcluster/{get_installed_parallelcluster_version()}/layers/aws-parallelcluster/lambda-layer.zip"
+        )
+        if lambda_layer_source:
+            bucket, key = re.search(r"s3://([^/]*)/(.*)", lambda_layer_source).groups()
+            source = {"Bucket": bucket, "Key": key}
+            logger.info(f"Copying Lambda Layer from: s3://{bucket}/{key} -> s3://{s3_bucket}/{layer_key}")
+            boto3.resource("s3").Bucket(s3_bucket).copy(source, layer_key)
+        else:
+            with tempfile.TemporaryDirectory() as basepath:
+                install_pc(basepath, get_installed_parallelcluster_version())
+                install_node(basepath, NODE_VERSION)
 
-            layer_key = (
-                f"parallelcluster/{get_installed_parallelcluster_version()}/layers/aws-parallelcluster/lambda-layer.zip"
-            )
-            with tempfile.NamedTemporaryFile(suffix=".zip") as zipfile:
-                zipfilename = Path(zipfile.name)
-                logger.info(f"    {zipfilename} -> {s3_bucket}/{layer_key}")
-                shutil.make_archive(zipfilename.with_suffix(""), format="zip", root_dir=basepath)
-                boto3.resource("s3").Bucket(s3_bucket).upload_file(str(zipfilename), layer_key)
+                with tempfile.NamedTemporaryFile(suffix=".zip") as zipfile:
+                    zipfilename = Path(zipfile.name)
+                    logger.info(f"    {zipfilename} -> {s3_bucket}/{layer_key}")
+                    shutil.make_archive(zipfilename.with_suffix(""), format="zip", root_dir=basepath)
+                    boto3.resource("s3").Bucket(s3_bucket).upload_file(str(zipfilename), layer_key)
 
     logger.info(s3_bucket_factory_shared)
     return s3_bucket_factory_shared

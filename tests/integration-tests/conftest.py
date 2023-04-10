@@ -143,6 +143,10 @@ def pytest_addoption(parser):
         help="(Optional) Name of bucket to use to look for standard resources like hosted CloudFormation templates.",
     )
     parser.addoption(
+        "--lambda-layer-source",
+        help="(Optional) S3 URI of lambda layer to copy rather than building.",
+    )
+    parser.addoption(
         "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
     )
     parser.addoption(
@@ -950,6 +954,11 @@ def api_infrastructure_s3_uri(request):
 @pytest.fixture(scope="session")
 def cluster_custom_resource_service_token(request):
     return request.config.getoption("cluster_custom_resource_service_token")
+
+
+@pytest.fixture(scope="session")
+def lambda_layer_source(request):
+    return request.config.getoption("lambda_layer_source")
 
 
 @pytest.fixture(scope="class")
