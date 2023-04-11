@@ -14,6 +14,7 @@ CHANGELOG
 - Track the longest dynamic node idle time in CloudWatch Dashboard.
 - Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job execution.
 - Add support for `Tags` in the `SlurmQueues` section.
+- Add support for the detailed monitoring configuration for Slurm compute fleet.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
