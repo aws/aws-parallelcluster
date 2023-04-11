@@ -39,7 +39,6 @@
     "scheduler_plugin_substack_arn": "",
     "stack_arn": "{'Ref': 'AWS::StackId'}",
     "stack_name": "clustername",
-    "volume": "",
-    "detailed_monitoring_enabled": "false"
+    "volume": ""
   }
 }
