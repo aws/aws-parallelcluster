@@ -26,6 +26,10 @@ Parameters:
     Description: Script to run on HeadNode configured
     Type: String
     Default: ''
+  CustomBucketAccess:
+    Description: Name of a bucket to provide access to on the HeadNode
+    Type: String
+    Default: ''
   DeletionPolicy:
     Type: String
     Default: Delete
@@ -36,6 +40,7 @@ Parameters:
 
 Conditions:
   OnNodeConfiguredCondition: !Not [!Equals [!Ref OnNodeConfigured, '']]
+  CustomBucketCondition: !Not [!Equals [!Ref CustomBucketAccess, '']]
 
 Resources:
   PclusterCluster:
@@ -59,6 +64,13 @@ Resources:
             -
               OnNodeConfigured:
                 Script: !Ref OnNodeConfigured
+            - !Ref AWS::NoValue
+          Iam: !If
+            - CustomBucketCondition
+            -
+              S3Access:
+                - BucketName: !Ref CustomBucketAccess
+                  EnableWriteAccess: false
             - !Ref AWS::NoValue
         Scheduling:
           Scheduler: slurm

@@ -17,7 +17,9 @@ import pytest
 import urllib3
 import yaml
 from assertpy import assert_that
-from utils import StackError
+from utils import StackError, generate_stack_name
+
+from tests.custom_resource.conftest import cluster_custom_resource_provider_generator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -188,3 +190,38 @@ def test_cluster_delete_retain(request, region, cluster_custom_resource_provider
     cluster = pc().describe_cluster(cluster_name=cluster_name)
     assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
     pc().delete_cluster(cluster_name=cluster_name)
+
+
+@pytest.mark.parametrize(
+    "stack_param, cfn_output",
+    [
+        ("CustomLambdaRole", "ParallelClusterLambdaRoleArn"),
+        ("AdditionalIamPolicies", "ResourceBucketAccess"),
+    ],
+)
+def test_cluster_create_with_custom_policies(
+    request,
+    region,
+    resource_bucket,
+    resource_bucket_policies,
+    cluster_custom_resource_provider_template,
+    cluster_custom_resource_factory,
+    stack_param,
+    cfn_output,
+):
+    """Create a custom resource provider with a custom role and create a cluster to validate it."""
+    parameters = {"CustomBucket": resource_bucket, stack_param: resource_bucket_policies.cfn_outputs[cfn_output]}
+    custom_resource_gen = cluster_custom_resource_provider_generator(
+        request.config.getoption("credential"),
+        region,
+        generate_stack_name("custom-resource-provider", request.config.getoption("stackname_suffix")),
+        parameters,
+        cluster_custom_resource_provider_template,
+    )
+    service_token = next(custom_resource_gen)
+
+    cluster_parameters = {"CustomBucketAccess": resource_bucket, "ServiceToken": service_token}
+    stack = cluster_custom_resource_factory(cluster_parameters)
+    cluster_name = _stack_parameter(stack, "ClusterName")
+    cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")
+    assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
