@@ -21,7 +21,6 @@ SLURM_SETTINGS_DENY_LIST = {
             "communicationparameters",
             "epilog",
             "grestypes",
-            "jobcomppass",
             "launchparameters",
             "prolog",
             "reconfigflags",
