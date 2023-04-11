@@ -80,6 +80,11 @@ Scheduling:
             EnableWriteAccess: False
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: queue_tag1
+          Value: String
+        - Key: queue_tag2
+          Value: String
     - Name: queue2
       ComputeSettings:
         LocalStorage:

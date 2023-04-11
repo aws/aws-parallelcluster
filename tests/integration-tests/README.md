@@ -42,7 +42,7 @@ usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELI
                       [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL]
                       [--pre-install PRE_INSTALL] [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF]
                       [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
-                      [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--public-ecr-image-uri PUBLIC_ECR_IMAGE_URI] [--api-uri API_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER]
+                      [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI] [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER]
                       [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME] [--external-shared-storage-stack-name SHARED_STORAGE_STACK_NAME]
 
 Run integration tests suite.
@@ -137,9 +137,9 @@ API options:
                         URI of the Docker image for the Lambda of the ParallelCluster API (default: None)
   --api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI
                         URI of the CloudFormation template for the ParallelCluster API (default: None)
-  --public-ecr-image-uri PUBLIC_ECR_IMAGE_URI
-                        S3 URI of the ParallelCluster API spec (default: None)
   --api-uri API_URI     URI of an existing ParallelCluster API (default: None)
+  --policies-uri POLICIES_URI
+                        Use an existing policies URI instead of uploading one. (default: None)
 
 Debugging/Development options:
   --vpc-stack VPC_STACK

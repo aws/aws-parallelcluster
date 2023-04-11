@@ -199,6 +199,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
 )
+from pcluster.validators.tags_validators import ComputeResourceTagsValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1352,7 +1353,7 @@ class BaseClusterConfig(Resource):
             head_node=self.head_node,
             os=self.image.os,
             ami_id=self.head_node_ami,
-            tags=self.get_cluster_tags(),
+            tags=self.get_tags(),
             imds_support=self.imds.imds_support,
         )
         if self.head_node.dcv:
@@ -1776,7 +1777,7 @@ class BaseClusterConfig(Resource):
         """Return the vpc config of the PCluster Lambda Functions or None."""
         return self.deployment_settings.lambda_functions_vpc_config if self.deployment_settings else None
 
-    def get_cluster_tags(self):
+    def get_tags(self):
         """Return tags configured in the cluster configuration."""
         return self.tags
 
@@ -2136,6 +2137,10 @@ class _CommonQueue(BaseQueue):
         """Return true if more than one AZ are defined in the queue Networking section."""
         return len(self.networking.az_list) > 1
 
+    def get_tags(self):
+        """Return tags configured in the queue configuration."""
+        return None
+
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []
         for compute_resource in self.compute_resources:
@@ -2216,11 +2221,13 @@ class SlurmQueue(_CommonQueue):
         allocation_strategy: str = None,
         custom_slurm_settings: Dict = None,
         health_checks: HealthChecks = None,
+        tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
+        self.tags = tags
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
@@ -2245,6 +2252,10 @@ class SlurmQueue(_CommonQueue):
         for compute_resource in self.compute_resources:
             result.update(compute_resource.instance_types_with_instance_storage)
         return result
+
+    def get_tags(self):
+        """Return tags configured in the slurm queue configuration."""
+        return self.tags
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -2827,7 +2838,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     queue=queue,
                     ami_id=queue_image,
                     os=self.image.os,
-                    tags=self.get_cluster_tags(),
+                    tags=self.get_tags(),
                     imds_support=self.imds.imds_support,
                 )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
@@ -2988,7 +2999,7 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
                 result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
         return result
 
-    def get_cluster_tags(self):
+    def get_tags(self):
         """Return tags configured in the root of the cluster config and under scheduler definition."""
         return (self.tags if self.tags else []) + get_attr(
             self.scheduling, "settings.scheduler_definition.tags", default=[]
@@ -3114,6 +3125,13 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)
+                self._register_validator(
+                    ComputeResourceTagsValidator,
+                    queue_name=queue.name,
+                    compute_resource_name=compute_resource.name,
+                    cluster_tags=self.get_tags(),
+                    queue_tags=queue.get_tags(),
+                )
 
     @property
     def image_dict(self):

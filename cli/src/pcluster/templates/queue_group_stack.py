@@ -23,6 +23,7 @@ from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     ComputeNodeIamResources,
     create_hash_suffix,
+    dict_to_cfn_tags,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
@@ -131,6 +132,13 @@ class QueueGroupStack(NestedStack):
                     self._get_placement_group_for_compute_resource(queue, self.managed_placement_groups, resource),
                     self._compute_instance_profiles,
                 )
+
+    def _get_custom_compute_resource_tags(self, queue_config):
+        """Override Queue Tags value on Cluster level tags if there are duplicated keys."""
+        tags = get_custom_tags(self._config, raw_dict=True)
+        queue_tags = get_custom_tags(queue_config, raw_dict=True)
+        tags.update(queue_tags)
+        return dict_to_cfn_tags(tags)
 
     def _add_compute_resource_launch_template(
         self,
@@ -305,14 +313,14 @@ class QueueGroupStack(NestedStack):
                         )
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + get_custom_tags(self._config),
+                        + self._get_custom_compute_resource_tags(queue),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "Compute")
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + get_custom_tags(self._config),
+                        + self._get_custom_compute_resource_tags(queue),
                     ),
                 ],
                 **conditional_template_properties,

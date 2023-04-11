@@ -101,6 +101,11 @@ Scheduling:
           - Policy: arn:aws:iam::aws:policy/AdministratorAccess
       Image:
         CustomAmi: ami-12345678
+      Tags:
+        {% for i in range(number_of_tags) %}
+        - Key: String{{ i }}
+          Value: String{{ i }}
+        {% endfor %}
     {% endfor %}
 
     # spot queues
@@ -148,6 +153,11 @@ Scheduling:
         InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
       Image:
         CustomAmi: ami-23456789
+      Tags:
+        {% for i in range(number_of_tags) %}
+        - Key: String{{ i }}
+          Value: String{{ i }}
+        {% endfor %}
     {% endfor %}
 
 SharedStorage:

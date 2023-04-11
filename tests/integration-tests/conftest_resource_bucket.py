@@ -26,15 +26,10 @@ import pytest
 import urllib3
 from framework.fixture_utils import xdist_session_fixture
 
+from tests.common.utils import get_installed_parallelcluster_version
+
 logger = logging.getLogger()
 NODE_VERSION = "v16.19.0"  # maintenance version compatible with alinux2's GLIBC
-
-
-def get_version():
-    """Get the ParalelCluster version."""
-    import pcluster.utils
-
-    return pcluster.utils.get_installed_version()
 
 
 def install_pc(basepath, pc_version):
@@ -44,10 +39,12 @@ def install_pc(basepath, pc_version):
     cli_dir = root / "cli"
     try:
         logger.info("installing ParallelCluster packages...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", cli_dir, "-t", tempdir])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{cli_dir}[awslambda]", "-t", tempdir])
+        # The following are provided by the lambda runtime
         shutil.rmtree(tempdir / "botocore")
+        shutil.rmtree(tempdir / "boto3")
     except subprocess.CalledProcessError:
-        logger.info(f"Error while installing ParallelCluster {get_version()}")
+        logger.info(f"Error while installing ParallelCluster {get_installed_parallelcluster_version()}")
         sys.exit(-1)
 
 
@@ -75,9 +72,23 @@ def install_node(basepath, node_version):
         shutil.copy(f"{nodetmp}/node_install/{node_root}/bin/node", tempdir / "node")
 
 
+@pytest.fixture(scope="class", name="policies_uri")
+def policies_uri_fixture(request, region, resource_bucket):
+    if request.config.getoption("policies_uri"):
+        yield request.config.getoption("policies_uri")
+        return
+
+    yield (
+        f"https://{resource_bucket}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}"
+        f"/parallelcluster/{get_installed_parallelcluster_version()}/templates/policies/policies.yaml"
+    )
+
+
 def get_resource_map():
-    prefix = f"parallelcluster/{get_version()}"
+    prefix = f"parallelcluster/{get_installed_parallelcluster_version()}"
     resources = {
+        "api/infrastructure/parallelcluster-api.yaml": f"{prefix}/api/parallelcluster-api.yaml",
+        "api/spec/openapi/ParallelCluster.openapi.yaml": f"{prefix}/api/ParallelCluster.openapi.yaml",
         "cloudformation/custom_resource/cluster.yaml": f"{prefix}/templates/custom_resource/cluster.yaml",
         "cloudformation/networking/public.cfn.json": f"{prefix}/templates/networking/public.cfn.json",
         "cloudformation/networking/public-private.cfn.json": f"{prefix}/templates/networking/public-private.cfn.json",
@@ -99,10 +110,12 @@ def resource_bucket_shared(request, s3_bucket_factory_shared):
             boto3.resource("s3").Bucket(s3_bucket).upload_file(str(root / file), key)
 
         with tempfile.TemporaryDirectory() as basepath:
-            install_pc(basepath, get_version())
+            install_pc(basepath, get_installed_parallelcluster_version())
             install_node(basepath, NODE_VERSION)
 
-            layer_key = f"parallelcluster/{get_version()}/layers/aws-parallelcluster/lambda-layer.zip"
+            layer_key = (
+                f"parallelcluster/{get_installed_parallelcluster_version()}/layers/aws-parallelcluster/lambda-layer.zip"
+            )
             with tempfile.NamedTemporaryFile(suffix=".zip") as zipfile:
                 zipfilename = Path(zipfile.name)
                 logger.info(f"    {zipfilename} -> {s3_bucket}/{layer_key}")
