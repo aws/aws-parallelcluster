@@ -88,6 +88,7 @@ TEST_DEFAULTS = {
     "external_shared_storage_stack_name": None,
     "cluster_custom_resource_service_token": None,
     "resource_bucket": None,
+    "lambda_layer_source": None,
 }
 
 
@@ -317,6 +318,11 @@ def _init_argparser():
         "--resource-bucket",
         help="Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates.",
         default=TEST_DEFAULTS.get("resource_bucket"),
+    )
+    custom_resource_group.add_argument(
+        "--lambda-layer-source",
+        help="S3 URI of lambda layer to copy instead of building.",
+        default=TEST_DEFAULTS.get("lambda_layer_source"),
     )
 
     api_group = parser.add_argument_group("API options")
@@ -598,6 +604,8 @@ def _set_custom_resource_args(args, pytest_args):
         pytest_args.extend(["--cluster-custom-resource-service-token", args.cluster_custom_resource_service_token])
     if args.resource_bucket:
         pytest_args.extend(["--resource-bucket", args.resource_bucket])
+    if args.lambda_layer_source:
+        pytest_args.extend(["--lambda-layer-source", args.lambda_layer_source])
 
 
 def _set_api_args(args, pytest_args):
