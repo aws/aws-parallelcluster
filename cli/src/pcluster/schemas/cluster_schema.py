@@ -810,7 +810,7 @@ class DashboardsSchema(BaseSchema):
 class MonitoringSchema(BaseSchema):
     """Represent the schema of the Monitoring section."""
 
-    enable_detailed_monitoring = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
+    enable_detailed_monitoring = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     logs = fields.Nested(LogsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     dashboards = fields.Nested(DashboardsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
