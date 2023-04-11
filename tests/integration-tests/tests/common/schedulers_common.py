@@ -214,24 +214,16 @@ class SlurmCommands(SchedulerCommands):
         return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        match = re.search(r"ExitCode=(.+?) ", result.stdout)
-        return match.group(1)
+        return self.get_job_info(job_id, field="ExitCode")
 
     def get_job_start_time(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        match = re.search(r"StartTime=(.+?) ", result.stdout)
-        return match.group(1)
+        return self.get_job_info(job_id, field="StartTime")
 
     def get_job_submit_time(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        match = re.search(r"SubmitTime=(.+?) ", result.stdout)
-        return match.group(1)
+        return self.get_job_info(job_id, field="SubmitTime")
 
     def get_job_eligible_time(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        match = re.search(r"EligibleTime=(.+?) ", result.stdout)
-        return match.group(1)
+        return self.get_job_info(job_id, field="EligibleTime")
 
     def assert_job_submitted(self, sbatch_output):  # noqa: D102
         __tracebackhide__ = True
