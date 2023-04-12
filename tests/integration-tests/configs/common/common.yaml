@@ -219,6 +219,13 @@ dashboard_and_alarms:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2", "ubuntu2004"]
         schedulers: ["slurm"]
+detailed_monitoring:
+  test_detailed_monitoring.py::test_detailed_monitoring:
+    dimensions:
+      - regions: ["af-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
 dcv:
   test_dcv.py::test_dcv_configuration:
     dimensions:
