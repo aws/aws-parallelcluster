@@ -29,7 +29,7 @@ Scheduling:
         - Name: compute_resource2
           InstanceType: c4.2xlarge
 Monitoring:
-  EnableDetailedMonitoring: true
+  DetailedMonitoring: true
   Logs:
     CloudWatch:
       Enabled: true

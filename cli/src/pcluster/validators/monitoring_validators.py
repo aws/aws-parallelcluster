@@ -33,6 +33,6 @@ class DetailedMonitoringValidator(Validator):
                 "Detailed Monitoring is enabled for EC2 instances in your compute fleet. The Amazon EC2 console will "
                 "display monitoring graphs with a 1-minute period for these instances. Note that this will increase "
                 "the cost. If you want to avoid this and use basic monitoring instead, please set "
-                "`Monitoring / EnableDetailedMonitoring` to false.",
+                "`Monitoring / DetailedMonitoring` to false.",
                 FailureLevel.WARNING,
             )
