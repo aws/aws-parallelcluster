@@ -774,23 +774,23 @@ update:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
   test_update.py::test_update_compute_ami:
     dimensions:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["rhel8"]
   test_update.py::test_update_instance_list:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
   test_update.py::test_queue_parameters_update:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
   test_update.py::test_dynamic_file_systems_update:
     dimensions:
