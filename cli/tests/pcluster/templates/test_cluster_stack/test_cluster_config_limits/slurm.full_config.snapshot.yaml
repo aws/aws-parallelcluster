@@ -87,7 +87,7 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: true
-  EnableDetailedMonitoring: true
+  DetailedMonitoring: true
   Logs:
     CloudWatch:
       DeletionPolicy: Retain

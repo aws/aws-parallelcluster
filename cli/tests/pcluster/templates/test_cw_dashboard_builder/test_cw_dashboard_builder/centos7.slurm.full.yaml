@@ -96,7 +96,7 @@ SharedStorage:
       StorageCapacity: 1200
       WeeklyMaintenanceStartTime: "1:00:00"
 Monitoring:
-  EnableDetailedMonitoring: true
+  DetailedMonitoring: true
   Logs:
     CloudWatch:
       Enabled: true

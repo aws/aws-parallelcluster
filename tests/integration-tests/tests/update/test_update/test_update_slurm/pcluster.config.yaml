@@ -112,7 +112,7 @@ SharedStorage:
 #     WeeklyMaintenanceStartTime: "3:02:30" #Initially not set
 {% endif %}
 Monitoring:
-  EnableDetailedMonitoring: false
+  DetailedMonitoring: false
   Logs:
     CloudWatch:
       Enabled: true
