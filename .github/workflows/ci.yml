@@ -94,6 +94,13 @@ jobs:
         run: pip install tox
       - name: Run Tox
         run: cd ${{ matrix.toxdir }} && tox -e ${{ matrix.toxenv }}
+      - name: Upload code coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        if: ${{ endsWith(matrix.toxenv, '-cov') }}
+        with:
+          files: cli/coverage.xml
+          flags: unittests
+          verbose: true
   awsbatch-cli-tests:
     name: AWS Batch CLI Tests
     runs-on: ${{ matrix.os }}
