@@ -159,13 +159,18 @@ Resources:
 
           def update_response(data):
               logger.info(data)
+              # Avoid limit on response object size, user has provided these, so drop them in the response
+              extra_keys = {"clusterConfiguration", "scheduler", "tags"}
               # create / delete responses have cluster information nested in "cluster" key,
               # flatten that portion while keeping other keys to propagate warnings.
               if "cluster" in data:
-                  helper.Data.update(flatten(data["cluster"]))
-                  helper.Data["validationMessages"] = json.dumps(data.get("validationMessages", []))
+                  helper.Data.update(flatten(drop_keys(data["cluster"], extra_keys)))
+
+                  validation_messages = json.dumps(data.get("validationMessages", []))
+                  validation_messages = "TRUNCATED:" + validation_messages[:2048] if len(validation_messages) > 2048 else validation_messages
+                  helper.Data["validationMessages"] = validation_messages
               else:  # without "cluster" in the keys, this is a cluster object.
-                  helper.Data.update(flatten(data))
+                  helper.Data.update(flatten(drop_keys(data, extra_keys)))
 
           def serialize(val):
               return utils.to_iso_timestr(val) if isinstance(val, datetime.date) else val

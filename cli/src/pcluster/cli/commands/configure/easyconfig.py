@@ -341,18 +341,7 @@ def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_
     vpc_list = vpc_and_subnets["vpc_list"]
     if not vpc_list:
         print("There are no VPC for the given region. Starting automatic creation of VPC and subnets...")
-    if (
-        not vpc_list
-        or prompt(
-            "The creation of the VPC will result in minimal charges for NAT gateway \n"
-            "creation using a public subnet that are not covered under the free tier.\n"
-            "Please refer to https://aws.amazon.com/vpc/pricing/ for more details.\n"
-            "Automate VPC creation? (y/n)",
-            lambda x: x in ("y", "n"),
-            default_value="n",
-        )
-        == "y"
-    ):
+    if not vpc_list or prompt("Automate VPC creation? (y/n)", lambda x: x in ("y", "n"), default_value="n") == "y":
         vpc_parameters.update(
             automate_vpc_with_subnet_creation(
                 _choose_network_configuration(scheduler, head_node_instance_type, compute_instance_types),
@@ -372,7 +361,17 @@ def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_
         if (
             not qualified_head_node_subnets
             or not qualified_compute_subnets
-            or (prompt("Automate Subnet creation? (y/n)", lambda x: x in ("y", "n"), default_value="y") == "y")
+            or (
+                prompt(
+                    "The creation of a public and private subnet combination will result in\n"
+                    "charges for NAT gateway creation that are not covered under the free tier.\n"
+                    "Please refer to https://aws.amazon.com/vpc/pricing/ for more details.\n"
+                    "Automate Subnet creation? (y/n)",
+                    lambda x: x in ("y", "n"),
+                    default_value="y",
+                )
+                == "y"
+            )
         ):
             # Start auto subnets creation in the absence of qualified subnets.
             # Otherwise, user selects between manual and automate subnets creation
