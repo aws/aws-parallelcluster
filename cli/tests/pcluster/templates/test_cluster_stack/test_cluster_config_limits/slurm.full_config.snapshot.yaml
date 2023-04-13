@@ -171,52 +171,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-03
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-04
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -328,52 +282,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-12
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-13
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-14
       Networking:
         PlacementGroup:
           Enabled: null
@@ -505,52 +413,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-23
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-24
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -662,52 +524,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-32
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-33
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-34
       Networking:
         PlacementGroup:
           Enabled: null
@@ -839,52 +655,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-43
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-44
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -996,52 +766,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-52
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-53
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-54
       Networking:
         PlacementGroup:
           Enabled: null
@@ -1173,52 +897,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-63
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-64
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1330,52 +1008,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-72
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-73
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-74
       Networking:
         PlacementGroup:
           Enabled: null
@@ -1507,52 +1139,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-83
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-84
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1664,52 +1250,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-92
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-93
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-94
       Networking:
         PlacementGroup:
           Enabled: null
@@ -1841,52 +1381,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-103
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-104
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1998,52 +1492,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-112
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-113
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-114
       Networking:
         PlacementGroup:
           Enabled: null
@@ -2175,52 +1623,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-123
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-124
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2332,52 +1734,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-132
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-133
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-134
       Networking:
         PlacementGroup:
           Enabled: null
@@ -2509,52 +1865,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-143
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-144
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2666,52 +1976,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-152
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-153
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-154
       Networking:
         PlacementGroup:
           Enabled: null
@@ -2843,52 +2107,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-163
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-164
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -3000,52 +2218,6 @@ Scheduling:
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-172
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-173
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-174
       Networking:
         PlacementGroup:
           Enabled: null
@@ -3177,52 +2349,6 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-183
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
-    - CapacityReservationTarget: null
-      CustomSlurmSettings: {}
-      DisableSimultaneousMultithreading: false
-      Efa:
-        Enabled: false
-        GdrSupport: false
-      HealthChecks:
-        Gpu:
-          Enabled: null
-      InstanceType: c5.xlarge
-      MaxCount: 10
-      MinCount: 0
-      Name: compute-resource-ondemand-184
-      Networking:
-        PlacementGroup:
-          Enabled: null
-          Id: null
-          Name: null
-      SchedulableMemory: null
-      SpotPrice: null
-      Tags:
-      - Key: computetag0
-        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -3344,6 +2470,58 @@ Scheduling:
       Tags:
       - Key: computetag0
         Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-19
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -3356,7 +2534,7 @@ Scheduling:
       InstanceType: c5.xlarge
       MaxCount: 10
       MinCount: 0
-      Name: compute-resource-ondemand-193
+      Name: compute-resource-ondemand-200
       Networking:
         PlacementGroup:
           Enabled: null
@@ -3379,7 +2557,30 @@ Scheduling:
       InstanceType: c5.xlarge
       MaxCount: 10
       MinCount: 0
-      Name: compute-resource-ondemand-194
+      Name: compute-resource-ondemand-201
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-202
       Networking:
         PlacementGroup:
           Enabled: null
@@ -3423,7 +2624,491 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
-    Name: queue-ondemand-19
+    Name: queue-ondemand-20
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-210
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-211
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-212
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-21
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-220
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-221
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-222
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-22
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-230
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-231
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-232
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-23
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-240
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-241
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-242
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-24
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
@@ -5643,6 +5328,561 @@ Scheduling:
     Image:
       CustomAmi: ami-23456789
     Name: queue-spot-19
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-200
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-201
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-202
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-20
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-210
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-211
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-212
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-21
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-220
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-221
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-222
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-22
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-230
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-231
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-232
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-23
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-240
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-241
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-242
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-24
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
