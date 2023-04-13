@@ -1,0 +1,44 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket }}
+        EnableWriteAccess: true
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    CustomSlurmSettings:
+      - DebugFlags: Steps,Power,CpuFrequency
+      - GpuFreqDef: medium
+      - MaxStepCount: 5000
+  SlurmQueues:
+    - Name: q1
+      CustomSlurmSettings:
+        GraceTime: 5
+        MaxMemPerNode: 500
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: cr1
+          CustomSlurmSettings:
+            Port: 10000
+            RealMemory: 2000
+            Weight: 50
+          Instances:
+            - InstanceType: t2.large
+          MinCount: 0
+        - Name: cr2
+          CustomSlurmSettings:
+            Port: 10010
+            RealMemory: 2500
+            Weight: 150
+          Instances:
+            - InstanceType: t2.large
+          MinCount: 0
