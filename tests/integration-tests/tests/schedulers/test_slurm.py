@@ -1387,7 +1387,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 22.05.8")
+    assert_that(version).is_equal_to("slurm 23.02.1")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -2123,8 +2123,8 @@ def _test_memory_based_scheduling_enabled_true(
     assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
     assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("PENDING")
     # Check that memory appears in the TRES allocated for the job
-    assert_that(slurm_commands.get_job_info(job_id_1, field="TRES")).contains("mem=2000M")
-    assert_that(slurm_commands.get_job_info(job_id_2, field="TRES")).contains("mem=2000M")
+    assert_that(slurm_commands.get_job_info(job_id_1, field="ReqTRES")).contains("mem=2000M")
+    assert_that(slurm_commands.get_job_info(job_id_2, field="ReqTRES")).contains("mem=2000M")
     slurm_commands.wait_job_completed(job_id_1)
     slurm_commands.wait_job_completed(job_id_2)
 
@@ -2207,7 +2207,7 @@ def trigger_slurm_reconfigure_race_condition(remote_command_executor):
         remote_command_executor, "/var/log/slurmctld.log", "slurmctld version .* started on cluster"
     )
     reconfigure_time = _get_latest_timestamp_for_log_entry(
-        remote_command_executor, "/var/log/slurmctld.log", "_slurm_rpc_reconfigure_controller: completed"
+        remote_command_executor, "/var/log/slurmctld.log", "reconfigure_slurm: completed"
     )
     assert_that(restart_time.second).is_equal_to(reconfigure_time.second)
     assert_that((reconfigure_time - restart_time).total_seconds()).is_less_than_or_equal_to(1.0)
