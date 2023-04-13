@@ -19,6 +19,8 @@ CHANGELOG
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
 - Set Slurm prolog and epilog configurations to target a directory, /opt/slurm/etc/scripts/prolog.d/ and /opt/slurm/etc/scripts/epilog.d/ respectively.
+- Upgrade Slurm to version 23.02.1.
+- Upgrade munge to version 0.5.15.
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
