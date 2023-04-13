@@ -42,16 +42,19 @@ from pcluster.constants import (
     EBS_VOLUME_TYPE_DEFAULT_US_ISO,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
     LUSTRE,
+    MAX_COMPUTE_RESOURCES_PER_QUEUE,
     MAX_EBS_COUNT,
     MAX_EXISTING_STORAGE_COUNT,
     MAX_NEW_STORAGE_COUNT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
     MAX_NUMBER_OF_QUEUES,
     NODE_BOOTSTRAP_TIMEOUT,
     ONTAP,
     OPENZFS,
     SCHEDULER_PLUGIN_INTERFACE_VERSION,
     SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
+    SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES,
     SUPPORTED_OSES,
     Feature,
 )
@@ -2282,8 +2285,8 @@ class SlurmQueue(_CommonQueue):
         self._register_validator(
             MaxCountValidator,
             resources_length=len(self.compute_resources),
-            max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES,
-            resource_name="ComputeResources",
+            max_length=MAX_COMPUTE_RESOURCES_PER_QUEUE,
+            resource_name="ComputeResources per Queue",
         )
         self._register_validator(
             QueueSubnetsValidator,
@@ -2460,6 +2463,12 @@ class SlurmScheduling(Resource):
             max_length=MAX_NUMBER_OF_QUEUES,
             resource_name="SlurmQueues",
         )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=sum(len(queue.compute_resources) for queue in self.queues),
+            max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
+            resource_name="ComputeResources per Cluster",
+        )
 
 
 class SchedulerPluginQueue(_CommonQueue):
@@ -2479,6 +2488,12 @@ class SchedulerPluginQueue(_CommonQueue):
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
+        )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.compute_resources),
+            max_length=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
+            resource_name="ComputeResources per Queue",
         )
         self._register_validator(
             QueueSubnetsValidator,
@@ -2542,7 +2557,7 @@ class SchedulerPluginQueueConstraints(Resource):
 
     def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
-        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_QUEUES)
+        self.max_count = Resource.init_param(max_count, default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES)
 
 
 class SchedulerPluginComputeResourceConstraints(Resource):
@@ -2550,7 +2565,7 @@ class SchedulerPluginComputeResourceConstraints(Resource):
 
     def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
-        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_COMPUTE_RESOURCES)
+        self.max_count = Resource.init_param(max_count, default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES)
 
 
 class SchedulerPluginRequirements(Resource):
@@ -2821,7 +2836,7 @@ class SchedulerPluginScheduling(Resource):
             max_length=get_attr(
                 self.settings.scheduler_definition,
                 "requirements.queue_constraints.max_count",
-                default=MAX_NUMBER_OF_QUEUES,
+                default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES,
             ),
             resource_name="SchedulerQueues",
         )
@@ -2832,7 +2847,7 @@ class SchedulerPluginScheduling(Resource):
                 max_length=get_attr(
                     self.settings.scheduler_definition,
                     "requirements.compute_resource_constraints.max_count",
-                    default=MAX_NUMBER_OF_COMPUTE_RESOURCES,
+                    default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
                 ),
                 resource_name="ComputeResources",
             )
