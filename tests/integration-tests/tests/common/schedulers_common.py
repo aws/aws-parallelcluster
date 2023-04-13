@@ -404,6 +404,16 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command(check_partitions_cmd)
         return result.stdout.splitlines()
 
+    def get_partition_info(self, partition, field=None):
+        """Return partitions details. If field is provided, only the fieed is returned."""
+        result = self._remote_command_executor.run_remote_command(
+            "scontrol show partition {0}".format(partition)
+        ).stdout
+        if field is not None:
+            match = re.search(rf"(\s{field})=(\S*)", result)
+            return match.group(2)
+        return result
+
     def get_job_info(self, job_id, field=None):
         """Return job details from slurm. If field is provided, only the field is returned"""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
