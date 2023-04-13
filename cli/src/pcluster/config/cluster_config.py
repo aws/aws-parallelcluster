@@ -36,6 +36,7 @@ from pcluster.constants import (
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
     DELETE_POLICY,
+    DETAILED_MONITORING_ENABLED_DEFAULT,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT_US_ISO,
@@ -168,7 +169,7 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.monitoring_validators import LogRotationValidator
+from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     MultiAzPlacementGroupValidator,
@@ -838,9 +839,12 @@ class Monitoring(Resource):
 
     def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
         super().__init__(**kwargs)
-        self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
+        self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=DETAILED_MONITORING_ENABLED_DEFAULT)
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(DetailedMonitoringValidator, is_detailed_monitoring_enabled=self.detailed_monitoring)
 
 
 # ---------------------- Others ---------------------- #
@@ -1696,6 +1700,11 @@ class BaseClusterConfig(Resource):
         )
 
     @property
+    def is_detailed_monitoring_enabled(self):
+        """Return True if Detailed Monitoring is enabled."""
+        return self.monitoring.detailed_monitoring
+
+    @property
     def is_dcv_enabled(self):
         """Return True if DCV is enabled."""
         return self.head_node.dcv and self.head_node.dcv.enabled
@@ -1902,6 +1911,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         networking: SlurmComputeResourceNetworking = None,
         health_checks: HealthChecks = None,
         custom_slurm_settings: Dict = None,
+        tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1919,6 +1929,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.networking = networking or SlurmComputeResourceNetworking(implied=True)
         self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
+        self.tags = tags
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
@@ -1968,6 +1979,10 @@ class _BaseSlurmComputeResource(BaseComputeResource):
     @abstractmethod
     def instance_types(self) -> List[str]:
         pass
+
+    def get_tags(self):
+        """Return tags configured in the slurm compute resource configuration."""
+        return self.tags
 
 
 class FlexibleInstanceType(Resource):
@@ -3131,6 +3146,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     compute_resource_name=compute_resource.name,
                     cluster_tags=self.get_tags(),
                     queue_tags=queue.get_tags(),
+                    compute_resource_tags=compute_resource.get_tags(),
                 )
 
     @property

@@ -13,7 +13,8 @@ CHANGELOG
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
 - Track the longest dynamic node idle time in CloudWatch Dashboard.
 - Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job execution.
-- Add support for `Tags` in the `SlurmQueues` section.
+- Add support for `DetailedMonitoring` in the `Monitoring` section.
+- Add support for `Tags` in the `SlurmQueues` and `SlurmQueues/ComputeResources` section.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
@@ -23,6 +24,7 @@ CHANGELOG
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
 - Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
 - Fix Update policy for MaxCount to always perform numerical comparisons on MaxCount property.
+- Fix IP association on instances with multiple network cards.
 
 3.5.1
 -----

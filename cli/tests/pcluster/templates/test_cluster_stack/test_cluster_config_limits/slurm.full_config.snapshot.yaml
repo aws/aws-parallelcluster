@@ -122,6 +122,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -142,6 +145,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -162,6 +168,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -182,6 +191,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -202,6 +214,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -274,6 +289,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -294,6 +312,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -314,6 +335,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -334,6 +358,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -354,6 +381,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -426,6 +456,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -446,6 +479,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -466,6 +502,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -486,6 +525,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -506,6 +548,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -578,6 +623,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -598,6 +646,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -618,6 +669,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -638,6 +692,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -658,6 +715,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -730,6 +790,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -750,6 +813,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -770,6 +836,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -790,6 +859,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -810,6 +882,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -882,6 +957,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -902,6 +980,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -922,6 +1003,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -942,6 +1026,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -962,6 +1049,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1034,6 +1124,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1054,6 +1147,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1074,6 +1170,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1094,6 +1193,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1114,6 +1216,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1186,6 +1291,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1206,6 +1314,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1226,6 +1337,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1246,6 +1360,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1266,6 +1383,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1338,6 +1458,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1358,6 +1481,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1378,6 +1504,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1398,6 +1527,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1418,6 +1550,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1490,6 +1625,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1510,6 +1648,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1530,6 +1671,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1550,6 +1694,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1570,6 +1717,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1642,6 +1792,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1662,6 +1815,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1682,6 +1838,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1702,6 +1861,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1722,6 +1884,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1794,6 +1959,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1814,6 +1982,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1834,6 +2005,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1854,6 +2028,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1874,6 +2051,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1946,6 +2126,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1966,6 +2149,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -1986,6 +2172,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2006,6 +2195,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2026,6 +2218,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2098,6 +2293,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2118,6 +2316,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2138,6 +2339,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2158,6 +2362,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2178,6 +2385,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2250,6 +2460,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2270,6 +2483,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2290,6 +2506,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2310,6 +2529,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2330,6 +2552,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2402,6 +2627,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2422,6 +2650,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2442,6 +2673,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2462,6 +2696,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2482,6 +2719,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2554,6 +2794,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2574,6 +2817,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2594,6 +2840,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2614,6 +2863,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2634,6 +2886,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2706,6 +2961,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2726,6 +2984,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2746,6 +3007,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2766,6 +3030,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2786,6 +3053,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2858,6 +3128,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2878,6 +3151,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2898,6 +3174,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2918,6 +3197,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -2938,6 +3220,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -3010,6 +3295,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -3030,6 +3318,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -3050,6 +3341,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -3070,6 +3364,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
@@ -3090,6 +3387,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -3162,6 +3462,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3182,6 +3485,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3202,6 +3508,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3264,6 +3573,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3284,6 +3596,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3304,6 +3619,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3366,6 +3684,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3386,6 +3707,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3406,6 +3730,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3468,6 +3795,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3488,6 +3818,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3508,6 +3841,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3570,6 +3906,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3590,6 +3929,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3610,6 +3952,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3672,6 +4017,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3692,6 +4040,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3712,6 +4063,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3774,6 +4128,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3794,6 +4151,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3814,6 +4174,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3876,6 +4239,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3896,6 +4262,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3916,6 +4285,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3978,6 +4350,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -3998,6 +4373,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4018,6 +4396,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4080,6 +4461,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4100,6 +4484,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4120,6 +4507,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4182,6 +4572,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4202,6 +4595,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4222,6 +4618,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4284,6 +4683,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4304,6 +4706,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4324,6 +4729,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4386,6 +4794,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4406,6 +4817,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4426,6 +4840,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4488,6 +4905,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4508,6 +4928,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4528,6 +4951,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4590,6 +5016,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4610,6 +5039,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4630,6 +5062,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4692,6 +5127,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4712,6 +5150,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4732,6 +5173,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4794,6 +5238,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4814,6 +5261,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4834,6 +5284,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4896,6 +5349,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4916,6 +5372,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -4936,6 +5395,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -4998,6 +5460,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -5018,6 +5483,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -5038,6 +5506,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -5100,6 +5571,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -5120,6 +5594,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
@@ -5140,6 +5617,9 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:

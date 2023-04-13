@@ -107,6 +107,11 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource_1
           InstanceType: c4.2xlarge
+          Tags:
+            - Key: compute_tag1
+              Value: String
+            - Key: compute_tag2
+              Value: String
         - Name: compute_resource_2
           InstanceType: c5.2xlarge
           MinCount: 1

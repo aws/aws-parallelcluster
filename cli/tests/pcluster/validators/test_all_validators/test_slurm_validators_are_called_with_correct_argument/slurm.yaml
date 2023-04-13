@@ -20,6 +20,11 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource1
           InstanceType: t2.large
+          Tags:
+            - Key: compute_tag1
+              Value: String
+            - Key: compute_tag2
+              Value: String
         - Name: compute_resource2
           InstanceType: c4.2xlarge
     - Name: queue2

@@ -16,23 +16,46 @@ from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "cluster_tags, queue_tags, expected_message",
+    "cluster_tags, queue_tags, compute_resource_tags, expected_message",
     [
         (
             [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
             [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
+            None,
             "The following Tag keys are defined in both under `Tags` and `SlurmQueue/Tags`: ['key1', 'key2', 'key3'] "
             "and will be overridden by the value set in `SlurmQueue/Tags` for ComputeResource 'dummy_compute_resource' "
             "in queue 'dummy_queue'.",
         ),
         (
             [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
+            [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
+            [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
+            "The following Tag keys are defined under `Tags`, `SlurmQueue/Tags` and `SlurmQueue/ComputeResources/Tags`:"
+            " ['key1', 'key2', 'key3'] "
+            "and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for ComputeResource "
+            "'dummy_compute_resource' "
+            "in queue 'dummy_queue'.",
+        ),
+        (
+            [Tag("key1", "value1"), Tag("clusterkey2", "value2"), Tag("clusterkey3", "value3")],
+            [Tag("key1", "value1"), Tag("queuekey2", "value2"), Tag("queuekey3", "value3")],
+            [Tag("key1", "value1"), Tag("computekey2", "value2"), Tag("computekey3", "value3")],
+            "The following Tag keys are defined under `Tags`, `SlurmQueue/Tags` and `SlurmQueue/ComputeResources/Tags`:"
+            " ['key1'] "
+            "and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for ComputeResource "
+            "'dummy_compute_resource' "
+            "in queue 'dummy_queue'.",
+        ),
+        (
+            [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
             [Tag("key4", "value1"), Tag("key5", "value2"), Tag("key6", "value3")],
+            None,
             None,
         ),
         (
             [Tag("key1", "value1"), Tag("key2", "value2")],
             [Tag("key1", "value2"), Tag("key3", "value2")],
+            None,
             "The following Tag keys are defined in both under `Tags` and `SlurmQueue/Tags`: ['key1'] and will be "
             "overridden by the value set in `SlurmQueue/Tags` for ComputeResource 'dummy_compute_resource' in queue "
             "'dummy_queue'.",
@@ -41,21 +64,46 @@ from tests.pcluster.validators.utils import assert_failure_messages
             [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
             None,
             None,
+            None,
         ),
         (
             None,
             [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")],
             None,
+            None,
         ),
         (
             None,
             None,
             None,
+            None,
+        ),
+        (
+            [Tag("key1", "value1")],
+            [Tag("key2", "value2")],
+            [Tag("key3", "value3")],
+            None,
+        ),
+        (
+            None,
+            [Tag("key1", "value1"), Tag("key2", "value2")],
+            [Tag("key1", "value1"), Tag("key3", "value3")],
+            "The following Tag keys are defined in both under `SlurmQueue/Tags` and `SlurmQueue/ComputeResources/Tags`:"
+            " ['key1'] and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for "
+            "ComputeResource 'dummy_compute_resource' in queue 'dummy_queue'.",
+        ),
+        (
+            [Tag("key1", "value1"), Tag("key2", "value2")],
+            None,
+            [Tag("key1", "value1"), Tag("key3", "value3")],
+            "The following Tag keys are defined in both under `Tags` and `SlurmQueue/ComputeResources/Tags`:"
+            " ['key1'] and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for "
+            "ComputeResource 'dummy_compute_resource' in queue 'dummy_queue'.",
         ),
     ],
 )
-def test_compute_console_logging_validator(cluster_tags, queue_tags, expected_message):
+def test_compute_resource_tags_validator(cluster_tags, queue_tags, compute_resource_tags, expected_message):
     actual_failures = ComputeResourceTagsValidator().execute(
-        "dummy_queue", "dummy_compute_resource", cluster_tags, queue_tags
+        "dummy_queue", "dummy_compute_resource", cluster_tags, queue_tags, compute_resource_tags
     )
     assert_failure_messages(actual_failures, expected_message)

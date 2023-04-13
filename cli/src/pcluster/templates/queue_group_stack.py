@@ -131,14 +131,15 @@ class QueueGroupStack(NestedStack):
                     queue_lt_security_groups,
                     self._get_placement_group_for_compute_resource(queue, self.managed_placement_groups, resource),
                     self._compute_instance_profiles,
+                    self._config.is_detailed_monitoring_enabled,
                 )
 
-    def _get_custom_compute_resource_tags(self, queue_config):
-        """Override Queue Tags value on Cluster level tags if there are duplicated keys."""
+    def _get_custom_compute_resource_tags(self, queue_config, compute_resource_config):
+        """Compute resource tags and Queue Tags value on Cluster level tags if there are duplicated keys."""
         tags = get_custom_tags(self._config, raw_dict=True)
         queue_tags = get_custom_tags(queue_config, raw_dict=True)
-        tags.update(queue_tags)
-        return dict_to_cfn_tags(tags)
+        compute_resource_tags = get_custom_tags(compute_resource_config, raw_dict=True)
+        return dict_to_cfn_tags({**tags, **queue_tags, **compute_resource_tags})
 
     def _add_compute_resource_launch_template(
         self,
@@ -147,6 +148,7 @@ class QueueGroupStack(NestedStack):
         queue_lt_security_groups,
         placement_group,
         instance_profiles,
+        is_detailed_monitoring_enabled,
     ):
         # LT network interfaces
         compute_lt_nw_interfaces = [
@@ -304,7 +306,7 @@ class QueueGroupStack(NestedStack):
                         },
                     )
                 ),
-                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=False),
+                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=is_detailed_monitoring_enabled),
                 tag_specifications=[
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
@@ -313,14 +315,14 @@ class QueueGroupStack(NestedStack):
                         )
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + self._get_custom_compute_resource_tags(queue),
+                        + self._get_custom_compute_resource_tags(queue, compute_resource),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "Compute")
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + self._get_custom_compute_resource_tags(queue),
+                        + self._get_custom_compute_resource_tags(queue, compute_resource),
                     ),
                 ],
                 **conditional_template_properties,

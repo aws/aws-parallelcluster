@@ -136,7 +136,12 @@ from pcluster.schemas.common_schema import (
     DeploymentSettingsSchema,
 )
 from pcluster.schemas.common_schema import ImdsSchema as TopLevelImdsSchema
-from pcluster.schemas.common_schema import TagSchema, get_field_validator, validate_no_reserved_tag
+from pcluster.schemas.common_schema import (
+    TagSchema,
+    get_field_validator,
+    validate_no_duplicate_tag,
+    validate_no_reserved_tag,
+)
 from pcluster.utils import yaml_load
 from pcluster.validators.cluster_validators import EFS_MESSAGES, FSX_MESSAGES
 
@@ -810,7 +815,7 @@ class DashboardsSchema(BaseSchema):
 class MonitoringSchema(BaseSchema):
     """Represent the schema of the Monitoring section."""
 
-    detailed_monitoring = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    detailed_monitoring = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     logs = fields.Nested(LogsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     dashboards = fields.Nested(DashboardsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
@@ -1236,6 +1241,26 @@ class SlurmComputeResourceNetworkingSchema(BaseSchema):
         return SlurmComputeResourceNetworking(**data)
 
 
+class QueueTagSchema(BaseSchema):
+    """Represent the schema of Tag section."""
+
+    key = fields.Str(
+        required=True,
+        validate=validate.Length(max=128),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+    value = fields.Str(
+        required=True,
+        validate=validate.Length(max=256),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BaseTag(**data)
+
+
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
@@ -1261,6 +1286,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     )
     health_checks = fields.Nested(HealthChecksSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    tags = fields.Nested(
+        QueueTagSchema, many=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY, "update_key": "Key"}
+    )
 
     @validates_schema
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
@@ -1285,6 +1313,12 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
                     f"duplicate instance types. "
                 )
             instance_types.add(instance_type_name)
+
+    @validates("tags")
+    def validate_tags(self, tags):
+        """Validate tags."""
+        validate_no_reserved_tag(tags)
+        validate_no_duplicate_tag(tags)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1343,26 +1377,6 @@ class ComputeSettingsSchema(BaseSchema):
         return ComputeSettings(**data)
 
 
-class QueueTagSchema(BaseSchema):
-    """Represent the schema of Tag section."""
-
-    key = fields.Str(
-        required=True,
-        validate=validate.Length(max=128),
-        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
-    )
-    value = fields.Str(
-        required=True,
-        validate=validate.Length(max=256),
-        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return BaseTag(**data)
-
-
 class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
@@ -1419,6 +1433,7 @@ class SlurmQueueSchema(_CommonQueueSchema):
     def validate_tags(self, tags):
         """Validate tags."""
         validate_no_reserved_tag(tags)
+        validate_no_duplicate_tag(tags)
 
 
 class AwsBatchQueueSchema(BaseQueueSchema):
@@ -2076,7 +2091,7 @@ class ClusterSchema(BaseSchema):
         },
     )
 
-    monitoring = fields.Nested(MonitoringSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    monitoring = fields.Nested(MonitoringSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     additional_packages = fields.Nested(AdditionalPackagesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     tags = fields.Nested(
         TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
@@ -2100,6 +2115,7 @@ class ClusterSchema(BaseSchema):
     def validate_tags(self, tags):
         """Validate tags."""
         validate_no_reserved_tag(tags)
+        validate_no_duplicate_tag(tags)
 
     @validates_schema
     def no_settings_for_batch(self, data, **kwargs):
