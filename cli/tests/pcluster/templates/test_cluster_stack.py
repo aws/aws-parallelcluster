@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import difflib
 import json
 import os
 import re
@@ -24,7 +25,7 @@ from pcluster.constants import (
     MAX_EBS_COUNT,
     MAX_EXISTING_STORAGE_COUNT,
     MAX_NEW_STORAGE_COUNT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
     MAX_NUMBER_OF_QUEUES,
 )
 from pcluster.models.s3_bucket import S3FileFormat, format_content
@@ -74,20 +75,22 @@ def _assert_config_snapshot(config, expected_full_config_path):
     Confirm that no new configuration sections were added / removed.
 
     If any sections were added/removed:
-    - If the new section involves creation of managed resources (i.e. CDK/CFN resources)
-        1. Add the section to the "slurm.full.all_resources.yaml" file
-        2. Generate a new snapshot using the test output
-    - If the new section does not create any managed resource (CDK/CFN resources), go ahead and update the
-        "slurm.full_config.snapshot.yaml" file with the new config file contents
-        1. Add the section to the "slurm.full.all_resources.yaml" file
-        2. Generate a new snapshot using the test output
+    1. Add the section to the "slurm.full.all_resources.yaml" file
+    2. Generate a new snapshot using the test output
     TODO: Use a snapshot testing library
     """
     cluster_name = "test_cluster"
     full_config = ClusterSchema(cluster_name).dump(config)
     full_config_yaml = yaml.dump(full_config)
-    with open(expected_full_config_path, "r") as expected_full_config:
-        assert_that(full_config_yaml).is_equal_to(expected_full_config.read())
+
+    with open(expected_full_config_path, "r") as expected_full_config_file:
+        expected_full_config = expected_full_config_file.read()
+        diff = difflib.unified_diff(
+            full_config_yaml.splitlines(keepends=True), expected_full_config.splitlines(keepends=True)
+        )
+        print("Diff between existing snapshot and new snapshot:")
+        print("".join(diff), end="")
+        assert_that(expected_full_config).is_equal_to(full_config_yaml)
 
 
 def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, test_datadir):
@@ -102,6 +105,13 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
 
+    # The max number of queues cannot be used with the max number of compute resources
+    # (it will exceed the max number of compute resources per cluster)
+    # This workaround uses half of the max number of queues. It then calculates the number of compute resources to use
+    # as the quotient of dividing the max number of compute resources per cluster by the half.
+    max_number_of_queues = MAX_NUMBER_OF_QUEUES // 2
+    max_number_of_crs = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // max_number_of_queues
+
     # Try to search for jinja templates in the test_datadir, this is mainly to verify pcluster limits
     rendered_config_file = pcluster_config_reader(
         "slurm.full.all_resources.yaml",
@@ -109,9 +119,9 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
         max_new_storage_count=MAX_NEW_STORAGE_COUNT,
         max_existing_storage_count=MAX_EXISTING_STORAGE_COUNT,
         # number of queues, compute resources and security groups highly impacts the size of AWS resources
-        max_number_of_queues=MAX_NUMBER_OF_QUEUES,
-        max_number_of_ondemand_crs=MAX_NUMBER_OF_COMPUTE_RESOURCES,
-        max_number_of_spot_crs=MAX_NUMBER_OF_COMPUTE_RESOURCES - 2,  # FIXME: Limit num of CRs to not exceed size limits
+        max_number_of_queues=max_number_of_queues,
+        max_number_of_ondemand_crs=max_number_of_crs,
+        max_number_of_spot_crs=max_number_of_crs,
         number_of_sg_per_queue=1,
         # The number of following items doesn't impact number of resources, but the size of the template.
         # We have to reduce number of tags, script args and remove dev settings to reduce template size,
@@ -837,3 +847,47 @@ def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_confi
     )
 
     assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, vpc_config)
+
+
+@pytest.mark.parametrize(
+    "no_of_compute_resources_per_queue, expected_no_of_nested_stacks, raises_error",
+    [
+        ({f"queue-{i}": 5 for i in range(10)}, 2, False),
+        ({f"queue-{i}": 5 for i in range(20)}, 3, False),
+        ({f"queue-{i}": 5 for i in range(30)}, 4, False),
+        ({f"queue-{i}": 40 for i in range(1)}, 1, False),
+        # 1 queue with 41 compute resources (Exceeds max compute resources per queue - 40)
+        ({f"queue-{i}": 41 for i in range(1)}, 1, True),
+    ],
+    ids=[
+        "10 queues with 5 compute resources each",
+        "20 queues with 5 compute resources each",
+        "30 queues with 5 compute resources each",
+        "1 queue with 40 compute resources each",
+        "1 queue with 41 compute resources",
+    ],
+)
+def test_cluster_resource_distribution_in_stacks(
+    test_datadir,
+    pcluster_config_reader,
+    capsys,
+    mocker,
+    no_of_compute_resources_per_queue: int,
+    expected_no_of_nested_stacks: int,
+    raises_error: bool,
+):
+    mock_aws_api(mocker)
+    "ValueError"
+    mock_bucket_object_utils(mocker)
+    rendered_config_file = pcluster_config_reader(
+        "variable_queue_compute_resources.yaml", no_of_compute_resources_per_queue=no_of_compute_resources_per_queue
+    )
+
+    input_yaml, cluster = load_cluster_model_from_yaml(rendered_config_file, test_datadir)
+
+    if raises_error:
+        with pytest.raises(ValueError):
+            _generate_template(cluster, capsys)
+    else:
+        cluster_template, assets = _generate_template(cluster, capsys)
+        assert_that(expected_no_of_nested_stacks).is_equal_to(len(assets))

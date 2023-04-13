@@ -39,7 +39,8 @@ from pcluster.cli.commands.configure.utils import (
 from pcluster.constants import (
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_COMPUTE_RESOURCES_PER_QUEUE,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
     MAX_NUMBER_OF_QUEUES,
     SUPPORTED_SCHEDULERS,
 )
@@ -168,7 +169,7 @@ def configure(args):  # noqa: C901
         number_of_queues = int(
             prompt(
                 "Number of queues",
-                lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_QUEUES,
+                lambda x: str(x).isdigit() and 1 <= int(x) <= MAX_NUMBER_OF_QUEUES,
                 default_value=1,
             )
         )
@@ -195,10 +196,13 @@ def configure(args):  # noqa: C901
         if scheduler == "awsbatch":
             number_of_compute_resources = 1
         else:
+            queue_limit = min(
+                (MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER / number_of_queues), MAX_COMPUTE_RESOURCES_PER_QUEUE
+            )
             number_of_compute_resources = int(
                 prompt(
                     f"Number of compute resources for {queue_name}",
-                    validator=lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_COMPUTE_RESOURCES,
+                    validator=lambda x, q=queue_limit: str(x).isdigit() and 1 <= int(x) <= q,
                     default_value=1,
                 )
             )
