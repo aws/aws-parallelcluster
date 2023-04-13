@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from pcluster.constants import MAX_TAGS_COUNT
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -20,6 +21,7 @@ class ComputeResourceTagsValidator(Validator):
         compute_resource_tag_keys = {tag.key for tag in compute_resource_tags} if compute_resource_tags else set()
 
         overlapping_keys = cluster_tag_keys & queue_tag_keys & compute_resource_tag_keys
+        key_count = len(cluster_tag_keys | queue_tag_keys | compute_resource_tag_keys)
         overlapping_keys_list = sorted(list(overlapping_keys))
         queue_cluster_overlapping_keys_list = sorted(list(cluster_tag_keys & queue_tag_keys - overlapping_keys))
         compute_resource_queue_overlapping_key_list = sorted(
@@ -60,4 +62,11 @@ class ComputeResourceTagsValidator(Validator):
                 f"`SlurmQueue/ComputeResources/Tags` for ComputeResource '{compute_resource_name}' in queue"
                 f" '{queue_name}'.",
                 FailureLevel.WARNING,
+            )
+
+        if key_count > MAX_TAGS_COUNT:
+            self._add_failure(
+                f"The number of tags ({key_count}) associated with ComputeResource '{compute_resource_name}' in queue "
+                f"'{queue_name}' has exceeded the limit of {MAX_TAGS_COUNT}.",
+                FailureLevel.ERROR,
             )

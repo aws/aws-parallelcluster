@@ -100,6 +100,42 @@ from tests.pcluster.validators.utils import assert_failure_messages
             " ['key1'] and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for "
             "ComputeResource 'dummy_compute_resource' in queue 'dummy_queue'.",
         ),
+        (
+            [Tag(f"key{i}", f"value{i}") for i in range(0, 41)],
+            None,
+            None,
+            "The number of tags (41) associated with ComputeResource 'dummy_compute_resource' in queue 'dummy_queue' "
+            "has exceeded the limit of 40.",
+        ),
+        (
+            [Tag(f"key{i}", f"value{i}") for i in range(0, 20)],
+            [Tag(f"key{i}", f"value{i}") for i in range(20, 41)],
+            None,
+            "The number of tags (41) associated with ComputeResource 'dummy_compute_resource' in queue 'dummy_queue' "
+            "has exceeded the limit of 40.",
+        ),
+        (
+            [Tag(f"key{i}", f"value{i}") for i in range(0, 20)],
+            None,
+            [Tag(f"key{i}", f"value{i}") for i in range(20, 41)],
+            "The number of tags (41) associated with ComputeResource 'dummy_compute_resource' in queue 'dummy_queue' "
+            "has exceeded the limit of 40.",
+        ),
+        (
+            [Tag(f"key{i}", f"value{i}") for i in range(0, 10)],
+            [Tag(f"key{i}", f"value{i}") for i in range(10, 20)],
+            [Tag(f"key{i}", f"value{i}") for i in range(20, 41)],
+            "The number of tags (41) associated with ComputeResource 'dummy_compute_resource' in queue 'dummy_queue' "
+            "has exceeded the limit of 40.",
+        ),
+        (
+            [Tag(f"key{i}", f"value{i}") for i in range(0, 10)],
+            [Tag(f"key{i}", f"value{i}") for i in range(10, 40)],
+            [Tag("key0", "value0")],
+            "The following Tag keys are defined in both under `Tags` and `SlurmQueue/ComputeResources/Tags`: ['key0'] "
+            "and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for ComputeResource "
+            "'dummy_compute_resource' in queue 'dummy_queue'.",
+        ),
     ],
 )
 def test_compute_resource_tags_validator(cluster_tags, queue_tags, compute_resource_tags, expected_message):
