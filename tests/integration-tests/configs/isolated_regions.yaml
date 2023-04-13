@@ -127,8 +127,8 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-  dashboard_and_alarms:
-    test_dashboard_and_alarms.py::test_dashboard_and_alarms:
+  monitoring:
+    test_monitoring.py::test_monitoring:
       dimensions:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}
