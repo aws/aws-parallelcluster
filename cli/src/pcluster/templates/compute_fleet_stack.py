@@ -24,13 +24,13 @@ from aws_cdk.core import CfnCustomResource, CfnResource, Construct, Stack
 
 from pcluster.config.cluster_config import SlurmClusterConfig
 from pcluster.constants import (
-    MAX_COMPUTE_RESOURCES_PER_QUEUE_GROUP_BATCH,
-    MAX_QUEUES_PER_GROUP_STACK,
+    MAX_COMPUTE_RESOURCES_PER_DEPLOYMENT_WAVE,
+    MAX_COMPUTE_RESOURCES_PER_QUEUE,
     PCLUSTER_CLUSTER_NAME_TAG,
 )
 from pcluster.templates.queue_group_stack import QueueGroupStack
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import LOGGER, batch_by_property_callback, grouper
+from pcluster.utils import LOGGER, batch_by_property_callback
 
 
 class QueueBatchConstruct(Construct):
@@ -76,7 +76,12 @@ class QueueBatchConstruct(Construct):
         self._add_resources()
 
     def _add_resources(self):
-        for group_index, queue_group in enumerate(grouper(self.queue_cohort, MAX_QUEUES_PER_GROUP_STACK)):
+        queue_groups = batch_by_property_callback(
+            self._config.scheduling.queues,
+            lambda q: len(q.compute_resources),
+            MAX_COMPUTE_RESOURCES_PER_QUEUE,
+        )
+        for group_index, queue_group in enumerate(queue_groups):
             LOGGER.info(f"QueueGroup{group_index}: {[queue.name for queue in queue_group]}")
             queue_group_stack = QueueGroupStack(
                 scope=self,
@@ -155,7 +160,7 @@ class ComputeFleetConstruct(Construct):
         queue_batches = batch_by_property_callback(
             self._config.scheduling.queues,
             lambda q: len(q.compute_resources),
-            MAX_COMPUTE_RESOURCES_PER_QUEUE_GROUP_BATCH,
+            MAX_COMPUTE_RESOURCES_PER_DEPLOYMENT_WAVE,
         )
 
         queue_deployment_groups = []
