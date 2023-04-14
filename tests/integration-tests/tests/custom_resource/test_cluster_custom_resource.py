@@ -77,7 +77,7 @@ def test_cluster_create_invalid(region, cluster_custom_resource_factory, paramet
     """Try to create a cluster with invalid syntax and ensure that it fails."""
     with pytest.raises(StackError) as stack_error:
         cluster_custom_resource_factory(parameters)
-    reason = failure_reason(stack_error.stack_events)
+    reason = failure_reason(stack_error.value.stack_events)
     assert_that(reason).contains(error_message)
 
 
@@ -147,7 +147,7 @@ def test_cluster_update_invalid(region, cluster_custom_resource_factory, update_
     with pytest.raises(StackError) as stack_error:
         stack.factory.update_stack(stack.name, stack.region, parameters, stack_is_under_test=True)
 
-    reason = failure_reason(stack_error.stack_events)
+    reason = failure_reason(stack_error.value.stack_events)
     assert_that(reason).contains(error_message)
 
     cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")

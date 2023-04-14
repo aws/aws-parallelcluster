@@ -102,7 +102,7 @@ def get_resource_map():
 def resource_bucket_shared(request, s3_bucket_factory_shared, lambda_layer_source):
     root = Path(pkg_resources.resource_filename(__name__, "/../.."))
     if request.config.getoption("resource_bucket"):
-        return request.config.getoption("resource_bucket")
+        return  # short-circuit this fixture if a resource-bucket is provided
 
     for region, s3_bucket in s3_bucket_factory_shared.items():
         logger.info(f"Uploading artifacts to: {s3_bucket}[{region}]")
@@ -134,5 +134,7 @@ def resource_bucket_shared(request, s3_bucket_factory_shared, lambda_layer_sourc
 
 
 @pytest.fixture(scope="class")
-def resource_bucket(region, resource_bucket_shared):
+def resource_bucket(request, region, resource_bucket_shared):
+    if request.config.getoption("resource_bucket"):
+        return request.config.getoption("resource_bucket")
     return resource_bucket_shared[region]

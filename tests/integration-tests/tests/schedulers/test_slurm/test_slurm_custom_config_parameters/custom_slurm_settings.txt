@@ -1,0 +1,9 @@
+#
+# Example slurm.conf file with custom settings
+#
+# Put this file on all nodes of your cluster.
+# See the slurm.conf man page for more information.
+#
+DebugFlags=Steps,Power,CpuFrequency,BurstBuffer,Network
+GpuFreqDef=high
+MaxStepCount=10000

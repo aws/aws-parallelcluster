@@ -160,6 +160,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: [ "slurm" ]
+    test_slurm.py::test_slurm_custom_config_parameters:
+      dimensions:
+        - regions: ["euw1-az1"]
+          instances: ["c5.xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
   update:
     test_update.py::test_update_awsbatch:
       dimensions:

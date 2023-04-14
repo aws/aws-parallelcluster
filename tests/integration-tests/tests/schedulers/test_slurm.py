@@ -53,7 +53,7 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
-from tests.common.schedulers_common import TorqueCommands
+from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.monitoring import structured_log_event_utils
 
 
@@ -396,6 +396,96 @@ def test_slurm_config_update(
         remote_command_executor,
         config_file="pcluster.config.update_scheduling.yaml",
     )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_custom_config_parameters
+def test_slurm_custom_config_parameters(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    scheduler_commands_factory,
+):
+    """Test slurm custom settings."""
+    # When launching a cluster with a Yaml with custom config parameters
+
+    # Prepare bucket
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "custom_slurm_settings.txt"), "custom_slurm_settings.conf")
+    slurm_settings_file = f" s3://{bucket_name}/custom_slurm_settings.conf"
+
+    cluster_config = pcluster_config_reader(bucket=bucket_name)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = SlurmCommands(remote_command_executor)
+
+    # then we expect custom values to be set in slurm config
+    # Bulk Settings
+    debug_flags = slurm_commands.get_conf_param("DebugFlags")
+    # must check them individually because they can be reordered
+    assert "Steps" in debug_flags
+    assert "Power" in debug_flags
+    assert "CpuFrequency" in debug_flags
+    assert "medium" == slurm_commands.get_conf_param("GpuFreqDef")
+    assert "5000" == slurm_commands.get_conf_param("MaxStepCount")
+
+    # Partition
+    assert "5" == slurm_commands.get_partition_info("q1", "GraceTime")
+    assert "500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
+
+    # ComputeResource 1
+    assert "50" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
+    assert "10000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
+    assert "2000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
+
+    # ComputeResource 2
+    assert "150" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
+    assert "10010" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
+    assert "2500" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
+
+    # Update the cluster changing Queue and Compute resources settings in the yaml
+    # and Bulk settings with a config file in S3
+
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml", custom_settings_file=slurm_settings_file, bucket=bucket_name
+    )
+
+    # apply the changes on the cluster
+    logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    cluster.update(str(updated_config_file))
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+
+    # then we expect updated custom values to be set in slurm config
+    # Bulk Settings
+    debug_flags = slurm_commands.get_conf_param("DebugFlags")
+    # must check them individually because they can be reordered
+    assert "Steps" in debug_flags
+    assert "Power" in debug_flags
+    assert "CpuFrequency" in debug_flags
+    assert "BurstBuffer" in debug_flags
+    assert "Network" in debug_flags
+    assert "high" == slurm_commands.get_conf_param("GpuFreqDef")
+    assert "10000" == slurm_commands.get_conf_param("MaxStepCount")
+
+    # Partition
+    assert "15" == slurm_commands.get_partition_info("q1", "GraceTime")
+    assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
+
+    # ComputeResource 1
+    assert "75" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
+    assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
+    assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
+
+    # ComputeResource 2
+    assert "250" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
+    assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
+    assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")

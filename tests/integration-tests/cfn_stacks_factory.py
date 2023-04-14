@@ -244,7 +244,7 @@ class CfnStacksFactory:
                     final_status = self.__wait_for_stack_update(stack.cfn_stack_id, cfn_client)
                     self.__assert_stack_status(
                         final_status,
-                        "UPDATE_COMPLETE",
+                        {"UPDATE_COMPLETE", "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"},
                         stack_name=stack.cfn_stack_id,
                         region=region,
                         stack_is_under_test=stack_is_under_test,
@@ -256,7 +256,6 @@ class CfnStacksFactory:
                         "Update of stack {0} in region {1} failed with exception: {2}".format(name, region, e)
                     )
                     raise
-                del self.__created_stacks[internal_id]
                 logging.info("Stack {0} updated successfully in region {1}".format(name, region))
             else:
                 logging.warning(
@@ -306,7 +305,8 @@ class CfnStacksFactory:
 
     @staticmethod
     def __assert_stack_status(status, expected_status, region, stack_name=None, stack_is_under_test=False):
-        if status != expected_status:
+        expected_status = {expected_status} if not isinstance(expected_status, set) else expected_status
+        if status not in expected_status:
             message = (
                 f"Stack status {status} for {stack_name} differs "
                 f"from the expected status of {expected_status} in region {region}"
