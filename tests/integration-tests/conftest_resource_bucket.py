@@ -86,13 +86,16 @@ def policies_uri_fixture(request, region, resource_bucket):
 
 
 def get_resource_map():
-    prefix = f"parallelcluster/{get_installed_parallelcluster_version()}"
+    version = get_installed_parallelcluster_version()
+    prefix = f"parallelcluster/{version}"
     resources = {
         "api/infrastructure/parallelcluster-api.yaml": f"{prefix}/api/parallelcluster-api.yaml",
         "api/spec/openapi/ParallelCluster.openapi.yaml": f"{prefix}/api/ParallelCluster.openapi.yaml",
         "cloudformation/custom_resource/cluster.yaml": f"{prefix}/templates/custom_resource/cluster.yaml",
-        "cloudformation/networking/public.cfn.json": f"{prefix}/templates/networking/public.cfn.json",
-        "cloudformation/networking/public-private.cfn.json": f"{prefix}/templates/networking/public-private.cfn.json",
+        "cloudformation/networking/public.cfn.json": f"{prefix}/templates/networking/public-{version}.cfn.json",
+        "cloudformation/networking/public-private.cfn.json": (
+            f"{prefix}/templates/networking/public-private-{version}.cfn.json"
+        ),
         "cloudformation/policies/parallelcluster-policies.yaml": f"{prefix}/templates/policies/policies.yaml",
     }
     return resources
