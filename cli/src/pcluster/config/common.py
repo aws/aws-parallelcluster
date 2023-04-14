@@ -216,18 +216,29 @@ class Resource:
     def validate(
         self, suppressors: List[ValidatorSuppressor] = None, context: ValidatorContext = None, nested: bool = False
     ):
-        """Execute registered validators."""
+        """
+        Execute registered validators.
+
+        The "nested" parameter is used only for internal recursive calls to distinguish those from the top level
+        one where the async validators results should be awaited for.
+        """
+        # this validation logic is a responsibility that could be completely separated from the resource tree
+        # also until we need to support both sync and async validation this logic will be unnecessarily complex
+        # embracing async validation completely is possible and will greatly simplify thi
         self._validation_futures.clear()
         self._validation_failures.clear()
 
-        self._validate_nested_resources(context, suppressors)
-        self._validate_self(context, suppressors)
+        try:
+            self._validate_nested_resources(context, suppressors)
+            self._validate_self(context, suppressors)
+        finally:
+            if nested:
+                result = self._validation_failures, self._validation_futures
+            else:
+                self._validation_failures.extend(self._await_async_validators())
+                result = self._validation_failures
 
-        if nested:
-            return self._validation_failures, self._validation_futures
-        else:
-            self._validation_failures.extend(self._await_async_validators())
-            return self._validation_failures
+        return result
 
     def _validate_nested_resources(self, context, suppressors):
         # Call validators for nested resources
