@@ -192,12 +192,12 @@ def test_async_resource_validation_with_timeout():
     assert_validation_result(
         validation_failures[0],
         FailureLevel.WARNING,
-        'Validation of "AsyncTimedFakeAsyncErrorValidator" timed out after 0.1 seconds.',
+        "Validation of ({'param': 'fake-value'}) timed out after 0.1 seconds.",
     )
     assert_validation_result(
         validation_failures[1],
         FailureLevel.WARNING,
-        'Validation of "AsyncTimedFakeAsyncInfoValidator" timed out after 0 seconds.',
+        "Validation of ({'param': 'other-value'}) timed out after 0 seconds.",
     )
     assert_validation_result(validation_failures[2], FailureLevel.ERROR, "Error async fake-value.")
     assert_validation_result(validation_failures[3], FailureLevel.INFO, "Wrong async value other-value.")
