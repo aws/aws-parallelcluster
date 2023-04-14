@@ -54,7 +54,7 @@ from tests.common.hit_common import (
 )
 from tests.common.mpi_common import compile_mpi_ring
 from tests.common.schedulers_common import TorqueCommands
-from tests.dashboard_and_alarms import structured_log_event_utils
+from tests.monitoring import structured_log_event_utils
 
 
 @pytest.mark.usefixtures("instance", "os")

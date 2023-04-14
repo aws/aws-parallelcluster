@@ -206,8 +206,8 @@ createami:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-dashboard_and_alarms:
-  test_dashboard_and_alarms.py::test_dashboard_and_alarms:
+monitoring:
+  test_monitoring.py::test_monitoring:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}

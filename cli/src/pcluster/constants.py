@@ -306,3 +306,5 @@ UNSUPPORTED_OPERATIONS_MAP = {
     Operation.GET_IMAGE_STACK_EVENTS: ["us-iso"],
     Operation.LIST_IMAGE_LOG_STREAMS: ["us-iso"],
 }
+
+MAX_TAGS_COUNT = 40  # Tags are limited to 50, reserve some tags for parallelcluster specified tags

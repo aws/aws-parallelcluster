@@ -15,7 +15,7 @@ import pytest
 from remote_command_executor import RemoteCommandExecutor
 from utils import test_cluster_health_metric
 
-from tests.dashboard_and_alarms.structured_log_event_utils import assert_that_event_exists
+from tests.monitoring.structured_log_event_utils import assert_that_event_exists
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
