@@ -123,7 +123,7 @@ def get_async_timed_validator_type_for(validator_type: type) -> AsyncValidator:
                     await asyncio.wait_for(original_method(self, *args, **kwargs), timeout=timeout)
                 except asyncio.TimeoutError:
                     self._add_failure(  # pylint: disable=protected-access
-                        f'Validation of "{self.type}" timed out after {timeout} seconds.', FailureLevel.WARNING
+                        f"Validation of ({kwargs}) timed out after {timeout} seconds.", FailureLevel.WARNING
                     )
 
             return _validate_async
