@@ -506,15 +506,13 @@ class AsyncUtils:
 
             @functools.wraps(func)
             async def wrapper(*args, **kwargs):
-                cache_key = (func.__name__, args, frozenset(kwargs.items()))
+                cache_key = (func.__name__, args[1:], frozenset(kwargs.items()))
                 current_time = time.time()
 
-                if cache_key not in _cache:
-                    _cache[cache_key] = (await func(*args, **kwargs), current_time + timeout)
-                elif _cache[cache_key][1] < current_time:
-                    _cache[cache_key] = (await func(*args, **kwargs), current_time + timeout)
+                if cache_key not in _cache or (_cache[cache_key][1] < current_time):
+                    _cache[cache_key] = (asyncio.ensure_future(func(*args, **kwargs)), current_time + timeout)
 
-                return _cache[cache_key][0]
+                return await _cache[cache_key][0]
 
             return wrapper
 

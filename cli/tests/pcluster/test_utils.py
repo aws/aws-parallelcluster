@@ -9,8 +9,10 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 # This module provides unit tests for the functions in the pcluster.utils module."""
+import asyncio
 import os
 import time
+import unittest
 from collections import namedtuple
 
 import pytest
@@ -503,3 +505,35 @@ def test_batch_by_property_size(items, expected_batches, batch_size, raises):
     else:
         batches = [batch for batch in batch_by_property_callback(items, lambda item: len(item.property), batch_size)]
         assert_that(batches).is_equal_to(expected_batches)
+
+
+class TestAsyncUtils(unittest.TestCase):
+    def test_async_timeout_cache(self):
+        total_calls = 0
+
+        class FakeAsyncMethodProvider:
+            def very_expensive_function(self, param):
+                time.sleep(1)
+                nonlocal total_calls
+                total_calls += 1
+                return param
+
+            @utils.AsyncUtils.async_timeout_cache(timeout=10000)
+            async def async_method(self, param):
+                _async_very_expensive_function = utils.AsyncUtils.async_from_sync(self.very_expensive_function)
+                return await _async_very_expensive_function(param)
+
+        unique_calls = 10
+        repetitions = 15
+
+        executions = []
+        expected_results = []
+        for i in range(unique_calls):
+            for _ in range(repetitions):
+                executions.append(FakeAsyncMethodProvider().async_method(i))
+                expected_results.append(i)
+
+        results = asyncio.get_event_loop().run_until_complete(asyncio.gather(*executions))
+
+        assert_that(expected_results).contains_sequence(*results)
+        assert_that(unique_calls).is_equal_to(total_calls)
