@@ -12,8 +12,11 @@
 
 
 import logging
+from pathlib import Path
 
 import boto3
+import cfn_tools
+import pkg_resources
 import pytest
 from assertpy import assert_that
 from benchmarks.common.util import get_instance_vcpus
@@ -38,10 +41,11 @@ from pcluster_client.model.node_type import NodeType
 from pcluster_client.model.requested_compute_fleet_status import RequestedComputeFleetStatus
 from pcluster_client.model.update_cluster_request_content import UpdateClusterRequestContent
 from pcluster_client.model.update_compute_fleet_request_content import UpdateComputeFleetRequestContent
+from troposphere.template_generator import TemplateGenerator
 from utils import generate_stack_name
 
 from tests.common.assertions import wait_for_num_instances_in_cluster
-from tests.common.utils import retrieve_latest_ami
+from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 LOGGER = logging.getLogger(__name__)
 NUM_OF_COMPUTE_INSTANCES = 2
@@ -121,26 +125,134 @@ def _ec2_wait(region, instances, waiter_type):
     waiter.wait(InstanceIds=instances)
 
 
+@pytest.fixture(scope="session", name="resources_dir")
+def resources_dir_fixture():
+    return Path(pkg_resources.resource_filename(__name__, "/../../resources"))
+
+
+@pytest.fixture(scope="session", name="policies_template_path")
+def policies_template_path_fixture(resources_dir):
+    return resources_dir / ".." / ".." / ".." / "cloudformation" / "policies" / "parallelcluster-policies.yaml"
+
+
+@pytest.fixture(scope="class", name="custom_actions_bucket_name")
+def custom_actions_bucket_name_fixture(s3_bucket_factory):
+    return s3_bucket_factory()
+
+
+@pytest.fixture(scope="class", name="policies_template_with_custom_actions_bucket_access")
+def policies_template_with_custom_actions_bucket_access_fixture(policies_template_path, custom_actions_bucket_name):
+    with open(policies_template_path, "r", encoding="utf-8") as f:
+        policies_template = TemplateGenerator(cfn_tools.load_yaml(f.read()))
+
+    policy_document = policies_template.resources.get("ParallelClusterClusterPolicy").properties["PolicyDocument"]
+    statement = policy_document.get("Statement")
+    statement.append(
+        {
+            "Action": ["s3:GetObject"],
+            "Effect": "Allow",
+            "Resource": {"Fn::Sub": f"arn:${{AWS::Partition}}:s3:::{custom_actions_bucket_name}/*"},
+        }
+    )
+    statement.append(
+        {
+            "Action": ["events:PutRule", "events:DeleteRule", "events:PutTargets", "events:RemoveTargets"],
+            "Effect": "Allow",
+            "Resource": {"Fn::Sub": "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*"},
+        }
+    )
+    return policies_template.to_yaml()
+
+
+@pytest.fixture(scope="class", name="policies_uri")
+def policies_uri_fixture(policies_template_with_custom_actions_bucket_access, resource_bucket, region):
+    bucket = boto3.resource("s3", region_name=region).Bucket(resource_bucket)
+    path = f"parallelcluster/{get_installed_parallelcluster_version()}/templates/policies/custom-policies.yaml"
+    bucket.put_object(Key=path, Body=policies_template_with_custom_actions_bucket_access)
+
+    yield (f"https://{resource_bucket}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}/{path}")
+
+
 @pytest.mark.usefixtures("os", "instance")
-def test_cluster_slurm(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance):
+def test_cluster_slurm(
+    region,
+    api_client,
+    create_cluster,
+    request,
+    pcluster_config_reader,
+    scheduler,
+    instance,
+    custom_actions_bucket_name,
+    test_datadir,
+):
     assert_that(scheduler).is_equal_to("slurm")
-    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance)
+    _test_cluster_workflow(
+        region,
+        api_client,
+        create_cluster,
+        request,
+        pcluster_config_reader,
+        scheduler,
+        instance,
+        custom_actions_bucket_name,
+        test_datadir,
+    )
 
 
 @pytest.mark.usefixtures("os", "instance")
-def test_cluster_awsbatch(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance):
+def test_cluster_awsbatch(
+    region,
+    api_client,
+    create_cluster,
+    request,
+    pcluster_config_reader,
+    scheduler,
+    instance,
+    custom_actions_bucket_name,
+    test_datadir,
+):
     assert_that(scheduler).is_equal_to("awsbatch")
-    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance)
+    _test_cluster_workflow(
+        region,
+        api_client,
+        create_cluster,
+        request,
+        pcluster_config_reader,
+        scheduler,
+        instance,
+        custom_actions_bucket_name,
+        test_datadir,
+    )
 
 
-def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance):
-    if scheduler == "slurm":
-        initial_config_file = pcluster_config_reader()
-        updated_config_file = pcluster_config_reader("pcluster.config.update.yaml")
-    else:
-        vcpus = get_instance_vcpus(region, instance) * NUM_OF_COMPUTE_INSTANCES
-        initial_config_file = pcluster_config_reader(vcpus=vcpus)
-        updated_config_file = pcluster_config_reader("pcluster.config.update.yaml", vcpus=vcpus)
+def _test_cluster_workflow(
+    region,
+    api_client,
+    create_cluster,
+    request,
+    pcluster_config_reader,
+    scheduler,
+    instance,
+    custom_actions_bucket_name,
+    test_datadir,
+):
+    script_name = "custom_action.sh"
+    bucket_name, https_url, s3_url = _create_custom_action_urls(
+        region, custom_actions_bucket_name, script_name, test_datadir
+    )
+
+    config_template_args = {
+        "bucket_name": bucket_name,
+        "on_node_start_script_sequence": _create_script_sequence("on_node_start", https_url, s3_url),
+        "on_node_configured_script_sequence": _create_script_sequence("on_node_configured", https_url, s3_url),
+        "on_node_updated_script_sequence": _create_script_sequence("on_node_updated", https_url, s3_url),
+    }
+
+    if scheduler != "slurm":
+        config_template_args["vcpus"] = get_instance_vcpus(region, instance) * NUM_OF_COMPUTE_INSTANCES
+
+    initial_config_file = pcluster_config_reader(**config_template_args)
+    updated_config_file = pcluster_config_reader("pcluster.config.update.yaml", **config_template_args)
 
     cluster_name = generate_stack_name("integ-tests", request.config.getoption("stackname_suffix"))
     cluster_operations_client = cluster_operations_api.ClusterOperationsApi(api_client)
@@ -178,6 +290,40 @@ def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster
     _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_instances_client, cluster_name, scheduler)
 
     _test_delete_cluster(region, cluster_operations_client, cluster_name)
+
+
+def _create_script_sequence(event_name, https_url, s3_url):
+    sequence = []
+
+    for i in range(10):
+        if i % 2 == 0:
+            cache_affinity = i % 2
+            url = f"{https_url}&cache_affinity={cache_affinity}"
+        else:
+            url = s3_url
+
+        sequence.append(
+            {
+                "script": url,
+                "args": [f"echo {event_name} {i}"],
+            }
+        )
+
+    return sequence
+
+
+def _create_custom_action_urls(region, custom_actions_bucket_name, script_name, test_datadir):
+    bucket_name = custom_actions_bucket_name
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    script_path = f"scripts/{script_name}"
+    bucket.upload_file(str(test_datadir / script_name), script_path)
+    s3_url = f"s3://{bucket_name}/{script_path}"
+    https_url = boto3.client("s3", region_name=region).generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": script_path},
+        ExpiresIn=86400,
+    )
+    return bucket_name, https_url, s3_url
 
 
 def _test_describe_cluster_head_node(region, client, cluster_name):
@@ -314,6 +460,8 @@ def _test_create_cluster(client, create_cluster, cluster_name, config):
     cluster, response = create_cluster(client, cluster_name, config)
     LOGGER.info("Create cluster response: %s", response)
     assert_that(response.cluster.cluster_name).is_equal_to(cluster_name)
+    assert_that(response.cluster.validation_messages).all_match(lambda x: x.type != "AsyncTimedUrlValidator")
+
     return cluster
 
 

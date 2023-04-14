@@ -13,6 +13,38 @@ HeadNode:
     KeyName: {{ key_name }}
   Imds:
     Secured: False
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+        EnableWriteAccess: true
+  CustomActions:
+    OnNodeStart:
+      Sequence:
+        {% for item in on_node_start_script_sequence %}
+        - Args:
+            {% for arg in item.args %}
+            - {{ arg }}
+            {% endfor %}
+          Script: {{ item.script }}
+        {% endfor %}
+    OnNodeConfigured:
+      Sequence:
+        {% for item in on_node_configured_script_sequence %}
+        - Args:
+            {% for arg in item.args %}
+            - {{ arg }}
+            {% endfor %}
+          Script: {{ item.script }}
+        {% endfor %}
+    OnNodeUpdated:
+      Sequence:
+        {% for item in on_node_updated_script_sequence %}
+        - Args:
+            {% for arg in item.args %}
+            - {{ arg }}
+            {% endfor %}
+          Script: {{ item.script }}
+        {% endfor %}
 Scheduling:
   Scheduler: awsbatch
   AwsBatchQueues:
