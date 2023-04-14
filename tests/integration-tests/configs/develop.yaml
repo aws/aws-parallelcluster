@@ -68,17 +68,17 @@ test-suites:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: ["slurm"]
     test_mpi.py::test_mpi_ssh:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
