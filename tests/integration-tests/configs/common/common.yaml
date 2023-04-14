@@ -25,7 +25,7 @@ arm_pl:
     dimensions:
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
 {%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
 scheduler_plugin:
@@ -75,12 +75,12 @@ cloudwatch_logging:
       # 2) run the test for all x86 OSes with slurm
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       # 3) run the test for all ARM OSes on an ARM instance
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
   test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
     dimensions:
@@ -91,12 +91,12 @@ cloudwatch_logging:
   test_compute_console_output_logging.py::test_custom_action_error:
     dimensions:
       - regions: ["ap-east-1"]
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
@@ -186,7 +186,7 @@ createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO_NO_RHEL8 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
   test_createami.py::test_kernel4_build_image_run_cluster:
     dimensions:
       - regions: ["eu-south-1"]
@@ -286,7 +286,7 @@ dns:
     dimensions:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
   test_dns.py::test_existing_hosted_zone:
     dimensions:
@@ -375,11 +375,11 @@ networking:
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -430,7 +430,7 @@ scaling:
     dimensions:
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
@@ -463,7 +463,7 @@ schedulers:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
 {%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
       - regions: ["eu-central-1"]
@@ -475,17 +475,17 @@ schedulers:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_scaling:
     dimensions:
       - regions: ["us-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO_NO_RHEL8 }}
+        oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
 {%- if SCHEDULER_PLUGIN_TESTS is not defined or SCHEDULER_PLUGIN_TESTS == true %}
       - regions: ["me-south-1"]
@@ -613,7 +613,7 @@ storage:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
         benchmarks:
           - mpi_variants: ["openmpi", "intelmpi"]
@@ -623,7 +623,7 @@ storage:
               collective: ["osu_allreduce", "osu_alltoall"]
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -637,7 +637,7 @@ storage:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_fsx_lustre_configuration_options:
     dimensions:
@@ -678,7 +678,7 @@ storage:
         schedulers: ["awsbatch"]
       - regions: [ "ca-central-1" ]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: [ "slurm" ]
         benchmarks:
           - mpi_variants: ["openmpi", "intelmpi"]
@@ -688,7 +688,7 @@ storage:
               collective: ["osu_allreduce", "osu_alltoall"]
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_GOVCLOUD_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_GOVCLOUD_X86 }}
         schedulers: ["slurm"]
   test_raid.py::test_raid_fault_tolerance_mode:
     dimensions:
@@ -700,11 +700,11 @@ storage:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_GOVCLOUD_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_GOVCLOUD_X86 }}
         schedulers: ["slurm"]
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -722,7 +722,7 @@ storage:
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_single:
     dimensions:
-      {%- for region, oss in [("us-east-2", common.OSS_COMMERCIAL_X86_NO_RHEL8), ("cn-northwest-1", common.OSS_CHINA_X86_NO_RHEL8), ("us-gov-west-1", common.OSS_GOVCLOUD_X86_NO_RHEL8)] %}
+      {%- for region, oss in [("us-east-2", common.OSS_COMMERCIAL_X86), ("cn-northwest-1", common.OSS_CHINA_X86), ("us-gov-west-1", common.OSS_GOVCLOUD_X86)] %}
       - regions: ["{{ region }}"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ oss }}
@@ -827,7 +827,7 @@ log_rotation:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
