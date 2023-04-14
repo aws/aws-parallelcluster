@@ -142,13 +142,8 @@ def pytest_addoption(parser):
         "--resource-bucket",
         help="(Optional) Name of bucket to use to look for standard resources like hosted CloudFormation templates.",
     )
-    parser.addoption(
-        "--lambda-layer-source",
-        help="(Optional) S3 URI of lambda layer to copy rather than building.",
-    )
-    parser.addoption(
-        "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
-    )
+    parser.addoption("--lambda-layer-source", help="(Optional) S3 URI of lambda layer to copy rather than building.")
+    parser.addoption("--api-definition-s3-uri", help="URI of the OpenAPI spec of the ParallelCluster API")
     parser.addoption(
         "--api-infrastructure-s3-uri", help="URI of the CloudFormation template for the ParallelCluster API"
     )

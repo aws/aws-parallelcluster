@@ -136,7 +136,7 @@ CloudFormation / Custom Resource options:
 
 API options:
   --api-definition-s3-uri API_DEFINITION_S3_URI
-                        URI of the Docker image for the Lambda of the ParallelCluster API (default: None)
+                        URI of the OpenAPI spec of the ParallelCluster API (default: None)
   --api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI
                         URI of the CloudFormation template for the ParallelCluster API (default: None)
   --api-uri API_URI     URI of an existing ParallelCluster API (default: None)
