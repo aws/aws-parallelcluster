@@ -328,7 +328,7 @@ def _init_argparser():
     api_group = parser.add_argument_group("API options")
     api_group.add_argument(
         "--api-definition-s3-uri",
-        help="URI of the Docker image for the Lambda of the ParallelCluster API",
+        help="URI of the OpenAPI spec of the ParallelCluster API",
         default=TEST_DEFAULTS.get("api_definition_s3_uri"),
     )
     api_group.add_argument(
