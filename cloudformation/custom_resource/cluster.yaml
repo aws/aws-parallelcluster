@@ -203,7 +203,15 @@ Resources:
                   message = pcluster.api.errors.exception_message(e)
                   # StatusReason is truncated, so skip changeset in output, still logged below
                   block_list = {"change_set"}
-                  str_msg = encoder.JSONEncoder().encode(drop_keys(message.to_dict(), block_list))
+                  message_data = drop_keys(message.to_dict(), block_list)
+                  logger.info(message_data)
+
+                  # sort more critical errors last
+                  if "configuration_validation_errors" in message_data and message_data["configuration_validation_errors"]:
+                      order = {k: i for i, k in enumerate(["INFO", "WARNING", "ERROR"])}
+                      message_data["configuration_validation_errors"].sort(key=lambda e: order[e["level"]])
+
+                  str_msg = encoder.JSONEncoder().encode(message_data)
                   if not re.search(r"No changes found", str_msg):
                       logger.info(encoder.JSONEncoder().encode(message))
                       raise ValueError(str_msg)
