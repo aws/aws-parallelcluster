@@ -1,8 +1,8 @@
 Image:
   Os: {{ os }}
 HeadNode:
-# Add multi-NIC instance type from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html  
-  InstanceType: r6in.metal
+  # Use multi-NIC instance type from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html
+  InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
     ElasticIp: true
@@ -26,17 +26,13 @@ Scheduling:
           MinCount: 1
           Efa:
             Enabled: true
-          {% if instance == "p4d.24xlarge" %}
-          CapacityReservationTarget:
-            CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:447714826191:group/EC2CRGroup
-          {% endif %}
           {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
         {% if scheduler != "awsbatch" %}
         PlacementGroup:
-          Enabled: {% if instance != "p4d.24xlarge" %}true{% else %}false{% endif %}
+          Enabled: false
         {% endif %}
 SharedStorage:
   - MountDir: /shared

@@ -30,10 +30,3 @@ test-suites:
     test_api.py::test_official_images:
       dimensions:
         - regions: ["sa-east-1"]
-  multiple_nics:
-    test_multiple_nics.py::test_multiple_nics:
-      dimensions:
-        - regions: ["use1-az6"] # do not move, unless capacity reservation is moved as well
-          instances: ["p4d.24xlarge"]
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: [ "slurm" ]
