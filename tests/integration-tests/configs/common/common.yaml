@@ -727,14 +727,13 @@ update:
       - regions: [ "eu-west-2" ]
         schedulers: [ "slurm" ]
         oss: ["alinux2"]
-# Temporarily disabling p4d tests
-# multiple_nics:
-#   test_multiple_nics.py::test_multiple_nics:
-#     dimensions:
-#       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
-#         instances: ["p4d.24xlarge"]
-#         oss: {{ common.OSS_COMMERCIAL_X86 }}
-#         schedulers: ["slurm"]
+multiple_nics:
+  test_multiple_nics.py::test_multiple_nics:
+    dimensions:
+      - regions: ["use1-az6"]
+        instances: ["c6in.32xlarge"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
     dimensions:
@@ -753,3 +752,4 @@ log_rotation:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+
