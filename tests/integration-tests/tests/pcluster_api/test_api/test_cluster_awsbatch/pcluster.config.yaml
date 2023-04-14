@@ -36,15 +36,6 @@ HeadNode:
             {% endfor %}
           Script: {{ item.script }}
         {% endfor %}
-    OnNodeUpdated:
-      Sequence:
-        {% for item in on_node_updated_script_sequence %}
-        - Args:
-            {% for arg in item.args %}
-            - {{ arg }}
-            {% endfor %}
-          Script: {{ item.script }}
-        {% endfor %}
 Scheduling:
   Scheduler: awsbatch
   AwsBatchQueues:
