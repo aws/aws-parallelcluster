@@ -233,12 +233,11 @@ class Resource:
             self._validate_self(context, suppressors)
         finally:
             if nested:
-                result = self._validation_failures, self._validation_futures
+                result = self._validation_failures, self._validation_futures.copy()
             else:
                 self._validation_failures.extend(self._await_async_validators())
                 result = self._validation_failures
             self._validation_futures.clear()
-            self._validation_failures.clear()
 
         return result
 

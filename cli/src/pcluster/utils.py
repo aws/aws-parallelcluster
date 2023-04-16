@@ -476,7 +476,7 @@ class AsyncUtils:
             async def wrapper(*args, **kwargs):
                 attempt = 0
                 result = None
-                while attempt < stop_max_attempt_number + 1:
+                while attempt <= stop_max_attempt_number:
                     try:
                         result = await func(*args, **kwargs)
                         break
