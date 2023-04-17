@@ -290,7 +290,7 @@ def _create_script_sequence(event_name, https_url, s3_url):
 
     for i in range(10):
         if i % 2 == 0:
-            cache_affinity = i % 2
+            cache_affinity = (i / 2) % 2
             url = f"{https_url}&cache_affinity={cache_affinity}"
         else:
             url = s3_url
