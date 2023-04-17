@@ -45,12 +45,11 @@ class CDKTemplateBuilder:
             ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket, log_group_name)
 
             cloud_assembly = app.synth()
+            LOGGER.info("CDK template generation completed successfully")
 
             cdk_artifacts_manager = CDKArtifactsManager(cloud_assembly)
             assets_metadata = cdk_artifacts_manager.upload_assets(bucket=bucket)
             generated_template = cdk_artifacts_manager.get_template_body()
-
-        LOGGER.info("CDK template generation completed successfully")
 
         return generated_template, assets_metadata
 

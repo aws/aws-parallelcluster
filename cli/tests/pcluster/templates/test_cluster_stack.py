@@ -877,7 +877,6 @@ def test_cluster_resource_distribution_in_stacks(
     raises_error: bool,
 ):
     mock_aws_api(mocker)
-    "ValueError"
     mock_bucket_object_utils(mocker)
     rendered_config_file = pcluster_config_reader(
         "variable_queue_compute_resources.yaml", no_of_compute_resources_per_queue=no_of_compute_resources_per_queue
