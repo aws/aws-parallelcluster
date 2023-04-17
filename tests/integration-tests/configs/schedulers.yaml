@@ -27,7 +27,7 @@ test-suites:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
@@ -60,23 +60,23 @@ test-suites:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
       dimensions:
         - regions: ["ap-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
         - regions: ["ap-northeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_scaling:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_ONE_PER_DISTRO_NO_RHEL8 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: ["slurm"]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: [{{ common.instance("instance_type_1") }}]
@@ -176,7 +176,7 @@ test-suites:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86_NO_RHEL8 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
     test_update.py::test_update_compute_ami:
       dimensions:
         - regions: ["eu-west-1"]

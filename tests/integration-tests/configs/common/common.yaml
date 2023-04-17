@@ -3,17 +3,13 @@ ad_integration:
     dimensions:
       - regions: [ "ap-southeast-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["alinux2", "rhel8"]
         schedulers: ["slurm"]
         benchmarks:
           - mpi_variants: ["openmpi"]
             num_instances: [5]
             osu_benchmarks:
               collective: ["osu_alltoall"]
-      - regions: ["ap-southeast-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
-        schedulers: ["slurm"]
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004", "centos7"]
@@ -49,7 +45,7 @@ cli_commands:
 cloudwatch_logging:
   test_cloudwatch_logging.py::test_cloudwatch_logging:
     dimensions:
-      # 1) run the test for all of the schedulers with alinux2
+      # 1) run the test for all the schedulers with alinux2
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
@@ -58,15 +54,10 @@ cloudwatch_logging:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      # 2) run the test for all x86 OSes with slurm
-      - regions: ["ap-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm"]
-      # 3) run the test for all ARM OSes on an ARM instance
+      # 2) run the test for all OSes with slurm
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        oss: ["ubuntu2004", "rhel8", "centos7"]
         schedulers: ["slurm"]
   test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
     dimensions:
@@ -77,12 +68,8 @@ cloudwatch_logging:
   test_compute_console_output_logging.py::test_custom_action_error:
     dimensions:
       - regions: ["ap-east-1"]
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: ["rhel8"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        schedulers: ["slurm"]
-      - regions: ["us-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
@@ -154,7 +141,7 @@ create:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        schedulers: ["slurm", "awsbatch"]
+        schedulers: ["slurm"]
         oss: ["alinux2"]
   test_create.py::test_cluster_creation_with_invalid_ebs:
     dimensions:
@@ -172,7 +159,7 @@ createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004"]
+        oss: ["ubuntu2004", "alinux2", "ubuntu1804"]
   test_createami.py::test_kernel4_build_image_run_cluster:
     dimensions:
       - regions: ["eu-south-1"]
@@ -180,13 +167,15 @@ createami:
         schedulers: ["slurm"]
         oss: ["alinux2"]
   test_createami.py::test_build_image_custom_components:
+    # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
+    # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)
     dimensions:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8"]
+        oss: ["ubuntu2004"]
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["centos7"]
+        oss: ["alinux2"]
   test_createami.py::test_build_image_wrong_pcluster_version:
     dimensions:
       - regions: ["ca-central-1"]
@@ -203,7 +192,7 @@ monitoring:
     dimensions:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "ubuntu2004"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
 dcv:
   test_dcv.py::test_dcv_configuration:
@@ -577,13 +566,9 @@ storage:
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_fsx_lustre_backup:
     dimensions:
-      - regions: ["eu-south-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8"]
-        schedulers: ["slurm"]
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["ubuntu2004"]
+        oss: ["ubuntu1804"]
         schedulers: ["slurm"]
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
@@ -748,8 +733,3 @@ log_rotation:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
-      - regions: ["ap-northeast-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2"]
-        schedulers: ["slurm"]
-

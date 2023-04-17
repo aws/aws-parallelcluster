@@ -7,7 +7,7 @@ append_package_details_to_final_license_file(){
   # Function to Append Package Details to the THIRD-PARTY-LICENSES file
   #Arguments ->  1- Package Name, 2- Package Version, 3- License Type , 4- URL for package, 5,6,7- URL for License
   # Adding a header to final License file with Package Name, Package Version, License Type , URL for package
-  echo "\n\n\n$1 \n$2 \n$3 \n$4" >> $final_license_file
+  echo -e "\n\n\n$1 \n$2 \n$3 \n$4" >> $final_license_file
   # Appending License
   curl $5 >> $final_license_file
   # Adding Dual Licenses if they exist 
