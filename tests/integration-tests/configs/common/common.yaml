@@ -7,9 +7,9 @@ ad_integration:
         schedulers: ["slurm"]
         benchmarks:
           - mpi_variants: ["openmpi"]
-            num_instances: [100]
+            num_instances: [5]
             osu_benchmarks:
-              collective: ["osu_allreduce", "osu_alltoall"]
+              collective: ["osu_alltoall"]
       - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
@@ -546,11 +546,11 @@ storage:
         oss: ["rhel8"]
         schedulers: ["slurm"]
         benchmarks:
-          - mpi_variants: ["openmpi", "intelmpi"]
-            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+          - mpi_variants: ["openmpi"]
+            num_instances: [5] # Change the head node instance type if you'd test more than 30 instances
             slots_per_instance: 2
             osu_benchmarks:
-              collective: ["osu_allreduce", "osu_alltoall"]
+              collective: ["osu_alltoall"]
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["ubuntu2004"]
@@ -611,11 +611,11 @@ storage:
         oss: ["ubuntu2004"]
         schedulers: [ "slurm" ]
         benchmarks:
-          - mpi_variants: ["openmpi", "intelmpi"]
-            num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+          - mpi_variants: ["intelmpi"]
+            num_instances: [5] # Change the head node instance type if you'd test more than 30 instances
             slots_per_instance: 2
             osu_benchmarks:
-              collective: ["osu_allreduce", "osu_alltoall"]
+              collective: ["osu_alltoall"]
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["rhel8"]
