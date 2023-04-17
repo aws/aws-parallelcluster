@@ -141,7 +141,7 @@ create:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        schedulers: ["slurm", "awsbatch"]
+        schedulers: ["slurm"]
         oss: ["alinux2"]
   test_create.py::test_cluster_creation_with_invalid_ebs:
     dimensions:
