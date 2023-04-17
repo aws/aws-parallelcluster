@@ -224,7 +224,7 @@ class Resource:
         """
         # this validation logic is a responsibility that could be completely separated from the resource tree
         # also until we need to support both sync and async validation this logic will be unnecessarily complex
-        # embracing async validation completely is possible and will greatly simplify thi
+        # embracing async validation completely is possible and will greatly simplify this
         self._validation_futures.clear()
         self._validation_failures.clear()
 
