@@ -15,6 +15,7 @@ CHANGELOG
 - Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job execution.
 - Add support for `DetailedMonitoring` in the `Monitoring` section.
 - Add support for `Tags` in the `SlurmQueues` and `SlurmQueues/ComputeResources` section.
+- Build Slurm with support for LUA.
 
 **CHANGES**
 - Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
