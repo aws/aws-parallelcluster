@@ -154,13 +154,6 @@ def policies_template_with_custom_actions_bucket_access_fixture(policies_templat
             "Resource": {"Fn::Sub": f"arn:${{AWS::Partition}}:s3:::{custom_actions_bucket_name}/*"},
         }
     )
-    statement.append(
-        {
-            "Action": ["events:PutRule", "events:DeleteRule", "events:PutTargets", "events:RemoveTargets"],
-            "Effect": "Allow",
-            "Resource": {"Fn::Sub": "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*"},
-        }
-    )
     return policies_template.to_yaml()
 
 
