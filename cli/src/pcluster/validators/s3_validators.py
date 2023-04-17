@@ -1,47 +1,60 @@
 import re
-import time
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.utils import get_url_scheme
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.utils import AsyncUtils, get_url_scheme
+from pcluster.validators.common import AsyncValidator, FailureLevel, Validator
 from pcluster.validators.utils import get_bucket_name_from_s3_url
 
 
-class UrlValidator(Validator):
+class UrlValidator(AsyncValidator):
     """
     Url Validator.
 
     Validate given url with s3 or https prefix.
+    Validation is cached across instances to avoid repeated calls to the same urls.
     """
 
-    def _validate(
+    @AsyncUtils.async_timeout_cache(timeout=10)
+    async def _validate_async(
         self,
         url,
-        retries=3,
+        fail_on_https_error: bool = False,
+        fail_on_s3_error: bool = False,
+        expected_bucket_owner: str = None,
+    ):
+        try:
+            await self._validate_async_internal(
+                url,
+                fail_on_https_error=fail_on_https_error,
+                fail_on_s3_error=fail_on_s3_error,
+                expected_bucket_owner=expected_bucket_owner,
+            )
+        except ConnectionError as err:
+            self._add_failure(f"The url '{url}' causes ConnectionError: {err}.", FailureLevel.WARNING)
+
+    @AsyncUtils.async_retry(stop_max_attempt_number=3, wait_fixed=1, retry_on_exception=ConnectionError)
+    async def _validate_async_internal(
+        self,
+        url,
         fail_on_https_error: bool = False,
         fail_on_s3_error: bool = False,
         expected_bucket_owner: str = None,
     ):
         scheme = get_url_scheme(url)
         if scheme in ["https", "s3"]:
-            try:
-                if scheme == "s3":
-                    self._validate_s3_uri(
-                        url, fail_on_error=fail_on_s3_error, expected_bucket_owner=expected_bucket_owner
-                    )
-                else:
-                    if expected_bucket_owner:
-                        self._add_failure("S3BucketOwner can only be specified with S3 URL", FailureLevel.ERROR)
-                    self._validate_https_uri(url, fail_on_error=fail_on_https_error)
-            except ConnectionError as e:
-                if retries > 0:
-                    time.sleep(5)
-                    self._validate(url, retries=retries - 1)
-                else:
-                    self._add_failure(f"The url '{url}' causes ConnectionError: {e}.", FailureLevel.WARNING)
+            if scheme == "s3":
+                _async_validate_s3_uri = AsyncUtils.async_from_sync(self._validate_s3_uri)
+                await _async_validate_s3_uri(
+                    url, fail_on_error=fail_on_s3_error, expected_bucket_owner=expected_bucket_owner
+                )
+            else:
+                if expected_bucket_owner:
+                    self._add_failure("S3BucketOwner can only be specified with S3 URL", FailureLevel.ERROR)
+                _async_validate_https_uri = AsyncUtils.async_from_sync(self._validate_https_uri)
+                await _async_validate_https_uri(url, fail_on_error=fail_on_https_error)
 
         else:
             self._add_failure(
