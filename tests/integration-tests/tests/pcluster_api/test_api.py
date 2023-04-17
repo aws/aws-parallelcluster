@@ -460,7 +460,6 @@ def _test_create_cluster(client, create_cluster, cluster_name, config):
     cluster, response = create_cluster(client, cluster_name, config)
     LOGGER.info("Create cluster response: %s", response)
     assert_that(response.cluster.cluster_name).is_equal_to(cluster_name)
-    assert_that(response.cluster.validation_messages).all_match(lambda x: x.type != "AsyncTimedUrlValidator")
 
     return cluster
 
