@@ -15,7 +15,7 @@ from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
 
-@pytest.mark.usefixtures("os", "instance", "scheduler", "serial_execution_by_instance")
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_multiple_nics(
     region,
     pcluster_config_reader,
