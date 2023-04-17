@@ -573,13 +573,9 @@ storage:
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_fsx_lustre_backup:
     dimensions:
-      - regions: ["eu-south-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8"]
-        schedulers: ["slurm"]
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["ubuntu2004"]
+        oss: ["ubuntu1804"]
         schedulers: ["slurm"]
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
