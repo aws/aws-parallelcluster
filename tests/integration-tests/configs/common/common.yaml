@@ -3,17 +3,13 @@ ad_integration:
     dimensions:
       - regions: [ "ap-southeast-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["alinux2", "rhel8"]
         schedulers: ["slurm"]
         benchmarks:
           - mpi_variants: ["openmpi"]
             num_instances: [5]
             osu_benchmarks:
               collective: ["osu_alltoall"]
-      - regions: ["ap-southeast-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
-        schedulers: ["slurm"]
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004", "centos7"]
