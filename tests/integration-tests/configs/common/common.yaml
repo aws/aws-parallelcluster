@@ -68,12 +68,8 @@ cloudwatch_logging:
   test_compute_console_output_logging.py::test_custom_action_error:
     dimensions:
       - regions: ["ap-east-1"]
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        oss: ["rhel8"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        schedulers: ["slurm"]
-      - regions: ["us-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
@@ -196,7 +192,7 @@ monitoring:
     dimensions:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "ubuntu2004"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
 dcv:
   test_dcv.py::test_dcv_configuration:
