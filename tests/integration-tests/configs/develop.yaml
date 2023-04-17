@@ -23,15 +23,15 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
           instances: ["c6gn.16xlarge"]
-          oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
+          oss: ["rhel8"]
           schedulers: ["slurm"]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: ["hpc6id.32xlarge"]
-          oss: ["alinux2"]
+          oss: ["centos7"]
           schedulers: [ "slurm" ]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: [{{ common.instance("instance_type_1") }}]
-          oss: [ "alinux2", "centos7", "ubuntu2004" ]
+          oss: ["ubuntu2004"]
           schedulers: [ "slurm" ]
     test_fabric.py::test_fabric:
       dimensions:
@@ -64,51 +64,39 @@ test-suites:
   scaling:
     # FixMe: MPI tests configs are duplications of the test in common.yaml.
     # The duplications are necessary because the scaling section here overwrites the scaling section in common.yaml.
-    test_mpi.py::test_mpi:
+    test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss: ["rhel8"]
           schedulers: ["slurm"]
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
     test_mpi.py::test_mpi_ssh:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss: ["centos7"]
           schedulers: ["slurm"]
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
         - regions: {{ common.REGIONS_COMMERCIAL }}
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
         - regions: {{ common.REGIONS_CHINA }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_CHINA_X86 }}
+          oss: ["alinux2"]
           schedulers: ["slurm"]
         - regions: {{ common.REGIONS_GOVCLOUD }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_GOVCLOUD_X86 }}
-          schedulers: ["slurm"]
-        - regions: ["us-west-2"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
-        - regions: ["cn-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_CHINA_ARM }}
-          schedulers: ["slurm"]
-        - regions: ["us-gov-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_GOVCLOUD_ARM }}
+          oss: ["rhel8"]
           schedulers: ["slurm"]
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
         - regions: ["usw2-az4"]  # do not move, unless instance type support is moved as well
           schedulers: ["slurm"]
-          oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
+          oss: ["ubuntu2004"]

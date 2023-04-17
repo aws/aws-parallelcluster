@@ -27,6 +27,7 @@ CHANGELOG
 - Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
 - Fix Update policy for MaxCount to always perform numerical comparisons on MaxCount property.
 - Fix IP association on instances with multiple network cards.
+- Fix replacement of StoragePass in slurm_parallelcluster_slurmdbd.conf when a queue parameter update is performed and the Slurm accounting configurations are not updated.
 
 3.5.1
 -----

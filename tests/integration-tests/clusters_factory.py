@@ -84,6 +84,8 @@ class Cluster:
         # update the cluster
         logging.info("Updating cluster %s with config %s", self.name, config_file)
         command = ["pcluster", "update-cluster", "--cluster-configuration", config_file, "--cluster-name", self.name]
+        # This changes the default behavior of the update-cluster command and makes it wait for the cluster update to
+        # finish before returning.
         if kwargs.pop("wait", True):
             command.append("--wait")
         for k, val in kwargs.items():
@@ -479,8 +481,9 @@ class ClustersFactory:
             cluster.name,
         ]
 
-        wait = kwargs.pop("wait", True)
-        if wait:
+        # This changes the default behavior of the create-cluster command and makes it wait for the cluster creation to
+        # finish before returning.
+        if kwargs.pop("wait", True):
             command.append("--wait")
 
         # TODO Remove the validator suppression below once the plugin scheduler is officially supported

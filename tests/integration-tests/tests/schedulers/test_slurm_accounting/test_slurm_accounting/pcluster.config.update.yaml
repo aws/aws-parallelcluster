@@ -1,0 +1,41 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+    AdditionalSecurityGroups:
+      - {{ database_client_security_group }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    Database:
+      Uri: {{ database_host }}
+      UserName: {{ database_admin_user }}
+      PasswordSecretArn: {{ database_secret_arn }}
+  SlurmQueues:
+    - Name: compute
+      ComputeResources:
+        - Name: cit
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 0
+          MaxCount: 12
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14
