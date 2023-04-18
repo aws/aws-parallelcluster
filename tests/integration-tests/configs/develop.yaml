@@ -82,15 +82,15 @@ test-suites:
           schedulers: ["slurm"]
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
-        - regions: {{ common.REGIONS_COMMERCIAL }}
+        - regions: ["af-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
-        - regions: {{ common.REGIONS_CHINA }}
+        - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        - regions: {{ common.REGIONS_GOVCLOUD }}
+        - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
