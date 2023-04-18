@@ -200,12 +200,12 @@ dcv:
       # DCV on GPU enabled instance
       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g4dn.2xlarge"]
-        oss: ["centos7"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
       # DCV on ARM + GPU
       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g5g.2xlarge"]
-        oss: ["ubuntu2004"]
+        oss: ["centos7"]
         schedulers: ["slurm"]
       # DCV in cn regions and non GPU enabled instance
       - regions: ["cn-northwest-1"]
@@ -331,11 +331,11 @@ networking:
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["rhel8"]
+        oss: ["centos7"]
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
