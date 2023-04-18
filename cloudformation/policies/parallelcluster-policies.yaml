@@ -419,6 +419,7 @@ Resources:
               - cloudformation:DescribeStackEvents
               - cloudformation:DescribeStackResources
               - cloudformation:GetTemplate
+              - cloudformation:ListStacks
             Resource: !Sub
               - arn:*:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
               - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
