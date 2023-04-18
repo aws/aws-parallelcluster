@@ -1305,7 +1305,7 @@ def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
         (False, "alinux2", "t2.micro", None, None, None),  # doesn't fail because DCV is disabled
         (True, "ubuntu1804", "m6g.xlarge", None, None, None),
         (True, "alinux2", "m6g.xlarge", None, None, None),
-        (True, "rhel8", "m6g.xlarge", None, None, "Please double check the os configuration"),
+        (True, "rhel8", "m6g.xlarge", None, None, None),
         (True, "ubuntu2004", "m6g.xlarge", None, None, "Please double check the os configuration"),
     ],
 )
