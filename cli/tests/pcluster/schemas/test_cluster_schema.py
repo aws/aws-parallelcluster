@@ -590,6 +590,45 @@ def test_slurm_flexible_queue(mocker, config_dict, failure_message):
             },
             "Multiple .*Settings sections cannot be specified in the SharedStorage items",
         ),
+        (
+            {
+                "StorageType": "FsxFileCache",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxFileCacheSettings": {"FileCacheId": "fc-123456789012345678"},
+                "EfsSettings": {"Encrypted": True},
+            },
+            "Multiple .*Settings sections cannot be specified in the SharedStorage items",
+        ),
+        ({"StorageType": "FsxFileCache", "MountDir": "mount/tmp"}, "Missing data for required field."),
+        ({"StorageType": "FsxFileCache", "Name": "name"}, "Missing data for required field."),
+        (
+            {
+                "StorageType": "FsxFileCache",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxFileCacheSettings": {"Encrypted": True},
+            },
+            "Unknown field.",
+        ),
+        (
+            {
+                "StorageType": "FsxFileCache",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxFileCacheSettings": {"FileCacheId": "fsx-1234567"},
+            },
+            "String does not match expected pattern.",
+        ),
+        (
+            {
+                "StorageType": "FsxFileCache",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxFileCacheSettings": {"FileCacheId": "fsx-1234567890123456789"},
+            },
+            "String does not match expected pattern.",
+        ),
         # success
         (
             {
@@ -602,6 +641,24 @@ def test_slurm_flexible_queue(mocker, config_dict, failure_message):
         ),
         ({"StorageType": "Efs", "Name": "name", "MountDir": "mount/tmp", "EfsSettings": {"Encrypted": True}}, None),
         ({"StorageType": "Ebs", "Name": "name", "MountDir": "mount/tmp", "EbsSettings": {"Encrypted": True}}, None),
+        (
+            {
+                "StorageType": "FsxFileCache",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxFileCacheSettings": {"FileCacheId": "fc-12345678"},
+            },
+            None,
+        ),
+        (
+            {
+                "StorageType": "FsxFileCache",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxFileCacheSettings": {"FileCacheId": "fc-123456789012345678"},
+            },
+            None,
+        ),
     ],
 )
 def test_shared_storage_schema(mocker, config_dict, failure_message):

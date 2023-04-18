@@ -41,6 +41,7 @@ from pcluster.constants import (
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT_US_ISO,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    FILECACHE,
     LUSTRE,
     MAX_COMPUTE_RESOURCES_PER_QUEUE,
     MAX_EBS_COUNT,
@@ -612,6 +613,15 @@ class ExistingFsxOntap(BaseSharedFsx):
         return AWSApi.instance().fsx.describe_storage_virtual_machines([self.storage_virtual_machine_id])[0][
             "Endpoints"
         ]["Nfs"]["DNSName"]
+
+
+class ExistingFsxFileCache(BaseSharedFsx):
+    """Represent the shared FSX FileCache resource."""
+
+    def __init__(self, file_cache_id: str, **kwargs):
+        super().__init__(**kwargs)
+        self.file_cache_id = file_cache_id
+        self.file_system_type = FILECACHE
 
 
 # ---------------------- Networking ---------------------- #
@@ -1450,6 +1460,8 @@ class BaseClusterConfig(Resource):
                     existing_storage_count["fsx"] += 1
                     existing_fsx.add(storage.file_system_id)
                     self._register_validator(FeatureRegionValidator, feature=Feature.FSX_ONTAP, region=self.region)
+                elif isinstance(storage, ExistingFsxFileCache):
+                    existing_storage_count["fsx"] += 1
                 elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
@@ -1612,6 +1624,8 @@ class BaseClusterConfig(Resource):
                     storage_id = storage.file_system_id
                 elif isinstance(storage, (SharedEbs, ExistingFsxOpenZfs, ExistingFsxOntap)):
                     storage_id = storage.volume_id
+                elif isinstance(storage, ExistingFsxFileCache):
+                    storage_id = storage.file_cache_id
                 if storage_id:
                     storage_id_list.append(storage_id)
         return storage_id_list

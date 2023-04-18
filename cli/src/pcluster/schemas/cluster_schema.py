@@ -52,6 +52,7 @@ from pcluster.config.cluster_config import (
     Dns,
     Efa,
     EphemeralVolume,
+    ExistingFsxFileCache,
     ExistingFsxOntap,
     ExistingFsxOpenZfs,
     FlexibleInstanceType,
@@ -118,6 +119,9 @@ from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
     DELETION_POLICIES_WITH_SNAPSHOT,
+    FILECACHE,
+    FSX_FILE_CACHE,
+    FSX_FILE_CACHE_ID_REGEX,
     FSX_LUSTRE,
     FSX_ONTAP,
     FSX_OPENZFS,
@@ -479,6 +483,16 @@ class FsxOntapSettingsSchema(BaseSchema):
     )
 
 
+class FsxFileCacheSettingsSchema(BaseSchema):
+    """Represent the FSX File Cache schema."""
+
+    file_cache_id = fields.Str(
+        required=True,
+        validate=validate.Regexp(FSX_FILE_CACHE_ID_REGEX),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+    )
+
+
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
@@ -490,7 +504,7 @@ class SharedStorageSchema(BaseSchema):
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     storage_type = fields.Str(
         required=True,
-        validate=validate.OneOf(["Ebs", FSX_LUSTRE, FSX_OPENZFS, FSX_ONTAP, "Efs"]),
+        validate=validate.OneOf(["Ebs", FSX_LUSTRE, FSX_OPENZFS, FSX_ONTAP, "Efs", FSX_FILE_CACHE]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     ebs_settings = fields.Nested(EbsSettingsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
@@ -500,13 +514,23 @@ class SharedStorageSchema(BaseSchema):
         FsxOpenZfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     fsx_ontap_settings = fields.Nested(FsxOntapSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    fsx_file_cache_settings = fields.Nested(
+        FsxFileCacheSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
 
     @validates_schema
     def no_coexist_storage_settings(self, data, **kwargs):
         """Validate that *_settings for different storage types do not co-exist."""
         if self.fields_coexist(
             data,
-            ["ebs_settings", "efs_settings", "fsx_lustre_settings", "fsx_open_zfs_settings", "fsx_ontap_settings"],
+            [
+                "ebs_settings",
+                "efs_settings",
+                "fsx_lustre_settings",
+                "fsx_open_zfs_settings",
+                "fsx_ontap_settings",
+                "fsx_file_cache_settings",
+            ],
             **kwargs,
         ):
             raise ValidationError("Multiple *Settings sections cannot be specified in the SharedStorage items.")
@@ -520,6 +544,7 @@ class SharedStorageSchema(BaseSchema):
             (FSX_LUSTRE, "fsx_lustre_settings"),
             (FSX_OPENZFS, "fsx_open_zfs_settings"),
             (FSX_ONTAP, "fsx_ontap_settings"),
+            (FSX_FILE_CACHE, "fsx_file_cache_settings"),
         ]:
             # Verify the settings section is associated to the right storage type
             if data.get(settings, None) and storage_type != data.get("storage_type"):
@@ -539,6 +564,7 @@ class SharedStorageSchema(BaseSchema):
             or data.get("fsx_lustre_settings", None)
             or data.get("fsx_open_zfs_settings", None)
             or data.get("fsx_ontap_settings", None)
+            or data.get("fsx_file_cache_settings", None)
         )
         if settings:
             shared_volume_attributes.update(**settings)
@@ -552,6 +578,8 @@ class SharedStorageSchema(BaseSchema):
             return ExistingFsxOpenZfs(**shared_volume_attributes)
         elif storage_type == FSX_ONTAP:
             return ExistingFsxOntap(**shared_volume_attributes)
+        elif storage_type == FSX_FILE_CACHE:
+            return ExistingFsxFileCache(**shared_volume_attributes)
         return None
 
     @pre_dump
@@ -562,14 +590,19 @@ class SharedStorageSchema(BaseSchema):
         if adapted_data.shared_storage_type == "efs":
             storage_type = "efs"
         elif adapted_data.shared_storage_type == "fsx":
-            mapping = {LUSTRE: "fsx_lustre", OPENZFS: "fsx_open_zfs", ONTAP: "fsx_ontap"}
+            mapping = {
+                LUSTRE: "fsx_lustre",
+                OPENZFS: "fsx_open_zfs",
+                ONTAP: "fsx_ontap",
+                FILECACHE: "fsx_file_cache_settings",
+            }
             storage_type = mapping.get(adapted_data.file_system_type)
         else:  # "raid", "ebs"
             storage_type = "ebs"
         setattr(adapted_data, f"{storage_type}_settings", copy.copy(adapted_data))
         # Restore storage type attribute
         if adapted_data.shared_storage_type == "fsx":
-            mapping = {LUSTRE: FSX_LUSTRE, OPENZFS: FSX_OPENZFS, ONTAP: FSX_ONTAP}
+            mapping = {LUSTRE: FSX_LUSTRE, OPENZFS: FSX_OPENZFS, ONTAP: FSX_ONTAP, FILECACHE: FSX_FILE_CACHE}
             adapted_data.storage_type = mapping.get(adapted_data.file_system_type)
         else:
             adapted_data.storage_type = storage_type.capitalize()
