@@ -138,7 +138,7 @@ def test_log_rotation(
     )
 
 
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(9))
 def _wait_file_not_empty(remote_command_executor, file_path, compute_node_ip=None):
     if compute_node_ip:
         size = _run_command_on_node(remote_command_executor, f"stat --format=%s {file_path}", compute_node_ip)

@@ -22,6 +22,9 @@ CHANGELOG
 - Set Slurm prolog and epilog configurations to target a directory, /opt/slurm/etc/scripts/prolog.d/ and /opt/slurm/etc/scripts/epilog.d/ respectively.
 - Upgrade Slurm to version 23.02.1.
 - Upgrade munge to version 0.5.15.
+- Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
+  `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
+  `aws/codebuild/amazonlinux2-aarch64-standard:1.0` to `aws/codebuild/amazonlinux2-aarch64-standard:2.0`.
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
@@ -737,7 +740,7 @@ CHANGELOG
 - Improve retrieval of instance type info by using `DescribeInstanceType` API.
 - Remove `custom_awsbatch_template_url` configuration parameter.
 - Upgrade `pip` to latest version in virtual environments.
-- Upgrade image used by CodeBuild environment when building container images for Batch clusters, from
+- Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
   `aws/codebuild/amazonlinux2-x86_64-standard:1.0` to `aws/codebuild/amazonlinux2-x86_64-standard:3.0`.
 
 **BUG FIXES**

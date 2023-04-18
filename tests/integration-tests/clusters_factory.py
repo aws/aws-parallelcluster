@@ -483,7 +483,8 @@ class ClustersFactory:
 
         # This changes the default behavior of the create-cluster command and makes it wait for the cluster creation to
         # finish before returning.
-        if kwargs.pop("wait", True):
+        wait = kwargs.pop("wait", True)
+        if wait:
             command.append("--wait")
 
         # TODO Remove the validator suppression below once the plugin scheduler is officially supported
@@ -508,8 +509,8 @@ class ClustersFactory:
         logging.info("Destroying cluster {0}".format(name))
         if name in self.__created_clusters:
             delete_logs = test_passed and self._delete_logs_on_success and self.__created_clusters[name].create_complete
+            cluster = self.__created_clusters[name]
             try:
-                cluster = self.__created_clusters[name]
                 cluster.delete(delete_logs=delete_logs)
             except Exception as e:
                 logging.error(
