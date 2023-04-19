@@ -10,7 +10,6 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import time
 
 import boto3
 import pytest
@@ -39,8 +38,6 @@ def test_iam_roles(
     ec2_client = boto3.client("ec2", region_name=region)
     lambda_client = boto3.client("lambda", region_name=region)
 
-    # Give 10 minutes to EC2ImageBuilder to spin up the build instance
-    time.sleep(600)
     pcluster_describe_image_result = image.describe()
     logging.info(pcluster_describe_image_result)
     _check_roles(
@@ -52,6 +49,7 @@ def test_iam_roles(
         lambda_cleanup_role,
     )
 
+    # TODO is there a way to complete this check without building an image?
     _wait_build_image_complete(image)
 
 
@@ -88,6 +86,21 @@ def _wait_build_image_complete(image):
     assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
 
 
+@retry(wait_fixed=minutes(1), stop_max_delay=minutes(20))
+def _get_resources_with_image_resource(cfn_client, stack_name):
+    logging.info("Describe stack resources")
+    resources = cfn_client.describe_stack_resources(StackName=stack_name)["StackResources"]
+    image_resource_exists = False
+    logging.info("Checking image resource")
+    for resource in resources:
+        if resource["ResourceType"] == "AWS::ImageBuilder::Image":
+            image_resource_exists = True
+            logging.info("The image resource exists!")
+            break
+    assert_that(image_resource_exists).is_true()
+    return resources
+
+
 def _check_roles(
     cfn_client,
     ec2_client,
@@ -97,7 +110,8 @@ def _check_roles(
     lambda_cleanup_role,
 ):
     """Test roles are attached to EC2 build instance and Lambda cleanup function in the building stack."""
-    resources = cfn_client.describe_stack_resources(StackName=stack_name)["StackResources"]
+    logging.info("Checking roles are attached to the build instance")
+    resources = _get_resources_with_image_resource(cfn_client, stack_name)
     for resource in resources:
         resource_type = resource["ResourceType"]
         # Check that there is no role created in the stack.
@@ -106,9 +120,11 @@ def _check_roles(
             # Check the role is attached to the Lambda function
             lambda_function = lambda_client.get_function(FunctionName=resource["PhysicalResourceId"])["Configuration"]
             assert_that(lambda_function["Role"]).is_equal_to(lambda_cleanup_role)
+            logging.info("Lambda function role confirmed")
         if resource_type == "AWS::ImageBuilder::Image":
             # Check the instance profile is attached to the EC2 instance
             imagebuilder_image_arn = resource["PhysicalResourceId"]
+            logging.info(f"Image builder Image ARN: {imagebuilder_image_arn}")
             instance_profile_arn = (
                 ec2_client.describe_instances(
                     Filters=[{"Name": "tag:Ec2ImageBuilderArn", "Values": [imagebuilder_image_arn]}]
@@ -119,3 +135,4 @@ def _check_roles(
                 .get("Arn")
             )
             assert_that(instance_profile_arn).contains(instance_profile)
+            logging.info("Image arn confirmed")

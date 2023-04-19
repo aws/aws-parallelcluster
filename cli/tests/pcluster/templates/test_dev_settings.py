@@ -16,7 +16,7 @@ from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket_object_utils
 from tests.pcluster.utils import flatten, get_resources
 
 
@@ -28,12 +28,13 @@ from tests.pcluster.utils import flatten, get_resources
 )
 def test_custom_cookbook(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
 
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
 
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 

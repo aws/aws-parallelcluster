@@ -1,0 +1,6687 @@
+AdditionalPackages:
+  IntelSoftware:
+    IntelHpcPlatform: false
+AdditionalResources: https://template.url
+CustomS3Bucket: String
+DeploymentSettings: null
+DevSettings: null
+DirectoryService:
+  AdditionalSssdConfigs:
+    parameter_1: value_1
+    parameter_2: value_2
+  DomainAddr: string
+  DomainName: string
+  DomainReadOnlyUser: string
+  GenerateSshKeysForUsers: false
+  LdapAccessFilter: string
+  LdapTlsCaCert: string
+  LdapTlsReqCert: never
+  PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx
+HeadNode:
+  CustomActions:
+    OnNodeConfigured:
+      Args:
+      - arg0
+      Script: https://test.tgz
+    OnNodeStart:
+      Args:
+      - arg0
+      Script: https://test.tgz
+    OnNodeUpdated: null
+  Dcv:
+    AllowedIps: 0.0.0.0/0
+    Enabled: true
+    Port: 8443
+  DisableSimultaneousMultithreading: false
+  Iam:
+    AdditionalIamPolicies: []
+    InstanceProfile: null
+    InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
+    S3Access: null
+  Image:
+    CustomAmi: ami-98765432
+  Imds:
+    Secured: true
+  InstanceType: t2.micro
+  LocalStorage:
+    EphemeralVolume:
+      MountDir: /test
+    RootVolume:
+      DeleteOnTermination: true
+      Encrypted: true
+      Iops: 100
+      Size: 40
+      Throughput: null
+      VolumeType: gp2
+  Networking:
+    AdditionalSecurityGroups:
+    - sg-34567890
+    - sg-34567891
+    - sg-34567892
+    - sg-34567893
+    - sg-34567894
+    - sg-34567895
+    - sg-34567896
+    - sg-34567897
+    - sg-34567898
+    - sg-34567899
+    ElasticIp: true
+    Proxy:
+      HttpProxyAddress: https://proxy-address:port
+    SecurityGroups: null
+    SubnetId: subnet-12345678
+  Ssh:
+    AllowedIps: 1.2.3.4/32
+    KeyName: ec2-key-name
+Iam:
+  PermissionsBoundary: null
+  ResourcePrefix: null
+  Roles:
+    LambdaFunctionsRole: arn:aws:iam::aws:role/CustomResourcesLambdaRole
+Image:
+  CustomAmi: ami-12345678
+  Os: centos7
+Imds:
+  ImdsSupport: v1.0
+Monitoring:
+  Dashboards:
+    CloudWatch:
+      Enabled: true
+  DetailedMonitoring: true
+  Logs:
+    CloudWatch:
+      DeletionPolicy: Retain
+      Enabled: true
+      RetentionInDays: 30
+    Rotation:
+      Enabled: true
+Region: us-east-1
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-00
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-01
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-02
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-0
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-10
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-11
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-12
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-1
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-20
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-21
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-22
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-2
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-30
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-31
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-32
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-3
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-40
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-41
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-42
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-4
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-50
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-51
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-52
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-5
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-60
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-61
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-62
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-6
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-70
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-71
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-72
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-7
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-80
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-81
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-82
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-8
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-90
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-91
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-92
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-9
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-100
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-101
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-102
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-10
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-110
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-111
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-112
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-11
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-120
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-121
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-122
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-12
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-130
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-131
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-132
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-13
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-140
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-141
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-142
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-14
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-150
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-151
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-152
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-15
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-160
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-161
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-162
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-16
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-170
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-171
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-172
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-17
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-180
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-181
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-182
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-18
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-190
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-191
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-192
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-19
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-200
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-201
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-202
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-20
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-210
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-211
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-212
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-21
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-220
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-221
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-222
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-22
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-230
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-231
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-232
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-23
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-240
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-241
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: false
+      Efa:
+        Enabled: false
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.xlarge
+      MaxCount: 10
+      MinCount: 0
+      Name: compute-resource-ondemand-242
+      Networking:
+        PlacementGroup:
+          Enabled: null
+          Id: null
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: null
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume: null
+        RootVolume:
+          Encrypted: true
+          Iops: 3000
+          Size: null
+          Throughput: 125
+          VolumeType: gp3
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+      S3Access:
+      - BucketName: string1
+        EnableWriteAccess: false
+        KeyName: null
+    Image:
+      CustomAmi: ami-12345678
+    Name: queue-ondemand-24
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: null
+      PlacementGroup:
+        Enabled: null
+        Id: null
+        Name: null
+      Proxy: null
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-00
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-01
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-02
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-0
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-10
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-11
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-12
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-1
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-20
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-21
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-22
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-2
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-30
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-31
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-32
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-3
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-40
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-41
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-42
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-4
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-50
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-51
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-52
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-5
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-60
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-61
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-62
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-6
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-70
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-71
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-72
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-7
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-80
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-81
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-82
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-8
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-90
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-91
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-92
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-9
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-100
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-101
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-102
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-10
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-110
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-111
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-112
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-11
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-120
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-121
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-122
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-12
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-130
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-131
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-132
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-13
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-140
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-141
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-142
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-14
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-150
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-151
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-152
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-15
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-160
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-161
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-162
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-16
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-170
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-171
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-172
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-17
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-180
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-181
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-182
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-18
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-190
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-191
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-192
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-19
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-200
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-201
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-202
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-20
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-210
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-211
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-212
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-21
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-220
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-221
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-222
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-22
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-230
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-231
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-232
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-23
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  - CapacityReservationTarget: null
+    CapacityType: ONDEMAND
+    ComputeResources:
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-240
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-241
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    - CapacityReservationTarget: null
+      CustomSlurmSettings: {}
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+        GdrSupport: false
+      HealthChecks:
+        Gpu:
+          Enabled: null
+      InstanceType: c5.2xlarge
+      MaxCount: 15
+      MinCount: 1
+      Name: compute-resource-spot-242
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Id: String
+          Name: null
+      SchedulableMemory: null
+      SpotPrice: 1.1
+      Tags:
+      - Key: computetag0
+        Value: computetag0
+    ComputeSettings:
+      LocalStorage:
+        EphemeralVolume:
+          MountDir: /scratch
+        RootVolume:
+          Encrypted: true
+          Iops: 100
+          Size: 35
+          Throughput: null
+          VolumeType: gp2
+    CustomActions: null
+    CustomSlurmSettings: {}
+    HealthChecks:
+      Gpu:
+        Enabled: null
+    Iam:
+      AdditionalIamPolicies: []
+      InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      InstanceRole: null
+      S3Access: null
+    Image:
+      CustomAmi: ami-23456789
+    Name: queue-spot-24
+    Networking:
+      AdditionalSecurityGroups: null
+      AssignPublicIp: true
+      PlacementGroup:
+        Enabled: true
+        Id: String
+        Name: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
+      SecurityGroups:
+      - sg-34567890
+      SubnetIds:
+      - subnet-12345678
+    Tags:
+    - Key: String0
+      Value: String0
+  SlurmSettings:
+    CustomSlurmSettings: null
+    CustomSlurmSettingsIncludeFile: null
+    Database: null
+    Dns:
+      DisableManagedDns: false
+      HostedZoneId: null
+      UseEc2Hostnames: false
+    EnableMemoryBasedScheduling: false
+    QueueUpdateStrategy: TERMINATE
+    ScaledownIdletime: 10
+SharedStorage:
+- EbsSettings:
+    DeletionPolicy: Retain
+    Encrypted: true
+    Iops: 100
+    KmsKeyId: String
+    Raid: null
+    Size: 150
+    SnapshotId: null
+    Throughput: null
+    VolumeId: null
+    VolumeType: gp2
+  MountDir: /new/mount/efs0
+  Name: nameebs0
+  StorageType: Ebs
+- EbsSettings:
+    DeletionPolicy: Retain
+    Encrypted: true
+    Iops: 100
+    KmsKeyId: String
+    Raid: null
+    Size: 150
+    SnapshotId: null
+    Throughput: null
+    VolumeId: null
+    VolumeType: gp2
+  MountDir: /new/mount/efs1
+  Name: nameebs1
+  StorageType: Ebs
+- EbsSettings:
+    DeletionPolicy: Retain
+    Encrypted: true
+    Iops: 100
+    KmsKeyId: String
+    Raid: null
+    Size: 150
+    SnapshotId: null
+    Throughput: null
+    VolumeId: null
+    VolumeType: gp2
+  MountDir: /new/mount/efs2
+  Name: nameebs2
+  StorageType: Ebs
+- EbsSettings:
+    DeletionPolicy: Retain
+    Encrypted: true
+    Iops: 100
+    KmsKeyId: String
+    Raid: null
+    Size: 150
+    SnapshotId: null
+    Throughput: null
+    VolumeId: null
+    VolumeType: gp2
+  MountDir: /new/mount/efs3
+  Name: nameebs3
+  StorageType: Ebs
+- EbsSettings:
+    DeletionPolicy: Retain
+    Encrypted: true
+    Iops: 100
+    KmsKeyId: String
+    Raid: null
+    Size: 150
+    SnapshotId: null
+    Throughput: null
+    VolumeId: null
+    VolumeType: gp2
+  MountDir: /new/mount/efs4
+  Name: nameebs4
+  StorageType: Ebs
+- EfsSettings:
+    DeletionPolicy: Delete
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: null
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: 1024
+    ThroughputMode: provisioned
+  MountDir: /new/mount/efs0
+  Name: efs0
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345610
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs10
+  Name: existing-efs10
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345611
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs11
+  Name: existing-efs11
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345612
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs12
+  Name: existing-efs12
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345613
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs13
+  Name: existing-efs13
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345614
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs14
+  Name: existing-efs14
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345615
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs15
+  Name: existing-efs15
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345616
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs16
+  Name: existing-efs16
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345617
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs17
+  Name: existing-efs17
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345618
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs18
+  Name: existing-efs18
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345619
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs19
+  Name: existing-efs19
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345620
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs20
+  Name: existing-efs20
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345621
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs21
+  Name: existing-efs21
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345622
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs22
+  Name: existing-efs22
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345623
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs23
+  Name: existing-efs23
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345624
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs24
+  Name: existing-efs24
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345625
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs25
+  Name: existing-efs25
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345626
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs26
+  Name: existing-efs26
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345627
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs27
+  Name: existing-efs27
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345628
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs28
+  Name: existing-efs28
+  StorageType: Efs
+- EfsSettings:
+    DeletionPolicy: null
+    Encrypted: false
+    EncryptionInTransit: false
+    FileSystemId: fs-12345629
+    IamAuthorization: false
+    KmsKeyId: null
+    PerformanceMode: generalPurpose
+    ProvisionedThroughput: null
+    ThroughputMode: bursting
+  MountDir: /existing/mount/efs29
+  Name: existing-efs29
+  StorageType: Efs
+- FsxLustreSettings:
+    AutoImportPolicy: NEW
+    AutomaticBackupRetentionDays: 0
+    BackupId: null
+    CopyTagsToBackups: true
+    DailyAutomaticBackupStartTime: 01:03
+    DataCompressionType: LZ4
+    DeletionPolicy: Delete
+    DeploymentType: PERSISTENT_1
+    DriveCacheType: READ
+    ExportPath: s3://bucket/folder
+    FileSystemId: null
+    ImportPath: s3://bucket
+    ImportedFileChunkSize: 1024
+    KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    PerUnitStorageThroughput: 200
+    StorageCapacity: 3600
+    StorageType: HDD
+    WeeklyMaintenanceStartTime: '1:00:00'
+  MountDir: /new/mount/fsx
+  Name: fsx0
+  StorageType: FsxLustre
+- FsxOpenZfsSettings:
+    VolumeId: fsvol-12345678901234567
+  MountDir: /existing/mount/openzfs
+  Name: existing-open-zfs
+  StorageType: FsxOpenZfs
+- FsxOntapSettings:
+    VolumeId: fsvol-12345678901234567
+  MountDir: /existing/mount/ontap
+  Name: existing-ontap
+  StorageType: FsxOntap
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456710
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx10
+  Name: existing-fsx10
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456711
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx11
+  Name: existing-fsx11
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456712
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx12
+  Name: existing-fsx12
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456713
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx13
+  Name: existing-fsx13
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456714
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx14
+  Name: existing-fsx14
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456715
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx15
+  Name: existing-fsx15
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456716
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx16
+  Name: existing-fsx16
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456717
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx17
+  Name: existing-fsx17
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456718
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx18
+  Name: existing-fsx18
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456719
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx19
+  Name: existing-fsx19
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456720
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx20
+  Name: existing-fsx20
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456721
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx21
+  Name: existing-fsx21
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456722
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx22
+  Name: existing-fsx22
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456723
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx23
+  Name: existing-fsx23
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456724
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx24
+  Name: existing-fsx24
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456725
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx25
+  Name: existing-fsx25
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456726
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx26
+  Name: existing-fsx26
+  StorageType: FsxLustre
+- FsxLustreSettings:
+    AutoImportPolicy: null
+    AutomaticBackupRetentionDays: null
+    BackupId: null
+    CopyTagsToBackups: null
+    DailyAutomaticBackupStartTime: null
+    DataCompressionType: null
+    DeletionPolicy: null
+    DeploymentType: null
+    DriveCacheType: null
+    ExportPath: null
+    FileSystemId: fs-21345678123456727
+    ImportPath: null
+    ImportedFileChunkSize: null
+    KmsKeyId: null
+    PerUnitStorageThroughput: null
+    StorageCapacity: null
+    StorageType: null
+    WeeklyMaintenanceStartTime: null
+  MountDir: /existing/mount/fsx27
+  Name: existing-fsx27
+  StorageType: FsxLustre
+Tags:
+- Key: String0
+  Value: String0

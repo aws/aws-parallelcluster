@@ -32,6 +32,7 @@ from utils import generate_stack_name, get_arn_partition
 from tests.common.assertions import (
     assert_head_node_is_running,
     assert_instance_has_desired_imds_v2_setting,
+    assert_instance_has_desired_tags,
     assert_lambda_vpc_settings_are_correct,
     assert_no_msg_in_logs,
 )
@@ -141,6 +142,7 @@ def test_build_image(
     )
 
     _test_build_image_success(image)
+    _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
     _test_build_imds_settings(image, "required", region)
     _test_image_tag_and_volume(image)
     _test_list_image_log_streams(image)
@@ -482,6 +484,23 @@ def _test_build_imds_settings(image, status, region):
     for reservations in describe_response.get("Reservations"):
         for instance in reservations.get("Instances"):
             assert_instance_has_desired_imds_v2_setting(instance, status)
+
+
+def _test_build_instances_tags(image, build_tags, region):
+    logging.info("Checking that the ImageBuilder instances have the build tags")
+
+    instance_names = [
+        f"Build instance for ParallelClusterImage-{image.image_id}",
+        f"Test instance for ParallelClusterImage-{image.image_id}",
+    ]
+
+    describe_response = boto3.client("ec2", region_name=region).describe_instances(
+        Filters=[{"Name": "tag:Name", "Values": instance_names}]
+    )
+
+    for reservations in describe_response.get("Reservations"):
+        for instance in reservations.get("Instances"):
+            assert_instance_has_desired_tags(instance, build_tags)
 
 
 def _test_build_image_success(image):

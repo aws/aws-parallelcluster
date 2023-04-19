@@ -82,6 +82,7 @@ from utils import (
     set_logger_formatter,
     to_pascal_case,
 )
+from xdist import get_xdist_worker_id
 
 from tests.common.osu_common import run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
@@ -96,7 +97,7 @@ from tests.common.utils import (
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
 
-pytest_plugins = ["conftest_networking"]
+pytest_plugins = ["conftest_networking", "conftest_resource_bucket"]
 
 
 def pytest_addoption(parser):
@@ -132,10 +133,17 @@ def pytest_addoption(parser):
     parser.addoption("--post-install", help="url to post install script")
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
-    parser.addoption("--public-ecr-image-uri", help="S3 URI of the ParallelCluster API spec")
+    parser.addoption("--policies-uri", help="Use an existing policies URI instead of uploading one.")
     parser.addoption(
-        "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
+        "--cluster-custom-resource-service-token",
+        help="(Optional) ServiceToken (ARN) of the CloudFormation Cluster custom resource provider.",
     )
+    parser.addoption(
+        "--resource-bucket",
+        help="(Optional) Name of bucket to use to look for standard resources like hosted CloudFormation templates.",
+    )
+    parser.addoption("--lambda-layer-source", help="(Optional) S3 URI of lambda layer to copy rather than building.")
+    parser.addoption("--api-definition-s3-uri", help="URI of the OpenAPI spec of the ParallelCluster API")
     parser.addoption(
         "--api-infrastructure-s3-uri", help="URI of the CloudFormation template for the ParallelCluster API"
     )
@@ -157,10 +165,7 @@ def pytest_addoption(parser):
         help="use default IAM creds when running pcluster commands",
         action="store_true",
     )
-    parser.addoption(
-        "--iam-user-role-stack-name",
-        help="Name of CFN stack providing IAM user roles.",
-    )
+    parser.addoption("--iam-user-role-stack-name", help="Name of CFN stack providing IAM user roles.")
     parser.addoption(
         "--directory-stack-name",
         help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
@@ -174,10 +179,7 @@ def pytest_addoption(parser):
         "--slurm-database-stack-name",
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
     )
-    parser.addoption(
-        "--external-shared-storage-stack-name",
-        help="Name of existing external shared storage stack.",
-    )
+    parser.addoption("--external-shared-storage-stack-name", help="Name of existing external shared storage stack.")
 
 
 def pytest_generate_tests(metafunc):
@@ -414,9 +416,9 @@ def clusters_factory(request, region):
         factory.destroy_all_clusters(test_passed=test_passed)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def api_server_factory(
-    cfn_stacks_factory, request, public_ecr_image_uri, api_definition_s3_uri, api_infrastructure_s3_uri
+    cfn_stacks_factory, request, resource_bucket, policies_uri, api_definition_s3_uri, api_infrastructure_s3_uri
 ):
     """Creates a factory for deploying API servers on-demand to each region."""
     api_servers = {}
@@ -430,12 +432,14 @@ def api_server_factory(
         ]
         if api_definition_s3_uri:
             params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
-        if public_ecr_image_uri:
-            params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
+        if policies_uri:
+            params.append({"ParameterKey": "PoliciesTemplateUri", "ParameterValue": policies_uri})
+        if resource_bucket:
+            params.append({"ParameterKey": "CustomBucket", "ParameterValue": resource_bucket})
 
         template = (
             api_infrastructure_s3_uri
-            or f"https://{server_region}-aws-parallelcluster.s3.{server_region}.amazonaws.com"
+            or f"https://{resource_bucket}.s3.{server_region}.amazonaws.com"
             f"{'.cn' if server_region.startswith('cn') else ''}"
             f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
         )
@@ -564,12 +568,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_p
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(
-        config_file="pcluster.config.yaml",
-        benchmarks=None,
-        output_file=None,
-        **kwargs,
-    ):
+    def _config_renderer(config_file="pcluster.config.yaml", benchmarks=None, output_file=None, **kwargs):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
@@ -782,11 +781,9 @@ def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     ):
         default_values["scheduler"] = "plugin"
     default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
-    default_values["scheduler_prefix"] = {
-        "slurm": "Slurm",
-        "awsbatch": "AwsBatch",
-        "plugin": "Scheduler",
-    }.get(default_values.get("scheduler"))
+    default_values["scheduler_prefix"] = {"slurm": "Slurm", "awsbatch": "AwsBatch", "plugin": "Scheduler"}.get(
+        default_values.get("scheduler")
+    )
 
     return default_values
 
@@ -930,23 +927,33 @@ def create_roles_stack(request, region):
 
 
 @pytest.fixture(scope="session")
-def public_ecr_image_uri(request):
-    return request.config.getoption("public_ecr_image_uri")
-
-
-@pytest.fixture(scope="session")
 def api_uri(request):
     return request.config.getoption("api_uri")
 
 
-@pytest.fixture(scope="session")
-def api_definition_s3_uri(request):
-    return request.config.getoption("api_definition_s3_uri")
+@pytest.fixture(scope="class")
+def api_definition_s3_uri(request, resource_bucket):
+    if request.config.getoption("api_definition_s3_uri"):
+        return request.config.getoption("api_definition_s3_uri")
+    return (
+        f"s3://{resource_bucket}/parallelcluster/{get_installed_parallelcluster_version()}/"
+        f"api/ParallelCluster.openapi.yaml"
+    )
 
 
 @pytest.fixture(scope="session")
 def api_infrastructure_s3_uri(request):
     return request.config.getoption("api_infrastructure_s3_uri")
+
+
+@pytest.fixture(scope="session")
+def cluster_custom_resource_service_token(request):
+    return request.config.getoption("cluster_custom_resource_service_token")
+
+
+@pytest.fixture(scope="session")
+def lambda_layer_source(request):
+    return request.config.getoption("lambda_layer_source")
 
 
 @pytest.fixture(scope="class")
@@ -1090,9 +1097,10 @@ def serial_execution_by_instance(request, instance):
         lock_file = f"{outdir}/{instance}.lock"
         lock = FileLock(lock_file=lock_file)
         logging.info("Acquiring lock file %s", lock.lock_file)
-        with lock.acquire(poll_interval=15, timeout=7200):
+        with lock.acquire(poll_interval=15, timeout=12000):
+            logging.info(f"The lock is acquired by worker ID {get_xdist_worker_id(request)}: {os.getpid()}")
             yield
-        logging.info("Releasing lock file %s", lock.lock_file)
+        logging.info(f"Releasing lock file {lock.lock_file} by {get_xdist_worker_id(request)}: {os.getpid()}")
         lock.release()
     else:
         logging.info("Ignoring serial execution for instance %s", instance)
@@ -1180,20 +1188,20 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     odcr_template.set_version()
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
     public_subnet = vpc_stack.get_public_subnet()
-    public_subnets = vpc_stack.get_all_public_subnets().copy()
-    public_subnets.remove(public_subnet)
-    availability_zone = boto3.resource("ec2").Subnet(public_subnet).availability_zone
-    availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone
+    public_subnets = vpc_stack.get_all_public_subnets()
+    default_public_az = boto3.resource("ec2").Subnet(public_subnet).availability_zone
+    availability_zone_1 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone
+    availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[1]).availability_zone
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=default_public_az,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
         InstanceType="m5.2xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=default_public_az,
         InstanceCount=4,
         InstancePlatform="Linux/UNIX",
         InstanceType="r5.xlarge",
@@ -1202,7 +1210,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     pg_name = placement_group_stack.cfn_resources["PlacementGroup"]
     pg_odcr = ec2.CapacityReservation(
         "integTestsPgOdcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=default_public_az,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
         InstanceType="m5.xlarge",
@@ -1250,7 +1258,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
     # odcr resources for MultiAZ integ-tests
     az1_odcr = ec2.CapacityReservation(
         "az1Odcr",
-        AvailabilityZone=availability_zone,
+        AvailabilityZone=availability_zone_1,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
         InstanceType="t3.micro",
@@ -1375,18 +1383,10 @@ def ami_copy(region):
 
         # Created tag for copied image to be filtered by cleanup ami pipeline
         client.create_tags(
-            Resources=[
-                f"{copy_ami_id}",
-            ],
+            Resources=[f"{copy_ami_id}"],
             Tags=[
-                {
-                    "Key": "parallelcluster:image_id",
-                    "Value": f"aws-parallelcluster-copied-image-{test_name}",
-                },
-                {
-                    "Key": "parallelcluster:build_status",
-                    "Value": "available",
-                },
+                {"Key": "parallelcluster:image_id", "Value": f"aws-parallelcluster-copied-image-{test_name}"},
+                {"Key": "parallelcluster:build_status", "Value": "available"},
             ],
         )
         return copy_ami_id
@@ -1456,10 +1456,7 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
                         dimensions,
                     )
                     for metric_data in metric_data_list:
-                        cloudwatch_client.put_metric_data(
-                            Namespace=metric_namespace,
-                            MetricData=metric_data,
-                        )
+                        cloudwatch_client.put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
         logging.info("Finished benchmarks for %s", function_name)
 
     yield _run_benchmarks
@@ -1475,9 +1472,7 @@ def scheduler_plugin_configuration(request, region, scheduler_plugin_definitions
     scheduler_definition_url = scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
     if scheduler_definition_url:
         logging.info(
-            "Adding scheduler plugin (%s) scheduler-definition-url to be (%s)",
-            scheduler,
-            scheduler_definition_url,
+            "Adding scheduler plugin (%s) scheduler-definition-url to be (%s)", scheduler, scheduler_definition_url
         )
         scheduler_plugin["scheduler-definition-url"] = scheduler_definition_url
 
@@ -1534,12 +1529,7 @@ def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key
             "FSxSecurityGroup",
             GroupDescription="SecurityGroup for testing existing FSx",
             SecurityGroupIngress=[
-                ec2.SecurityGroupRule(
-                    IpProtocol=ip_protocol,
-                    FromPort=port,
-                    ToPort=port,
-                    CidrIp="0.0.0.0/0",
-                )
+                ec2.SecurityGroupRule(IpProtocol=ip_protocol, FromPort=port, ToPort=port, CidrIp="0.0.0.0/0")
                 for port in ports
                 for ip_protocol in ip_protocols
             ],
@@ -1593,9 +1583,7 @@ def svm_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
         fsx_svm_template.set_description("Create Storage Virtual Machine stack")
 
         fsx_svm = StorageVirtualMachine(
-            title="StorageVirtualMachineFileSystemResource",
-            Name="fsx",
-            FileSystemId=file_system_id,
+            title="StorageVirtualMachineFileSystemResource", Name="fsx", FileSystemId=file_system_id
         )
         fsx_svm_template.add_resource(fsx_svm)
 
@@ -1733,9 +1721,7 @@ def efs_mount_target_stack_factory(cfn_stacks_factory, request, region, vpc_stac
         vpc_id = vpc_stack.cfn_outputs["VpcId"]
         security_group = template.add_resource(
             ec2.SecurityGroup(
-                "SecurityGroupResource",
-                GroupDescription="custom security group for EFS mount targets",
-                VpcId=vpc_id,
+                "SecurityGroupResource", GroupDescription="custom security group for EFS mount targets", VpcId=vpc_id
             )
         )
         # Allow inbound connection though NFS port within the VPC

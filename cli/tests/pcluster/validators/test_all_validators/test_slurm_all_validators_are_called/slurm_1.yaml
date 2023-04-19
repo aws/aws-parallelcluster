@@ -45,15 +45,22 @@ Scheduling:
     Dns:
       DisableManagedDns: false
       HostedZoneId: 12345ABC
+    CustomSlurmSettingsIncludeFile: https://test.conf
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND
       Networking:
         SubnetIds:
           - subnet-12345678
+      CustomSlurmSettings:
+        Param1: Value1
+        Param2: Value2
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.xlarge
+          CustomSlurmSettings:
+            Param1: Value1
+            Param2: Value2
         - Name: compute_resource2
           InstanceType: c4.xlarge
       CustomActions:
@@ -73,6 +80,11 @@ Scheduling:
             EnableWriteAccess: False
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: queue_tag1
+          Value: String
+        - Key: queue_tag2
+          Value: String
     - Name: queue2
       ComputeSettings:
         LocalStorage:
@@ -95,6 +107,11 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource_1
           InstanceType: c4.2xlarge
+          Tags:
+            - Key: compute_tag1
+              Value: String
+            - Key: compute_tag2
+              Value: String
         - Name: compute_resource_2
           InstanceType: c5.2xlarge
           MinCount: 1

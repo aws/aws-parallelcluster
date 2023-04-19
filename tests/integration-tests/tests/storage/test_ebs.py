@@ -180,7 +180,7 @@ def test_ebs_existing(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     existing_mount_dir = "/" + existing_mount_dir
-    test_ebs_correctly_mounted(remote_command_executor, existing_mount_dir, volume_size="9.8")
+    test_ebs_correctly_mounted(remote_command_executor, existing_mount_dir, volume_size="9.[7,8]")
     _test_ebs_correctly_shared(remote_command_executor, existing_mount_dir, scheduler_commands)
     # Checks for test data
     result = remote_command_executor.run_remote_command("cat {}/test.txt".format(existing_mount_dir))

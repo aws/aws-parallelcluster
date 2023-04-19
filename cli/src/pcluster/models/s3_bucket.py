@@ -34,12 +34,14 @@ class S3FileFormat(Enum):
 
     YAML = "yaml"
     JSON = "json"
+    MINIFIED_JSON = "min.json"
     TEXT = "text"
 
 
 class S3FileType(Enum):
     """Define S3 file types."""
 
+    ASSETS = "assets"
     CONFIGS = "configs"
     TEMPLATES = "templates"
     CUSTOM_RESOURCES = "custom_resources"
@@ -198,12 +200,18 @@ class S3Bucket:
 
     def upload_config(self, config, config_name, format=S3FileFormat.YAML):
         """Upload config file to S3 bucket."""
-        return self._upload_file(file_type=S3FileType.CONFIGS, content=config, file_name=config_name, format=format)
+        return self.upload_file(file_type=S3FileType.CONFIGS, content=config, file_name=config_name, format=format)
 
     def upload_cfn_template(self, template_body, template_name, format=S3FileFormat.YAML):
         """Upload cloudformation template to S3 bucket."""
-        return self._upload_file(
+        return self.upload_file(
             file_type=S3FileType.TEMPLATES, content=template_body, file_name=template_name, format=format
+        )
+
+    def upload_cfn_asset(self, asset_file_content, asset_name: str, format=S3FileFormat.YAML):
+        """Upload cloudformation assets to S3 bucket."""
+        return self.upload_file(
+            file_type=S3FileType.ASSETS, content=asset_file_content, file_name=asset_name, format=format
         )
 
     def upload_resources(self, resource_dir, custom_artifacts_name):
@@ -262,27 +270,13 @@ class S3Bucket:
 
     # --------------------------------------- S3 private functions --------------------------------------- #
 
-    def _upload_file(self, content, file_name, file_type, format=S3FileFormat.YAML):
+    def upload_file(self, content, file_name, file_type, format=S3FileFormat.YAML):
         """Upload file to S3 bucket."""
-        if format == S3FileFormat.YAML:
-            result = AWSApi.instance().s3.put_object(
-                bucket_name=self.name,
-                body=yaml.dump(content),
-                key=self.get_object_key(file_type, file_name),
-            )
-        elif format == S3FileFormat.JSON:
-            result = AWSApi.instance().s3.put_object(
-                bucket_name=self.name,
-                body=json.dumps(content),
-                key=self.get_object_key(file_type, file_name),
-            )
-        else:
-            result = AWSApi.instance().s3.put_object(
-                bucket_name=self.name,
-                body=content,
-                key=self.get_object_key(file_type, file_name),
-            )
-        return result
+        return AWSApi.instance().s3.put_object(
+            bucket_name=self.name,
+            body=format_content(content, format),
+            key=self.get_object_key(file_type, file_name),
+        )
 
     def _get_file(self, file_name, file_type, version_id=None, format=S3FileFormat.YAML):
         """Get file from S3 bucket."""
@@ -418,3 +412,22 @@ def create_s3_presigned_url(s3_uri, expiration=3600):
     return AWSApi.instance().s3.create_presigned_url(
         s3_uri_info["bucket_name"], s3_uri_info["object_key"], expiration=expiration
     )
+
+
+def format_content(content, s3_file_format: S3FileFormat):
+    """
+    Return content formatted by the given S3 File Format.
+
+    If format is not in the S3FileFormat Enum, it returns the content without any formatting
+    :param content: Object representing the content to be formatted
+    :param s3_file_format: S3FileFormat to use for the output
+    :return:
+    """
+    if s3_file_format == S3FileFormat.YAML:
+        return yaml.dump(content)
+    elif s3_file_format == S3FileFormat.JSON:
+        return json.dumps(content)
+    elif s3_file_format == S3FileFormat.MINIFIED_JSON:
+        return json.dumps(content, separators=(",", ":"))
+    else:
+        return content

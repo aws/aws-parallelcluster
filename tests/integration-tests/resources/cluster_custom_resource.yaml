@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS ParallelCluster CloudFormation Cluster
+
+Parameters:
+  ClusterName:
+    Description: Name of cluster. Note this must be different than the stack name.
+    Type: String
+  HeadNodeSubnet:
+    Description: Subnet for the HeadNode
+    Type: String
+  ComputeNodeSubnet:
+    Description: Subnet for the ComputeNode
+    Type: String
+  ComputeInstanceMax:
+    Description: Maximum number of compute instances
+    Type: Number
+    Default: 16
+  ServiceToken:
+    Description: ARN of Lambda Function backing the Cluster Resource
+    Type: String
+  Os:
+    Description: Operating system for nodes
+    Type: String
+    Default: 'alinux2'
+  OnNodeConfigured:
+    Description: Script to run on HeadNode configured
+    Type: String
+    Default: ''
+  CustomBucketAccess:
+    Description: Name of a bucket to provide access to on the HeadNode
+    Type: String
+    Default: ''
+  DeletionPolicy:
+    Type: String
+    Default: Delete
+    AllowedValues:
+      - Delete
+      - Retain
+    Description: Enter Retain or Delete to define the operation when the stack is deleted. Default is to Delete.
+
+Conditions:
+  OnNodeConfiguredCondition: !Not [!Equals [!Ref OnNodeConfigured, '']]
+  CustomBucketCondition: !Not [!Equals [!Ref CustomBucketAccess, '']]
+
+Resources:
+  PclusterCluster:
+    Type: Custom::PclusterCluster
+    Properties:
+      ServiceToken: !Ref ServiceToken
+      DeletionPolicy: !Ref DeletionPolicy
+      ClusterName: !Ref ClusterName
+      ClusterConfiguration:
+        DevSettings:
+          AmiSearchFilters:
+            Owner: self
+        Image:
+          Os: !Ref Os
+        HeadNode:
+          InstanceType: t2.small
+          Networking:
+            SubnetId: !Ref HeadNodeSubnet
+          CustomActions: !If
+            - OnNodeConfiguredCondition
+            -
+              OnNodeConfigured:
+                Script: !Ref OnNodeConfigured
+            - !Ref AWS::NoValue
+          Iam: !If
+            - CustomBucketCondition
+            -
+              S3Access:
+                - BucketName: !Ref CustomBucketAccess
+                  EnableWriteAccess: false
+            - !Ref AWS::NoValue
+        Scheduling:
+          Scheduler: slurm
+          SlurmQueues:
+          - Name: queue0
+            ComputeResources:
+            - Name: queue0-cr0
+              InstanceType: t2.micro
+              MaxCount: !Ref ComputeInstanceMax
+            Networking:
+              SubnetIds:
+              - !Ref ComputeNodeSubnet
+
+Outputs:
+  HeadNodeIp:
+    Description: The Public IP address of the HeadNode
+    Value: !GetAtt [ PclusterCluster, headNode.publicIpAddress ]
+  ValidationMessages:
+    Description: Any warnings from cluster create or update operations.
+    Value: !GetAtt PclusterCluster.validationMessages

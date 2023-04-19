@@ -1408,3 +1408,59 @@ class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
                 }
             )
         }
+
+
+class RootVolumeEncryptionConsistencyValidator(Validator):
+    """Verify consistency on the Encryption parameter of all the specified RootVolumes of the queues."""
+
+    def _validate(self, encryption_settings: list):
+        reference_queue_name, reference_root_volume_encryption = encryption_settings.pop(0)
+        for queue in encryption_settings:
+            queue_name, root_volume_encryption = queue
+            if reference_root_volume_encryption != root_volume_encryption:
+                self._add_failure(
+                    f"The Encryption parameter of the root volume of the queue {queue_name} is not consistent "
+                    f"with the value set for the queue {reference_queue_name}, and may cause a problem in case "
+                    f"of Service Control Policies (SCPs) enforcing encryption.",
+                    FailureLevel.WARNING,
+                )
+
+
+class MultiNetworkInterfacesInstancesValidator(Validator):
+    """Verify that queues with multi nic compute resources don't auto-assign public IPs or contain subnets that do."""
+
+    def _validate(self, queues):
+        multi_nic_queues = [
+            queue
+            for queue in queues
+            for compute_resource in queue.compute_resources
+            if compute_resource.max_network_interface_count > 1
+        ]
+
+        all_subnets_with_public_ips = {
+            subnet.get("SubnetId")
+            for subnet in AWSApi.instance().ec2.describe_subnets(
+                {subnet_id for queue in multi_nic_queues for subnet_id in queue.networking.subnet_ids}
+            )
+            if subnet.get("MapPublicIpOnLaunch")
+        }
+
+        for queue in multi_nic_queues:
+            if queue.networking.assign_public_ip:
+                self._add_failure(
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
+                    f"AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances launched "
+                    f"with a single network interface.",
+                    FailureLevel.ERROR,
+                )
+
+            queue_subnets_with_public_ips = sorted(
+                [subnet_id for subnet_id in queue.networking.subnet_ids if subnet_id in all_subnets_with_public_ips]
+            )
+            if queue_subnets_with_public_ips:
+                self._add_failure(
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
+                    f"subnets {queue_subnets_with_public_ips} is configured to automatically assign public IPs. AWS "
+                    f"public IPs can only be assigned to instances launched with a single network interface.",
+                    FailureLevel.ERROR,
+                )

@@ -39,7 +39,8 @@ from pcluster.cli.commands.configure.utils import (
 from pcluster.constants import (
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_COMPUTE_RESOURCES_PER_QUEUE,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
     MAX_NUMBER_OF_QUEUES,
     SUPPORTED_SCHEDULERS,
 )
@@ -99,12 +100,13 @@ def _get_vpcs_and_subnets():
 
 def _get_subnets(conn, vpc_id):
     subnet_options = []
-    subnet_list = conn.describe_subnets(
-        Filters=[
-            {"Name": "vpcId", "Values": [vpc_id]},
-            {"Name": "ipv6-native", "Values": ["false"]},
-        ]
-    ).get("Subnets")
+    subnet_filters = [{"Name": "vpcId", "Values": [vpc_id]}]
+    # US isolated regions do not support IPv6.
+    # Subnets in these regions do not have the field "Ipv6Native", so
+    # applying the filter ipv6-native=false would make the DescribeSubnets call to always return an empty set.
+    if not conn.meta.region_name.startswith("us-iso"):
+        subnet_filters.append({"Name": "ipv6-native", "Values": ["false"]})
+    subnet_list = conn.describe_subnets(Filters=subnet_filters).get("Subnets")
     for subnet in subnet_list:
         subnet_options.append(
             OrderedDict(
@@ -167,7 +169,7 @@ def configure(args):  # noqa: C901
         number_of_queues = int(
             prompt(
                 "Number of queues",
-                lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_QUEUES,
+                lambda x: str(x).isdigit() and 1 <= int(x) <= MAX_NUMBER_OF_QUEUES,
                 default_value=1,
             )
         )
@@ -194,10 +196,13 @@ def configure(args):  # noqa: C901
         if scheduler == "awsbatch":
             number_of_compute_resources = 1
         else:
+            queue_limit = min(
+                (MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER / number_of_queues), MAX_COMPUTE_RESOURCES_PER_QUEUE
+            )
             number_of_compute_resources = int(
                 prompt(
                     f"Number of compute resources for {queue_name}",
-                    validator=lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_COMPUTE_RESOURCES,
+                    validator=lambda x, q=queue_limit: str(x).isdigit() and 1 <= int(x) <= q,
                     default_value=1,
                 )
             )
@@ -360,7 +365,17 @@ def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_
         if (
             not qualified_head_node_subnets
             or not qualified_compute_subnets
-            or (prompt("Automate Subnet creation? (y/n)", lambda x: x in ("y", "n"), default_value="y") == "y")
+            or (
+                prompt(
+                    "The creation of a public and private subnet combination will result in\n"
+                    "charges for NAT gateway creation that are not covered under the free tier.\n"
+                    "Please refer to https://aws.amazon.com/vpc/pricing/ for more details.\n"
+                    "Automate Subnet creation? (y/n)",
+                    lambda x: x in ("y", "n"),
+                    default_value="y",
+                )
+                == "y"
+            )
         ):
             # Start auto subnets creation in the absence of qualified subnets.
             # Otherwise, user selects between manual and automate subnets creation

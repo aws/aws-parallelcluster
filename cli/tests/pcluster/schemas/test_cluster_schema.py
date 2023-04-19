@@ -30,6 +30,7 @@ from pcluster.schemas.cluster_schema import (
     ImageSchema,
     QueueCustomActionsSchema,
     QueueIamSchema,
+    QueueTagSchema,
     SchedulerPluginCloudFormationClusterInfrastructureSchema,
     SchedulerPluginClusterSharedArtifactSchema,
     SchedulerPluginDefinitionSchema,
@@ -219,14 +220,44 @@ DUMMY_AWSBATCH_QUEUE = {
     [
         # Failures
         ({"OnNodeUpdating": "test"}, "Unknown field"),
-        ({"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"}, "Invalid input type."),
-        ({"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}}, "Unknown field"),
+        (
+            {"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"},
+            "Either Script or Sequence field must be provided.",
+        ),
+        (
+            {"OnNodeConfigured": {"Script": "test3", "Args": ["5", "6"], "Sequence": []}},
+            "Both Script and Sequence fields are provided. Only one is allowed.",
+        ),
+        (
+            {"OnNodeUpdated": {"ScriptWrong": "test3", "Args": ["5", "6"]}},
+            "Either Script or Sequence field must be provided.",
+        ),
+        (
+            {"OnNodeUpdated": {"Sequence": "test"}},
+            "Invalid input type for Sequence, expected list.",
+        ),
         # Successes
+        ({}, None),
         (
             {
                 "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
                 "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
                 "OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {
+                    "Sequence": [
+                        {"Script": "test1", "Args": ["1", "2"]},
+                        {"Script": "test2", "Args": ["1", "2", "3"]},
+                        {"Script": "test3"},
+                        {"Script": "test4", "Args": []},
+                    ]
+                },
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+                "OnNodeUpdated": {"Sequence": []},
             },
             None,
         ),
@@ -253,7 +284,8 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
         with pytest.raises(ValidationError, match=failure_message):
             HeadNodeCustomActionsSchema().load(config_dict)
     else:
-        HeadNodeCustomActionsSchema().load(config_dict)
+        conf = HeadNodeCustomActionsSchema().load(config_dict)
+        HeadNodeCustomActionsSchema().dump(conf)
 
 
 @pytest.mark.parametrize(
@@ -266,10 +298,15 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
                 "OnNodeStart": "test",
                 "OnNodeConfigured": "test",
             },
-            "Invalid input type.",
+            "Either Script or Sequence field must be provided.",
+        ),
+        (
+            {"OnNodeStart": {"Script": "test3", "Args": ["5", "6"], "Sequence": []}},
+            "Both Script and Sequence fields are provided. Only one is allowed.",
         ),
         ({"OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]}}, "Unknown field"),
         # Successes
+        ({}, None),
         (
             {
                 "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
@@ -291,6 +328,27 @@ def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
             },
             None,
         ),
+        (
+            {
+                "OnNodeStart": {
+                    "Sequence": [
+                        {"Script": "test1", "Args": ["1", "2"]},
+                        {"Script": "test2", "Args": ["1", "2", "3"]},
+                        {"Script": "test3"},
+                        {"Script": "test4", "Args": []},
+                    ]
+                },
+                "OnNodeConfigured": {"Sequence": []},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test1", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Sequence": []},
+            },
+            None,
+        ),
     ],
 )
 def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
@@ -299,7 +357,8 @@ def test_queue_custom_actions_schema(mocker, config_dict, failure_message):
         with pytest.raises(ValidationError, match=failure_message):
             QueueCustomActionsSchema().load(config_dict)
     else:
-        QueueCustomActionsSchema().load(config_dict)
+        conf = QueueCustomActionsSchema().load(config_dict)
+        QueueCustomActionsSchema().dump(conf)
 
 
 def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):
@@ -1066,3 +1125,244 @@ def test_timeouts_schema(head_node_bootstrap_timeout, compute_node_bootstrap_tim
         assert_that(timeouts.compute_node_bootstrap_timeout).is_equal_to(
             compute_node_bootstrap_timeout or NODE_BOOTSTRAP_TIMEOUT
         )
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message, expected_queue_gpu_hc, expected_cr1_gpu_hc, expected_cr2_gpu_hc",
+    [
+        # HealthChecks dictionary is empty
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {},
+            },
+            "",
+            None,
+            None,
+            None,
+        ),
+        # Health Checks sections are not defined
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+            },
+            "",
+            None,
+            None,
+            None,
+        ),
+        # Health Checks section is defined at queue level
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": True}},
+            },
+            "",
+            True,
+            None,
+            None,
+        ),
+        # Health Checks section is defined in a single compute resource
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {
+                        "Name": "compute_resource2",
+                        "InstanceType": "c4.2xlarge",
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                ],
+            },
+            "",
+            None,
+            None,
+            True,
+        ),
+        # Health Checks sections are defined at queue level and a single compute resource
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {
+                        "Name": "compute_resource2",
+                        "InstanceType": "c4.2xlarge",
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": True}},
+            },
+            "",
+            True,
+            None,
+            True,
+        ),
+        # Health Checks sections are defined at queue level and in both compute resource
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                        "InstanceType": "c5.2xlarge",
+                        "MaxCount": 5,
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                    {
+                        "Name": "compute_resource2",
+                        "InstanceType": "c4.2xlarge",
+                        "HealthChecks": {"Gpu": {"Enabled": True}},
+                    },
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": True}},
+            },
+            "",
+            True,
+            True,
+            True,
+        ),
+        # Gpu Health Check enable is defined using the true string value instead of the boolean value
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": "true"}},
+            },
+            "",
+            True,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is defined using the true integer value instead of the boolean value
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": 1}},
+            },
+            "",
+            True,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is defined using a string, and it doesn't represent a boolean
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": "vero"}},
+            },
+            "Not a valid boolean",
+            None,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is defined using an integer, and it doesn't represent a boolean
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu": {"Enabled": -1}},
+            },
+            "Not a valid boolean",
+            None,
+            None,
+            None,
+        ),
+        # Gpu Health Check enable is not defined
+        (
+            {
+                "Name": "Standard-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                    {"Name": "compute_resource2", "InstanceType": "c4.2xlarge"},
+                ],
+                "HealthChecks": {"Gpu"},
+            },
+            "Invalid input type",
+            None,
+            None,
+            None,
+        ),
+    ],
+)
+def test_slurm_gpu_health_checks(
+    mocker,
+    config_dict,
+    failure_message,
+    expected_queue_gpu_hc,
+    expected_cr1_gpu_hc,
+    expected_cr2_gpu_hc,
+):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SlurmQueueSchema().load(config_dict)
+    else:
+        queue = SlurmQueueSchema().load(config_dict)
+        assert_that(queue.health_checks.gpu.enabled).is_equal_to(expected_queue_gpu_hc)
+        assert_that(queue.compute_resources[0].health_checks.gpu.enabled).is_equal_to(expected_cr1_gpu_hc)
+        assert_that(queue.compute_resources[1].health_checks.gpu.enabled).is_equal_to(expected_cr2_gpu_hc)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
+        ({"Keys": "my_key", "Value": "my_value"}, "Unknown field"),
+        ({"Key": "my_key"}, "Missing data for required field"),
+        ({"Value": "my_value"}, "Missing data for required field"),
+        (
+            {
+                "Key": "my_test",
+                "Value": "my_value",
+            },
+            None,
+        ),
+    ],
+)
+def test_queue_tag_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            QueueTagSchema().load(config_dict)
+    else:
+        conf = QueueTagSchema().load(config_dict)
+        QueueTagSchema().dump(conf)

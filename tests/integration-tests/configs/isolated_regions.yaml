@@ -1,0 +1,547 @@
+{%- import 'common.jinja2' as common with context -%}
+{%- set REGIONS = ["us-isob-east-1"] -%}
+{%- set INSTANCES = ["c5.xlarge"] -%}
+{%- set OSS = ["alinux2"] -%}
+{%- set SCHEDULERS = ["slurm"] -%}
+---
+test-suites:
+#  We must fix the integ test logic to make this integration test to work in us-isob-east-1
+#  ad_integration:
+#    test_ad_integration.py::test_ad_integration:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+  cfn-init:
+    test_cfn_init.py::test_replace_compute_on_failure:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_cfn_init.py::test_install_args_quotes:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_compute_console_output_logging.py::test_custom_action_error:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  configure:
+    test_pcluster_configure.py::test_pcluster_configure:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because its logic is us-east-1 specific.
+#    test_pcluster_configure.py::test_pcluster_configure_avoid_bad_subnets:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+    test_pcluster_configure.py::test_region_without_t2micro:
+      dimensions:
+        - regions: {{ REGIONS }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_pcluster_configure.py::test_efa_and_placement_group:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: ["c5n.9xlarge"]
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_pcluster_configure.py::test_efa_unsupported:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  create:
+# This test cannot be executed in US isolated regions
+# because it relies on having AMIs for different OS in the region
+# and this is not the case in these regions.
+#    test_create.py::test_create_wrong_os:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because it relies on having AMIs for different pcluster versions in the region
+# and this is not the case in these regions.
+#    test_create.py::test_create_wrong_pcluster_version:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+    test_create.py::test_create_imds_secured:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_create.py::test_cluster_creation_with_problematic_preinstall_script:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_create.py::test_cluster_creation_timeout:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_create.py::test_cluster_creation_with_invalid_ebs:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  monitoring:
+    test_monitoring.py::test_monitoring:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  disable_hyperthreading:
+    test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+          benchmarks:
+            - mpi_variants: ["openmpi", "intelmpi"]
+              num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+              slots_per_instance: 2
+              partition: "ht-disabled"
+              osu_benchmarks:
+                collective: ["osu_allreduce", "osu_alltoall"]
+  dns:
+    test_dns.py::test_hit_no_cluster_dns_mpi:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_dns.py::test_existing_hosted_zone:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: ["c5n.18xlarge"]
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because its logic relies on downloading an external
+# dependency from GitHub, which is not possible
+# from within an air-gaped region.
+#    test_fabric.py::test_fabric:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: [ "p4d.24xlarge" ]
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+  iam:
+    test_iam.py::test_iam_policies:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_iam.py::test_iam_roles:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because it makes use of build-image, which is not supported in these regions.
+#    test_iam_image.py::test_iam_roles:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+    test_iam.py::test_s3_read_write_resource:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_iam.py::test_iam_resource_prefix:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because it requires Centos7 clusters, but we currently support
+# only Amazon Linux 2 in US isolated regions.
+#  intel_hpc:
+#    test_intel_hpc.py::test_intel_hpc:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+  networking:
+# This test is considered out of scope for isolated regions
+# We will evaluate to re-include it after release 3.5.1
+#    test_cluster_networking.py::test_cluster_in_private_subnet:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+    test_cluster_networking.py::test_existing_eip:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_networking.py::test_public_network_topology:
+      dimensions:
+        - regions: {{ REGIONS }}
+    test_networking.py::test_public_private_network_topology:
+      dimensions:
+        - regions: {{ REGIONS }}
+    test_cluster_networking.py::test_cluster_in_no_internet_subnet:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_multi_cidr.py::test_multi_cidr:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_security_groups.py::test_additional_sg_and_ssh_from:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_security_groups.py::test_overwrite_sg:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_placement_group.py::test_placement_group:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because it relies on a CloudFormation stack using resources
+# that are not supported by CloudFormation in ADC,
+# i.e. CapacityReservation and ResourceGroup.
+#    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          oss: {{ OSS }}
+# This test cannot be executed in US isolated regions
+# because ParallelCluster API is not supported in these regions.
+#  pcluster_api:
+#    test_api.py::test_cluster_slurm:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+  resource_bucket:
+    test_resource_bucket.py::test_resource_bucket:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  scaling:
+    test_mpi.py::test_mpi:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_scaling.py::test_multiple_jobs_submission:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_mpi.py::test_mpi_ssh:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  schedulers:
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_scaling:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_error_handling:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_protected_mode:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_protected_mode_on_cluster_create:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_fast_capacity_failover:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_config_update:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_memory_based_scheduling:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_scontrol_reboot:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_scontrol_reboot_ec2_health_checks:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_overrides:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_scontrol_update_nodelist_sorting:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+# These tests cannot be executed in US isolated regions
+# because Slurm Accounting requires Secrets Manager,
+# which is not supported in these regions.
+#    test_slurm_accounting.py::test_slurm_accounting:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+#    test_slurm_accounting.py::test_slurm_accounting_disabled_to_enabled_update:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_reconfigure_race_condition:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because Spot instances are not supported in these regions.
+#  spot:
+#    test_spot.py::test_spot_default:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+  storage:
+    test_efs.py::test_efs_compute_az:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_efs.py::test_efs_same_az:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_efs.py::test_multiple_efs:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+          benchmarks:
+            - mpi_variants: ["openmpi", "intelmpi"]
+              num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
+              slots_per_instance: 2
+              osu_benchmarks:
+                collective: ["osu_allreduce", "osu_alltoall"]
+    test_raid.py::test_raid_fault_tolerance_mode:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_raid.py::test_raid_performance_mode:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_ebs.py::test_ebs_multiple:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_ebs.py::test_ebs_single:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_ebs.py::test_ebs_snapshot:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_ebs.py::test_ebs_existing:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_deletion_policy.py::test_retain_on_deletion:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_ephemeral.py::test_head_node_stop:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: ["m5d.xlarge"]
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  tags:
+    test_tag_propagation.py::test_tag_propagation:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  update:
+    test_update.py::test_update_slurm:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+# This test cannot be executed in US isolated regions
+# because it relies on having different ParallelCluster AMIs in the region
+# and this is not the case in these regions.
+#    test_update.py::test_update_compute_ami:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+    test_update.py::test_update_instance_list:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_update.py::test_queue_parameters_update:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+#    We must fix the integ test logic to make this integration test to work in us-isob-east-1
+#    test_update.py::test_dynamic_file_systems_update:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because it relies on a CloudFormation stack using resources
+# that are not supported by CloudFormation in ADC,
+# i.e. CapacityReservation and ResourceGroup.
+#    test_update.py::test_multi_az_create_and_update:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}

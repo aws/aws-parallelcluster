@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import difflib
 import json
 import os
 import re
@@ -24,20 +25,24 @@ from pcluster.constants import (
     MAX_EBS_COUNT,
     MAX_EXISTING_STORAGE_COUNT,
     MAX_NEW_STORAGE_COUNT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
     MAX_NUMBER_OF_QUEUES,
 )
+from pcluster.models.s3_bucket import S3FileFormat, format_content
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
 from tests.pcluster.utils import (
     assert_lambdas_have_expected_vpc_config_and_managed_policy,
+    get_asset_content_with_resource_name,
     load_cluster_model_from_yaml,
 )
 
 EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
+MAX_SIZE_OF_CFN_TEMPLATE = 1024 * 1024
+MAX_RESOURCES_PER_TEMPLATE = 500
 
 
 @pytest.mark.parametrize(
@@ -58,10 +63,34 @@ def test_cluster_builder_from_configuration_file(
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
 
     # Search config file from example_configs folder to test standard configuration
     _, cluster = load_cluster_model_from_yaml(config_file_name)
     _generate_template(cluster, capsys)
+
+
+def _assert_config_snapshot(config, expected_full_config_path):
+    """
+    Confirm that no new configuration sections were added / removed.
+
+    If any sections were added/removed:
+    1. Add the section to the "slurm.full.all_resources.yaml" file
+    2. Generate a new snapshot using the test output
+    TODO: Use a snapshot testing library
+    """
+    cluster_name = "test_cluster"
+    full_config = ClusterSchema(cluster_name).dump(config)
+    full_config_yaml = yaml.dump(full_config)
+
+    with open(expected_full_config_path, "r") as expected_full_config_file:
+        expected_full_config = expected_full_config_file.read()
+        diff = difflib.unified_diff(
+            full_config_yaml.splitlines(keepends=True), expected_full_config.splitlines(keepends=True)
+        )
+        print("Diff between existing snapshot and new snapshot:")
+        print("".join(diff), end="")
+        assert_that(expected_full_config).is_equal_to(full_config_yaml)
 
 
 def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, test_datadir):
@@ -74,6 +103,14 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    # The max number of queues cannot be used with the max number of compute resources
+    # (it will exceed the max number of compute resources per cluster)
+    # This workaround uses half of the max number of queues. It then calculates the number of compute resources to use
+    # as the quotient of dividing the max number of compute resources per cluster by the half.
+    max_number_of_queues = MAX_NUMBER_OF_QUEUES // 2
+    max_number_of_crs = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // max_number_of_queues
 
     # Try to search for jinja templates in the test_datadir, this is mainly to verify pcluster limits
     rendered_config_file = pcluster_config_reader(
@@ -82,9 +119,9 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
         max_new_storage_count=MAX_NEW_STORAGE_COUNT,
         max_existing_storage_count=MAX_EXISTING_STORAGE_COUNT,
         # number of queues, compute resources and security groups highly impacts the size of AWS resources
-        max_number_of_queues=MAX_NUMBER_OF_QUEUES,
-        max_number_of_ondemand_crs=MAX_NUMBER_OF_COMPUTE_RESOURCES,
-        max_number_of_spot_crs=MAX_NUMBER_OF_COMPUTE_RESOURCES - 2,  # FIXME: Limit num of CRs to not exceed size limits
+        max_number_of_queues=max_number_of_queues,
+        max_number_of_ondemand_crs=max_number_of_crs,
+        max_number_of_spot_crs=max_number_of_crs,
         number_of_sg_per_queue=1,
         # The number of following items doesn't impact number of resources, but the size of the template.
         # We have to reduce number of tags, script args and remove dev settings to reduce template size,
@@ -95,27 +132,45 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
     )
     input_yaml, cluster = load_cluster_model_from_yaml(rendered_config_file, test_datadir)
 
-    # Generate CFN template file
-    output_yaml = yaml.dump(_generate_template(cluster, capsys))
-    output_path = str(tmpdir / "generated_cfn_template.yaml")
-    with open(output_path, "w") as output_file:
-        output_file.write(output_yaml)
+    # Confirm that the configuration file is not missing sections that would impact the size of the templates
+    expected_full_config_path = test_datadir / "slurm.full_config.snapshot.yaml"
+    _assert_config_snapshot(cluster, expected_full_config_path)
 
-    # Assert that size of the template doesn't exceed 1MB and number of resources doesn't exceed 500
-    # Note the configuration file defined in the test_datadir is very close to the limit of 500 resources
-    assert_that(os.stat(output_path).st_size).is_less_than(1024 * 1024)
-    matches = len(re.findall("Type.*AWS::", str(output_yaml)))
-    assert_that(matches).is_less_than(500)
+    # Generate CFN template file
+    cluster_template, assets = _generate_template(cluster, capsys)
+    cluster_template_as_yaml = format_content(cluster_template, S3FileFormat.YAML)  # Main template is YAML formatted
+    assets_as_json = [
+        format_content(asset, S3FileFormat.MINIFIED_JSON)  # Nested templates/assets as JSON Minified
+        for asset in assets
+    ]
+
+    for template in [cluster_template_as_yaml] + assets_as_json:
+        output_path = str(tmpdir / "generated_cfn_template")
+        with open(output_path, "w") as output_file:
+            output_file.write(template)
+        _assert_template_limits(output_path, template)
+
+
+def _assert_template_limits(template_path: str, template_content: str):
+    """
+    Assert that size of the template doesn't exceed 1MB and number of resources doesn't exceed 500.
+
+    :param template_path: path to the generated cfn template
+    """
+    assert_that(os.stat(template_path).st_size).is_less_than(MAX_SIZE_OF_CFN_TEMPLATE)
+    matches = len(re.findall("Type.*AWS::", str()))
+    assert_that(matches).is_less_than(MAX_RESOURCES_PER_TEMPLATE)
 
 
 def _generate_template(cluster, capsys):
     # Try to build the template
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, assets_metadata = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
+    cluster_assets = [asset["content"] for asset in assets_metadata]
     _, err = capsys.readouterr()
     assert_that(err).is_empty()  # Assertion failure may become an update of dependency warning deprecations.
-    return generated_template
+    return generated_template, cluster_assets
 
 
 @pytest.mark.parametrize(
@@ -133,9 +188,10 @@ def test_add_alarms(mocker, config_file_name):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     output_yaml = yaml.dump(generated_template, width=float("inf"))
@@ -165,12 +221,25 @@ def test_add_alarms(mocker, config_file_name):
                         "ParallelClusterStackId": {"Ref": "AWS::StackId"},
                         "VpcId": "vpc-123",
                         "HeadNodeRoleName": {"Ref": "RoleHeadNode"},
-                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "ComputeFleetRoleNames": {
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0Role15b342af42246b70E9AB1575Ref",
+                            ]
+                        },
                         "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
+                                + "C4380LatestVersionNumber",
+                            ]
                         },
                         "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
+                                + "14750LatestVersionNumber",
+                            ]
                         },
                     },
                 },
@@ -189,12 +258,25 @@ def test_add_alarms(mocker, config_file_name):
                         "ParallelClusterStackId": {"Ref": "AWS::StackId"},
                         "VpcId": "vpc-123",
                         "HeadNodeRoleName": "",
-                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "ComputeFleetRoleNames": {
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0Role15b342af42246b70E9AB1575Ref",
+                            ]
+                        },
                         "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
+                                + "C4380LatestVersionNumber",
+                            ]
                         },
                         "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
+                                + "14750LatestVersionNumber",
+                            ]
                         },
                     },
                 },
@@ -215,13 +297,25 @@ def test_add_alarms(mocker, config_file_name):
                         "HeadNodeRoleName": "",
                         "ComputeFleetRoleNames": "",
                         "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
-                        },
-                        "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
+                                + "C4380LatestVersionNumber",
+                            ]
                         },
                         "LaunchTemplate7916067054f91933Version": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate7916067054f919335AF"
+                                + "28643LatestVersionNumber",
+                            ]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
+                                + "14750LatestVersionNumber",
+                            ]
                         },
                     },
                 },
@@ -240,18 +334,39 @@ def test_add_alarms(mocker, config_file_name):
                         "ParallelClusterStackId": {"Ref": "AWS::StackId"},
                         "VpcId": "vpc-123",
                         "HeadNodeRoleName": "",
-                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
-                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        "ComputeFleetRoleNames": {
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0Role15b342af42246b70E9AB1575Ref",
+                            ]
                         },
-                        "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
+                                + "C4380LatestVersionNumber",
+                            ]
                         },
                         "LaunchTemplate7916067054f91933Version": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate7916067054f919335AF"
+                                + "28643LatestVersionNumber",
+                            ]
                         },
                         "LaunchTemplateA46d18b906a50d3aVersion": {
-                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA46d18b906a50d3a347605B0", "LatestVersionNumber"]
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA46d18b906a50d3a3A2"
+                                + "D0E8FLatestVersionNumber",
+                            ]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": [
+                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
+                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
+                                + "14750LatestVersionNumber",
+                            ]
                         },
                     },
                 },
@@ -263,11 +378,13 @@ def test_scheduler_plugin_substack(mocker, config_file_name, expected_scheduler_
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
     if config_file_name == "scheduler_plugin.full.yaml":
         input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     else:
         input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
@@ -393,14 +510,17 @@ def test_compute_launch_template_properties(
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, cdk_assets = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
+    asset_content = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplate64e1c3597ca4c326")
+
     for lt_assertion in lt_assertions:
-        lt_assertion.assert_lt_properties(generated_template, "ComputeFleetLaunchTemplate64e1c3597ca4c32652225395")
+        lt_assertion.assert_lt_properties(asset_content, "LaunchTemplate64e1c3597ca4c326")
 
 
 @pytest.mark.parametrize(
@@ -420,36 +540,18 @@ def test_compute_launch_template_properties(
             "scheduler-plugin-headnode-hooks-partial.yaml",
             {
                 "scheduler": "plugin",
-                "postinstall": "https://test.tgz",
-                "postinstall_args": "arg1 arg2",
-                "preinstall": "NONE",
-                "preinstall_args": "NONE",
-                "postupdate": "https://test2.tgz",
-                "postupdate_args": "arg3 arg4",
             },
         ),
         (
             "awsbatch-headnode-hooks-partial.yaml",
             {
                 "scheduler": "awsbatch",
-                "postinstall": "NONE",
-                "postinstall_args": "NONE",
-                "preinstall": "https://test.tgz",
-                "preinstall_args": "arg1 arg2",
-                "postupdate": "NONE",
-                "postupdate_args": "NONE",
             },
         ),
         (
             "slurm-headnode-hooks-full.yaml",
             {
                 "scheduler": "slurm",
-                "postinstall": "https://test2.tgz",
-                "postinstall_args": "arg3 arg4",
-                "preinstall": "https://test.tgz",
-                "preinstall_args": "arg1 arg2",
-                "postupdate": "https://test3.tgz",
-                "postupdate_args": "arg5 arg6",
             },
         ),
     ],
@@ -460,12 +562,13 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     default_head_node_dna_json = load_json_dict(test_datadir / "head_node_default.dna.json")
 
     mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
 
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
 
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
@@ -510,8 +613,10 @@ def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_nod
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     assert_that(
@@ -578,8 +683,9 @@ def _get_cfn_init_file_content(template, resource, file):
 def test_head_node_tags_from_launch_template(mocker, config_file_name, expected_instance_tags, expected_volume_tags):
     mock_aws_api(mocker)
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     tags_specifications = (
@@ -660,8 +766,9 @@ def test_head_node_tags_from_launch_template(mocker, config_file_name, expected_
 def test_head_node_tags_from_instance_definition(mocker, config_file_name, expected_tags):
     mock_aws_api(mocker)
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     tags = generated_template.get("Resources").get("HeadNode").get("Properties").get("Tags", [])
@@ -689,6 +796,7 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
 )
 def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_tokens):
     mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(f"{EXAMPLE_CONFIGS_DIR}/{config_file_name}")
     if imds_support:
@@ -696,7 +804,7 @@ def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_toke
 
     cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
 
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
@@ -725,6 +833,7 @@ def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_toke
 )
 def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_config):
     mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(f"{EXAMPLE_CONFIGS_DIR}/{config_file_name}")
     if vpc_config:
@@ -733,8 +842,51 @@ def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_confi
 
     cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
 
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
     assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, vpc_config)
+
+
+@pytest.mark.parametrize(
+    "no_of_compute_resources_per_queue, expected_no_of_nested_stacks, raises_error",
+    [
+        ({f"queue-{i}": 5 for i in range(10)}, 2, False),
+        ({f"queue-{i}": 5 for i in range(20)}, 3, False),
+        ({f"queue-{i}": 5 for i in range(30)}, 4, False),
+        ({f"queue-{i}": 40 for i in range(1)}, 1, False),
+        # 1 queue with 41 compute resources (Exceeds max compute resources per queue - 40)
+        ({f"queue-{i}": 41 for i in range(1)}, 1, True),
+    ],
+    ids=[
+        "10 queues with 5 compute resources each",
+        "20 queues with 5 compute resources each",
+        "30 queues with 5 compute resources each",
+        "1 queue with 40 compute resources each",
+        "1 queue with 41 compute resources",
+    ],
+)
+def test_cluster_resource_distribution_in_stacks(
+    test_datadir,
+    pcluster_config_reader,
+    capsys,
+    mocker,
+    no_of_compute_resources_per_queue: int,
+    expected_no_of_nested_stacks: int,
+    raises_error: bool,
+):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    rendered_config_file = pcluster_config_reader(
+        "variable_queue_compute_resources.yaml", no_of_compute_resources_per_queue=no_of_compute_resources_per_queue
+    )
+
+    input_yaml, cluster = load_cluster_model_from_yaml(rendered_config_file, test_datadir)
+
+    if raises_error:
+        with pytest.raises(ValueError):
+            _generate_template(cluster, capsys)
+    else:
+        cluster_template, assets = _generate_template(cluster, capsys)
+        assert_that(expected_no_of_nested_stacks).is_equal_to(len(assets))

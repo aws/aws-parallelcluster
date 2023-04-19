@@ -42,12 +42,12 @@ Scheduling:
           Script: s3://{{ resource_bucket }}/scripts/updated_postinstall.sh # Updated parameter value
           Args:
             - DEF # Updated parameter value
-      CapacityType: SPOT # Updated parameter value
+      CapacityType: {% if "us-iso" in region %}ONDEMAND{% else %}SPOT{% endif %} # Updated parameter value
       ComputeResources:
         - Name: queue1-i1
           Instances:
             - InstanceType: c5.xlarge
-            - InstanceType: c5a.xlarge
+            - InstanceType: c5n.xlarge
             - InstanceType: c5d.xlarge
           MinCount: 2 # Increased parameter value
           MaxCount: 4 # Increased parameter value

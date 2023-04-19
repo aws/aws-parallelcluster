@@ -6,13 +6,18 @@ from pcluster.config.cluster_config import (
     AmiSearchFilters,
     BaseClusterConfig,
     ClusterDevSettings,
+    ComputeSettings,
+    Ebs,
     FlexibleInstanceType,
+    GpuHealthCheck,
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
+    HealthChecks,
     Image,
     PlacementGroup,
     QueueImage,
+    SharedEbs,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmComputeResourceNetworking,
@@ -29,11 +34,13 @@ mock_compute_resources = [
         instance_type="test",
         name="test1",
         networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(implied=True)),
+        health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=True)),
     ),
     SlurmComputeResource(
         instance_type="test",
         name="test2",
         networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=True)),
+        health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=False)),
     ),
     SlurmComputeResource(
         instance_type="test",
@@ -54,6 +61,11 @@ mock_compute_resources = [
 
 
 @pytest.fixture
+def get_region(mocker):
+    mocker.patch("pcluster.config.cluster_config.get_region", return_value="WHATEVER_REGION")
+
+
+@pytest.fixture
 def instance_type_info_mock(aws_api_mock):
     aws_api_mock.ec2.get_instance_type_info.return_value = InstanceTypeInfo(
         {
@@ -67,6 +79,7 @@ def instance_type_info_mock(aws_api_mock):
 
 
 @pytest.mark.usefixtures("instance_type_info_mock")
+@pytest.mark.usefixtures("get_region")
 class TestBaseClusterConfig:
     @pytest.fixture()
     def base_cluster_config(self):
@@ -123,7 +136,6 @@ class TestBaseClusterConfig:
                 ),
             ),
         )
-        mocker.patch("pcluster.config.cluster_config.get_region", return_value="")
         cluster_config._register_validators()
         assert_that(cluster_config._validators).is_not_empty()
 
@@ -271,10 +283,10 @@ class TestBaseClusterConfig:
             aws_api_mock.ec2.get_official_image_id.assert_not_called()
 
     @pytest.mark.parametrize(
-        "queue, expected_result",
+        "queue_parameters, expected_result",
         [
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
                     compute_resources=mock_compute_resources,
@@ -288,7 +300,7 @@ class TestBaseClusterConfig:
                 ],
             ),
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
                     compute_resources=mock_compute_resources,
@@ -302,7 +314,7 @@ class TestBaseClusterConfig:
                 ],
             ),
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
                     compute_resources=mock_compute_resources,
@@ -316,7 +328,7 @@ class TestBaseClusterConfig:
                 ],
             ),
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
                     compute_resources=mock_compute_resources,
@@ -331,17 +343,18 @@ class TestBaseClusterConfig:
             ),
         ],
     )
-    def test_get_placement_group_settings_for_compute_resource(self, queue, expected_result):
+    def test_get_placement_group_settings_for_compute_resource(self, queue_parameters, expected_result):
+        queue = SlurmQueue(**queue_parameters)
         actual = []
         for resource in queue.compute_resources:
             actual.append(queue.get_placement_group_settings_for_compute_resource(resource))
         assert_that(actual).is_equal_to(expected_result)
 
     @pytest.mark.parametrize(
-        "queue, expected_result",
+        "queue_parameters, expected_result",
         [
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
                     compute_resources=mock_compute_resources,
@@ -349,7 +362,7 @@ class TestBaseClusterConfig:
                 ["queue-test2"],
             ),
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
                     compute_resources=mock_compute_resources,
@@ -357,7 +370,7 @@ class TestBaseClusterConfig:
                 ["queue-test1", "queue-test2"],
             ),
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
                     compute_resources=mock_compute_resources,
@@ -365,7 +378,7 @@ class TestBaseClusterConfig:
                 ["queue-test2"],
             ),
             (
-                SlurmQueue(
+                dict(
                     name="queue",
                     networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
                     compute_resources=mock_compute_resources,
@@ -374,9 +387,142 @@ class TestBaseClusterConfig:
             ),
         ],
     )
-    def test_get_managed_placement_group_keys(self, queue, expected_result):
+    def test_get_managed_placement_group_keys(self, queue_parameters, expected_result):
+        queue = SlurmQueue(**queue_parameters)
         actual = queue.get_managed_placement_group_keys()
         assert_that(actual).is_equal_to(expected_result)
 
     def test_get_instance_types_data(self, base_cluster_config):
         assert_that(base_cluster_config.get_instance_types_data()).is_equal_to({})
+
+    @pytest.mark.parametrize(
+        "queue_parameters, expected_result",
+        [
+            # At ComputeResource level the Health Check is enabled for CR test1, disabled for CR test2
+            # undefined otherwise
+            (
+                # Health Checks section is not defined at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "", "", ""],
+            ),
+            (
+                # Health Checks section is enabled at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "queue", "queue", "queue"],
+            ),
+            (
+                # Health Checks section is disabled at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "", "", ""],
+            ),
+        ],
+    )
+    def test_get_enabled_health_checks_section(self, queue_parameters, expected_result):
+        queue = SlurmQueue(**queue_parameters)
+        health_check_gpu_enabled = []
+        queue_gpu_check_enabled = queue.health_checks.gpu is not None and queue.health_checks.gpu.enabled
+        for compute_resource in queue.compute_resources:
+            compute_resource_gpu_check_enabled = (
+                compute_resource.health_checks.gpu is not None and compute_resource.health_checks.gpu.enabled
+            )
+            if compute_resource_gpu_check_enabled:
+                health_check_gpu_enabled.append(compute_resource.name)
+            elif compute_resource_gpu_check_enabled is False:
+                health_check_gpu_enabled.append("")
+            elif queue_gpu_check_enabled:
+                health_check_gpu_enabled.append(queue.name)
+            else:
+                health_check_gpu_enabled.append("")
+        assert_that(health_check_gpu_enabled).is_equal_to(expected_result)
+
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_head_node_root_volume(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        cluster_config = BaseClusterConfig(
+            cluster_name="clustername",
+            image=Image("alinux2"),
+            head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
+        )
+
+        assert_that(cluster_config.head_node.local_storage.root_volume.volume_type).is_equal_to(expected_volume_type)
+
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_compute_settings_root_volume(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        compute_settings = ComputeSettings()
+
+        assert_that(compute_settings.local_storage.root_volume.volume_type).is_equal_to(expected_volume_type)
+
+    def test_tags_in_slurm_queue(self):
+        tags = [Tag("key1", "value1"), Tag("key2", "value2"), Tag("key3", "value3")]
+        queue = SlurmQueue(
+            name="queue0",
+            networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+            compute_resources=mock_compute_resources,
+            tags=tags,
+        )
+        assert_that(queue.get_tags()).is_equal_to(tags)
+
+
+class TestSharedEbs:
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_shared_storage_ebs(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        shared_ebs = SharedEbs(mount_dir="/mount/dir", name="mount-name")
+
+        assert_that(shared_ebs.volume_type).is_equal_to(expected_volume_type)
+
+
+class TestEbs:
+    @pytest.mark.parametrize(
+        "region, expected_volume_type",
+        [
+            ("us-iso-WHATEVER", "gp2"),
+            ("us-isob-WHATEVER", "gp2"),
+            ("WHATEVER_ELSE_REGION", "gp3"),
+        ],
+    )
+    def test_shared_storage_ebs(self, mocker, region, expected_volume_type):
+        mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
+
+        ebs = Ebs()
+
+        assert_that(ebs.volume_type).is_equal_to(expected_volume_type)

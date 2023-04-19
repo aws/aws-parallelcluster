@@ -51,6 +51,8 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "centos7": {"name": "FPGA Developer AMI*", "owners": ["679593333241"]},
     "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
     "ubuntu2004": {"name": "Deep Learning AMI GPU CUDA * (Ubuntu 20.04)*", "owners": ["amazon"]},
+    # Simple redhat8 to be able to build in remarkable test
+    "rhel8": {"name": "RHEL-8.7*_HVM*", "owners": ["309956199498", "841258680906", "219670896067"]},
 }
 
 OS_TO_KERNEL4_AMI_NAME_OWNER_MAP = {
@@ -76,7 +78,15 @@ AMI_TYPE_DICT = {
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None, request=None):
+def retrieve_latest_ami(
+    region,
+    os,
+    ami_type="official",
+    architecture="x86_64",
+    additional_filters=None,
+    request=None,
+    allow_private_ami=False,
+):
     if additional_filters is None:
         additional_filters = []
     try:
@@ -90,6 +100,7 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", 
                 and not request.config.getoption("pcluster_git_ref")
                 and not request.config.getoption("cookbook_git_ref")
                 and not request.config.getoption("node_git_ref")
+                and not allow_private_ami
             ):  # If none of Git refs is provided, the test is running against released version.
                 # Then retrieve public pcluster AMIs
                 additional_filters.append({"Name": "is-public", "Values": ["true"]})
@@ -195,9 +206,21 @@ def get_installed_parallelcluster_base_version():
     return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
 
 
+def get_aws_domain(region: str):
+    """Get AWS domain for the given region."""
+    if region.startswith("cn-"):
+        return "amazonaws.com.cn"
+    elif region.startswith("us-iso-"):
+        return "c2s.ic.gov"
+    elif region.startswith("us-isob-"):
+        return "sc2s.sgov.gov"
+    else:
+        return "amazonaws.com"
+
+
 def get_sts_endpoint(region):
     """Get regionalized STS endpoint."""
-    return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
+    return "https://sts.{0}.{1}".format(region, get_aws_domain(region))
 
 
 def generate_random_string():
@@ -231,7 +254,9 @@ def reboot_head_node(cluster, remote_command_executor=None):
     logging.info(f"result.failed={result.failed}")
     logging.info(f"result.stdout={result.stdout}")
     wait_head_node_running(cluster)
-    time.sleep(120)  # Wait time is required for the head node to complete the reboot
+    # Wait time is required for the head node to complete the reboot.
+    # We observed that headnode in US isolated regions may take more time to reboot.
+    time.sleep(240 if "us-iso" in cluster.region else 120)
     logging.info(f"Rebooted head node for cluster: {cluster.name}")
 
 
@@ -308,3 +333,27 @@ def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=
         preserve_mode=False,
     )
     logging.info("Compute node system information correctly retrieved.")
+
+
+@retry(stop_max_attempt_number=5, wait_fixed=seconds(3))
+def read_remote_file(remote_command_executor, file_path):
+    """Reads the content of a remote file."""
+    logging.info(f"Retrieving remote file {file_path}")
+    result = remote_command_executor.run_remote_command(f"cat {file_path}")
+    assert_that(result.failed).is_false()
+    return result.stdout.strip()
+
+
+@retry(stop_max_attempt_number=60, wait_fixed=seconds(180))
+def wait_process_completion(remote_command_executor, pid):
+    """Waits for a process with the given pid to terminate."""
+    logging.info("Waiting for performance test to complete")
+    command = f"""
+    ps --pid {pid} > /dev/null
+    [ "$?" -ne 0 ] && echo "COMPLETE" || echo "RUNNING"
+    """
+    result = remote_command_executor.run_remote_command(command)
+    if result.stdout == "RUNNING":
+        raise Exception("The process is still running")
+    else:
+        return result.stdout.strip()

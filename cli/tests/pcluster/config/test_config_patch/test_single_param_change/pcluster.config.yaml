@@ -31,8 +31,18 @@ Scheduling:
           InstanceType: {{compute_instance_type}}
           MinCount: 1
           MaxCount: {{max_count}}
+          {% if compute_tag_value %}
+          Tags:
+            - Key: computetag1
+              Value: {{compute_tag_value}}
+          {% endif %}
       Image:
         CustomAmi: {{queue_custom_ami}}
+      {% if queue_tag_value %}
+      Tags:
+        - Key: tag1
+          Value: {{queue_tag_value}}
+      {% endif %}
 SharedStorage:
   - MountDir: vol1
     Name: ebs1

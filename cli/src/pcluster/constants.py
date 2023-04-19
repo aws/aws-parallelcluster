@@ -92,11 +92,16 @@ EBS_VOLUME_TYPE_IOPS_DEFAULT = {
 }
 EBS_VOLUME_SIZE_DEFAULT = 35
 EBS_VOLUME_TYPE_DEFAULT = "gp3"
+EBS_VOLUME_TYPE_DEFAULT_US_ISO = "gp2"
 
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0
-MAX_NUMBER_OF_QUEUES = 10
-MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
+MAX_NUMBER_OF_QUEUES = 100
+SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES = 10
+SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
+MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER = 150  # Based on API timeout limitations
+MAX_COMPUTE_RESOURCES_PER_DEPLOYMENT_WAVE = 150  # Maximum compute resources that can be deployed at the same time
+MAX_COMPUTE_RESOURCES_PER_QUEUE = 40  # Ensures that each queue will share the same stack as its compute resources
 
 MAX_EBS_COUNT = 5
 MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
@@ -120,6 +125,7 @@ CW_ALARM_PERIOD_DEFAULT = 60
 CW_ALARM_PERCENT_THRESHOLD_DEFAULT = 90
 CW_ALARM_EVALUATION_PERIODS_DEFAULT = 1
 CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT = 1
+DETAILED_MONITORING_ENABLED_DEFAULT = False
 
 STACK_EVENTS_LOG_STREAM_NAME_FORMAT = "{}-cfn-events"
 
@@ -191,7 +197,6 @@ SUPPORTED_REGIONS = [
     "us-east-1",
     "us-east-2",
     "us-iso-east-1",
-    "us-iso-west-1",
     "us-isob-east-1",
     "us-gov-east-1",
     "us-gov-west-1",
@@ -238,6 +243,7 @@ class Feature(Enum):
     FSX_LUSTRE = "FSx Lustre"
     FSX_ONTAP = "FSx ONTAP"
     FSX_OPENZFS = "FSx OpenZfs"
+    SLURM_DATABASE = "SLURM Database"
 
 
 UNSUPPORTED_FEATURES_MAP = {
@@ -246,6 +252,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.FSX_LUSTRE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
+    Feature.SLURM_DATABASE: ["us-iso"],
 }
 
 
@@ -299,3 +306,5 @@ UNSUPPORTED_OPERATIONS_MAP = {
     Operation.GET_IMAGE_STACK_EVENTS: ["us-iso"],
     Operation.LIST_IMAGE_LOG_STREAMS: ["us-iso"],
 }
+
+MAX_TAGS_COUNT = 40  # Tags are limited to 50, reserve some tags for parallelcluster specified tags

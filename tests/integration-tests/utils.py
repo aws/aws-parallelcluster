@@ -18,6 +18,7 @@ import shlex
 import socket
 import string
 import subprocess
+from datetime import datetime, timedelta
 from hashlib import sha1
 
 import boto3
@@ -81,7 +82,9 @@ class StackError(BaseException):
 
     def __init__(self, message, stack_events=None):
         message = message if message else "StackError has been raised"
-        self.message = _format_stack_error(message, stack_events=stack_events)
+        _stack_events = list(stack_events)  # resolve all events so that we can return them
+        self.message = _format_stack_error(message, stack_events=_stack_events)
+        self.stack_events = _stack_events
 
     def __str__(self):
         return f"StackError: {self.message}"
@@ -270,8 +273,17 @@ def get_cfn_resources(stack_name, region=None):
 def retrieve_cfn_resources(stack_name, region):
     """Retrieve CloudFormation Stack Resources from a given stack."""
     resources = {}
-    for resource in get_cfn_resources(stack_name, region):
-        resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
+
+    def _retrieve_cfn_resources(stack_name, region):
+        for resource in get_cfn_resources(stack_name, region):
+            if resource.get("ResourceType") == "AWS::CloudFormation::Stack":
+                nested_stack_arn = resource.get("PhysicalResourceId")
+                nested_stack_name = get_stack_name_from_stack_arn(nested_stack_arn)
+                _retrieve_cfn_resources(nested_stack_name, region)
+            else:
+                resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
+
+    _retrieve_cfn_resources(stack_name, region)
     return resources
 
 
@@ -588,11 +600,15 @@ def get_metadata(metadata_path, raise_error=True):
     metadata_value = None
     try:
         metadata_base_url = "http://169.254.169.254/latest"
-        token = requests.put(f"{metadata_base_url}/api/token", headers={"X-aws-ec2-metadata-token-ttl-seconds": "300"})
+        token = requests.put(
+            f"{metadata_base_url}/api/token", headers={"X-aws-ec2-metadata-token-ttl-seconds": "300"}, timeout=3
+        )
 
         headers = {}
         if token.status_code == requests.codes.ok:
             headers["X-aws-ec2-metadata-token"] = token.content
+        elif token.status_code >= 300:
+            raise Exception("Imds not reachable")
         metadata_value = requests.get(f"{metadata_base_url}/meta-data/{metadata_path}", headers=headers).text
     except Exception as e:
         error_msg = f"Unable to get {metadata_path} metadata. Failed with exception: {e}"
@@ -644,6 +660,17 @@ def get_arn_partition(region):
         (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
         DEFAULT_PARTITION,
     )
+
+
+def get_stack_name_from_stack_arn(arn):
+    """
+    Return the Stack Name from a Stack ARN
+    E.g.
+    Stack ARN: "arn:aws:cloudformation:<region>:<account-id>:stack/<stack-name>/<uuid>"
+    :param arn:
+    :return:
+    """
+    return arn.rsplit("/", 2)[-2] if arn else ""
 
 
 def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):
@@ -699,3 +726,62 @@ def create_hash_suffix(string_to_hash: str):
         if string_to_hash == "HeadNode"
         else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
     )
+
+
+def _generate_metric_data_queries(metric_name, cluster_name):
+    return {
+        "Id": metric_name.lower(),
+        "MetricStat": {
+            "Metric": {
+                "Namespace": "ParallelCluster",
+                "MetricName": metric_name,
+                "Dimensions": [
+                    {
+                        "Name": "ClusterName",
+                        "Value": cluster_name,
+                    }
+                ],
+            },
+            "Period": 60,
+            "Stat": "Sum",
+        },
+    }
+
+
+def retrieve_metric_data(
+    cluster_name,
+    metric_names,
+    region,
+    collection_time_min=20,
+):
+    """Create Boto3 get_metric_data request and output the results."""
+    metric_queries = [_generate_metric_data_queries(name, cluster_name) for name in metric_names]
+
+    client = boto3.client("cloudwatch", region)
+
+    return client.get_metric_data(
+        MetricDataQueries=metric_queries,
+        StartTime=datetime.now() - timedelta(days=collection_time_min),
+        EndTime=datetime.now() + timedelta(days=collection_time_min),
+        ScanBy="TimestampDescending",
+    )
+
+
+def assert_metrics_has_data(response):
+    """
+    Iterates through get_metric_data query output and check for desired results,
+    output in MetricDataResults format which is described here
+    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudwatch.html#CloudWatch.Client.get_metric_data
+    """
+    list_of_responses = response["MetricDataResults"]
+    for response in list_of_responses:
+        assert_that(response["Values"]).is_not_empty()
+        assert_that(max(response["Values"])).is_greater_than(0)
+
+
+@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
+def test_cluster_health_metric(metric_names, cluster_name, region):
+    """Test metric value is greater than 0 when the compute node error happens."""
+    logging.info(f"Testing that {metric_names} have data.")
+    response = retrieve_metric_data(cluster_name, metric_names, region)
+    assert_metrics_has_data(response)

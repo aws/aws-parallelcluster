@@ -84,6 +84,8 @@ class Cluster:
         # update the cluster
         logging.info("Updating cluster %s with config %s", self.name, config_file)
         command = ["pcluster", "update-cluster", "--cluster-configuration", config_file, "--cluster-name", self.name]
+        # This changes the default behavior of the update-cluster command and makes it wait for the cluster update to
+        # finish before returning.
         if kwargs.pop("wait", True):
             command.append("--wait")
         for k, val in kwargs.items():
@@ -479,6 +481,8 @@ class ClustersFactory:
             cluster.name,
         ]
 
+        # This changes the default behavior of the create-cluster command and makes it wait for the cluster creation to
+        # finish before returning.
         wait = kwargs.pop("wait", True)
         if wait:
             command.append("--wait")
@@ -505,8 +509,8 @@ class ClustersFactory:
         logging.info("Destroying cluster {0}".format(name))
         if name in self.__created_clusters:
             delete_logs = test_passed and self._delete_logs_on_success and self.__created_clusters[name].create_complete
+            cluster = self.__created_clusters[name]
             try:
-                cluster = self.__created_clusters[name]
                 cluster.delete(delete_logs=delete_logs)
             except Exception as e:
                 logging.error(
