@@ -42,12 +42,17 @@ from .utils import assert_failure_messages
         (Feature.FSX_OPENZFS, "us-isob-east-1", "FSx OpenZfs is not supported in region 'us-isob-east-1'"),
         (Feature.FSX_OPENZFS, "us-isoWHATEVER", "FSx OpenZfs is not supported in region 'us-isoWHATEVER'"),
         (Feature.SLURM_DATABASE, "us-isoWHATEVER", "SLURM Database is not supported in region 'us-isoWHATEVER'"),
+        (Feature.FSX_FILE_CACHE, "us-iso-east-1", "FSx FileCache is not supported in region 'us-iso-east-1'"),
+        (Feature.FSX_FILE_CACHE, "us-iso-west-1", "FSx FileCache is not supported in region 'us-iso-west-1'"),
+        (Feature.FSX_FILE_CACHE, "us-isob-east-1", "FSx FileCache is not supported in region 'us-isob-east-1'"),
+        (Feature.FSX_FILE_CACHE, "us-isoWHATEVER", "FSx FileCache is not supported in region 'us-isoWHATEVER'"),
         (Feature.BATCH, "WHATEVER-ELSE", None),
         (Feature.DCV, "WHATEVER-ELSE", None),
         (Feature.FSX_LUSTRE, "WHATEVER-ELSE", None),
         (Feature.FSX_ONTAP, "WHATEVER-ELSE", None),
         (Feature.FSX_OPENZFS, "WHATEVER-ELSE", None),
         (Feature.SLURM_DATABASE, "WHATEVER-ELSE", None),
+        (Feature.FSX_FILE_CACHE, "WHATEVER-ELSE", None),
     ],
 )
 def test_feature_region_validator(feature, region, expected_message):

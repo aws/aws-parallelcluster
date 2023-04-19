@@ -567,31 +567,37 @@ class ExistingFsxNetworkingValidator(Validator):
         else:
             return {}
 
-    def _validate(self, file_system_ids, subnet_ids, security_groups_by_nodes):
+    def _validate(self, file_storage_ids, subnet_ids, security_groups_by_nodes):
         try:
-            file_systems = AWSApi.instance().fsx.get_file_systems_info(file_system_ids)
-            self._check_file_systems(security_groups_by_nodes, file_systems, subnet_ids)
+            file_cache_ids = [file_cache_id for file_cache_id in file_storage_ids if file_cache_id.startswith("fc-")]
+            if file_cache_ids:
+                file_storage_ids = [id for id in file_storage_ids if id not in file_cache_ids]
+                file_caches = AWSApi.instance().fsx.describe_file_caches(file_cache_ids)
+                self._check_file_storage(security_groups_by_nodes, file_caches, subnet_ids)
+
+            file_systems = AWSApi.instance().fsx.get_file_systems_info(file_storage_ids)
+            self._check_file_storage(security_groups_by_nodes, file_systems, subnet_ids)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
-    def _check_file_systems(self, security_groups_by_nodes, file_systems, subnet_ids):
+    def _check_file_storage(self, security_groups_by_nodes, file_storages, subnet_ids):
         vpc_id = AWSApi.instance().ec2.get_subnet_vpc(subnet_ids[0])
-        network_interfaces_data = self._describe_network_interfaces(file_systems)
-        for file_system in file_systems:
+        network_interfaces_data = self._describe_network_interfaces(file_storages)
+        for file_storage in file_storages:
             # Check to see if fs is in the same VPC as the stack
-            file_system_id = file_system.file_system_id
-            if file_system.vpc_id != vpc_id:
+            file_storage_id = file_storage.file_system_id if file_storage.file_system_id else file_storage.file_cache_id
+            if file_storage.vpc_id != vpc_id:
                 self._add_failure(
-                    "Currently only support using FSx file system that is in the same VPC as the cluster. "
-                    f"The file system {file_system_id} is in {file_system.vpc_id}.",
+                    "Currently only support using FSx file storage that is in the same VPC as the cluster. "
+                    f"The file system {file_storage_id} is in {file_storage.vpc_id}.",
                     FailureLevel.ERROR,
                 )
 
             # If there is an existing mt in the az, check the inbound and outbound rules of the security groups
-            network_interface_ids = file_system.network_interface_ids
+            network_interface_ids = file_storage.network_interface_ids
             if not network_interface_ids:
                 self._add_failure(
-                    f"Unable to validate FSx security groups. The given FSx file system '{file_system_id}'"
+                    f"Unable to validate FSx security groups. The given FSx file storage '{file_storage_id}'"
                     " doesn't have Elastic Network Interfaces attached to it.",
                     FailureLevel.ERROR,
                 )
@@ -602,15 +608,15 @@ class ExistingFsxNetworkingValidator(Validator):
 
                 network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
 
-                for protocol, ports in FSX_PORTS[file_system.file_system_type].items():
+                for protocol, ports in FSX_PORTS[file_storage.file_storage_type].items():
                     missing_ports = self._get_missing_ports(
                         security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol
                     )
 
                     if missing_ports:
                         self._add_failure(
-                            f"The current security group settings on file system '{file_system_id}' does not"
-                            " satisfy mounting requirement. The file system must be associated to a security group"
+                            f"The current security group settings on file storage '{file_storage_id}' does not"
+                            " satisfy mounting requirement. The file storage must be associated to a security group"
                             f" that allows inbound and outbound {protocol.upper()} traffic through ports {ports}. "
                             f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,

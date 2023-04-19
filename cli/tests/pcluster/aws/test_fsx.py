@@ -40,7 +40,7 @@ def test_get_file_systems_info(boto3_stubber):
         get_describe_file_systems_mocked_request([fsx], "AVAILABLE"),
     ]
     boto3_stubber("fsx", mocked_requests)
-    assert_that(AWSApi.instance().fsx.get_file_systems_info([fsx])[0].file_system_data["Lifecycle"]).is_equal_to(
+    assert_that(AWSApi.instance().fsx.get_file_systems_info([fsx])[0].file_storage_info["Lifecycle"]).is_equal_to(
         "CREATING"
     )
 
@@ -49,13 +49,13 @@ def test_get_file_systems_info(boto3_stubber):
     assert_that(response).is_length(2)
 
     # Third boto3 call. The result should be from cache even if the lifecycle of the fsx is different
-    assert_that(AWSApi.instance().fsx.get_file_systems_info([fsx])[0].file_system_data["Lifecycle"]).is_equal_to(
+    assert_that(AWSApi.instance().fsx.get_file_systems_info([fsx])[0].file_storage_info["Lifecycle"]).is_equal_to(
         "CREATING"
     )
 
     # Fourth boto3 call after resetting the AWSApi instance. The latest fsx lifecycle should be retrieved from boto3
     AWSApi.reset()
-    assert_that(AWSApi.instance().fsx.get_file_systems_info([fsx])[0].file_system_data["Lifecycle"]).is_equal_to(
+    assert_that(AWSApi.instance().fsx.get_file_systems_info([fsx])[0].file_storage_info["Lifecycle"]).is_equal_to(
         "AVAILABLE"
     )
 
@@ -124,3 +124,29 @@ def test_describe_volumes(boto3_stubber):
     # Fourth boto3 call after resetting the AWSApi instance. The latest fsx lifecycle should be retrieved from boto3
     AWSApi.reset()
     assert_that(AWSApi.instance().fsx.describe_volumes([volume])[0]["Lifecycle"]).is_equal_to("CREATED")
+
+
+def get_describe_file_caches_mocked_request(file_cache_ids):
+    return MockedBoto3Request(
+        method="describe_file_caches",
+        response={"FileCaches": [{"FileCacheId": file_cache_id} for file_cache_id in file_cache_ids]},
+        expected_params={"FileCacheIds": file_cache_ids},
+    )
+
+
+def test_describe_file_caches(boto3_stubber):
+    file_cache_id = "fc-12345678"
+    additional_file_cache_id = "fc-123456789012345678"
+    # The first mocked request is to check that the data is cached. The second mocked request is about another FC
+    mocked_requests = [
+        get_describe_file_caches_mocked_request([file_cache_id]),
+        get_describe_file_caches_mocked_request([additional_file_cache_id]),
+    ]
+    boto3_stubber("fsx", mocked_requests)
+    AWSApi.instance().fsx.describe_file_caches([file_cache_id])
+    # Second boto3 call with more FileCaches. The FC already cached should not be included in the boto3 call.
+    assert_that(AWSApi.instance().fsx.fc_cache).contains(file_cache_id)
+    assert_that(AWSApi.instance().fsx.fc_cache).does_not_contain(additional_file_cache_id)
+    response = AWSApi.instance().fsx.describe_file_caches([file_cache_id, additional_file_cache_id])
+    assert_that(AWSApi.instance().fsx.fc_cache).contains(file_cache_id, additional_file_cache_id)
+    assert_that(response).is_length(2)

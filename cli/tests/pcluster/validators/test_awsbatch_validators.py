@@ -350,4 +350,4 @@ def test_is_instance_type_format(candidate, expected_return_value):
 
 def test_awsbatch_fsx_validator():
     actual_failures = AwsBatchFsxValidator().execute()
-    assert_failure_messages(actual_failures, "FSx for Lustre is not supported when using AWS Batch as scheduler")
+    assert_failure_messages(actual_failures, "FSx is not supported when using AWS Batch as scheduler")

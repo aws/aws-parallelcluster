@@ -1,0 +1,32 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+SharedStorage:
+  - MountDir: /opt/shared/fsx-file-cache/unmanaged/1
+    Name: shared-fsx-file-cache-unmanaged-1
+    StorageType: FsxFileCache
+    FsxFileCacheSettings:
+      FileCacheId: fc-12345678
+  - MountDir: /opt/shared/fsx-ontap/1
+    Name: shared-fsx-ontap-1
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: fsvol-12345678901234567
+  - MountDir: /opt/shared/fsx-openzfs/1
+    Name: shared-fsx-openzfs-1
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: fsvol-12345678901234567

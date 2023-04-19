@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.aws.aws_resources import FsxFileSystemInfo
+from pcluster.aws.aws_resources import FsxStorageInfo
 from pcluster.aws.common import AWSExceptionHandler, Boto3Client
 
 
@@ -20,6 +20,7 @@ class FSxClient(Boto3Client):
         self.cache = {}
         self.svm_cache = {}
         self.volume_cache = {}
+        self.fc_cache = {}
 
     @AWSExceptionHandler.handle_client_exception
     def get_file_systems_info(self, fsx_fs_ids):
@@ -40,7 +41,7 @@ class FSxClient(Boto3Client):
         if missed_fsx_fs_ids:
             response = list(self._paginate_results(self._client.describe_file_systems, FileSystemIds=missed_fsx_fs_ids))
             for file_system in response:
-                file_system_info = FsxFileSystemInfo(file_system)
+                file_system_info = FsxStorageInfo(file_system)
                 self.cache[file_system_info.file_system_id] = file_system_info
                 result.append(file_system_info)
         return result
@@ -87,3 +88,22 @@ class FSxClient(Boto3Client):
     def describe_backup(self, backup_id):
         """Describe backup."""
         return self._client.describe_backups(BackupIds=[backup_id]).get("Backups")[0]
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_file_caches(self, file_cache_ids):
+        """Describe FSx File cache."""
+        result = []
+        missed_file_cache_ids = []
+        for file_cache_id in file_cache_ids:
+            cached_data = self.fc_cache.get(file_cache_id)
+            if cached_data:
+                result.append(cached_data)
+            else:
+                missed_file_cache_ids.append(file_cache_id)
+        if missed_file_cache_ids:
+            response = self._client.describe_file_caches(FileCacheIds=missed_file_cache_ids)["FileCaches"]
+            for file_cache in response:
+                file_cache_info = FsxStorageInfo(file_cache)
+                self.fc_cache[file_cache.get("FileCacheId")] = file_cache_info
+                result.append(file_cache_info)
+        return result

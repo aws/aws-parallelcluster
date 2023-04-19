@@ -245,6 +245,7 @@ class Feature(Enum):
     BATCH = "AWS Batch scheduler"
     DCV = "NICE DCV"
     FSX_LUSTRE = "FSx Lustre"
+    FSX_FILE_CACHE = "FSx FileCache"
     FSX_ONTAP = "FSx ONTAP"
     FSX_OPENZFS = "FSx OpenZfs"
     SLURM_DATABASE = "SLURM Database"
@@ -254,6 +255,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.BATCH: ["ap-northeast-3", "us-iso"],
     Feature.DCV: ["us-iso"],
     Feature.FSX_LUSTRE: ["us-iso"],
+    Feature.FSX_FILE_CACHE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
     Feature.SLURM_DATABASE: ["us-iso"],
