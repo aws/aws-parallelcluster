@@ -14,6 +14,7 @@ import logging
 
 import pytest
 from assertpy import assert_that
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from tags_utils import (
     convert_tags_dicts_to_tags_list,
@@ -26,6 +27,7 @@ from tags_utils import (
 )
 from time_utils import minutes, seconds
 
+from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_installed_parallelcluster_version
 
 
@@ -64,6 +66,9 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     # Checks for tag propagation
     _check_tag_propagation(cluster, scheduler, os, volume_name)
 
+    if scheduler == "slurm":
+        _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name)
+
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def _wait_for_compute_fleet_start(cluster):
@@ -71,8 +76,24 @@ def _wait_for_compute_fleet_start(cluster):
     assert_that(compute_nodes).is_length(1)
 
 
-def _check_tag_propagation(cluster, scheduler, os, volume_name):
-    config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
+def _check_tag_propagation(cluster, scheduler, os, volume_name, queue_tags=None, compute_resource_tags=None):
+    config_file_tags = {
+        "ConfigFileTag": "ConfigFileTagValue",
+        "QueueOverrideTag": "ClusterLevelValue",
+        "ComputeOverrideTag": "ClusterLevelValue",
+    }
+    if not queue_tags:
+        queue_tags = {
+            "QueueTag": "QueueValue",
+            "QueueOverrideTag": "QueueLevelValue",
+            "ComputeOverrideTag": "QueueLevelValue",
+        }
+    if not compute_resource_tags:
+        compute_resource_tags = {
+            "ComputeResourceTag": "ComputeResourceValue",
+            "ComputeOverrideTag": "ComputeLevelValue",
+        }
+
     version_tags = {"parallelcluster:version": get_installed_parallelcluster_version()}
     cluster_name_tags = {"parallelcluster:cluster-name": cluster.name}
     test_cases = [
@@ -101,7 +122,7 @@ def _check_tag_propagation(cluster, scheduler, os, volume_name):
             "expected_tags": (
                 cluster_name_tags,
                 {"Name": "Compute", "parallelcluster:node-type": "Compute"},
-                config_file_tags,
+                {**config_file_tags, **queue_tags, **compute_resource_tags},
             ),
             "skip": scheduler == "awsbatch",
         },
@@ -111,7 +132,7 @@ def _check_tag_propagation(cluster, scheduler, os, volume_name):
             "expected_tags": (
                 cluster_name_tags,
                 {"parallelcluster:node-type": "Compute"},
-                config_file_tags if scheduler == "slurm" else {},
+                {**config_file_tags, **queue_tags, **compute_resource_tags},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
             "skip": scheduler == "awsbatch",
@@ -135,3 +156,37 @@ def _check_tag_propagation(cluster, scheduler, os, volume_name):
         observed_tags = tag_getter(**tag_getter_args)
         expected_tags = test_case["expected_tags"]
         assert_that(observed_tags).contains(*convert_tags_dicts_to_tags_list(expected_tags))
+
+
+def _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name):
+    # Test update queue level tags and compute resource level tags with queue update strategy
+    command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = SlurmCommands(command_executor)
+    result = slurm_commands.submit_command("sleep infinity", constraint="static")
+    job_id = slurm_commands.assert_job_submitted(result.stdout)
+    slurm_commands.wait_job_running(job_id)
+
+    # Updates cluster with new configuration
+    updated_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update.queue_update.yaml", volume_name=volume_name
+    )
+    cluster.update(str(updated_cluster_config))
+
+    slurm_commands.assert_job_state(job_id, "RUNNING")
+    # check nodes still have old tags before replacement
+    _check_tag_propagation(cluster, scheduler, os, volume_name)
+
+    # requeue job to launch new instances for nodes
+    command_executor.run_remote_command(f"scontrol requeue {job_id}")
+    slurm_commands.wait_job_running(job_id)
+    # check new instances have new tags
+    new_queue_tags = {
+        "QueueTagUpdate": "QueueValueUpdate",
+        "QueueOverrideTag": "QueueLevelValueUpdate",
+        "ComputeOverrideTag": "QueueLevelValueUpdate",
+    }
+    new_compute_resource_tags = {
+        "ComputeResourceTagUpdate": "ComputeResourceValueUpdate",
+        "ComputeOverrideTag": "ComputeLevelValueUpdate",
+    }
+    _check_tag_propagation(cluster, scheduler, os, volume_name, new_queue_tags, new_compute_resource_tags)

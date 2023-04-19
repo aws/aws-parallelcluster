@@ -28,12 +28,17 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
 SharedStorage:
-  - MountDir: {{ fsx_mount_dir }}
-    Name: privatefsx
+  - MountDir: {{ mount_dir }}
+    Name: privatestorage
+    {% if storage_type == "EFS" %}
+    StorageType: Efs
+    {% endif %}
+    {% if storage_type == "FSX" %}
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 1200
       DeploymentType: SCRATCH_2
+    {% endif %}
 DeploymentSettings:
   LambdaFunctionsVpcConfig:
     SecurityGroupIds:

@@ -567,9 +567,9 @@ class AwsBatchConstruct(Construct):
                         value=self._docker_build_wait_condition_handle.ref,
                     ),
                 ],
-                image="aws/codebuild/amazonlinux2-aarch64-standard:1.0"
+                image="aws/codebuild/amazonlinux2-aarch64-standard:2.0"
                 if self._condition_use_arm_code_build_image()
-                else "aws/codebuild/amazonlinux2-x86_64-standard:3.0",
+                else "aws/codebuild/amazonlinux2-x86_64-standard:4.0",
                 type="ARM_CONTAINER" if self._condition_use_arm_code_build_image() else "LINUX_CONTAINER",
                 privileged_mode=True,
             ),

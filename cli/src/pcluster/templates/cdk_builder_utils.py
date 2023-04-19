@@ -19,7 +19,7 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.aws_iam import ManagedPolicy, PermissionsBoundary
-from aws_cdk.core import CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
+from aws_cdk.core import Arn, ArnFormat, CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import (
     BaseClusterConfig,
@@ -28,6 +28,7 @@ from pcluster.config.cluster_config import (
     HeadNode,
     SharedStorageType,
     SlurmClusterConfig,
+    SlurmComputeResource,
     SlurmQueue,
 )
 from pcluster.constants import (
@@ -145,10 +146,10 @@ def get_cluster_tags(stack_name: str, raw_dict: bool = False):
     return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
-def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
+def get_custom_tags(config: Union[BaseClusterConfig, SlurmQueue, SlurmComputeResource], raw_dict: bool = False):
     """Return a list of tags set by the user."""
-    cluster_tags = config.get_cluster_tags()
-    tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
+    custom_tags = config.get_tags()
+    tags = {tag.key: tag.value for tag in custom_tags} if custom_tags else {}
     return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
@@ -756,10 +757,19 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         )
 
         if self._config.directory_service:
+            password_secret_arn = Arn.split(
+                self._config.directory_service.password_secret_arn, ArnFormat.COLON_RESOURCE_NAME
+            )
             policy.append(
                 iam.PolicyStatement(
                     sid="AllowGettingDirectorySecretValue",
-                    actions=["secretsmanager:GetSecretValue"],
+                    actions=[
+                        "secretsmanager:GetSecretValue"
+                        if password_secret_arn.service == "secretsmanager"
+                        else "ssm:GetParameter"
+                        if password_secret_arn.service == "ssm"
+                        else None
+                    ],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
                 )

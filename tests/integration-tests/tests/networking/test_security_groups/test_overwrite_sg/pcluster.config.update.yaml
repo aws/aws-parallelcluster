@@ -34,7 +34,7 @@ SharedStorage:
   - MountDir: efs
     Name: {{ efs_name }}
     StorageType: Efs
-  {% if scheduler != "awsbatch" %}
+  {% if "us-iso" not in region and scheduler != "awsbatch" %}
   - MountDir: fsx
     Name: {{ fsx_name }}
     StorageType: FsxLustre

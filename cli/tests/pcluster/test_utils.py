@@ -9,8 +9,11 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 # This module provides unit tests for the functions in the pcluster.utils module."""
+import asyncio
 import os
 import time
+import unittest
+from collections import namedtuple
 
 import pytest
 from assertpy import assert_that
@@ -22,7 +25,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import Cache
 from pcluster.models.cluster import Cluster, ClusterStack
-from pcluster.utils import yaml_load
+from pcluster.utils import batch_by_property_callback, yaml_load
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_NAME = "cluster-name"
@@ -325,6 +328,22 @@ def test_docs_base_url(mocker, partition, docs_base_url):
     assert_that(pcluster.utils.get_docs_base_url()).is_equal_to(docs_base_url)
 
 
+def test_get_service_endpoint(mocker):
+    service = "whatever-service"
+    region = "whatever-region"
+    mocked_partition = "correct_partition"
+    mocked_domain = "correct_domain"
+
+    mocked_get_partition = mocker.patch("pcluster.utils.get_partition", return_value=mocked_partition)
+    mocked_get_url_domain_suffix = mocker.patch("pcluster.utils.get_url_domain_suffix", return_value=mocked_domain)
+
+    actual_endpoint = pcluster.utils.get_service_endpoint(service, region)
+
+    assert_that(actual_endpoint).is_equal_to(f"https://{service}.{region}.{mocked_domain}")
+    mocked_get_partition.assert_called_once_with(region)
+    mocked_get_url_domain_suffix.assert_called_once_with(mocked_partition)
+
+
 @pytest.mark.parametrize(
     "region, s3_bucket_domain",
     [
@@ -407,3 +426,114 @@ def test_split_resource_prefix(resource_prefix, expected_output):
     iam_path_prefix, iam_role_prefix = utils.split_resource_prefix(resource_prefix=resource_prefix)
     assert_that(iam_path_prefix).is_equal_to(expected_output[0])
     assert_that(iam_role_prefix).is_equal_to(expected_output[1])
+
+
+Item = namedtuple("Item", "property")
+
+
+@pytest.mark.parametrize(
+    "items, expected_batches, batch_size, raises",
+    [
+        (
+            [
+                Item(property=["test-1", "test-2", "test-3"]),
+                Item(property=["test-4", "test-5", "test-6"]),
+                Item(property=["test-7", "test-8", "test-9"]),
+                Item(property=["test-10", "test-11", "test-12"]),
+                Item(property=["test-13", "test-14", "test-15"]),
+            ],
+            [
+                [
+                    Item(property=["test-1", "test-2", "test-3"]),
+                    Item(property=["test-4", "test-5", "test-6"]),
+                    Item(property=["test-7", "test-8", "test-9"]),
+                ],
+                [
+                    Item(property=["test-10", "test-11", "test-12"]),
+                    Item(property=["test-13", "test-14", "test-15"]),
+                ],
+            ],
+            9,
+            False,
+        ),
+        (
+            [
+                Item(property=["test-1", "test-2"]),
+                Item(property=["test-3"]),
+                Item(property=["test-4"]),
+                Item(property=["test-5", "test-6"]),
+                Item(property=["test-7", "test-8", "test-9"]),
+            ],
+            [
+                [Item(property=["test-1", "test-2"]), Item(property=["test-3"])],
+                [Item(property=["test-4"]), Item(property=["test-5", "test-6"])],
+                [Item(property=["test-7", "test-8", "test-9"])],
+            ],
+            3,
+            False,
+        ),
+        (
+            [
+                Item(property=["test-1", "test-2", "test-3", "test-4"]),
+                Item(property=["test-5"]),
+            ],
+            None,
+            3,
+            True,
+        ),
+        (
+            [
+                Item(property=["test-1", "test-2"]),
+            ],
+            [[Item(property=["test-1", "test-2"])]],
+            3,
+            False,
+        ),
+    ],
+    ids=[
+        "last-batch-with-size-smaller-than-batch-size",
+        "all-item-property-sizes-within-range-of-batch-size",
+        "property-count-greater-than-batch-size",
+        "total-property-counts-less-than-batch-size",
+    ],
+)
+def test_batch_by_property_size(items, expected_batches, batch_size, raises):
+    if raises:
+        with pytest.raises(ValueError):
+            for _ in batch_by_property_callback(items, lambda item: len(item.property), batch_size):
+                pass
+    else:
+        batches = [batch for batch in batch_by_property_callback(items, lambda item: len(item.property), batch_size)]
+        assert_that(batches).is_equal_to(expected_batches)
+
+
+class TestAsyncUtils(unittest.TestCase):
+    def test_async_timeout_cache(self):
+        total_calls = 0
+
+        class FakeAsyncMethodProvider:
+            def very_expensive_function(self, param):
+                time.sleep(1)
+                nonlocal total_calls
+                total_calls += 1
+                return param
+
+            @utils.AsyncUtils.async_timeout_cache(timeout=10000)
+            async def async_method(self, param):
+                _async_very_expensive_function = utils.AsyncUtils.async_from_sync(self.very_expensive_function)
+                return await _async_very_expensive_function(param)
+
+        unique_calls = 10
+        repetitions = 15
+
+        executions = []
+        expected_results = []
+        for i in range(unique_calls):
+            for _ in range(repetitions):
+                executions.append(FakeAsyncMethodProvider().async_method(i))
+                expected_results.append(i)
+
+        results = asyncio.get_event_loop().run_until_complete(asyncio.gather(*executions))
+
+        assert_that(expected_results).contains_sequence(*results)
+        assert_that(unique_calls).is_equal_to(total_calls)

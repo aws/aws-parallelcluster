@@ -3,6 +3,10 @@ Image:
 Tags:
   - Key: ConfigFileTag
     Value: ConfigFileTagValue
+  - Key: QueueOverrideTag
+    Value: ClusterLevelValue
+  - Key: ComputeOverrideTag
+    Value: ClusterLevelValue
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -13,23 +17,42 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  {% if scheduler == "awsbatch" %}
+  AwsBatchQueues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
           InstanceTypes:
             - {{ instance }}
           MinvCpus: 4
           DesiredvCpus: 4
-          {% else %}
-          Instances:
-            - InstanceType: {{ instance }}
-          MinCount: 1
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+  {% else %}
+  SlurmQueues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          Tags:
+            - Key: ComputeResourceTag
+              Value: ComputeResourceValue
+            - Key: ComputeOverrideTag
+              Value: ComputeLevelValue
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Tags:
+        - Key: QueueTag
+          Value: QueueValue
+        - Key: QueueOverrideTag
+          Value: QueueLevelValue
+        - Key: ComputeOverrideTag
+          Value: QueueLevelValue
+  {% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: {{ volume_name }}

@@ -23,7 +23,7 @@ from time_utils import minutes
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
 @pytest.mark.parametrize("dashboard_enabled, cw_log_enabled", [(True, True), (True, False), (False, False)])
-def test_dashboard_and_alarms(
+def test_monitoring(
     dashboard_enabled,
     cw_log_enabled,
     region,
@@ -37,20 +37,24 @@ def test_dashboard_and_alarms(
     )
     cluster = clusters_factory(cluster_config)
     cw_client = boto3.client("cloudwatch", region_name=region)
+
     headnode_instance_id = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
+    compute_instance_ids = cluster.get_cluster_instance_ids(node_type="Compute")
+    # the MinCount is set to 1, so we should have at least one compute node
+    assert_that(compute_instance_ids).is_not_empty()
 
     # test CWAgent metrics
     # we only perform this test for one of the 3 test conditions
     # because this test could be time-consuming (we allow some retries to ensure we can get metrics data)
     if dashboard_enabled and cw_log_enabled:
-        compute_instance_ids = cluster.get_cluster_instance_ids(node_type="Compute")
-        # the MinCount is set to 1, so we should have at least one compute node
-        assert_that(compute_instance_ids).is_not_empty()
         _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_ids[0])
 
     # test dashboard and alarms
     _test_dashboard(cw_client, cluster.cfn_name, region, dashboard_enabled, cw_log_enabled)
     _test_alarms(cw_client, cluster.cfn_name, headnode_instance_id, dashboard_enabled)
+
+    # test detailed monitoring
+    _test_detailed_monitoring(region, compute_instance_ids)
 
 
 @retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
@@ -82,8 +86,10 @@ def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_e
         assert_that(dashboard_response["DashboardName"]).is_equal_to(dashboard_name)
         if cw_log_enabled:
             assert_that(dashboard_response["DashboardBody"]).contains("Head Node Logs")
+            assert_that(dashboard_response["DashboardBody"]).contains("Cluster Health Metrics")
         else:
             assert_that(dashboard_response["DashboardBody"]).does_not_contain("Head Node Logs")
+            assert_that(dashboard_response["DashboardBody"]).does_not_contain("Cluster Health Metrics")
     else:
         try:
             cw_client.get_dashboard(DashboardName=dashboard_name)
@@ -188,3 +194,15 @@ def _verify_alarms(alarms, metric_name, instance_id):
         assert_that(alarms[0]["Dimensions"]).contains({"Name": "path", "Value": "/"}).contains(
             {"Name": "InstanceId", "Value": instance_id}
         )
+
+
+def _test_detailed_monitoring(region, compute_instance_ids):
+    ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=compute_instance_ids)
+    monitoring_states = [
+        instance.get("Monitoring").get("State")
+        for reservation in ec2_response.get("Reservations")
+        for instance in reservation.get("Instances")
+    ]
+    assert_that(monitoring_states).is_not_empty()
+    assert_that(set(monitoring_states)).is_length(1)
+    assert_that(monitoring_states[0]).is_equal_to("enabled")

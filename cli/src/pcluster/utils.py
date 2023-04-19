@@ -8,7 +8,9 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
+import functools
 import itertools
 import json
 import logging
@@ -19,9 +21,10 @@ import string
 import sys
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from shlex import quote
-from typing import NoReturn
+from typing import Callable, NoReturn
 from urllib.parse import urlparse
 
 import dateutil.parser
@@ -78,6 +81,12 @@ def get_docs_base_url(partition: str = None):
     """Get the docs url for the given partition. If partition is None, consider the partition set in the environment."""
     _partition = get_partition() if partition is None else partition
     return DOCS_URL_MAP.get(_partition, DEFAULT_DOCS_URL)
+
+
+def get_service_endpoint(service: str, region: str):
+    partition = get_partition(region)
+    domain = get_url_domain_suffix(partition)
+    return f"https://{service}.{region}.{domain}"
 
 
 def replace_url_parameters(url):
@@ -402,3 +411,128 @@ def get_http_tokens_setting(imds_support):
 def remove_none_values(original_dictionary):
     """Return a dictionary without entries with None value."""
     return {key: value for key, value in original_dictionary.items() if value is not None}
+
+
+def batch_by_property_callback(items, property_callback: Callable[..., int], batch_size):
+    """
+    Group a list of items into batches based on a property of each item and the specified `batch_size`.
+
+    The property of each item is obtained using the property_callback function. This way the caller of
+    `batch_by_property_size` defines which property to use for each item.
+    Example: (With batch_size of 2 and property_callback=lambda item: len(item.property))
+        [
+            Item(property=["test-1", "test-2"]),
+            Item(property=["test-3"]),
+            Item(property=["test-4"]),
+        ] --> [ [Item(property=["test-1", "test-2"])], [Item(property=["test-3"]), Item(property=["test-4"])] ]
+    :param items: list of items to organize into batches
+    :param property_callback: a callback function that returns the property(size) to use for batching
+    :param batch_size: maximum size of each batch
+    :return: batches of items as a list
+    """
+    # Avoid batching if total property count is already less than or equal to the batch_size
+    if sum(property_callback(item) for item in items) < batch_size:
+        yield items
+        return
+
+    batch_total_property_value, current_batch = 0, []
+    for item_index, item in enumerate(items):
+        property_value = property_callback(item)
+        if property_callback(item) > batch_size:
+            raise ValueError(
+                f"{item.__class__} property callback value of {property_value} is larger than "
+                f"the batch size ({batch_size}))"
+            )
+
+        if batch_total_property_value + property_value > batch_size:
+            yield current_batch
+            batch_total_property_value, current_batch = property_value, [item]
+        else:
+            batch_total_property_value += property_value
+            current_batch.append(item)
+        if item_index == len(items) - 1:
+            # If on the last time, yield the batch
+            yield current_batch
+
+
+class AsyncUtils:
+    """Utility class for async functions."""
+
+    @staticmethod
+    def async_retry(stop_max_attempt_number=5, wait_fixed=1, retry_on_exception=None):
+        """
+        Decorate an async coroutine function to retry its execution when an exception is risen.
+
+        :param stop_max_attempt_number: Max number of retries.
+        :param wait_fixed: Wait time (in seconds) between retries.
+        :param retry_on_exception: Exception to retry on.
+        :return:
+        """
+        if retry_on_exception is None:
+            retry_on_exception = (Exception,)
+
+        def decorator(func):
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                attempt = 0
+                result = None
+                while attempt <= stop_max_attempt_number:
+                    try:
+                        result = await func(*args, **kwargs)
+                        break
+                    except retry_on_exception as err:
+                        if attempt < stop_max_attempt_number:
+                            attempt += 1
+                            await asyncio.sleep(wait_fixed)
+                        else:
+                            raise err
+                return result
+
+            return wrapper
+
+        return decorator
+
+    @staticmethod
+    def async_timeout_cache(timeout=10):
+        """
+        Decorate a function to cache the result of a call for a given time period.
+
+        :param timeout: Timeout in seconds.
+        :return:
+        """
+
+        def decorator(func):
+            _cache = {}
+
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                cache_key = (func.__name__, args[1:], frozenset(kwargs.items()))
+                current_time = time.time()
+
+                if cache_key not in _cache or (_cache[cache_key][1] < current_time):
+                    _cache[cache_key] = (asyncio.ensure_future(func(*args, **kwargs)), current_time + timeout)
+
+                return await _cache[cache_key][0]
+
+            return wrapper
+
+        return decorator
+
+    _thread_pool_executor: ThreadPoolExecutor = ThreadPoolExecutor()
+
+    @staticmethod
+    def async_from_sync(func):
+        """
+        Convert a synchronous function to an async one.
+
+        :param func:
+        :return:
+        """
+
+        @functools.wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            return await asyncio.get_event_loop().run_in_executor(
+                AsyncUtils._thread_pool_executor, lambda: func(self, *args, **kwargs)
+            )
+
+        return wrapper

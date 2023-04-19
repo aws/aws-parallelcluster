@@ -20,7 +20,7 @@ from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
 
 
 @pytest.mark.parametrize(
@@ -32,6 +32,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_buc
         "ubuntu18.slurm.simple.yaml",
         "alinux2.batch.no_head_node_log.yaml",
         "ubuntu18.slurm.no_dashboard.yaml",
+        "alinux2.batch.head_node_log.yaml",
     ],
 )
 def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
@@ -42,11 +43,12 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
     print(cluster_config)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     output_yaml = yaml.dump(generated_template, width=float("inf"))
@@ -62,11 +64,39 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
 
         if cluster_config.is_cw_logging_enabled:
             _verify_head_node_logs_conditions(cluster_config, output_yaml)
+            _verify_common_error_metrics_graphs(cluster_config, output_yaml)
         else:
             assert_that(output_yaml).does_not_contain("Head Node Logs")
+            assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
+
+        metric_filters = _extract_metric_filters(generated_template)
+        _verify_metric_filter_dimensions(metric_filters)
     else:
         assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
         assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
+
+
+def _extract_metric_filters(generated_template):
+    return {
+        key: val["Properties"]
+        for key, val in generated_template["Resources"].items()
+        if val["Type"] == "AWS::Logs::MetricFilter"
+    }
+
+
+def _verify_metric_filter_dimensions(metric_filters):
+    for name, properties in metric_filters.items():
+        dimensions = next(
+            property["Dimensions"]
+            for property in properties["MetricTransformations"]
+            if type(property) is dict and "Dimensions" in property
+        )
+
+        expected_dimensions = [{"Key": "ClusterName", "Value": "$.cluster-name"}]
+
+        assert_that(dimensions, description=f"{name} should have dimensions {expected_dimensions}").is_equal_to(
+            expected_dimensions
+        )
 
 
 def _verify_head_node_instance_metrics_graphs(output_yaml):
@@ -168,3 +198,44 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
     assert_that(output_yaml).contains("chef-client")
     assert_that(output_yaml).contains("cloud-init")
     assert_that(output_yaml).contains("supervisord")
+
+
+def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
+    """Verify conditions related to the common error section."""
+    scheduler = cluster_config.scheduling.scheduler
+    slurm_related_metrics = [
+        "IamPolicyErrors",
+        "VcpuLimitErrors",
+        "VolumeLimitErrors",
+        "InsufficientCapacityErrors",
+        "OtherInstanceLaunchFailures",
+        "InstanceBootstrapTimeoutError",
+        "EC2HealthCheckErrors",
+        "ScheduledEventHealthCheckErrors",
+        "NoCorrespondingInstanceErrors",
+        "SlurmNodeNotRespondingErrors",
+    ]
+    custom_action_metrics = [
+        "OnNodeStartDownloadErrors",
+        "OnNodeStartRunErrors",
+        "OnNodeConfiguredDownloadErrors",
+        "OnNodeConfiguredRunErrors",
+    ]
+    idle_node_metrics = ["MaxDynamicNodeIdleTime"]
+    if scheduler == "slurm":
+        # Contains error metric title
+        assert_that(output_yaml).contains("Cluster Health Metrics")
+        for metric in slurm_related_metrics:
+            assert_that(output_yaml).contains(metric)
+        for metric in idle_node_metrics:
+            assert_that(output_yaml).contains(metric)
+        if cluster_config.has_custom_actions_in_queue:
+            for metric in custom_action_metrics:
+                assert_that(output_yaml).contains(metric)
+        else:
+            for metric in custom_action_metrics:
+                assert_that(output_yaml).does_not_contain(metric)
+    else:
+        assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
+        for metric in slurm_related_metrics + custom_action_metrics + idle_node_metrics:
+            assert_that(output_yaml).does_not_contain(metric)

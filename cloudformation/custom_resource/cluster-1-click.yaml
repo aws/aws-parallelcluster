@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS ParallelCluster CloudFormation Cluster
+
+Parameters:
+  KeyName:
+    Description: KeyPair to login to the head node
+    Type: AWS::EC2::KeyPair::KeyName
+    AllowedPattern: ".+"  # Required
+
+  AvailabilityZone:
+    Description: Availability zone where instances will be launched
+    Type: AWS::EC2::AvailabilityZone::Name
+    AllowedPattern: ".+"  # Required
+
+Mappings:
+  ParallelCluster:
+    Constants:
+      Version: 3.6.0
+      Bucket: '' # For debug purposes only
+
+Conditions:
+  UseCustomBucket: !Not [!Equals [!FindInMap [ParallelCluster, Constants, Bucket], '']]
+
+Resources:
+  PclusterClusterProvider:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        CustomBucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Ref AWS::NoValue ]
+      TemplateURL: !Sub
+        - https://${Bucket}.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${Version}/templates/custom_resource/cluster.yaml
+        - { Version: !FindInMap [ParallelCluster, Constants, Version ],
+            Bucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Sub "${AWS::Region}-aws-parallelcluster" ]
+          }
+
+  PclusterVpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        PublicCIDR: 10.0.0.0/24
+        PrivateCIDR: 10.0.16.0/20
+        AvailabilityZone: !Ref AvailabilityZone
+      TemplateURL: !Sub
+        - https://${Bucket}.s3.${AWS::Region}.${AWS::URLSuffix}.com/parallelcluster/${Version}/templates/networking/public-private-${Version}.cfn.json
+        - { Version: !FindInMap [ParallelCluster, Constants, Version],
+            Bucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Sub "${AWS::Region}-aws-parallelcluster" ]
+          }
+
+  PclusterCluster:
+    Type: Custom::PclusterCluster
+    Properties:
+      ServiceToken: !GetAtt [ PclusterClusterProvider, Outputs.ServiceToken ]
+      ClusterName: !Sub 'c-${AWS::StackName}'
+      ClusterConfiguration:
+        DevSettings: !If
+          - UseCustomBucket
+          -
+            AmiSearchFilters:
+              Owner: self
+          - !Ref AWS::NoValue
+        Image:
+          Os: alinux2
+        HeadNode:
+          InstanceType: t2.medium
+          Networking:
+            SubnetId: !GetAtt [ PclusterVpc, Outputs.PublicSubnetId ]
+          Ssh:
+            KeyName: !Ref KeyName
+        Scheduling:
+          Scheduler: slurm
+          SlurmQueues:
+          - Name: queue0
+            ComputeResources:
+            - Name: queue0-cr0
+              InstanceType: t2.micro
+            Networking:
+              SubnetIds:
+              - !GetAtt [ PclusterVpc, Outputs.PrivateSubnetId ]
+
+Outputs:
+  HeadNodeIp:
+    Description: The Public IP address of the HeadNode
+    Value: !GetAtt [ PclusterCluster, headNode.publicIpAddress ]
+  ValidationMessages:
+    Description: Any warnings from cluster create or update operations.
+    Value: !GetAtt PclusterCluster.validationMessages

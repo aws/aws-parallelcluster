@@ -197,6 +197,16 @@ def _compare_changes(changes, expected_changes):
             False,
             id="change queue instance profile",
         ),
+        pytest.param(
+            ["Scheduling", "SlurmQueues[queue1]", "Tags[tag1]"],
+            "queue_tag_value",
+            "Value",
+            "queue_tag_value_1",
+            "queue_tag_value_2",
+            UpdatePolicy.QUEUE_UPDATE_STRATEGY,
+            False,
+            id="change queue tag value",
+        ),
     ],
 )
 def test_single_param_change(

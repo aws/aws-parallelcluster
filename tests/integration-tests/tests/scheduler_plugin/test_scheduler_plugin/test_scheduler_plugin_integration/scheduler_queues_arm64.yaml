@@ -40,10 +40,10 @@
       EphemeralVolume: null
       RootVolume:
         Encrypted: true
-        Iops: 3000
         Size: null
-        Throughput: 125
         VolumeType: gp3
+        Throughput: 125
+        Iops: 3000
   CustomActions: null
   CustomSettings: null
   Iam:
@@ -89,10 +89,10 @@
       EphemeralVolume: null
       RootVolume:
         Encrypted: true
-        Iops: 3000
         Size: null
-        Throughput: 125
         VolumeType: gp3
+        Throughput: 125
+        Iops: 3000
   CustomActions: null
   CustomSettings: null
   Iam:

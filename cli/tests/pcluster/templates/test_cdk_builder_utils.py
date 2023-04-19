@@ -33,7 +33,13 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.utils import load_yaml_dict, split_resource_prefix
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
+from tests.pcluster.utils import get_asset_content_with_resource_name
+
+
+@pytest.fixture
+def get_region(mocker):
+    mocker.patch("pcluster.config.cluster_config.get_region", return_value="WHATEVER_REGION")
 
 
 @pytest.mark.parametrize(
@@ -94,12 +100,13 @@ def test_get_default_volume_tags(stack_name, node_type, raw_dict, expected_resul
     assert_that(get_default_volume_tags(stack_name, node_type, raw_dict)).is_equal_to(expected_result)
 
 
+@pytest.mark.usefixtures("get_region")
 class TestCdkLaunchTemplateBuilder:
     @pytest.mark.parametrize(
-        "root_volume, image_os, expected_response",
+        "root_volume_parameters, image_os, expected_response",
         [
             pytest.param(
-                RootVolume(
+                dict(
                     size=10,
                     encrypted=False,
                     volume_type="mockVolumeType",
@@ -196,7 +203,7 @@ class TestCdkLaunchTemplateBuilder:
                 id="test with all root volume fields populated",
             ),
             pytest.param(
-                RootVolume(
+                dict(
                     encrypted=True,
                     volume_type="mockVolumeType",
                     iops=15,
@@ -293,7 +300,8 @@ class TestCdkLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_block_device_mappings(self, root_volume, image_os, expected_response):
+    def test_get_block_device_mappings(self, root_volume_parameters, image_os, expected_response):
+        root_volume = RootVolume(**root_volume_parameters)
         assert_that(CdkLaunchTemplateBuilder().get_block_device_mappings(root_volume, image_os)).is_equal_to(
             expected_response
         )
@@ -337,10 +345,10 @@ class TestCdkLaunchTemplateBuilder:
         )
 
     @pytest.mark.parametrize(
-        "queue, compute_resource, expected_response",
+        "queue_parameters, compute_resource, expected_response",
         [
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_resource_group_arn="queue_cr_rg_arn",
@@ -364,7 +372,7 @@ class TestCdkLaunchTemplateBuilder:
                 id="test with queue and compute resource capacity reservation",
             ),
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_id="queue_cr_id",
@@ -385,7 +393,7 @@ class TestCdkLaunchTemplateBuilder:
                 id="test with only queue capacity reservation",
             ),
             pytest.param(
-                SlurmQueue(
+                dict(
                     name="queue1",
                     compute_resources=[],
                     networking=None,
@@ -399,7 +407,8 @@ class TestCdkLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_capacity_reservation(self, queue, compute_resource, expected_response):
+    def test_get_capacity_reservation(self, queue_parameters, compute_resource, expected_response):
+        queue = SlurmQueue(**queue_parameters)
         assert_that(CdkLaunchTemplateBuilder().get_capacity_reservation(queue, compute_resource)).is_equal_to(
             expected_response
         )
@@ -438,10 +447,11 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
-    generated_template = CDKTemplateBuilder().build_cluster_template(
+    generated_template, cdk_assets = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
@@ -449,13 +459,16 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     if cluster_config.iam and cluster_config.iam.resource_prefix:
         iam_path_prefix, iam_name_prefix = split_resource_prefix(cluster_config.iam.resource_prefix)
     generated_template = generated_template["Resources"]
-    role_name_ref = generated_template["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0][
+    asset_resource = get_asset_content_with_resource_name(cdk_assets, "InstanceProfile15b342af42246b70").get(
+        "Resources"
+    )
+    role_name_ref = asset_resource["InstanceProfile15b342af42246b70"]["Properties"]["Roles"][0][
         "Ref"
     ]  # Role15b342af42246b70
     role_name_hn_ref = generated_template["InstanceProfileHeadNode"]["Properties"]["Roles"][0]["Ref"]  # RoleHeadNode
 
     # Checking their Path
-    _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, role_name_ref, "RoleName")
+    _check_instance_roles_n_profiles(asset_resource, iam_path_prefix, iam_name_prefix, role_name_ref, "RoleName")
     _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, role_name_hn_ref, "RoleName")
 
     # Instance Profiles---> Checking Instance Profile Names and Instance profiles Path
@@ -463,11 +476,11 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
         generated_template, iam_path_prefix, iam_name_prefix, "InstanceProfileHeadNode", "InstanceProfileName"
     )
     _check_instance_roles_n_profiles(
-        generated_template, iam_path_prefix, iam_name_prefix, "InstanceProfile15b342af42246b70", "InstanceProfileName"
+        asset_resource, iam_path_prefix, iam_name_prefix, "InstanceProfile15b342af42246b70", "InstanceProfileName"
     )
     # PC Policies
     _check_policies(
-        generated_template, iam_name_prefix, "ParallelClusterPolicies15b342af42246b70", "parallelcluster", role_name_ref
+        asset_resource, iam_name_prefix, "ParallelClusterPolicies15b342af42246b70", "parallelcluster", role_name_ref
     )
     _check_policies(
         generated_template, iam_name_prefix, "ParallelClusterPoliciesHeadNode", "parallelcluster", role_name_hn_ref
@@ -489,7 +502,7 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
     )
     #  Slurm Policies
     _check_policies(
-        generated_template,
+        asset_resource,
         iam_name_prefix,
         "SlurmPolicies15b342af42246b70",
         "parallelcluster-slurm-compute",
@@ -528,9 +541,7 @@ def test_iam_resource_prefix_build_in_cdk(mocker, test_datadir, config_file_name
         and cluster_config.scheduling.queues[0].iam
         and cluster_config.scheduling.queues[0].iam.s3_access
     ):
-        _check_policies(
-            generated_template, iam_name_prefix, "S3AccessPolicies15b342af42246b70", "S3Access", role_name_ref
-        )
+        _check_policies(asset_resource, iam_name_prefix, "S3AccessPolicies15b342af42246b70", "S3Access", role_name_ref)
 
 
 def _check_instance_roles_n_profiles(generated_template, iam_path_prefix, iam_name_prefix, resource_name, key_name):

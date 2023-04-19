@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template for the ParallelCluster Policies'
+Description: 'AWS ParallelCluster Policies'
 
 Parameters:
   Region:
@@ -394,16 +394,37 @@ Resources:
             Effect: Allow
             Sid: Route53HostedZones
           - Action:
-              - cloudformation:*
-            Resource: '*'
+              - cloudformation:CreateStack
+            Resource: !Sub
+              - arn:*:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
+              - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
             Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: CloudFormation
+            Condition:
+              ForAnyValue:StringEquals:
+                aws:TagKeys: ["parallelcluster:cluster-name"]
+            Sid: CloudFormationCreate
+          - Action:
+              - cloudformation:UpdateStack
+            Resource: !Sub
+              - arn:*:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
+              - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
+            Effect: Allow
+            Condition:
+              ForAnyValue:StringLike:
+                aws:ResourceTag/parallelcluster:cluster-name: "*"
+            Sid: CloudFormationUpdate
+          - Action:
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DescribeStackResources
+              - cloudformation:GetTemplate
+              - cloudformation:ListStacks
+            Resource: !Sub
+              - arn:*:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
+              - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
+            Effect: Allow
+            Sid: CloudFormationReadAndDelete
           - Action:
               - cloudwatch:PutDashboard
               - cloudwatch:ListDashboards
@@ -527,6 +548,9 @@ Resources:
               - logs:CreateLogGroup
               - logs:TagResource
               - logs:UntagResource
+              - logs:DescribeMetricFilters
+              - logs:PutMetricFilter
+              - logs:deleteMetricFilter
             Resource: '*'
             Effect: Allow
             Condition: !If

@@ -36,20 +36,25 @@ from pcluster.constants import (
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
     DELETE_POLICY,
+    DETAILED_MONITORING_ENABLED_DEFAULT,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
+    EBS_VOLUME_TYPE_DEFAULT_US_ISO,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
     LUSTRE,
+    MAX_COMPUTE_RESOURCES_PER_QUEUE,
     MAX_EBS_COUNT,
     MAX_EXISTING_STORAGE_COUNT,
     MAX_NEW_STORAGE_COUNT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
     MAX_NUMBER_OF_QUEUES,
     NODE_BOOTSTRAP_TIMEOUT,
     ONTAP,
     OPENZFS,
     SCHEDULER_PLUGIN_INTERFACE_VERSION,
     SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
+    SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES,
     SUPPORTED_OSES,
     Feature,
 )
@@ -94,10 +99,12 @@ from pcluster.validators.cluster_validators import (
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
+    RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
@@ -106,7 +113,7 @@ from pcluster.validators.cluster_validators import (
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
 )
-from pcluster.validators.common import ValidatorContext
+from pcluster.validators.common import ValidatorContext, get_async_timed_validator_type_for
 from pcluster.validators.database_validators import DatabaseUriValidator
 from pcluster.validators.directory_service_validators import (
     AdditionalSssdConfigsValidator,
@@ -165,7 +172,7 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.monitoring_validators import LogRotationValidator
+from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     MultiAzPlacementGroupValidator,
@@ -189,6 +196,14 @@ from pcluster.validators.scheduler_plugin_validators import (
     SupportedVersionsValidator,
     UserNameValidator,
 )
+from pcluster.validators.slurm_settings_validator import (
+    SLURM_SETTINGS_DENY_LIST,
+    CustomSlurmNodeNamesValidator,
+    CustomSlurmSettingLevel,
+    CustomSlurmSettingsIncludeFileOnlyValidator,
+    CustomSlurmSettingsValidator,
+)
+from pcluster.validators.tags_validators import ComputeResourceTagsValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -210,7 +225,10 @@ class Ebs(Resource):
     ):
         super().__init__(**kwargs)
         self.encrypted = Resource.init_param(encrypted, default=True)
-        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
+        self.volume_type = Resource.init_param(
+            volume_type,
+            default=EBS_VOLUME_TYPE_DEFAULT_US_ISO if get_region().startswith("us-iso") else EBS_VOLUME_TYPE_DEFAULT,
+        )
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
@@ -231,7 +249,14 @@ class RootVolume(Ebs):
 
     def __init__(self, size: int = None, delete_on_termination: bool = None, **kwargs):
         super().__init__(**kwargs)
-        self.size = Resource.init_param(size)
+        # When the RootVolume size is None, EC2 implicitly sets it as the AMI size.
+        # In US Isolated regions, the root volume size cannot be left unspecified,
+        # so we consider it as the default EBS volume size.
+        # In theory, the default value should be maximum between the default EBS volume size (35GB) and the AMI size,
+        # but in US Isolated region this is fine because the only supported AMI as of 2023 Feb
+        # is the official ParallelCluster AMI for Amazon Linux 2, which has size equal to
+        # the default EBS volume size (35GB).
+        self.size = Resource.init_param(size, EBS_VOLUME_SIZE_DEFAULT if get_region().startswith("us-iso") else None)
         # The default delete_on_termination takes effect both on head and compute nodes.
         # If the default of the head node is to be changed, please separate this class for different defaults.
         self.delete_on_termination = Resource.init_param(delete_on_termination, default=True)
@@ -744,6 +769,25 @@ class Efa(Resource):
         self.gdr_support = Resource.init_param(gdr_support, default=False)
 
 
+# ---------------------- Health Checks ---------------------- #
+
+
+class GpuHealthCheck(Resource):
+    """Represent the configuration for the GPU Health Check."""
+
+    def __init__(self, enabled: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.enabled = enabled
+
+
+class HealthChecks(Resource):
+    """Represent the health checks configuration."""
+
+    def __init__(self, gpu: GpuHealthCheck = None, **kwargs):
+        super().__init__(**kwargs)
+        self.gpu = gpu or GpuHealthCheck(implied=True)
+
+
 # ---------------------- Monitoring ---------------------- #
 
 
@@ -798,9 +842,12 @@ class Monitoring(Resource):
 
     def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
         super().__init__(**kwargs)
-        self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
+        self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=DETAILED_MONITORING_ENABLED_DEFAULT)
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(DetailedMonitoringValidator, is_detailed_monitoring_enabled=self.detailed_monitoring)
 
 
 # ---------------------- Others ---------------------- #
@@ -945,7 +992,11 @@ class DirectoryService(Resource):
                 DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
             )
         if self.password_secret_arn:
-            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+            self._register_validator(
+                PasswordSecretArnValidator,
+                password_secret_arn=self.password_secret_arn,
+                region=get_region(),
+            )
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
         if self.additional_sssd_configs:
@@ -1084,7 +1135,7 @@ class QueueImage(Resource):
 
 
 class CustomAction(Resource):
-    """Represent a custom action resource."""
+    """Represent a custom action script resource."""
 
     def __init__(self, script: str, args: List[str] = None):
         super().__init__()
@@ -1092,7 +1143,7 @@ class CustomAction(Resource):
         self.args = Resource.init_param(args)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(UrlValidator, url=self.script)
+        self._register_validator(get_async_timed_validator_type_for(UrlValidator), url=self.script, timeout=5)
 
 
 class CustomActions(Resource):
@@ -1100,9 +1151,9 @@ class CustomActions(Resource):
 
     def __init__(
         self,
-        on_node_start: CustomAction = None,
-        on_node_configured: CustomAction = None,
-        on_node_updated: CustomAction = None,
+        on_node_start=None,
+        on_node_configured=None,
+        on_node_updated=None,
     ):
         super().__init__()
         self.on_node_start = Resource.init_param(on_node_start)
@@ -1309,7 +1360,7 @@ class BaseClusterConfig(Resource):
             head_node=self.head_node,
             os=self.image.os,
             ami_id=self.head_node_ami,
-            tags=self.get_cluster_tags(),
+            tags=self.get_tags(),
             imds_support=self.imds.imds_support,
         )
         if self.head_node.dcv:
@@ -1652,6 +1703,11 @@ class BaseClusterConfig(Resource):
         )
 
     @property
+    def is_detailed_monitoring_enabled(self):
+        """Return True if Detailed Monitoring is enabled."""
+        return self.monitoring.detailed_monitoring
+
+    @property
     def is_dcv_enabled(self):
         """Return True if DCV is enabled."""
         return self.head_node.dcv and self.head_node.dcv.enabled
@@ -1733,7 +1789,7 @@ class BaseClusterConfig(Resource):
         """Return the vpc config of the PCluster Lambda Functions or None."""
         return self.deployment_settings.lambda_functions_vpc_config if self.deployment_settings else None
 
-    def get_cluster_tags(self):
+    def get_tags(self):
         """Return tags configured in the cluster configuration."""
         return self.tags
 
@@ -1856,6 +1912,9 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         schedulable_memory: int = None,
         capacity_reservation_target: CapacityReservationTarget = None,
         networking: SlurmComputeResourceNetworking = None,
+        health_checks: HealthChecks = None,
+        custom_slurm_settings: Dict = None,
+        tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1871,6 +1930,9 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self._instance_types_with_instance_storage = []
         self._instance_type_info_map = {}
         self.networking = networking or SlurmComputeResourceNetworking(implied=True)
+        self.health_checks = health_checks or HealthChecks(implied=True)
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
+        self.tags = tags
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
@@ -1921,6 +1983,10 @@ class _BaseSlurmComputeResource(BaseComputeResource):
     def instance_types(self) -> List[str]:
         pass
 
+    def get_tags(self):
+        """Return tags configured in the slurm compute resource configuration."""
+        return self.tags
+
 
 class FlexibleInstanceType(Resource):
     """Represent an instance type listed in the Instances of a ComputeResources."""
@@ -1933,7 +1999,11 @@ class FlexibleInstanceType(Resource):
 class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
-    def __init__(self, instances: List[FlexibleInstanceType], **kwargs):
+    def __init__(
+        self,
+        instances: List[FlexibleInstanceType],
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.instances = Resource.init_param(instances)
 
@@ -1970,7 +2040,11 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
 class SlurmComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with a Single Instance Type."""
 
-    def __init__(self, instance_type, **kwargs):
+    def __init__(
+        self,
+        instance_type,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.instance_type = Resource.init_param(instance_type)
         self.__instance_type_info = None
@@ -2081,6 +2155,10 @@ class _CommonQueue(BaseQueue):
         """Return true if more than one AZ are defined in the queue Networking section."""
         return len(self.networking.az_list) > 1
 
+    def get_tags(self):
+        """Return tags configured in the queue configuration."""
+        return None
+
     def get_managed_placement_group_keys(self) -> List[str]:
         managed_placement_group_keys = []
         for compute_resource in self.compute_resources:
@@ -2159,9 +2237,15 @@ class SlurmQueue(_CommonQueue):
     def __init__(
         self,
         allocation_strategy: str = None,
+        custom_slurm_settings: Dict = None,
+        health_checks: HealthChecks = None,
+        tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.health_checks = health_checks or HealthChecks(implied=True)
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
+        self.tags = tags
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
@@ -2187,6 +2271,10 @@ class SlurmQueue(_CommonQueue):
             result.update(compute_resource.instance_types_with_instance_storage)
         return result
 
+    def get_tags(self):
+        """Return tags configured in the slurm queue configuration."""
+        return self.tags
+
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         self._register_validator(
@@ -2197,8 +2285,8 @@ class SlurmQueue(_CommonQueue):
         self._register_validator(
             MaxCountValidator,
             resources_length=len(self.compute_resources),
-            max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES,
-            resource_name="ComputeResources",
+            max_length=MAX_COMPUTE_RESOURCES_PER_QUEUE,
+            resource_name="ComputeResources per Queue",
         )
         self._register_validator(
             QueueSubnetsValidator,
@@ -2211,6 +2299,13 @@ class SlurmQueue(_CommonQueue):
                 SingleInstanceTypeSubnetValidator,
                 queue_name=self.name,
                 subnet_ids=self.networking.subnet_ids,
+            )
+        if self.custom_slurm_settings:
+            self._register_validator(
+                CustomSlurmSettingsValidator,
+                custom_settings=[self.custom_slurm_settings],
+                deny_list=SLURM_SETTINGS_DENY_LIST["Queue"]["Global"],
+                settings_level=CustomSlurmSettingLevel.QUEUE,
             )
         for compute_resource in self.compute_resources:
             self._register_validator(
@@ -2229,6 +2324,13 @@ class SlurmQueue(_CommonQueue):
                 is False,
                 multi_az_enabled=self.multi_az_enabled,
             )
+            if compute_resource.custom_slurm_settings:
+                self._register_validator(
+                    CustomSlurmSettingsValidator,
+                    custom_settings=[compute_resource.custom_slurm_settings],
+                    deny_list=SLURM_SETTINGS_DENY_LIST["ComputeResource"]["Global"],
+                    settings_level=CustomSlurmSettingLevel.COMPUTE_RESOURCE,
+                )
             for instance_type in compute_resource.instance_types:
                 self._register_validator(
                     CapacityTypeValidator,
@@ -2265,10 +2367,16 @@ class Database(Resource):
         self.password_secret_arn = Resource.init_param(password_secret_arn)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        region = get_region()
+        self._register_validator(FeatureRegionValidator, feature=Feature.SLURM_DATABASE, region=region)
         if self.uri:
             self._register_validator(DatabaseUriValidator, uri=self.uri)
         if self.password_secret_arn:
-            self._register_validator(PasswordSecretArnValidator, password_secret_arn=self.password_secret_arn)
+            self._register_validator(
+                PasswordSecretArnValidator,
+                password_secret_arn=self.password_secret_arn,
+                region=region,
+            )
 
 
 class SlurmSettings(Resource):
@@ -2281,6 +2389,8 @@ class SlurmSettings(Resource):
         queue_update_strategy: str = None,
         enable_memory_based_scheduling: bool = None,
         database: Database = None,
+        custom_slurm_settings: List[Dict] = None,
+        custom_slurm_settings_include_file: str = None,
         **kwargs,
     ):
         super().__init__()
@@ -2291,6 +2401,33 @@ class SlurmSettings(Resource):
         )
         self.enable_memory_based_scheduling = Resource.init_param(enable_memory_based_scheduling, default=False)
         self.database = database
+        self.custom_slurm_settings = Resource.init_param(custom_slurm_settings)
+        self.custom_slurm_settings_include_file = Resource.init_param(custom_slurm_settings_include_file)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        if self.custom_slurm_settings:  # if not empty register validator
+            self._register_validator(
+                CustomSlurmSettingsValidator,
+                custom_settings=self.custom_slurm_settings,
+                deny_list=SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Global"],
+                settings_level=CustomSlurmSettingLevel.SLURM_CONF,
+            )
+            self._register_validator(CustomSlurmNodeNamesValidator, custom_settings=self.custom_slurm_settings)
+            if self.database:
+                self._register_validator(
+                    CustomSlurmSettingsValidator,
+                    custom_settings=self.custom_slurm_settings,
+                    deny_list=SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Accounting"],
+                    settings_level=CustomSlurmSettingLevel.SLURM_CONF,
+                )
+        if self.custom_slurm_settings_include_file:
+            self._register_validator(UrlValidator, url=self.custom_slurm_settings_include_file)
+            self._register_validator(
+                CustomSlurmSettingsIncludeFileOnlyValidator,
+                custom_settings=self.custom_slurm_settings,
+                include_file_url=self.custom_slurm_settings_include_file,
+            )
 
 
 class QueueUpdateStrategy(Enum):
@@ -2315,10 +2452,22 @@ class SlurmScheduling(Resource):
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
         self._register_validator(
+            RootVolumeEncryptionConsistencyValidator,
+            encryption_settings=[
+                (queue.name, queue.compute_settings.local_storage.root_volume.encrypted) for queue in self.queues
+            ],
+        )
+        self._register_validator(
             MaxCountValidator,
             resources_length=len(self.queues),
             max_length=MAX_NUMBER_OF_QUEUES,
             resource_name="SlurmQueues",
+        )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=sum(len(queue.compute_resources) for queue in self.queues),
+            max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
+            resource_name="ComputeResources per Cluster",
         )
 
 
@@ -2339,6 +2488,12 @@ class SchedulerPluginQueue(_CommonQueue):
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
+        )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.compute_resources),
+            max_length=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
+            resource_name="ComputeResources per Queue",
         )
         self._register_validator(
             QueueSubnetsValidator,
@@ -2402,7 +2557,7 @@ class SchedulerPluginQueueConstraints(Resource):
 
     def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
-        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_QUEUES)
+        self.max_count = Resource.init_param(max_count, default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES)
 
 
 class SchedulerPluginComputeResourceConstraints(Resource):
@@ -2410,7 +2565,7 @@ class SchedulerPluginComputeResourceConstraints(Resource):
 
     def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
-        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_COMPUTE_RESOURCES)
+        self.max_count = Resource.init_param(max_count, default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES)
 
 
 class SchedulerPluginRequirements(Resource):
@@ -2681,7 +2836,7 @@ class SchedulerPluginScheduling(Resource):
             max_length=get_attr(
                 self.settings.scheduler_definition,
                 "requirements.queue_constraints.max_count",
-                default=MAX_NUMBER_OF_QUEUES,
+                default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES,
             ),
             resource_name="SchedulerQueues",
         )
@@ -2692,7 +2847,7 @@ class SchedulerPluginScheduling(Resource):
                 max_length=get_attr(
                     self.settings.scheduler_definition,
                     "requirements.compute_resource_constraints.max_count",
-                    default=MAX_NUMBER_OF_COMPUTE_RESOURCES,
+                    default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
                 ),
                 resource_name="ComputeResources",
             )
@@ -2704,16 +2859,18 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         checked_images = []
-        for queue in self.scheduling.queues:
+        for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
-            self._register_validator(
-                ComputeResourceLaunchTemplateValidator,
-                queue=queue,
-                ami_id=queue_image,
-                os=self.image.os,
-                tags=self.get_cluster_tags(),
-                imds_support=self.imds.imds_support,
-            )
+            if index == 0:
+                # Execute LaunchTemplateValidator only for the first queue
+                self._register_validator(
+                    ComputeResourceLaunchTemplateValidator,
+                    queue=queue,
+                    ami_id=queue_image,
+                    os=self.image.os,
+                    tags=self.get_tags(),
+                    imds_support=self.imds.imds_support,
+                )
             ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
             root_volume = queue.compute_settings.local_storage.root_volume
             root_volume_size = root_volume.size
@@ -2836,6 +2993,14 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
             )
         return list(capacity_reservation_ids)
 
+    @property
+    def has_custom_actions_in_queue(self):
+        """Return True if any queues have custom scripts."""
+        for queue in self.scheduling.queues:
+            if queue.custom_actions:
+                return True
+        return False
+
 
 class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
     """Represent the full Scheduler Plugin Cluster configuration."""
@@ -2864,7 +3029,7 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
                 result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
         return result
 
-    def get_cluster_tags(self):
+    def get_tags(self):
         """Return tags configured in the root of the cluster config and under scheduler definition."""
         return (self.tags if self.tags else []) + get_attr(
             self.scheduling, "settings.scheduler_definition.tags", default=[]
@@ -2945,6 +3110,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             )
 
         instance_types_data = self.get_instance_types_data()
+        self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 if self.scheduling.settings.enable_memory_based_scheduling:
@@ -2989,6 +3155,14 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)
+                self._register_validator(
+                    ComputeResourceTagsValidator,
+                    queue_name=queue.name,
+                    compute_resource_name=compute_resource.name,
+                    cluster_tags=self.get_tags(),
+                    queue_tags=queue.get_tags(),
+                    compute_resource_tags=compute_resource.get_tags(),
+                )
 
     @property
     def image_dict(self):

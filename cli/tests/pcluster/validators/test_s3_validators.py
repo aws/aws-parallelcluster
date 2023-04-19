@@ -43,10 +43,10 @@ from tests.pcluster.validators.utils import assert_failure_messages
             None,
         ),
         (
-            "https://test/cookbook.tgz",
+            "https://test/cookbook1.tgz",
             None,
             False,
-            "The url 'https://test/cookbook.tgz' causes ConnectionError",
+            "The url 'https://test/cookbook1.tgz' causes ConnectionError",
             ConnectionError(),
             None,
         ),

@@ -145,10 +145,14 @@ class CloudWatchLoggingClusterState:
     @staticmethod
     def _base_os_to_platform(base_os):
         """Turn the name of a base OS into the platform."""
-        # Special case: alinux2 is how the config file refers to amazon linux 2, but in the chef cookbook
-        # (and the cloudwatch log config produced by it) the platform is "amazon".
+        # Special case: in the files of the cookbook regarding the cloudwatch agent under
+        # cookbooks/aws-parallelcluster-config/files/default/cloudwatch the configurations refers to:
+        # * "alinux2" as platform "amazon"
+        # * "rhel8" as platform "redhat"
         if base_os == "alinux2":
             return "amazon"
+        elif base_os == "rhel8":
+            return "redhat"
         else:
             return base_os.rstrip(string.digits)
 
@@ -379,7 +383,11 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for the ComputeFleet nodes don't exist."""
         if self.compute_nodes_count == 0:
             return
-        critical_compute_node_logs = ["/var/log/parallelcluster/computemgtd"] if self.scheduler == "slurm" else []
+        critical_compute_node_logs = (
+            ["/var/log/parallelcluster/computemgtd", "/var/log/parallelcluster/bootstrap_error_msg"]
+            if self.scheduler == "slurm"
+            else []
+        )
         for log_dict in self._relevant_logs.get(COMPUTE_NODE_ROLE_NAME):
             log_path = log_dict.get("file_path")
             if log_path in critical_compute_node_logs:

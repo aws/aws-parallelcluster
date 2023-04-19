@@ -36,11 +36,22 @@ def test_multiple_jobs_submission(
     # Test jobs should take at most 9 minutes to be executed.
     # These guarantees that the jobs are executed in parallel.
     max_jobs_execution_time = 9
+    # Test using the max no of queues because the scheduler and node daemon operations take slight longer
+    # with multiple queues
+    no_of_queues = 100
 
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime)
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        no_of_queues=no_of_queues,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    # Check if the multiple partitions were created on Slurm
+    partitions = scheduler_commands.get_partitions()
+    assert_that(partitions).is_length(no_of_queues)
+
     scheduler = "slurm" if scheduler == "slurm_plugin" else scheduler
 
     logging.info("Executing sleep job to start a dynamic node")

@@ -123,6 +123,14 @@ def _test_that_slurmdbd_is_running(remote_command_executor):
     assert_that(_is_accounting_enabled(remote_command_executor)).is_true()
 
 
+def _test_slurm_accounting_password(remote_command_executor):
+    storage_pass = remote_command_executor.run_remote_command(
+        "sudo grep StoragePass /opt/slurm/etc/slurm_parallelcluster_slurmdbd.conf |" "sed -e 's/StoragePass=//g'",
+        hide=True,
+    ).stdout.strip()
+    assert_that(storage_pass).is_not_equal_to("dummy")
+
+
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_slurm_accounting(
     region,
@@ -160,6 +168,17 @@ def test_slurm_accounting(
     _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir)
     _test_require_server_identity(remote_command_executor, test_resources_dir, region)
     _test_jobs_get_recorded(scheduler_commands)
+
+    # Update the queues to check that bug with the Slurm Accounting database server password
+    # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        public_subnet_id=public_subnet_id,
+        private_subnet_id=private_subnet_id,
+        **config_params,
+    )
+    cluster.update(str(updated_config_file), force_update="true")
+    _test_slurm_accounting_password(remote_command_executor)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")

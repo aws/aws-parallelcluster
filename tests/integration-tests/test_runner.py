@@ -69,9 +69,9 @@ TEST_DEFAULTS = {
     "vpc_stack": None,
     "api_uri": None,
     "cluster": None,
+    "policies_uri": None,
     "api_definition_s3_uri": None,
     "api_infrastructure_s3_uri": None,
-    "public_ecr_image_uri": None,
     "no_delete": False,
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
@@ -86,6 +86,9 @@ TEST_DEFAULTS = {
     "ldaps_nlb_stack_name": None,
     "slurm_database_stack_name": None,
     "external_shared_storage_stack_name": None,
+    "cluster_custom_resource_service_token": None,
+    "resource_bucket": None,
+    "lambda_layer_source": None,
 }
 
 
@@ -304,10 +307,28 @@ def _init_argparser():
         type=int,
     )
 
+    custom_resource_group = parser.add_argument_group("CloudFormation / Custom Resource options")
+    custom_resource_group.add_argument(
+        "--cluster-custom-resource-service-token",
+        help="ServiceToken (ARN) Cluster CloudFormation custom resource provider",
+        default=TEST_DEFAULTS.get("cluster_custom_resource_service_token"),
+    )
+
+    custom_resource_group.add_argument(
+        "--resource-bucket",
+        help="Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates.",
+        default=TEST_DEFAULTS.get("resource_bucket"),
+    )
+    custom_resource_group.add_argument(
+        "--lambda-layer-source",
+        help="S3 URI of lambda layer to copy instead of building.",
+        default=TEST_DEFAULTS.get("lambda_layer_source"),
+    )
+
     api_group = parser.add_argument_group("API options")
     api_group.add_argument(
         "--api-definition-s3-uri",
-        help="URI of the Docker image for the Lambda of the ParallelCluster API",
+        help="URI of the OpenAPI spec of the ParallelCluster API",
         default=TEST_DEFAULTS.get("api_definition_s3_uri"),
     )
     api_group.add_argument(
@@ -316,14 +337,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("api_definition_s3_uri"),
     )
     api_group.add_argument(
-        "--public-ecr-image-uri",
-        help="S3 URI of the ParallelCluster API spec",
-        default=TEST_DEFAULTS.get("public_ecr_image_uri"),
+        "--api-uri", help="URI of an existing ParallelCluster API", default=TEST_DEFAULTS.get("api_uri")
     )
     api_group.add_argument(
-        "--api-uri",
-        help="URI of an existing ParallelCluster API",
-        default=TEST_DEFAULTS.get("api_uri"),
+        "--policies-uri",
+        help="Use an existing policies URI instead of uploading one.",
+        default=TEST_DEFAULTS.get("policies_uri"),
     )
 
     debug_group = parser.add_argument_group("Debugging/Development options")
@@ -509,6 +528,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     _set_ami_args(args, pytest_args)
     _set_custom_stack_args(args, pytest_args)
     _set_api_args(args, pytest_args)
+    _set_custom_resource_args(args, pytest_args)
 
     return pytest_args
 
@@ -579,12 +599,18 @@ def _set_custom_stack_args(args, pytest_args):
         pytest_args.extend(["--external-shared-storage-stack-name", args.external_shared_storage_stack_name])
 
 
+def _set_custom_resource_args(args, pytest_args):
+    if args.cluster_custom_resource_service_token:
+        pytest_args.extend(["--cluster-custom-resource-service-token", args.cluster_custom_resource_service_token])
+    if args.resource_bucket:
+        pytest_args.extend(["--resource-bucket", args.resource_bucket])
+    if args.lambda_layer_source:
+        pytest_args.extend(["--lambda-layer-source", args.lambda_layer_source])
+
+
 def _set_api_args(args, pytest_args):
     if args.api_definition_s3_uri:
         pytest_args.extend(["--api-definition-s3-uri", args.api_definition_s3_uri])
-
-    if args.public_ecr_image_uri:
-        pytest_args.extend(["--public-ecr-image-uri", args.public_ecr_image_uri])
 
     if args.api_uri:
         pytest_args.extend(["--api-uri", args.api_uri])

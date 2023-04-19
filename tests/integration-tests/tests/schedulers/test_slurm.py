@@ -22,7 +22,13 @@ from remote_command_executor import RemoteCommandExecutionError, RemoteCommandEx
 from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
-from utils import check_status, get_compute_nodes_instance_ids, get_instance_info, wait_for_computefleet_changed
+from utils import (
+    check_status,
+    get_compute_nodes_instance_ids,
+    get_instance_info,
+    test_cluster_health_metric,
+    wait_for_computefleet_changed,
+)
 
 from tests.common.assertions import (
     assert_lines_in_logs,
@@ -47,7 +53,8 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
-from tests.common.schedulers_common import TorqueCommands
+from tests.common.schedulers_common import SlurmCommands, TorqueCommands
+from tests.monitoring import structured_log_event_utils
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -120,6 +127,7 @@ def test_slurm(
             gpu_instance_type,
             clustermgtd_conf_path,
             slurm_root_path,
+            slurm_commands,
         )
 
 
@@ -288,6 +296,7 @@ def test_slurm_protected_mode(
     )
     pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path)
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
+    test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
     _test_job_run_in_working_queue(scheduler_commands)
     _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
 
@@ -329,6 +338,7 @@ def test_fast_capacity_failover(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    region,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -349,6 +359,10 @@ def test_fast_capacity_failover(
         static_nodes_in_ice_compute_resource,
         ice_dynamic_nodes,
     )
+    structured_log_event_utils.assert_that_event_exists(
+        cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
+    )
+    test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
     # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
@@ -382,6 +396,96 @@ def test_slurm_config_update(
         remote_command_executor,
         config_file="pcluster.config.update_scheduling.yaml",
     )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_custom_config_parameters
+def test_slurm_custom_config_parameters(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    scheduler_commands_factory,
+):
+    """Test slurm custom settings."""
+    # When launching a cluster with a Yaml with custom config parameters
+
+    # Prepare bucket
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "custom_slurm_settings.txt"), "custom_slurm_settings.conf")
+    slurm_settings_file = f" s3://{bucket_name}/custom_slurm_settings.conf"
+
+    cluster_config = pcluster_config_reader(bucket=bucket_name)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = SlurmCommands(remote_command_executor)
+
+    # then we expect custom values to be set in slurm config
+    # Bulk Settings
+    debug_flags = slurm_commands.get_conf_param("DebugFlags")
+    # must check them individually because they can be reordered
+    assert "Steps" in debug_flags
+    assert "Power" in debug_flags
+    assert "CpuFrequency" in debug_flags
+    assert "medium" == slurm_commands.get_conf_param("GpuFreqDef")
+    assert "5000" == slurm_commands.get_conf_param("MaxStepCount")
+
+    # Partition
+    assert "5" == slurm_commands.get_partition_info("q1", "GraceTime")
+    assert "500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
+
+    # ComputeResource 1
+    assert "50" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
+    assert "10000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
+    assert "2000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
+
+    # ComputeResource 2
+    assert "150" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
+    assert "10010" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
+    assert "2500" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
+
+    # Update the cluster changing Queue and Compute resources settings in the yaml
+    # and Bulk settings with a config file in S3
+
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml", custom_settings_file=slurm_settings_file, bucket=bucket_name
+    )
+
+    # apply the changes on the cluster
+    logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    cluster.update(str(updated_config_file))
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+
+    # then we expect updated custom values to be set in slurm config
+    # Bulk Settings
+    debug_flags = slurm_commands.get_conf_param("DebugFlags")
+    # must check them individually because they can be reordered
+    assert "Steps" in debug_flags
+    assert "Power" in debug_flags
+    assert "CpuFrequency" in debug_flags
+    assert "BurstBuffer" in debug_flags
+    assert "Network" in debug_flags
+    assert "high" == slurm_commands.get_conf_param("GpuFreqDef")
+    assert "10000" == slurm_commands.get_conf_param("MaxStepCount")
+
+    # Partition
+    assert "15" == slurm_commands.get_partition_info("q1", "GraceTime")
+    assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
+
+    # ComputeResource 1
+    assert "75" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
+    assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
+    assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
+
+    # ComputeResource 2
+    assert "250" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
+    assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
+    assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -938,13 +1042,11 @@ def _test_cloud_node_health_check(
     _assert_slurmd_timeout(remote_command_executor, timeout=180)
     # Nodes with networking failures should fail slurm health check before failing ec2_status_check
     # Test on freshly launched dynamic nodes
-    kill_job_id = _submit_kill_networking_job(
+    _submit_kill_networking_job(
         remote_command_executor, scheduler_commands, partition, node_type="dynamic", num_nodes=num_dynamic_nodes
     )
     # Sleep for a bit so the command to detach network interface can be run
     time.sleep(15)
-    # Job will hang, cancel it manually to avoid waiting for job failing
-    scheduler_commands.cancel_job(kill_job_id)
     # Assert nodes are put into DOWN for not responding
     # TO-DO: this test only works with num_dynamic = 1 because slurm will record this error in nodelist format
     # i.e. error: Nodes q2-st-t2large-[1-2] not responding, setting DOWN
@@ -954,6 +1056,7 @@ def _test_cloud_node_health_check(
         ["/var/log/slurmctld.log"],
         ["Nodes {} not responding, setting DOWN".format(",".join(dynamic_nodes))],
     )
+    test_cluster_health_metric(["SlurmNodeNotRespondingErrors"], cluster_name, region)
     # Assert dynamic nodes are reset
     _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -989,6 +1092,7 @@ def _test_ec2_status_check_replacement(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Setting nodes failing health check type ec2_health_check to DRAIN"],
     )
+    test_cluster_health_metric(["EC2HealthCheckErrors"], cluster_name, region)
     scheduler_commands.cancel_job(kill_job_id)
     # Assert static nodes are reset
     _wait_for_node_reset(
@@ -1373,7 +1477,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 22.05.8")
+    assert_that(version).is_equal_to("slurm 23.02.1")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -1716,6 +1820,7 @@ def _test_compute_node_bootstrap_timeout(
     gpu_instance_type,
     clustermgtd_conf_path,
     slurm_root_path,
+    slurm_commands,
 ):
     """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
     slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
@@ -1725,7 +1830,7 @@ def _test_compute_node_bootstrap_timeout(
     clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
     # Update cluster
-    update_compute_node_bootstrap_timeout = 1200
+    update_compute_node_bootstrap_timeout = 10
     updated_config_file = pcluster_config_reader(
         scaledown_idletime=scaledown_idletime,
         gpu_instance_type=gpu_instance_type,
@@ -1740,6 +1845,16 @@ def _test_compute_node_bootstrap_timeout(
     clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
     assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
+
+    slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "partition": "ondemand",
+            "constraint": "c5.xlarge",
+            "nodes": 2,
+        }
+    )
+    test_cluster_health_metric(["InstanceBootstrapTimeoutErrors"], cluster.cfn_name, cluster.region)
 
 
 def _retrieve_slurm_root_path(remote_command_executor):
@@ -2098,8 +2213,8 @@ def _test_memory_based_scheduling_enabled_true(
     assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
     assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("PENDING")
     # Check that memory appears in the TRES allocated for the job
-    assert_that(slurm_commands.get_job_info(job_id_1, field="TRES")).contains("mem=2000M")
-    assert_that(slurm_commands.get_job_info(job_id_2, field="TRES")).contains("mem=2000M")
+    assert_that(slurm_commands.get_job_info(job_id_1, field="ReqTRES")).contains("mem=2000M")
+    assert_that(slurm_commands.get_job_info(job_id_2, field="ReqTRES")).contains("mem=2000M")
     slurm_commands.wait_job_completed(job_id_1)
     slurm_commands.wait_job_completed(job_id_2)
 
@@ -2182,7 +2297,7 @@ def trigger_slurm_reconfigure_race_condition(remote_command_executor):
         remote_command_executor, "/var/log/slurmctld.log", "slurmctld version .* started on cluster"
     )
     reconfigure_time = _get_latest_timestamp_for_log_entry(
-        remote_command_executor, "/var/log/slurmctld.log", "_slurm_rpc_reconfigure_controller: completed"
+        remote_command_executor, "/var/log/slurmctld.log", "reconfigure_slurm: completed"
     )
     assert_that(restart_time.second).is_equal_to(reconfigure_time.second)
     assert_that((reconfigure_time - restart_time).total_seconds()).is_less_than_or_equal_to(1.0)

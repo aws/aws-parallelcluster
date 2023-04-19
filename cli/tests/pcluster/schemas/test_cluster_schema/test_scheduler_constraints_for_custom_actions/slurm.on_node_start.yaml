@@ -24,3 +24,14 @@ Scheduling:
           InstanceType: c5.2xlarge
         - Name: compute_resource2
           InstanceType: c4.2xlarge
+      CustomActions:
+        OnNodeStart:
+          Sequence:
+            - Script: https://test.tgz  # s3:// | https://
+              Args:
+                - arg1
+                - arg2
+            - Script: https://test.tgz  # s3:// | https://
+              Args:
+                - arg1
+                - arg2

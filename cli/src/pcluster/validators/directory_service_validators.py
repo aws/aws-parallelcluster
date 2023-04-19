@@ -12,6 +12,8 @@
 import re
 from urllib.parse import urlparse
 
+from aws_cdk.core import Arn, ArnFormat
+
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import DIRECTORY_SERVICE_RESERVED_SETTINGS
@@ -73,13 +75,28 @@ class DomainNameValidator(Validator):
 class PasswordSecretArnValidator(Validator):
     """PasswordSecretArn validator."""
 
-    def _validate(self, password_secret_arn):
-        """Validate that PasswordSecretArn contains an ARN of a readable secret in AWS Secrets Manager."""
+    def _validate(self, password_secret_arn: str, region: str):
+        """Validate that PasswordSecretArn contains a valid ARN for the given region.
+
+        In particular, the ARN should be one of the following resources:
+         1. a readable secret in AWS Secrets Manager, which is supported in all regions but us-isob-east-1.
+         2. a readable parameter in SSM Parameter Store, which is supported only in us-isob-east-1.
+        """
         try:
             # We only require the secret to exist; we do not validate its content.
-            AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
+            arn_components = Arn.split(password_secret_arn, ArnFormat.COLON_RESOURCE_NAME)
+            service, resource = arn_components.service, arn_components.resource
+            if service == "secretsmanager" and resource == "secret" and region != "us-isob-east-1":
+                AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
+            elif service == "ssm" and resource == "parameter" and region == "us-isob-east-1":
+                parameter_name = arn_components.resource_name
+                AWSApi.instance().ssm.get_parameter(parameter_name)
+            else:
+                self._add_failure(
+                    f"The secret {password_secret_arn} is not supported in region {region}.", FailureLevel.ERROR
+                )
         except AWSClientError as e:
-            if e.error_code == "ResourceNotFoundExceptionSecrets":
+            if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
                 self._add_failure(f"The secret {password_secret_arn} does not exist.", FailureLevel.ERROR)
             elif e.error_code == "AccessDeniedException":
                 self._add_failure(

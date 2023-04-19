@@ -16,6 +16,6 @@ def get_supported_dcv_os(architecture):
     """Return a list of all the operating system supported by DCV."""
     architectures_dict = {
         "x86_64": SUPPORTED_OSES,
-        "arm64": ["ubuntu1804", "alinux2", "centos7"],
+        "arm64": ["ubuntu1804", "alinux2", "centos7", "rhel8"],
     }
     return architectures_dict.get(architecture, [])

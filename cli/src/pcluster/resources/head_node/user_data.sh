@@ -35,6 +35,13 @@ export NO_PROXY="localhost,127.0.0.1,169.254.169.254"
 PROXY
 fi
 
+# Configure Amazon Linux 2 instance running in US isolated region.
+. /etc/os-release
+if [[ "${!ID}${!VERSION_ID}" == "amzn2" && "${AWS::Region}" == us-iso* ]]; then
+  configuration_script="/opt/parallelcluster/scripts/patch-iso-instance.sh"
+  [ -f ${!configuration_script} ] && bash ${!configuration_script}
+fi
+
 --==BOUNDARY==
 Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
@@ -70,7 +77,7 @@ function error_exit
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
   cutoff=$(expr 4096 - $(stat --printf="%s" /tmp/wait_condition_handle.txt))
   reason=$(head --bytes=${!cutoff} /var/log/parallelcluster/bootstrap_error_msg 2>/dev/null) || reason="$1"
-  cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}"
+  cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
   exit 1
 }
 function vendor_cookbook
@@ -88,13 +95,16 @@ function vendor_cookbook
 }
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
+# Configure AWS CLI using the expected overrides, if any.
+[ -f /etc/profile.d/aws-cli-default-config.sh ] && . /etc/profile.d/aws-cli-default-config.sh
+
 # deploy config files
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 # Load ParallelCluster environment variables
 [ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
 
 cd /tmp
-cfn-init -s ${AWS::StackName} -v -c deployFiles -r HeadNodeLaunchTemplate --region ${AWS::Region}
+cfn-init -s ${AWS::StackName} -v -c deployFiles -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl}
 wait_condition_handle_presigned_url=$(cat /tmp/wait_condition_handle.txt)
 
 custom_cookbook=${CustomChefCookbook}
@@ -102,7 +112,7 @@ export _region=${AWS::Region}
 s3_url=${AWS::URLSuffix}
 if [ "${!custom_cookbook}" != "NONE" ]; then
   if [[ "${!custom_cookbook}" =~ ^s3://([^/]*)(.*) ]]; then
-    bucket_region=$(aws s3api get-bucket-location --bucket ${!BASH_REMATCH[1]} | jq -r '.LocationConstraint')
+    bucket_region=$(aws s3api get-bucket-location --bucket ${!BASH_REMATCH[1]} --region ${AWS::Region} | jq -r '.LocationConstraint')
     if [[ "${!bucket_region}" == null ]]; then
       bucket_region="us-east-1"
     fi
@@ -131,7 +141,7 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
 fi
 
 # Call CloudFormation
-cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to bootstrap the head node. Please check /var/log/cfn-init.log or /var/log/chef-client.log in the head node, or check the cfn-init.log or chef-client.log in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
-cfn-signal --exit-code=0 --reason="HeadNode setup complete" "${!wait_condition_handle_presigned_url}"
+cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl} || error_exit 'Failed to bootstrap the head node. Please check /var/log/cfn-init.log or /var/log/chef-client.log in the head node, or check the cfn-init.log or chef-client.log in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
+cfn-signal --exit-code=0 --reason="HeadNode setup complete" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
 # End of file
 --==BOUNDARY==

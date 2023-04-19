@@ -12,6 +12,8 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
+from datetime import datetime
+
 import pytest
 from assertpy import assert_that
 
@@ -91,3 +93,32 @@ def test_retry_on_boto3_throttling(boto3_stubber, mocker):
     client = boto3_stubber("cloudformation", mocked_requests)
     describe_stack_resources(client)
     sleep_mock.assert_called_with(5)
+
+
+FAKE_SSM_PARAMETER = "fake-ssm-parameter-name"
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        pytest.param(
+            {
+                "Parameter": {
+                    "Name": FAKE_SSM_PARAMETER,
+                    "Type": "SecureString",
+                    "Value": "EncryptedValue",
+                    "Version": 1,
+                    "LastModifiedDate": datetime(2023, 3, 3),
+                    "ARN": f"arn:aws:ssm:us-east-1:111111111111:parameter/{FAKE_SSM_PARAMETER}",
+                    "DataType": "text",
+                }
+            },
+            id="SSM GetParameter returns the correct response on success",
+        )
+    ],
+)
+def test_ssm_get_parameter(mocker, response):
+    """Verify that SsmClient.get_parameter behaves as expected."""
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ssm.SsmClient.get_parameter", side_effect=response)
+    assert_that(_DummyAWSApi().instance().ssm.get_parameter(FAKE_SSM_PARAMETER)).is_equal_to(response)

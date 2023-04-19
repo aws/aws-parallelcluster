@@ -345,3 +345,22 @@ def mock_image_stack(mocker):
             mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
 
     return _mock_image_stack
+
+
+@pytest.fixture
+def mock_cloud_assembly(mocker):
+    def _mock_cloud_assembly(assets, directory="test_dir", template_content="test_template_content"):
+        cloud_assembly = mocker.patch("aws_cdk.cx_api.CloudAssembly")
+        cloud_assembly.directory = directory
+        cluster_cloud_artifact = mocker.patch("aws_cdk.cx_api.CloudFormationStackArtifact")
+        mocker.patch(
+            "pcluster.templates.cdk_artifacts_manager.CDKV1ClusterCloudAssembly._get_artifacts_class",
+            return_value=type(cluster_cloud_artifact),
+        )
+        cluster_cloud_artifact.template = template_content
+        cluster_cloud_artifact.assets = assets
+        cloud_assembly.artifacts = [cluster_cloud_artifact]
+
+        return cloud_assembly
+
+    return _mock_cloud_assembly

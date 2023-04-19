@@ -1,0 +1,21 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    {% for queue_name, no_of_compute_resources in no_of_compute_resources_per_queue.items() %}
+    - Name: {{queue_name}}
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        {% for cr_index in range(no_of_compute_resources) %}
+        - Name: compute_resource-{{cr_index}}
+          InstanceType: c5.2xlarge
+        {% endfor %}
+    {% endfor %}
+
