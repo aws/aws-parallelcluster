@@ -564,7 +564,7 @@ storage:
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_fsx_lustre_backup:
     dimensions:
-      - regions: ["ap-southeast-1"]
+      - regions: ["us-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
@@ -663,7 +663,7 @@ storage:
 tags:
   test_tag_propagation.py::test_tag_propagation:
     dimensions:
-      - regions: ["ap-southeast-1"]
+      - regions: ["us-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
@@ -720,7 +720,7 @@ multiple_nics:
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
     dimensions:
-      - regions: ["ap-southeast-1"]
+      - regions: ["us-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
