@@ -332,13 +332,22 @@ class CWDashboardConstruct(Construct):
                 filter_pattern=_generate_metric_filter_pattern("invalid-backing-instance-count"),
                 metric_value=metric_value,
             ),
-            # Use text matching here because it comes from slurmctld.log
             _CustomMetricFilter(
                 metric_name="SlurmNodeNotRespondingErrors",
                 filter_pattern=_generate_metric_filter_pattern("node-not-responding-down-count"),
                 metric_value=metric_value,
             ),
         ]
+
+        if self.config.has_gpu_health_checks_enabled:
+            compute_node_events.append(
+                _CustomMetricFilter(
+                    metric_name="GpuHealthCheckFailures",
+                    filter_pattern='{ $.event-type = "compute-node-health-check" && $.scheduler = "slurm" && '
+                    '$.detail.health-check-name = "Gpu" && $.detail.health-check-result != 0 }',
+                    metric_value="1",
+                )
+            )
 
         cluster_health_metrics = [
             _HealthMetric(
