@@ -29,10 +29,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
     test_mpi.py::test_mpi_ssh:
       dimensions:
         - regions: ["eu-north-1"]
@@ -44,10 +40,6 @@ test-suites:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
-        - regions: ["ap-northeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
     test_awsbatch.py::test_awsbatch_defaults:
@@ -66,10 +58,6 @@ test-suites:
       dimensions:
         - regions: ["ap-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
-        - regions: ["ap-northeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_scaling:
@@ -198,10 +186,6 @@ test-suites:
       dimensions:
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
-        - regions: ["ap-northeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
     test_update.py::test_multi_az_create_and_update:
