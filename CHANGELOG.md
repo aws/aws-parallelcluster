@@ -15,7 +15,7 @@ CHANGELOG
 - Add support for `DetailedMonitoring` in the `Monitoring` section.
 - Add `mem_used_percent` and `disk_used_percent` metrics for head node memory and root volume disk utilization tracking on the ParallelCluster CloudWatch dashboard, and set up alarms for monitoring these metrics.
 - Add log rotation support for ParallelCluster managed logs.
-  Track common errors of compute nodes and longest dynamic node idle time on Cloudwatch Dashboard.
+- Track common errors of compute nodes and longest dynamic node idle time on Cloudwatch Dashboard.
 - Enforce the DCV Authenticator Server to use at least `TLS-1.2` protocol when creating the SSL Socket.
 
 **CHANGES**
