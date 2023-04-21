@@ -128,7 +128,25 @@ phases:
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
-                yum -y update && package-cleanup -y --oldkernels --count=1
+                yum -y update
+              
+                if [[ ${!OS} != "rhel8" ]]; then
+                  package-cleanup -y --oldkernels --count=1
+                else
+                  # package-cleanup has changed in RHEL8 and it works differently
+                  # RHEL8 keeps at least 2 kernel for fallback reason https://access.redhat.com/solutions/1227
+                  # The kernel cleanup should be performed manually
+              
+                  # get the default kernel for the next boot
+                  LAST_KERNEL_VERSION=$(grubby --default-kernel | sed -e "s/.*-\(4.18.0-.*\).$(uname -m)/\1/g")
+                  
+                  # get all the installed kernel versions except the one for the next boot
+                  KERNEL_VERSIONS_CLEANUP=$(rpm -q --qf "%{VERSION}-%{RELEASE}\n" kernel | grep -v "$LAST_KERNEL_VERSION")
+                  for VERSION in $KERNEL_VERSIONS_CLEANUP; do
+                    echo "Removing kernel-$VERSION kernel-core-$VERSION kernel-modules-$VERSION"
+                    rpm -e kernel-$VERSION kernel-core-$VERSION kernel-modules-$VERSION;
+                  done
+                fi
                 yum -y install kernel-devel
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done

@@ -96,9 +96,7 @@ Conditions:
   EnableFSxS3AccessCondition: !Equals [!Ref EnableFSxS3Access, true]
   EnableBatchAccessCondition: !Equals [!Ref EnableBatchAccess, true]
   EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
-  EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   UseAllBucketsForFSxS3: !Equals [!Ref FsxS3Buckets, "*"]
-  EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   EnableIamPolicy: !Or
     - !Equals [!Ref EnableIamAdminAccess, true]
     - !Condition EnablePermissionsBoundary

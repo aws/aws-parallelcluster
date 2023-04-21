@@ -176,7 +176,7 @@ class Resource:
 
         if any(suppressor.suppress_validator(validator) for suppressor in (suppressors or [])):
             LOGGER.debug("Suppressing validator %s", validator_class.__name__)
-            return []
+            return None
 
         LOGGER.debug("Executing validator %s", validator_class.__name__)
         return validation_executor(validator_args, validator)
@@ -253,12 +253,12 @@ class Resource:
         self._register_validators(context)
         for validator in self._validators:
             if issubclass(validator[0], AsyncValidator):
-                self._validation_futures.extend(
-                    [self._validator_execute(*validator, suppressors, self._validator_execute_async)]
-                )
+                result = self._validator_execute(*validator, suppressors, self._validator_execute_async)
+                if result:
+                    self._validation_futures.extend([result])
             else:
                 self._validation_failures.extend(
-                    self._validator_execute(*validator, suppressors, self._validator_execute_sync)
+                    self._validator_execute(*validator, suppressors, self._validator_execute_sync) or []
                 )
 
     def _register_validators(self, context: ValidatorContext = None):

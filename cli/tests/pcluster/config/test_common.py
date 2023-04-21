@@ -10,11 +10,12 @@
 # limitations under the License.
 import asyncio
 from typing import List
+from unittest.mock import MagicMock
 
 import pytest
 from assertpy import assert_that
 
-from pcluster.config.common import Resource
+from pcluster.config.common import Resource, TypeMatchValidatorsSuppressor
 from pcluster.validators.common import (
     AsyncValidator,
     FailureLevel,
@@ -52,6 +53,15 @@ class FakeAsyncErrorValidator(AsyncValidator):
     async def _validate_async(self, param):
         await asyncio.sleep(0.5)
         self._add_failure(f"Error async {param}.", FailureLevel.ERROR)
+
+
+class FakeAsyncMultiErrorValidator(AsyncValidator):
+    """Dummy validator of error level."""
+
+    async def _validate_async(self, param):
+        await asyncio.sleep(0.5)
+        self._add_failure(f"Error async 1 {param}.", FailureLevel.ERROR)
+        self._add_failure(f"Error async 2 {param}.", FailureLevel.ERROR)
 
 
 class FakeComplexValidator(Validator):
@@ -159,6 +169,49 @@ def test_async_resource_validation():
     assert_validation_result(validation_failures[1], FailureLevel.INFO, "Wrong value other-value.")
     assert_validation_result(validation_failures[2], FailureLevel.ERROR, "Error async fake-value.")
     assert_validation_result(validation_failures[3], FailureLevel.INFO, "Wrong async value other-value.")
+
+
+def test_async_resource_validation_waited_at_top_level():
+    """Verify that async validators are awaited once and suppressible."""
+
+    class FakeResource(Resource):
+        """Fake resource class to test validators."""
+
+        def __init__(self, name):
+            super().__init__()
+            self.fake_attribute = f"fake-{name}"
+            self.other_attribute = f"other-{name}"
+            self._await_async_validators = MagicMock(wraps=self._await_async_validators)
+
+        def _register_validators(self, context: ValidatorContext = None):
+            self._register_validator(FakeErrorValidator, param=self.fake_attribute)
+            self._register_validator(FakeInfoValidator, param=self.other_attribute)
+            self._register_validator(FakeAsyncMultiErrorValidator, param=self.fake_attribute)
+            self._register_validator(FakeAsyncInfoValidator, param=self.other_attribute)
+
+    fake_resource = FakeResource("root")
+    fake_resource.nested1 = FakeResource("nested1")
+    fake_resource.nested2 = FakeResource("nested2")
+    validation_failures = fake_resource.validate(
+        suppressors=[
+            TypeMatchValidatorsSuppressor({"FakeInfoValidator"}),
+            TypeMatchValidatorsSuppressor({"FakeAsyncInfoValidator"}),
+        ]
+    )
+
+    fake_resource._await_async_validators.assert_called_once()
+    fake_resource.nested1._await_async_validators.assert_not_called()
+    fake_resource.nested2._await_async_validators.assert_not_called()
+
+    assert_validation_result(validation_failures[0], FailureLevel.ERROR, "Error fake-nested1.")
+    assert_validation_result(validation_failures[1], FailureLevel.ERROR, "Error fake-nested2.")
+    assert_validation_result(validation_failures[2], FailureLevel.ERROR, "Error fake-root.")
+    assert_validation_result(validation_failures[3], FailureLevel.ERROR, "Error async 1 fake-nested1.")
+    assert_validation_result(validation_failures[4], FailureLevel.ERROR, "Error async 2 fake-nested1.")
+    assert_validation_result(validation_failures[5], FailureLevel.ERROR, "Error async 1 fake-nested2.")
+    assert_validation_result(validation_failures[6], FailureLevel.ERROR, "Error async 2 fake-nested2.")
+    assert_validation_result(validation_failures[7], FailureLevel.ERROR, "Error async 1 fake-root.")
+    assert_validation_result(validation_failures[8], FailureLevel.ERROR, "Error async 2 fake-root.")
 
 
 def test_async_resource_validation_with_timeout():
