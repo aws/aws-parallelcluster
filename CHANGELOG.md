@@ -13,24 +13,38 @@ CHANGELOG
 3.6.0
 ----
 **ENHANCEMENTS**
+- Add support for RHEL8.
 - Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
+- Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
+- Build Slurm with support for LUA.
+- Increase the limit on the maximum number of queues per cluster from 10 to 100. Each cluster can however have a maximum number of 150 compute resources and each queue can have a maximum of 40 compute resources.
+- Allow to specify a sequence of multiple custom actions scripts per event for `OnNodeStart`, `OnNodeConfigured` and `OnNodeUpdated` parameters.
+- Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job execution.
+- Add support for `Tags` in the `SlurmQueues` and `SlurmQueues/ComputeResources` section.
+- Add support for `DetailedMonitoring` in the `Monitoring` section.
 - Add `mem_used_percent` and `disk_used_percent` metrics for head node memory and root volume disk utilization tracking on the ParallelCluster CloudWatch dashboard, and set up alarms for monitoring these metrics.
 - Add log rotation support for ParallelCluster managed logs.
-- Track common errors of compute nodes on Cloudwatch Dashboard.
-- Increase the limit on the maximum number of queues per cluster from 10 to 100. Each cluster can however have a maximum number of 150 compute resources and each queue can have a maximum of 40 compute resources.
-- Allow to specify a sequence of multiple custom actions scripts per event.
-- Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
-- Track the longest dynamic node idle time in CloudWatch Dashboard.
-- Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job execution.
-- Add support for `DetailedMonitoring` in the `Monitoring` section.
-- Add support for `Tags` in the `SlurmQueues` and `SlurmQueues/ComputeResources` section.
-- Build Slurm with support for LUA.
+- Track common errors of compute nodes and longest dynamic node idle time on Cloudwatch Dashboard.
+- Enforce the DCV Authenticator Server to use at least `TLS-1.2` protocol when creating the SSL Socket.
 
 **CHANGES**
-- Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
-- Set Slurm prolog and epilog configurations to target a directory, /opt/slurm/etc/scripts/prolog.d/ and /opt/slurm/etc/scripts/epilog.d/ respectively.
 - Upgrade Slurm to version 23.02.1.
 - Upgrade munge to version 0.5.15.
+- Set Slurm default `TreeWidth` to 30.
+- Set Slurm prolog and epilog configurations to target a directory, `/opt/slurm/etc/scripts/prolog.d/` and `/opt/slurm/etc/scripts/epilog.d/` respectively.
+- Set Slurm `BatchStartTimeout` to 3 minutes so to allow max 3 minutes Prolog execution during compute node registration.
+- Increase the default `RetentionInDays` of CloudWatch logs from 14 to 180 days.
+- Upgrade EFA installer to `1.22.1`
+  - Dkms : `2.8.3-2`
+  - Efa-driver: `efa-2.1.1g`
+  - Efa-config: `efa-config-1.13-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.17.1-1`
+  - Rdma-core: `rdma-core-43.0-1`
+  - Open MPI: `openmpi40-aws-4.1.5-1`
+- Upgrade Lustre client version to 2.12 on Amazon Linux 2 (same version available on Ubuntu 20.04, 18.04 and CentOS >= 7.7).
+- Upgrade Lustre client version to 2.10.8 on CentOS 7.6.
+- Upgrade `aws-cfn-bootstrap` to version 2.0-24.
 - Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
   `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
   `aws/codebuild/amazonlinux2-aarch64-standard:1.0` to `aws/codebuild/amazonlinux2-aarch64-standard:2.0`.
@@ -38,9 +52,10 @@ CHANGELOG
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
 - Fix missing tagging of resources created by ImageBuilder during the `build-image` operation.
-- Fix Update policy for MaxCount to always perform numerical comparisons on MaxCount property.
-- Fix IP association on instances with multiple network cards.
-- Fix replacement of StoragePass in slurm_parallelcluster_slurmdbd.conf when a queue parameter update is performed and the Slurm accounting configurations are not updated.
+- Fix Update policy for `MaxCount` to always perform numerical comparisons on MaxCount property.
+- Fix an issue that was causing misalignment of compute nodes IP on instances with multiple network interfaces.
+- Fix replacement of `StoragePass` in `slurm_parallelcluster_slurmdbd.conf` when a queue parameter update is performed and the Slurm accounting configurations are not updated.
+- Fix issue causing `cfn-hup` daemon to fail when it gets restarted.
 
 3.5.1
 -----
