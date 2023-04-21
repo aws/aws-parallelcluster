@@ -3,6 +3,8 @@
 #SBATCH --exclusive
 #SBATCH --ntasks-per-node=8
 
+# Temporary workaround to solve a bug in Slurm 23.02: https://bugs.schedmd.com/show_bug.cgi?id=16426
+export SLURM_TASKS_PER_NODE="8(x2)"
 
 module load openmpi
 NCCL_VERSION='2.7.8-1'
