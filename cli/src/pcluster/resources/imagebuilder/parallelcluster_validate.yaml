@@ -269,8 +269,14 @@ phases:
 
                   echo "Checking Intel MPI 20xx installed and module available..."
                   unset MODULEPATH
-                  source /etc/profile.d/modules.sh
-                  (module avail intelmpi)2>&1 | grep "/opt/intel/mpi/20.*/modulefiles/"
+                  if [[ -f /etc/profile.d/modules.sh ]] ; then
+                    source /etc/profile.d/modules.sh
+                  elif [[ -f /etc/profile.d/00-modulepath.sh ]] ; then
+                    source /etc/profile.d/00-modulepath.sh
+                  else
+                    echo "Check failed to find module path" && exit 1
+                  fi
+                  (module avail intelmpi)2>&1 | grep "/opt/intel/mpi/20.*/modulefiles"
                   [[ $? -ne 0 ]] && echo "Check Intel MPI failed" && exit 1
                 else
                   dpkg -l | grep libfabric && modinfo efa | grep efa && [ -d /opt/amazon/efa ]
@@ -363,7 +369,13 @@ phases:
               if [ {{ validate.ArmPLSupported.outputs.stdout }} == true ]; then
                 echo "Checking gcc version and module loaded..."
                 unset MODULEPATH
-                source /etc/profile.d/modules.sh
+                if [[ -f /etc/profile.d/modules.sh ]] ; then
+                  source /etc/profile.d/modules.sh
+                elif [[ -f /etc/profile.d/00-modulepath.sh ]] ; then
+                  source /etc/profile.d/00-modulepath.sh
+                else
+                  echo "Check failed to find module path" && exit 1
+                fi
                 (module avail)2>&1 | grep armpl/{{ validate.ArmPLVersion.outputs.stdout }}
                 [[ $? -ne 0 ]] && echo "Check armpl version failed" && exit 1
                 module load armpl/{{ validate.ArmPLVersion.outputs.stdout }}
