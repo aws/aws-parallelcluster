@@ -32,6 +32,9 @@ Scheduling:
           MaxCount: 5
         - Name: compute_resource2
           InstanceType: c4.2xlarge
+      HealthChecks:
+        Gpu:
+          Enabled: true
       CustomActions:
         OnNodeConfigured:
           Script: s3://{{ resource_bucket }}/scripts/postinstall.sh

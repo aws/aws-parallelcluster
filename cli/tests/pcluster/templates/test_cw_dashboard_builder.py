@@ -221,6 +221,7 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
         "OnNodeConfiguredDownloadErrors",
         "OnNodeConfiguredRunErrors",
     ]
+    health_check_failure_metrics = ["GpuHealthCheckFailures"]
     idle_node_metrics = ["MaxDynamicNodeIdleTime"]
     if scheduler == "slurm":
         # Contains error metric title
@@ -235,7 +236,17 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
         else:
             for metric in custom_action_metrics:
                 assert_that(output_yaml).does_not_contain(metric)
+        _verify_health_check_failure_metrics(cluster_config, output_yaml, health_check_failure_metrics)
     else:
         assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
-        for metric in slurm_related_metrics + custom_action_metrics + idle_node_metrics:
+        for metric in slurm_related_metrics + custom_action_metrics + idle_node_metrics + health_check_failure_metrics:
+            assert_that(output_yaml).does_not_contain(metric)
+
+
+def _verify_health_check_failure_metrics(cluster_config, output_yaml, health_check_failure_metrics):
+    if cluster_config.has_gpu_health_checks_enabled:
+        for metric in health_check_failure_metrics:
+            assert_that(output_yaml).contains(metric)
+    else:
+        for metric in health_check_failure_metrics:
             assert_that(output_yaml).does_not_contain(metric)
