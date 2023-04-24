@@ -37,6 +37,9 @@ Scheduling:
           MaxCount: 5
         - Name: compute_resource2
           InstanceType: c4.2xlarge
+          HealthChecks:
+            Gpu:
+              Enabled: true
 SharedStorage:
   - MountDir: /my/mount/ebs1
     Name: name1
