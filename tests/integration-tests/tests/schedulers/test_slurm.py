@@ -529,7 +529,7 @@ def test_slurm_memory_based_scheduling(
         submit_command_args={
             "nodes": 1,
             "slots": 1,
-            "command": "srun ./a.out 3500000000 300",
+            "command": "srun ./a.out 3000000000 300",
             "other_options": "-w queue1-st-ondemand1-i1-1",
             "raise_on_error": False,
         }
