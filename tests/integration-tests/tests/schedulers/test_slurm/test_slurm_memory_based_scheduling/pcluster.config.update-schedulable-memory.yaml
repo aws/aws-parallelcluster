@@ -24,7 +24,7 @@ Scheduling:
           Instances:
             - InstanceType: c5.large
           MinCount: 1
-          SchedulableMemory: 3000
+          SchedulableMemory: 2500
         - Name: ondemand1-i2
           Instances:
             - InstanceType: {{ instance }}
