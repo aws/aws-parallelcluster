@@ -25,7 +25,7 @@ CDK_VERSION = "1.137,!=1.153.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "tabulate>=0.8.8,<=0.8.10",
+    "tabulate>=0.8.8,<=0.9.0",
     "PyYAML~=5.3",
     "jinja2~=3.0",
     "marshmallow~=3.10",
