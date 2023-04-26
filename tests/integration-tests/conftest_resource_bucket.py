@@ -139,5 +139,5 @@ def resource_bucket_shared(request, s3_bucket_factory_shared, lambda_layer_sourc
 @pytest.fixture(scope="class")
 def resource_bucket(request, region, resource_bucket_shared):
     if request.config.getoption("resource_bucket"):
-        return request.config.getoption("resource_bucket")
+        return request.config.getoption("resource_bucket").format(region)
     return resource_bucket_shared[region]
