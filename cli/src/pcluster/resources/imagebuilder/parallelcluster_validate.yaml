@@ -199,31 +199,17 @@ phases:
                 echo cuda-${cuda_ver}/samples/bin
               fi
 
-      - name: ArmPLVersion
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PATTERN=$(jq '.default.cluster.armpl.major_minor_version' {{ CookbookDefaultFile }})
-              MAJOR_MINOR_VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              VERSION+="${MAJOR_MINOR_VERSION}."
-              PATTERN=$(jq '.default.cluster.armpl.patch_version' {{ CookbookDefaultFile }})
-              PATCH_VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              VERSION+="${PATCH_VERSION}"
-              echo ${VERSION}
-
-      - name: ArmPLGCCVersion
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PATTERN=$(jq '.default.cluster.armpl.gcc.major_minor_version' {{ CookbookDefaultFile }})
-              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              echo ${VERSION}
-
       ### utils ###
+      - name: PatchInSpecProfiles
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              sudo sed -i "s#path: cookbooks#path: /etc/chef/cookbooks#g" /etc/chef/cookbooks/aws-parallelcluster/test/recipes/inspec.yml
+              sudo sed -i "s#path: cookbooks#path: /etc/chef/cookbooks#g" /etc/chef/cookbooks/aws-parallelcluster/test/resources/inspec.yml
+              echo "InSpec profiles patched"
+
       - name: NvidiaEnabled
         action: ExecuteBash
         inputs:
@@ -362,17 +348,9 @@ phases:
               set -vx
               if [ {{ validate.ArmPLSupported.outputs.stdout }} == true ]; then
                 echo "Checking gcc version and module loaded..."
-                unset MODULEPATH
-                source /etc/profile.d/modules.sh
-                (module avail)2>&1 | grep armpl/{{ validate.ArmPLVersion.outputs.stdout }}
-                [[ $? -ne 0 ]] && echo "Check armpl version failed" && exit 1
-                module load armpl/{{ validate.ArmPLVersion.outputs.stdout }}
-                gcc --version | grep {{ validate.ArmPLGCCVersion.outputs.stdout }}
-                [[ $? -ne 0 ]] && echo "Check gcc version for armpl failed" && exit 1
-                (module list)2>&1 | grep armpl/{{ validate.ArmPLVersion.outputs.stdout }}_gcc-{{ validate.ArmPLGCCVersion.outputs.stdout }}
-                [[ $? -ne 0 ]] && echo "Check armpl module failed" && exit 1
-                (module list)2>&1 | grep armpl/gcc-{{ validate.ArmPLGCCVersion.outputs.stdout }}
-                [[ $? -ne 0 ]] && echo "Check gcc module failed" && exit 1
+                cd /etc/chef/cookbooks/aws-parallelcluster
+                inspec exec test/resources --profiles-path . --controls /^arm_pl/ --no-distinct-exit
+                [[ $? -ne 0 ]] && echo "ArmPL test failed" && exit 1
                 echo "ArmPL test passed"
               fi
 
