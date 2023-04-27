@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import FsxFileSystemInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import FsxStorageInfo, InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
@@ -213,7 +213,7 @@ class _DummyEfsClient(EfsClient):
 class _DummyFSxClient(FSxClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-        self.non_happy_describe_volumes_error = None
+        self.non_happy_describe_storage_error = None
 
     def get_filesystem_info(self, fsx_fs_id):
         return {
@@ -223,13 +223,13 @@ class _DummyFSxClient(FSxClient):
             },
         }
 
-    def set_non_happy_describe_volumes(self, error):
-        self.non_happy_describe_volumes_error = error
+    def set_non_happy_describe_storage(self, error):
+        self.non_happy_describe_storage_error = error
 
     def describe_volumes(self, volume_ids):
         """Describe FSx volumes."""
-        if self.non_happy_describe_volumes_error is not None:
-            raise self.non_happy_describe_volumes_error
+        if self.non_happy_describe_storage_error is not None:
+            raise self.non_happy_describe_storage_error
 
         result = []
         for volume_id in volume_ids:
@@ -247,7 +247,7 @@ class _DummyFSxClient(FSxClient):
         result = []
         for file_system_id in fsx_fs_ids:
             result.append(
-                FsxFileSystemInfo(
+                FsxStorageInfo(
                     {
                         "FileSystemType": "LUSTRE",
                         "LustreConfiguration": {"MountName": "abcdef"},
@@ -263,6 +263,23 @@ class _DummyFSxClient(FSxClient):
         result = []
         for _ in storage_virtual_machine_ids:
             result.append({"Endpoints": {"Nfs": {"DNSName": "abcd"}}})
+        return result
+
+    def describe_file_caches(self, file_cache_ids):
+        """Describe FSx File cache."""
+        if self.non_happy_describe_storage_error is not None:
+            raise self.non_happy_describe_storage_error
+
+        result = []
+        for _ in file_cache_ids:
+            result.append(
+                FsxStorageInfo(
+                    {
+                        "mount_name": "/fc_mount",
+                        "dns_name": "fc.dns.name",
+                    }
+                )
+            )
         return result
 
 

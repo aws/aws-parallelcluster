@@ -66,13 +66,17 @@ FSX_HDD_THROUGHPUT = [12, 40]
 LUSTRE = "LUSTRE"
 OPENZFS = "OPENZFS"
 ONTAP = "ONTAP"
+FILECACHE = "FILECACHE"
 
 FSX_LUSTRE = "FsxLustre"
 FSX_OPENZFS = "FsxOpenZfs"
 FSX_ONTAP = "FsxOntap"
+FSX_FILE_CACHE = "FsxFileCache"
 
 # https://docs.aws.amazon.com/fsx/latest/APIReference/API_DescribeVolumes.html#FSx-DescribeVolumes-request-VolumeIds.
 FSX_VOLUME_ID_REGEX = r"^fsvol-[0-9a-f]{17}$"
+# https://docs.aws.amazon.com/fsx/latest/APIReference/API_FileCacheCreating.html#FSx-Type-FileCacheCreating-FileCacheId:~:text=Pattern%3A-,%5E(fc%2D%5B0%2D9a%2Df%5D%7B8%2C%7D)%24,-Required%3A%20No
+FSX_FILE_CACHE_ID_REGEX = r"^(fc-[0-9a-f]{8,18})$"
 
 FSX_PORTS = {
     # Lustre Security group: https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html
@@ -241,6 +245,7 @@ class Feature(Enum):
     BATCH = "AWS Batch scheduler"
     DCV = "NICE DCV"
     FSX_LUSTRE = "FSx Lustre"
+    FSX_FILE_CACHE = "FSx FileCache"
     FSX_ONTAP = "FSx ONTAP"
     FSX_OPENZFS = "FSx OpenZfs"
     SLURM_DATABASE = "SLURM Database"
@@ -250,6 +255,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.BATCH: ["ap-northeast-3", "us-iso"],
     Feature.DCV: ["us-iso"],
     Feature.FSX_LUSTRE: ["us-iso"],
+    Feature.FSX_FILE_CACHE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
     Feature.SLURM_DATABASE: ["us-iso"],

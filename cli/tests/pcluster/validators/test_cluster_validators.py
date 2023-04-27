@@ -883,8 +883,8 @@ def test_queue_name_validator(name, expected_message):
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
-            "The current security group settings on file system .* does not satisfy mounting requirement. "
-            "The file system must be associated to a security group that "
+            "The current security group settings on file storage .* does not satisfy mounting requirement. "
+            "The file storage must be associated to a security group that "
             r"allows inbound and outbound TCP traffic through ports \[988\].",
         ),
         (  # not working case, wrong security group. Lustre
@@ -894,8 +894,8 @@ def test_queue_name_validator(name, expected_message):
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-23456789"}]}],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
-            "The current security group settings on file system .* does not satisfy mounting requirement. "
-            "The file system must be associated to a security group that "
+            "The current security group settings on file storage .* does not satisfy mounting requirement. "
+            "The file storage must be associated to a security group that "
             r"allows inbound and outbound TCP traffic through ports \[988\].",
         ),
         (  # not working case, wrong security group. OpenZFS
@@ -905,8 +905,8 @@ def test_queue_name_validator(name, expected_message):
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
-            "The current security group settings on file system .* does not satisfy mounting requirement. "
-            "The file system must be associated to a security group that "
+            "The current security group settings on file storage .* does not satisfy mounting requirement. "
+            "The file storage must be associated to a security group that "
             r"allows inbound and outbound TCP traffic through ports \[111, 2049, 20001, 20002, 20003\].",
         ),
         (  # not working case, wrong security group. Ontap
@@ -916,8 +916,8 @@ def test_queue_name_validator(name, expected_message):
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
-            "The current security group settings on file system .* does not satisfy mounting requirement. "
-            "The file system must be associated to a security group that "
+            "The current security group settings on file storage .* does not satisfy mounting requirement. "
+            "The file storage must be associated to a security group that "
             r"allows inbound and outbound TCP traffic through ports \[111, 635, 2049, 4046\].",
         ),
         (  # not working case --> no network interfaces
@@ -934,7 +934,7 @@ def test_queue_name_validator(name, expected_message):
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
-            "only support using FSx file system that is in the same VPC as the cluster",
+            "only support using FSx file storage that is in the same VPC as the cluster",
         ),
         (  # not working case --> wrong ip permissions in security group
             "LUSTRE",
@@ -952,7 +952,7 @@ def test_queue_name_validator(name, expected_message):
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             [
-                "only support using FSx file system that is in the same VPC as the cluster",
+                "only support using FSx file storage that is in the same VPC as the cluster",
                 "does not satisfy mounting requirement",
             ],
         ),
@@ -967,6 +967,43 @@ def test_fsx_network_validator(
     network_interfaces,
     expected_message,
 ):
+    fsx_mocked_requests = []
+    if fsx_file_system_type == "LUSTRE":
+        # Creating describe Fsx Filecache mocker
+        describe_file_caches_response = {
+            "FileCaches": [
+                {
+                    "VpcId": fsx_vpc,
+                    "NetworkInterfaceIds": network_interfaces,
+                    "SubnetIds": ["subnet-12345678"],
+                    "FileCacheType": "LUSTRE",
+                    "CreationTime": 1567636453.038,
+                    "ResourceARN": "arn:aws:fsx:us-west-2:111122223333:file-system/fc-0ff8da96d57f3b4e3",
+                    "StorageCapacity": 1200,
+                    "FileCacheId": "fc-0ff8da96d57f3b4e3",
+                    "FileCacheTypeVersion": "2.12",
+                    "DNSName": "fc-0ff8da96d57f3b4e3.fsx.us-west-2.amazonaws.com",
+                    "OwnerId": "111122223333",
+                    "Lifecycle": "AVAILABLE",
+                    "LustreConfiguration": {
+                        "PerUnitStorageThroughput": 1000,
+                        "DeploymentType": "CACHE_1",
+                        "MountName": "23wixbev",
+                        "WeeklyMaintenanceStartTime": "1:05:00",
+                        "MetadataConfiguration": {"StorageCapacity": 2400},
+                    },
+                    "DataRepositoryAssociationIds": ["dra-05f16b2a4ea7d032e"],
+                }
+            ]
+        }
+        fsx_mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_file_caches",
+                response=describe_file_caches_response,
+                expected_params={"FileCacheIds": ["fc-0ff8da96d57f3b4e3"]},
+            )
+        )
+
     describe_file_systems_response = {
         "FileSystems": [
             {
@@ -984,14 +1021,13 @@ def test_fsx_network_validator(
             }
         ]
     }
-    fsx_mocked_requests = [
+    fsx_mocked_requests.append(
         MockedBoto3Request(
             method="describe_file_systems",
             response=describe_file_systems_response,
             expected_params={"FileSystemIds": ["fs-0ff8da96d57f3b4e3"]},
         )
-    ]
-    boto3_stubber("fsx", fsx_mocked_requests)
+    )
 
     describe_subnets_response = {
         "Subnets": [
@@ -1104,11 +1140,35 @@ def test_fsx_network_validator(
                 )
             )
 
+    if fsx_file_system_type == "LUSTRE":
+        # No need to mock describe security group and Subnet calls as they are cached
+        if network_interfaces:
+            ec2_mocked_requests.append(
+                MockedBoto3Request(
+                    method="describe_network_interfaces",
+                    response=describe_network_interfaces_response,
+                    expected_params={"NetworkInterfaceIds": network_interfaces},
+                )
+            )
+
+    boto3_stubber("fsx", fsx_mocked_requests)
     boto3_stubber("ec2", ec2_mocked_requests)
 
-    actual_failures = ExistingFsxNetworkingValidator().execute(
-        ["fs-0ff8da96d57f3b4e3"], ["subnet-12345678"], nodes_security_groups
-    )
+    if fsx_file_system_type == "LUSTRE":
+        # Testing for FSx File Cache
+        actual_failures = ExistingFsxNetworkingValidator().execute(
+            subnet_ids=["subnet-12345678"],
+            security_groups_by_nodes=nodes_security_groups,
+            file_storage_ids=["fs-0ff8da96d57f3b4e3", "fc-0ff8da96d57f3b4e3"],
+        )
+    else:
+        # Testing for other FSX
+        actual_failures = ExistingFsxNetworkingValidator().execute(
+            file_storage_ids=["fs-0ff8da96d57f3b4e3"],
+            subnet_ids=["subnet-12345678"],
+            security_groups_by_nodes=nodes_security_groups,
+        )
+
     assert_failure_messages(actual_failures, expected_message)
 
 

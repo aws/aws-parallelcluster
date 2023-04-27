@@ -13,6 +13,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
+from pcluster.config.cluster_config import ExistingFsxFileCache, ExistingFsxOpenZfs
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
@@ -177,6 +178,51 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
         )
 
 
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        ("unmanaged_config.yaml"),
+    ],
+)
+def test_unmanaged_shared_storage_fsx(mocker, test_datadir, config_file_name):
+    # Check dna.json has DNS Name, FSx Id's and Mount Name for Unmanaed storage
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    head_node_dna_json_file = (
+        generated_template.get("Resources")
+        .get("HeadNodeLaunchTemplate")
+        .get("Metadata")
+        .get("AWS::CloudFormation::Init")
+        .get("deployConfigFiles")
+        .get("files")
+        .get("/tmp/dna.json")
+        .get("content")
+        .get("Fn::Join")[1][4]
+    )
+    for storage in cluster_config.shared_storage:
+        if storage.existing_dns_name:
+            assert_that(storage.existing_dns_name in head_node_dna_json_file).is_true()
+        if isinstance(storage, ExistingFsxFileCache):
+            assert_that(storage.file_cache_id in head_node_dna_json_file).is_true()
+            assert_that(storage.file_cache_mount_name in head_node_dna_json_file).is_true()
+            assert_that(storage.file_cache_id in generated_template.get("Outputs").get("FSXIds").get("Value")).is_true()
+        else:
+            assert_that(storage.volume_id in head_node_dna_json_file).is_true()
+            if isinstance(storage, ExistingFsxOpenZfs):
+                assert_that(storage.volume_path in head_node_dna_json_file).is_true()
+            else:
+                assert_that(storage.junction_path in head_node_dna_json_file).is_true()
+
+
 def assert_sg_rule(
     generated_template: dict,
     sg_name: str,
@@ -206,15 +252,28 @@ def assert_sg_rule(
     assert_that(sg_rules).is_length(1)
 
 
-def test_non_happy_ontap_and_openzfs_mounting(mocker, test_datadir):
+@pytest.mark.parametrize(
+    "config_file_name",
+    [("config.yaml"), ("file_cache_config.yaml")],
+)
+def test_non_happy_storage(mocker, test_datadir, config_file_name):
     dummy_api = _DummyAWSApi()
-    dummy_api._fsx.set_non_happy_describe_volumes(
-        AWSClientError(function_name="describe_volumes", message="describing volumes is unauthorized")
-    )
+    if config_file_name == "file_cache_config.yaml":
+        # Check for Non-Existence of File cache
+        dummy_api._fsx.set_non_happy_describe_storage(
+            AWSClientError(
+                function_name="describe_file_caches", message="The cache with cache ID 'fc-12345678' does not exist."
+            )
+        )
+    else:
+        # Check for Non-Happy Storage Mounting
+        dummy_api._fsx.set_non_happy_describe_storage(
+            AWSClientError(function_name="describe_volumes", message="describing volumes is unauthorized")
+        )
     mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=dummy_api)
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)
 
-    input_yaml = load_yaml_dict(test_datadir / "config.yaml")
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
 
     with pytest.raises(AWSClientError):

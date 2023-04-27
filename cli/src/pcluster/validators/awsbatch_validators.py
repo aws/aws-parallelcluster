@@ -188,8 +188,8 @@ class AwsBatchFsxValidator(Validator):
     """
     Validator for FSx and AWS Batch scheduler.
 
-    Fail if using AWS Batch and FSx for Lustre, not supported yet.
+    Fail if using AWS Batch and FSx for Lustre, ONTAP, OpenZFS, File Cache are not supported yet.
     """
 
     def _validate(self):
-        self._add_failure("FSx for Lustre is not supported when using AWS Batch as scheduler.", FailureLevel.ERROR)
+        self._add_failure("FSx is not supported when using AWS Batch as scheduler.", FailureLevel.ERROR)

@@ -41,6 +41,7 @@ from pcluster.constants import (
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT_US_ISO,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    FILECACHE,
     LUSTRE,
     MAX_COMPUTE_RESOURCES_PER_QUEUE,
     MAX_EBS_COUNT,
@@ -612,6 +613,26 @@ class ExistingFsxOntap(BaseSharedFsx):
         return AWSApi.instance().fsx.describe_storage_virtual_machines([self.storage_virtual_machine_id])[0][
             "Endpoints"
         ]["Nfs"]["DNSName"]
+
+
+class ExistingFsxFileCache(BaseSharedFsx):
+    """Represent the shared FSX FileCache resource."""
+
+    def __init__(self, file_cache_id: str, **kwargs):
+        super().__init__(**kwargs)
+        self.file_cache_id = file_cache_id
+        self.file_system_id = file_cache_id
+        self.file_system_type = FILECACHE
+
+    @property
+    def existing_dns_name(self):
+        """Return DNSName of the existing FSx File Cache."""
+        return AWSApi.instance().fsx.describe_file_caches([self.file_cache_id])[0].dns_name
+
+    @property
+    def file_cache_mount_name(self):
+        """Return Mount Name of the existing FSx File Cache."""
+        return AWSApi.instance().fsx.describe_file_caches([self.file_cache_id])[0].mount_name
 
 
 # ---------------------- Networking ---------------------- #
@@ -1450,6 +1471,10 @@ class BaseClusterConfig(Resource):
                     existing_storage_count["fsx"] += 1
                     existing_fsx.add(storage.file_system_id)
                     self._register_validator(FeatureRegionValidator, feature=Feature.FSX_ONTAP, region=self.region)
+                elif isinstance(storage, ExistingFsxFileCache):
+                    existing_storage_count["fsx"] += 1
+                    existing_fsx.add(storage.file_cache_id)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_FILE_CACHE, region=self.region)
                 elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
@@ -1468,11 +1493,10 @@ class BaseClusterConfig(Resource):
                         new_storage_count["efs"] += 1
             self._register_validator(
                 ExistingFsxNetworkingValidator,
-                file_system_ids=list(existing_fsx),
+                file_storage_ids=list(existing_fsx),
                 subnet_ids=[self.head_node.networking.subnet_id] + self.compute_subnet_ids,
                 security_groups_by_nodes=self.security_groups_by_nodes,
             )
-
             self._validate_max_storage_count(ebs_count, existing_storage_count, new_storage_count)
             self._validate_new_storage_multiple_subnets(
                 self.scheduling.queues, self.compute_subnet_ids, new_storage_count
@@ -1612,6 +1636,8 @@ class BaseClusterConfig(Resource):
                     storage_id = storage.file_system_id
                 elif isinstance(storage, (SharedEbs, ExistingFsxOpenZfs, ExistingFsxOntap)):
                     storage_id = storage.volume_id
+                elif isinstance(storage, ExistingFsxFileCache):
+                    storage_id = storage.file_cache_id
                 if storage_id:
                     storage_id_list.append(storage_id)
         return storage_id_list

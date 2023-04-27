@@ -288,22 +288,28 @@ class InstanceTypeInfo:
         return self.instance_type_data.get("MemoryInfo", {}).get("SizeInMiB")
 
 
-class FsxFileSystemInfo:
-    """Data object wrapping the result of a describe_file_systems call."""
+class FsxStorageInfo:
+    """Data object wrapping the result of a describe_file_systems and describe_file_caches call."""
 
-    def __init__(self, file_system_data):
-        self.file_system_data = file_system_data
+    def __init__(self, file_storage_info):
+        self.file_storage_info = file_storage_info
 
     @property
-    def file_system_type(self):
+    def file_storage_type(self):
         """Return the type of FSx file system (LUSTRE, WINDOWS, ONTAP, or OPENZFS). WINDOWS is not supported."""
-        return self.file_system_data.get("FileSystemType")
+        return (
+            self.file_storage_info.get("FileSystemType")
+            if self.file_storage_info.get("FileSystemType")
+            else self.file_storage_info.get("FileCacheType")
+        )
 
     @property
     def mount_name(self):
         """Return MountName of the FSx Lustre file system."""
         return (
-            self.file_system_data.get("LustreConfiguration").get("MountName") if self.file_system_type == LUSTRE else ""
+            self.file_storage_info.get("LustreConfiguration").get("MountName")
+            if self.file_storage_type == LUSTRE
+            else ""
         )
 
     @property
@@ -313,27 +319,32 @@ class FsxFileSystemInfo:
 
         Lustre, OpenZFS have DNS name on file systems. Ontap has DNS name on storage virtual machines.
         """
-        return self.file_system_data.get("DNSName") if self.file_system_type in [LUSTRE, OPENZFS] else ""
+        return self.file_storage_info.get("DNSName") if self.file_storage_type in [LUSTRE, OPENZFS] else ""
 
     @property
     def file_system_id(self):
         """Return id of the file system."""
-        return self.file_system_data.get("FileSystemId")
+        return self.file_storage_info.get("FileSystemId")
+
+    @property
+    def file_cache_id(self):
+        """Return id of the file caches."""
+        return self.file_storage_info.get("FileCacheId")
 
     @property
     def vpc_id(self):
         """Return VPC id of the file system."""
-        return self.file_system_data.get("VpcId")
+        return self.file_storage_info.get("VpcId")
 
     @property
     def network_interface_ids(self):
         """Return network interface ids of the file system."""
-        return self.file_system_data.get("NetworkInterfaceIds")
+        return self.file_storage_info.get("NetworkInterfaceIds")
 
     @property
     def subnet_ids(self):
         """Return subnet ids of the file system."""
-        return self.file_system_data.get("SubnetIds")
+        return self.file_storage_info.get("SubnetIds")
 
 
 class ImageInfo:
