@@ -17,7 +17,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import Construct, Duration, Stack
 
 from pcluster.aws.common import get_region
-from pcluster.config.cluster_config import BaseClusterConfig, SharedFsxLustre, SharedStorageType
+from pcluster.config.cluster_config import BaseClusterConfig, ExistingFsxFileCache, SharedFsxLustre, SharedStorageType
 
 MAX_WIDTH = 24
 
@@ -472,6 +472,9 @@ class CWDashboardConstruct(Construct):
             if isinstance(storage.config, SharedFsxLustre):
                 metrics = lustre_metrics
                 dimensions_map = {"FileSystemId": storage.id}
+            elif isinstance(storage.config, ExistingFsxFileCache):
+                metrics = lustre_metrics
+                dimensions_map = {"FileCacheId": storage.config.file_cache_id}
             else:
                 metrics = common_metrics
                 dimensions_map = {"FileSystemId": storage.config.file_system_id, "VolumeId": storage.id}

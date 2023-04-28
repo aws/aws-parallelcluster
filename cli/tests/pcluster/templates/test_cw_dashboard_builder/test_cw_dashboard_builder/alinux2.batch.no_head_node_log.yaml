@@ -44,6 +44,21 @@ SharedStorage:
     StorageType: Ebs
     EbsSettings:
       VolumeType: st1
+  - MountDir: /my/mount/fc1
+    Name: name6
+    StorageType: FsxFileCache
+    FsxFileCacheSettings:
+      FileCacheId: fc-12345678
+  - MountDir: /my/mount/fsx-ontap/1
+    Name: name7
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: fsvol-12345678901234567
+  - MountDir: /my/mount/fsx-openzfs/1
+    Name: name8
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: fsvol-12345678901234567
 Monitoring:
   DetailedMonitoring: true
   Logs:
