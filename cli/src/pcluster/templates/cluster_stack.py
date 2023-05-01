@@ -790,7 +790,6 @@ class ClusterCdkStack:
         """Add specific Cfn Resources to map the EFS storage."""
         # EFS FileSystem
         efs_id = shared_efs.file_system_id
-        new_file_system = efs_id is None
         deletion_policy = convert_deletion_policy(shared_efs.deletion_policy)
         if not efs_id and shared_efs.mount_dir:
             efs_resource = efs.CfnFileSystem(
@@ -806,33 +805,32 @@ class ClusterCdkStack:
             efs_resource.cfn_options.deletion_policy = efs_resource.cfn_options.update_replace_policy = deletion_policy
             efs_id = efs_resource.ref
 
-        checked_availability_zones = []
+            # Create Mount Targets
+            checked_availability_zones = []
 
-        # Mount Targets for Compute Fleet
-        compute_subnet_ids = self.config.compute_subnet_ids
-        file_system_security_groups = [self._add_storage_security_group(id, shared_efs)]
+            # Mount Targets for Compute Fleet
+            compute_subnet_ids = self.config.compute_subnet_ids
+            file_system_security_groups = [self._add_storage_security_group(id, shared_efs)]
 
-        for subnet_id in compute_subnet_ids:
+            for subnet_id in compute_subnet_ids:
+                self._add_efs_mount_target(
+                    id,
+                    efs_id,
+                    file_system_security_groups,
+                    subnet_id,
+                    checked_availability_zones,
+                    deletion_policy,
+                )
+
+            # Mount Target for Head Node
             self._add_efs_mount_target(
                 id,
                 efs_id,
                 file_system_security_groups,
-                subnet_id,
+                self.config.head_node.networking.subnet_id,
                 checked_availability_zones,
-                new_file_system,
                 deletion_policy,
             )
-
-        # Mount Target for Head Node
-        self._add_efs_mount_target(
-            id,
-            efs_id,
-            file_system_security_groups,
-            self.config.head_node.networking.subnet_id,
-            checked_availability_zones,
-            new_file_system,
-            deletion_policy,
-        )
 
         self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"].append(
             shared_efs.encryption_in_transit
@@ -848,23 +846,19 @@ class ClusterCdkStack:
         security_groups,
         subnet_id,
         checked_availability_zones,
-        new_file_system,
         deletion_policy,
     ):
         """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
         availability_zone = AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id)
         if availability_zone not in checked_availability_zones:
-            if new_file_system:
-                efs_resource = efs.CfnMountTarget(
-                    self.stack,
-                    "{0}MT{1}".format(efs_cfn_resource_id, availability_zone),
-                    file_system_id=file_system_id,
-                    security_groups=[sg.ref for sg in security_groups],
-                    subnet_id=subnet_id,
-                )
-                efs_resource.cfn_options.deletion_policy = (
-                    efs_resource.cfn_options.update_replace_policy
-                ) = deletion_policy
+            efs_resource = efs.CfnMountTarget(
+                self.stack,
+                "{0}MT{1}".format(efs_cfn_resource_id, availability_zone),
+                file_system_id=file_system_id,
+                security_groups=[sg.ref for sg in security_groups],
+                subnet_id=subnet_id,
+            )
+            efs_resource.cfn_options.deletion_policy = efs_resource.cfn_options.update_replace_policy = deletion_policy
             checked_availability_zones.append(availability_zone)
 
     def _add_raid_volume(self, id_prefix: str, shared_ebs: SharedEbs):
