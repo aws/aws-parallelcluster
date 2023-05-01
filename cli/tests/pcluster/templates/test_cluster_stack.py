@@ -70,6 +70,25 @@ def test_cluster_builder_from_configuration_file(
     _generate_template(cluster, capsys)
 
 
+def test_no_security_groups_created_from_configuration_file(mocker, capsys, pcluster_config_reader, test_datadir):
+    """Starting from a config with security groups overwritten and external file systems, no sg should be created."""
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    # Search config file from example_configs folder to test standard configuration
+    _, cluster = load_cluster_model_from_yaml("config.yaml", test_datadir)
+    generated_template, _ = _generate_template(cluster, capsys)
+    assert_that(
+        all(
+            resource["Type"]
+            not in ["AWS::EC2::SecurityGroup", "AWS::EC2::SecurityGroupEgress", "AWS::EC2::SecurityGroupIngress"]
+            for resource in generated_template["Resources"].values()
+        )
+    ).is_true()
+
+
 def _assert_config_snapshot(config, expected_full_config_path):
     """
     Confirm that no new configuration sections were added / removed.

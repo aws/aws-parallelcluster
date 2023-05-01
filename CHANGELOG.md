@@ -47,6 +47,7 @@ CHANGELOG
 - Fix an issue that was causing misalignment of compute nodes IP on instances with multiple network interfaces.
 - Fix replacement of `StoragePass` in `slurm_parallelcluster_slurmdbd.conf` when a queue parameter update is performed and the Slurm accounting configurations are not updated.
 - Fix issue causing `cfn-hup` daemon to fail when it gets restarted.
+- Fix issue causing dangling security groups to be created when creating a cluster with an existing EFS.
 
 3.5.1
 -----
