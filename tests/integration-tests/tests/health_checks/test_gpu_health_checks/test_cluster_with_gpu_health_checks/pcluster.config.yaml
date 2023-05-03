@@ -1,0 +1,69 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+  - Name: queue-1
+    HealthChecks:
+      Gpu:
+        Enabled: true
+    ComputeResources:
+    - Name: compute-resource-1
+      Instances:
+        - InstanceType: g4dn.xlarge
+      HealthChecks:
+        Gpu:
+          Enabled: false
+    - Name: compute-resource-2
+      Instances:
+        - InstanceType: g4dn.xlarge
+      HealthChecks:
+        Gpu:
+          Enabled: true
+    - Name: compute-resource-3
+      Instances:
+        - InstanceType: g4dn.xlarge
+      MinCount: 1
+    - Name: compute-resource-4
+      Instances:
+        - InstanceType: c5.xlarge
+      HealthChecks:
+        Gpu:
+          Enabled: false
+    - Name: compute-resource-5
+      Instances:
+        - InstanceType: c5.xlarge
+      HealthChecks:
+        Gpu:
+          Enabled: true
+    - Name: compute-resource-6
+      Instances:
+        - InstanceType: c5.xlarge
+    Networking:
+      SubnetIds:
+        - {{ private_subnet_id }}
+  - Name: queue-2
+    ComputeResources:
+    - Name: compute-resource-1
+      Instances:
+        - InstanceType: g4dn.xlarge
+      HealthChecks:
+        Gpu:
+          Enabled: true
+    - Name: compute-resource-2
+      Instances:
+        - InstanceType: c5.xlarge
+      HealthChecks:
+        Gpu:
+          Enabled: true
+    Networking:
+      SubnetIds:
+        - {{ private_subnet_id }}

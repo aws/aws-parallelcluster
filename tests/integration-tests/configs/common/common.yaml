@@ -731,3 +731,10 @@ log_rotation:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
+health_checks:
+  test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
+    dimensions:
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
