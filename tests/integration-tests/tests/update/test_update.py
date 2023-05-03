@@ -10,7 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import os.path
+import os.path as os_path
 import re
 import time
 from collections import defaultdict
@@ -66,7 +66,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     cluster = clusters_factory(init_config_file)
 
     # Check update hook is NOT executed at cluster creation time
-    assert_that(os.path.exists("/tmp/postupdate_out.txt")).is_false()
+    assert_that(os_path.exists("/tmp/postupdate_out.txt")).is_false()
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
     cluster.update(str(init_config_file), force_update="true")
@@ -870,8 +870,8 @@ def _test_update_queue_strategy_with_running_job(
 
 @pytest.fixture
 def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
-    def create_stack(bucket_name):
-        template_path = os.path.join(str(test_datadir), "storage-stack.yaml")
+    def create_stack(bucket_name, file_cache_path):
+        template_path = os_path.join(str(test_datadir), "storage-stack.yaml")
         option = "external_shared_storage_stack_name"
         if request.config.getoption(option):
             stack = CfnStack(name=request.config.getoption(option), region=region, template=None)
@@ -895,7 +895,9 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
                 {"ParameterKey": "vpc", "ParameterValue": vpc},
                 {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
                 {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
+                {"ParameterKey": "S3BucketFSxFileCacheStack", "ParameterValue": bucket_name},
                 {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
+                {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
             ]
             with open(template_path, encoding="utf-8") as template_file:
                 template = template_file.read()
@@ -937,26 +939,42 @@ def test_dynamic_file_systems_update(
     fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir"
     fsx_ontap_mount_dir = "/existing_fsx_ontap_mount_dir"
     fsx_open_zfs_mount_dir = "/existing_fsx_open_zfs_mount_dir"
+    fsx_file_cache_mount_dir = "/existing_fsx_file_cache_mount_dir"
     new_ebs_mount_dir = "/new_ebs_mount_dir"
     new_raid_mount_dir = "/new_raid_dir"
     new_efs_mount_dir = "/new_efs_mount_dir"
     new_lustre_mount_dir = "/new_lustre_mount_dir"
     ebs_mount_dirs = [new_ebs_mount_dir, existing_ebs_mount_dir]
     efs_mount_dirs = [existing_efs_mount_dir, new_efs_mount_dir]
-    fsx_mount_dirs = [new_lustre_mount_dir, fsx_lustre_mount_dir, fsx_open_zfs_mount_dir, fsx_ontap_mount_dir]
+    fsx_mount_dirs = [
+        new_lustre_mount_dir,
+        fsx_lustre_mount_dir,
+        fsx_open_zfs_mount_dir,
+        fsx_ontap_mount_dir,
+        fsx_file_cache_mount_dir,
+    ]
     all_mount_dirs = ebs_mount_dirs + [new_raid_mount_dir] + efs_mount_dirs + fsx_mount_dirs
 
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    bucket.upload_file(os_path.join("resources", "file-cache-storage-cfn.yaml"), "file-cache-storage-cfn.yaml")
+    file_cache_path = "/fsx-cache-path/"
     (
         existing_ebs_volume_id,
         existing_efs_id,
         existing_fsx_lustre_fs_id,
         existing_fsx_ontap_volume_id,
         existing_fsx_open_zfs_volume_id,
+        existing_fsx_file_cache_id,
     ) = _create_shared_storages_resources(
-        snapshots_factory, request, vpc_stack, region, bucket_name, external_shared_storage_stack
+        snapshots_factory,
+        request,
+        vpc_stack,
+        region,
+        bucket_name,
+        external_shared_storage_stack,
+        file_cache_path,
     )
 
     # Create cluster with initial configuration
@@ -992,10 +1010,12 @@ def test_dynamic_file_systems_update(
         fsx_lustre_mount_dir=fsx_lustre_mount_dir,
         fsx_ontap_mount_dir=fsx_ontap_mount_dir,
         fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
+        fsx_file_cache_mount_dir=fsx_file_cache_mount_dir,
         existing_efs_id=existing_efs_id,
         existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
         fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        existing_fsx_file_cache_id=existing_fsx_file_cache_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
         new_ebs_deletion_policy="Delete",
@@ -1035,6 +1055,7 @@ def test_dynamic_file_systems_update(
         new_raid_mount_dir,
         efs_mount_dirs,
         fsx_mount_dirs,
+        file_cache_path,
     )
 
     # check newly mounted file systems are not visible on compute nodes that are running jobs
@@ -1056,10 +1077,12 @@ def test_dynamic_file_systems_update(
         fsx_lustre_mount_dir=fsx_lustre_mount_dir,
         fsx_ontap_mount_dir=fsx_ontap_mount_dir,
         fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
+        fsx_file_cache_mount_dir=fsx_file_cache_mount_dir,
         existing_efs_id=existing_efs_id,
         existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
         fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        existing_fsx_file_cache_id=existing_fsx_file_cache_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
         new_ebs_deletion_policy="Retain",
@@ -1075,7 +1098,12 @@ def test_dynamic_file_systems_update(
 
     existing_ebs_ids = [existing_ebs_volume_id]
     existing_efs_ids = [existing_efs_id]
-    existing_fsx_ids = [existing_fsx_lustre_fs_id, existing_fsx_ontap_volume_id, existing_fsx_open_zfs_volume_id]
+    existing_fsx_ids = [
+        existing_fsx_lustre_fs_id,
+        existing_fsx_ontap_volume_id,
+        existing_fsx_open_zfs_volume_id,
+        existing_fsx_file_cache_id,
+    ]
 
     retained_ebs_noraid_volume_ids = [
         id for id in cluster.cfn_outputs["EBSIds"].split(",") if id not in existing_ebs_ids
@@ -1150,14 +1178,20 @@ def test_dynamic_file_systems_update(
 
 
 def _create_shared_storages_resources(
-    snapshots_factory, request, vpc_stack: CfnVpcStack, region, bucket_name, external_shared_storage_stack
+    snapshots_factory,
+    request,
+    vpc_stack: CfnVpcStack,
+    region,
+    bucket_name,
+    external_shared_storage_stack,
+    file_cache_path,
 ):
     """Create existing EBS, EFS, FSX resources for test."""
     # create 1 existing ebs
     ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.get_public_subnet(), region)
 
     # create external-shared-storage-stack
-    storage_stack = external_shared_storage_stack(bucket_name)
+    storage_stack = external_shared_storage_stack(bucket_name, file_cache_path)
 
     return (
         ebs_volume_id,
@@ -1165,6 +1199,7 @@ def _create_shared_storages_resources(
         storage_stack.cfn_outputs["FsxLustreFsId"],
         storage_stack.cfn_outputs["FsxOntapVolumeId"],
         storage_stack.cfn_outputs["FsxOpenZfsVolumeId"],
+        storage_stack.cfn_outputs["FsxFileCacheId"],
     )
 
 
@@ -1221,6 +1256,7 @@ def _test_shared_storages_mount_on_headnode(
     new_raid_mount_dir,
     efs_mount_dirs,
     fsx_mount_dirs,
+    file_cache_path,
 ):
     """Check storages are mounted on headnode."""
     # ebs
@@ -1242,6 +1278,7 @@ def _test_shared_storages_mount_on_headnode(
         fsx_mount_dirs,
         bucket_name,
         headnode_only=True,
+        file_cache_path=file_cache_path,
     )
 
 

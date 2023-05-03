@@ -524,6 +524,16 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
+  test_fsx_lustre.py::test_fsx_file_cache:
+    dimensions:
+      - regions: [ "eu-west-2" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: [ "alinux2" ]
+        schedulers: [ "slurm" ]
+      - regions: [ "eu-north-1" ]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: [ "ubuntu2004" ]
+        schedulers: [ "slurm" ]
   # The checks performed in test_multiple_fsx is the same as test_fsx_lustre.
   # We should consider this when assigning dimensions to each test.
   test_fsx_lustre.py::test_multiple_fsx:

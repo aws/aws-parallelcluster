@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import datetime
 import logging
+import os
 import time
 
 import boto3
@@ -18,6 +19,7 @@ import pytest
 import utils
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from cfn_stacks_factory import CfnStack, CfnVpcStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
@@ -325,6 +327,47 @@ def test_multiple_fsx(
     run_benchmarks(remote_command_executor, scheduler_commands)
 
 
+@pytest.mark.usefixtures("instance")
+def test_fsx_file_cache(
+    os,
+    region,
+    create_fsx_file_cache,
+    pcluster_config_reader,
+    s3_bucket_factory,
+    clusters_factory,
+    scheduler_commands_factory,
+    test_datadir,
+):
+    """
+    Test existing Fsx file cache
+
+    Check fsx_fc_id provided in config file can be mounted correctly
+    """
+    if utils.get_arn_partition(region) in ["aws"]:
+        # China, GovCloud and Isolated do not have FileCache.
+        # Create s3 bucket and upload test_file
+        bucket_name = s3_bucket_factory()
+        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+        bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+
+        fsx_file_cache_id = _get_fsx_file_cache_id(
+            create_fsx_file_cache,
+            "/fsx-cache-path/",
+            bucket_name,
+        )
+        cluster_config = pcluster_config_reader(fsx_file_cache_id=fsx_file_cache_id, bucket_name=bucket_name)
+        cluster = clusters_factory(cluster_config)
+
+        check_fsx(
+            cluster,
+            region,
+            scheduler_commands_factory,
+            ["/existing-file-cache-mount-1"],
+            bucket_name,
+            file_cache_path="/fsx-cache-path/",
+        )
+
+
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_multi_az_fsx(
     os,
@@ -388,6 +431,49 @@ def _create_fsx_open_zfs_volume_ids(num_existing_fsx_open_zfs_volumes, fsx_facto
         fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
         return open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=num_existing_fsx_open_zfs_volumes)
     return []
+
+
+def _get_fsx_file_cache_id(create_fsx_file_cache, file_cache_path, bucket_name):
+    return create_fsx_file_cache(file_cache_path, bucket_name)
+
+
+@pytest.fixture
+def create_fsx_file_cache(request, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
+    """Create a FSx File Cache Stack with its required Networking resources."""
+    file_cache_config_file = os.path.join("resources", "file-cache-storage-cfn.yaml")
+
+    def _create_fsx_file_cache(file_cache_path, bucket_name):
+        if request.config.getoption("external_shared_storage_stack_name"):
+            stack = CfnStack(
+                name=request.config.getoption("external_shared_storage_stack_name"), region=region, template=None
+            )
+        else:
+            logging.info("Creating the stack for Fsx File Cache")
+            params = [
+                {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
+                {"ParameterKey": "S3BucketName", "ParameterValue": bucket_name},
+                {"ParameterKey": "VpcId", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+                {"ParameterKey": "SubnetId", "ParameterValue": vpc_stack.get_public_subnet()},
+            ]
+            with open(file_cache_config_file, encoding="utf-8") as template_file:
+                template = template_file.read()
+            stack = CfnStack(
+                name=utils.generate_stack_name(
+                    "integ-tests-file-cache-storage", request.config.getoption("stackname_suffix")
+                ),
+                region=region,
+                parameters=params,
+                template=template,
+                capabilities=["CAPABILITY_IAM"],
+            )
+            cfn_stacks_factory.create_stack(stack)
+            logging.info("Created the FileCacheId {0}".format(stack.cfn_outputs["FsxFileCacheId"]))
+            # Immediately using the FileCacheId after its creation gives Error
+            time.sleep(100)
+
+        return stack.cfn_outputs["FsxFileCacheId"]
+
+    yield _create_fsx_file_cache
 
 
 def _create_fsx_lustre_volume_ids(num_existing_fsx_lustre, fsx_factory, import_path, export_path):
