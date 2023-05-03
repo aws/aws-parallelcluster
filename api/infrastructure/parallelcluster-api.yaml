@@ -166,7 +166,7 @@ Resources:
         - UseCustomPoliciesTemplateUri
         - !Ref PoliciesTemplateUri
         - !Sub
-          - "s3://${AWS::Region}-aws-parallelcluster/parallelcluster/${Version}/templates/policies/policies.yaml"
+          - "https://${AWS::Region}-aws-parallelcluster.s3.amazonaws.com/parallelcluster/${Version}/templates/policies/policies.yaml"
           - { Version: !FindInMap [ParallelCluster, Constants, Version] }
       TimeoutInMinutes: 10
       Parameters:
