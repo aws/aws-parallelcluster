@@ -117,9 +117,12 @@ def test_cluster_with_gpu_health_checks(
             )
 
     # Simulate failing GPU Health Check and assert the node is set to DRAIN
+    # The node targeted in this test is a static node to avoid interruptions
+    # related to ScaleDown.
     _test_failing_gpu_health_checks(
         slurm_commands=slurm_commands,
         cluster=cluster,
+        remote_command_executor=remote_command_executor,
         target_node=expected_nodes_health_statuses["queue-1"]["compute-resource-3"],
         target_queue="queue-1",
         failure_script_path=test_datadir / "mock_failing_gpu_health_check.sh",
@@ -131,18 +134,16 @@ def test_cluster_with_gpu_health_checks(
 def _test_failing_gpu_health_checks(
     slurm_commands,
     cluster,
+    remote_command_executor,
     target_node,
     target_queue,
     failure_script_path,
     successful_script_path,
     rollback_script_path,
 ):
-    node_address = slurm_commands.get_node_addr(node_name=target_node.node_name)
-    compute_node_remote_command_executor = RemoteCommandExecutor(cluster, compute_node_ip=node_address)
-
     # Mock failing GPU Health Checks
-    results_from_compute_node = compute_node_remote_command_executor.run_remote_script(failure_script_path).stdout
-    assert_that(results_from_compute_node).contains("Mocked failing GPU Health Check")
+    failure_script_output = remote_command_executor.run_remote_script(failure_script_path).stdout
+    assert_that(failure_script_output).contains("Mocked failing GPU Health Check")
 
     # Run job on the node
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
@@ -157,8 +158,8 @@ def _test_failing_gpu_health_checks(
     slurm_commands.wait_nodes_status("drained", filter_by_nodes=[target_node.node_name])
 
     # Mock successful health check
-    results_from_compute_node = compute_node_remote_command_executor.run_remote_script(successful_script_path).stdout
-    assert_that(results_from_compute_node).contains("Mocked successful GPU Health Check")
+    successful_script_output = remote_command_executor.run_remote_script(successful_script_path).stdout
+    assert_that(successful_script_output).contains("Mocked successful GPU Health Check")
 
     # Assert that the node is replaced and job is executed
     slurm_commands.wait_nodes_status("idle", filter_by_nodes=[target_node.node_name])
@@ -174,10 +175,8 @@ def _test_failing_gpu_health_checks(
     )
 
     # Restore correct health check configuration
-    node_address = slurm_commands.get_node_addr(node_name=target_node.node_name)
-    compute_node_remote_command_executor = RemoteCommandExecutor(cluster, compute_node_ip=node_address)
-    results_from_compute_node = compute_node_remote_command_executor.run_remote_script(rollback_script_path).stdout
-    assert_that(results_from_compute_node).contains("Health check configuration restored")
+    rollback_script_output = remote_command_executor.run_remote_script(rollback_script_path).stdout
+    assert_that(rollback_script_output).contains("Health check configuration restored")
 
 
 def _assert_file_content_in_compute_node(file_path, compute_node_ip, cluster, patterns, should_exist=True):

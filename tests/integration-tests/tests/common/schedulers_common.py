@@ -230,13 +230,12 @@ class SlurmCommands(SchedulerCommands):
         """Waits until the job queue is empty."""
 
         @retry(
-            retry_on_result=lambda result: bool(result),  # Retry internally works with only boolean values
+            retry_on_result=lambda result: bool(result.stdout.strip()),  # Retry works with only boolean values
             wait_fixed=seconds(10),
             stop_max_delay=minutes(timeout),
         )
         def _job_queue_empty():
-            result = self._remote_command_executor.run_remote_command("squeue -h")
-            return result.stdout
+            return self._remote_command_executor.run_remote_command("squeue -h")
 
         return _job_queue_empty()
 
