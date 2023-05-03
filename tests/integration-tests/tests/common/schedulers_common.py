@@ -47,6 +47,15 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def wait_job_queue_empty(self, timeout):
+        """
+        Wait for job queue to be empty.
+
+        param timeout: max minutes to wait for job queue to be empty
+        """
+        pass
+
+    @abstractmethod
     def get_job_exit_status(self, job_id):
         """
         Retrieve the job exist status.
@@ -165,6 +174,10 @@ class AWSBatchCommands(SchedulerCommands):
     def get_compute_nodes(self):  # noqa: D102
         raise NotImplementedError
 
+    def wait_job_queue_empty(self, timeout):
+        """Waits until the job queue is empty."""
+        raise NotImplementedError
+
     def wait_for_locked_node(self):  # noqa: D102
         raise NotImplementedError
 
@@ -213,6 +226,20 @@ class SlurmCommands(SchedulerCommands):
 
         return _job_status_retryer()
 
+    def wait_job_queue_empty(self, timeout=12):
+        """Waits until the job queue is empty."""
+
+        @retry(
+            retry_on_result=lambda result: bool(result),  # Retry internally works with only boolean values
+            wait_fixed=seconds(10),
+            stop_max_delay=minutes(timeout),
+        )
+        def _job_queue_empty():
+            result = self._remote_command_executor.run_remote_command("squeue -h")
+            return result.stdout
+
+        return _job_queue_empty()
+
     def get_job_exit_status(self, job_id):  # noqa: D102
         return self.get_job_info(job_id, field="ExitCode")
 
@@ -230,6 +257,11 @@ class SlurmCommands(SchedulerCommands):
         match = re.search(r"Submitted batch job ([0-9]+)", sbatch_output)
         assert_that(match).is_not_none()
         return match.group(1)
+
+    def assert_no_jobs_in_queue(self):
+        """Checks that the job queue is now empty."""
+        result = self._remote_command_executor.run_remote_command("squeue -h")
+        assert_that(result.stdout).is_empty()
 
     def submit_command(
         self,
@@ -469,6 +501,12 @@ class SlurmCommands(SchedulerCommands):
             "sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
         ).stdout.splitlines()
 
+    def get_node_addr(self, node_name):
+        """Get NodeAddr attribute of a slurm compute node."""
+        result = self._remote_command_executor.run_remote_command(f"scontrol show nodes {node_name}").stdout
+        node_addr = re.search(r"NodeAddr=(.*) NodeHostName", result).group(1)
+        return node_addr
+
     def submit_command_and_assert_job_accepted(self, submit_command_args):
         """Submit a command and assert the job is accepted by scheduler."""
         result = self.submit_command(**submit_command_args)
@@ -619,6 +657,10 @@ class TorqueCommands(SchedulerCommands):
 
     def get_nodes_status(self):
         """Not implemented."""
+        raise NotImplementedError
+
+    def wait_job_queue_empty(self, timeout):
+        """Waits until the job queue is empty."""
         raise NotImplementedError
 
 
