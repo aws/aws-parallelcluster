@@ -130,7 +130,7 @@ CloudFormation / Custom Resource options:
   --cluster-custom-resource-service-token CLUSTER_CUSTOM_RESOURCE_SERVICE_TOKEN
                         ServiceToken (ARN) Cluster CloudFormation custom resource provider (default: None)
   --resource-bucket RESOURCE_BUCKET
-                        Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates. (default: None)
+                        Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates. {region} can be used to parametrize this value, and the bucket name will be formatted with the region where the test will be run (default: None)
   --lambda-layer-source LAMBDA_LAYER_SOURCE
                         S3 URI of lambda layer to copy instead of building. (default: None)
 
