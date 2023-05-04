@@ -17,7 +17,7 @@ import boto3
 import cfn_tools
 import pkg_resources
 import pytest
-from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from cfn_stacks_factory import CfnStack
 from troposphere import Output, Ref
 from troposphere.iam import ManagedPolicy
 from troposphere.template_generator import TemplateGenerator
@@ -51,8 +51,7 @@ def policies_template_path_fixture(resources_dir):
     return resources_dir / ".." / ".." / ".." / "cloudformation" / "policies" / "parallelcluster-policies.yaml"
 
 
-def cluster_custom_resource_provider_generator(credentials, region, stack_name, parameters, template):
-    factory = CfnStacksFactory(credentials)
+def cluster_custom_resource_provider_generator(cfn_stacks_factory, region, stack_name, parameters, template):
     with open(template, encoding="utf-8") as cfn_file:
         template_data = cfn_file.read()
 
@@ -64,16 +63,18 @@ def cluster_custom_resource_provider_generator(credentials, region, stack_name, 
         capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
     )
 
-    try:
-        factory.create_stack(stack, True)
-        yield stack.cfn_outputs.get("ServiceToken")
-    finally:
-        factory.delete_all_stacks()
+    cfn_stacks_factory.create_stack(stack, True)
+    yield stack.cfn_outputs.get("ServiceToken")
 
 
 @pytest.fixture(scope="class", name="cluster_custom_resource_provider")
 def cluster_custom_resource_provider_fixture(
-    request, region, resource_bucket, cluster_custom_resource_service_token, cluster_custom_resource_provider_template
+    cfn_stacks_factory,
+    request,
+    region,
+    resource_bucket,
+    cluster_custom_resource_service_token,
+    cluster_custom_resource_provider_template,
 ):
     """Create the cluster custom resource stack."""
     if cluster_custom_resource_service_token:
@@ -82,7 +83,7 @@ def cluster_custom_resource_provider_fixture(
 
     parameters = {"CustomBucket": resource_bucket}
     yield from cluster_custom_resource_provider_generator(
-        request.config.getoption("credential"),
+        cfn_stacks_factory,
         region,
         generate_stack_name("custom-resource-provider", request.config.getoption("stackname_suffix")),
         parameters,
@@ -92,10 +93,14 @@ def cluster_custom_resource_provider_fixture(
 
 @pytest.fixture(scope="class", name="cluster_custom_resource_factory")
 def cluster_custom_resource_factory_fixture(
-    request, region, os, cluster_custom_resource_template, cluster_custom_resource_provider, vpc_stack
+    cfn_stacks_factory,
+    request,
+    region,
+    os,
+    cluster_custom_resource_template,
+    cluster_custom_resource_provider,
+    vpc_stack,
 ):
-    factory = CfnStacksFactory(request.config.getoption("credential"))
-
     def _produce_cluster_custom_resource_stack(parameters=None):
         cluster_name = generate_stack_name("custom-resource-c", request.config.getoption("stackname_suffix"))
 
@@ -119,13 +124,11 @@ def cluster_custom_resource_factory_fixture(
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
         )
 
-        factory.create_stack(stack, True)
-        stack.factory = factory
+        cfn_stacks_factory.create_stack(stack, True)
+        stack.factory = cfn_stacks_factory
         return stack
 
     yield _produce_cluster_custom_resource_stack
-
-    factory.delete_all_stacks()
 
 
 @pytest.fixture(scope="class", name="resource_bucket_cluster_template")
@@ -161,9 +164,7 @@ def resource_bucket_cluster_template_fixture(policies_template_path, resource_bu
 
 
 @pytest.fixture(scope="class", name="resource_bucket_policies")
-def resource_bucket_policies_fixture(request, region, resource_bucket_cluster_template):
-    factory = CfnStacksFactory(request.config.getoption("credential"))
-
+def resource_bucket_policies_fixture(cfn_stacks_factory, request, region, resource_bucket_cluster_template):
     parameters = {"EnableIamAdminAccess": "true"}
     stack = CfnStack(
         name=generate_stack_name("resource-bucket-policies", request.config.getoption("stackname_suffix")),
@@ -173,8 +174,5 @@ def resource_bucket_policies_fixture(request, region, resource_bucket_cluster_te
         parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
     )
 
-    try:
-        factory.create_stack(stack, True)
-        yield stack
-    finally:
-        factory.delete_all_stacks()
+    cfn_stacks_factory.create_stack(stack, True)
+    yield stack
