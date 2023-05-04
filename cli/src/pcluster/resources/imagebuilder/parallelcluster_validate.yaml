@@ -385,5 +385,8 @@ phases:
           commands:
             - |
               set -vx
-
-              cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster::validations
+              echo "Performing InSpec validation on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster
+              inspec exec test/resources --profiles-path . --controls /tag:install/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec validation failed" && exit 1
+              echo "InSpec validation passed"
