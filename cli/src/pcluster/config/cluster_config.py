@@ -3094,6 +3094,17 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     result[instance_type] = instance_type_info.instance_type_data
         return result
 
+    @property
+    def has_gpu_health_checks_enabled(self):
+        """Return True if an queue or compute resources has GPU health checking enabled."""
+        for queue in self.scheduling.queues:
+            if queue.health_checks.gpu.enabled:
+                return True
+            for compute_resource in queue.compute_resources:
+                if compute_resource.health_checks.gpu.enabled:
+                    return True
+        return False
+
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         self._register_validator(
