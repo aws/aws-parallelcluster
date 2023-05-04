@@ -17,6 +17,8 @@ CHANGELOG
 - Add log rotation support for ParallelCluster managed logs.
 - Track common errors of compute nodes and longest dynamic node idle time on Cloudwatch Dashboard.
 - Enforce the DCV Authenticator Server to use at least `TLS-1.2` protocol when creating the SSL Socket.
+- Load kernel module [nvidia-uvm](https://developer.nvidia.com/blog/unified-memory-cuda-beginners/) by default to provide Unified Virtual Memory (UVM) functionality to the CUDA driver.
+- Install [NVIDIA Persistence Daemon](https://docs.nvidia.com/deploy/driver-persistence/index.html) as a system service.
 
 **CHANGES**
 - Upgrade Slurm to version 23.02.1.
