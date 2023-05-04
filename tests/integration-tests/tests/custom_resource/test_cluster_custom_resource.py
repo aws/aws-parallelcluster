@@ -200,6 +200,7 @@ def test_cluster_delete_retain(request, region, cluster_custom_resource_provider
     ],
 )
 def test_cluster_create_with_custom_policies(
+    cfn_stacks_factory,
     request,
     region,
     resource_bucket,
@@ -212,7 +213,7 @@ def test_cluster_create_with_custom_policies(
     """Create a custom resource provider with a custom role and create a cluster to validate it."""
     parameters = {"CustomBucket": resource_bucket, stack_param: resource_bucket_policies.cfn_outputs[cfn_output]}
     custom_resource_gen = cluster_custom_resource_provider_generator(
-        request.config.getoption("credential"),
+        cfn_stacks_factory,
         region,
         generate_stack_name("custom-resource-provider", request.config.getoption("stackname_suffix")),
         parameters,
