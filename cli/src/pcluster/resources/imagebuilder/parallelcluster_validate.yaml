@@ -165,7 +165,7 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(jq '.default.cluster.nvidia.cuda.version' {{ CookbookDefaultFile }})
+              PATTERN=$(jq '.default.cluster.nvidia.cuda_version' {{ CookbookDefaultFile }})
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
