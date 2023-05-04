@@ -22,7 +22,7 @@ CHANGELOG
 - Install [NVIDIA Persistence Daemon](https://docs.nvidia.com/deploy/driver-persistence/index.html) as a system service.
 
 **CHANGES**
-- Upgrade Slurm to version 23.02.1.
+- Upgrade Slurm to version 23.02.2.
 - Upgrade munge to version 0.5.15.
 - Set Slurm default `TreeWidth` to 30.
 - Set Slurm prolog and epilog configurations to target a directory, `/opt/slurm/etc/scripts/prolog.d/` and `/opt/slurm/etc/scripts/epilog.d/` respectively.
