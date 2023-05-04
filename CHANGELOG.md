@@ -26,6 +26,7 @@ CHANGELOG
 - Add log rotation support for ParallelCluster managed logs.
 - Track common errors of compute nodes and longest dynamic node idle time on Cloudwatch Dashboard.
 - Enforce the DCV Authenticator Server to use at least `TLS-1.2` protocol when creating the SSL Socket.
+- Install [NVIDIA Data Center GPU Manager (DCGM)](https://developer.nvidia.com/dcgm) package on all supported OSes except for aarch64 `centos7` and `alinux2`.
 - Load kernel module [nvidia-uvm](https://developer.nvidia.com/blog/unified-memory-cuda-beginners/) by default to provide Unified Virtual Memory (UVM) functionality to the CUDA driver.
 - Install [NVIDIA Persistence Daemon](https://docs.nvidia.com/deploy/driver-persistence/index.html) as a system service.
 
