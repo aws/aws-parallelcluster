@@ -108,14 +108,6 @@ phases:
               set -v
               [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]] && echo "true" || echo "false"
 
-      - name: ArmPLSupported
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              [[ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]] && echo "true" || echo "false"
-
       - name: FabricManagerSupported
         action: ExecuteBash
         inputs:
@@ -340,20 +332,6 @@ phases:
               [[ $? -ne 0 ]] && echo "Check for Lustre client failed" && exit 1
               echo "FSx Lustre test passed"
 
-      - name: ArmPL
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              if [ {{ validate.ArmPLSupported.outputs.stdout }} == true ]; then
-                echo "Checking gcc version and module loaded..."
-                cd /etc/chef/cookbooks/aws-parallelcluster
-                inspec exec test/resources --profiles-path . --controls /^arm_pl/ --no-distinct-exit
-                [[ $? -ne 0 ]] && echo "ArmPL test failed" && exit 1
-                echo "ArmPL test passed"
-              fi
-
       - name: Python
         action: ExecuteBash
         inputs:
@@ -379,7 +357,7 @@ phases:
                 fi
                 echo "dpkg test passed"
               fi
-      - name: ChefValidations
+      - name: InSpecValidations
         action: ExecuteBash
         inputs:
           commands:
