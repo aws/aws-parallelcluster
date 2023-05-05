@@ -38,6 +38,15 @@ CHANGELOG
   - Open MPI: `openmpi40-aws-4.1.5-1`
 - Upgrade Lustre client version to 2.12 on Amazon Linux 2 (same version available on Ubuntu 20.04, 18.04 and CentOS >= 7.7).
 - Upgrade Lustre client version to 2.10.8 on CentOS 7.6.
+- Upgrade NVIDIA driver to version 470.182.03.
+- Upgrade NVIDIA Fabric Manager to version 470.182.03.
+- Upgrade NVIDIA CUDA Toolkit to version 11.8.0.
+- Upgrade NVIDIA CUDA sample to version 11.8.0.
+- Upgrade NICE DCV to version `2023.0-15022`.
+  - server: `2023.0.15022-1`
+  - xdcv: `2023.0.547-1`
+  - gl: `2023.0.1027-1`
+  - web_viewer: `2023.0.15022-1`
 - Upgrade `aws-cfn-bootstrap` to version 2.0-24.
 - Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
   `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
