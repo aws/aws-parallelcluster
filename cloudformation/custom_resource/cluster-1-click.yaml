@@ -41,7 +41,7 @@ Resources:
         PrivateCIDR: 10.0.16.0/20
         AvailabilityZone: !Ref AvailabilityZone
       TemplateURL: !Sub
-        - https://${Bucket}.s3.${AWS::Region}.${AWS::URLSuffix}.com/parallelcluster/${Version}/templates/networking/public-private-${Version}.cfn.json
+        - https://${Bucket}.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${Version}/templates/networking/public-private-${Version}.cfn.json
         - { Version: !FindInMap [ParallelCluster, Constants, Version],
             Bucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Sub "${AWS::Region}-aws-parallelcluster" ]
           }
