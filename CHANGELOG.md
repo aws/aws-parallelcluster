@@ -52,6 +52,16 @@ CHANGELOG
 - Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
   `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
   `aws/codebuild/amazonlinux2-aarch64-standard:1.0` to `aws/codebuild/amazonlinux2-aarch64-standard:2.0`.
+- Upgrade NVIDIA driver to version 470.182.03.
+- Upgrade NVIDIA Fabric Manager to version 470.182.03.
+- Upgrade NVIDIA CUDA Toolkit to version 11.8.0.
+- Upgrade NVIDIA CUDA sample to version 11.8.0.
+- Upgrade Intel MPI Library to 2021.9.0.43482.
+- Upgrade NICE DCV to version `2023.0-15022`.
+  - server: `2023.0.15022-1`
+  - xdcv: `2023.0.547-1`
+  - gl: `2023.0.1027-1`
+  - web_viewer: `2023.0.15022-1`
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
