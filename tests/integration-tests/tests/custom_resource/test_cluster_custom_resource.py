@@ -226,3 +226,9 @@ def test_cluster_create_with_custom_policies(
     cluster_name = _stack_parameter(stack, "ClusterName")
     cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")
     assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
+
+
+def test_cluster_1_click(cluster_1_click):
+    """Create a cluster using the 1-click template to validate it."""
+    head_node_ip = cluster_1_click.cfn_outputs.get("HeadNodeIp")
+    assert_that(head_node_ip).is_not_empty()
