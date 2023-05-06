@@ -20,6 +20,7 @@ Mappings:
 
 Conditions:
   UseCustomBucket: !Not [!Equals [!FindInMap [ParallelCluster, Constants, Bucket], '']]
+  GovCloud: !Equals [!Ref AWS::Partition, 'aws-us-gov']
 
 Resources:
   PclusterClusterProvider:
@@ -27,6 +28,7 @@ Resources:
     Properties:
       Parameters:
         CustomBucket: !If [ UseCustomBucket, !FindInMap [ParallelCluster, Constants, Bucket], !Ref AWS::NoValue ]
+        AdditionalIamPolicies: !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
       TemplateURL: !Sub
         - https://${Bucket}.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${Version}/templates/custom_resource/cluster.yaml
         - { Version: !FindInMap [ParallelCluster, Constants, Version ],
@@ -66,6 +68,9 @@ Resources:
             SubnetId: !GetAtt [ PclusterVpc, Outputs.PublicSubnetId ]
           Ssh:
             KeyName: !Ref KeyName
+          Iam:
+            AdditionalIamPolicies:
+              - Policy: !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
         Scheduling:
           Scheduler: slurm
           SlurmQueues:
@@ -81,6 +86,13 @@ Outputs:
   HeadNodeIp:
     Description: The Public IP address of the HeadNode
     Value: !GetAtt [ PclusterCluster, headNode.publicIpAddress ]
+  SystemManagerUrl:
+    Description: URL to access the HeadNode via SystemManager
+    Value: !Sub
+      - https://${ConsoleDomain}/systems-manager/session-manager/${InstanceId}?region=${AWS::Region}
+      - { ConsoleDomain: !If [ GovCloud, 'console.amazonaws-us-gov.com', !Sub '${AWS::Region}.console.aws.amazon.com'],
+          InstanceId: !GetAtt [ PclusterCluster, headNode.instanceId ]
+        }
   ValidationMessages:
     Description: Any warnings from cluster create or update operations.
     Value: !GetAtt PclusterCluster.validationMessages

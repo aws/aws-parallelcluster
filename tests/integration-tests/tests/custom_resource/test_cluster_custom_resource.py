@@ -231,4 +231,6 @@ def test_cluster_create_with_custom_policies(
 def test_cluster_1_click(cluster_1_click):
     """Create a cluster using the 1-click template to validate it."""
     head_node_ip = cluster_1_click.cfn_outputs.get("HeadNodeIp")
+    system_manager_url = cluster_1_click.cfn_outputs.get("SystemManagerUrl")
     assert_that(head_node_ip).is_not_empty()
+    assert_that(system_manager_url).is_not_empty()
