@@ -46,6 +46,11 @@ def cluster_custom_resource_provider_template_fixture(resources_dir):
     return resources_dir / ".." / ".." / ".." / "cloudformation" / "custom_resource" / "cluster.yaml"
 
 
+@pytest.fixture(scope="session", name="cluster_custom_resource_1_click_template")
+def cluster_custom_resource_1_click_template_fixture(resources_dir):
+    return resources_dir / ".." / ".." / ".." / "cloudformation" / "custom_resource" / "cluster-1-click.yaml"
+
+
 @pytest.fixture(scope="session", name="policies_template_path")
 def policies_template_path_fixture(resources_dir):
     return resources_dir / ".." / ".." / ".." / "cloudformation" / "policies" / "parallelcluster-policies.yaml"
@@ -89,6 +94,25 @@ def cluster_custom_resource_provider_fixture(
         parameters,
         cluster_custom_resource_provider_template,
     )
+
+
+@pytest.fixture(scope="class", name="cluster_1_click")
+def cluster_1_click_fixture(cfn_stacks_factory, request, region, key_name, cluster_custom_resource_1_click_template):
+    with open(cluster_custom_resource_1_click_template, encoding="utf-8") as cfn_file:
+        template_data = cfn_file.read()
+
+    stack_name = generate_stack_name("cluster-1-click", request.config.getoption("stackname_suffix"))
+    parameters = {"KeyName": key_name, "AvailabilityZone": f"{region}a"}
+    stack = CfnStack(
+        name=stack_name,
+        region=region,
+        template=template_data,
+        parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
+        capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
+    )
+
+    cfn_stacks_factory.create_stack(stack, True)
+    return stack
 
 
 @pytest.fixture(scope="class", name="cluster_custom_resource_factory")
