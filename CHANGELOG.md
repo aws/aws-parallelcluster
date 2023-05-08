@@ -42,6 +42,7 @@ CHANGELOG
 - Upgrade NVIDIA Fabric Manager to version 470.182.03.
 - Upgrade NVIDIA CUDA Toolkit to version 11.8.0.
 - Upgrade NVIDIA CUDA sample to version 11.8.0.
+- Upgrade Intel MPI Library to 2021.9.0.43482.
 - Upgrade NICE DCV to version `2023.0-15022`.
   - server: `2023.0.15022-1`
   - xdcv: `2023.0.547-1`
