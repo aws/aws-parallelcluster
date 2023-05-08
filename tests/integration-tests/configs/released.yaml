@@ -30,7 +30,8 @@ test-suites:
     test_api.py::test_official_images:
       dimensions:
         - regions: ["sa-east-1"]
-  custom_resource:
-    test_cluster_custom_resource.py::test_cluster_1_click:
-      dimensions:
-        - regions: ["us-east-2"]
+  # Add in once released is >= 3.6.0
+  # custom_resource:
+  #   test_cluster_custom_resource.py::test_cluster_1_click:
+  #     dimensions:
+  #       - regions: ["us-east-2"]
