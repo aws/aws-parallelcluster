@@ -200,6 +200,7 @@ phases:
               set -v
               sudo sed -i "s#path: cookbooks#path: /etc/chef/cookbooks#g" /etc/chef/cookbooks/aws-parallelcluster/test/recipes/inspec.yml
               sudo sed -i "s#path: cookbooks#path: /etc/chef/cookbooks#g" /etc/chef/cookbooks/aws-parallelcluster/test/resources/inspec.yml
+              sed -Ei "s#path: .+/aws-parallelcluster#path: /etc/chef/cookbooks/aws-parallelcluster#g" /etc/chef/cookbooks/aws-parallelcluster-platform/test/inspec.yml
               echo "InSpec profiles patched"
 
       - name: NvidiaEnabled
@@ -357,14 +358,39 @@ phases:
                 fi
                 echo "dpkg test passed"
               fi
-      - name: InSpecValidations
+
+      - name: InSpecValidationsForResources
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -vx
-              echo "Performing InSpec validation on the AMI..."
+              echo "Performing InSpec validation for resources on the AMI..."
               cd /etc/chef/cookbooks/aws-parallelcluster
               inspec exec test/resources --profiles-path . --controls /tag:install/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec validation failed" && exit 1
-              echo "InSpec validation passed"
+              [[ $? -ne 0 ]] && echo "InSpec validation for resources failed" && exit 1
+              echo "InSpec validation for resources passed"
+
+      - name: InSpecValidationsForRecipes
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec validation for recipes on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster
+              inspec exec test/recipes --profiles-path . --controls /tag:install/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec validation for recipes failed" && exit 1
+              echo "InSpec validation for recipes passed"
+
+      - name: InSpecValidationsForPlatform
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec validation for platform on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster-platform
+              inspec exec test --profiles-path . --controls /tag:install/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec validation for platform failed" && exit 1
+              echo "InSpec validation for platform passed"
