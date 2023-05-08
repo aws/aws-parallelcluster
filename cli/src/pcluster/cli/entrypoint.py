@@ -23,26 +23,21 @@ from functools import partial
 import argparse
 from botocore.exceptions import NoCredentialsError  # TODO: remove
 
+# Controllers
+import pcluster.api.controllers.cluster_compute_fleet_controller
+import pcluster.api.controllers.cluster_instances_controller
+import pcluster.api.controllers.cluster_operations_controller
+import pcluster.api.controllers.image_operations_controller
+import pcluster.api.errors
+import pcluster.cli.commands.commands as cli_commands
 import pcluster.cli.logger as pcluster_logging
+import pcluster.cli.model
+from pcluster.api import encoder
+from pcluster.cli.commands.common import CliCommand, exit_msg, to_bool, to_int, to_number
+from pcluster.cli.exceptions import APIOperationException, ParameterException
 from pcluster.cli.logger import redirect_stdouterr_to_logger
-
-pcluster_logging.config_logger()
-
-# Redirect console output from imports to log file (https://github.com/aws/jsii/issues/4065)
-with redirect_stdouterr_to_logger():
-    # Controllers
-    import pcluster.api.controllers.cluster_compute_fleet_controller
-    import pcluster.api.controllers.cluster_instances_controller
-    import pcluster.api.controllers.cluster_operations_controller
-    import pcluster.api.controllers.image_operations_controller
-    import pcluster.api.errors
-    import pcluster.cli.commands.commands as cli_commands
-    import pcluster.cli.model
-    from pcluster.api import encoder
-    from pcluster.cli.commands.common import CliCommand, exit_msg, to_bool, to_int, to_number
-    from pcluster.cli.exceptions import APIOperationException, ParameterException
-    from pcluster.cli.middleware import add_additional_args, middleware_hooks
-    from pcluster.utils import to_camel_case, to_snake_case
+from pcluster.cli.middleware import add_additional_args, middleware_hooks
+from pcluster.utils import to_camel_case, to_snake_case
 
 LOGGER = logging.getLogger(__name__)
 
@@ -263,6 +258,7 @@ def run(sys_args, model=None):
 
 
 def main():
+    pcluster_logging.config_logger()
     try:
         ret = run(sys.argv[1:])
         if ret:
