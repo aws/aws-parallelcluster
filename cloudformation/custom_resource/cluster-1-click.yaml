@@ -21,6 +21,7 @@ Mappings:
 Conditions:
   UseCustomBucket: !Not [!Equals [!FindInMap [ParallelCluster, Constants, Bucket], '']]
   GovCloud: !Equals [!Ref AWS::Partition, 'aws-us-gov']
+  China: !Equals [!Ref AWS::Partition, 'aws-cn']
 
 Resources:
   PclusterClusterProvider:
@@ -90,7 +91,7 @@ Outputs:
     Description: URL to access the HeadNode via SystemManager
     Value: !Sub
       - https://${ConsoleDomain}/systems-manager/session-manager/${InstanceId}?region=${AWS::Region}
-      - { ConsoleDomain: !If [ GovCloud, 'console.amazonaws-us-gov.com', !Sub '${AWS::Region}.console.aws.amazon.com'],
+      - { ConsoleDomain: !If [ GovCloud, 'console.amazonaws-us-gov.com', !If [ China, 'console.amazonaws.cn', !Sub '${AWS::Region}.console.aws.amazon.com']],
           InstanceId: !GetAtt [ PclusterCluster, headNode.instanceId ]
         }
   ValidationMessages:
