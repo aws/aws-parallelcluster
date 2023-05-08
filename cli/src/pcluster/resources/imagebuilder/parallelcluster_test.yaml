@@ -294,3 +294,15 @@ phases:
               inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for platform failed" && exit 1
               echo "InSpec tests for platform passed"
+
+      - name: InSpecTestsForEnvironment
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec tests for environment on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster-environment
+              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec tests for environment failed" && exit 1
+              echo "InSpec tests for environment passed"
