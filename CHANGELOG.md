@@ -22,6 +22,7 @@ CHANGELOG
 - Install [NVIDIA Persistence Daemon](https://docs.nvidia.com/deploy/driver-persistence/index.html) as a system service.
 
 **CHANGES**
+- Note 3.6 will be the last release to include support for Ubuntu 18. Subsequent releases will only support Ubuntu from version 20.
 - Upgrade Slurm to version 23.02.2.
 - Upgrade munge to version 0.5.15.
 - Set Slurm default `TreeWidth` to 30.
