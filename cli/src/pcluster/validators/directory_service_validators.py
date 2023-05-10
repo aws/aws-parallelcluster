@@ -81,9 +81,6 @@ class PasswordSecretArnValidator(Validator):
          2. a readable parameter in SSM Parameter Store, which is supported only in us-isob-east-1.
         """
         try:
-            # CDK import must be inside the redirect_stdouterr_to_logger contextmanager
-            from aws_cdk.core import Arn, ArnFormat  # pylint: disable=C0415
-
             # We only require the secret to exist; we do not validate its content.
             arn_components = password_secret_arn.split(":")
             service = arn_components[2]
