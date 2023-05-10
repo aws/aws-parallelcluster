@@ -35,7 +35,7 @@ $ pip3 install awscli
 ```
 
 [Node.js](https://nodejs.org/en/) is required by AWS CDK library used by ParallelCluster.
-Please reference installation instructions [in the AWS CDK documentaton](https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3.html).
+Please reference installation instructions [in the AWS CDK documentaton](https://docs.aws.amazon.com/cdk/v2/guide/work-with.html#work-with-prerequisites).
 
 Then you can install AWS ParallelCluster:
 
