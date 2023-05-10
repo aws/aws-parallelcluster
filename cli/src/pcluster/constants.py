@@ -96,12 +96,11 @@ EBS_VOLUME_TYPE_DEFAULT_US_ISO = "gp2"
 
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0
-MAX_NUMBER_OF_QUEUES = 100
+MAX_NUMBER_OF_QUEUES = 50
 SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES = 10
 SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
-MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER = 150  # Based on API timeout limitations
-MAX_COMPUTE_RESOURCES_PER_DEPLOYMENT_WAVE = 150  # Maximum compute resources that can be deployed at the same time
-MAX_COMPUTE_RESOURCES_PER_QUEUE = 40  # Ensures that each queue will share the same stack as its compute resources
+# Allow for flexibility in how compute resources are distributed in the cluster
+MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER = MAX_COMPUTE_RESOURCES_PER_QUEUE = 50
 
 MAX_EBS_COUNT = 5
 MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}

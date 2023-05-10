@@ -38,7 +38,7 @@ from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_attr, get_http_tokens_setting
 
 
-class QueueGroupStack(NestedStack):
+class QueuesStack(NestedStack):
     """Stack encapsulating a set of queues and the associated resources."""
 
     def __init__(
