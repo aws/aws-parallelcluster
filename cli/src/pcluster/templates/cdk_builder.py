@@ -18,7 +18,6 @@ import tempfile
 from pcluster.config.cluster_config import BaseClusterConfig
 from pcluster.config.imagebuilder_config import ImageBuilderConfig
 from pcluster.models.s3_bucket import S3Bucket
-from pcluster.templates.cdk_artifacts_manager import CDKArtifactsManager
 from pcluster.utils import load_yaml_dict
 
 LOGGER = logging.getLogger(__name__)
@@ -35,6 +34,8 @@ class CDKTemplateBuilder:
         LOGGER.info("Importing CDK...")
         from aws_cdk.core import App  # pylint: disable=C0415
 
+        # CDK import must be inside the redirect_stdouterr_to_logger contextmanager
+        from pcluster.templates.cdk_artifacts_manager import CDKArtifactsManager  # pylint: disable=C0415
         from pcluster.templates.cluster_stack import ClusterCdkStack  # pylint: disable=C0415
 
         LOGGER.info("CDK import completed successfully")
