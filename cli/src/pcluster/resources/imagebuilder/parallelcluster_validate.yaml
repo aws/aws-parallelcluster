@@ -406,3 +406,15 @@ phases:
               inspec exec test --profiles-path . --controls /tag:install/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec validation for environment failed" && exit 1
               echo "InSpec validation for environment passed"
+
+      - name: InSpecValidationsForComputeFleet
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec validation for compute fleet on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster-computefleet
+              inspec exec test --profiles-path . --controls /tag:install/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec validation for compute fleet failed" && exit 1
+              echo "InSpec validation for compute fleet passed"

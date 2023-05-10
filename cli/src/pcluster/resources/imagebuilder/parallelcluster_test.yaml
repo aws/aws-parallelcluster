@@ -72,16 +72,6 @@ phases:
               echo ${VERSION}
 
       ### paths ###
-      - name: SystemPyenvRoot
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PATTERN=$(jq '.default.cluster.system_pyenv_root' {{ CookbookDefaultFile }})
-              PYENV_ROOT=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              echo ${PYENV_ROOT}
-
       - name: SchedulerPluginPyenvRoot
         action: ExecuteBash
         inputs:
@@ -91,22 +81,6 @@ phases:
               PATTERN=$(jq '.default.cluster.scheduler_plugin.pyenv_root' {{ CookbookDefaultFile }})
               PYENV_ROOT=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${PYENV_ROOT}
-
-      - name: CookbookVirtualenvPath
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              echo "{{ test.SystemPyenvRoot.outputs.stdout }}/versions/{{ test.PythonVersion.outputs.stdout }}/envs/cookbook_virtualenv"
-
-      - name: NodeVirtualenvPath
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              echo "{{ test.SystemPyenvRoot.outputs.stdout }}/versions/{{ test.PythonVersion.outputs.stdout }}/envs/node_virtualenv"
 
       - name: SchedulerPluginVirtualenvPath
         action: ExecuteBash
@@ -161,10 +135,6 @@ phases:
               echo "Executing awscli as root..."
               aws --version
               [[ $? -ne 0 ]] && echo "fail to execute awscli as root" && exit 1
-
-              echo "Executing awscli as root in cookbook virtualenv.."
-              {{ test.CookbookVirtualenvPath.outputs.stdout }}/bin/aws --version
-              [[ $? -ne 0 ]] && echo "fail to execute awscli as root in cookbook virtualenv" && exit 1
               echo "AWSCli test passed"
 
       - name: Virtualenv
@@ -175,11 +145,6 @@ phases:
               set -vx
 
               echo "Checking virtualenv python version..."
-              {{ test.CookbookVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.PythonVersion.outputs.stdout }}
-              [[ $? -ne 0 ]] && echo "Check cookbook virtualenv python version failed" && exit 1
-
-              {{ test.NodeVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.PythonVersion.outputs.stdout }}
-              [[ $? -ne 0 ]] && echo "Check node virtualenv python version failed" && exit 1
 
               if [[ {{ test.OperatingSystemName.outputs.stdout }} != 'rhel8' ]]; then
                 {{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.SchedulerPluginPythonVersion.outputs.stdout }}
@@ -196,8 +161,6 @@ phases:
           commands:
             - |
               set -vx
-              COOKBOOK_PIP_VERSION=$({{ test.CookbookVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
-              NODE_PIP_VERSION=$({{ test.NodeVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
               SCHEDULER_PLUGIN_PIP_VERSION=$({{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
 
               older_than_required_version(){
@@ -210,8 +173,6 @@ phases:
                 fi
               }
               # pip versions >= 19.3 is required to enable installation of python wheel binaries on Graviton
-              [[ $(older_than_required_version "${COOKBOOK_PIP_VERSION}") == true ]] && echo "pip version in cookbook virtualenv must be greater than 19.3" && exit 1
-              [[ $(older_than_required_version "${NODE_PIP_VERSION}") == true ]] && echo "pip version in node virtualenv must be greater than 19.3" && exit 1
               [[ $(older_than_required_version "${SCHEDULER_PLUGIN_PIP_VERSION}") == true ]] && echo "pip version in scheduler plugin virtualenv must be greater than 19.3" && exit 1
               echo "Pip test passed"
 
@@ -306,3 +267,15 @@ phases:
               inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for environment failed" && exit 1
               echo "InSpec tests for environment passed"
+
+      - name: InSpecTestsForComputeFleet
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec tests for compute fleet on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster-computefleet
+              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec tests for compute fleet failed" && exit 1
+              echo "InSpec tests for compute fleet passed"
