@@ -12,8 +12,6 @@
 import re
 from urllib.parse import urlparse
 
-from aws_cdk.core import Arn, ArnFormat
-
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import DIRECTORY_SERVICE_RESERVED_SETTINGS
@@ -84,12 +82,16 @@ class PasswordSecretArnValidator(Validator):
         """
         try:
             # We only require the secret to exist; we do not validate its content.
-            arn_components = Arn.split(password_secret_arn, ArnFormat.COLON_RESOURCE_NAME)
-            service, resource = arn_components.service, arn_components.resource
+            arn_components = password_secret_arn.split(":")
+            service = arn_components[2]
+            resource = arn_components[5]
+            if service == "ssm":
+                resource = arn_components[5].split("/")[0]
+
             if service == "secretsmanager" and resource == "secret" and region != "us-isob-east-1":
                 AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
             elif service == "ssm" and resource == "parameter" and region == "us-isob-east-1":
-                parameter_name = arn_components.resource_name
+                parameter_name = arn_components[5].split("/")[1]
                 AWSApi.instance().ssm.get_parameter(parameter_name)
             else:
                 self._add_failure(
