@@ -27,7 +27,6 @@ from botocore.exceptions import NoCredentialsError  # TODO: remove
 os.environ["JSII_SILENCE_WARNING_KNOWN_BROKEN_NODE_VERSION"] = "1"
 os.environ["JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION"] = "1"
 os.environ["JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION"] = "1"
-os.environ["JSII_SILENCE_WARNING_END_OF_LIFE_NODE_VERSION"] = "1"
 
 # Controllers
 import pcluster.api.controllers.cluster_compute_fleet_controller  # noqa: E402
