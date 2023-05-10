@@ -13,7 +13,7 @@ CHANGELOG
 3.6.0
 ----
 **ENHANCEMENTS**
-- Add support for RHEL8.
+- Add support for RHEL8.7.
 - Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
 - Build Slurm with support for LUA.
