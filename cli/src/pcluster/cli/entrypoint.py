@@ -23,21 +23,27 @@ from functools import partial
 import argparse
 from botocore.exceptions import NoCredentialsError  # TODO: remove
 
+# Suppress JSII warnings for Node version
+os.environ["JSII_SILENCE_WARNING_KNOWN_BROKEN_NODE_VERSION"] = "1"
+os.environ["JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION"] = "1"
+os.environ["JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION"] = "1"
+os.environ["JSII_SILENCE_WARNING_END_OF_LIFE_NODE_VERSION"] = "1"
+
 # Controllers
-import pcluster.api.controllers.cluster_compute_fleet_controller
-import pcluster.api.controllers.cluster_instances_controller
-import pcluster.api.controllers.cluster_operations_controller
-import pcluster.api.controllers.image_operations_controller
-import pcluster.api.errors
-import pcluster.cli.commands.commands as cli_commands
-import pcluster.cli.logger as pcluster_logging
-import pcluster.cli.model
-from pcluster.api import encoder
-from pcluster.cli.commands.common import CliCommand, exit_msg, to_bool, to_int, to_number
-from pcluster.cli.exceptions import APIOperationException, ParameterException
-from pcluster.cli.logger import redirect_stdouterr_to_logger
-from pcluster.cli.middleware import add_additional_args, middleware_hooks
-from pcluster.utils import to_camel_case, to_snake_case
+import pcluster.api.controllers.cluster_compute_fleet_controller  # noqa: E402
+import pcluster.api.controllers.cluster_instances_controller  # noqa: E402
+import pcluster.api.controllers.cluster_operations_controller  # noqa: E402
+import pcluster.api.controllers.image_operations_controller  # noqa: E402
+import pcluster.api.errors  # noqa: E402
+import pcluster.cli.commands.commands as cli_commands  # noqa: E402
+import pcluster.cli.logger as pcluster_logging  # noqa: E402
+import pcluster.cli.model  # noqa: E402
+from pcluster.api import encoder  # noqa: E402
+from pcluster.cli.commands.common import CliCommand, exit_msg, to_bool, to_int, to_number  # noqa: E402
+from pcluster.cli.exceptions import APIOperationException, ParameterException  # noqa: E402
+from pcluster.cli.logger import redirect_stdouterr_to_logger  # noqa: E402
+from pcluster.cli.middleware import add_additional_args, middleware_hooks  # noqa: E402
+from pcluster.utils import to_camel_case, to_snake_case  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
