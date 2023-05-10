@@ -7,14 +7,13 @@ CHANGELOG
 **ENHANCEMENTS**
 
 **CHANGES**
-- Upgrade Slurm to version 23.02.2.
 
 **BUG FIXES**
 
 3.6.0
 ----
 **ENHANCEMENTS**
-- Add support for RHEL8.
+- Add support for RHEL8.7.
 - Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
 - Build Slurm with support for LUA.
@@ -32,7 +31,8 @@ CHANGELOG
 - Install [NVIDIA Persistence Daemon](https://docs.nvidia.com/deploy/driver-persistence/index.html) as a system service.
 
 **CHANGES**
-- Upgrade Slurm to version 23.02.1.
+- Note 3.6 will be the last release to include support for Ubuntu 18. Subsequent releases will only support Ubuntu from version 20.
+- Upgrade Slurm to version 23.02.2.
 - Upgrade munge to version 0.5.15.
 - Set Slurm default `TreeWidth` to 30.
 - Set Slurm prolog and epilog configurations to target a directory, `/opt/slurm/etc/scripts/prolog.d/` and `/opt/slurm/etc/scripts/epilog.d/` respectively.
@@ -48,10 +48,6 @@ CHANGELOG
   - Open MPI: `openmpi40-aws-4.1.5-1`
 - Upgrade Lustre client version to 2.12 on Amazon Linux 2 (same version available on Ubuntu 20.04, 18.04 and CentOS >= 7.7).
 - Upgrade Lustre client version to 2.10.8 on CentOS 7.6.
-- Upgrade `aws-cfn-bootstrap` to version 2.0-24.
-- Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
-  `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
-  `aws/codebuild/amazonlinux2-aarch64-standard:1.0` to `aws/codebuild/amazonlinux2-aarch64-standard:2.0`.
 - Upgrade NVIDIA driver to version 470.182.03.
 - Upgrade NVIDIA Fabric Manager to version 470.182.03.
 - Upgrade NVIDIA CUDA Toolkit to version 11.8.0.
@@ -62,6 +58,10 @@ CHANGELOG
   - xdcv: `2023.0.547-1`
   - gl: `2023.0.1027-1`
   - web_viewer: `2023.0.15022-1`
+- Upgrade `aws-cfn-bootstrap` to version 2.0-24.
+- Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
+  `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
+  `aws/codebuild/amazonlinux2-aarch64-standard:1.0` to `aws/codebuild/amazonlinux2-aarch64-standard:2.0`.
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
