@@ -126,10 +126,9 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
 
     # The max number of queues cannot be used with the max number of compute resources
     # (it will exceed the max number of compute resources per cluster)
-    # This workaround uses half of the max number of queues. It then calculates the number of compute resources to use
-    # as the quotient of dividing the max number of compute resources per cluster by the half.
-    max_number_of_queues = MAX_NUMBER_OF_QUEUES // 2
-    max_number_of_crs = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // max_number_of_queues
+    # This workaround calculates the number of compute resources to use
+    # as the quotient of dividing the max number of compute resources per cluster by the MAX_NUMBER_OF_QUEUES.
+    max_number_of_crs = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // MAX_NUMBER_OF_QUEUES
 
     # Try to search for jinja templates in the test_datadir, this is mainly to verify pcluster limits
     rendered_config_file = pcluster_config_reader(
@@ -138,7 +137,7 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
         max_new_storage_count=MAX_NEW_STORAGE_COUNT,
         max_existing_storage_count=MAX_EXISTING_STORAGE_COUNT,
         # number of queues, compute resources and security groups highly impacts the size of AWS resources
-        max_number_of_queues=max_number_of_queues,
+        max_number_of_queues=MAX_NUMBER_OF_QUEUES,
         max_number_of_ondemand_crs=max_number_of_crs,
         max_number_of_spot_crs=max_number_of_crs,
         number_of_sg_per_queue=1,
@@ -242,22 +241,22 @@ def test_add_alarms(mocker, config_file_name):
                         "HeadNodeRoleName": {"Ref": "RoleHeadNode"},
                         "ComputeFleetRoleNames": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0Role15b342af42246b70E9AB1575Ref",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesRole15b342af42246b70FB1D57C8Ref",
                             ]
                         },
                         "LaunchTemplate1f8c19f38f8d4f7fVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
-                                + "C4380LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
+                                + "LatestVersionNumber",
                             ]
                         },
                         "LaunchTemplateA6f65dee6703df4aVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
-                                + "14750LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
+                                + "LatestVersionNumber",
                             ]
                         },
                     },
@@ -279,22 +278,22 @@ def test_add_alarms(mocker, config_file_name):
                         "HeadNodeRoleName": "",
                         "ComputeFleetRoleNames": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0Role15b342af42246b70E9AB1575Ref",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesRole15b342af42246b70FB1D57C8Ref",
                             ]
                         },
                         "LaunchTemplate1f8c19f38f8d4f7fVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
-                                + "C4380LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
+                                + "LatestVersionNumber",
                             ]
                         },
                         "LaunchTemplateA6f65dee6703df4aVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
-                                + "14750LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
+                                + "LatestVersionNumber",
                             ]
                         },
                     },
@@ -317,23 +316,23 @@ def test_add_alarms(mocker, config_file_name):
                         "ComputeFleetRoleNames": "",
                         "LaunchTemplate1f8c19f38f8d4f7fVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
-                                + "C4380LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
+                                + "LatestVersionNumber",
                             ]
                         },
                         "LaunchTemplate7916067054f91933Version": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate7916067054f919335AF"
-                                + "28643LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate7916067054f9193305F5F96F"
+                                + "LatestVersionNumber",
                             ]
                         },
                         "LaunchTemplateA6f65dee6703df4aVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
-                                + "14750LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
+                                + "LatestVersionNumber",
                             ]
                         },
                     },
@@ -355,36 +354,36 @@ def test_add_alarms(mocker, config_file_name):
                         "HeadNodeRoleName": "",
                         "ComputeFleetRoleNames": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0Role15b342af42246b70E9AB1575Ref",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesRole15b342af42246b70FB1D57C8Ref",
                             ]
                         },
                         "LaunchTemplate1f8c19f38f8d4f7fVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate1f8c19f38f8d4f7f658"
-                                + "C4380LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
+                                + "LatestVersionNumber",
                             ]
                         },
                         "LaunchTemplate7916067054f91933Version": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplate7916067054f919335AF"
-                                + "28643LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate7916067054f9193305F5F96F"
+                                + "LatestVersionNumber",
                             ]
                         },
                         "LaunchTemplateA46d18b906a50d3aVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA46d18b906a50d3a3A2"
-                                + "D0E8FLatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA46d18b906a50d3aADBCC4BA"
+                                + "LatestVersionNumber",
                             ]
                         },
                         "LaunchTemplateA6f65dee6703df4aVersion": {
                             "Fn::GetAtt": [
-                                "ComputeFleetQueueBatch0QueueGroup0NestedStackQueueGroup0NestedStackResource356F7DC3",
-                                "Outputs.clusternameComputeFleetQueueBatch0QueueGroup0LaunchTemplateA6f65dee6703df4a05B"
-                                + "14750LatestVersionNumber",
+                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
+                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
+                                + "LatestVersionNumber",
                             ]
                         },
                     },
@@ -866,46 +865,3 @@ def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_confi
     )
 
     assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, vpc_config)
-
-
-@pytest.mark.parametrize(
-    "no_of_compute_resources_per_queue, expected_no_of_nested_stacks, raises_error",
-    [
-        ({f"queue-{i}": 5 for i in range(10)}, 2, False),
-        ({f"queue-{i}": 5 for i in range(20)}, 3, False),
-        ({f"queue-{i}": 5 for i in range(30)}, 4, False),
-        ({f"queue-{i}": 40 for i in range(1)}, 1, False),
-        # 1 queue with 41 compute resources (Exceeds max compute resources per queue - 40)
-        ({f"queue-{i}": 41 for i in range(1)}, 1, True),
-    ],
-    ids=[
-        "10 queues with 5 compute resources each",
-        "20 queues with 5 compute resources each",
-        "30 queues with 5 compute resources each",
-        "1 queue with 40 compute resources each",
-        "1 queue with 41 compute resources",
-    ],
-)
-def test_cluster_resource_distribution_in_stacks(
-    test_datadir,
-    pcluster_config_reader,
-    capsys,
-    mocker,
-    no_of_compute_resources_per_queue: int,
-    expected_no_of_nested_stacks: int,
-    raises_error: bool,
-):
-    mock_aws_api(mocker)
-    mock_bucket_object_utils(mocker)
-    rendered_config_file = pcluster_config_reader(
-        "variable_queue_compute_resources.yaml", no_of_compute_resources_per_queue=no_of_compute_resources_per_queue
-    )
-
-    input_yaml, cluster = load_cluster_model_from_yaml(rendered_config_file, test_datadir)
-
-    if raises_error:
-        with pytest.raises(ValueError):
-            _generate_template(cluster, capsys)
-    else:
-        cluster_template, assets = _generate_template(cluster, capsys)
-        assert_that(expected_no_of_nested_stacks).is_equal_to(len(assets))
