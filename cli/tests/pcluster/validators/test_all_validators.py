@@ -295,10 +295,10 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
     max_count_validator.assert_has_calls(
         [
-            call(resources_length=2, max_length=100, resource_name="SlurmQueues"),
-            call(resources_length=5, max_length=150, resource_name="ComputeResources per Cluster"),
-            call(resources_length=3, max_length=40, resource_name="ComputeResources per Queue"),
-            call(resources_length=2, max_length=40, resource_name="ComputeResources per Queue"),
+            call(resources_length=2, max_length=50, resource_name="SlurmQueues"),
+            call(resources_length=5, max_length=50, resource_name="ComputeResources per Cluster"),
+            call(resources_length=3, max_length=50, resource_name="ComputeResources per Queue"),
+            call(resources_length=2, max_length=50, resource_name="ComputeResources per Queue"),
         ],
         any_order=True,
     )
