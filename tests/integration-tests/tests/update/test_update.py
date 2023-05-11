@@ -19,14 +19,19 @@ import boto3
 import pytest
 import utils
 import yaml
-from assertpy import assert_that
+from assertpy import assert_that, fail
 from botocore.exceptions import ClientError
 from cfn_stacks_factory import CfnStack, CfnVpcStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 from time_utils import minutes, seconds
-from utils import describe_cluster_instances, retrieve_cfn_resources, wait_for_computefleet_changed
+from utils import (
+    describe_cluster_instances,
+    get_instance_profile_from_arn,
+    retrieve_cfn_resources,
+    wait_for_computefleet_changed,
+)
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
@@ -1397,6 +1402,76 @@ def test_multi_az_create_and_update(
     response = cluster.update(str(second_update_config))
     assert_that(response["computeFleetStatus"]).is_equal_to("STOPPED")
     assert_that(response["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
+
+
+@pytest.mark.usefixtures("instance", "os")
+def test_resource_changes_in_cluster_with_multiple_queues(
+    region, pcluster_config_reader, clusters_factory, scheduler_commands_factory, test_datadir
+):
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster_max_queue.config.yaml",
+    )
+    cluster = clusters_factory(init_config_file)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    # Confirm jobs can run on the static node
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "srun sleep 1",
+            "host": "queue-a-st-queue-a-cr-static-1",
+            "partition": "queue-a",
+        }
+    )
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+    # Check resources associated with the static node are not deleted/replaced during cluster update
+    # Queue is running only the static node
+    static_instance_info = describe_cluster_instances(
+        cluster.cfn_name, region, filter_by_compute_resource_name="queue-a-cr-static"
+    )[0]
+    initial_iam_arn = static_instance_info["IamInstanceProfile"]["Arn"]
+    expected_instance_profile_name = get_instance_profile_from_arn(initial_iam_arn)
+    _assert_instance_profile_exists(expected_instance_profile_name, region)
+
+    # Update cluster to use only the queue with a static node
+    single_queue_update_config = pcluster_config_reader(config_file="pcluster_1_queue.config.yaml")
+    cluster.stop()
+    response = cluster.update(str(single_queue_update_config), force_update="true")
+    assert_that(response["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
+
+    # Confirm the IAM profile was not deleted during the update
+    _assert_instance_profile_exists(expected_instance_profile_name, region)
+
+    # Add multiple queues and run update (without compute fleet stop)
+    max_queue_update_config = pcluster_config_reader(config_file="pcluster_max_queue.config.yaml")
+    cluster.start()
+    response = cluster.update(str(max_queue_update_config), force_update="true")
+    assert_that(response["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
+
+    # Confirm the IAM profile was not deleted during the update
+    _assert_instance_profile_exists(expected_instance_profile_name, region)
+
+    # Confirm jobs can run on the static node
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "srun sleep 1",
+            "host": "queue-a-st-queue-a-cr-static-1",
+            "partition": "queue-a",
+        }
+    )
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+
+def _assert_instance_profile_exists(expected_instance_profile_name, region):
+    iam = boto3.client("iam", region_name=region)
+    try:
+        iam_profile = iam.get_instance_profile(InstanceProfileName=expected_instance_profile_name)
+        assert_that(iam_profile).is_not_empty()
+    except iam.exceptions.NoSuchEntityException:
+        fail(f"IAM Profile {expected_instance_profile_name} does not exist")
 
 
 def _assert_instance_in_capacity_reservation(instances, expected_reservation):

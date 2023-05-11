@@ -1,0 +1,21 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue-a
+      ComputeResources:
+        - Name: queue-a-cr-static
+          Instances:
+            - InstanceType: t2.micro
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

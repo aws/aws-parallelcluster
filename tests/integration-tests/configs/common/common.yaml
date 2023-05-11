@@ -710,6 +710,11 @@ update:
       - regions: [ "eu-west-2" ]
         schedulers: [ "slurm" ]
         oss: ["alinux2"]
+  test_update.py::test_resource_changes_in_cluster_with_multiple_queues:
+    dimensions:
+      - regions: [ "eu-west-2" ]
+        schedulers: [ "slurm" ]
+        oss: ["alinux2"]
 multiple_nics:
   test_multiple_nics.py::test_multiple_nics:
     dimensions:

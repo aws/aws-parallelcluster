@@ -673,6 +673,14 @@ def get_stack_name_from_stack_arn(arn):
     return arn.rsplit("/", 2)[-2] if arn else ""
 
 
+def get_instance_profile_from_arn(arn):
+    """
+    Return the instance profile name from the ARN
+    E.g. Stack ARN: "arn:aws:iam::<ACCOUNT_ID>:instance-profile/.../<INSTANCE_PROFILE_NAME>"
+    """
+    return arn.rsplit("/", 1)[-1] if arn else ""
+
+
 def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=None):
     """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
     logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
