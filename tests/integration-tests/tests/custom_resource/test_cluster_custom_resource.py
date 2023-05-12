@@ -60,8 +60,10 @@ def test_cluster_create(region, cluster_custom_resource_factory):
     stack = cluster_custom_resource_factory()
     error_message = "KeyPairValidator"
     cluster_name = _stack_parameter(stack, "ClusterName")
-    cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")
+    cluster = pc().describe_cluster(cluster_name=cluster_name)
     assert_that(cluster["clusterStatus"]).is_not_none()
+    tags = cluster["tags"]
+    assert_that(next(filter(lambda t: t["key"] == "cluster_name", tags))["value"]).is_equal_to(cluster_name)
     assert_that(stack.cfn_outputs.get("ValidationMessages", "")).contains(error_message)
     assert_that(stack.cfn_outputs.get("HeadNodeIp")).is_not_none()
 
