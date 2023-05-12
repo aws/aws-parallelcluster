@@ -30,12 +30,13 @@ from utils import (
 class CfnStack:
     """Identify a CloudFormation stack."""
 
-    def __init__(self, name, region, template, parameters=None, capabilities=None):
+    def __init__(self, name, region, template, parameters=None, capabilities=None, tags=None):
         self.name = name
         self.region = region
         self.template = template
         self.parameters = parameters or []
         self.capabilities = capabilities or []
+        self.tags = tags or []
         self.cfn_stack_id = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
@@ -169,6 +170,7 @@ class CfnStacksFactory:
                         TemplateURL=stack.template,
                         Parameters=stack.parameters,
                         Capabilities=stack.capabilities,
+                        Tags=stack.tags,
                     )
                 else:
                     result = cfn_client.create_stack(
@@ -176,6 +178,7 @@ class CfnStacksFactory:
                         TemplateBody=stack.template,
                         Parameters=stack.parameters,
                         Capabilities=stack.capabilities,
+                        Tags=stack.tags,
                     )
                 stack.cfn_stack_id = result["StackId"]
                 self.__created_stacks[id] = stack
