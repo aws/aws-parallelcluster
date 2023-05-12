@@ -18,30 +18,32 @@ from assertpy import assert_that
 from pcluster.config.cluster_config import SharedStorageType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.templates.cw_dashboard_builder import is_region_supported
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
 
 
 @pytest.mark.parametrize(
-    "config_file_name",
+    "config_file_name, region",
     [
-        "centos7.slurm.full.yaml",
-        "rhel8.slurm.full.yaml",
-        "alinux2.slurm.conditional_vol.yaml",
-        "ubuntu18.slurm.simple.yaml",
-        "alinux2.batch.no_head_node_log.yaml",
-        "ubuntu18.slurm.no_dashboard.yaml",
-        "alinux2.batch.head_node_log.yaml",
+        ("centos7.slurm.full.yaml", "us-east-1"),
+        ("rhel8.slurm.full.yaml", "us-east-1"),
+        ("alinux2.slurm.conditional_vol.yaml", "us-east-1"),
+        ("ubuntu18.slurm.simple.yaml", "us-east-1"),
+        ("alinux2.batch.no_head_node_log.yaml", "us-east-1"),
+        ("ubuntu18.slurm.no_dashboard.yaml", "us-east-1"),
+        ("alinux2.batch.head_node_log.yaml", "us-east-1"),
+        ("ubuntu18.slurm.simple.yaml", "us-iso-WHATEVER"),
     ],
 )
-def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
+def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, region):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
-    # mock bucket initialization parameters
+    set_env("AWS_DEFAULT_REGION", region)
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
 
@@ -64,7 +66,7 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
 
         if cluster_config.is_cw_logging_enabled:
             _verify_head_node_logs_conditions(cluster_config, output_yaml)
-            _verify_common_error_metrics_graphs(cluster_config, output_yaml)
+            _verify_common_error_metrics_graphs(cluster_config, output_yaml, region)
         else:
             assert_that(output_yaml).does_not_contain("Head Node Logs")
             assert_that(output_yaml).does_not_contain("Cluster Health Metrics")
@@ -200,7 +202,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
     assert_that(output_yaml).contains("supervisord")
 
 
-def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
+def _verify_common_error_metrics_graphs(cluster_config, output_yaml, region):
     """Verify conditions related to the common error section."""
     scheduler = cluster_config.scheduling.scheduler
     slurm_related_metrics = [
@@ -223,7 +225,7 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml):
     ]
     health_check_failure_metrics = ["GpuHealthCheckFailures"]
     idle_node_metrics = ["MaxDynamicNodeIdleTime"]
-    if scheduler == "slurm":
+    if scheduler == "slurm" and is_region_supported(region):
         # Contains error metric title
         assert_that(output_yaml).contains("Cluster Health Metrics")
         for metric in slurm_related_metrics:
