@@ -1322,6 +1322,14 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     tags = fields.Nested(
         QueueTagSchema, many=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY, "update_key": "Key"}
     )
+    static_node_weight = fields.Int(
+        validate=validate.Range(min=1, max=2**32 - 1),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    dynamic_node_weight = fields.Int(
+        validate=validate.Range(min=1, max=2**32 - 1),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
 
     @validates_schema
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
