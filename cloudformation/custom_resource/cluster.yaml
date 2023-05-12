@@ -119,6 +119,7 @@ Resources:
       Timeout: 60
       Code:
         ZipFile: |
+          import boto3
           import datetime
           import json
           import logging
@@ -175,6 +176,11 @@ Resources:
           def serialize(val):
               return utils.to_iso_timestr(val) if isinstance(val, datetime.date) else val
 
+          def get_stack_tags(stack_name, overrides):
+              cfn = boto3.client('cloudformation')
+              stack_tags = cfn.describe_stacks(StackName=stack_name)["Stacks"][0].get("Tags", [])
+              return list(filter(lambda t: not (t["Key"].startswith("aws:") or t["Key"] in overrides), stack_tags))
+
           def create_or_update(event):
               properties = event["ResourceProperties"]
               request_type = event["RequestType"].upper()
@@ -194,6 +200,10 @@ Resources:
               try:
                   meta_keys = {"ServiceToken", "DeletionPolicy"}
                   kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in drop_keys(properties, meta_keys).items()}, "wait": False}
+                  config_tags = properties["ClusterConfiguration"].get("Tags", [])
+                  stack_tags = get_stack_tags(event['StackId'], {t["Key"] for t in config_tags})
+                  if len(stack_tags) > 0:
+                      kwargs["cluster_configuration"]["Tags"] = stack_tags + config_tags
                   func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[request_type]
                   update_response(func(**kwargs))
               except (APIOperationException, ParameterException, TypeError)  as e:

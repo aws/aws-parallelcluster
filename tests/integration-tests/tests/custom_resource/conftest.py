@@ -146,6 +146,7 @@ def cluster_custom_resource_factory_fixture(
             template=template_data,
             parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
+            tags=[{"Key": "cluster_name", "Value": cluster_name}],  # For testing, add a tag to the stack
         )
 
         cfn_stacks_factory.create_stack(stack, True)
