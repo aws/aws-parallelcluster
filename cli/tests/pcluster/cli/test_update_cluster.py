@@ -14,6 +14,8 @@ from pcluster.api.models import DescribeClusterResponseContent, UpdateClusterRes
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
+from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils
+from tests.pcluster.utils import load_cfn_templates_from_config
 from tests.utils import wire_translate
 
 
@@ -169,6 +171,49 @@ class TestUpdateClusterCommand:
             "validation_failure_level": None,
         }
         update_cluster_mock.assert_called_with(**expected_args)
+
+    def test_resource_unchanged_due_to_queue_reorder(self, mocker, test_datadir, pcluster_config_reader):
+        """Confirms that changing queue order/count does not result in generation of different resource ids."""
+        mock_aws_api(mocker)
+        mock_bucket(mocker)
+        mock_bucket_object_utils(mocker)
+
+        # From unchanged queue (queue-a)
+        expected_unchanged_node_resource_ids = [
+            "LaunchTemplate91e252d8015efe2d",
+            "InstanceProfile7cc48ecccebd3edc",
+            "Role7cc48ecccebd3edc",
+        ]
+        # From queues that will be removed (queue-0)
+        expected_changed_node_resource_ids = [
+            "LaunchTemplate2c2ee8de3e7976b5",
+            "InstanceProfile8c704093b75d92ac",
+            "Role8c704093b75d92ac",
+        ]
+
+        # Start with the all the queues
+        _, cdk_assets = load_cfn_templates_from_config("pcluster_max_queue.config.yaml", pcluster_config_reader)
+        initial_nested_stack_content = str(next(asset["content"] for asset in cdk_assets))
+
+        # Confirm all resources are in the template
+        assert_that(initial_nested_stack_content).contains(*expected_unchanged_node_resource_ids)
+        assert_that(initial_nested_stack_content).contains(*expected_changed_node_resource_ids)
+
+        # Load a new config that removes all queues except one (queue-a)
+        _, cdk_assets = load_cfn_templates_from_config("pcluster_1_queue.config.yaml", pcluster_config_reader)
+        updated_nested_stack_content = str(next(asset["content"] for asset in cdk_assets))
+
+        # Confirm the (queue-a) resources remain unchanged in the CFN template
+        assert_that(updated_nested_stack_content).contains(*expected_unchanged_node_resource_ids)
+        assert_that(updated_nested_stack_content).does_not_contain(*expected_changed_node_resource_ids)
+
+        # Restore use of all the queues
+        _, cdk_assets = load_cfn_templates_from_config("pcluster_max_queue.config.yaml", pcluster_config_reader)
+        updated_nested_stack_content = str(next(asset["content"] for asset in cdk_assets))
+
+        # Confirm all resources are in the template
+        assert_that(updated_nested_stack_content).contains(*expected_unchanged_node_resource_ids)
+        assert_that(updated_nested_stack_content).contains(*expected_changed_node_resource_ids)
 
     def test_error(self, mocker, test_datadir):
         api_response = {"message": "error"}, 400

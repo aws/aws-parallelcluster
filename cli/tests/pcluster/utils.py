@@ -16,7 +16,9 @@ from assertpy import assert_that
 
 from pcluster.constants import LAMBDA_VPC_ACCESS_MANAGED_POLICY
 from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
 
 
 def load_cluster_model_from_yaml(config_file_name, test_datadir=None):
@@ -111,3 +113,11 @@ def _get_lambda_functions(resources):
 
 def _get_managed_policy_arns(role):
     return {arn.get("Fn::Sub") for arn in role.get("Properties").get("ManagedPolicyArns", [])}
+
+
+def load_cfn_templates_from_config(config_file_path, pcluster_config_reader):
+    rendered_config_file = pcluster_config_reader(config_file_path)
+    cluster_config = ClusterSchema(cluster_name="clustername").load(load_yaml_dict(rendered_config_file))
+    return CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
