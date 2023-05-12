@@ -200,10 +200,10 @@ Resources:
               try:
                   meta_keys = {"ServiceToken", "DeletionPolicy"}
                   kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in drop_keys(properties, meta_keys).items()}, "wait": False}
+                  resource_tags = [{"Key": "parallelcluster:custom_resource", "Value": "cluster"}]
                   config_tags = properties["ClusterConfiguration"].get("Tags", [])
                   stack_tags = get_stack_tags(event['StackId'], {t["Key"] for t in config_tags})
-                  if len(stack_tags) > 0:
-                      kwargs["cluster_configuration"]["Tags"] = stack_tags + config_tags
+                  kwargs["cluster_configuration"]["Tags"] = stack_tags + config_tags + resource_tags
                   func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[request_type]
                   update_response(func(**kwargs))
               except (APIOperationException, ParameterException, TypeError)  as e:
