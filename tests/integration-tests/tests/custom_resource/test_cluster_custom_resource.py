@@ -60,8 +60,10 @@ def test_cluster_create(region, cluster_custom_resource_factory):
     stack = cluster_custom_resource_factory()
     error_message = "KeyPairValidator"
     cluster_name = _stack_parameter(stack, "ClusterName")
-    cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")
+    cluster = pc().describe_cluster(cluster_name=cluster_name)
     assert_that(cluster["clusterStatus"]).is_not_none()
+    tags = cluster["tags"]
+    assert_that(next(filter(lambda t: t["key"] == "cluster_name", tags))["value"]).is_equal_to(cluster_name)
     assert_that(stack.cfn_outputs.get("ValidationMessages", "")).contains(error_message)
     assert_that(stack.cfn_outputs.get("HeadNodeIp")).is_not_none()
 
@@ -200,6 +202,7 @@ def test_cluster_delete_retain(request, region, cluster_custom_resource_provider
     ],
 )
 def test_cluster_create_with_custom_policies(
+    cfn_stacks_factory,
     request,
     region,
     resource_bucket,
@@ -212,7 +215,7 @@ def test_cluster_create_with_custom_policies(
     """Create a custom resource provider with a custom role and create a cluster to validate it."""
     parameters = {"CustomBucket": resource_bucket, stack_param: resource_bucket_policies.cfn_outputs[cfn_output]}
     custom_resource_gen = cluster_custom_resource_provider_generator(
-        request.config.getoption("credential"),
+        cfn_stacks_factory,
         region,
         generate_stack_name("custom-resource-provider", request.config.getoption("stackname_suffix")),
         parameters,
@@ -225,3 +228,11 @@ def test_cluster_create_with_custom_policies(
     cluster_name = _stack_parameter(stack, "ClusterName")
     cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")
     assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
+
+
+def test_cluster_1_click(cluster_1_click):
+    """Create a cluster using the 1-click template to validate it."""
+    head_node_ip = cluster_1_click.cfn_outputs.get("HeadNodeIp")
+    system_manager_url = cluster_1_click.cfn_outputs.get("SystemManagerUrl")
+    assert_that(head_node_ip).is_not_empty()
+    assert_that(system_manager_url).is_not_empty()

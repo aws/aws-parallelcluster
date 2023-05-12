@@ -85,11 +85,19 @@ class SharedFixture:
         except NoSuchProcess:
             return False
 
+    @staticmethod
+    def _terminate_process(pid: int):
+        try:
+            logging.info("Terminating process %s.", pid)
+            Process(pid).terminate()
+        except Exception:
+            logging.error("Error terminating process %s.", pid)
+
     def release(self):
         """
         Release a shared fixture.
 
-        The fixture is cleaned-up only when the last process releases it.
+        The fixture is cleaned-up only when the last process releases it or after a timeout.
         """
         with FileLock(self._lock_file):
             data = self._load_fixture_data()
@@ -99,6 +107,7 @@ class SharedFixture:
                 self._save_fixture_data(data)
                 return
 
+        timeout = time.time() + 4 * 60 * 60  # 4 hours from now
         while data.counter > 1:
             logging.info(
                 "Waiting for all processes to release shared fixture %s, currently in use by %d processes (%s)",
@@ -107,6 +116,7 @@ class SharedFixture:
                 data.currently_using_processes,
             )
             time.sleep(30)
+
             with FileLock(self._lock_file):
                 for worker in data.currently_using_processes.copy():
                     pid = int(worker.split(" ")[1])
@@ -121,6 +131,21 @@ class SharedFixture:
                         )
                         self._save_fixture_data(data)
                 data = self._load_fixture_data()
+
+            if time.time() > timeout:
+                logging.error(
+                    (
+                        "Shared fixture %s has not been released in 4 hours, "
+                        "currently in use by %d processes (%s), destroying it."
+                    ),
+                    self.name,
+                    data.counter,
+                    data.currently_using_processes,
+                )
+                for worker in data.currently_using_processes.copy():
+                    pid = int(worker.split(" ")[1])
+                    self._terminate_process(pid)
+                break
 
         self._destroy_fixture()
 

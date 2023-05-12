@@ -1,0 +1,21 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: ec2-key-name
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue-a
+      ComputeResources:
+        - Name: queue-a-cr-static
+          Instances:
+            - InstanceType: t2.micro
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - subnet-12345678

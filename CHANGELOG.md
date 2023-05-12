@@ -13,11 +13,11 @@ CHANGELOG
 3.6.0
 ----
 **ENHANCEMENTS**
-- Add support for RHEL8.
+- Add support for RHEL8.7.
 - Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
 - Build Slurm with support for LUA.
-- Increase the limit on the maximum number of queues per cluster from 10 to 100. Each cluster can however have a maximum number of 150 compute resources and each queue can have a maximum of 40 compute resources.
+- Increase the limit on the maximum number of queues per cluster from 10 to 50. Compute resources can be distributed flexibly across the various queues as long as the cluster contains a maximum of 50 compute resources.
 - Allow to specify a sequence of multiple custom actions scripts per event for `OnNodeStart`, `OnNodeConfigured` and `OnNodeUpdated` parameters.
 - Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job execution.
 - Add support for `Tags` in the `SlurmQueues` and `SlurmQueues/ComputeResources` section.
@@ -31,7 +31,8 @@ CHANGELOG
 - Install [NVIDIA Persistence Daemon](https://docs.nvidia.com/deploy/driver-persistence/index.html) as a system service.
 
 **CHANGES**
-- Upgrade Slurm to version 23.02.1.
+- Note 3.6 will be the last release to include support for Ubuntu 18. Subsequent releases will only support Ubuntu from version 20.
+- Upgrade Slurm to version 23.02.2.
 - Upgrade munge to version 0.5.15.
 - Set Slurm default `TreeWidth` to 30.
 - Set Slurm prolog and epilog configurations to target a directory, `/opt/slurm/etc/scripts/prolog.d/` and `/opt/slurm/etc/scripts/epilog.d/` respectively.
@@ -47,6 +48,16 @@ CHANGELOG
   - Open MPI: `openmpi40-aws-4.1.5-1`
 - Upgrade Lustre client version to 2.12 on Amazon Linux 2 (same version available on Ubuntu 20.04, 18.04 and CentOS >= 7.7).
 - Upgrade Lustre client version to 2.10.8 on CentOS 7.6.
+- Upgrade NVIDIA driver to version 470.182.03.
+- Upgrade NVIDIA Fabric Manager to version 470.182.03.
+- Upgrade NVIDIA CUDA Toolkit to version 11.8.0.
+- Upgrade NVIDIA CUDA sample to version 11.8.0.
+- Upgrade Intel MPI Library to 2021.9.0.43482.
+- Upgrade NICE DCV to version `2023.0-15022`.
+  - server: `2023.0.15022-1`
+  - xdcv: `2023.0.547-1`
+  - gl: `2023.0.1027-1`
+  - web_viewer: `2023.0.15022-1`
 - Upgrade `aws-cfn-bootstrap` to version 2.0-24.
 - Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
   `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
@@ -59,6 +70,8 @@ CHANGELOG
 - Fix an issue that was causing misalignment of compute nodes IP on instances with multiple network interfaces.
 - Fix replacement of `StoragePass` in `slurm_parallelcluster_slurmdbd.conf` when a queue parameter update is performed and the Slurm accounting configurations are not updated.
 - Fix issue causing `cfn-hup` daemon to fail when it gets restarted.
+- Fix issue causing dangling security groups to be created when creating a cluster with an existing EFS.
+- Fix issue causing NVIDIA GPU compute nodes not to resume correctly after executing an `scontrol reboot` command.
 
 3.5.1
 -----
