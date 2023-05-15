@@ -16,8 +16,9 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import Construct, Duration, Stack
 
-from pcluster.aws.common import get_region
 from pcluster.config.cluster_config import BaseClusterConfig, SharedFsxLustre, SharedStorageType
+from pcluster.constants import Feature
+from pcluster.utils import is_feature_supported
 
 MAX_WIDTH = 24
 
@@ -46,10 +47,6 @@ _CWLogWidget = namedtuple(
 _HealthMetric = namedtuple(
     "_ErrorMetric", ["title", "metric_filters", "left_y_axis", "left_annotations"], defaults=(None, None)
 )
-
-
-def is_region_supported(region: str):
-    return not region.startswith("us-iso")
 
 
 def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None, namespace=None, additional_dimensions=None):
@@ -152,7 +149,7 @@ class CWDashboardConstruct(Construct):
 
         # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
-            if self.config.scheduling.scheduler == "slurm" and is_region_supported(get_region()):
+            if self.config.scheduling.scheduler == "slurm" and is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
                 self._add_custom_health_metrics()
             self._add_cw_log()
 
