@@ -77,8 +77,9 @@ class PasswordSecretArnValidator(Validator):
         """Validate that PasswordSecretArn contains a valid ARN for the given region.
 
         In particular, the ARN should be one of the following resources:
-         1. a readable secret in AWS Secrets Manager, which is supported in all regions but us-isob-east-1.
-         2. a readable parameter in SSM Parameter Store, which is supported only in us-isob-east-1.
+         1. a readable secret in AWS Secrets Manager, which is supported in all regions.
+         2. a readable parameter in SSM Parameter Store, which is supported only in us-isob-east-1
+            for retro-compatibility.
         """
         try:
             # We only require the secret to exist; we do not validate its content.
@@ -88,7 +89,7 @@ class PasswordSecretArnValidator(Validator):
             if service == "ssm":
                 resource = arn_components[5].split("/")[0]
 
-            if service == "secretsmanager" and resource == "secret" and region != "us-isob-east-1":
+            if service == "secretsmanager" and resource == "secret":
                 AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
             elif service == "ssm" and resource == "parameter" and region == "us-isob-east-1":
                 parameter_name = arn_components[5].split("/")[1]
