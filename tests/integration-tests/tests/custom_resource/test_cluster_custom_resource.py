@@ -67,6 +67,7 @@ def test_cluster_create(region, cluster_custom_resource_factory):
     cluster = pc().describe_cluster(cluster_name=cluster_name)
     assert_that(cluster["clusterStatus"]).is_not_none()
     assert_that(_cluster_tag(cluster, "cluster_name")).is_equal_to(cluster_name)
+    assert_that(_cluster_tag(cluster, "inside_configuration_key")).is_equal_to("overridden")
     assert_that(_cluster_tag(cluster, "parallelcluster:custom_resource")).is_equal_to("cluster")
     assert_that(stack.cfn_outputs.get("ValidationMessages", "")).contains(error_message)
     assert_that(stack.cfn_outputs.get("HeadNodeIp")).is_not_none()
