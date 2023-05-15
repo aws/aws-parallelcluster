@@ -61,7 +61,7 @@ def validate_no_reserved_tag(tags):
                 tag_key = tag.key
             else:
                 tag_key = tag.get("key", "")
-            if tag_key.startswith(PCLUSTER_PREFIX):
+            if tag_key.startswith(PCLUSTER_PREFIX) and not tag_key == "parallelcluster:custom_resource":
                 raise ValidationError(message=f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved and cannot be used.")
 
 
