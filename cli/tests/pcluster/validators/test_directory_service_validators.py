@@ -175,9 +175,8 @@ def test_ldap_tls_reqcert_validator(ldap_tls_reqcert, expected_message):
             "us-isob-east-1",
             "secretsmanager",
             None,
-            "The secret arn:PARTITION:secretsmanager:REGION:ACCOUNT:secret:WHATEVER_SECRET is not supported "
-            "in region us-isob-east-1.",
-            FailureLevel.ERROR,
+            None,
+            None,
             id="PasswordSecretArn as a Secret in Secrets Manager, in us-isob-east-1",
         ),
         pytest.param(
