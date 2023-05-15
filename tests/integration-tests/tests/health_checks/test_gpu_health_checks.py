@@ -168,7 +168,7 @@ def _test_failing_gpu_health_checks(
     # Confirm health check was successful
     _assert_file_content_in_compute_node(
         HEALTH_CHECK_LOG_FILE,
-        target_node.node_name,
+        slurm_commands.get_node_addr(node_name=target_node.node_name),
         cluster,
         [rf".*JobID {job_id}.*HealthCheckManager finished with exit code '0'*"],
         should_exist=True,
