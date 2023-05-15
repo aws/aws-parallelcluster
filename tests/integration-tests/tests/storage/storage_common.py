@@ -295,21 +295,45 @@ def check_fsx(
     mount_dirs,
     bucket_name,
     headnode_only=False,
+    file_cache_path=None,
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     fsx_ids = get_fsx_ids(cluster, region)
     logging.info("Checking the length of mount dirs is the same as the length of FSXIDs")
     assert_that(len(mount_dirs)).is_equal_to(len(fsx_ids))
+
+    fsx_lustre_mount_options = "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount"
     for mount_dir, fsx_id in zip(mount_dirs, fsx_ids):
         logging.info("Checking %s on %s", fsx_id, mount_dir)
         file_system_type = get_file_system_type(fsx_id, region)
+
         if file_system_type == "LUSTRE":
-            assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_id)
-            if bucket_name:
-                _test_import_path(remote_command_executor, mount_dir)
-                _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
-                _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_id, region)
+            mount_name = get_mount_name(fsx_id, region)
+            if fsx_id.startswith("fc-"):
+                assert_fsx_lustre_correctly_mounted(
+                    remote_command_executor,
+                    mount_dir,
+                    mount_name=mount_name,
+                    mount_options=fsx_lustre_mount_options + ",x-systemd.requires=network.service",
+                    fsx_id=fsx_id,
+                )
+                _test_import_path(remote_command_executor, mount_dir, file_cache_path=file_cache_path)
+                _test_export_path(
+                    remote_command_executor, mount_dir, bucket_name, region, file_cache_path=file_cache_path
+                )
+            else:
+                assert_fsx_lustre_correctly_mounted(
+                    remote_command_executor,
+                    mount_dir,
+                    mount_name=mount_name,
+                    mount_options=fsx_lustre_mount_options,
+                    fsx_id=fsx_id,
+                )
+                if bucket_name:
+                    _test_import_path(remote_command_executor, mount_dir)
+                    _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
+                    _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_id, region)
         elif file_system_type == "OPENZFS":
             assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, fsx_id)
         elif file_system_type == "ONTAP":
@@ -331,6 +355,9 @@ def get_file_system_type(fsx_id, region):
     if fsx_id.startswith("fs-"):
         logging.info("Getting file system type from DescribeFilesystems API.")
         return fsx.describe_file_systems(FileSystemIds=[fsx_id]).get("FileSystems")[0].get("FileSystemType")
+    elif fsx_id.startswith("fc-"):
+        logging.info("Getting file cache type from DescribeFileCache API.")
+        return fsx.describe_file_caches(FileCacheIds=[fsx_id]).get("FileCaches")[0].get("FileCacheType")
     else:
         logging.info("Getting file system type from FSx DescribeVolumes API.")
         return fsx.describe_volumes(VolumeIds=[fsx_id]).get("Volumes")[0].get("VolumeType")
@@ -458,58 +485,98 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(file_permissions).is_equal_to("0100777")
 
 
-def _test_export_path(remote_command_executor, mount_dir, bucket_name, region):
+def _test_export_path(remote_command_executor, mount_dir, bucket_name, region, file_cache_path=None):
     logging.info("Testing fsx lustre export path")
-    remote_command_executor.run_remote_command(
-        "echo 'Exported by FSx Lustre' > {mount_dir}/file_to_export".format(mount_dir=mount_dir)
-    )
-    remote_command_executor.run_remote_command(
-        "sudo lfs hsm_archive {mount_dir}/file_to_export && sleep 5".format(mount_dir=mount_dir)
-    )
-    remote_command_executor.run_remote_command(
-        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
-            region=region, bucket_name=bucket_name
+    if file_cache_path:
+        remote_command_executor.run_remote_command(
+            "echo 'Exported by FSx Lustre' | sudo tee {mount_dir}{file_cache_path}file_to_export".format(
+                mount_dir=mount_dir, file_cache_path=file_cache_path
+            )
         )
-    )
+        remote_command_executor.run_remote_command(
+            "sudo lfs hsm_archive {mount_dir}{file_cache_path}file_to_export && sleep 5".format(
+                mount_dir=mount_dir, file_cache_path=file_cache_path
+            )
+        )
+        export_result = remote_command_executor.run_remote_command(
+            "sudo lfs hsm_state {mount_dir}{file_cache_path}file_to_export".format(
+                mount_dir=mount_dir, file_cache_path=file_cache_path
+            )
+        )
+        assert_that(export_result.stdout).is_equal_to(
+            "{mount_dir}{file_cache_path}file_to_export: (0x00000009) exists archived, archive_id:1".format(
+                mount_dir=mount_dir, file_cache_path=file_cache_path
+            )
+        )
+
+        remote_command_executor.run_remote_command(
+            "sudo aws s3 cp --region {region} s3://{bucket_name}/file_to_export ./file_to_export".format(
+                region=region, bucket_name=bucket_name
+            )
+        )
+
+    else:
+        remote_command_executor.run_remote_command(
+            "echo 'Exported by FSx Lustre' > {mount_dir}/file_to_export".format(mount_dir=mount_dir)
+        )
+        remote_command_executor.run_remote_command(
+            "sudo lfs hsm_archive {mount_dir}/file_to_export && sleep 5".format(mount_dir=mount_dir)
+        )
+        remote_command_executor.run_remote_command(
+            "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+                region=region, bucket_name=bucket_name
+            )
+        )
     result = remote_command_executor.run_remote_command("cat ./file_to_export")
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")
 
 
-def _test_import_path(remote_command_executor, mount_dir):
+def _test_import_path(remote_command_executor, mount_dir, file_cache_path=None):
     logging.info("Testing fsx lustre import path")
-    result = remote_command_executor.run_remote_command("cat {mount_dir}/s3_test_file".format(mount_dir=mount_dir))
+    if file_cache_path:
+        result = remote_command_executor.run_remote_command(
+            "cat {mount_dir}{file_cache_path}s3_test_file".format(mount_dir=mount_dir, file_cache_path=file_cache_path)
+        )
+    else:
+        result = remote_command_executor.run_remote_command("cat {mount_dir}/s3_test_file".format(mount_dir=mount_dir))
     assert_that(result.stdout).is_equal_to("Downloaded by FSx Lustre")
 
 
-def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fsx_fs_id):
+def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, mount_name, mount_options, fsx_id):
     logging.info("Testing fsx lustre is correctly mounted on the head node")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
-    mount_name = get_mount_name(fsx_fs_id, region)
     assert_that(result.stdout).matches(
         r"[0-9\.]+@tcp:/{mount_name}\s+[15]\.[1278]T\s+{mount_dir}".format(mount_name=mount_name, mount_dir=mount_dir)
     )
     # example output: "192.168.46.168@tcp:/cg7k7bmv 1.7T /fsx_mount_dir"
 
-    mount_options = "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount"
-
     check_fstab_file(
         remote_command_executor,
-        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/{mount_name}"
+        r"{fsx_id}\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/{mount_name}"
         r" {mount_dir} lustre {mount_options} 0 0".format(
-            mount_name=mount_name, mount_dir=mount_dir, mount_options=mount_options
+            fsx_id=fsx_id, mount_name=mount_name, mount_dir=mount_dir, mount_options=mount_options
         ),
     )
 
 
 def get_mount_name(fsx_fs_id, region):
-    logging.info("Getting MountName from DescribeFilesystem API.")
     fsx = boto3.client("fsx", region_name=region)
-    return (
-        fsx.describe_file_systems(FileSystemIds=[fsx_fs_id])
-        .get("FileSystems")[0]
-        .get("LustreConfiguration")
-        .get("MountName")
-    )
+    if fsx_fs_id.startswith("fc-"):
+        logging.info("Getting MountName from DescribeFileCache API.")
+        return (
+            fsx.describe_file_caches(FileCacheIds=[fsx_fs_id])
+            .get("FileCaches")[0]
+            .get("LustreConfiguration")
+            .get("MountName")
+        )
+    else:
+        logging.info("Getting MountName from DescribeFilesystem API.")
+        return (
+            fsx.describe_file_systems(FileSystemIds=[fsx_fs_id])
+            .get("FileSystems")[0]
+            .get("LustreConfiguration")
+            .get("MountName")
+        )
 
 
 def create_fsx_ontap(fsx_factory, num):

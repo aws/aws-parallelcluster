@@ -1,0 +1,34 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+        EnableWriteAccess: False
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue-0
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+            EnableWriteAccess: False
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /existing-file-cache-mount-1
+    Name: existingfsxfilecache1
+    StorageType: FsxFileCache
+    FsxFileCacheSettings:
+      FileCacheId: {{ fsx_file_cache_id }}
