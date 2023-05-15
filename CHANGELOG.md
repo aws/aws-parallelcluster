@@ -5,6 +5,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
+- Allow configuration of Slurm node weights for static and dynamic nodes in a compute resource via the ParallelCluster configuration YAML file.
 
 **CHANGES**
 
