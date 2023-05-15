@@ -1,5 +1,5 @@
 {%- import 'common.jinja2' as common with context -%}
-{%- set REGIONS = ["us-isob-east-1"] -%}
+{%- set REGIONS = ["us-isob-east-1","us-iso-east-1"] -%}
 {%- set INSTANCES = ["c5.xlarge"] -%}
 {%- set OSS = ["alinux2"] -%}
 {%- set SCHEDULERS = ["slurm"] -%}
