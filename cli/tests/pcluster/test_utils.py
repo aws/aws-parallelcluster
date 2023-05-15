@@ -24,6 +24,7 @@ import pcluster.utils as utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import Cache
+from pcluster.constants import Feature
 from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import batch_by_property_callback, yaml_load
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
