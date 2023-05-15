@@ -24,6 +24,7 @@ import pcluster.utils as utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import Cache
+from pcluster.constants import Feature
 from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import batch_by_property_callback, yaml_load
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -537,3 +538,43 @@ class TestAsyncUtils(unittest.TestCase):
 
         assert_that(expected_results).contains_sequence(*results)
         assert_that(unique_calls).is_equal_to(total_calls)
+
+
+@pytest.mark.parametrize(
+    "feature, region, expected_result",
+    [
+        (Feature.BATCH, "ap-northeast-3", False),
+        (Feature.BATCH, "us-iso-east-1", False),
+        (Feature.BATCH, "us-iso-west-1", False),
+        (Feature.BATCH, "us-isob-east-1", False),
+        (Feature.BATCH, "us-isoWHATEVER", False),
+        (Feature.DCV, "us-iso-east-1", False),
+        (Feature.DCV, "us-iso-west-1", False),
+        (Feature.DCV, "us-isob-east-1", False),
+        (Feature.DCV, "us-isoWHATEVER", False),
+        (Feature.FSX_LUSTRE, "us-iso-east-1", False),
+        (Feature.FSX_LUSTRE, "us-iso-west-1", False),
+        (Feature.FSX_LUSTRE, "us-isob-east-1", False),
+        (Feature.FSX_LUSTRE, "us-isoWHATEVER", False),
+        (Feature.FSX_ONTAP, "us-iso-east-1", False),
+        (Feature.FSX_ONTAP, "us-iso-west-1", False),
+        (Feature.FSX_ONTAP, "us-isob-east-1", False),
+        (Feature.FSX_ONTAP, "us-isoWHATEVER", False),
+        (Feature.FSX_OPENZFS, "us-iso-east-1", False),
+        (Feature.FSX_OPENZFS, "us-iso-west-1", False),
+        (Feature.FSX_OPENZFS, "us-isob-east-1", False),
+        (Feature.FSX_OPENZFS, "us-isoWHATEVER", False),
+        (Feature.SLURM_DATABASE, "us-isoWHATEVER", False),
+        (Feature.CLUSTER_HEALTH_METRICS, "us-isoWHATEVER", False),
+        (Feature.BATCH, "WHATEVER-ELSE", True),
+        (Feature.DCV, "WHATEVER-ELSE", True),
+        (Feature.FSX_LUSTRE, "WHATEVER-ELSE", True),
+        (Feature.FSX_ONTAP, "WHATEVER-ELSE", True),
+        (Feature.FSX_OPENZFS, "WHATEVER-ELSE", True),
+        (Feature.SLURM_DATABASE, "WHATEVER-ELSE", True),
+        (Feature.CLUSTER_HEALTH_METRICS, "WHATEVER-ELSE", True),
+    ],
+)
+def test_is_feature_supported(feature, region, expected_result):
+    actual_result = utils.is_feature_supported(feature=feature, region=region)
+    assert_that(actual_result).is_equal_to(expected_result)
