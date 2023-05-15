@@ -33,6 +33,8 @@ from .utils import assert_failure_messages
         (Feature.FSX_OPENZFS, False, "FSx OpenZfs is not supported in region 'WHATEVER-REGION'"),
         (Feature.SLURM_DATABASE, True, None),
         (Feature.SLURM_DATABASE, False, "SLURM Database is not supported in region 'WHATEVER-REGION'"),
+        (Feature.CLUSTER_HEALTH_METRICS, True, None),
+        (Feature.CLUSTER_HEALTH_METRICS, False, "Cluster Health Metrics is not supported in region 'WHATEVER-REGION'"),
     ],
 )
 def test_feature_region_validator(mocker, feature, supported, expected_message):
