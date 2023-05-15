@@ -35,7 +35,12 @@ from yaml.constructor import ConstructorError
 from yaml.resolver import BaseResolver
 
 from pcluster.aws.common import get_region
-from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
+from pcluster.constants import (
+    SUPPORTED_OSES_FOR_ARCHITECTURE,
+    SUPPORTED_OSES_FOR_SCHEDULER,
+    UNSUPPORTED_FEATURES_MAP,
+    Feature,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -165,6 +170,17 @@ def get_supported_os_for_scheduler(scheduler):
 def get_supported_os_for_architecture(architecture):
     """Return list of supported OSes for the specified architecture."""
     return SUPPORTED_OSES_FOR_ARCHITECTURE.get(architecture, [])
+
+
+def is_feature_supported(feature: Feature, region: str = None):
+    """
+    Check if a feature is supported for the given region.
+
+    If region is None, consider the region set in the environment.
+    """
+    _region = get_region() if region is None else region
+    prefixes_of_unsupported_regions = UNSUPPORTED_FEATURES_MAP.get(feature, [])
+    return all(not _region.startswith(region_prefix) for region_prefix in prefixes_of_unsupported_regions)
 
 
 def to_utc_datetime(time_in, default_timezone=datetime.timezone.utc) -> datetime.datetime:
