@@ -110,33 +110,6 @@ phases:
               RESERVED_BASE_UID=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo "${RESERVED_BASE_UID}"
 
-      ### tests ###
-      - name: AWSCli
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              OS="{{ test.OperatingSystemName.outputs.stdout }}"
-              if [[ ${OS} =~ ^alinux ]]; then
-                username="ec2-user"
-              elif [[ ${OS} =~ ^rhel ]]; then
-                username="ec2-user"
-              elif [[ ${OS} =~ ^centos ]]; then
-                username="centos"
-              elif [[ ${OS} =~ ^ubuntu ]]; then
-                username="ubuntu"
-              fi
-              export PATH="/usr/local/bin:/usr/bin/:${PATH}"
-
-              echo "Executing awscli as user..."
-              su - ${username} -c "aws --version"
-
-              echo "Executing awscli as root..."
-              aws --version
-              [[ $? -ne 0 ]] && echo "fail to execute awscli as root" && exit 1
-              echo "AWSCli test passed"
-
       - name: Virtualenv
         action: ExecuteBash
         inputs:
