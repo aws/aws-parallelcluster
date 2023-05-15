@@ -248,6 +248,7 @@ class Feature(Enum):
     FSX_ONTAP = "FSx ONTAP"
     FSX_OPENZFS = "FSx OpenZfs"
     SLURM_DATABASE = "SLURM Database"
+    CLUSTER_HEALTH_METRICS = "Cluster Health Metrics"
 
 
 UNSUPPORTED_FEATURES_MAP = {
@@ -258,6 +259,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
     Feature.SLURM_DATABASE: ["us-iso"],
+    Feature.CLUSTER_HEALTH_METRICS: ["us-iso"],
 }
 
 
