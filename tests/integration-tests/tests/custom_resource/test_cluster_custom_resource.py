@@ -222,7 +222,7 @@ def test_cluster_create_with_custom_policies(
     custom_resource_gen = cluster_custom_resource_provider_generator(
         cfn_stacks_factory,
         region,
-        generate_stack_name("custom-resource-provider", request.config.getoption("stackname_suffix")),
+        generate_stack_name("integ-test-custom-resource-provider", request.config.getoption("stackname_suffix")),
         parameters,
         cluster_custom_resource_provider_template,
     )
