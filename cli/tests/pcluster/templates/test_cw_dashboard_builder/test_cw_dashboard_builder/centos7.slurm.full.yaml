@@ -98,6 +98,21 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 1200
       WeeklyMaintenanceStartTime: "1:00:00"
+  - MountDir: /my/mount/fc1
+    Name: name9
+    StorageType: FsxFileCache
+    FsxFileCacheSettings:
+      FileCacheId: fc-12345678
+  - MountDir: /my/mount/fsx-ontap/1
+    Name: name10
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: fsvol-12345678901234567
+  - MountDir: /my/mount/fsx-openzfs/1
+    Name: name11
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: fsvol-12345678901234567
 Monitoring:
   DetailedMonitoring: true
   Logs:

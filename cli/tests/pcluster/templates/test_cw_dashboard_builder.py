@@ -130,6 +130,11 @@ def _verify_ec2_metrics_conditions(cluster_config, output_yaml):
         if len(storages) > 0:
             for field in ["title", "namespace"]:
                 assert_that(output_yaml).contains(storage_type_title_dict[storage_type].get(field))
+            assert_that(output_yaml).contains("FreeDataStorageCapacity")
+            assert_that(output_yaml).contains("StorageCapacity")
+            assert_that(output_yaml).contains("UsedStorageCapacity")
+            assert_that(output_yaml).contains("Data Read/Write Ops")
+            assert_that(output_yaml).contains("Data Read/Write Bytes")
         else:
             assert_that(output_yaml).does_not_contain(storage_type_title_dict[storage_type].get("title"))
 
