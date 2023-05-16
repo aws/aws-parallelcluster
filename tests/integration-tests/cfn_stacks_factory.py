@@ -234,7 +234,7 @@ class CfnStacksFactory:
         wait_fixed=5000,
         retry_on_exception=lambda exception: isinstance(exception, ClientError),
     )
-    def update_stack(self, name, region, parameters, stack_is_under_test=False):
+    def update_stack(self, name, region, parameters, stack_is_under_test=False, tags=None):
         """Update a created cfn stack."""
         with aws_credential_provider(region, self.__credentials):
             internal_id = self.__get_stack_internal_id(name, region)
@@ -243,7 +243,12 @@ class CfnStacksFactory:
                 try:
                     stack = self.__created_stacks[internal_id]
                     cfn_client = boto3.client("cloudformation", region_name=stack.region)
-                    cfn_client.update_stack(StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters)
+                    if tags is not None:
+                        cfn_client.update_stack(
+                            StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters, Tags=tags
+                        )
+                    else:
+                        cfn_client.update_stack(StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters)
                     final_status = self.__wait_for_stack_update(stack.cfn_stack_id, cfn_client)
                     self.__assert_stack_status(
                         final_status,
