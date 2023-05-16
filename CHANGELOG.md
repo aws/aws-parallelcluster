@@ -63,6 +63,7 @@ CHANGELOG
 - Fix issue causing `cfn-hup` daemon to fail when it gets restarted.
 - Fix issue causing dangling security groups to be created when creating a cluster with an existing EFS.
 - Fix issue causing NVIDIA GPU compute nodes not to resume correctly after executing an `scontrol reboot` command.
+- Fix tags parsing to show a meaningful error message when using a boolean in the `Value` field of `Tags`.
 
 3.5.1
 -----
