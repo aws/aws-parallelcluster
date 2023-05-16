@@ -69,7 +69,10 @@ def validate_no_duplicate_tag(tags):
     """Validate there is no duplicate tag keys in the same tag section."""
     all_tags = set()
     for tag in tags:
-        tag_key = tag.key
+        if isinstance(tag, BaseTag):
+            tag_key = tag.key
+        else:
+            tag_key = tag.get("key", "")
         if tag_key in all_tags:
             raise ValidationError(
                 f"Duplicate tag key ({tag_key}) detected. Tags keys should be unique within the Tags section."
