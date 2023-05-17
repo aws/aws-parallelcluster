@@ -1962,7 +1962,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         self.tags = tags
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
-        self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1001)
+        self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
