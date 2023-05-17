@@ -205,7 +205,12 @@ def test_cluster_update_tag_propagation(region, cluster_custom_resource_factory,
         # Update the stack
         with pytest.raises(StackError) as stack_error:
             stack.factory.update_stack(
-                stack.name, stack.region, stack_params, stack_is_under_test=True, tags=stack_tags
+                stack.name,
+                stack.region,
+                stack_params,
+                stack_is_under_test=True,
+                tags=stack_tags,
+                wait_for_rollback=True,
             )
         reason = failure_reason(stack_error.value.stack_events)
         assert_that(reason).contains(
