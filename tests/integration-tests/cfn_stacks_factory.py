@@ -23,6 +23,7 @@ from utils import (
     get_cfn_events,
     retrieve_cfn_outputs,
     retrieve_cfn_resources,
+    retrieve_tags,
     to_pascal_from_kebab_case,
 )
 
@@ -45,6 +46,7 @@ class CfnStack:
         """Initialize cfn_outputs and cfn_resources."""
         self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
         self.__cfn_resources = retrieve_cfn_resources(self.name, self.region)
+        self.tags = retrieve_tags(self.name, self.region)
 
     @property
     def cfn_outputs(self):
