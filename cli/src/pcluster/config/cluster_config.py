@@ -1941,8 +1941,8 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         health_checks: HealthChecks = None,
         custom_slurm_settings: Dict = None,
         tags: List[Tag] = None,
-        static_node_weight: int = None,
-        dynamic_node_weight: int = None,
+        static_node_priority: int = None,
+        dynamic_node_priority: int = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1961,8 +1961,8 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         self.tags = tags
-        self.static_node_weight = Resource.init_param(static_node_weight, default=1)
-        self.dynamic_node_weight = Resource.init_param(dynamic_node_weight, default=1001)
+        self.static_node_priority = Resource.init_param(static_node_priority, default=1)
+        self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1001)
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
