@@ -241,6 +241,13 @@ def retrieve_cfn_outputs(stack_name, region):
     return _retrieve_cfn_data(stack_name, region, "Output")
 
 
+def retrieve_tags(stack_name, region):
+    """Retrieve CloudFormation Tags from a given stack."""
+    cfn = boto3.client("cloudformation", region_name=region)
+    stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+    return stack.get("Tags", [])
+
+
 @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
 def _retrieve_cfn_data(stack_name, region, data_type):
     logging.debug("Retrieving stack %s for stack %s", data_type, stack_name)
