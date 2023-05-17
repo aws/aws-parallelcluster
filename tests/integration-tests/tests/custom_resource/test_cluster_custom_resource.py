@@ -211,23 +211,29 @@ def test_cluster_update_tag_propagation(region, cluster_custom_resource_factory,
         assert_that(reason).contains(
             "If you need this change, please consider creating a new cluster instead of updating the existing one"
         )
+        # Root stack tags here do not update because the stack gets rolled back after cluster update failure
+        assert_that(_stack_tag(stack, "cluster_name")).is_equal_to(cluster_name)
+        assert_that(_stack_tag(stack, "inside_configuration_key")).is_equal_to("stack_level_value")
+        assert_that(_stack_tag(stack, "new_key")).is_none()
     else:
         stack.factory.update_stack(stack.name, stack.region, stack_params, stack_is_under_test=True, tags=stack_tags)
+        # Root stack tags here do update because the cluster update is not triggered,
+        # so it does not fail, and the update is not rolled back
+        assert_that(_stack_tag(stack, "cluster_name")).is_equal_to("new_cluster_name")
+        assert_that(_stack_tag(stack, "inside_configuration_key")).is_equal_to("stack_level_value")
+        assert_that(_stack_tag(stack, "new_key")).is_equal_to("new_value")
 
     assert_that(stack.cfn_outputs["HeadNodeIp"]).is_not_none()
 
     cluster = pc().describe_cluster(cluster_name=cluster_name)
 
-    # Tags are never supposed to change, because
+    # Cluster Tags are never supposed to change, because
     # 1. If the config is changed update validation will fail as tags update is unsupported in ParallelCluster
     # 2. If the config is unchanged no update on the cluster stack is triggered
     # So the state of the cluster is never supposed to change when tags are updated
     assert_that(_cluster_tag(cluster, "cluster_name")).is_equal_to(cluster_name)
     assert_that(_cluster_tag(cluster, "inside_configuration_key")).is_equal_to("overridden")
     assert_that(_cluster_tag(cluster, "new_key")).is_none()
-    assert_that(_stack_tag(stack, "cluster_name")).is_equal_to(cluster_name)
-    assert_that(_stack_tag(stack, "inside_configuration_key")).is_equal_to("stack_level_value")
-    assert_that(_stack_tag(stack, "new_key")).is_none()
     assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
 
 
