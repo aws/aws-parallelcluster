@@ -38,7 +38,7 @@ Scheduling:
           MaxCount: 1
       Networking:
         SubnetIds:
-          - {{ private_subnet_ids[2] }}
+          - {% if len(private_subnet_ids) >= 3 %} {{ private_subnet_ids[2] }} {% else %} {{ private_subnet_ids[1] }} {% endif %}
     {% endif %}
 # This compute subnet would be in a different AZ than head node for regions defined in AVAILABILITY_ZONE_OVERRIDES
 # See conftest for details
