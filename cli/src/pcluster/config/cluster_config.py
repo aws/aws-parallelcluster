@@ -203,6 +203,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    SlurmNodePrioritiesWarningValidator,
 )
 from pcluster.validators.tags_validators import ComputeResourceTagsValidator
 
@@ -2323,6 +2324,11 @@ class SlurmQueue(_CommonQueue):
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
             az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
+        )
+        self._register_validator(
+            SlurmNodePrioritiesWarningValidator,
+            queue_name=self.name,
+            compute_resources=self.compute_resources,
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(

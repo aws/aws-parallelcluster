@@ -85,6 +85,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    SlurmNodePrioritiesWarningValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
@@ -316,6 +317,78 @@ def test_custom_slurm_settings_include_file_only_validator(
         custom_slurm_settings,
         custom_slurm_settings_include_file,
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "queue_name, compute_resources, expected_message",
+    [
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(name="cr1", instance_type="t2.small"),
+                SlurmComputeResource(name="cr2", instance_type="t2.small"),
+            ],
+            None,
+            id="Case with default priorities",
+        ),
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(name="cr1", instance_type="t2.small", dynamic_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=100),
+            ],
+            None,
+            id="Case with good custom priorities",
+        ),
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(name="cr1", instance_type="t2.small", dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=120),
+            ],
+            "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
+            "other dynamic nodes in the same queue. "
+            "Possible problematic static node priorities are {'cr2': 120}. "
+            "Possible problematic dynamic node priorities are {'cr1': 100}.",
+            id="Case with problematic priorities",
+        ),
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(name="cr1", instance_type="t2.small", dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=100),
+            ],
+            "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
+            "other dynamic nodes in the same queue. "
+            "Possible problematic static node priorities are {'cr2': 100}. "
+            "Possible problematic dynamic node priorities are {'cr1': 100}.",
+            id="Case with equal static and dynamic priorities (problematic due to alphabetical sorting)",
+        ),
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(name="cr0", instance_type="t2.small", static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", static_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=140),
+                SlurmComputeResource(name="cr3", instance_type="t2.small", static_node_priority=160),
+                SlurmComputeResource(name="cr4", instance_type="t2.small", static_node_priority=180),
+                SlurmComputeResource(name="cr5", instance_type="t2.small", dynamic_node_priority=150),
+                SlurmComputeResource(name="cr6", instance_type="t2.small", dynamic_node_priority=150),
+                SlurmComputeResource(name="cr7", instance_type="t2.small", dynamic_node_priority=170),
+                SlurmComputeResource(name="cr8", instance_type="t2.small", dynamic_node_priority=190),
+                SlurmComputeResource(name="cr9", instance_type="t2.small", dynamic_node_priority=210),
+            ],
+            "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
+            "other dynamic nodes in the same queue. "
+            "Possible problematic static node priorities are {'cr3': 160, 'cr4': 180}. "
+            "Possible problematic dynamic node priorities are {'cr5': 150, 'cr6': 150, 'cr7': 170}.",
+            id="Case with many compute resources with problematic priorities",
+        ),
+    ],
+)
+def test_slurm_node_weights_warning_validator(queue_name, compute_resources, expected_message):
+    actual_failures = SlurmNodePrioritiesWarningValidator().execute(queue_name, compute_resources)
     assert_failure_messages(actual_failures, expected_message)
 
 
