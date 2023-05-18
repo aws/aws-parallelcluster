@@ -607,6 +607,7 @@ def test_subnet_id_validator_slurm_and_scheduler_plugin(subnet_ids, expected_mes
     "key, expected_message",
     [
         ("key1", None),
+        ("parallelcluster:custom_resource", None),
         ("parallelcluster:version", "The tag key prefix 'parallelcluster:' is reserved and cannot be used."),
     ],
 )

@@ -101,6 +101,7 @@ def test_lambda_functions_vpc_config_schema(lambda_functions_vpc_config, failure
         ([BaseTag(key=f"{PCLUSTER_PREFIX}test", value="test")], f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved"),
         ([BaseTag(key=f"test{PCLUSTER_PREFIX}", value="test")], None),
         ([{"key": "test", "value": "test"}], None),
+        ([{"key": "test", "value": True}], None),
         ([{"key": f"{PCLUSTER_PREFIX}test", "value": "test"}], f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved"),
         ([{"key": f"test{PCLUSTER_PREFIX}", "value": "test"}], None),
         ([{"key": "test"}], None),
@@ -122,6 +123,13 @@ def test_validate_no_reserved_tag(tags, failure_message):
             [BaseTag(key="test1", value="test"), BaseTag(key="test1", value="test")],
             "Duplicate tag key \\(test1\\) detected. Tags keys should be unique within the Tags section.",
         ),
+        (
+            [{"key": "test1", "value": "test"}, {"key": "test1", "value": "test2"}],
+            "Duplicate tag key \\(test1\\) detected. Tags keys should be unique within the Tags section.",
+        ),
+        ([{"key": "test1", "value": "test"}], None),
+        ([{"key": "test1", "value": True}], None),
+        ([{"key": "test1"}], None),
     ],
 )
 def test_validate_no_duplicate_tag(tags, failure_message):

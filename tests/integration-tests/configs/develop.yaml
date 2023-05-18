@@ -117,6 +117,10 @@ test-suites:
       dimensions:
         - oss: ["alinux2"]
           regions: ["us-east-2"]
+    test_cluster_custom_resource.py::test_cluster_update_tag_propagation:
+      dimensions:
+        - oss: [ "alinux2" ]
+          regions: ["us-east-2"]
     test_cluster_custom_resource.py::test_cluster_delete_out_of_band:
       dimensions:
         - oss: ["alinux2"]

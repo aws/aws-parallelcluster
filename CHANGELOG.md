@@ -8,7 +8,7 @@ CHANGELOG
 - Add a CloudFormation custom resource for creating and managing clusters from CloudFormation.
 - Add support for customizing the cluster Slurm configuration via the ParallelCluster configuration YAML file.
 - Build Slurm with support for LUA.
-- Increase the limit on the maximum number of queues per cluster from 10 to 100. Each cluster can however have a maximum number of 150 compute resources and each queue can have a maximum of 40 compute resources.
+- Increase the limit on the maximum number of queues per cluster from 10 to 50. Compute resources can be distributed flexibly across the various queues as long as the cluster contains a maximum of 50 compute resources.
 - Allow to specify a sequence of multiple custom actions scripts per event for `OnNodeStart`, `OnNodeConfigured` and `OnNodeUpdated` parameters.
 - Add new configuration section `HealthChecks/Gpu` for enabling the GPU Health Check in the compute node before job execution.
 - Add support for `Tags` in the `SlurmQueues` and `SlurmQueues/ComputeResources` section.
@@ -63,6 +63,8 @@ CHANGELOG
 - Fix replacement of `StoragePass` in `slurm_parallelcluster_slurmdbd.conf` when a queue parameter update is performed and the Slurm accounting configurations are not updated.
 - Fix issue causing `cfn-hup` daemon to fail when it gets restarted.
 - Fix issue causing dangling security groups to be created when creating a cluster with an existing EFS.
+- Fix issue causing NVIDIA GPU compute nodes not to resume correctly after executing an `scontrol reboot` command.
+- Fix tags parsing to show a meaningful error message when using a boolean in the `Value` field of `Tags`.
 
 3.5.1
 -----
