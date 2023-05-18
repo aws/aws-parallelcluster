@@ -31,5 +31,5 @@ Scheduling:
           MaxCount: 4
       Networking:
         SubnetIds:
-          - {{ public_subnet_ids[2] }}
+          - {% if len(private_subnet_ids) >= 3 %} {{ private_subnet_ids[2] }} {% else %} {{ private_subnet_ids[0] }} {% endif %}
           - {{ public_subnet_ids[1] }}
