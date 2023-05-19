@@ -12,6 +12,7 @@
 from enum import Enum
 from typing import Dict, List
 
+from pcluster.constants import MAX_SLURM_NODE_PRIORITY, MIN_SLURM_NODE_PRIORITY
 from pcluster.validators.common import FailureLevel, Validator
 
 # SLURM SETTINGS are case-insensitive - keep them lowercase since they are compared with setting.lower()
@@ -50,7 +51,7 @@ SLURM_SETTINGS_DENY_LIST = {
         "Global": ["nodes", "partitionname", "resumetimeout", "state", "suspendtime"],
     },
     "ComputeResource": {
-        "Global": ["cpus", "features", "gres", "nodeaddr", "nodehostname", "nodename", "state"],
+        "Global": ["cpus", "features", "gres", "nodeaddr", "nodehostname", "nodename", "state", "weight"],
     },
 }
 
@@ -143,4 +144,37 @@ class CustomSlurmSettingsIncludeFileOnlyValidator(Validator):
                 "CustomSlurmsettings and CustomSlurmSettingsIncludeFile cannot be used together "
                 "under SlurmSettings.",
                 FailureLevel.ERROR,
+            )
+
+
+class SlurmNodePrioritiesWarningValidator(Validator):
+    """
+    Slurm Node Weights Warning Validator.
+
+    This validator checks, within a queue, whether any dynamic nodes have lower node weights than any static
+    nodes and throws a warning if that's the case.
+    """
+
+    def _validate(self, queue_name: str, compute_resources: List[Dict]):
+        st_priorities = {cr.name: cr.static_node_priority for cr in compute_resources if cr.min_count > 0}
+        dy_priorities = {cr.name: cr.dynamic_node_priority for cr in compute_resources if cr.max_count > cr.min_count}
+
+        # If no compute resources have any static or dynamic nodes, we set these thresholds to impossible values of
+        # node priority...
+        max_static = max(st_priorities.values()) if len(st_priorities) > 0 else MIN_SLURM_NODE_PRIORITY - 1
+        min_dynamic = min(dy_priorities.values()) if len(dy_priorities) > 0 else MAX_SLURM_NODE_PRIORITY + 1
+
+        # ... so that the lists of bad priorities are empty due to the if conditions below.
+        bad_static_priorities = {key: value for key, value in st_priorities.items() if value >= min_dynamic}
+        bad_dynamic_priorities = {key: value for key, value in dy_priorities.items() if value <= max_static}
+
+        if bad_static_priorities or bad_dynamic_priorities:
+            self._add_failure(
+                f"Some compute resources in queue {queue_name} have static nodes with higher or equal priority than "
+                f"other dynamic nodes in the same queue. "
+                f"The following static node priorities are higher than or equal to the minimum dynamic priority "
+                f"({min_dynamic}): {bad_static_priorities}. "
+                f"The following dynamic node priorities are lower than or equal to the maximum static priority "
+                f"({max_static}): {bad_dynamic_priorities}.",
+                FailureLevel.WARNING,
             )

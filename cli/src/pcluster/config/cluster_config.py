@@ -203,6 +203,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    SlurmNodePrioritiesWarningValidator,
 )
 from pcluster.validators.tags_validators import ComputeResourceTagsValidator
 
@@ -1941,6 +1942,8 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         health_checks: HealthChecks = None,
         custom_slurm_settings: Dict = None,
         tags: List[Tag] = None,
+        static_node_priority: int = None,
+        dynamic_node_priority: int = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1959,6 +1962,8 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         self.tags = tags
+        self.static_node_priority = Resource.init_param(static_node_priority, default=1)
+        self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
 
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
@@ -2319,6 +2324,11 @@ class SlurmQueue(_CommonQueue):
             queue_name=self.name,
             subnet_ids=self.networking.subnet_ids,
             az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
+        )
+        self._register_validator(
+            SlurmNodePrioritiesWarningValidator,
+            queue_name=self.name,
+            compute_resources=self.compute_resources,
         )
         if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
             self._register_validator(

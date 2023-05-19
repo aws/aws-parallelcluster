@@ -127,6 +127,8 @@ from pcluster.constants import (
     FSX_OPENZFS,
     FSX_VOLUME_ID_REGEX,
     LUSTRE,
+    MAX_SLURM_NODE_PRIORITY,
+    MIN_SLURM_NODE_PRIORITY,
     ONTAP,
     OPENZFS,
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
@@ -1321,6 +1323,14 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     tags = fields.Nested(
         QueueTagSchema, many=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY, "update_key": "Key"}
+    )
+    static_node_priority = fields.Int(
+        validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    dynamic_node_priority = fields.Int(
+        validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
     @validates_schema
