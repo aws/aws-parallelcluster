@@ -156,15 +156,17 @@ class SlurmNodePrioritiesWarningValidator(Validator):
     """
 
     def _validate(self, queue_name: str, compute_resources: List[Dict]):
-        static_priorities = {cr.name: cr.static_node_priority for cr in compute_resources if cr.min_count > 0}
-        dynamic_priorities = {
-            cr.name: cr.dynamic_node_priority for cr in compute_resources if cr.max_count > cr.min_count
-        }
-        max_static = max(static_priorities.values()) if len(static_priorities) > 0 else MIN_SLURM_NODE_PRIORITY - 1
-        min_dynamic = min(dynamic_priorities.values()) if len(dynamic_priorities) > 0 else MAX_SLURM_NODE_PRIORITY + 1
+        st_priorities = {cr.name: cr.static_node_priority for cr in compute_resources if cr.min_count > 0}
+        dy_priorities = {cr.name: cr.dynamic_node_priority for cr in compute_resources if cr.max_count > cr.min_count}
 
-        bad_static_priorities = {key: value for key, value in static_priorities.items() if value >= min_dynamic}
-        bad_dynamic_priorities = {key: value for key, value in dynamic_priorities.items() if value <= max_static}
+        # If no compute resources have any static or dynamic nodes, we set these thresholds to impossible values of
+        # node priority...
+        max_static = max(st_priorities.values()) if len(st_priorities) > 0 else MIN_SLURM_NODE_PRIORITY - 1
+        min_dynamic = min(dy_priorities.values()) if len(dy_priorities) > 0 else MAX_SLURM_NODE_PRIORITY + 1
+
+        # ... so that the lists of bad priorities are empty due to the if conditions below.
+        bad_static_priorities = {key: value for key, value in st_priorities.items() if value >= min_dynamic}
+        bad_dynamic_priorities = {key: value for key, value in dy_priorities.items() if value <= max_static}
 
         if bad_static_priorities or bad_dynamic_priorities:
             self._add_failure(

@@ -344,8 +344,8 @@ def test_custom_slurm_settings_include_file_only_validator(
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=0, dynamic_node_priority=120),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=0, static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=0, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=0, static_node_priority=120),
             ],
             None,
             id="Case with bad custom priorities, but no static nodes, so no issue",
@@ -353,8 +353,8 @@ def test_custom_slurm_settings_include_file_only_validator(
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=10, dynamic_node_priority=120),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=10, static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=10, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=10, static_node_priority=120),
             ],
             None,
             id="Case with bad custom priorities, but no dynamic nodes, so no issue",
