@@ -155,10 +155,12 @@ class SlurmNodePrioritiesWarningValidator(Validator):
     """
 
     def _validate(self, queue_name: str, compute_resources: List[Dict]):
-        static_priorities = {cr.name: cr.static_node_priority for cr in compute_resources}
-        dynamic_priorities = {cr.name: cr.dynamic_node_priority for cr in compute_resources}
-        max_static = max(static_priorities.values())
-        min_dynamic = min(dynamic_priorities.values())
+        static_priorities = {cr.name: cr.static_node_priority for cr in compute_resources if cr.min_count > 0}
+        dynamic_priorities = {
+            cr.name: cr.dynamic_node_priority for cr in compute_resources if cr.max_count > cr.min_count
+        }
+        max_static = max(static_priorities.values()) if len(static_priorities) > 0 else 0  # impossible value
+        min_dynamic = min(dynamic_priorities.values()) if len(dynamic_priorities) > 0 else 2**32  # impossible value
 
         bad_static_priorities = {key: value for key, value in static_priorities.items() if value >= min_dynamic}
         bad_dynamic_priorities = {key: value for key, value in dynamic_priorities.items() if value <= max_static}

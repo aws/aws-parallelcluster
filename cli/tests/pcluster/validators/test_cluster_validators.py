@@ -326,8 +326,8 @@ def test_custom_slurm_settings_include_file_only_validator(
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small"),
-                SlurmComputeResource(name="cr2", instance_type="t2.small"),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5),
             ],
             None,
             id="Case with default priorities",
@@ -335,8 +335,8 @@ def test_custom_slurm_settings_include_file_only_validator(
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", dynamic_node_priority=120),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, dynamic_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=100),
             ],
             None,
             id="Case with good custom priorities",
@@ -344,8 +344,26 @@ def test_custom_slurm_settings_include_file_only_validator(
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", dynamic_node_priority=100),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=120),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=0, dynamic_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=0, static_node_priority=100),
+            ],
+            None,
+            id="Case with bad custom priorities, but no static nodes, so no issue",
+        ),
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=10, dynamic_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=10, static_node_priority=100),
+            ],
+            None,
+            id="Case with bad custom priorities, but no dynamic nodes, so no issue",
+        ),
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=120),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
@@ -358,8 +376,8 @@ def test_custom_slurm_settings_include_file_only_validator(
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", dynamic_node_priority=100),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=100),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
@@ -373,10 +391,14 @@ def test_custom_slurm_settings_include_file_only_validator(
             "queue1",
             [
                 SlurmComputeResource(
-                    name="cr1", instance_type="t2.small", static_node_priority=10, dynamic_node_priority=100
+                    name="cr1",
+                    instance_type="t2.small",
+                    min_count=5,
+                    static_node_priority=10,
+                    dynamic_node_priority=100,
                 ),
                 SlurmComputeResource(
-                    name="cr2", instance_type="t2.small", static_node_priority=99, dynamic_node_priority=1
+                    name="cr2", instance_type="t2.small", min_count=5, static_node_priority=99, dynamic_node_priority=1
                 ),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
@@ -390,16 +412,16 @@ def test_custom_slurm_settings_include_file_only_validator(
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr0", instance_type="t2.small", static_node_priority=100),
-                SlurmComputeResource(name="cr1", instance_type="t2.small", static_node_priority=120),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", static_node_priority=140),
-                SlurmComputeResource(name="cr3", instance_type="t2.small", static_node_priority=160),
-                SlurmComputeResource(name="cr4", instance_type="t2.small", static_node_priority=180),
-                SlurmComputeResource(name="cr5", instance_type="t2.small", dynamic_node_priority=150),
-                SlurmComputeResource(name="cr6", instance_type="t2.small", dynamic_node_priority=150),
-                SlurmComputeResource(name="cr7", instance_type="t2.small", dynamic_node_priority=170),
-                SlurmComputeResource(name="cr8", instance_type="t2.small", dynamic_node_priority=190),
-                SlurmComputeResource(name="cr9", instance_type="t2.small", dynamic_node_priority=210),
+                SlurmComputeResource(name="cr0", instance_type="t2.small", min_count=5, static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, static_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=140),
+                SlurmComputeResource(name="cr3", instance_type="t2.small", min_count=5, static_node_priority=160),
+                SlurmComputeResource(name="cr4", instance_type="t2.small", min_count=5, static_node_priority=180),
+                SlurmComputeResource(name="cr5", instance_type="t2.small", min_count=5, dynamic_node_priority=150),
+                SlurmComputeResource(name="cr6", instance_type="t2.small", min_count=5, dynamic_node_priority=150),
+                SlurmComputeResource(name="cr7", instance_type="t2.small", min_count=5, dynamic_node_priority=170),
+                SlurmComputeResource(name="cr8", instance_type="t2.small", min_count=5, dynamic_node_priority=190),
+                SlurmComputeResource(name="cr9", instance_type="t2.small", min_count=5, dynamic_node_priority=210),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
