@@ -157,17 +157,11 @@ class SlurmNodePrioritiesWarningValidator(Validator):
     def _validate(self, queue_name: str, compute_resources: List[Dict]):
         static_priorities = {cr.name: cr.static_node_priority for cr in compute_resources}
         dynamic_priorities = {cr.name: cr.dynamic_node_priority for cr in compute_resources}
+        range_static = range(min(static_priorities.values()), max(static_priorities.values()) + 1)
+        range_dynamic = range(min(dynamic_priorities.values()), max(dynamic_priorities.values()) + 1)
 
-        bad_static_priorities = {
-            key: value
-            for key, value in static_priorities.items()
-            if value in range(min(dynamic_priorities.values()), max(dynamic_priorities.values()) + 1)
-        }
-        bad_dynamic_priorities = {
-            key: value
-            for key, value in dynamic_priorities.items()
-            if value in range(min(static_priorities.values()), max(static_priorities.values()) + 1)
-        }
+        bad_static_priorities = {key: value for key, value in static_priorities.items() if value in range_dynamic}
+        bad_dynamic_priorities = {key: value for key, value in dynamic_priorities.items() if value in range_static}
 
         if bad_static_priorities or bad_dynamic_priorities:
             self._add_failure(
