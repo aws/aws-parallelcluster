@@ -349,8 +349,10 @@ def test_custom_slurm_settings_include_file_only_validator(
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
-            "Possible problematic static node priorities are {'cr2': 120}. "
-            "Possible problematic dynamic node priorities are {'cr1': 100}.",
+            "The following static node priorities are higher than or equal to the minimum dynamic priority "
+            "(100): {'cr2': 120}. "
+            "The following dynamic node priorities are lower than or equal to the maximum static priority "
+            "(120): {'cr1': 100}.",
             id="Case with problematic priorities",
         ),
         pytest.param(
@@ -361,9 +363,29 @@ def test_custom_slurm_settings_include_file_only_validator(
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
-            "Possible problematic static node priorities are {'cr2': 100}. "
-            "Possible problematic dynamic node priorities are {'cr1': 100}.",
+            "The following static node priorities are higher than or equal to the minimum dynamic priority "
+            "(100): {'cr2': 100}. "
+            "The following dynamic node priorities are lower than or equal to the maximum static priority "
+            "(100): {'cr1': 100}.",
             id="Case with equal static and dynamic priorities (problematic due to alphabetical sorting)",
+        ),
+        pytest.param(
+            "queue1",
+            [
+                SlurmComputeResource(
+                    name="cr1", instance_type="t2.small", static_node_priority=10, dynamic_node_priority=100
+                ),
+                SlurmComputeResource(
+                    name="cr2", instance_type="t2.small", static_node_priority=99, dynamic_node_priority=1
+                ),
+            ],
+            "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
+            "other dynamic nodes in the same queue. "
+            "The following static node priorities are higher than or equal to the minimum dynamic priority "
+            "(1): {'cr1': 10, 'cr2': 99}. "
+            "The following dynamic node priorities are lower than or equal to the maximum static priority "
+            "(99): {'cr2': 1}.",
+            id="Case with dynamic priority even lower than or equal to the range of static priorities",
         ),
         pytest.param(
             "queue1",
@@ -381,8 +403,10 @@ def test_custom_slurm_settings_include_file_only_validator(
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
-            "Possible problematic static node priorities are {'cr3': 160, 'cr4': 180}. "
-            "Possible problematic dynamic node priorities are {'cr5': 150, 'cr6': 150, 'cr7': 170}.",
+            "The following static node priorities are higher than or equal to the minimum dynamic priority "
+            "(150): {'cr3': 160, 'cr4': 180}. "
+            "The following dynamic node priorities are lower than or equal to the maximum static priority "
+            "(180): {'cr5': 150, 'cr6': 150, 'cr7': 170}.",
             id="Case with many compute resources with problematic priorities",
         ),
     ],

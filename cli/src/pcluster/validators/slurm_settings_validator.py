@@ -157,17 +157,19 @@ class SlurmNodePrioritiesWarningValidator(Validator):
     def _validate(self, queue_name: str, compute_resources: List[Dict]):
         static_priorities = {cr.name: cr.static_node_priority for cr in compute_resources}
         dynamic_priorities = {cr.name: cr.dynamic_node_priority for cr in compute_resources}
-        range_static = range(min(static_priorities.values()), max(static_priorities.values()) + 1)
-        range_dynamic = range(min(dynamic_priorities.values()), max(dynamic_priorities.values()) + 1)
+        max_static = max(static_priorities.values())
+        min_dynamic = min(dynamic_priorities.values())
 
-        bad_static_priorities = {key: value for key, value in static_priorities.items() if value in range_dynamic}
-        bad_dynamic_priorities = {key: value for key, value in dynamic_priorities.items() if value in range_static}
+        bad_static_priorities = {key: value for key, value in static_priorities.items() if value >= min_dynamic}
+        bad_dynamic_priorities = {key: value for key, value in dynamic_priorities.items() if value <= max_static}
 
         if bad_static_priorities or bad_dynamic_priorities:
             self._add_failure(
                 f"Some compute resources in queue {queue_name} have static nodes with higher or equal priority than "
                 f"other dynamic nodes in the same queue. "
-                f"Possible problematic static node priorities are {bad_static_priorities}. "
-                f"Possible problematic dynamic node priorities are {bad_dynamic_priorities}.",
+                f"The following static node priorities are higher than or equal to the minimum dynamic priority "
+                f"({min_dynamic}): {bad_static_priorities}. "
+                f"The following dynamic node priorities are lower than or equal to the maximum static priority "
+                f"({max_static}): {bad_dynamic_priorities}.",
                 FailureLevel.WARNING,
             )
