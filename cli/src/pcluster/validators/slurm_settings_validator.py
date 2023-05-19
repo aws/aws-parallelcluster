@@ -12,6 +12,7 @@
 from enum import Enum
 from typing import Dict, List
 
+from pcluster.constants import MAX_SLURM_NODE_PRIORITY, MIN_SLURM_NODE_PRIORITY
 from pcluster.validators.common import FailureLevel, Validator
 
 # SLURM SETTINGS are case-insensitive - keep them lowercase since they are compared with setting.lower()
@@ -159,8 +160,8 @@ class SlurmNodePrioritiesWarningValidator(Validator):
         dynamic_priorities = {
             cr.name: cr.dynamic_node_priority for cr in compute_resources if cr.max_count > cr.min_count
         }
-        max_static = max(static_priorities.values()) if len(static_priorities) > 0 else 0  # impossible value
-        min_dynamic = min(dynamic_priorities.values()) if len(dynamic_priorities) > 0 else 2**32  # impossible value
+        max_static = max(static_priorities.values()) if len(static_priorities) > 0 else MIN_SLURM_NODE_PRIORITY - 1
+        min_dynamic = min(dynamic_priorities.values()) if len(dynamic_priorities) > 0 else MAX_SLURM_NODE_PRIORITY + 1
 
         bad_static_priorities = {key: value for key, value in static_priorities.items() if value >= min_dynamic}
         bad_dynamic_priorities = {key: value for key, value in dynamic_priorities.items() if value <= max_static}
