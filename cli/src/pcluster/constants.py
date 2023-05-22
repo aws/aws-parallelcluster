@@ -36,11 +36,11 @@ SLURM = "slurm"
 AWSBATCH = "awsbatch"
 
 OS_MAPPING = {
-    "centos7": {"user": "centos", "root-device": "/dev/sda1"},
-    "alinux2": {"user": "ec2-user", "root-device": "/dev/xvda"},
-    "ubuntu1804": {"user": "ubuntu", "root-device": "/dev/sda1"},
-    "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
-    "rhel8": {"user": "ec2-user", "root-device": "/dev/sda1"},
+    "centos7": {"user": "centos"},
+    "alinux2": {"user": "ec2-user"},
+    "ubuntu1804": {"user": "ubuntu"},
+    "ubuntu2004": {"user": "ubuntu"},
+    "rhel8": {"user": "ec2-user"},
 }
 
 OS_TO_IMAGE_NAME_PART_MAP = {
