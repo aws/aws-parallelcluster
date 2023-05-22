@@ -1168,7 +1168,7 @@ class _LaunchTemplateValidator(Validator):
 class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, head_node, os, ami_id, tags, imds_support):
+    def _validate(self, head_node, root_volume_device_name, ami_id, tags, imds_support):
         try:
             head_node_security_groups = []
             if head_node.networking.security_groups:
@@ -1195,7 +1195,9 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 TagSpecifications=self._generate_tag_specifications(tags),
                 KeyName=head_node.ssh.key_name,
                 BlockDeviceMappings=(
-                    self._launch_template_builder.get_block_device_mappings(head_node.local_storage.root_volume, os)
+                    self._launch_template_builder.get_block_device_mappings(
+                        head_node.local_storage.root_volume, root_volume_device_name
+                    )
                 ),
                 MetadataOptions={
                     "HttpTokens": "required" if imds_support == "v2.0" else "optional",
@@ -1230,7 +1232,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, os, ami_id, tags, imds_support):
+    def _validate(self, queue, root_volume_device_name, ami_id, tags, imds_support):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -1255,7 +1257,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
             self._test_compute_resource(
                 queue=queue,
-                os=os,
+                root_volume_device_name=root_volume_device_name,
                 compute_resource=dry_run_compute_resource,
                 use_public_ips=bool(queue.networking.assign_public_ip),
                 ami_id=ami_id,
@@ -1273,7 +1275,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     def _test_compute_resource(
         self,
         queue,
-        os,
+        root_volume_device_name,
         compute_resource,
         use_public_ips,
         ami_id,
@@ -1306,7 +1308,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 queue, compute_resource
             ),
             BlockDeviceMappings=self._launch_template_builder.get_block_device_mappings(
-                queue.compute_settings.local_storage.root_volume, os
+                queue.compute_settings.local_storage.root_volume, root_volume_device_name
             ),
             MetadataOptions={
                 "HttpTokens": "required" if imds_support == "v2.0" else "optional",

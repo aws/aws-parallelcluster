@@ -1487,7 +1487,7 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
             head_node=self.head_node,
-            os=self.image.os,
+            root_volume_device_name=AWSApi.instance().ec2.describe_image(self.head_node_ami).device_name,
             ami_id=self.head_node_ami,
             tags=self.get_tags(),
             imds_support=self.imds.imds_support,
@@ -3025,7 +3025,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     ComputeResourceLaunchTemplateValidator,
                     queue=queue,
                     ami_id=queue_image,
-                    os=self.image.os,
+                    root_volume_device_name=AWSApi.instance().ec2.describe_image(queue_image).device_name,
                     tags=self.get_tags(),
                     imds_support=self.imds.imds_support,
                 )

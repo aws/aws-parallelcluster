@@ -5,6 +5,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnTag, Fn, NestedStack, Stack
 from constructs import Construct
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     SchedulerPluginQueue,
     SharedStorageType,
@@ -190,7 +191,8 @@ class QueuesStack(NestedStack):
             launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.name}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 block_device_mappings=self._launch_template_builder.get_block_device_mappings(
-                    queue.compute_settings.local_storage.root_volume, self._config.image.os
+                    queue.compute_settings.local_storage.root_volume,
+                    AWSApi.instance().ec2.describe_image(self._config.image_dict[queue.name]).device_name,
                 ),
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
