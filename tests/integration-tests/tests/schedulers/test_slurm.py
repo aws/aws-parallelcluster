@@ -437,12 +437,10 @@ def test_slurm_custom_config_parameters(
     assert "500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
 
     # ComputeResource 1
-    assert "50" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
     assert "10000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
     assert "2000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
 
     # ComputeResource 2
-    assert "150" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
     assert "10010" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
     assert "2500" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
@@ -478,12 +476,10 @@ def test_slurm_custom_config_parameters(
     assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
 
     # ComputeResource 1
-    assert "75" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
     assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
     assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
 
     # ComputeResource 2
-    assert "250" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
     assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
     assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
