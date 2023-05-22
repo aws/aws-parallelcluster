@@ -936,7 +936,8 @@ class ClusterCdkStack:
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=head_node.instance_type,
                 block_device_mappings=self._launch_template_builder.get_block_device_mappings(
-                    head_node.local_storage.root_volume, self.config.image.os
+                    head_node.local_storage.root_volume,
+                    AWSApi.instance().ec2.describe_image(self.config.head_node_ami).device_name,
                 ),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
