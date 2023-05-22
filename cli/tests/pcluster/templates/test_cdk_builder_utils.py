@@ -103,7 +103,7 @@ def test_get_default_volume_tags(stack_name, node_type, raw_dict, expected_resul
 @pytest.mark.usefixtures("get_region")
 class TestCdkLaunchTemplateBuilder:
     @pytest.mark.parametrize(
-        "root_volume_parameters, image_os, expected_response",
+        "root_volume_parameters, root_volume_device_name, expected_response",
         [
             pytest.param(
                 dict(
@@ -114,7 +114,7 @@ class TestCdkLaunchTemplateBuilder:
                     throughput=30,
                     delete_on_termination=False,
                 ),
-                "centos7",
+                "/dev/sda1",
                 [
                     ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
                         device_name="/dev/xvdba", virtual_name="ephemeral0"
@@ -210,7 +210,7 @@ class TestCdkLaunchTemplateBuilder:
                     throughput=20,
                     delete_on_termination=True,
                 ),
-                "alinux2",
+                "/dev/xvda",
                 [
                     ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
                         device_name="/dev/xvdba", virtual_name="ephemeral0"
@@ -300,11 +300,11 @@ class TestCdkLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_block_device_mappings(self, root_volume_parameters, image_os, expected_response):
+    def test_get_block_device_mappings(self, root_volume_parameters, root_volume_device_name, expected_response):
         root_volume = RootVolume(**root_volume_parameters)
-        assert_that(CdkLaunchTemplateBuilder().get_block_device_mappings(root_volume, image_os)).is_equal_to(
-            expected_response
-        )
+        assert_that(
+            CdkLaunchTemplateBuilder().get_block_device_mappings(root_volume, root_volume_device_name)
+        ).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
         "queue, compute_resource, expected_response",

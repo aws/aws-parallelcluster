@@ -2845,7 +2845,7 @@ def test_are_subnets_covered_by_cidrs(mocker, ip_ranges, subnet_cidrs, covered):
 @pytest.mark.usefixtures("get_region")
 class TestDictLaunchTemplateBuilder:
     @pytest.mark.parametrize(
-        "root_volume_parameters, image_os, region, expected_response",
+        "root_volume_parameters, root_volume_device_name, region, expected_response",
         [
             pytest.param(
                 dict(
@@ -2856,7 +2856,7 @@ class TestDictLaunchTemplateBuilder:
                     throughput=30,
                     delete_on_termination=False,
                 ),
-                "centos7",
+                "/dev/sda1",
                 "WHATEVER-NON-US-ISO-REGION",
                 [
                     {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
@@ -2905,7 +2905,7 @@ class TestDictLaunchTemplateBuilder:
                     throughput=20,
                     delete_on_termination=True,
                 ),
-                "alinux2",
+                "/dev/xvda",
                 "WHATEVER-NON-US-ISO-REGION",
                 [
                     {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
@@ -2953,7 +2953,7 @@ class TestDictLaunchTemplateBuilder:
                     throughput=20,
                     delete_on_termination=True,
                 ),
-                "alinux2",
+                "/dev/xvda",
                 "us-isoWHATEVER",
                 [
                     {"DeviceName": "/dev/xvdba", "VirtualName": "ephemeral0"},
@@ -2996,12 +2996,14 @@ class TestDictLaunchTemplateBuilder:
             ),
         ],
     )
-    def test_get_block_device_mappings(self, mocker, root_volume_parameters, image_os, region, expected_response):
+    def test_get_block_device_mappings(
+        self, mocker, root_volume_parameters, root_volume_device_name, region, expected_response
+    ):
         mocker.patch("pcluster.config.cluster_config.get_region", return_value=region)
         root_volume = RootVolume(**root_volume_parameters)
-        assert_that(DictLaunchTemplateBuilder().get_block_device_mappings(root_volume, image_os)).is_equal_to(
-            expected_response
-        )
+        assert_that(
+            DictLaunchTemplateBuilder().get_block_device_mappings(root_volume, root_volume_device_name)
+        ).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
         "queue, compute_resource, expected_response",
