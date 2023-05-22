@@ -110,6 +110,7 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
         )
 
     if scheduler == "slurm":
+        logging.info("Checking SSH connection between cluster nodes before cluster update")
         _check_connections_between_head_node_and_compute_nodes(cluster)
         # Update the cluster by removing the custom security group from head node.
         # As a result, head node uses pcluster created security group while compute nodes use custom security group.
@@ -122,6 +123,7 @@ def test_overwrite_sg(region, scheduler, custom_security_group, pcluster_config_
             efs_name=efs_name,
         )
         cluster.update(str(updated_config_file), force_update="true")
+        logging.info("Checking SSH connection between cluster nodes after cluster update")
         _check_connections_between_head_node_and_compute_nodes(cluster)
 
 
@@ -137,13 +139,23 @@ def _check_connections_between_head_node_and_compute_nodes(cluster):
     for compute_node in compute_nodes:
         compute_node_ip = compute_node.get("privateIpAddress")
         ping_ip = "ping {0} -c 5"
+        logging.info(
+            f"Checking SSH connection from head node ${head_node_private_ip} to compute node ${compute_node_ip}"
+        )
         head_node_remote_command_executor.run_remote_command(ping_ip.format(compute_node_ip))
         compute_remote_command_executor = RemoteCommandExecutor(
             cluster, compute_node_ip=compute_node_ip, bastion=head_node_username_ip
         )
+        logging.info(
+            f"Checking SSH connection from compute node ${compute_node_ip} to head node ${head_node_private_ip}"
+        )
         compute_remote_command_executor.run_remote_command(ping_ip.format(head_node_private_ip))
         for other_compute_node in compute_nodes:
             other_compute_node_ip = other_compute_node.get("privateIpAddress")
+            logging.info(
+                f"Checking SSH connection from compute node ${compute_node_ip} "
+                f"and compute node ${other_compute_node_ip}"
+            )
             compute_remote_command_executor.run_remote_command(ping_ip.format(other_compute_node_ip))
 
 
