@@ -10,7 +10,7 @@ constants:
 phases:
   - name: build
     steps:
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | amzn.2 | ubuntu.18.04 | ubuntu.20.04 | rhel.8.7
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | amzn.2 | ubuntu.18.04 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:
@@ -43,6 +43,8 @@ phases:
                 OS='ubuntu1804'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
+              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.22'` ]; then
+                OS='ubuntu2204'
               elif [ `echo "${!RELEASE}" | grep '^rhel\.8'` ]; then
                 OS='rhel8'
               else
@@ -82,10 +84,10 @@ phases:
                 exit {{ FailExitCode }}
               fi
 
-              # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004, Centos7 and RHEL 8
+              # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004, Ubuntu2204, Centos7 and RHEL 8
               ARCH=$(uname -m)
               if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|ubuntu\.18\.04|ubuntu\.20\.04|rhel\.8)'` ]; then
+                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|ubuntu\.18\.04|ubuntu\.20\.04|ubuntu\.22\.04|rhel\.8)'` ]; then
                   echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
                   exit {{ FailExitCode }}
                 fi
@@ -129,17 +131,17 @@ phases:
 
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y update
-              
+
                 if [[ ${!OS} != "rhel8" ]]; then
                   package-cleanup -y --oldkernels --count=1
                 else
                   # package-cleanup has changed in RHEL8 and it works differently
                   # RHEL8 keeps at least 2 kernel for fallback reason https://access.redhat.com/solutions/1227
                   # The kernel cleanup should be performed manually
-              
+
                   # get the default kernel for the next boot
                   LAST_KERNEL_VERSION=$(grubby --default-kernel | sed -e "s/.*-\(4.18.0-.*\).$(uname -m)/\1/g")
-                  
+
                   # get all the installed kernel versions except the one for the next boot
                   KERNEL_VERSIONS_CLEANUP=$(rpm -q --qf "%{VERSION}-%{RELEASE}\n" kernel | grep -v "$LAST_KERNEL_VERSION")
                   for VERSION in $KERNEL_VERSIONS_CLEANUP; do
