@@ -5,14 +5,13 @@
 {%- set SCHEDULERS = ["slurm"] -%}
 ---
 test-suites:
-#  We must fix the integ test logic to make this integration test to work in us-isob-east-1
-#  ad_integration:
-#    test_ad_integration.py::test_ad_integration:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+  ad_integration:
+    test_ad_integration.py::test_ad_integration:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   cfn-init:
     test_cfn_init.py::test_replace_compute_on_failure:
       dimensions:
