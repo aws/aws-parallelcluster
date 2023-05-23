@@ -51,13 +51,7 @@ class RemoteCommandExecutor:
         if bastion:
             # Need to execute simple ssh command before using Connection to avoid Paramiko _check_banner error
             run_command(
-                "ssh -tt -i {key_path} -o StrictHostKeyChecking=no "
-                '-o ProxyCommand="ssh -tt -o StrictHostKeyChecking=no -W %h:%p -A {bastion}" '
-                "-A {user}@{head_node} hostname".format(
-                    key_path=cluster.ssh_key, bastion=bastion, user=username, head_node=node_ip
-                ),
-                timeout=30,
-                shell=True,
+                f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname", timeout=30, shell=True
             )
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
