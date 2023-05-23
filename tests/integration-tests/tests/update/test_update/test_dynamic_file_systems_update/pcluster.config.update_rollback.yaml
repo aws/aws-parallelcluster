@@ -67,6 +67,7 @@ SharedStorage:
       PerformanceMode: maxIO
       ThroughputMode: provisioned
       ProvisionedThroughput: 200
+  {% if fsx_supported %}
   - MountDir: {{ new_lustre_mount_dir }}
     Name: {{ new_lustre_mount_dir }}
     StorageType: FsxLustre
@@ -76,3 +77,4 @@ SharedStorage:
       ExportPath: s3://{{ bucket_name }}/export_dir
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 200
+  {% endif %}
