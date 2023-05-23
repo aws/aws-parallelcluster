@@ -6,6 +6,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Allow configuration of static and dynamic node priorities in compute resources via the ParallelCluster configuration YAML file.
+- Add support for Ubuntu 22.
 
 **CHANGES**
 
