@@ -794,3 +794,7 @@ def test_cluster_health_metric(metric_names, cluster_name, region):
     logging.info(f"Testing that {metric_names} have data.")
     response = retrieve_metric_data(cluster_name, metric_names, region)
     assert_metrics_has_data(response)
+
+
+def is_fsx_supported(region: str):
+    return "us-iso" not in region
