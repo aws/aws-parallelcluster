@@ -30,7 +30,7 @@ from paramiko import RSAKey
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import generate_stack_name, random_alphanumeric, render_jinja_template
+from utils import generate_stack_name, is_fsx_supported, random_alphanumeric, render_jinja_template
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu
@@ -344,16 +344,21 @@ def _generate_certificate(common_name):
     crt.sign(key, "sha256")
     certificate = dump_certificate(FILETYPE_PEM, crt)
     private_key = dump_privatekey(FILETYPE_PEM, key)
-    certificate_arn = boto3.client("acm").import_certificate(Certificate=certificate, PrivateKey=private_key)[
-        "CertificateArn"
-    ]
+    iam = boto3.client("iam")
+    certificate_arn = iam.upload_server_certificate(
+        ServerCertificateName=common_name,
+        CertificateBody=certificate.decode("utf-8"),
+        PrivateKey=private_key.decode("utf-8"),
+    )["ServerCertificateMetadata"]["Arn"]
     return certificate_arn, certificate
 
 
 @retry(stop_max_attempt_number=10, wait_exponential_multiplier=2000, wait_exponential_max=30000)
 def _delete_certificate(certificate_arn, region):
-    logging.info("Deleting ACM certificate %s in region %s", certificate_arn, region)
-    boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
+    logging.info("Deleting IAM certificate %s in region %s", certificate_arn, region)
+    # Example of IAM Server Certificate ARN: arn:PARTITION:iam::ACCOUNT:server-certificate/CERTIFICATE_NAME
+    certificate_name = certificate_arn.split("/")[-1]
+    boto3.client("iam", region_name=region).delete_server_certificate(ServerCertificateName=certificate_name)
 
 
 @pytest.fixture(scope="class")
@@ -434,13 +439,13 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
     for region, certificate_arn in created_certificates.items():
         if request.config.getoption("no_delete"):
             logging.info(
-                "Not deleting ACM certificate %s in region %s because --no-delete option was specified",
+                "Not deleting IAM certificate %s in region %s because --no-delete option was specified",
                 certificate_arn,
                 region,
             )
         else:
             logging.info(
-                "Sleeping 180 seconds to wait for the ACM certificate %s in region %s to become unused",
+                "Sleeping 180 seconds to wait for the IAM certificate %s in region %s to become unused",
                 certificate_arn,
                 region,
             )
@@ -448,10 +453,10 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
             _delete_certificate(certificate_arn=certificate_arn, region=region)
 
 
-def _run_user_workloads(users, test_datadir, remote_command_executor):
+def _run_user_workloads(users, test_datadir, remote_command_executor, shared_storage_mount_dirs):
     compile_osu("openmpi", remote_command_executor)
     _check_whoami(users)
-    _check_files_permissions(users)
+    _check_files_permissions(users, shared_storage_mount_dirs)
     job_submission_outputs = [
         # TODO: render script from template to dynamically provide path to benchmarks and other paramters
         user.submit_script(str(test_datadir / "workload.sh"), nodes=2, slots=2).stdout
@@ -475,7 +480,7 @@ def _check_whoami(users):
         assert_that(result).is_equal_to(user.alias)
 
 
-def _check_files_permissions(users):
+def _check_files_permissions(users, shared_storage_mount_dirs):
     logging.info("Checking file permissions")
     for index, user in enumerate(users):
         logging.info("Checking permission of sssd.conf file from user %s", user.alias)
@@ -486,14 +491,11 @@ def _check_files_permissions(users):
         result = user.run_remote_command("cat /etc/sssd/sssd.conf", raise_on_error=False)
         _check_failed_result_for_permission_denied(result)
         previous_user = users[index - 1]
-        for path in [
-            f"{user.home_dir}/my_file",
-            f"/shared/{user.alias}_file",
-            f"/ebs/{user.alias}_file",
-            f"/efs/{user.alias}_file",
-            f"/fsxopenzfs/{user.alias}_file",
-            f"/fsxontap/{user.alias}_file",
-        ]:
+        paths = [f"{user.home_dir}/my_file"]
+        paths.extend(
+            [f"{shared_storage_mount_dir}/{user.alias}_file" for shared_storage_mount_dir in shared_storage_mount_dirs]
+        )
+        for path in paths:
             user.run_remote_command(f"touch {path}")
             # Specify that only owner of file should have read/write access.
             user.run_remote_command(f"chmod 600 {path}")
@@ -693,9 +695,11 @@ def test_ad_integration(
     """
     head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
     compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
+    fsx_supported = is_fsx_supported(region)
     config_params = {
         "compute_instance_type": compute_instance_type_info.get("name"),
         "head_node_instance_type": head_node_instance_type,
+        "fsx_supported": fsx_supported,
     }
     directory_stack_name, nlb_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
@@ -722,7 +726,8 @@ def test_ad_integration(
             directory_certificate_verification,
         )
     )
-    config_params.update(get_fsx_config_param_vals(fsx_factory, svm_factory))
+    if fsx_supported:
+        config_params.update(get_fsx_config_param_vals(fsx_factory, svm_factory))
     cluster_config = pcluster_config_reader(benchmarks=benchmarks, **config_params)
     cluster = clusters_factory(cluster_config)
 
@@ -767,7 +772,10 @@ def test_ad_integration(
                 scheduler_commands_factory,
             )
         )
-    _run_user_workloads(users, test_datadir, remote_command_executor)
+    shared_storage_mount_dirs = ["/shared", "/efs"]
+    if fsx_supported:
+        shared_storage_mount_dirs.extend(["/fsxlustre", "/fsxontap", "/fsxopenzfs"])
+    _run_user_workloads(users, test_datadir, remote_command_executor, shared_storage_mount_dirs)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], remote_command_executor, scheduler_commands, False)
 

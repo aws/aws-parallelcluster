@@ -3,8 +3,8 @@ Description: |-
   LDAPS NLB Stack from https://aws.amazon.com/blogs/security/how-to-configure-ldaps-endpoint-for-simple-ad/
 Parameters:
   LDAPSCertificateARN:
-    Description: ARN of SSL Certificate
-    AllowedPattern: "arn:aws:acm:.*"
+    Description: ARN of SSL Certificate provided as ACM Certificate or IAM Server Certificate
+    AllowedPattern: "arn:aws.*:(acm|iam):.*:.*:(certificate|server-certificate)/.*"
     Type: String
   VPCId:
     Description: Please provide a VPC to deploy the solution into.
