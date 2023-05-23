@@ -53,6 +53,7 @@ CHANGELOG
 - Upgrade image used by CodeBuild environment when building container images for AWS Batch clusters, from
   `aws/codebuild/amazonlinux2-x86_64-standard:3.0` to `aws/codebuild/amazonlinux2-x86_64-standard:4.0` and from
   `aws/codebuild/amazonlinux2-aarch64-standard:1.0` to `aws/codebuild/amazonlinux2-aarch64-standard:2.0`.
+- Avoid to reset FSx and EFS shared folders permissions when mounting them in the compute nodes.
 
 **BUG FIXES**
 - Fix EFS, FSx network security groups validators to avoid reporting false errors.
@@ -62,6 +63,8 @@ CHANGELOG
 - Fix replacement of `StoragePass` in `slurm_parallelcluster_slurmdbd.conf` when a queue parameter update is performed and the Slurm accounting configurations are not updated.
 - Fix issue causing `cfn-hup` daemon to fail when it gets restarted.
 - Fix issue causing dangling security groups to be created when creating a cluster with an existing EFS.
+- Fix issue causing NVIDIA GPU compute nodes not to resume correctly after executing an `scontrol reboot` command.
+- Fix tags parsing to show a meaningful error message when using a boolean in the `Value` field of `Tags`.
 
 3.5.1
 -----

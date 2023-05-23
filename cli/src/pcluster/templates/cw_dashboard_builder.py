@@ -17,6 +17,8 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import Construct, Duration, Stack
 
 from pcluster.config.cluster_config import BaseClusterConfig, SharedFsxLustre, SharedStorageType
+from pcluster.constants import Feature
+from pcluster.utils import is_feature_supported
 
 MAX_WIDTH = 24
 
@@ -147,7 +149,7 @@ class CWDashboardConstruct(Construct):
 
         # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
-            if self.config.scheduling.scheduler == "slurm":
+            if self.config.scheduling.scheduler == "slurm" and is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
                 self._add_custom_health_metrics()
             self._add_cw_log()
 

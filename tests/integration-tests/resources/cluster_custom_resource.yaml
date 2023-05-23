@@ -50,6 +50,11 @@ Resources:
       DeletionPolicy: !Ref DeletionPolicy
       ClusterName: !Ref ClusterName
       ClusterConfiguration:
+        Imds:
+          ImdsSupport: v2.0
+        Tags:
+          - Key: inside_configuration_key
+            Value: overridden
         DevSettings:
           AmiSearchFilters:
             Owner: self

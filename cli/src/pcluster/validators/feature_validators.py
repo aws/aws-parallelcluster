@@ -11,8 +11,8 @@
 #
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
-from pcluster.aws.common import get_region
-from pcluster.constants import UNSUPPORTED_FEATURES_MAP, Feature
+from pcluster import utils
+from pcluster.constants import Feature
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -20,16 +20,5 @@ class FeatureRegionValidator(Validator):
     """Validate if a feature is supported in the given region."""
 
     def _validate(self, feature: Feature, region: str):
-        if not self._is_feature_supported(feature, region):
+        if not utils.is_feature_supported(feature, region):
             self._add_failure(f"{feature.value} is not supported in region '{region}'.", FailureLevel.ERROR)
-
-    @staticmethod
-    def _is_feature_supported(feature: Feature, region: str):
-        """
-        Check if a feature is supported for the given region.
-
-        If region is None, consider the region set in the environment.
-        """
-        _region = get_region() if region is None else region
-        prefixes_of_unsupported_regions = UNSUPPORTED_FEATURES_MAP.get(feature, [])
-        return all(not _region.startswith(region_prefix) for region_prefix in prefixes_of_unsupported_regions)
