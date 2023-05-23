@@ -528,13 +528,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-#    We must fix the integ test logic to make this integration test to work in us-isob-east-1
-#    test_update.py::test_dynamic_file_systems_update:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+    test_update.py::test_dynamic_file_systems_update:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
 # This test cannot be executed in US isolated regions
 # because it relies on a CloudFormation stack using resources
 # that are not supported by CloudFormation in ADC,
