@@ -42,6 +42,8 @@ phases:
                 OS='ubuntu1804'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
+              elif [ `echo "${RELEASE}" | grep '^ubuntu\.22'` ]; then
+                OS='ubuntu2204'
               elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
                 OS='rhel8'
               else
@@ -125,7 +127,7 @@ phases:
                 su -l pcluster-scheduler-plugin -c "which python" | grep envs/scheduler_plugin_virtualenv/bin/python
                 [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python path failed" && exit 1
               fi
-              
+
               echo "Virtualenv test passed"
 
       - name: Pip
