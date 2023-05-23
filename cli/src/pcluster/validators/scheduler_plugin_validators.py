@@ -27,13 +27,13 @@ class SudoPrivilegesValidator(Validator):
         if requires_sudo_privileges and not grant_sudo_privileges:
             self._add_failure(
                 "The scheduler plugin required sudo privileges through RequiresSudoPrivileges=true "
-                "but these privileges were not granted because GrantSudoPrivileges was not set or set to false.",
+                "but these privileges were not granted because GrantSudoPrivileges was not set, or it was set to false.",
                 FailureLevel.ERROR,
             )
 
 
 class GrantSudoPrivilegesValidator(Validator):
-    """Verify SystemUsers does not have SudoerConfiguration set when GrantSudoPrivileges is true."""
+    """Verify that SystemUsers does not have SudoerConfiguration set when GrantSudoPrivileges is true."""
 
     def _validate(self, grant_sudo_privileges: bool, system_users):
         if not grant_sudo_privileges and system_users:
@@ -44,14 +44,14 @@ class GrantSudoPrivilegesValidator(Validator):
             ]
             if sudoer_configuration:
                 self._add_failure(
-                    "The used scheduler plugin requires the creation of SystemUsers with sudo access. To grant such "
-                    "rights please set GrantSudoPrivileges to true.",
+                    "The used scheduler plugin requires the creation of SystemUsers with sudo access. To grant access "
+                    "rights, set GrantSudoPrivileges to true.",
                     FailureLevel.ERROR,
                 )
 
 
 class SchedulerPluginOsArchitectureValidator(Validator):
-    """Verify that head node architecture and os combination is supported by the scheduler plugin."""
+    """Verify that the head node architecture and OS combination are supported by the scheduler plugin."""
 
     def _validate(self, os, architecture: str, supported_x86, supported_arm64):
         oss_and_supported_architectures_mapping = {"x86_64": supported_x86, "arm64": supported_arm64}
@@ -66,13 +66,13 @@ class SchedulerPluginOsArchitectureValidator(Validator):
 
 
 class SchedulerPluginRegionValidator(Validator):
-    """Verify that the region is supported by the scheduler plugin."""
+    """Verify that the Region is supported by the scheduler plugin."""
 
     def _validate(self, region, supported_regions):
         if supported_regions and region not in supported_regions:
             self._add_failure(
-                "The specified region {0} is not supported by the scheduler plugin. "
-                "Supported regions are: {1}.".format(region, supported_regions),
+                "The specified Region {0} is not supported by the scheduler plugin. "
+                "Supported Regions are: {1}.".format(region, supported_regions),
                 FailureLevel.ERROR,
             )
 
@@ -81,7 +81,7 @@ class SupportedVersionsValidator(Validator):
     """
     Validate if the installed ParallelCluster Version is supported by the scheduler plugin.
 
-    The supported formats for SupportedParallelClusterVersions is either a string contains list of versions or a range.
+    The supported formats for SupportedParallelClusterVersions is either a string that contains a list of versions or a range.
     Example: "3.0.0, 3.0.1" or ">=3.1.0, <=3.1.0"
     """
 
@@ -99,7 +99,7 @@ class SupportedVersionsValidator(Validator):
                 )
 
     def _check_version_in_range(self, installed_version, supported_versions_list, supported_versions_string):
-        """Check if the installed version is inside the supported versions range."""
+        """Check if the installed version is inside the supported version's range."""
         CliRequirement = namedtuple("Requirement", "operator version")
         comparison_operators = {
             "<": operator.lt,
@@ -118,7 +118,7 @@ class SupportedVersionsValidator(Validator):
                 self._add_failure(
                     "Unable to parse SupportedParallelClusterVersions {0} in the scheduler plugin: {1}. "
                     "The input of SupportedParallelClusterVersions can either contain multiple versions"
-                    "(e.g., '3.0.0, 3.0.1') or a version range(e.g., '>=3.0.1, <3.4.0')".format(
+                    "(e.g., '3.0.0, 3.0.1') or a version range (e.g., '>=3.0.1, <3.4.0')".format(
                         supported_versions_string, e
                     ),
                     FailureLevel.ERROR,

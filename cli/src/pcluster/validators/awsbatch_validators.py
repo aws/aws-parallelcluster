@@ -21,36 +21,36 @@ LOGGER = logging.getLogger(__name__)
 
 class AwsBatchComputeResourceSizeValidator(Validator):
     """
-    AwsBatch compute resource size validator.
+    AWS Batch compute resource size validator.
 
-    Validate min, desired and max vCPUs combination.
+    Validate min, desired, and max vCPUs combination.
     """
 
     def _validate(self, min_vcpus: int, desired_vcpus: int, max_vcpus: int):
         if desired_vcpus < min_vcpus:
             self._add_failure(
-                "The number of desired vCPUs must be greater than or equal to min vCPUs.",
+                "The number of desired vCPUs must be greater than or equal to the min vCPUs.",
                 FailureLevel.ERROR,
             )
 
         if desired_vcpus > max_vcpus:
             self._add_failure(
-                "The number of desired vCPUs must be fewer than or equal to max vCPUs.",
+                "The number of desired vCPUs must be fewer than or equal to the max vCPUs.",
                 FailureLevel.ERROR,
             )
 
         if max_vcpus < min_vcpus:
             self._add_failure(
-                "Max vCPUs must be greater than or equal to min vCPUs.",
+                "The max vCPUs must be greater than or equal to the min vCPUs.",
                 FailureLevel.ERROR,
             )
 
 
 class AwsBatchComputeInstanceTypeValidator(Validator):
     """
-    AwsBatch compute instance type validator.
+    AWS Batch compute instance type validator.
 
-    Validate instance types and max vCPUs combination.
+    Validate instance types and max vCPUs combinations.
     """
 
     def _validate(self, instance_types: List[str], max_vcpus: int):
@@ -60,7 +60,7 @@ class AwsBatchComputeInstanceTypeValidator(Validator):
                 if instance_type not in supported_instances:
                     self._add_failure(
                         f"Compute instance type '{instance_type}' is not supported"
-                        f" by AWS Batch in region '{get_region()}'.",
+                        f" by AWS Batch in Region '{get_region()}'.",
                         FailureLevel.ERROR,
                     )
         else:
@@ -82,17 +82,17 @@ class AwsBatchComputeInstanceTypeValidator(Validator):
             else:
                 if max_vcpus < vcpus:
                     self._add_failure(
-                        f"Max vCPUs must be greater than or equal to {vcpus}, that is the number of vCPUs "
-                        f"available for the {instance_types[0]} that you selected as compute instance type.",
+                        f"Max vCPUs must be greater than or equal to {vcpus}, which is the number of vCPUs "
+                        f"available for the {instance_types[0]} that you selected as the compute instance type.",
                         FailureLevel.ERROR,
                     )
 
 
 def _get_supported_batch_instance_types():
     """
-    Get the instance types supported by Batch in the desired region.
+    Get the instance types supported by AWS Batch in the desired Region.
 
-    This is done by calling Batch's CreateComputeEnvironment with a bad
+    Do this by calling AWS Batch's CreateComputeEnvironment with a bad
     instance type and parsing the error message.
     """
     supported_instance_types = AWSApi.instance().ec2.list_instance_types()
@@ -112,7 +112,7 @@ def _get_supported_batch_instance_types():
         # log the reason for the failure and return instead a list of all instance types
         # supported in the region.
         LOGGER.debug(
-            "Failed to parse supported Batch instance types from a CreateComputeEnvironment error message: %s", e
+            "Failed to parse supported AWS Batch instance types from a CreateComputeEnvironment error message: %s", e
         )
         supported_batch_types = supported_instance_types_and_families
     return supported_batch_types
@@ -131,7 +131,7 @@ def _get_instance_families_from_types(instance_types):
 
 
 def _batch_instance_types_and_families_are_supported(candidate_types_and_families, known_types_and_families):
-    """Return a boolean describing whether the instance types and families parsed from Batch API are known."""
+    """Return a boolean value describing whether the instance types and families parsed from BAWS atch API are known."""
     unknowns = [candidate for candidate in candidate_types_and_families if candidate not in known_types_and_families]
     if unknowns:
         LOGGER.debug("Found the following unknown instance types/families: %s", " ".join(unknowns))
@@ -180,7 +180,7 @@ class AwsBatchInstancesArchitectureCompatibilityValidator(Validator):
 
     @staticmethod
     def _is_instance_type_format(candidate):
-        """Return a boolean describing whether or not candidate is of the format of an instance type."""
+        """Return a boolean value describing whether or not a candidate is of the format of an instance type."""
         return re.search(r"^([a-z0-9\-]+)\.", candidate) is not None
 
 
@@ -188,7 +188,7 @@ class AwsBatchFsxValidator(Validator):
     """
     Validator for FSx and AWS Batch scheduler.
 
-    Fail if using AWS Batch and FSx for Lustre, ONTAP, OpenZFS, File Cache are not supported yet.
+    Fail if using AWS Batch and FSx for Lustre, ONTAP, OpenZFS, or File Cache, which are not supported yet.
     """
 
     def _validate(self):

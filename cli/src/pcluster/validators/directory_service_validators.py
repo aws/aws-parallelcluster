@@ -58,7 +58,7 @@ class DomainNameValidator(Validator):
     LDAP_DN_PATTERN = "^((DC|dc)=[a-zA-Z0-9_-]+)(,(DC|dc)=[a-zA-Z0-9_-]+)*$"
 
     def _validate(self, domain_name):
-        """Validate that domain address is a Fully Qualified Domain Name (FQDN) or a LDAP Distinguished Name (DN)."""
+        """Validate that domain address is a Fully Qualified Domain Name (FQDN) or an LDAP Distinguished Name (DN)."""
         match = re.match(DomainNameValidator.FQDN_PATTERN, domain_name) or re.match(
             DomainNameValidator.LDAP_DN_PATTERN, domain_name
         )
@@ -74,11 +74,11 @@ class PasswordSecretArnValidator(Validator):
     """PasswordSecretArn validator."""
 
     def _validate(self, password_secret_arn: str, region: str):
-        """Validate that PasswordSecretArn contains a valid ARN for the given region.
+        """Validate that PasswordSecretArn contains a valid ARN for the given Region.
 
         In particular, the ARN should be one of the following resources:
-         1. a readable secret in AWS Secrets Manager, which is supported in all regions but us-isob-east-1.
-         2. a readable parameter in SSM Parameter Store, which is supported only in us-isob-east-1.
+         1. A readable secret in AWS Secrets Manager, which is supported in all Regions except us-isob-east-1.
+         2. A readable parameter in SSM Parameter Store, which is supported only in the Region us-isob-east-1.
         """
         try:
             # We only require the secret to exist; we do not validate its content.
@@ -95,7 +95,7 @@ class PasswordSecretArnValidator(Validator):
                 AWSApi.instance().ssm.get_parameter(parameter_name)
             else:
                 self._add_failure(
-                    f"The secret {password_secret_arn} is not supported in region {region}.", FailureLevel.ERROR
+                    f"The secret {password_secret_arn} is not supported in Region {region}.", FailureLevel.ERROR
                 )
         except AWSClientError as e:
             if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
@@ -103,13 +103,13 @@ class PasswordSecretArnValidator(Validator):
             elif e.error_code == "AccessDeniedException":
                 self._add_failure(
                     f"Cannot validate secret {password_secret_arn} due to lack of permissions. "
-                    "Please refer to ParallelCluster official documentation for more information.",
+                    "Refer to ParallelCluster official documentation for more information.",
                     FailureLevel.WARNING,
                 )
             else:
                 self._add_failure(
                     f"Cannot validate secret {password_secret_arn}. "
-                    "Please refer to ParallelCluster official documentation for more information.",
+                    "Refer to ParallelCluster official documentation for more information.",
                     FailureLevel.WARNING,
                 )
 
@@ -118,11 +118,11 @@ class LdapTlsReqCertValidator(Validator):
     """LDAP TLS require certificate parameter validator."""
 
     def _validate(self, ldap_tls_reqcert):
-        """Warn user of potentially insecure configurations."""
+        """Warn user of potentially unsecure configurations."""
         values_requiring_cert_validation = ("hard", "demand")
         if ldap_tls_reqcert not in values_requiring_cert_validation:
             self._add_failure(
-                f"For security reasons it's recommended to use {' or '.join(values_requiring_cert_validation)}",
+                f"For security reasons, it's recommended to use {' or '.join(values_requiring_cert_validation)}",
                 FailureLevel.WARNING,
             )
 
@@ -140,7 +140,7 @@ class AdditionalSssdConfigsValidator(Validator):
                         f"Cannot override the SSSD property '{config_key}' "
                         f"with value '{actual_value}'. "
                         f"Allowed value is: '{accepted_value}'. "
-                        "Please refer to ParallelCluster official documentation for more information.",
+                        "Refer to ParallelCluster official documentation for more information.",
                         FailureLevel.ERROR,
                     )
 
@@ -151,6 +151,6 @@ class AdditionalSssdConfigsValidator(Validator):
                     "Cannot override the SSSD property 'access_provider' "
                     f"with value '{actual_access_provider}' when LdapAccessFilter is specified. "
                     "Allowed value is: 'ldap'. "
-                    "Please refer to ParallelCluster official documentation for more information.",
+                    "Refer to ParallelCluster official documentation for more information.",
                     FailureLevel.ERROR,
                 )

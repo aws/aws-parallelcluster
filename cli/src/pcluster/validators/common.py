@@ -60,7 +60,7 @@ class Validator(ABC):
         return self.__class__.__name__
 
     def execute(self, *arg, **kwargs) -> List[ValidationResult]:
-        """Entry point of all validators to verify all input params are valid."""
+        """Entry point of all validators to verify all input parameters are valid."""
         self._validate(*arg, **kwargs)
         return self._failures
 
@@ -85,7 +85,7 @@ class AsyncValidator(Validator):
         return self._failures
 
     async def execute_async(self, *arg, **kwargs) -> List[ValidationResult]:
-        """Entry point of all async validators to verify all input params are valid."""
+        """Entry point of all async validators to verify all input parameters are valid."""
         await self._validate_async(*arg, **kwargs)
         return self._failures
 
@@ -103,11 +103,11 @@ def get_async_timed_validator_type_for(validator_type: type) -> AsyncValidator:
     """
     Return the type decorating the given validator with timeout support.
 
-    The enriched _validate_async will accept an additional timeout parameter.
-    If not provided will default to ASYNC_TIMED_VALIDATORS_DEFAULT_TIMEOUT_SEC.
+    The enriched _validate_async accepts an additional timeout parameter.
+    If not provided, it defaults to ASYNC_TIMED_VALIDATORS_DEFAULT_TIMEOUT_SEC.
 
-    Since validators async execution is coroutine based with preemptive multitasking,
-    the effective time to fail the validator for timeout may exceed the requested one.
+    Since validators async execution is co-routine, based on preemptive multitasking,
+    the effective time to fail the validator for timeout may exceed the requested time.
     """
     class_name = f"AsyncTimed{validator_type.__name__}"
 

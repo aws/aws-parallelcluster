@@ -18,7 +18,7 @@ class LogRotationValidator(Validator):
         if not log.cloud_watch.enabled and log.rotation.enabled:
             self._add_failure(
                 "Cloudwatch Logging is disabled but Log Rotation is enabled. Logs will be rotated and removed from the "
-                "cluster once they reach a certain size. If you want to keep logs locally within the cluster, please "
+                "cluster when they reach a certain size. If you want to keep logs locally within the cluster,  "
                 "set `Monitoring / Logs / Rotation / Enabled` to false.",
                 FailureLevel.WARNING,
             )
@@ -32,7 +32,7 @@ class DetailedMonitoringValidator(Validator):
             self._add_failure(
                 "Detailed Monitoring is enabled for EC2 instances in your compute fleet. The Amazon EC2 console will "
                 "display monitoring graphs with a 1-minute period for these instances. Note that this will increase "
-                "the cost. If you want to avoid this and use basic monitoring instead, please set "
+                "the cost. If you want to avoid this and use basic monitoring instead, set "
                 "`Monitoring / DetailedMonitoring` to false.",
                 FailureLevel.WARNING,
             )

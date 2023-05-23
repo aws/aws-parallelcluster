@@ -33,7 +33,7 @@ class ComputeResourceTagsValidator(Validator):
 
         if overlapping_keys_list:
             self._add_failure(
-                "The following Tag keys are defined under `Tags`, `SlurmQueue/Tags` and "
+                "The following Tag keys are defined under `Tags`, `SlurmQueue/Tags`, and "
                 f"`SlurmQueue/ComputeResources/Tags`: {overlapping_keys_list}"
                 " and will be overridden by the value set in `SlurmQueue/ComputeResources/Tags` for "
                 f"ComputeResource '{compute_resource_name}' in queue '{queue_name}'.",
@@ -48,7 +48,7 @@ class ComputeResourceTagsValidator(Validator):
             )
         if compute_resource_queue_overlapping_key_list:
             self._add_failure(
-                "The following Tag keys are defined in both under `SlurmQueue/Tags` and "
+                "The following Tag keys are defined both under `SlurmQueue/Tags` and "
                 f"`SlurmQueue/ComputeResources/Tags`: {compute_resource_queue_overlapping_key_list} and will be "
                 f"overridden by the value set in `SlurmQueue/ComputeResources/Tags` for "
                 f"ComputeResource '{compute_resource_name}' in queue '{queue_name}'.",
@@ -57,7 +57,7 @@ class ComputeResourceTagsValidator(Validator):
 
         if cluster_compute_resource_overlapping_key_list:
             self._add_failure(
-                "The following Tag keys are defined in both under `Tags` and `SlurmQueue/ComputeResources/Tags`: "
+                "The following Tag keys are defined both under `Tags` and `SlurmQueue/ComputeResources/Tags`: "
                 f"{cluster_compute_resource_overlapping_key_list} and will be overridden by the value set in "
                 f"`SlurmQueue/ComputeResources/Tags` for ComputeResource '{compute_resource_name}' in queue"
                 f" '{queue_name}'.",

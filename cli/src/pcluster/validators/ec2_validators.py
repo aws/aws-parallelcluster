@@ -26,7 +26,7 @@ class InstanceTypePlacementGroupValidator(Validator):
     """
     EC2 Instance Type Placement Group validator.
 
-    Not all EC2 Instance Type can be launched in a Placement Group.
+    Not all EC2 Instance Types can be launched in a Placement Group.
     """
 
     def _validate(self, instance_type: str, instance_type_data: dict, placement_group_enabled: bool):
@@ -37,7 +37,7 @@ class InstanceTypePlacementGroupValidator(Validator):
             if "cluster" not in placement_group_supported_strategies:
                 self._add_failure(
                     f"The instance type '{instance_type}' doesn't support being launched in a cluster placement group. "
-                    f"Please either disable the placement group or remove the instance type from the compute resource.",
+                    f"Either disable the placement group or remove the instance type from the compute resource.",
                     FailureLevel.ERROR,
                 )
 
@@ -46,7 +46,7 @@ class InstanceTypeAcceleratorManufacturerValidator(Validator):
     """
     EC2 Instance Type Accelerator Manufacturer validator.
 
-    ParallelCluster only support specific Accelerator Manufacturer.
+    ParallelCluster only supports specific Accelerator Manufacturers.
     """
 
     def _validate(self, instance_type: str, instance_type_data: dict):
@@ -59,15 +59,15 @@ class InstanceTypeAcceleratorManufacturerValidator(Validator):
             if manufacturer.upper() != "NVIDIA":
                 self._add_failure(
                     f"The accelerator manufacturer '{manufacturer}' for instance type '{instance_type}' is "
-                    "not supported. Please make sure to use a custom AMI with the appropriate drivers in order to "
+                    "not supported. Make sure you use a custom AMI with the appropriate drivers in order to "
                     "leverage the accelerator functionalities",
                     FailureLevel.WARNING,
                 )
                 LOGGER.warning(
                     "ParallelCluster offers native support for NVIDIA manufactured GPUs only. "
                     "InstanceType (%s) GPU Info: %s. "
-                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
-                    "GPUs functionalities",
+                    "Make sure to use a custom AMI with the appropriate drivers in order to use the "
+                    "GPU functionalities",
                     instance_type,
                     json.dumps(gpu_info),
                 )
@@ -86,14 +86,14 @@ class InstanceTypeAcceleratorManufacturerValidator(Validator):
             if manufacturer.upper() != "AWS":
                 self._add_failure(
                     f"The accelerator manufacturer '{manufacturer}' for instance type '{instance_type}' is "
-                    "not supported. Please make sure to use a custom AMI with the appropriate drivers in order to "
-                    "leverage the accelerator functionalities",
+                    "not supported. Make sure to use a custom AMI with the appropriate drivers in order to "
+                    "use the accelerator functionalities",
                     FailureLevel.WARNING,
                 )
                 LOGGER.warning(
                     "ParallelCluster offers native support for 'AWS' manufactured Inference Accelerators only. "
                     "InstanceType (%s) accelerator info: %s. "
-                    "Please make sure to use a custom AMI with the appropriate drivers in order to leverage the "
+                    "Make sure to use a custom AMI with the appropriate drivers in order to use the "
                     "accelerators functionalities.",
                     instance_type,
                     json.dumps(inference_accelerator_info),
@@ -104,7 +104,7 @@ class InstanceTypeValidator(Validator):
     """
     EC2 Instance type validator.
 
-    Verify the given instance type is a supported one.
+    Verify that the given instance type is supported.
     """
 
     def _validate(self, instance_type: str):
@@ -129,7 +129,7 @@ class InstanceTypeMemoryInfoValidator(Validator):
 
 
 class InstanceTypeBaseAMICompatibleValidator(Validator):
-    """EC2 Instance type and base ami compatibility validator."""
+    """EC2 Instance type and base AMI compatibility validator."""
 
     def _validate(self, instance_type: str, image: str):
         image_info = self._validate_base_ami(image)
@@ -191,8 +191,8 @@ class PlacementGroupNamingValidator(Validator):
     def _validate(self, placement_group):
         if placement_group.id and placement_group.name:
             self._add_failure(
-                "PlacementGroup Id cannot be set when setting PlacementGroup Name.  Please "
-                "set either Id or Name but not both.",
+                "PlacementGroup ID cannot be set when setting PlacementGroup Name. "
+                "Set either ID or Name, but not both.",
                 FailureLevel.ERROR,
             )
         identifier = placement_group.name or placement_group.id
@@ -200,9 +200,9 @@ class PlacementGroupNamingValidator(Validator):
             if placement_group.enabled is False:
                 self._add_failure(
                     "The PlacementGroup feature must be enabled (Enabled: true) in order "
-                    "to assign a Name or Id parameter.  Please either remove the Name/Id parameter to disable the "
+                    "to assign a Name or ID parameter.  Either remove the Name/ID parameter to disable the "
                     "feature, set Enabled: true to enable it, or remove the Enabled parameter to imply it is enabled "
-                    "with the Name/Id given",
+                    "with the Name/ID given",
                     FailureLevel.ERROR,
                 )
             else:
@@ -213,7 +213,7 @@ class PlacementGroupNamingValidator(Validator):
 
 
 class CapacityTypeValidator(Validator):
-    """Compute type validator. Verify that specified compute type is compatible with specified instance type."""
+    """Compute type validator. Verify that the specified compute type is compatible with the specified instance type."""
 
     def _validate(self, capacity_type, instance_type):
         compute_type_value = capacity_type.value.lower()
@@ -233,9 +233,9 @@ class CapacityTypeValidator(Validator):
 
 class AmiOsCompatibleValidator(Validator):
     """
-    node AMI and OS compatibility validator.
+    Node AMI and OS compatibility validator.
 
-    If image has tag of OS, compare AMI OS with cluster OS, else print out a warning message.
+    If image has tag of OS, compare AMI OS with cluster OS, or else print out a warning message.
     """
 
     def _validate(self, os: str, image_id: str):
@@ -244,19 +244,19 @@ class AmiOsCompatibleValidator(Validator):
         if image_os:
             if image_os != os:
                 self._add_failure(
-                    f"The OS of node AMI {image_id} is {image_os}, it is not compatible with cluster OS {os}.",
+                    f"The OS of node AMI {image_id} is {image_os}, and it is not compatible with cluster OS {os}.",
                     FailureLevel.ERROR,
                 )
         else:
             self._add_failure(
-                f"Could not check node AMI {image_id} OS and cluster OS {os} compatibility, please make sure "
+                f"Could not check node AMI {image_id} OS and cluster OS {os} compatibility. Make sure "
                 f"they are compatible before cluster creation and update operations.",
                 FailureLevel.WARNING,
             )
 
 
 class CapacityReservationValidator(Validator):
-    """Validate capacity reservation can be used with the instance type and subnet."""
+    """Validate that the capacity reservation can be used with the instance type and subnet."""
 
     def _validate(self, capacity_reservation_id: str, instance_type: str, subnet: str):
         if capacity_reservation_id:
@@ -279,7 +279,7 @@ class CapacityReservationValidator(Validator):
                     )
                 if capacity_reservation["AvailabilityZone"] != AWSApi.instance().ec2.get_subnet_avail_zone(subnet):
                     self._add_failure(
-                        f"Capacity reservation {capacity_reservation_id} must use the same availability zone "
+                        f"Capacity reservation {capacity_reservation_id} must use the same Availability Zone "
                         f"as subnet {subnet}.",
                         FailureLevel.ERROR,
                     )
@@ -323,12 +323,12 @@ def get_capacity_reservations_per_az(capacity_reservations: List) -> Dict:
 
 
 class CapacityReservationResourceGroupValidator(Validator):
-    """Validate capacity reservation group is can be used with existing instance types and subnets.
+    """Validate that the capacity reservation group can be used with the existing instance types and subnets.
 
     - When using multiple instance types:
-        - At least one capacity reservation in the resource group can be used with one of the instances
+        - At least one capacity reservation in the resource group can be used with one of the instances.
     - When using multiple subnets
-        - At least one capacity reservation in the resource group can be used with one of the subnets
+        - At least one capacity reservation in the resource group can be used with one of the subnets.
     """
 
     def _validate(
@@ -388,7 +388,7 @@ class CapacityReservationResourceGroupValidator(Validator):
         if unreserved_instance_types_per_az:
             self._add_failure(
                 "The Capacity Reservation Resource Group '{crrg_arn}' has reservations for these InstanceTypes and "
-                "Availability Zones: '{cr_instance_az}'. Please consider that the cluster can launch instances in these"
+                "Availability Zones: '{cr_instance_az}'. Consider that the cluster can launch instances in these"
                 " Availability Zones that have no capacity reservations in the Resource Group for the given "
                 "instance types: '{unreserved_instance_types}'.".format(
                     crrg_arn=capacity_reservation_resource_group_arn,
@@ -421,10 +421,10 @@ class CapacityReservationResourceGroupValidator(Validator):
 
         if not found_qualified_capacity_reservation:
             self._add_failure(
-                "Queue '{queue}' has a subnet configuration mapping to the following availability zones: "
+                "Queue '{queue}' has a subnet configuration mapping to the following Availability Zones: "
                 "'{subnet_azs_without_reservations}' but the Capacity Reservation Resource Group '{cr_group_arn}' "
-                "has reservations in these availability zones: '{cr_azs}'. You can either add a capacity reservation "
-                "in the availability zones that the subnets are in or remove the Capacity Reservation from the "
+                "has reservations in these Availability Zones: '{cr_azs}'. You can either add a capacity reservation "
+                "in the Availability Zones that the subnets are in, or you can remove the Capacity Reservation from the "
                 "Cluster Configuration.".format(
                     queue=queue_name,
                     subnet_azs_without_reservations=", ".join(
@@ -438,9 +438,9 @@ class CapacityReservationResourceGroupValidator(Validator):
             )
         if found_qualified_capacity_reservation and subnets_without_reservations:
             self._add_failure(
-                "Queue '{queue}' has a subnet configuration mapping to the following availability zones: "
+                "Queue '{queue}' has a subnet configuration mapping to the following Availability Zones: "
                 "'{subnet_azs_without_reservations}' but the Capacity Reservation Group '{cr_group_arn}' reserves "
-                "capacity in these availability zones: '{cr_azs}'. Consider adding capacity reservations in all the "
+                "capacity in these Availability Zones: '{cr_azs}'. Consider adding capacity reservations in all the "
                 "availability zones covered by the queue.".format(
                     queue=queue_name,
                     subnet_azs_without_reservations=", ".join(
@@ -454,7 +454,7 @@ class CapacityReservationResourceGroupValidator(Validator):
 
 
 class PlacementGroupCapacityReservationValidator(Validator):
-    """Validate the placement group is compatible with the capacity reservation target."""
+    """Validate that the placement group is compatible with the capacity reservation target."""
 
     def _validate_chosen_pg(self, subnet, instance_types, odcr_list, chosen_pg):
         pg_match, open_or_targeted = False, False
@@ -471,7 +471,7 @@ class PlacementGroupCapacityReservationValidator(Validator):
                         open_or_targeted = True
             if not (pg_match or open_or_targeted):
                 self._add_failure(
-                    f"The placement group provided '{chosen_pg}' targets the '{instance_type}' instance type but there "
+                    f"The placement group provided '{chosen_pg}' targets the '{instance_type}' instance type, but there "
                     f"are no ODCRs included in the resource group that target that instance type.",
                     FailureLevel.ERROR,
                 )
@@ -479,7 +479,7 @@ class PlacementGroupCapacityReservationValidator(Validator):
                 self._add_failure(
                     "When using an open or targeted capacity reservation with an unrelated placement group, "
                     "insufficient capacity errors may occur due to placement constraints outside of the "
-                    "reservation even if the capacity reservation has remaining capacity. Please consider either "
+                    "reservation, even if the capacity reservation has remaining capacity. Consider either "
                     "not using a placement group for the compute resource or creating a new capacity reservation "
                     "in a related placement group.",
                     FailureLevel.WARNING,
@@ -498,7 +498,7 @@ class PlacementGroupCapacityReservationValidator(Validator):
             if not odcr_without_pg:
                 self._add_failure(
                     f"There are no open or targeted ODCRs that match the instance_type '{instance_type}' in "
-                    f"'{subnet_id_az_mapping[subnet]}' and no placement group provided. Please either provide a "
+                    f"'{subnet_id_az_mapping[subnet]}' and no placement group is provided. Either provide a "
                     f"placement group or add an ODCR that does not target a placement group and targets the "
                     f"instance type.",
                     FailureLevel.ERROR,

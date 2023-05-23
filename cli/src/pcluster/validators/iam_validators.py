@@ -22,7 +22,7 @@ class RoleValidator(Validator):
     """
     IAM Role validator.
 
-    Verify the given role exists.
+    Verify that the given role exists.
     """
 
     def _validate(self, role_arn: str):
@@ -36,7 +36,7 @@ class InstanceProfileValidator(Validator):
     """
     IAM Instance Profile validator.
 
-    Verify the given instance profile exists.
+    Verify that the given instance profile exists.
     """
 
     def _validate(self, instance_profile_arn: str):
@@ -50,7 +50,7 @@ class IamPolicyValidator(Validator):
     """
     EC2 IAM Policy validator.
 
-    Verify the given policy is correct.
+    Verify that the given policy is correct.
     """
 
     def _validate(self, policy: str):
@@ -62,9 +62,9 @@ class IamPolicyValidator(Validator):
 
 class IamResourcePrefixValidator(Validator):
     """
-    Iam Resource Prefix Validator.
+    IAM Resource Prefix Validator.
 
-    Verify if the Resource Prefix is compliant with IAM naming conventions
+    Verify if the Resource Prefix is compliant with IAM naming conventions.
     """
 
     IAM_PATH_NAME_REGEX = r"^((/[a-zA-Z0-9_.,+@=-]+)+)/"
@@ -77,20 +77,20 @@ class IamResourcePrefixValidator(Validator):
         ):
             self._add_failure(
                 f"Unsupported format for ResourcePrefix {resource_prefix}. "
-                f"Please refer to our official documentation for further details.",
+                f"Refer to AWS official documentation for further details.",
                 FailureLevel.ERROR,
             )
         iam_path, iam_name_prefix = split_resource_prefix(resource_prefix)
         if iam_name_prefix and (len(iam_name_prefix) > IAM_NAME_PREFIX_LENGTH_LIMIT):
             self._add_failure(
                 f"Length of Name Prefix {iam_name_prefix} must be less than {IAM_NAME_PREFIX_LENGTH_LIMIT} characters. "
-                f"Please refer to our official documentation for further details.",
+                f"Refer to AWS official documentation for further details.",
                 FailureLevel.ERROR,
             )
         if iam_path and (len(iam_path) > IAM_PATH_LENGTH_LIMIT):
             self._add_failure(
                 f"Length of Path {iam_path} must be less than {IAM_PATH_LENGTH_LIMIT} characters. "
-                f"Please refer to our official documentation for further details.",
+                f"Refer to AWS official documentation for further details.",
                 FailureLevel.ERROR,
             )
 
@@ -99,7 +99,7 @@ class AdditionalIamPolicyValidator(IamPolicyValidator):
     """
     EC2 IAM Policy validator.
 
-    Verify the given policy is correct.
+    Verify that the given policy is correct.
     """
 
     def _validate(self, policy: str):

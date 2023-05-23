@@ -31,19 +31,19 @@ class FsxS3Validator(Validator):
     ):
         if imported_file_chunk_size and not import_path:
             self._add_failure(
-                "When specifying imported file chunk size, the import path option must be specified.",
+                "When specifying imported file chunk size, you must specify the import path option.",
                 FailureLevel.ERROR,
             )
 
         if export_path and not import_path:
             self._add_failure(
-                "When specifying export path, the import path option must be specified.",
+                "When specifying export path, you must specify the import path option.",
                 FailureLevel.ERROR,
             )
 
         if auto_import_policy and not import_path:
             self._add_failure(
-                "When specifying auto import policy, the import path option must be specified.",
+                "When specifying auto import policy, you must specify the import path option.",
                 FailureLevel.ERROR,
             )
 
@@ -94,12 +94,12 @@ class FsxBackupOptionsValidator(Validator):
         if not automatic_backup_retention_days and daily_automatic_backup_start_time:
             self._add_failure(
                 "When specifying daily automatic backup start time,"
-                "the automatic backup retention days option must be specified.",
+                "you must specify the automatic backup retention days option.",
                 FailureLevel.ERROR,
             )
         if not automatic_backup_retention_days and copy_tags_to_backups is not None:
             self._add_failure(
-                "When specifying copy tags to backups, the automatic backup retention days option must be specified.",
+                "When specifying copy tags to backups, you must specify the automatic backup retention days option.",
                 FailureLevel.ERROR,
             )
         persistent_deployment_types = ["PERSISTENT_1", "PERSISTENT_2"]
@@ -172,36 +172,36 @@ class FsxStorageCapacityValidator(Validator):
         if not storage_capacity:
             # if file_system_id is not provided, storage_capacity must be provided
             self._add_failure(
-                "When specifying FSx configuration, storage capacity must be specified.",
+                "When specifying the FSx configuration, you must specify storage capacity.",
                 FailureLevel.ERROR,
             )
         elif deployment_type == "SCRATCH_1":
             if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
                 self._add_failure(
-                    "Capacity for FSx SCRATCH_1 file systems is 1,200 GB, 2,400 GB or increments of 3,600 GB.",
+                    "Capacity for FSx SCRATCH_1 file systems is 1200 GB, 2400 GB, or in increments of 3600 GB.",
                     FailureLevel.ERROR,
                 )
         elif deployment_type == "PERSISTENT_1" and fsx_storage_type == "HDD":
             if per_unit_storage_throughput == 12 and not storage_capacity % 6000 == 0:
                 self._add_failure(
-                    "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB.",
+                    "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is in increments of 6000 GiB.",
                     FailureLevel.ERROR,
                 )
             elif per_unit_storage_throughput == 40 and not storage_capacity % 1800 == 0:
                 self._add_failure(
-                    "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB.",
+                    "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is in increments of 1800 GiB.",
                     FailureLevel.ERROR,
                 )
         elif deployment_type in ["SCRATCH_2", "PERSISTENT_1", "PERSISTENT_2"]:
             if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
                 self._add_failure(
-                    f"Capacity for FSx {deployment_type} file systems is 1,200 GB or increments of 2,400 GB.",
+                    f"Capacity for FSx {deployment_type} file systems is 1200 GB, or in increments of 2400 GB.",
                     FailureLevel.ERROR,
                 )
 
 
 class FsxBackupIdValidator(Validator):
-    """Backup id validator."""
+    """Backup ID validator."""
 
     def _validate(self, backup_id):
         if backup_id:
@@ -209,7 +209,7 @@ class FsxBackupIdValidator(Validator):
                 AWSApi.instance().fsx.describe_backup(backup_id)
             except AWSClientError as e:
                 self._add_failure(
-                    "Failed to retrieve backup with Id '{0}': {1}".format(backup_id, str(e)),
+                    "Failed to retrieve backup with ID '{0}': {1}".format(backup_id, str(e)),
                     FailureLevel.ERROR,
                 )
 

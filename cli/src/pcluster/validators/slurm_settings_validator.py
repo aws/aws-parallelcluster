@@ -105,8 +105,8 @@ class CustomSlurmNodeNamesValidator(Validator):
     """
     Custom Slurm Nodelists Names validator.
 
-    This validator ensures that any eventual custom node list passed via SlurmSettings/CustomSlurmSettings
-    does not contain the `-st-` or `-dy-` patterns in the node names, as this would cause the ParallelCluster
+    This validator ensures that any eventual custom node list that was passed through SlurmSettings/CustomSlurmSettings
+    does not contain the `-st-` or `-dy-` patterns in the node names because this would cause the ParallelCluster
     daemons to interfere with them.
     """
 
@@ -125,7 +125,7 @@ class CustomSlurmNodeNamesValidator(Validator):
             nodelists = ", ".join(sorted(bad_nodelists))
             self._add_failure(
                 f"Substrings '-st-' and '-dy-' in node names are reserved for nodes managed by ParallelCluster. "
-                f"Please rename the following custom Slurm nodes: {nodelists}",
+                f"Rename the following custom Slurm nodes: {nodelists}",
                 FailureLevel.ERROR,
             )
 
