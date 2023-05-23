@@ -115,6 +115,7 @@ def test_get_supported_architectures(mocker, instance_type, supported_architectu
         ("amzn2-hvm", "alinux2"),
         ("centos7-hvm", "centos7"),
         ("ubuntu-2004-lts-hvm", "ubuntu2004"),
+        ("ubuntu-2204-lts-hvm", "ubuntu2204"),
         ("nonexistant-hvm", "linux"),
         ("nonexistant", "linux"),
     ],

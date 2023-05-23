@@ -24,7 +24,7 @@ CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "rhel8"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "ubuntu2204", "rhel8"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "plugin": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -40,6 +40,7 @@ OS_MAPPING = {
     "alinux2": {"user": "ec2-user", "root-device": "/dev/xvda"},
     "ubuntu1804": {"user": "ubuntu", "root-device": "/dev/sda1"},
     "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
+    "ubuntu2204": {"user": "ubuntu", "root-device": "/dev/sda1"},
     "rhel8": {"user": "ec2-user", "root-device": "/dev/sda1"},
 }
 
@@ -48,6 +49,7 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "centos7": "centos7-hvm",
     "ubuntu1804": "ubuntu-1804-lts-hvm",
     "ubuntu2004": "ubuntu-2004-lts-hvm",
+    "ubuntu2204": "ubuntu-2204-lts-hvm",
     "rhel8": "rhel8-hvm",
 }
 
