@@ -169,7 +169,7 @@ from pcluster.validators.instances_validators import (
     InstancesAllocationStrategyValidator,
     InstancesCPUValidator,
     InstancesEFAValidator,
-    InstancesMemorySchedulingValidator,
+    InstancesMemorySchedulingWarningValidator,
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
@@ -3198,7 +3198,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         InstancesEFAValidator,
                         InstancesNetworkingValidator,
                         InstancesAllocationStrategyValidator,
-                        InstancesMemorySchedulingValidator,
+                        InstancesMemorySchedulingWarningValidator,
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)

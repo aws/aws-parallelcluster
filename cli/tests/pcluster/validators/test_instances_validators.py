@@ -20,7 +20,7 @@ from pcluster.validators.instances_validators import (
     InstancesAllocationStrategyValidator,
     InstancesCPUValidator,
     InstancesEFAValidator,
-    InstancesMemorySchedulingValidator,
+    InstancesMemorySchedulingWarningValidator,
     InstancesNetworkingValidator,
 )
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -499,29 +499,81 @@ def test_instances_allocation_strategy_validator(
     assert_failure_messages(actual_failures, expected_message)
 
 
+# Memory-based scheduling is allowed for Compute Resource that use multiple instance type under 'Instances'
+# but a warning is triggered to inform customers of possible wasted resources.
 @pytest.mark.parametrize(
     "compute_resource_name, instance_types_info, memory_scheduling_enabled, expected_message",
     [
-        # Memory-based scheduling is supported for Compute Resource that use either 'InstanceType' or have a single
-        # instance type under 'Instances'
-        (
+        pytest.param(
+            "TestComputeResource",
+            {
+                "t1.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 2048}}
+                ),
+                "t2.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 4096}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 8192}}
+                ),
+            },
+            True,
+            'Enabling Memory-based scheduling when a Compute Resource ("TestComputeResource") has more than one '
+            "instance type specified may lead to unused resources since only the minimum available memory across "
+            "all instance-types can be specified in the Slurm node definition.",
+            id="Memory Diff exceeds both Absolute (4G) and Percentage (0.20) threshold, so a Warning is triggered",
+        ),
+        pytest.param(
+            "TestComputeResource",
+            {
+                "t1.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 20024}}
+                ),
+                "t2.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 22048}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 24096}}
+                ),
+            },
+            True,
+            "",
+            id="Memory Diff exceeds only Absolute (4G) but not Percentage (0.2), so NO Warning is triggered",
+        ),
+        pytest.param(
+            "TestComputeResource",
+            {
+                "t1.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 256}}
+                ),
+                "t2.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 1024}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 2048}}
+                ),
+            },
+            True,
+            "",
+            id="Memory Diff exceeds only Percentage (0.20) but not Absolute (4G), so NO Warning is triggered",
+        ),
+        pytest.param(
             "TestComputeResource",
             {
                 "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
-                "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
             },
             True,
-            "Memory-based scheduling is only supported for Compute Resources using either 'InstanceType' or "
-            "'Instances' with one instance type. Compute Resource TestComputeResource has more than one "
-            "instance type specified.",
+            "",
+            id="Only one instance type is specified so NO Warning is triggered",
         ),
-        (
+        pytest.param(
             "TestComputeResource",
             {
                 "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
             },
             False,
             "",
+            id="Memory Based Scheduling is disabled so no Warning is triggered",
         ),
     ],
 )
@@ -531,7 +583,7 @@ def test_instances_memory_scheduling_validator(
     memory_scheduling_enabled: bool,
     expected_message: str,
 ):
-    actual_failures = InstancesMemorySchedulingValidator().execute(
+    actual_failures = InstancesMemorySchedulingWarningValidator().execute(
         compute_resource_name, instance_types_info, memory_scheduling_enabled
     )
     assert_failure_messages(actual_failures, expected_message)

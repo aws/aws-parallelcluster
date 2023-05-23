@@ -110,6 +110,10 @@ MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER = MAX_COMPUTE_RESOURCES_PER_QUEUE = 
 MIN_SLURM_NODE_PRIORITY = 1
 MAX_SLURM_NODE_PRIORITY = 2**32 - 1  # max value of uint32_t
 
+# Thresholds used to trigger a warning if Memory Based Scheduling and Flexible Instance Types are used together
+MIN_MEMORY_ABSOLUTE_DIFFERENCE = 4096
+MIN_MEMORY_PRECENTAGE_DIFFERENCE = 0.20
+
 MAX_EBS_COUNT = 5
 MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
