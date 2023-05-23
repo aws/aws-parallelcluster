@@ -2,7 +2,7 @@
 set -ex
 
 # TODO: add efs
-for fspath in shared ebs; do
+for fspath in shared efs; do
     # srun has to be used for whoami because slurm_nss plugin only send user information through srun
     date '+%Y%m%d%H%M%S' > "/$fspath/$(srun whoami)"
 done
@@ -16,4 +16,4 @@ module load openmpi
 # -np total number of processes to run (all CPUs * 4 nodes)
 mpirun \
     > /shared/"$(date '+%Y%m%d%H%M%S')-$(srun whoami)-${BENCHMARK_NAME}".out \
-    /shared/openmpi/osu-micro-benchmarks-${OSU_BENCHMARK_VERSION}/mpi/collective/${BENCHMARK_NAME}  
+    /shared/openmpi/osu-micro-benchmarks-${OSU_BENCHMARK_VERSION}/mpi/collective/${BENCHMARK_NAME}
