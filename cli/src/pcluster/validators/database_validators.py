@@ -41,7 +41,7 @@ class DatabaseUriValidator(Validator):
     def _check_leading_slash(self, uri: str) -> bool:
         if uri.startswith("/"):
             self._add_failure(
-                f"Invalid URI specified. Please remove any leading / at the beginning of the provided URI ('{uri}')",
+                f"Invalid URI specified. Remove any leading '/' at the beginning of the provided URI ('{uri}')",
                 FailureLevel.ERROR,
             )
             return False
@@ -55,7 +55,7 @@ class DatabaseUriValidator(Validator):
             return False
         if scheme:
             self._add_failure(
-                f"Invalid URI specified. Please do not provide a scheme ('{scheme}://')",
+                f"Invalid URI specified. Do not provide a scheme ('{scheme}://')",
                 FailureLevel.ERROR,
             )
             return False
@@ -69,7 +69,7 @@ class DatabaseUriValidator(Validator):
             return False
         if not netloc:
             self._add_failure(
-                f"Invalid URI specified. Please review the provided URI ('{uri}')",
+                f"Invalid URI specified. Review the provided URI ('{uri}')",
                 FailureLevel.ERROR,
             )
             return False

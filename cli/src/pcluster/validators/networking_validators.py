@@ -33,7 +33,7 @@ class SubnetsValidator(Validator):
     Subnets validator.
 
     Check that all subnets in the input list belong to the same VPC.
-    Also, check that said VPC supports DNS resolution via the Amazon DNS server and assigning DNS hostnames to
+    Also, check that the VPC supports DNS resolution through the Amazon DNS server and assigning DNS hostnames to
     instances.
     """
 
@@ -48,7 +48,7 @@ class SubnetsValidator(Validator):
                     vpc_id = subnet["VpcId"]
                 elif vpc_id != subnet["VpcId"]:
                     self._add_failure(
-                        "Subnet {0} is not in VPC {1}. Please make sure all subnets are in the same VPC.".format(
+                        "Subnet {0} is not in VPC {1}. Make sure all subnets are in the same VPC.".format(
                             subnet["SubnetId"], vpc_id
                         ),
                         FailureLevel.ERROR,
@@ -68,7 +68,7 @@ class QueueSubnetsValidator(Validator):
     """
     Queue Subnets validator.
 
-    Check that there is no duplicate subnet id in the subnet_ids list.
+    Check that there is no duplicate subnet ID in the subnet_ids list.
     Check that subnets in a queue belong to different AZs (EC2 Fleet requests do not support multiple subnets
     in the same AZ).
     """
@@ -82,8 +82,8 @@ class QueueSubnetsValidator(Validator):
         if len(set(subnet_ids)) < len(subnet_ids):
             duplicate_ids = [subnet_id for subnet_id, count in Counter(subnet_ids).items() if count > 1]
             self._add_failure(
-                "The following Subnet Ids are specified multiple times in the SubnetId's configuration of the '{0}' "
-                "queue: '{1}'. Please remove the duplicate subnet Ids from the queue's SubnetId configuration.".format(
+                "The following Subnet IDs are specified multiple times in the SubnetId's configuration of the '{0}' "
+                "queue: '{1}'. Remove the duplicate subnet IDs from the queue's SubnetId configuration.".format(
                     queue_name,
                     ", ".join(duplicate_ids),
                 ),
@@ -95,8 +95,8 @@ class QueueSubnetsValidator(Validator):
             azs_with_multiple_subnets = self._find_azs_with_multiple_subnets(az_subnet_ids_mapping)
             if len(azs_with_multiple_subnets) > 0:
                 self._add_failure(
-                    "SubnetIds configured for the '{0}' queue contains two or more subnets in the same Availability "
-                    "Zone: '{1}'. Please make sure all subnets configured for the queue are in different Availability"
+                    "SubnetIds configured for the '{0}' queue contain two or more subnets in the same Availability "
+                    "Zone: '{1}'. Make sure all subnets configured for the queue are in different Availability"
                     " Zones.".format(
                         queue_name,
                         "; ".join(
@@ -122,14 +122,14 @@ class ElasticIpValidator(Validator):
 
 
 class SingleInstanceTypeSubnetValidator(Validator):
-    """Validate only one subnet is used for compute resources with single instance type."""
+    """Validate that only one subnet is used for compute resources with a single instance type."""
 
     def _validate(self, queue_name, subnet_ids):
         if len(subnet_ids) > 1:
             self._add_failure(
                 "At least one compute resource in the '{0}' queue is configured using the "
-                "'ComputeResource/InstanceType' parameter to specify the Instance Type. Multiple subnets configuration "
-                "is not supported when using 'ComputeResource/InstanceType', please use the "
+                "'ComputeResource/InstanceType' parameter to specify the Instance Type. Multiple subnet configurations "
+                "are not supported when using 'ComputeResource/InstanceType'. Use the "
                 "'ComputeResource/Instances/InstanceType' configuration parameter for instance type "
                 "allocation.".format(queue_name),
                 FailureLevel.ERROR,
@@ -137,7 +137,7 @@ class SingleInstanceTypeSubnetValidator(Validator):
 
 
 class MultiAzPlacementGroupValidator(Validator):
-    """Validate a PlacementGroup is not specified when MultiAZ is enabled."""
+    """Validate that a PlacementGroup is not specified when MultiAZ is enabled."""
 
     def _validate(
         self, multi_az_enabled: bool, placement_group_enabled: bool, compute_resource_name: str, queue_name: str
@@ -145,7 +145,7 @@ class MultiAzPlacementGroupValidator(Validator):
         if multi_az_enabled and placement_group_enabled:
             self._add_failure(
                 f"You have enabled PlacementGroups for the '{compute_resource_name}' Compute Resource on the "
-                f"'{queue_name}' queue. PlacementGroups are not supported across Availability zones. Either remove the "
+                f"'{queue_name}' queue. PlacementGroups are not supported across Availability Zones. Either remove the "
                 "PlacementGroup configuration to use multiple subnets on the queue or specify only one subnet to "
                 "use a PlacementGroup for compute resources.",
                 FailureLevel.ERROR,
@@ -168,15 +168,15 @@ class LambdaFunctionsVpcConfigValidator(Validator):
         subnet_vpc_ids = {subnet["VpcId"] for subnet in existing_subnets}
         if len(group_vpc_ids) > 1:
             self._add_failure(
-                "The security groups associated to the Lambda are required to be in the same VPC.", FailureLevel.ERROR
+                "The security groups associated with the Lambda are required to be in the same VPC.", FailureLevel.ERROR
             )
         if len(subnet_vpc_ids) > 1:
             self._add_failure(
-                "The subnets associated to the Lambda are required to be in the same VPC.", FailureLevel.ERROR
+                "The subnets associated with the Lambda are required to be in the same VPC.", FailureLevel.ERROR
             )
         if group_vpc_ids != subnet_vpc_ids:
             self._add_failure(
-                "The security groups and subnets associated to the Lambda are required to be in the same VPC.",
+                "The security groups and subnets associated with the Lambda are required to be in the same VPC.",
                 FailureLevel.ERROR,
             )
 
@@ -186,7 +186,7 @@ class LambdaFunctionsVpcConfigValidator(Validator):
         }
         if missing_security_group_ids:
             self._add_failure(
-                "Some security groups associated to the Lambda are not present "
+                "Some security groups associated with the Lambda are not present "
                 f"in the account: {sorted(missing_security_group_ids)}.",
                 FailureLevel.ERROR,
             )
@@ -195,6 +195,6 @@ class LambdaFunctionsVpcConfigValidator(Validator):
         missing_subnet_ids = set(expected_subnet_ids) - {subnet["SubnetId"] for subnet in existing_subnets}
         if missing_subnet_ids:
             self._add_failure(
-                f"Some subnets associated to the Lambda are not present in the account: {sorted(missing_subnet_ids)}.",
+                f"Some subnets associated with the Lambda are not present in the account: {sorted(missing_subnet_ids)}.",
                 FailureLevel.ERROR,
             )

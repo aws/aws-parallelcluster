@@ -54,7 +54,7 @@ class InstancesCPUValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
     ):
         """Check if CPU requirements are met.
 
-        Instance types should have the same number of CPUs or same number of Cores if Simultaneous Multithreading
+        Instance types should have the same number of CPUs or the same number of Cores if Simultaneous Multithreading
         is disabled.
         """
         if disable_simultaneous_multithreading:
@@ -189,8 +189,8 @@ class InstancesNetworkingValidator(Validator, _FlexibleInstanceTypesValidatorMix
     ):
         """Validate that the lowest value for the MaximumNetworkInterfaceCards among the Instance Types is used.
 
-        Each instance type has a maximum number of Network Interface Cards. When the instance types in the  list
-        have a varying number of 'maximum network interface cards', the smallest one is used  in the  launch template.
+        Each instance type has a maximum number of Network Interface Cards. When the instance types in the list
+        have a varying number of 'maximum network interface cards', the smallest one is used in the launch template.
         """
         unique_maximum_nic_counts = {
             instance_type_info.max_network_interface_count()
@@ -246,7 +246,7 @@ class InstancesMemorySchedulingValidator(Validator, _FlexibleInstanceTypesValida
         """Memory-based scheduling is NOT supported for Compute Resources with multiple instance types."""
         if memory_scheduling_enabled and len(instance_types_info.items()) > 1:
             self._add_failure(
-                "Memory-based scheduling is only supported for Compute Resources using either 'InstanceType' or "
+                "Memory-based scheduling is only supported for Compute Resources by using either 'InstanceType' or "
                 f"'Instances' with one instance type. Compute Resource {compute_resource_name} has more than "
                 "one instance type specified.",
                 FailureLevel.ERROR,

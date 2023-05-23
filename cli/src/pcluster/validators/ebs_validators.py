@@ -38,10 +38,10 @@ class EbsVolumeTypeSizeValidator(Validator):
     Validate that the EBS volume size matches the chosen volume type.
 
     The default value of volume_size for EBS volumes is 20 GiB.
-    The volume size of standard ranges from 1 GiB - 1 TiB(1024 GiB)
-    The volume size of gp2 and gp3 ranges from 1 GiB - 16 TiB(16384 GiB)
-    The volume size of io1 and io2 ranges from 4 GiB - 16 TiB(16384 GiB)
-    The volume sizes of st1 and sc1 range from 500 GiB - 16 TiB(16384 GiB)
+    The volume size of standard ranges from 1 GiB to 1 TiB (1024 GiB)
+    The volume size of gp2 and gp3 ranges from 1 GiB to 16 TiB (16384 GiB)
+    The volume size of io1 and io2 ranges from 4 GiB to 16 TiB (16384 GiB)
+    The volume sizes of st1 and sc1 range from 500 GiB to 16 TiB (16384 GiB)
     """
 
     def _validate(self, volume_type: str, volume_size: int):
@@ -79,7 +79,7 @@ class EbsVolumeThroughputValidator(Validator):
 
 class EbsVolumeThroughputIopsValidator(Validator):
     """
-    EBS volume throughput to iops ratio validator.
+    EBS volume throughput to IOPS ratio validator.
 
     Validate gp3 throughput.
     """
@@ -131,8 +131,8 @@ class EbsVolumeSizeSnapshotValidator(Validator):
     EBS volume size snapshot validator.
 
     Validate the following cases:
-    - The EBS snapshot is in "completed" state if it is specified.
-    - If users specify the volume size, the volume must be not smaller than the volume size of the EBS snapshot.
+    - The EBS snapshot is in a "completed" state if it is specified.
+    - If you specify the volume size, the volume must not be smaller than the volume size of the EBS snapshot.
     """
 
     def _validate(self, snapshot_id: int, volume_size: int):
@@ -152,8 +152,8 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                     )
                 elif volume_size > snapshot_volume_size:
                     self._add_failure(
-                        "The specified volume size is larger than snapshot size. In order to use the full capacity "
-                        "of the volume, you'll need to manually resize the partition according to this doc: "
+                        "The specified volume size is larger than the snapshot size. To use the full capacity "
+                        "of the volume, you must manually resize the partition according to this document: "
                         "https://{partition_url}/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html".format(
                             partition_url="docs.amazonaws.cn" if get_partition() == "aws-cn" else "docs.aws.amazon.com"
                         ),
@@ -174,7 +174,7 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                     "InvalidSnapshot.Malformed",
                 ]:
                     self._add_failure(
-                        "The snapshot {0} does not appear to exist: {1}.".format(snapshot_id, str(exception)),
+                        "The snapshot {0} does not exist: {1}.".format(snapshot_id, str(exception)),
                         FailureLevel.ERROR,
                     )
                 else:
@@ -189,11 +189,11 @@ class EbsVolumeSizeSnapshotValidator(Validator):
 
 class MultiAzEbsVolumeValidator(Validator):
     """
-    MultiAz Ebs Volume Validator.
+    MultiAZ EBS Volume Validator.
 
-    Validate that the EBS volume, HeanNode and ComputeFleet are in the same AZ.
-    If they aren't inform the customers about possible increases of latency or costs.
-    If the volume is in a different az w.r.t the HeadNode raises an error.
+    Validate that the EBS volume, HeadNode and ComputeFleet are in the same AZ.
+    If they aren't, inform the customers about possible increases of latency or costs.
+    If the volume is in a different AZ regarding the HeadNode, then this raises an error.
     """
 
     def _validate(self, head_node_az: str, ebs_volumes, queues):
@@ -205,9 +205,9 @@ class MultiAzEbsVolumeValidator(Validator):
                 ebs_az = head_node_az if volume.is_managed else volume.availability_zone
                 if ebs_az != head_node_az:
                     self._add_failure(
-                        "Your configuration includes an EBS volume '{0}' created in a different availability zone than "
-                        "the Head Node. The volume and instance must be in the same availability "
-                        "zone.".format(volume.name),
+                        "Your configuration includes an EBS volume '{0}' created in a different AZ than "
+                        "the HeadNode. The volume and instance must be in the same "
+                        "AZ.".format(volume.name),
                         FailureLevel.ERROR,
                     )
 
@@ -224,7 +224,7 @@ class MultiAzEbsVolumeValidator(Validator):
         if cross_az_queues:
             self._add_failure(
                 "Your configuration for Queues '{0}' includes multiple subnets and external shared storage "
-                "configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                "configuration. Accessing shared storage from different AZs can lead to increased storage "
                 "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
                 FailureLevel.INFO,
             )
@@ -234,8 +234,8 @@ class MultiAzRootVolumeValidator(Validator):
     """
     Root Volume Validator.
 
-    Validates that the root volume associated to the HeanNode and ComputeFleet are in the same AZ.
-    If they aren't inform the customers about possible increases of latency or costs.
+    Validates that the root volume associated with the HeadNode and ComputeFleet are in the same AZ.
+    If they aren't, inform the customer about possible increases of latency or costs.
     """
 
     def _validate(self, head_node_az: str, queues):
@@ -249,7 +249,7 @@ class MultiAzRootVolumeValidator(Validator):
         if cross_az_queues:
             self._add_failure(
                 "Your configuration for Queues '{0}' includes multiple subnets different from where HeadNode is "
-                "located. Accessing a shared storage from different AZs can lead to increased storage "
+                "located. Accessing shared storage from different AZs can lead to increased storage "
                 "network latency and inter-AZ data transfer costs.".format(", ".join(sorted(cross_az_queues))),
                 FailureLevel.INFO,
             )
@@ -257,9 +257,9 @@ class MultiAzRootVolumeValidator(Validator):
 
 class SharedEbsVolumeIdValidator(Validator):
     """
-    SharedEBS volume id validator.
+    Shared EBS volume ID validator.
 
-    Validate the volume exist and is available.
+    Validate that the volume exists and is available.
     """
 
     def _validate(self, volume_id: str, head_node_instance_id: str = None):

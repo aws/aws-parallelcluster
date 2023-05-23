@@ -11,10 +11,10 @@ from pcluster.validators.utils import get_bucket_name_from_s3_url
 
 class UrlValidator(AsyncValidator):
     """
-    Url Validator.
+    URL Validator.
 
-    Validate given url with s3 or https prefix.
-    Validation is cached across instances to avoid repeated calls to the same urls.
+    Validate a given URL with an S3 or https prefix.
+    Validation is cached across instances to avoid repeated calls to the same URLs.
     """
 
     @AsyncUtils.async_timeout_cache(timeout=10)
@@ -33,7 +33,7 @@ class UrlValidator(AsyncValidator):
                 expected_bucket_owner=expected_bucket_owner,
             )
         except ConnectionError as err:
-            self._add_failure(f"The url '{url}' causes ConnectionError: {err}.", FailureLevel.WARNING)
+            self._add_failure(f"The URL '{url}' causes ConnectionError: {err}.", FailureLevel.WARNING)
 
     @AsyncUtils.async_retry(stop_max_attempt_number=3, wait_fixed=1, retry_on_exception=ConnectionError)
     async def _validate_async_internal(
@@ -58,7 +58,7 @@ class UrlValidator(AsyncValidator):
 
         else:
             self._add_failure(
-                f"The value '{url}' is not a valid URL, choose URL with 'https' or 's3' prefix.",
+                f"The value '{url}' is not a valid URL. Choose a URL with an https or S3 prefix.",
                 FailureLevel.ERROR,
             )
 
@@ -88,13 +88,13 @@ class UrlValidator(AsyncValidator):
                 pass
         except HTTPError as e:
             self._add_failure(
-                f"The url '{url}' causes HTTPError, the error code is '{e.code}',"
+                f"The URL '{url}' causes HTTPError. The error code is '{e.code}',"
                 f" the error reason is '{e.reason}'.",
                 FailureLevel.ERROR if fail_on_error else FailureLevel.WARNING,
             )
         except URLError as e:
             self._add_failure(
-                f"The url '{url}' causes URLError, the error reason is '{e.reason}'.",
+                f"The URL '{url}' causes URLError. The error reason is '{e.reason}'.",
                 FailureLevel.ERROR if fail_on_error else FailureLevel.WARNING,
             )
         except ValueError:
@@ -105,7 +105,7 @@ class UrlValidator(AsyncValidator):
 
 
 class S3BucketUriValidator(Validator):
-    """S3 Bucket Url Validator."""
+    """S3 Bucket URL Validator."""
 
     def _validate(self, url):
         if get_url_scheme(url) == "s3":
@@ -115,14 +115,14 @@ class S3BucketUriValidator(Validator):
             except AWSClientError as e:
                 if e.error_code == "403":
                     self._add_failure(
-                        f"{str(e)}. Please attach a policy that allows the s3:ListBucket action for the resource "
+                        f"{str(e)}. Attach a policy that allows the s3:ListBucket action for the resource "
                         f"<ARN of bucket {bucket}> to the role or instance profile performing this operation.",
                         FailureLevel.ERROR,
                     )
                 else:
                     self._add_failure(str(e), FailureLevel.ERROR)
         else:
-            self._add_failure(f"The value '{url}' is not a valid S3 URI.", FailureLevel.ERROR)
+            self._add_failure(f"The value '{url}' is not a valid S3 URL.", FailureLevel.ERROR)
 
 
 class S3BucketValidator(Validator):
@@ -135,8 +135,8 @@ class S3BucketValidator(Validator):
             bucket_versioning_status = AWSApi.instance().s3.get_bucket_versioning_status(bucket)
             if bucket_versioning_status != "Enabled":
                 self._add_failure(
-                    "The S3 bucket {0} specified cannot be used by cluster "
-                    "because versioning setting is: {1}, not 'Enabled'. Please enable bucket versioning.".format(
+                    "The S3 bucket {0} specified cannot be used by the cluster "
+                    "because the versioning setting is: {1}, not 'Enabled'. Enable bucket versioning.".format(
                         bucket, bucket_versioning_status
                     ),
                     FailureLevel.ERROR,
@@ -146,7 +146,7 @@ class S3BucketValidator(Validator):
 
 
 class S3BucketRegionValidator(Validator):
-    """Validate S3 bucket is in the same region with the cloudformation stack."""
+    """Validate that the S3 bucket is in the same Region with the cloudformation stack."""
 
     def _validate(self, bucket, region):
         try:
@@ -154,7 +154,7 @@ class S3BucketRegionValidator(Validator):
             if bucket_region != region:
                 self._add_failure(
                     f"The S3 bucket {bucket} specified cannot be used because "
-                    "it is not in the same region of the cluster.",
+                    "it is not in the same Region with the cluster.",
                     FailureLevel.ERROR,
                 )
         except AWSClientError as e:

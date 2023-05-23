@@ -17,18 +17,18 @@ from pcluster.validators.common import FailureLevel, Validator
 
 
 class FeatureRegionValidator(Validator):
-    """Validate if a feature is supported in the given region."""
+    """Validate if a feature is supported in the given Region."""
 
     def _validate(self, feature: Feature, region: str):
         if not self._is_feature_supported(feature, region):
-            self._add_failure(f"{feature.value} is not supported in region '{region}'.", FailureLevel.ERROR)
+            self._add_failure(f"{feature.value} is not supported in Region '{region}'.", FailureLevel.ERROR)
 
     @staticmethod
     def _is_feature_supported(feature: Feature, region: str):
         """
-        Check if a feature is supported for the given region.
+        Check if a feature is supported for the given Region.
 
-        If region is None, consider the region set in the environment.
+        If Region is None, consider the region set in the environment.
         """
         _region = get_region() if region is None else region
         prefixes_of_unsupported_regions = UNSUPPORTED_FEATURES_MAP.get(feature, [])

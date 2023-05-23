@@ -66,10 +66,10 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
 
 FSX_MESSAGES = {
     "errors": {
-        "unsupported_os": "On {architecture} instance types, FSx Lustre can be used with one of the following operating"
-        " systems: {supported_oses}. Please double check the os configuration.",
+        "unsupported_OS": "On {architecture} instance types, FSx Lustre can be used with one of the following operating"
+        " systems: {supported_oses}. Check the OS configuration.",
         "unsupported_architecture": "FSx Lustre can be used only with instance types and AMIs that support these "
-        "architectures: {supported_architectures}. Please double check the head node instance type, "
+        "architectures: {supported_architectures}. Check the head node instance type, "
         "compute instance type and/or custom AMI configurations.",
         "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
         "cannot be specified.",
@@ -93,7 +93,7 @@ class ClusterNameValidator(Validator):
                     (
                         "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and "
                         "hyphens. "
-                        "It must start with an alphabetic character and when using Slurm accounting it can't be longer "
+                        "It must start with an alphabetic character, and when using Slurm accounting it can't be longer "
                         f"than {PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING} characters."
                     ),
                     FailureLevel.ERROR,
@@ -132,7 +132,7 @@ class SchedulerOsValidator(Validator):
         supported_os = get_supported_os_for_scheduler(scheduler)
         if os not in supported_os:
             self._add_failure(
-                f"{scheduler} scheduler supports the following operating systems: {supported_os}.", FailureLevel.ERROR
+                f"{scheduler} scheduler supports the following OS: {supported_os}.", FailureLevel.ERROR
             )
 
 
@@ -151,8 +151,8 @@ class CustomAmiTagValidator(Validator):
                 (
                     "The custom AMI may not have been created by pcluster. "
                     "You can ignore this warning if the AMI is shared or copied from another pcluster AMI. "
-                    "If the AMI is indeed not created by pcluster, cluster creation will fail. "
-                    "If the cluster creation fails, please go to "
+                    "If the AMI was not created by pcluster, cluster creation fails. "
+                    "If the cluster creation fails, go to "
                     "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html"
                     "#troubleshooting-stack-creation-failures for troubleshooting."
                 ),
@@ -163,8 +163,8 @@ class CustomAmiTagValidator(Validator):
                 (
                     f"The custom AMI was created with pcluster {tags_dict[PCLUSTER_VERSION_TAG]}, "
                     f"but is trying to be used with pcluster {current_version}. "
-                    f"Please either use an AMI created with {current_version} or"
-                    f" change your ParallelCluster to {tags_dict[PCLUSTER_VERSION_TAG]}"
+                    f"Use an AMI created with {current_version} or"
+                    f" change your ParallelCluster version to {tags_dict[PCLUSTER_VERSION_TAG]}"
                 ),
                 FailureLevel.ERROR,
             )
@@ -172,7 +172,7 @@ class CustomAmiTagValidator(Validator):
             self._add_failure(
                 (
                     "Unable to retrieve custom AMI build status. "
-                    "Please check build-image CloudFormation stack for details."
+                    "Check the build-image CloudFormation stack for details."
                 ),
                 FailureLevel.ERROR,
             )
@@ -246,8 +246,8 @@ class ArchitectureOsValidator(Validator):
         if custom_ami is None and os == "centos7" and architecture == "arm64" and not ami_search_filters:
             self._add_failure(
                 "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
-                "(M6g, C6g, etc.). To proceed please provide a custom AMI, "
-                "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes",
+                "(M6g, C6g, etc.). To proceed, provide a custom AMI. "
+                "For more info, see: https://wiki.centos.org/Cloud/AWS#aarch64_notes",
                 FailureLevel.ERROR,
             )
 
@@ -283,7 +283,7 @@ class NameValidator(Validator):
             self._add_failure(
                 (
                     f"Invalid name '{name}'. "
-                    "Name must begin with a letter and only contain lowercase letters, digits and hyphens."
+                    "Name must begin with a letter and only contain lowercase letters, digits, and hyphens."
                 ),
                 FailureLevel.ERROR,
             )
@@ -347,7 +347,7 @@ class EfaPlacementGroupValidator(Validator):
         elif efa_enabled and placement_group_key is None and not multi_az_enabled:
             self._add_failure(
                 "The placement group for EFA-enabled compute resources must be explicit. "
-                "You may see better performance using a placement group, but if you don't wish to use one please add "
+                "You might see better performance if you use a placement group, but if you don't want to use one, add "
                 "'Enabled: false' to the compute resource's configuration section.",
                 FailureLevel.ERROR,
             )
@@ -406,7 +406,7 @@ class EfaMultiAzValidator(Validator):
             message = (
                 f"You have enabled the Elastic Fabric Adapter (EFA) for the '{compute_resource_name}' Compute Resource"
                 f" on the '{queue_name}' queue. EFA is not supported across Availability zones. Either disable EFA "
-                "to use multiple subnets on the queue or specify only one subnet to enable EFA on "
+                "to use multiple subnets on the queue, or specify only one subnet to enable EFA on "
                 "the compute resources."
             )
             self._add_failure(
@@ -420,15 +420,15 @@ class EfaMultiAzValidator(Validator):
 
 def _is_access_allowed(security_groups_ids, subnets, port, security_groups_by_nodes, protocol="tcp"):
     """
-    Verify given list of security groups to check if they allow in and out access on the given port.
+    Verify the given list of security groups to check if they allow in and out access on the given port.
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
     :param security_groups_by_nodes: all security groups from cluster. This is a set of frozen sets.
     Each frozen set contains sg combination of a queue.
     :param protocol: the IP protocol to be checked.
-    :return: True if both in and out access are allowed
-    :raise: ClientError if a given security group doesn't exist
+    :return: True if both in and out access are allowed.
+    :raise: ClientError if a given security group doesn't exist.
     """
     in_access = False
     out_access = False
@@ -476,12 +476,12 @@ def _are_ip_ranges_and_sg_accessible(security_groups_by_nodes, allowed_ip_ranges
 
 def _populate_allowed_src_or_dst(rule, ip_ranges, allowed_security_groups):
     """
-    Collect Ip ranges or security groups allowed by the rule.
+    Collect IP ranges or security groups allowed by the rule.
 
-    :param rule: A rule of a security group
-    :param ip_ranges: A list of ip ranges.
-    :param allowed_security_groups: A list of allowed security group.
-    :return: True if we can determine the current rule allows connection.
+    :param rule: A rule of a security group.
+    :param ip_ranges: A list of IP ranges.
+    :param allowed_security_groups: A list of allowed security groups.
+    :return: True if it can be determined the current rule allows connection.
     False if it does not allow connection or cannot be determined.
     """
     if rule.get("PrefixListIds"):
@@ -504,8 +504,8 @@ def _is_port_allowed_by_sg_rule(rule, port_to_check, protocol):
 
     :param rule: The rule to check
     :param port_to_check: The port to check
-    :param protocol: the IP protocol to be checked.
-    :return: True if the rule accepts connection, False otherwise
+    :param protocol: the IP protocol to check
+    :return: True if the rule accepts a connection, False if not.
     """
     from_port = rule.get("FromPort")
     to_port = rule.get("ToPort")
@@ -550,8 +550,8 @@ class ExistingFsxNetworkingValidator(Validator):
     """
     FSx networking validator.
 
-    Validate file system mount point according to the head node subnet.
-    The reason to have this structure is to make boto3 calls as few as possible.
+    Validate the file system mount point according to the head node subnet.
+    The reason for this structure is to minimize boto3 calls.
     """
 
     def _describe_network_interfaces(self, file_systems):
@@ -616,7 +616,7 @@ class ExistingFsxNetworkingValidator(Validator):
                     if missing_ports:
                         self._add_failure(
                             f"The current security group settings on file storage '{file_storage_id}' does not"
-                            " satisfy mounting requirement. The file storage must be associated to a security group"
+                            " satisfy the mounting requirement. File storage must be associated with a security group"
                             f" that allows inbound and outbound {protocol.upper()} traffic through ports {ports}. "
                             f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,
@@ -709,7 +709,7 @@ class DuplicateMountDirValidator(Validator):
                 self._add_failure(
                     f"The mount directory `{mount_dir}` is used for multiple shared storage: {names}. "
                     "Shared storage mount directories should be unique. "
-                    "Please change the mount directory configuration of the shared storage.",
+                    "Change the mount directory configuration of the shared storage.",
                     FailureLevel.ERROR,
                 )
         for local_mount_dir, instance_types in local_mount_dir_instance_types_dict.items():
@@ -717,8 +717,8 @@ class DuplicateMountDirValidator(Validator):
             if shared_storage_names:
                 self._add_failure(
                     f"The mount directory `{local_mount_dir}` used for shared storage {shared_storage_names} "
-                    f"clashes with the one used for ephemeral volumes of the instances {list(instance_types)}. "
-                    f"Please change the mount directory configuration of either the shared storage or the ephemeral "
+                    f"conflicts with the one used for ephemeral volumes of the instances {list(instance_types)}. "
+                    f"Change the mount directory configuration of either the shared storage or the ephemeral "
                     f"volume of the impacted nodes.",
                     FailureLevel.WARNING,
                 )
@@ -728,11 +728,11 @@ class OverlappingMountDirValidator(Validator):
     """
     Mount dir validator.
 
-    Verify if there are overlap mount dirs.
-    1. Shared storage directories can not overlap with each other.
-    2. Shared storage directories can not overlap with ephemeral storage directories.
-    3. Ephemeral storage directories can overlap with each other, because they are local to compute nodes.
-    Two mount dirs are overlapped if one is contained into the other.
+    Verify if there are overlapped mount dirs. Note the following:
+    1. Shared storage directories cannot overlap with each other.
+    2. Shared storage directories cannot overlap with ephemeral storage directories.
+    3. Ephemeral storage directories can overlap with each other because they are local to compute nodes.
+    Two mount dirs are overlapped if one is contained in the other.
     """
 
     def _validate(self, shared_mount_dir_list, local_mount_dir_list):
@@ -750,7 +750,7 @@ class NumberOfStorageValidator(Validator):
     """
     Number of storage validator.
 
-    Validate the number of storage specified is lower than maximum supported.
+    Validate that the number of storage specified is lower than the maximum supported.
     """
 
     def _validate(self, storage_type: str, max_number: int, storage_count: int):
@@ -772,9 +772,9 @@ class ManagedFsxMultiAzValidator(Validator):
     def _validate(self, compute_subnet_ids, new_storage_count):
         if len(compute_subnet_ids) > 1 and new_storage_count.get("fsx") > 0:
             self._add_failure(
-                "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet Ids "
-                "under the SubnetIds configuration of a queue. Please make sure to provide an existing FSx shared "
-                "storage, properly configured to work across the target subnets or remove the managed FSx storage to "
+                "Managed FSx storage created by ParallelCluster is not supported when specifying multiple subnet IDs "
+                "under the SubnetIds configuration of a queue. Make sure to provide an existing FSx shared "
+                "storage, properly configured to work across the target subnets, or remove the managed FSx storage to "
                 "use multiple subnets for a queue.",
                 FailureLevel.ERROR,
             )
@@ -785,7 +785,7 @@ class UnmanagedFsxMultiAzValidator(Validator):
     Unmanaged FSx Storage Vs Multiple Subnets validator.
 
     Unmanaged FSx volumes can exist in AZ that are different from the ones defined in queues configuration.
-    In these cases we notify customers that they may incur in increased latency and costs.
+    In these cases, we notify customers of potential increased latency and costs.
     """
 
     def _validate(self, queues, fsx_az_list):
@@ -795,8 +795,8 @@ class UnmanagedFsxMultiAzValidator(Validator):
             # we want to ensure that all the az defined in the queue are supported by the FS
             if not queue_az_set.issubset(fs_az_set):
                 self._add_failure(
-                    "Your configuration for Queue '{0}' includes multiple subnets and external shared storage "
-                    "configuration. Accessing a shared storage from different AZs can lead to increased storage "
+                    "Your configuration for Queue '{0}' includes multiple subnets and external shared storage. "
+                    "Accessing shared storage from different AZs can lead to increased storage "
                     "networking latency and added inter-AZ data transfer costs.".format(queue.name),
                     FailureLevel.INFO,
                 )
@@ -804,18 +804,18 @@ class UnmanagedFsxMultiAzValidator(Validator):
 
 class EfsIdValidator(Validator):  # TODO add tests
     """
-    EFS id validator.
+    EFS ID validator.
 
-    Validate if there are existing mount target in the cluster (head and computes) availability zone
+    Validate if there are existing mount targets in the cluster (head and computes) availability zone.
     """
 
     def _validate(self, efs_id, avail_zones_mapping: dict, security_groups_by_nodes):
         availability_zones = avail_zones_mapping.keys()
         if len(availability_zones) > 1 and not AWSApi.instance().efs.is_efs_standard(efs_id):
             self._add_failure(
-                f"Cluster has subnets located in different availability zones but EFS ({efs_id}) uses OneZone EFS "
-                "storage class which works within a single Availability Zone. Please use subnets located in one "
-                "Availability Zone or use a standard storage class EFS.",
+                f"Cluster has subnets located in different availability zones, but EFS ({efs_id}) uses the OneZone EFS "
+                "storage class, which works within a single Availability Zone. Use subnets located in one "
+                "Availability Zone, or use a standard storage class EFS.",
                 FailureLevel.ERROR,
             )
 
@@ -832,7 +832,7 @@ class EfsIdValidator(Validator):  # TODO add tests
                     self._add_failure(
                         "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
                         "but it does not have a security group that allows inbound and outbound rules to support NFS. "
-                        "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
+                        "Modify the Mount Target's security group to allow traffic on port 2049.".format(
                             head_node_target_id, avail_zone, efs_id
                         ),
                         FailureLevel.ERROR,
@@ -843,7 +843,7 @@ class EfsIdValidator(Validator):  # TODO add tests
         if avail_zones_missing_mount_target_for_efs_standard:
             self._add_failure(
                 "There is no existing Mount Target for EFS '{0}' in these Availability Zones: '{1}'. "
-                "Please create an EFS Mount Target for those availability zones.".format(
+                "Create an EFS Mount Target for those availability zones.".format(
                     efs_id, avail_zones_missing_mount_target_for_efs_standard
                 ),
                 FailureLevel.ERROR,
@@ -863,9 +863,9 @@ class SharedStorageNameValidator(Validator):
             self._add_failure(
                 (
                     f"Error: The shared storage name {name} is not valid. "
-                    "Allowed characters are letters, numbers and white spaces that can be represented in UTF-8 "
+                    "Allowed characters are letters, numbers, and spaces that can be represented in UTF-8 format "
                     "and the following characters: '+' '-' '=' '.' '_' ':' '/', "
-                    f"and it can't be longer than 256 characters."
+                    f"and it can't be more than 256 characters."
                 ),
                 FailureLevel.ERROR,
             )
@@ -915,7 +915,7 @@ class SharedStorageMountDirValidator(Validator):
             mount_dir = "/" + mount_dir
         if mount_dir in reserved_directories:
             self._add_failure(
-                f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
+                f"Error: The shared storage mount directory {mount_dir} is reserved. Use another directory",
                 FailureLevel.ERROR,
             )
 
@@ -945,7 +945,7 @@ class DcvValidator(Validator):
     """
     DCV parameters validators.
 
-    Validate instance type, architecture and os when DCV is enabled.
+    Validate instance type, architecture, and OS when DCV is enabled.
     """
 
     def _validate(self, instance_type, dcv_enabled, allowed_ips, port, os, architecture: str):
@@ -955,22 +955,22 @@ class DcvValidator(Validator):
                 self._add_failure(
                     f"NICE DCV can be used with one of the following operating systems "
                     f"when using {architecture} architecture: {allowed_oses}. "
-                    "Please double check the os configuration.",
+                    "Check the OS configuration.",
                     FailureLevel.ERROR,
                 )
 
             if re.search(r"(micro)|(nano)", instance_type):
                 self._add_failure(
                     "The packages required for desktop virtualization in the selected instance type '{0}' "
-                    "may cause instability of the instance. If you want to use NICE DCV it is recommended "
-                    "to use an instance type with at least 1.7 GB of memory.".format(instance_type),
+                    "may cause instability in the instance. If you want to use NICE DCV, it is recommended "
+                    "that you use an instance type with at least 1.7 GB of memory.".format(instance_type),
                     FailureLevel.WARNING,
                 )
 
             if allowed_ips == CIDR_ALL_IPS:
                 self._add_failure(
-                    f"With this configuration you are opening DCV port {port} to the world (0.0.0.0/0). "
-                    "It is recommended to restrict access.",
+                    f"With this configuration, you are opening DCV port {port} to the world (0.0.0.0/0). "
+                    "It is recommended that you restrict access.",
                     FailureLevel.WARNING,
                 )
 
@@ -982,7 +982,7 @@ class IntelHpcOsValidator(Validator):
         allowed_oses = ["centos7"]
         if os not in allowed_oses:
             self._add_failure(
-                "When enabling intel software, the operating system is required to be set "
+                "When enabling Intel software, you must set the operating system "
                 f"to one of the following values : {allowed_oses}.",
                 FailureLevel.ERROR,
             )
@@ -995,7 +995,7 @@ class IntelHpcArchitectureValidator(Validator):
         allowed_architectures = ["x86_64"]
         if architecture not in allowed_architectures:
             self._add_failure(
-                "When enabling Intel software, it is required to use head node and compute instance "
+                "When enabling Intel software, it is required that you use head node and compute instance "
                 f"types and an AMI that support these architectures: {allowed_architectures}.",
                 FailureLevel.ERROR,
             )
@@ -1045,13 +1045,13 @@ class MixedSecurityGroupOverwriteValidator(Validator):
             and compute_security_group_overwrite_status != QueuesSecurityGroupOverwriteStatus.MANAGED
         ):
             self._add_failure(
-                "Please make sure that all cluster nodes are reachable to each other, "
+                "Make sure that all cluster nodes are reachable from each other, "
                 "or consider using additional security groups rather than replacing ParallelCluster security groups.",
                 FailureLevel.WARNING,
             )
 
     def _get_queues_security_group_overwrite_status(self, queues):
-        """Check if all queues need managed SG, or use custom SG, or are in mixed condition."""
+        """Check if all queues require a managed SG, if they use a custom SG, or if they are in a mixed condition."""
         managed = False
         custom = False
         for queue in queues:
@@ -1081,7 +1081,7 @@ class _LaunchTemplateValidator(Validator):
     def _build_launch_network_interfaces(
         network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
     ):
-        """Build the needed NetworkInterfaces to launch an instance."""
+        """Build the required NetworkInterfaces to launch an instance."""
         network_interfaces = []
         for network_interface_index in range(network_interfaces_count):
             network_interfaces.append(
@@ -1128,9 +1128,9 @@ class _LaunchTemplateValidator(Validator):
                     # Instances with multiple Network Interfaces cannot currently take public IPs.
                     # This check is meant to warn users about this problem until services are fixed.
                     self._add_failure(
-                        f"The instance type {kwargs['InstanceType']} cannot take public IPs. "
-                        f"Please make sure that the subnet with id '{subnet_id}' has the proper routing configuration "
-                        "to allow private IPs reaching the Internet (e.g. a NAT Gateway and a valid route table).",
+                        f"The instance type {kwargs['InstanceType']} cannot accept public IPs. "
+                        f"Make sure that the subnet with ID '{subnet_id}' has the proper routing configuration "
+                        "to allow private IPs to reach the Internet (for example, a NAT Gateway and a valid route table).",
                         FailureLevel.WARNING,
                     )
             elif (
@@ -1144,13 +1144,13 @@ class _LaunchTemplateValidator(Validator):
                 self._add_failure(
                     f"Your requested instance type ({kwargs['InstanceType']}) is not supported in the "
                     f"Availability Zone ({availability_zone}) of your requested subnet ({subnet_id}). "
-                    f"Please retry your request by choosing a subnet in {qualified_az}. ",
+                    f"Retry your request by choosing a subnet in {qualified_az}. ",
                     FailureLevel.ERROR,
                 )
             else:
                 self._add_failure(
-                    f"Unable to validate configuration parameters for instance type {kwargs['InstanceType']}. "
-                    f"Please double check your cluster configuration. {message}",
+                    f"Unable to validate the configuration parameters for instance type {kwargs['InstanceType']}. "
+                    f"Check your cluster configuration. {message}",
                     FailureLevel.ERROR,
                 )
 
@@ -1222,7 +1222,7 @@ class HeadNodeImdsValidator(Validator):
         elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
             # TODO move validation for Imds parameter in the schema
             self._add_failure(
-                f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
+                f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Disable IMDS Secured.",
                 FailureLevel.ERROR,
             )
 
@@ -1315,27 +1315,27 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
 
 
 class RootVolumeSizeValidator(Validator):
-    """Verify the root volume size is equal or greater to the size of the snapshot of the AMI."""
+    """Verify that the root volume size is equal to or greater than the size of the snapshot of the AMI."""
 
     def _validate(self, root_volume_size, ami_volume_size):
         if root_volume_size:
             if root_volume_size < ami_volume_size:
                 self._add_failure(
-                    f"Root volume size {root_volume_size} GiB must be equal or greater than the volume size of "
+                    f"Root volume size {root_volume_size} GiB must be equal to or greater than the volume size of "
                     f"the AMI: {ami_volume_size} GiB.",
                     FailureLevel.ERROR,
                 )
 
 
 class HostedZoneValidator(Validator):
-    """Validate custom private domain in the same VPC as head node."""
+    """Validate that the custom private domain is in the same VPC as the head node."""
 
     def _validate(self, hosted_zone_id, cluster_vpc, cluster_name):
         if AWSApi.instance().route53.is_hosted_zone_private(hosted_zone_id):
             vpc_ids = AWSApi.instance().route53.get_hosted_zone_vpcs(hosted_zone_id)
             if cluster_vpc not in vpc_ids:
                 self._add_failure(
-                    f"Private Route53 hosted zone {hosted_zone_id} need to be associated with "
+                    f"Private Route53 hosted zone {hosted_zone_id} must be associated with "
                     f"the VPC of the cluster: {cluster_vpc}. "
                     f"The VPCs associated with hosted zone are {vpc_ids}.",
                     FailureLevel.ERROR,
@@ -1353,8 +1353,8 @@ class HostedZoneValidator(Validator):
             self._add_failure(
                 (
                     "Error: When specifying HostedZoneId, "
-                    f"the total length of cluster name {cluster_name} and domain name {domain_name} can not be "
-                    f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
+                    f"the total length of cluster name {cluster_name} and domain name {domain_name} cannot be "
+                    f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} characters, "
                     f"current length is {total_length}"
                 ),
                 FailureLevel.ERROR,
@@ -1373,7 +1373,7 @@ class SchedulerValidator(Validator):
 
 
 class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
-    """Concrete class to build a dict with EC2 run instance properties to simulate our launch templates."""
+    """Concrete class to build a dict with EC2 run instance properties to simulate launch templates."""
 
     def _block_device_mapping_for_ebs(self, device_name, volume):
         return {
@@ -1426,7 +1426,7 @@ class RootVolumeEncryptionConsistencyValidator(Validator):
             if reference_root_volume_encryption != root_volume_encryption:
                 self._add_failure(
                     f"The Encryption parameter of the root volume of the queue {queue_name} is not consistent "
-                    f"with the value set for the queue {reference_queue_name}, and may cause a problem in case "
+                    f"with the value set for the queue {reference_queue_name}, and this may cause a problem in case "
                     f"of Service Control Policies (SCPs) enforcing encryption.",
                     FailureLevel.WARNING,
                 )
@@ -1454,7 +1454,7 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
         for queue in multi_nic_queues:
             if queue.networking.assign_public_ip:
                 self._add_failure(
-                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces, however, the "
                     f"AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances launched "
                     f"with a single network interface.",
                     FailureLevel.ERROR,
@@ -1465,7 +1465,7 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
             )
             if queue_subnets_with_public_ips:
                 self._add_failure(
-                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
+                    f"The queue {queue.name} contains an instance type with multiple network interfaces, however, the "
                     f"subnets {queue_subnets_with_public_ips} is configured to automatically assign public IPs. AWS "
                     f"public IPs can only be assigned to instances launched with a single network interface.",
                     FailureLevel.ERROR,

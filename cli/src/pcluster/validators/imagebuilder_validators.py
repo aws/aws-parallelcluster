@@ -18,13 +18,13 @@ class AMIVolumeSizeValidator(Validator):
     """AMI root volume size validator."""
 
     def _validate(self, volume_size: int, image: str):
-        """Validate the volume size is larger than base ami volume size."""
+        """Validate that the volume size is larger than the base AMI volume size."""
         ami_id = imagebuilder_utils.get_ami_id(image)
         ami_info = AWSApi.instance().ec2.describe_image(ami_id)
         min_volume_size = ami_info.volume_size
         if volume_size < min_volume_size:
             self._add_failure(
-                "Root volume size {0} GB is less than the minimum required size {1} GB that equals parent ami "
+                "Root volume size {0} GB is less than the minimum required size {1} GB, equal to the parent AMI "
                 "volume size.".format(volume_size, min_volume_size),
                 FailureLevel.ERROR,
             )
@@ -34,7 +34,7 @@ class ComponentsValidator(Validator):
     """Components number validator."""
 
     def _validate(self, components: list):
-        """Validate the number of components is not greater than 15."""
+        """Validate that the number of components is not greater than 15."""
         if components and len(components) > 15:
             self._add_failure(
                 "Number of build components is {0}. "
@@ -47,10 +47,10 @@ class SecurityGroupsAndSubnetValidator(Validator):
     """Security Groups and Subnet validator."""
 
     def _validate(self, security_group_ids: list, subnet_id: str):
-        """Validate security groups is required if subnet is specified."""
+        """Validate that security groups are required if the subnet is specified."""
         if subnet_id:
             if not security_group_ids:
                 self._add_failure(
-                    "Subnet id {0} is specified, security groups is required.".format(subnet_id),
+                    "Subnet ID {0} is specified, security groups are required.".format(subnet_id),
                     FailureLevel.ERROR,
                 )
