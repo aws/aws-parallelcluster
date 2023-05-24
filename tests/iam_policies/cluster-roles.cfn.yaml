@@ -13,7 +13,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: !If [ GovCloud, 'lambda.amazonaws-us-gov.com', !If [ China, 'lambda.amazonaws.cn', 'lambda.amazonaws.com']]
+              Service: lambda.amazonaws.com
         Version: '2012-10-17'
       Path: /parallelcluster/
       Policies:
@@ -186,7 +186,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: !If [ GovCloud, 'lambda.amazonaws-us-gov.com', !If [ China, 'lambda.amazonaws.cn', 'lambda.amazonaws.com']]
+              Service: lambda.amazonaws.com
         Version: '2012-10-17'
       Path: /parallelcluster/
       Policies:
@@ -259,7 +259,7 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:PassedToService:
-                      - !If [ GovCloud, 'batch.amazonaws-us-gov.com', !If [ China, 'batch.amazonaws.cn', 'batch.amazonaws.com']]
+                      - batch.amazonaws.com
               - Action:
                   - batch:DescribeJobQueues
                   - batch:DescribeJobs
