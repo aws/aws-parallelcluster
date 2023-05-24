@@ -519,6 +519,8 @@ def test_slurm_memory_based_scheduling(
         test_datadir,
     )
 
+    _test_memory_based_scheduling_with_multiple_instance_types(slurm_commands)
+
     _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
         remote_command_executor,
         slurm_commands,
@@ -2214,6 +2216,47 @@ def _test_memory_based_scheduling_enabled_true(
     slurm_commands.wait_job_completed(job_id_1)
     assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("FAILED")
     slurm_commands.wait_job_completed(job_id_2)
+    assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("COMPLETED")
+
+
+def _test_memory_based_scheduling_with_multiple_instance_types(
+    slurm_commands,
+):
+    """Test Slurm memory-based scheduling with multimple instance types configured on a compute resource"""
+
+    jiff = 2
+    # Here two jobs that require 2G of memory are submitted in an instance with 8000 MiB memory
+
+    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "nodes": 1,
+            "slots": 1,
+            "command": "sleep 30",
+            "other_options": "--mem=2000 -w queue1-st-ondemand1-i2-1",
+            "raise_on_error": False,
+        }
+    )
+    time.sleep(jiff)
+    job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "nodes": 1,
+            "slots": 2,
+            "command": "sleep 10",
+            "other_options": "-c 1 --mem-per-cpu=1000 -w queue1-st-ondemand1-i2-1",
+            "raise_on_error": False,
+        }
+    )
+    time.sleep(jiff)
+    # Both should be running
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
+    assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("RUNNING")
+    # Check that memory appears in the TRES allocated for the job
+    assert_that(slurm_commands.get_job_info(job_id_1, field="ReqTRES")).contains("mem=2000M")
+    assert_that(slurm_commands.get_job_info(job_id_2, field="ReqTRES")).contains("mem=2000M")
+    slurm_commands.wait_job_completed(job_id_1)
+    slurm_commands.wait_job_completed(job_id_2)
+    # And they should have succeeded
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("COMPLETED")
     assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("COMPLETED")
 
 
