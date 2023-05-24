@@ -56,7 +56,11 @@ cloudwatch_logging:
       # 2) run the test for all OSes with slurm
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["ubuntu2004", "rhel8", "centos7"]
+        oss: ["ubuntu2004", "rhel8"]
+        schedulers: ["slurm"]
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu1804", "centos7"]
         schedulers: ["slurm"]
   test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
     dimensions:
@@ -199,12 +203,12 @@ dcv:
       # DCV on GPU enabled instance
       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g4dn.2xlarge"]
-        oss: ["ubuntu2004"]
+        oss: ["centos7"]
         schedulers: ["slurm"]
       # DCV on ARM + GPU
       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g5g.2xlarge"]
-        oss: ["centos7"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
       # DCV in cn regions and non GPU enabled instance
       - regions: ["cn-northwest-1"]
@@ -214,7 +218,7 @@ dcv:
       # DCV in gov-cloud regions and non GPU enabled instance
       - regions: ["us-gov-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
   test_dcv.py::test_dcv_with_remote_access:
     dimensions:
@@ -262,11 +266,11 @@ efa:
         schedulers: ["slurm"]
       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["c6gn.16xlarge"]
-        oss: ["centos7"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
       - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
         instances: [{{ common.instance("instance_type_1") }}]
-        oss: ["ubuntu2004"]
+        oss: ["centos7"]
         schedulers: [ "slurm" ]
 iam:
   test_iam.py::test_iam_policies:
@@ -330,11 +334,11 @@ networking:
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8"]
+        oss: ["centos7"]
         schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["centos7"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -699,16 +703,16 @@ update:
     dimensions:
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004"]
+        oss: ["centos7"]
         schedulers: ["slurm"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["centos7"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
   test_update.py::test_multi_az_create_and_update:
     dimensions:
-      - regions: [ "eu-west-2" ]
-        schedulers: [ "slurm" ]
+      - regions: ["eu-west-2"]
+        schedulers: ["slurm"]
         oss: ["alinux2"]
 multiple_nics:
   test_multiple_nics.py::test_multiple_nics:

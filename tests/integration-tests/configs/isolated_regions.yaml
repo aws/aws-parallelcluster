@@ -1,18 +1,17 @@
 {%- import 'common.jinja2' as common with context -%}
-{%- set REGIONS = ["us-isob-east-1"] -%}
+{%- set REGIONS = ["us-isob-east-1","us-iso-east-1"] -%}
 {%- set INSTANCES = ["c5.xlarge"] -%}
 {%- set OSS = ["alinux2"] -%}
 {%- set SCHEDULERS = ["slurm"] -%}
 ---
 test-suites:
-#  We must fix the integ test logic to make this integration test to work in us-isob-east-1
-#  ad_integration:
-#    test_ad_integration.py::test_ad_integration:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+  ad_integration:
+    test_ad_integration.py::test_ad_integration:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   cfn-init:
     test_cfn_init.py::test_replace_compute_on_failure:
       dimensions:
@@ -529,13 +528,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-#    We must fix the integ test logic to make this integration test to work in us-isob-east-1
-#    test_update.py::test_dynamic_file_systems_update:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+    test_update.py::test_dynamic_file_systems_update:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
 # This test cannot be executed in US isolated regions
 # because it relies on a CloudFormation stack using resources
 # that are not supported by CloudFormation in ADC,

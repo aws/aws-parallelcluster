@@ -26,7 +26,7 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 from time_utils import minutes, seconds
-from utils import describe_cluster_instances, retrieve_cfn_resources, wait_for_computefleet_changed
+from utils import describe_cluster_instances, is_fsx_supported, retrieve_cfn_resources, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
@@ -147,7 +147,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     # Update cluster with new configuration
     additional_policy_arn = (
-        f"arn:{utils.get_arn_partition(region)}:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
+        f"arn:{utils.get_arn_partition(region)}:iam::aws:policy/service-role/AWSCloudFormationReadOnlyAccess"
     )
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
@@ -891,11 +891,14 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             public_subnet_id = vpc_stack.get_public_subnet()
             import_path = "s3://{0}".format(bucket_name)
             export_path = "s3://{0}/export_dir".format(bucket_name)
+            fsx_supported = is_fsx_supported(region)
             params = [
                 {"ParameterKey": "vpc", "ParameterValue": vpc},
                 {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
                 {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
                 {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
+                {"ParameterKey": "CreateEfs", "ParameterValue": "true"},
+                {"ParameterKey": "CreateFsx", "ParameterValue": str(fsx_supported).lower()},
             ]
             with open(template_path, encoding="utf-8") as template_file:
                 template = template_file.read()
@@ -932,6 +935,7 @@ def test_dynamic_file_systems_update(
     external_shared_storage_stack,
 ):
     """Test update shared storages."""
+    fsx_supported = is_fsx_supported(region)
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
     existing_efs_mount_dir = "/existing_efs_mount_dir"
     fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir"
@@ -943,7 +947,11 @@ def test_dynamic_file_systems_update(
     new_lustre_mount_dir = "/new_lustre_mount_dir"
     ebs_mount_dirs = [new_ebs_mount_dir, existing_ebs_mount_dir]
     efs_mount_dirs = [existing_efs_mount_dir, new_efs_mount_dir]
-    fsx_mount_dirs = [new_lustre_mount_dir, fsx_lustre_mount_dir, fsx_open_zfs_mount_dir, fsx_ontap_mount_dir]
+    fsx_mount_dirs = (
+        [new_lustre_mount_dir, fsx_lustre_mount_dir, fsx_open_zfs_mount_dir, fsx_ontap_mount_dir]
+        if fsx_supported
+        else []
+    )
     all_mount_dirs = ebs_mount_dirs + [new_raid_mount_dir] + efs_mount_dirs + fsx_mount_dirs
 
     bucket_name = s3_bucket_factory()
@@ -1005,6 +1013,7 @@ def test_dynamic_file_systems_update(
         new_lustre_deletion_policy="Delete",
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Delete",
+        fsx_supported=fsx_supported,
     )
 
     cluster.update(update_cluster_config)
@@ -1069,13 +1078,18 @@ def test_dynamic_file_systems_update(
         new_lustre_deletion_policy="Retain",
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Retain",
+        fsx_supported=fsx_supported,
     )
 
     cluster.update(update_cluster_config)
 
     existing_ebs_ids = [existing_ebs_volume_id]
     existing_efs_ids = [existing_efs_id]
-    existing_fsx_ids = [existing_fsx_lustre_fs_id, existing_fsx_ontap_volume_id, existing_fsx_open_zfs_volume_id]
+    existing_fsx_ids = (
+        [existing_fsx_lustre_fs_id, existing_fsx_ontap_volume_id, existing_fsx_open_zfs_volume_id]
+        if fsx_supported
+        else []
+    )
 
     retained_ebs_noraid_volume_ids = [
         id for id in cluster.cfn_outputs["EBSIds"].split(",") if id not in existing_ebs_ids
@@ -1085,7 +1099,9 @@ def test_dynamic_file_systems_update(
     ]
     retained_ebs_volume_ids = retained_ebs_noraid_volume_ids + retained_ebs_raid_volume_ids
     retained_efs_filesystem_ids = [id for id in cluster.cfn_outputs["EFSIds"].split(",") if id not in existing_efs_ids]
-    retained_fsx_filesystem_ids = [id for id in cluster.cfn_outputs["FSXIds"].split(",") if id not in existing_fsx_ids]
+    retained_fsx_filesystem_ids = (
+        [id for id in cluster.cfn_outputs["FSXIds"].split(",") if id not in existing_fsx_ids] if fsx_supported else []
+    )
 
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
@@ -1146,6 +1162,7 @@ def test_dynamic_file_systems_update(
         pcluster_config_reader,
         scheduler_commands,
         region,
+        fsx_supported,
     )
 
 
@@ -1235,14 +1252,15 @@ def _test_shared_storages_mount_on_headnode(
         test_efs_correctly_mounted(remote_command_executor, efs)
         test_efs_correctly_mounted(remote_command_executor, efs)
     # check fsx
-    check_fsx(
-        cluster,
-        region,
-        scheduler_commands_factory,
-        fsx_mount_dirs,
-        bucket_name,
-        headnode_only=True,
-    )
+    if fsx_mount_dirs:
+        check_fsx(
+            cluster,
+            region,
+            scheduler_commands_factory,
+            fsx_mount_dirs,
+            bucket_name,
+            headnode_only=True,
+        )
 
 
 def _test_shared_storage_rollback(
@@ -1257,6 +1275,7 @@ def _test_shared_storage_rollback(
     pcluster_config_reader,
     scheduler_commands,
     region,
+    fsx_supported,
 ):
     # update cluster with adding non-existing ebs and skip validator
     problematic_volume_id = "vol-00000000000000000"
@@ -1271,6 +1290,7 @@ def _test_shared_storage_rollback(
         new_ebs_mount_dir=new_ebs_mount_dir,
         new_lustre_mount_dir=new_lustre_mount_dir,
         new_efs_mount_dir=new_efs_mount_dir,
+        fsx_supported=fsx_supported,
     )
     # remove logs from chef-client log in order to test cluster rollback behavior
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/chef-client.log")
@@ -1290,7 +1310,7 @@ def _test_shared_storage_rollback(
 
     # Check shared storages are not on headnode
     ebs_mount_dirs = [existing_ebs_mount_dir, new_ebs_mount_dir, problematic_ebs_mount_dir]
-    fs_mount_dirs = [new_lustre_mount_dir, new_efs_mount_dir]
+    fs_mount_dirs = [new_lustre_mount_dir, new_efs_mount_dir] if fsx_supported else [new_efs_mount_dir]
     _test_ebs_not_mounted(remote_command_executor, ebs_mount_dirs)
     _test_directory_not_mounted(remote_command_executor, fs_mount_dirs)
 
@@ -1314,9 +1334,11 @@ def _test_shared_storage_rollback(
     managed_efs = [
         fs.get("efs_fs_id") for fs in failed_share_storages.get("efs") if fs.get("mount_dir") == new_efs_mount_dir
     ]
-    managed_fsx = [
-        fs.get("fsx_fs_id") for fs in failed_share_storages.get("fsx") if fs.get("mount_dir") == new_lustre_mount_dir
-    ]
+    managed_fsx = (
+        [fs.get("fsx_fs_id") for fs in failed_share_storages.get("fsx") if fs.get("mount_dir") == new_lustre_mount_dir]
+        if fsx_supported
+        else []
+    )
 
     # assert the managed EBS is clean up
     logging.info("Checking managed EBS is deleted after stack rollback")
@@ -1327,9 +1349,10 @@ def _test_shared_storage_rollback(
     with pytest.raises(ClientError, match="FileSystemNotFound"):
         boto3.client("efs", region).describe_file_systems(FileSystemId=managed_efs[0])
     # assert the managed FSX is clean up
-    logging.info("Checking managed FSX is deleted after stack rollback")
-    with pytest.raises(ClientError, match="FileSystemNotFound"):
-        boto3.client("fsx", region).describe_file_systems(FileSystemIds=managed_fsx)
+    if fsx_supported:
+        logging.info("Checking managed FSX is deleted after stack rollback")
+        with pytest.raises(ClientError, match="FileSystemNotFound"):
+            boto3.client("fsx", region).describe_file_systems(FileSystemIds=managed_fsx)
 
 
 @pytest.mark.usefixtures("os")

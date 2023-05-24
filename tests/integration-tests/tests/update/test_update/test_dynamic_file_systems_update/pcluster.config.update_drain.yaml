@@ -79,6 +79,7 @@ SharedStorage:
     StorageType: Efs
     EfsSettings:
       FileSystemId: {{ existing_efs_id }}
+  {% if fsx_supported %}
   - MountDir: {{ new_lustre_mount_dir }}
     Name: manage-fsx
     StorageType: FsxLustre
@@ -104,3 +105,4 @@ SharedStorage:
     StorageType: FsxOntap
     FsxOntapSettings:
       VolumeId: {{ fsx_ontap_volume_id }}
+  {% endif %}

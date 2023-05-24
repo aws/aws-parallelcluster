@@ -14,11 +14,24 @@ Parameters:
   vpc:
     Type: String
     Default: ''
+  CreateEfs:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+  CreateFsx:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+Conditions:
+  CreateEfs: !Equals [!Ref CreateEfs, 'true']
+  CreateFsx: !Equals [!Ref CreateFsx, 'true']
 Resources:
   FileSystemResource0:
     Type: 'AWS::EFS::FileSystem'
+    Condition: CreateEfs
 {% for subnet in one_subnet_per_az %}
   MountTargetResourceEfs0Subnet{{loop.index}}:
+    Condition: CreateEfs
     Properties:
       FileSystemId: !Ref FileSystemResource0
       SecurityGroups:
@@ -27,6 +40,7 @@ Resources:
     Type: 'AWS::EFS::MountTarget'
 {% endfor %}
   SecurityGroupIngressResource0:
+    Condition: CreateEfs
     Properties:
       CidrIp: 192.168.0.0/17
       FromPort: 2049
@@ -35,6 +49,7 @@ Resources:
       ToPort: 2049
     Type: 'AWS::EC2::SecurityGroupIngress'
   SecurityGroupIngressResource1:
+    Condition: CreateEfs
     Properties:
       CidrIp: 192.168.128.0/17
       FromPort: 2049
@@ -43,11 +58,13 @@ Resources:
       ToPort: 2049
     Type: 'AWS::EC2::SecurityGroupIngress'
   SecurityGroupResource:
+    Condition: CreateEfs
     Properties:
       GroupDescription: custom security group for EFS mount targets
       VpcId: !Ref vpc
     Type: 'AWS::EC2::SecurityGroup'
   FSxSecurityGroup:
+    Condition: CreateFsx
     Properties:
       GroupDescription: SecurityGroup for testing existing FSx
       SecurityGroupIngress:
@@ -58,6 +75,7 @@ Resources:
       VpcId: !Ref vpc
     Type: 'AWS::EC2::SecurityGroup'
   FileSystemResource1:
+    Condition: CreateFsx
     Properties:
       FileSystemType: LUSTRE
       LustreConfiguration:
@@ -72,6 +90,7 @@ Resources:
         - !Ref PublicSubnetId
     Type: 'AWS::FSx::FileSystem'
   FSxSecurityGroup1:
+    Condition: CreateFsx
     Properties:
       GroupDescription: SecurityGroup for testing existing FSx
       SecurityGroupIngress:
@@ -110,6 +129,7 @@ Resources:
       VpcId: !Ref vpc
     Type: 'AWS::EC2::SecurityGroup'
   FileSystemResource2:
+    Condition: CreateFsx
     Properties:
       FileSystemType: ONTAP
       OntapConfiguration:
@@ -122,6 +142,7 @@ Resources:
         - !Ref PublicSubnetId
     Type: 'AWS::FSx::FileSystem'
   SVMVolume0:
+    Condition: CreateFsx
     Properties:
       Name: vol0
       OntapConfiguration:
@@ -132,11 +153,13 @@ Resources:
       VolumeType: ONTAP
     Type: 'AWS::FSx::Volume'
   StorageVirtualMachineFileSystemResource:
+    Condition: CreateFsx
     Properties:
       FileSystemId: !Ref FileSystemResource2
       Name: fsx
     Type: 'AWS::FSx::StorageVirtualMachine'
   FSxSecurityGroup2:
+    Condition: CreateFsx
     Properties:
       GroupDescription: SecurityGroup for testing existing FSx
       SecurityGroupIngress:
@@ -183,6 +206,7 @@ Resources:
       VpcId: !Ref vpc
     Type: 'AWS::EC2::SecurityGroup'
   FileSystemResource3:
+    Condition: CreateFsx
     Properties:
       FileSystemType: OPENZFS
       OpenZFSConfiguration:
@@ -202,6 +226,7 @@ Resources:
         - !Ref PublicSubnetId
     Type: 'AWS::FSx::FileSystem'
   OpenZFSVolume0:
+    Condition: CreateFsx
     Properties:
       Name: vol0
       OpenZFSConfiguration:
@@ -216,12 +241,14 @@ Resources:
           - RootVolumeId
       VolumeType: OPENZFS
     Type: 'AWS::FSx::Volume'
+  DummyResource:
+    Type: AWS::CloudFormation::WaitConditionHandle
 Outputs:
   EfsId:
-    Value: !Ref FileSystemResource0
+    Value: !If [ CreateEfs, !Ref FileSystemResource0, '' ]
   FsxLustreFsId:
-    Value: !Ref FileSystemResource1
+    Value: !If [ CreateFsx, !Ref FileSystemResource1, '']
   FsxOntapVolumeId:
-    Value: !Ref SVMVolume0
+    Value: !If [ CreateFsx, !Ref SVMVolume0, '']
   FsxOpenZfsVolumeId:
-    Value: !Ref OpenZFSVolume0
+    Value: !If [ CreateFsx, !Ref OpenZFSVolume0, '']

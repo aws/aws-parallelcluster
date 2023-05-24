@@ -90,7 +90,7 @@ def cluster_custom_resource_provider_fixture(
     yield from cluster_custom_resource_provider_generator(
         cfn_stacks_factory,
         region,
-        generate_stack_name("custom-resource-provider", request.config.getoption("stackname_suffix")),
+        generate_stack_name("integ-test-custom-resource-provider", request.config.getoption("stackname_suffix")),
         parameters,
         cluster_custom_resource_provider_template,
     )
@@ -101,7 +101,7 @@ def cluster_1_click_fixture(cfn_stacks_factory, request, region, key_name, clust
     with open(cluster_custom_resource_1_click_template, encoding="utf-8") as cfn_file:
         template_data = cfn_file.read()
 
-    stack_name = generate_stack_name("cluster-1-click", request.config.getoption("stackname_suffix"))
+    stack_name = generate_stack_name("integ-test-cluster-1-click", request.config.getoption("stackname_suffix"))
     parameters = {"KeyName": key_name, "AvailabilityZone": f"{region}a"}
     stack = CfnStack(
         name=stack_name,
@@ -126,7 +126,7 @@ def cluster_custom_resource_factory_fixture(
     vpc_stack,
 ):
     def _produce_cluster_custom_resource_stack(parameters=None):
-        cluster_name = generate_stack_name("custom-resource-c", request.config.getoption("stackname_suffix"))
+        cluster_name = generate_stack_name("integ-test-custom-resource-c", request.config.getoption("stackname_suffix"))
 
         parameters = {
             "ClusterName": cluster_name,
@@ -141,12 +141,15 @@ def cluster_custom_resource_factory_fixture(
             template_data = cfn_file.read()
 
         stack = CfnStack(
-            name=generate_stack_name("custom-resource", request.config.getoption("stackname_suffix")),
+            name=generate_stack_name("integ-tests-custom-resource", request.config.getoption("stackname_suffix")),
             region=region,
             template=template_data,
             parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-            tags=[{"Key": "cluster_name", "Value": cluster_name}],  # For testing, add a tag to the stack
+            tags=[
+                {"Key": "cluster_name", "Value": cluster_name},
+                {"Key": "inside_configuration_key", "Value": "stack_level_value"},
+            ],  # For testing, add tags to the stack
         )
 
         cfn_stacks_factory.create_stack(stack, True)
@@ -192,7 +195,7 @@ def resource_bucket_cluster_template_fixture(policies_template_path, resource_bu
 def resource_bucket_policies_fixture(cfn_stacks_factory, request, region, resource_bucket_cluster_template):
     parameters = {"EnableIamAdminAccess": "true"}
     stack = CfnStack(
-        name=generate_stack_name("resource-bucket-policies", request.config.getoption("stackname_suffix")),
+        name=generate_stack_name("integ-test-resource-bucket-policies", request.config.getoption("stackname_suffix")),
         region=region,
         template=resource_bucket_cluster_template,
         capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],

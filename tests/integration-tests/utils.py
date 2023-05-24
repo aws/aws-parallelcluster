@@ -241,6 +241,13 @@ def retrieve_cfn_outputs(stack_name, region):
     return _retrieve_cfn_data(stack_name, region, "Output")
 
 
+def retrieve_tags(stack_name, region):
+    """Retrieve CloudFormation Tags from a given stack."""
+    cfn = boto3.client("cloudformation", region_name=region)
+    stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+    return stack.get("Tags", [])
+
+
 @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
 def _retrieve_cfn_data(stack_name, region, data_type):
     logging.debug("Retrieving stack %s for stack %s", data_type, stack_name)
@@ -782,6 +789,12 @@ def assert_metrics_has_data(response):
 @retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
 def test_cluster_health_metric(metric_names, cluster_name, region):
     """Test metric value is greater than 0 when the compute node error happens."""
+    if "us-iso" in region:
+        return
     logging.info(f"Testing that {metric_names} have data.")
     response = retrieve_metric_data(cluster_name, metric_names, region)
     assert_metrics_has_data(response)
+
+
+def is_fsx_supported(region: str):
+    return "us-iso" not in region

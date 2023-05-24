@@ -28,16 +28,17 @@ Monitoring:
       RetentionInDays: 14
 SharedStorage:
   - MountDir: /shared
-    Name: fsx
-    StorageType: FsxLustre
-    FsxLustreSettings:
-      StorageCapacity: 2400
-  - MountDir: /ebs
     Name: ebs
     StorageType: Ebs
   - MountDir: /efs
     Name: efs
     StorageType: Efs
+  {% if fsx_supported %}
+  - MountDir: /fsxlustre
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 2400
   - MountDir: /fsxopenzfs
     Name: existingopenzfs
     StorageType: FsxOpenZfs
@@ -48,6 +49,7 @@ SharedStorage:
     StorageType: FsxOntap
     FsxOntapSettings:
       VolumeId: {{ fsx_ontap_volume_id }}
+  {% endif %}
 DirectoryService:
   DomainName: {{ ldap_search_base }}
   DomainAddr: {{ ldap_uri }}

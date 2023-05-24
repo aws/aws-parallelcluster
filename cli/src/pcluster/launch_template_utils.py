@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
 
-from pcluster.constants import OS_MAPPING
-
 
 class _LaunchTemplateBuilder(ABC):
     """Abstract class with methods with the common logic for launch template builders."""
 
-    def get_block_device_mappings(self, root_volume, image_os):
+    def get_block_device_mappings(self, root_volume, root_volume_device_name):
         """Return a list of block device mappings."""
         block_device_mappings = []
         for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
@@ -14,9 +12,7 @@ class _LaunchTemplateBuilder(ABC):
             virtual_name = "ephemeral{0}".format(virtual_name_index)
             block_device_mappings.append(self._block_device_mapping_for_virt(device_name, virtual_name))
 
-        block_device_mappings.append(
-            self._block_device_mapping_for_ebs(OS_MAPPING[image_os]["root-device"], root_volume)
-        )
+        block_device_mappings.append(self._block_device_mapping_for_ebs(root_volume_device_name, root_volume))
         return block_device_mappings
 
     def get_instance_market_options(self, queue, compute_resource):

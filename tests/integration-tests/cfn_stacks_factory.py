@@ -23,6 +23,7 @@ from utils import (
     get_cfn_events,
     retrieve_cfn_outputs,
     retrieve_cfn_resources,
+    retrieve_tags,
     to_pascal_from_kebab_case,
 )
 
@@ -45,6 +46,7 @@ class CfnStack:
         """Initialize cfn_outputs and cfn_resources."""
         self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
         self.__cfn_resources = retrieve_cfn_resources(self.name, self.region)
+        self.tags = retrieve_tags(self.name, self.region)
 
     @property
     def cfn_outputs(self):
@@ -234,7 +236,7 @@ class CfnStacksFactory:
         wait_fixed=5000,
         retry_on_exception=lambda exception: isinstance(exception, ClientError),
     )
-    def update_stack(self, name, region, parameters, stack_is_under_test=False):
+    def update_stack(self, name, region, parameters, stack_is_under_test=False, tags=None, wait_for_rollback=False):
         """Update a created cfn stack."""
         with aws_credential_provider(region, self.__credentials):
             internal_id = self.__get_stack_internal_id(name, region)
@@ -243,7 +245,23 @@ class CfnStacksFactory:
                 try:
                     stack = self.__created_stacks[internal_id]
                     cfn_client = boto3.client("cloudformation", region_name=stack.region)
-                    cfn_client.update_stack(StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters)
+                    if tags is not None:
+                        cfn_client.update_stack(
+                            StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters, Tags=tags
+                        )
+                    else:
+                        cfn_client.update_stack(StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters)
+
+                    if wait_for_rollback:
+                        final_status = self.__wait_for_stack_update_rollback(stack.cfn_stack_id, cfn_client)
+                        self.__assert_stack_status(
+                            final_status,
+                            {"UPDATE_ROLLBACK_COMPLETE", "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS"},
+                            stack_name=stack.cfn_stack_id,
+                            region=region,
+                            stack_is_under_test=stack_is_under_test,
+                        )
+                        stack.init_stack_data()
                     final_status = self.__wait_for_stack_update(stack.cfn_stack_id, cfn_client)
                     self.__assert_stack_status(
                         final_status,
@@ -252,6 +270,7 @@ class CfnStacksFactory:
                         region=region,
                         stack_is_under_test=stack_is_under_test,
                     )
+
                     # Update the stack data while still in the credential context
                     stack.init_stack_data()
                 except Exception as e:
@@ -300,6 +319,17 @@ class CfnStacksFactory:
         retry_on_exception=lambda exception: isinstance(exception, ClientError) and "Rate exceeded" in str(exception),
     )
     def __wait_for_stack_update(self, name, cfn_client):
+        return self.__get_stack_status(name, cfn_client)
+
+    @retry(
+        stop_max_attempt_number=15,
+        retry_on_result=lambda result: result == "UPDATE_ROLLBACK_IN_PROGRESS"
+        or result == "UPDATE_IN_PROGRESS"
+        or result == "UPDATE_FAILED",
+        wait_fixed=5000,
+        retry_on_exception=lambda exception: isinstance(exception, ClientError) and "Rate exceeded" in str(exception),
+    )
+    def __wait_for_stack_update_rollback(self, name, cfn_client):
         return self.__get_stack_status(name, cfn_client)
 
     @staticmethod

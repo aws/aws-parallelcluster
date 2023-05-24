@@ -16,10 +16,10 @@ import yaml
 from assertpy import assert_that
 
 from pcluster.config.cluster_config import SharedStorageType
+from pcluster.constants import Feature
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.templates.cw_dashboard_builder import is_region_supported
-from pcluster.utils import load_yaml_dict
+from pcluster.utils import is_feature_supported, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
 
@@ -225,7 +225,7 @@ def _verify_common_error_metrics_graphs(cluster_config, output_yaml, region):
     ]
     health_check_failure_metrics = ["GpuHealthCheckFailures"]
     idle_node_metrics = ["MaxDynamicNodeIdleTime"]
-    if scheduler == "slurm" and is_region_supported(region):
+    if scheduler == "slurm" and is_feature_supported(Feature.CLUSTER_HEALTH_METRICS, region):
         # Contains error metric title
         assert_that(output_yaml).contains("Cluster Health Metrics")
         for metric in slurm_related_metrics:
