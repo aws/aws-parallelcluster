@@ -93,15 +93,12 @@ test-suites:
 #          instances: {{ INSTANCES }}
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
-# This test cannot be executed in US isolated regions
-# because it relies on having AMIs for different pcluster versions in the region
-# and this is not the case in these regions.
-#    test_create.py::test_create_wrong_pcluster_version:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+    test_create.py::test_create_wrong_pcluster_version:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_create.py::test_create_imds_secured:
       dimensions:
         - regions: {{ REGIONS }}
