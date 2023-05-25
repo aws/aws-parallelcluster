@@ -144,6 +144,18 @@ write_files:
         done;
         export HOME="${!HOME_BAK}"
       }
+
+      function publish_startup_time
+      {
+        StartTime=$1
+        EndTime=$2
+        METRIC_NAMESPACE="ParallelCluster"
+        METRIC_NAME="StartupTime"
+        INSTANCE_ID=$(cat /etc/parallelcluster/slurm_plugin/slurm_node_spec.json | jq -r .instance_id)
+        INSTANCE_TYPE=$(cat /etc/parallelcluster/slurm_plugin/slurm_node_spec.json | jq -r .'compute."instance-type"')
+        aws cloudwatch put-metric-data --namespace $METRIC_NAMESPACE --metric-name $METRIC_NAME --value $(($EndTime-$StartTime)) --dimensions "InstanceID=${!INSTANCE_ID},InstanceType=${!INSTANCE_TYPE},ClusterName=${ClusterName}" --region "${AWS::Region}"
+      }
+
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
       # Configure AWS CLI using the expected overrides, if any.
@@ -193,6 +205,10 @@ write_files:
 
       mkdir -p /etc/chef/ohai/hints
       touch /etc/chef/ohai/hints/ec2.json
+
+      #measure start time
+      start=$(date +%s)
+
       jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' > /etc/chef/dna.json || ( echo "jq not installed or invalid extra_json"; cp /tmp/dna.json /etc/chef/dna.json)
       {
         pushd /etc/chef &&
@@ -206,6 +222,13 @@ write_files:
 
       if [ ! -f /opt/parallelcluster/.bootstrapped ]; then
         echo ${!cookbook_version} | tee /opt/parallelcluster/.bootstrapped
+      fi
+
+      #maesure end time
+      end=$(date +%s)
+
+      if [ "${CWDashboardEnabled}" = "true" ]; then
+        publish_startup_time $start $end || echo "[WARNING] failed to push the metric StartupTime to CloudWatch."
       fi
 
 --==BOUNDARY==

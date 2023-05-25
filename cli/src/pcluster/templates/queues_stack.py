@@ -276,6 +276,7 @@ class QueuesStack(NestedStack):
                                 else "NONE",
                                 "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
+                                "CWDashboardEnabled": "true" if self._config.is_cw_dashboard_enabled else "false",
                                 "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
                                 "QueueName": queue.name,
                                 "ComputeResourceName": compute_resource.name,
