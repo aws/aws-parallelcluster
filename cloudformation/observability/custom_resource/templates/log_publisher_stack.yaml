@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Conditions:
+  IncludeClusterLogGroup: !Not
+    - !Equals
+      - !Ref 'ClusterLogGroupName'
+      - ''
+  IncludeJobInfoLogGroup: !Not
+    - !Equals
+      - !Ref 'JobInfoLogGroupName'
+      - ''
+Description: AWS ParallelCluster Observability Log Publisher CloudFormation Stack
+Parameters:
+  ClusterLambdaFunctionArn:
+    Default: ''
+    Description: The Lambda Function Arn for the ParallelCluster LogGroup subscription.
+    Type: String
+  ClusterLogGroupName:
+    Default: ''
+    Description: The ParallelCluster LogGroup name.
+    Type: String
+  JobInfoLambdaFunctionArn:
+    Default: ''
+    Description: The Lambda Function Arn for the ParallelCluster JobInfo LogGroup subscription.
+    Type: String
+  JobInfoLogGroupName:
+    Default: ''
+    Description: The ParallelCluster JobInfo LogGroup name.
+    Type: String
+Resources:
+  ClusterLogGroupLambdaPermission:
+    Condition: IncludeClusterLogGroup
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref 'ClusterLambdaFunctionArn'
+      Principal: logs.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub
+        - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${log_group_name}:*
+        - log_group_name: !Ref 'ClusterLogGroupName'
+    Type: AWS::Lambda::Permission
+  ClusterLogGroupSubscriptionFilter:
+    Condition: IncludeClusterLogGroup
+    Properties:
+      DestinationArn: !Ref 'ClusterLambdaFunctionArn'
+      Distribution: Random
+      FilterName: pcluster_json_events
+      FilterPattern: '{ $.version="0" }'
+      LogGroupName: !Ref 'ClusterLogGroupName'
+    Type: AWS::Logs::SubscriptionFilter
+  JobInfoLogGroupLambdaPermission:
+    Condition: IncludeJobInfoLogGroup
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref 'JobInfoLambdaFunctionArn'
+      Principal: logs.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub
+        - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${log_group_name}:*
+        - log_group_name: !Ref 'JobInfoLogGroupName'
+    Type: AWS::Lambda::Permission
+  JobInfoLogGroupSubscriptionFilter:
+    Condition: IncludeJobInfoLogGroup
+    Properties:
+      DestinationArn: !Ref 'JobInfoLambdaFunctionArn'
+      Distribution: Random
+      FilterName: pcluster_json_events
+      FilterPattern: '{ $.version="0" }'
+      LogGroupName: !Ref 'JobInfoLogGroupName'
+    Type: AWS::Logs::SubscriptionFilter
+Transform: AWS::Serverless-2016-10-31
