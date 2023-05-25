@@ -2046,6 +2046,21 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             for flexible_instance_type in self.instances  # pylint: disable=not-an-iterable
         ]
 
+    def _min_schedulable_memory_and_instance_type(self):
+        instances_and_memory = {t: info.ec2memory_size_in_mib() for t, info in self.instance_type_info_map.items()}
+        smallest_type = min(instances_and_memory, key=instances_and_memory.get)
+        return smallest_type, instances_and_memory[smallest_type]
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        smallest_type, min_memory = self._min_schedulable_memory_and_instance_type()
+        self._register_validator(
+            SchedulableMemoryValidator,
+            schedulable_memory=self.schedulable_memory,
+            ec2memory=min_memory,
+            instance_type=smallest_type,
+        )
+
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
