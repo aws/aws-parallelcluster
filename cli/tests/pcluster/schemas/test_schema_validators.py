@@ -38,7 +38,9 @@ from pcluster.schemas.cluster_schema import (
     SlurmComputeResourceSchema,
     SlurmQueueNetworkingSchema,
     SlurmQueueSchema,
-    SshSchema, LoginNodeImageSchema, LoginNodePoolSchema,
+    SshSchema,
+    LoginNodeImageSchema,
+    LoginNodePoolSchema,
 )
 
 

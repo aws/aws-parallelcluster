@@ -212,7 +212,6 @@ from pcluster.validators.tags_validators import ComputeResourceTagsValidator
 
 LOGGER = logging.getLogger(__name__)
 
-
 # pylint: disable=C0302
 
 # ---------------------- Storage ---------------------- #
@@ -222,12 +221,12 @@ class Ebs(Resource):
     """Represent the configuration shared by EBS root volume and Shared EBS."""
 
     def __init__(
-            self,
-            encrypted: bool = None,
-            volume_type: str = None,
-            iops: int = None,
-            throughput: int = None,
-            **kwargs,
+        self,
+        encrypted: bool = None,
+        volume_type: str = None,
+        iops: int = None,
+        throughput: int = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.encrypted = Resource.init_param(encrypted, default=True)
@@ -307,16 +306,16 @@ class SharedEbs(Ebs):
     """Represent a shared EBS, inherits from both _SharedStorage and Ebs classes."""
 
     def __init__(
-            self,
-            mount_dir: str,
-            name: str,
-            size: int = None,
-            kms_key_id: str = None,
-            snapshot_id: str = None,
-            volume_id: str = None,
-            raid: Raid = None,
-            deletion_policy: str = None,
-            **kwargs,
+        self,
+        mount_dir: str,
+        name: str,
+        size: int = None,
+        kms_key_id: str = None,
+        snapshot_id: str = None,
+        volume_id: str = None,
+        raid: Raid = None,
+        deletion_policy: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
@@ -365,18 +364,18 @@ class SharedEfs(Resource):
     """Represent the shared EFS resource."""
 
     def __init__(
-            self,
-            mount_dir: str,
-            name: str,
-            encrypted: bool = None,
-            kms_key_id: str = None,
-            performance_mode: str = None,
-            throughput_mode: str = None,
-            provisioned_throughput: int = None,
-            file_system_id: str = None,
-            deletion_policy: str = None,
-            encryption_in_transit: bool = None,
-            iam_authorization: bool = None,
+        self,
+        mount_dir: str,
+        name: str,
+        encrypted: bool = None,
+        kms_key_id: str = None,
+        performance_mode: str = None,
+        throughput_mode: str = None,
+        provisioned_throughput: int = None,
+        file_system_id: str = None,
+        deletion_policy: str = None,
+        encryption_in_transit: bool = None,
+        iam_authorization: bool = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
@@ -459,26 +458,26 @@ class SharedFsxLustre(BaseSharedFsx):
     """Represent the shared FSX resource."""
 
     def __init__(
-            self,
-            storage_capacity: int = None,
-            deployment_type: str = None,
-            data_compression_type: str = None,
-            export_path: str = None,
-            import_path: str = None,
-            imported_file_chunk_size: int = None,
-            weekly_maintenance_start_time: str = None,
-            automatic_backup_retention_days: int = None,
-            copy_tags_to_backups: bool = None,
-            daily_automatic_backup_start_time: str = None,
-            per_unit_storage_throughput: int = None,
-            backup_id: str = None,
-            kms_key_id: str = None,
-            file_system_id: str = None,
-            auto_import_policy: str = None,
-            drive_cache_type: str = None,
-            fsx_storage_type: str = None,
-            deletion_policy: str = None,
-            **kwargs,
+        self,
+        storage_capacity: int = None,
+        deployment_type: str = None,
+        data_compression_type: str = None,
+        export_path: str = None,
+        import_path: str = None,
+        imported_file_chunk_size: int = None,
+        weekly_maintenance_start_time: str = None,
+        automatic_backup_retention_days: int = None,
+        copy_tags_to_backups: bool = None,
+        daily_automatic_backup_start_time: str = None,
+        per_unit_storage_throughput: int = None,
+        backup_id: str = None,
+        kms_key_id: str = None,
+        file_system_id: str = None,
+        auto_import_policy: str = None,
+        drive_cache_type: str = None,
+        fsx_storage_type: str = None,
+        deletion_policy: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.storage_capacity = Resource.init_param(storage_capacity)
@@ -929,12 +928,12 @@ class Iam(Resource):
     """Represent the IAM configuration for HeadNode and Queue."""
 
     def __init__(
-            self,
-            s3_access: List[S3Access] = None,
-            additional_iam_policies: List[AdditionalIamPolicy] = (),
-            instance_role: str = None,
-            instance_profile: str = None,
-            **kwargs,
+        self,
+        s3_access: List[S3Access] = None,
+        additional_iam_policies: List[AdditionalIamPolicy] = (),
+        instance_role: str = None,
+        instance_profile: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.s3_access = s3_access
@@ -996,17 +995,17 @@ class DirectoryService(Resource):
     """Represent DirectoryService configuration."""
 
     def __init__(
-            self,
-            domain_name: str = None,
-            domain_addr: str = None,
-            password_secret_arn: str = None,
-            domain_read_only_user: str = None,
-            ldap_tls_ca_cert: str = None,
-            ldap_tls_req_cert: str = None,
-            ldap_access_filter: str = None,
-            generate_ssh_keys_for_users: bool = None,
-            additional_sssd_configs: Dict = None,
-            **kwargs,
+        self,
+        domain_name: str = None,
+        domain_addr: str = None,
+        password_secret_arn: str = None,
+        domain_read_only_user: str = None,
+        ldap_tls_ca_cert: str = None,
+        ldap_tls_req_cert: str = None,
+        ldap_access_filter: str = None,
+        generate_ssh_keys_for_users: bool = None,
+        additional_sssd_configs: Dict = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.domain_name = Resource.init_param(domain_name)
@@ -1109,12 +1108,12 @@ class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
     def __init__(
-            self,
-            cluster_template: str = None,
-            ami_search_filters: AmiSearchFilters = None,
-            instance_types_data: str = None,
-            timeouts: Timeouts = None,
-            **kwargs,
+        self,
+        cluster_template: str = None,
+        ami_search_filters: AmiSearchFilters = None,
+        instance_types_data: str = None,
+        timeouts: Timeouts = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.cluster_template = Resource.init_param(cluster_template)
@@ -1185,10 +1184,10 @@ class CustomActions(Resource):
     """Represent a custom action resource."""
 
     def __init__(
-            self,
-            on_node_start=None,
-            on_node_configured=None,
-            on_node_updated=None,
+        self,
+        on_node_start=None,
+        on_node_configured=None,
+        on_node_updated=None,
     ):
         super().__init__()
         self.on_node_start = Resource.init_param(on_node_start)
@@ -1296,17 +1295,17 @@ class HeadNode(Resource):
     """Represent the Head Node resource."""
 
     def __init__(
-            self,
-            instance_type: str,
-            networking: HeadNodeNetworking,
-            ssh: Ssh = None,
-            disable_simultaneous_multithreading: bool = None,
-            local_storage: LocalStorage = None,
-            dcv: Dcv = None,
-            custom_actions: CustomActions = None,
-            iam: Iam = None,
-            imds: Imds = None,
-            image: HeadNodeImage = None,
+        self,
+        instance_type: str,
+        networking: HeadNodeNetworking,
+        ssh: Ssh = None,
+        disable_simultaneous_multithreading: bool = None,
+        local_storage: LocalStorage = None,
+        dcv: Dcv = None,
+        custom_actions: CustomActions = None,
+        iam: Iam = None,
+        imds: Imds = None,
+        image: HeadNodeImage = None,
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
@@ -1411,24 +1410,24 @@ class BaseClusterConfig(Resource):
     """Represent the common Cluster config."""
 
     def __init__(
-            self,
-            cluster_name: str,
-            image: Image,
-            head_node: HeadNode,
-            scheduling=None,
-            shared_storage: List[Resource] = None,
-            login_nodes: LoginNodes = None,
-            monitoring: Monitoring = None,
-            additional_packages: AdditionalPackages = None,
-            tags: List[Tag] = None,
-            iam: ClusterIam = None,
-            directory_service: DirectoryService = None,
-            config_region: str = None,
-            custom_s3_bucket: str = None,
-            imds: TopLevelImds = None,
-            additional_resources: str = None,
-            dev_settings: ClusterDevSettings = None,
-            deployment_settings: DeploymentSettings = None,
+        self,
+        cluster_name: str,
+        image: Image,
+        head_node: HeadNode,
+        scheduling=None,
+        shared_storage: List[Resource] = None,
+        login_nodes: LoginNodes = None,
+        monitoring: Monitoring = None,
+        additional_packages: AdditionalPackages = None,
+        tags: List[Tag] = None,
+        iam: ClusterIam = None,
+        directory_service: DirectoryService = None,
+        config_region: str = None,
+        custom_s3_bucket: str = None,
+        imds: TopLevelImds = None,
+        additional_resources: str = None,
+        dev_settings: ClusterDevSettings = None,
+        deployment_settings: DeploymentSettings = None,
     ):
         super().__init__()
         self.__region = None
@@ -1508,9 +1507,9 @@ class BaseClusterConfig(Resource):
                 architecture=self.head_node.architecture,
             )
         if (
-                self.additional_packages
-                and self.additional_packages.intel_software
-                and self.additional_packages.intel_software.intel_hpc_platform
+            self.additional_packages
+            and self.additional_packages.intel_software
+            and self.additional_packages.intel_software.intel_hpc_platform
         ):
             self._register_validator(IntelHpcOsValidator, os=self.image.os)
             self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
@@ -1940,13 +1939,13 @@ class AwsBatchComputeResource(BaseComputeResource):
     """Represent the AwsBatch Compute Resource."""
 
     def __init__(
-            self,
-            instance_types: List[str] = None,
-            max_vcpus: int = None,
-            min_vcpus: int = None,
-            desired_vcpus: int = None,
-            spot_bid_percentage: float = None,
-            **kwargs,
+        self,
+        instance_types: List[str] = None,
+        max_vcpus: int = None,
+        min_vcpus: int = None,
+        desired_vcpus: int = None,
+        spot_bid_percentage: float = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.instance_types = Resource.init_param(instance_types)
@@ -2041,21 +2040,21 @@ class _BaseSlurmComputeResource(BaseComputeResource):
     """Represent the Slurm Compute Resource."""
 
     def __init__(
-            self,
-            max_count: int = None,
-            min_count: int = None,
-            spot_price: float = None,
-            efa: Efa = None,
-            disable_simultaneous_multithreading: bool = None,
-            schedulable_memory: int = None,
-            capacity_reservation_target: CapacityReservationTarget = None,
-            networking: SlurmComputeResourceNetworking = None,
-            health_checks: HealthChecks = None,
-            custom_slurm_settings: Dict = None,
-            tags: List[Tag] = None,
-            static_node_priority: int = None,
-            dynamic_node_priority: int = None,
-            **kwargs,
+        self,
+        max_count: int = None,
+        min_count: int = None,
+        spot_price: float = None,
+        efa: Efa = None,
+        disable_simultaneous_multithreading: bool = None,
+        schedulable_memory: int = None,
+        capacity_reservation_target: CapacityReservationTarget = None,
+        networking: SlurmComputeResourceNetworking = None,
+        health_checks: HealthChecks = None,
+        custom_slurm_settings: Dict = None,
+        tags: List[Tag] = None,
+        static_node_priority: int = None,
+        dynamic_node_priority: int = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
@@ -2142,9 +2141,9 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
     def __init__(
-            self,
-            instances: List[FlexibleInstanceType],
-            **kwargs,
+        self,
+        instances: List[FlexibleInstanceType],
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.instances = Resource.init_param(instances)
@@ -2258,9 +2257,9 @@ class SchedulerPluginComputeResource(SlurmComputeResource):
     """Represent the Scheduler Plugin Compute Resource."""
 
     def __init__(
-            self,
-            custom_settings: Dict = None,
-            **kwargs,
+        self,
+        custom_settings: Dict = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.custom_settings = custom_settings
@@ -2270,15 +2269,15 @@ class _CommonQueue(BaseQueue):
     """Represent the Common Queue resource between Slurm and Scheduler Plugin."""
 
     def __init__(
-            self,
-            compute_resources: List[Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]],
-            networking: Union[SlurmQueueNetworking, SchedulerPluginQueueNetworking],
-            compute_settings: ComputeSettings = None,
-            custom_actions: CustomActions = None,
-            iam: Iam = None,
-            image: QueueImage = None,
-            capacity_reservation_target: CapacityReservationTarget = None,
-            **kwargs,
+        self,
+        compute_resources: List[Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]],
+        networking: Union[SlurmQueueNetworking, SchedulerPluginQueueNetworking],
+        compute_settings: ComputeSettings = None,
+        custom_actions: CustomActions = None,
+        iam: Iam = None,
+        image: QueueImage = None,
+        capacity_reservation_target: CapacityReservationTarget = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.compute_settings = compute_settings or ComputeSettings(implied=True)
@@ -2325,7 +2324,7 @@ class _CommonQueue(BaseQueue):
         return managed_placement_group_keys
 
     def get_placement_group_settings_for_compute_resource(
-            self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
     ) -> Dict[str, bool]:
         # Placement Group key is None and not managed by default
         placement_group_key, managed = None, False
@@ -2338,12 +2337,12 @@ class _CommonQueue(BaseQueue):
         return {"key": placement_group_key, "is_managed": managed}
 
     def is_placement_group_enabled_for_compute_resource(
-            self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
     ) -> bool:
         return self.get_placement_group_settings_for_compute_resource(compute_resource).get("key") is not None
 
     def get_chosen_placement_group_setting_for_compute_resource(
-            self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
     ) -> PlacementGroup:
         """Handle logic that the Placement Group on compute resource level overrides queue level."""
         return (
@@ -2392,20 +2391,20 @@ class SlurmQueue(_CommonQueue):
     """Represents a Slurm Queue that has Compute Resources with both Single and Multiple Instance Types."""
 
     def __init__(
-            self,
-            allocation_strategy: str = None,
-            custom_slurm_settings: Dict = None,
-            health_checks: HealthChecks = None,
-            tags: List[Tag] = None,
-            **kwargs,
+        self,
+        allocation_strategy: str = None,
+        custom_slurm_settings: Dict = None,
+        health_checks: HealthChecks = None,
+        tags: List[Tag] = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         self.tags = tags
         if any(
-                isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in
-                self.compute_resources
+            isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in
+            self.compute_resources
         ):
             self.allocation_strategy = (
                 AllocationStrategy[to_snake_case(allocation_strategy).upper()]
@@ -2484,7 +2483,7 @@ class SlurmQueue(_CommonQueue):
                 placement_group_disabled=self.get_chosen_placement_group_setting_for_compute_resource(
                     compute_resource
                 ).enabled
-                                         is False,
+                is False,
                 multi_az_enabled=self.multi_az_enabled,
             )
             if compute_resource.custom_slurm_settings:
@@ -2506,7 +2505,7 @@ class Dns(Resource):
     """Represent the DNS settings."""
 
     def __init__(
-            self, disable_managed_dns: bool = None, hosted_zone_id: str = None, use_ec2_hostnames: bool = None, **kwargs
+        self, disable_managed_dns: bool = None, hosted_zone_id: str = None, use_ec2_hostnames: bool = None, **kwargs
     ):
         super().__init__(**kwargs)
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
@@ -2518,11 +2517,11 @@ class Database(Resource):
     """Represent the Slurm Database settings."""
 
     def __init__(
-            self,
-            uri: str = None,
-            user_name: str = None,
-            password_secret_arn: str = None,
-            **kwargs,
+        self,
+        uri: str = None,
+        user_name: str = None,
+        password_secret_arn: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.uri = Resource.init_param(uri)
@@ -2546,15 +2545,15 @@ class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
     def __init__(
-            self,
-            scaledown_idletime: int = None,
-            dns: Dns = None,
-            queue_update_strategy: str = None,
-            enable_memory_based_scheduling: bool = None,
-            database: Database = None,
-            custom_slurm_settings: List[Dict] = None,
-            custom_slurm_settings_include_file: str = None,
-            **kwargs,
+        self,
+        scaledown_idletime: int = None,
+        dns: Dns = None,
+        queue_update_strategy: str = None,
+        enable_memory_based_scheduling: bool = None,
+        database: Database = None,
+        custom_slurm_settings: List[Dict] = None,
+        custom_slurm_settings_include_file: str = None,
+        **kwargs,
     ):
         super().__init__()
         self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
@@ -2638,9 +2637,9 @@ class SchedulerPluginQueue(_CommonQueue):
     """Represent the Scheduler Plugin queue."""
 
     def __init__(
-            self,
-            custom_settings: Dict = None,
-            **kwargs,
+        self,
+        custom_settings: Dict = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.custom_settings = custom_settings
@@ -2687,7 +2686,7 @@ class SchedulerPluginQueue(_CommonQueue):
                 placement_group_disabled=self.get_chosen_placement_group_setting_for_compute_resource(
                     compute_resource
                 ).enabled
-                                         is False,
+                is False,
                 multi_az_enabled=self.multi_az_enabled,
             )
 
@@ -2735,15 +2734,15 @@ class SchedulerPluginRequirements(Resource):
     """Represent the Requirements for a Scheduler Plugin."""
 
     def __init__(
-            self,
-            supported_distros: SchedulerPluginSupportedDistros = None,
-            supported_regions: List[str] = None,
-            queue_constraints: SchedulerPluginQueueConstraints = None,
-            compute_resource_constraints: SchedulerPluginComputeResourceConstraints = None,
-            requires_sudo_privileges: bool = None,
-            supports_cluster_update: bool = None,
-            supported_parallel_cluster_versions: str = None,
-            **kwargs,
+        self,
+        supported_distros: SchedulerPluginSupportedDistros = None,
+        supported_regions: List[str] = None,
+        queue_constraints: SchedulerPluginQueueConstraints = None,
+        compute_resource_constraints: SchedulerPluginComputeResourceConstraints = None,
+        requires_sudo_privileges: bool = None,
+        supports_cluster_update: bool = None,
+        supported_parallel_cluster_versions: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.supported_distros = supported_distros
@@ -2831,16 +2830,16 @@ class SchedulerPluginEvents(Resource):
     """Represent the Events config for a Scheduler Plugin."""
 
     def __init__(
-            self,
-            head_init: SchedulerPluginEvent = None,
-            head_configure: SchedulerPluginEvent = None,
-            head_finalize: SchedulerPluginEvent = None,
-            compute_init: SchedulerPluginEvent = None,
-            compute_configure: SchedulerPluginEvent = None,
-            compute_finalize: SchedulerPluginEvent = None,
-            head_cluster_update: SchedulerPluginEvent = None,
-            head_compute_fleet_update: SchedulerPluginEvent = None,
-            **kwargs,
+        self,
+        head_init: SchedulerPluginEvent = None,
+        head_configure: SchedulerPluginEvent = None,
+        head_finalize: SchedulerPluginEvent = None,
+        compute_init: SchedulerPluginEvent = None,
+        compute_configure: SchedulerPluginEvent = None,
+        compute_finalize: SchedulerPluginEvent = None,
+        head_cluster_update: SchedulerPluginEvent = None,
+        head_compute_fleet_update: SchedulerPluginEvent = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.head_init = head_init
@@ -2857,7 +2856,7 @@ class SchedulerPluginFile(Resource):
     """Represent the Scheduler Plugin file resource."""
 
     def __init__(
-            self, file_path: str, log_stream_name: str, node_type: str = None, timestamp_format: str = None, **kwargs
+        self, file_path: str, log_stream_name: str, node_type: str = None, timestamp_format: str = None, **kwargs
     ):
         super().__init__(**kwargs)
         self.file_path = file_path
@@ -2895,7 +2894,7 @@ class SchedulerPluginUser(Resource):
     """Represent the Scheduler Plugin user resource."""
 
     def __init__(
-            self, name: str, enable_imds: bool = None, sudoer_configuration: List[SudoerConfiguration] = (), **kwargs
+        self, name: str, enable_imds: bool = None, sudoer_configuration: List[SudoerConfiguration] = (), **kwargs
     ):
         super().__init__(**kwargs)
         self.name = name
@@ -2913,17 +2912,17 @@ class SchedulerPluginDefinition(Resource):
     """Represent the Scheduler Plugin scheduler definition."""
 
     def __init__(
-            self,
-            plugin_interface_version: str,
-            events: SchedulerPluginEvents,
-            metadata: Dict = None,
-            requirements: SchedulerPluginRequirements = None,
-            cluster_infrastructure: SchedulerPluginClusterInfrastructure = None,
-            plugin_resources: SchedulerPluginPluginResources = None,
-            monitoring: SchedulerPluginMonitoring = None,
-            system_users: [SchedulerPluginUser] = None,
-            tags: List[Tag] = None,
-            **kwargs,
+        self,
+        plugin_interface_version: str,
+        events: SchedulerPluginEvents,
+        metadata: Dict = None,
+        requirements: SchedulerPluginRequirements = None,
+        cluster_infrastructure: SchedulerPluginClusterInfrastructure = None,
+        plugin_resources: SchedulerPluginPluginResources = None,
+        monitoring: SchedulerPluginMonitoring = None,
+        system_users: [SchedulerPluginUser] = None,
+        tags: List[Tag] = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.plugin_interface_version = plugin_interface_version
@@ -2949,13 +2948,13 @@ class SchedulerPluginSettings(Resource):
     """Represent the Scheduler Plugin settings."""
 
     def __init__(
-            self,
-            scheduler_definition: SchedulerPluginDefinition,
-            grant_sudo_privileges: bool = None,
-            custom_settings: Dict = None,
-            scheduler_definition_s3_bucket_owner: str = None,
-            scheduler_definition_checksum: str = None,
-            **kwargs,
+        self,
+        scheduler_definition: SchedulerPluginDefinition,
+        grant_sudo_privileges: bool = None,
+        custom_settings: Dict = None,
+        scheduler_definition_s3_bucket_owner: str = None,
+        scheduler_definition_checksum: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.scheduler_definition = scheduler_definition

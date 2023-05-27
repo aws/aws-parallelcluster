@@ -375,7 +375,7 @@ class EfsSettingsSchema(BaseSchema):
         if throughput_mode == "provisioned" and not provisioned_throughput:
             raise ValidationError(
                 message="When specifying throughput mode to provisioned,"
-                        " the provisioned throughput option must be specified",
+                " the provisioned throughput option must be specified",
                 field_name="ProvisionedThroughput",
             )
 
@@ -529,16 +529,16 @@ class SharedStorageSchema(BaseSchema):
     def no_coexist_storage_settings(self, data, **kwargs):
         """Validate that *_settings for different storage types do not co-exist."""
         if self.fields_coexist(
-                data,
-                [
-                    "ebs_settings",
-                    "efs_settings",
-                    "fsx_lustre_settings",
-                    "fsx_open_zfs_settings",
-                    "fsx_ontap_settings",
-                    "fsx_file_cache_settings",
-                ],
-                **kwargs,
+            data,
+            [
+                "ebs_settings",
+                "efs_settings",
+                "fsx_lustre_settings",
+                "fsx_open_zfs_settings",
+                "fsx_ontap_settings",
+                "fsx_file_cache_settings",
+            ],
+            **kwargs,
         ):
             raise ValidationError("Multiple *Settings sections cannot be specified in the SharedStorage items.")
 
@@ -566,12 +566,12 @@ class SharedStorageSchema(BaseSchema):
         storage_type = data.get("storage_type")
         shared_volume_attributes = {"mount_dir": data.get("mount_dir"), "name": data.get("name")}
         settings = (
-                data.get("efs_settings", None)
-                or data.get("ebs_settings", None)
-                or data.get("fsx_lustre_settings", None)
-                or data.get("fsx_open_zfs_settings", None)
-                or data.get("fsx_ontap_settings", None)
-                or data.get("fsx_file_cache_settings", None)
+            data.get("efs_settings", None)
+            or data.get("ebs_settings", None)
+            or data.get("fsx_lustre_settings", None)
+            or data.get("fsx_open_zfs_settings", None)
+            or data.get("fsx_ontap_settings", None)
+            or data.get("fsx_file_cache_settings", None)
         )
         if settings:
             shared_volume_attributes.update(**settings)
@@ -1042,10 +1042,10 @@ class CapacityReservationTargetSchema(BaseSchema):
     def no_coexist_id_and_group_arn(self, data, **kwargs):
         """Validate that 'capacity_reservation_id' and 'capacity_reservation_resource_group_arn' do not co-exist."""
         if self.fields_coexist(
-                data,
-                ["capacity_reservation_id", "capacity_reservation_resource_group_arn"],
-                one_required=True,
-                **kwargs,
+            data,
+            ["capacity_reservation_id", "capacity_reservation_resource_group_arn"],
+            one_required=True,
+            **kwargs,
         ):
             raise ValidationError(
                 "A Capacity Reservation Target needs to specify either Capacity Reservation ID or "
@@ -1402,10 +1402,10 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
         """Validate that 'instance_type' and 'instances' do not co-exist."""
         if self.fields_coexist(
-                data,
-                ["instance_type", "instances"],
-                one_required=True,
-                **kwargs,
+            data,
+            ["instance_type", "instances"],
+            one_required=True,
+            **kwargs,
         ):
             raise ValidationError("A Compute Resource needs to specify either InstanceType or Instances.")
 
@@ -2012,7 +2012,7 @@ class SchedulerPluginSettingsSchema(BaseSchema):
             )
 
     def _fetch_scheduler_definition_from_url(
-            self, original_scheduler_definition, s3_bucket_owner, scheduler_definition_checksum, data
+        self, original_scheduler_definition, s3_bucket_owner, scheduler_definition_checksum, data
     ):
         LOGGER.info("Downloading scheduler plugin definition from %s", original_scheduler_definition)
         if original_scheduler_definition.startswith("s3"):
@@ -2098,7 +2098,7 @@ class SchedulingSchema(BaseSchema):
         if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings", "scheduler_settings"], **kwargs):
             raise ValidationError("Multiple *Settings sections cannot be specified in the Scheduling section.")
         if self.fields_coexist(
-                data, ["aws_batch_queues", "slurm_queues", "scheduler_queues"], one_required=True, **kwargs
+            data, ["aws_batch_queues", "slurm_queues", "scheduler_queues"], one_required=True, **kwargs
         ):
             if scheduler == "awsbatch":
                 scheduler_prefix = "AwsBatch"
@@ -2234,9 +2234,9 @@ class ClusterSchema(BaseSchema):
             error_message = "The use of the {} configuration is not supported when using awsbatch as the scheduler."
             additional_packages = data.get("additional_packages")
             if (
-                    additional_packages
-                    and additional_packages.intel_software
-                    and additional_packages.intel_software.intel_hpc_platform
+                additional_packages
+                and additional_packages.intel_software
+                and additional_packages.intel_software.intel_hpc_platform
             ):
                 raise ValidationError(error_message.format("IntelSoftware"))
             if head_node.custom_actions and head_node.custom_actions.on_node_updated:

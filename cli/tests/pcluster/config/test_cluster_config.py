@@ -27,7 +27,12 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     SlurmSettings,
-    Tag, LoginNodePool, LoginNodeImage, LoginNodeNetworking, LoginNodeSsh, LoginNodes,
+    Tag,
+    LoginNodePool,
+    LoginNodeImage,
+    LoginNodeNetworking,
+    LoginNodeSsh,
+    LoginNodes,
 )
 
 mock_compute_resources = [
@@ -232,7 +237,7 @@ class TestBaseClusterConfig:
         ],
     )
     def test_head_node_ami_id(
-            self, base_cluster_config, aws_api_mock, global_custom_ami, head_node_custom_ami, ami_filters
+        self, base_cluster_config, aws_api_mock, global_custom_ami, head_node_custom_ami, ami_filters
     ):
         if global_custom_ami:
             base_cluster_config.image.custom_ami = global_custom_ami
@@ -261,7 +266,7 @@ class TestBaseClusterConfig:
         ],
     )
     def test_compute_node_ami_id(
-            self, base_slurm_cluster_config, aws_api_mock, global_custom_ami, compute_custom_ami, ami_filters
+        self, base_slurm_cluster_config, aws_api_mock, global_custom_ami, compute_custom_ami, ami_filters
     ):
         if global_custom_ami:
             base_slurm_cluster_config.image.custom_ami = global_custom_ami
@@ -287,60 +292,60 @@ class TestBaseClusterConfig:
         "queue_parameters, expected_result",
         [
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    [
-                        {"key": None, "is_managed": False},
-                        {"key": "queue-test2", "is_managed": True},
-                        {"key": None, "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                    ],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                [
+                    {"key": None, "is_managed": False},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    [
-                        {"key": "queue-test1", "is_managed": True},
-                        {"key": "queue-test2", "is_managed": True},
-                        {"key": None, "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                    ],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                [
+                    {"key": "queue-test1", "is_managed": True},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    [
-                        {"key": "test-q", "is_managed": False},
-                        {"key": "queue-test2", "is_managed": True},
-                        {"key": None, "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                    ],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
+                    compute_resources=mock_compute_resources,
+                ),
+                [
+                    {"key": "test-q", "is_managed": False},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    [
-                        {"key": None, "is_managed": False},
-                        {"key": "queue-test2", "is_managed": True},
-                        {"key": None, "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                        {"key": "test", "is_managed": False},
-                    ],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
+                    compute_resources=mock_compute_resources,
+                ),
+                [
+                    {"key": None, "is_managed": False},
+                    {"key": "queue-test2", "is_managed": True},
+                    {"key": None, "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                    {"key": "test", "is_managed": False},
+                ],
             ),
         ],
     )
@@ -355,36 +360,36 @@ class TestBaseClusterConfig:
         "queue_parameters, expected_result",
         [
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    ["queue-test2"],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test2"],
             ),
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    ["queue-test1", "queue-test2"],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test1", "queue-test2"],
             ),
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    ["queue-test2"],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(name="test-q")),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test2"],
             ),
             (
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    ["queue-test2"],
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup()),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["queue-test2"],
             ),
         ],
     )
@@ -402,33 +407,33 @@ class TestBaseClusterConfig:
             # At ComputeResource level the Health Check is enabled for CR test1, disabled for CR test2
             # undefined otherwise
             (
-                    # Health Checks section is not defined at SlurmQuel level
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    ["test1", "", "", "", ""],
+                # Health Checks section is not defined at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "", "", ""],
             ),
             (
-                    # Health Checks section is enabled at SlurmQuel level
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                        health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=True)),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    ["test1", "", "queue", "queue", "queue"],
+                # Health Checks section is enabled at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=True)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "queue", "queue", "queue"],
             ),
             (
-                    # Health Checks section is disabled at SlurmQuel level
-                    dict(
-                        name="queue",
-                        networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
-                        health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=False)),
-                        compute_resources=mock_compute_resources,
-                    ),
-                    ["test1", "", "", "", ""],
+                # Health Checks section is disabled at SlurmQuel level
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    health_checks=HealthChecks(gpu=GpuHealthCheck(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                ["test1", "", "", "", ""],
             ),
         ],
     )
@@ -438,7 +443,7 @@ class TestBaseClusterConfig:
         queue_gpu_check_enabled = queue.health_checks.gpu is not None and queue.health_checks.gpu.enabled
         for compute_resource in queue.compute_resources:
             compute_resource_gpu_check_enabled = (
-                    compute_resource.health_checks.gpu is not None and compute_resource.health_checks.gpu.enabled
+                compute_resource.health_checks.gpu is not None and compute_resource.health_checks.gpu.enabled
             )
             if compute_resource_gpu_check_enabled:
                 health_check_gpu_enabled.append(compute_resource.name)
