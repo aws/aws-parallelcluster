@@ -2403,8 +2403,7 @@ class SlurmQueue(_CommonQueue):
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
         self.tags = tags
         if any(
-            isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in
-            self.compute_resources
+            isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
             self.allocation_strategy = (
                 AllocationStrategy[to_snake_case(allocation_strategy).upper()]
