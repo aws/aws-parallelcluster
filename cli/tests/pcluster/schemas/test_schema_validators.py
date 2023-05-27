@@ -38,7 +38,7 @@ from pcluster.schemas.cluster_schema import (
     SlurmComputeResourceSchema,
     SlurmQueueNetworkingSchema,
     SlurmQueueSchema,
-    SshSchema,
+    SshSchema, LoginNodeImageSchema, LoginNodePoolSchema,
 )
 
 
@@ -659,3 +659,95 @@ def test_instance_role_validator(instance_role, expected_message):
 )
 def test_password_secret_arn_validator(password_secret_arn, expected_message):
     _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "custom_ami, expected_message",
+    [
+        ("ami-12345678", None),
+        ("ami-00000000000000017", None),
+        ("", "does not match expected pattern"),
+        ("random", "does not match expected pattern"),
+        ("ami-aaaaaaaa", None),
+        ("ami-AAAAAAAA", "does not match expected pattern"),
+        ("NONE", "does not match expected pattern"),
+        ("ami-xx", "does not match expected pattern"),
+    ],
+)
+def test_login_node_custom_ami_validator(custom_ami, expected_message):
+    _validate_and_assert_error(LoginNodeImageSchema(), {"CustomAmi": custom_ami}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "count, expected_message",
+    [
+        (1, None),
+        (10, None),
+        (0, "Must be greater than or equal to 1."),
+        (-5, "Must be greater than or equal to 1."),
+    ],
+)
+def test_login_node_pool_count_validator(count, expected_message):
+    _validate_and_assert_error(
+        LoginNodePoolSchema(),
+        {
+            "Name": "validname",
+            "InstanceType": "t2.micro",
+            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+            "Count": count,
+            "Ssh": {"KeyName": "valid_key_name"},
+            "AdminUser": "admin",
+            "GracetimePeriod": 60
+        },
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "name, expected_message",
+    [
+        ("validname", None),
+        ("invalid_name", "does not match expected pattern"),
+        ("", "Shorter than minimum length 1."),
+        ("AnameWithUpperCase", "does not match expected pattern"),
+    ],
+)
+def test_login_node_pool_name_validator(name, expected_message):
+    _validate_and_assert_error(
+        LoginNodePoolSchema(),
+        {
+            "Name": name,
+            "InstanceType": "t2.micro",
+            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+            "Count": 1,
+            "Ssh": {"KeyName": "valid_key_name"},
+            "AdminUser": "admin",
+            "GracetimePeriod": 60
+        },
+        expected_message
+    )
+
+
+@pytest.mark.parametrize(
+    "gracetime_period, expected_message",
+    [
+        (120, None),
+        (60, None),
+        (121, "Must be less than or equal to 120."),
+        (500, "Must be less than or equal to 120."),
+    ],
+)
+def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_message):
+    _validate_and_assert_error(
+        LoginNodePoolSchema(),
+        {
+            "Name": "validname",
+            "InstanceType": "t2.micro",
+            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+            "Count": 1,
+            "Ssh": {"KeyName": "valid_key_name"},
+            "AdminUser": "admin",
+            "GracetimePeriod": gracetime_period
+        },
+        expected_message
+    )

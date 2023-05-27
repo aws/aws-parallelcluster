@@ -67,12 +67,12 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
 FSX_MESSAGES = {
     "errors": {
         "unsupported_os": "On {architecture} instance types, FSx Lustre can be used with one of the following operating"
-        " systems: {supported_oses}. Please double check the os configuration.",
+                          " systems: {supported_oses}. Please double check the os configuration.",
         "unsupported_architecture": "FSx Lustre can be used only with instance types and AMIs that support these "
-        "architectures: {supported_architectures}. Please double check the head node instance type, "
-        "compute instance type and/or custom AMI configurations.",
+                                    "architectures: {supported_architectures}. Please double check the head node instance type, "
+                                    "compute instance type and/or custom AMI configurations.",
         "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
-        "cannot be specified.",
+                                    "cannot be specified.",
         "ignored_param_with_fsx_fs_id": "{fsx_param} cannot be specified when an existing Lustre file system is used.",
     }
 }
@@ -337,7 +337,7 @@ class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
     def _validate(
-        self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool, multi_az_enabled: bool
+            self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool, multi_az_enabled: bool
     ):
         # if multi_az is enabled suggestions about PlacementGroups will be suppressed
         if efa_enabled and placement_group_disabled and not multi_az_enabled:
@@ -400,7 +400,8 @@ class EfaMultiAzValidator(Validator):
     """Validate MultiAZ if EFA is enabled."""
 
     def _validate(
-        self, queue_name: str, multi_az_enabled: bool, compute_resource_name: str, compute_resource_efa_enabled: bool
+            self, queue_name: str, multi_az_enabled: bool, compute_resource_name: str,
+            compute_resource_efa_enabled: bool
     ):
         if multi_az_enabled and compute_resource_efa_enabled:
             message = (
@@ -630,11 +631,11 @@ class ExistingFsxNetworkingValidator(Validator):
                 # Get list of security group IDs
                 sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
                 if _is_access_allowed(
-                    sg_ids,
-                    subnet_ids,
-                    port=port,
-                    security_groups_by_nodes=security_groups_by_nodes,
-                    protocol=protocol,
+                        sg_ids,
+                        subnet_ids,
+                        port=port,
+                        security_groups_by_nodes=security_groups_by_nodes,
+                        protocol=protocol,
                 ):
                     fs_access = True
                     break
@@ -684,7 +685,7 @@ def _find_overlapping_paths(shared_paths_list, local_paths_list):
     overlapping_paths = []
     if shared_paths_list:
         for path1, path2 in list(combinations(shared_paths_list, 2)) + list(
-            product(shared_paths_list, local_paths_list)
+                product(shared_paths_list, local_paths_list)
         ):  # Check all pairs in shared paths list and all pairs between shared paths list and local paths list
             is_overlapping = path1.startswith(path2 + "/") or path2.startswith(path1 + "/")
             if is_overlapping:
@@ -827,7 +828,7 @@ class EfsIdValidator(Validator):  # TODO add tests
                 # Get list of security group IDs of the mount target
                 sg_ids = AWSApi.instance().efs.get_efs_mount_target_security_groups(head_node_target_id)
                 if not _is_access_allowed(
-                    sg_ids, subnets, port=EFS_PORT, security_groups_by_nodes=security_groups_by_nodes
+                        sg_ids, subnets, port=EFS_PORT, security_groups_by_nodes=security_groups_by_nodes
                 ):
                     self._add_failure(
                         "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
@@ -1038,11 +1039,11 @@ class MixedSecurityGroupOverwriteValidator(Validator):
     def _validate(self, head_node_security_groups, queues):
         compute_security_group_overwrite_status = self._get_queues_security_group_overwrite_status(queues)
         if (
-            head_node_security_groups
-            and compute_security_group_overwrite_status != QueuesSecurityGroupOverwriteStatus.CUSTOM
+                head_node_security_groups
+                and compute_security_group_overwrite_status != QueuesSecurityGroupOverwriteStatus.CUSTOM
         ) or (
-            head_node_security_groups is None
-            and compute_security_group_overwrite_status != QueuesSecurityGroupOverwriteStatus.MANAGED
+                head_node_security_groups is None
+                and compute_security_group_overwrite_status != QueuesSecurityGroupOverwriteStatus.MANAGED
         ):
             self._add_failure(
                 "Please make sure that all cluster nodes are reachable to each other, "
@@ -1079,7 +1080,7 @@ class _LaunchTemplateValidator(Validator):
 
     @staticmethod
     def _build_launch_network_interfaces(
-        network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
+            network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
     ):
         """Build the needed NetworkInterfaces to launch an instance."""
         network_interfaces = []
@@ -1134,9 +1135,9 @@ class _LaunchTemplateValidator(Validator):
                         FailureLevel.WARNING,
                     )
             elif (
-                code == "Unsupported"
-                and availability_zone
-                not in AWSApi.instance().ec2.get_supported_az_for_instance_type(kwargs["InstanceType"])
+                    code == "Unsupported"
+                    and availability_zone
+                    not in AWSApi.instance().ec2.get_supported_az_for_instance_type(kwargs["InstanceType"])
             ):
                 # If an availability zone without desired instance type is selected, error code is "Unsupported"
                 # Therefore, we need to write our own code to tell the specific problem
@@ -1248,7 +1249,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 queue.compute_resources[0],
             )
             compute_resource_placement_group = (
-                dry_run_compute_resource.networking.placement_group or queue.networking.placement_group
+                    dry_run_compute_resource.networking.placement_group or queue.networking.placement_group
             )
 
             placement_group_name = compute_resource_placement_group.assignment
@@ -1271,17 +1272,17 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
     def _test_compute_resource(
-        self,
-        queue,
-        os,
-        compute_resource,
-        use_public_ips,
-        ami_id,
-        subnet_id,
-        security_groups_ids,
-        placement_group,
-        tags,
-        imds_support,
+            self,
+            queue,
+            os,
+            compute_resource,
+            use_public_ips,
+            ami_id,
+            subnet_id,
+            security_groups_ids,
+            placement_group,
+            tags,
+            imds_support,
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
@@ -1470,3 +1471,22 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
                     f"public IPs can only be assigned to instances launched with a single network interface.",
                     FailureLevel.ERROR,
                 )
+
+
+class PoolsValidator(Validator):
+    def _validate(self, pools: list):
+        if not pools:
+            self._add_failure("At least one Pool should be included in the configuration.", FailureLevel.ERROR)
+        elif len(pools) > 1:
+            self._add_failure("For the MVP, only 1 pool can be under the LoginNodes section.", FailureLevel.ERROR)
+
+
+class AvailabilityZoneValidator(Validator):
+
+    def _validate(self, login_node_subnet_id, head_node_subnet_id):
+        if AWSApi.instance().ec2.get_subnet_avail_zone(login_node_subnet_id) != \
+                AWSApi.instance().ec2.get_subnet_avail_zone(head_node_subnet_id):
+            self._add_failure(
+                "LoginNode Networking SubnetId must be in the same availability zone as the HeadNode.",
+                FailureLevel.ERROR,
+            )

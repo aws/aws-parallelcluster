@@ -38,6 +38,17 @@ HeadNode:
         - stirng2
   Iam:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
+LoginNodes:
+  Pools:
+  - Name: test
+    InstanceType: t2.micro
+    AdminUser: ec2-user
+    GracetimePeriod: 60
+    Count: 1
+    Networking:
+      SubnetId: subnet-12345678
+    Ssh:
+      KeyName: ec2-key-name
 Scheduling:
   Scheduler: slurm
   SlurmSettings:

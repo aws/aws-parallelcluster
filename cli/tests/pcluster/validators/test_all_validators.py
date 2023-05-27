@@ -134,6 +134,10 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     mocker.patch(
+        "pcluster.config.cluster_config.LoginNodeNetworking.availability_zone",
+        new_callable=PropertyMock(return_value="us-east-1a"),
+    )
+    mocker.patch(
         "pcluster.config.cluster_config.BaseClusterConfig.head_node_ami",
         new_callable=PropertyMock(return_value="ami-12345678"),
     )
