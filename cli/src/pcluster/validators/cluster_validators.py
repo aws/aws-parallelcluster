@@ -400,8 +400,7 @@ class EfaMultiAzValidator(Validator):
     """Validate MultiAZ if EFA is enabled."""
 
     def _validate(
-        self, queue_name: str, multi_az_enabled: bool, compute_resource_name: str,
-        compute_resource_efa_enabled: bool
+        self, queue_name: str, multi_az_enabled: bool, compute_resource_name: str, compute_resource_efa_enabled: bool
     ):
         if multi_az_enabled and compute_resource_efa_enabled:
             message = (
