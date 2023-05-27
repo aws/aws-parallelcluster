@@ -2199,7 +2199,7 @@ class ClusterSchema(BaseSchema):
             "update_key": "Name",
         },
     )
-    
+
     monitoring = fields.Nested(MonitoringSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     additional_packages = fields.Nested(AdditionalPackagesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     tags = fields.Nested(
