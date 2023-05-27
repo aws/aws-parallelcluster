@@ -70,8 +70,10 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
+    PoolsValidator,
+    AvailabilityZoneValidator,
     _are_subnets_covered_by_cidrs,
-    _LaunchTemplateValidator, PoolsValidator, AvailabilityZoneValidator,
+    _LaunchTemplateValidator,
 )
 from pcluster.validators.common import FailureLevel
 from pcluster.validators.ebs_validators import (

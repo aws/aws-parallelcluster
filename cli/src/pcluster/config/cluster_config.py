@@ -2197,9 +2197,9 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with a Single Instance Type."""
 
     def __init__(
-            self,
-            instance_type,
-            **kwargs,
+        self,
+        instance_type,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.instance_type = Resource.init_param(instance_type)
