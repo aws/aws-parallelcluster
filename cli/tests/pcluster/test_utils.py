@@ -564,7 +564,7 @@ class TestAsyncUtils(unittest.TestCase):
         (Feature.FSX_OPENZFS, "us-iso-west-1", False),
         (Feature.FSX_OPENZFS, "us-isob-east-1", False),
         (Feature.FSX_OPENZFS, "us-isoWHATEVER", False),
-        (Feature.SLURM_DATABASE, "us-isoWHATEVER", False),
+        (Feature.SLURM_DATABASE, "us-isoWHATEVER", True),
         (Feature.CLUSTER_HEALTH_METRICS, "us-isoWHATEVER", False),
         (Feature.BATCH, "WHATEVER-ELSE", True),
         (Feature.DCV, "WHATEVER-ELSE", True),
