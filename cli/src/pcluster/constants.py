@@ -267,7 +267,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.FSX_FILE_CACHE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],
-    Feature.SLURM_DATABASE: ["us-iso"],
+    Feature.SLURM_DATABASE: [],
     Feature.CLUSTER_HEALTH_METRICS: ["us-iso"],
 }
 
