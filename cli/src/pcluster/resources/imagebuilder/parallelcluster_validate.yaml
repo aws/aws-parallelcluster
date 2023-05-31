@@ -202,6 +202,7 @@ phases:
               set -v
               sudo sed -i "s#path: cookbooks#path: /etc/chef/cookbooks#g" /etc/chef/cookbooks/aws-parallelcluster/test/recipes/inspec.yml
               sed -Ei "s#path: .+/aws-parallelcluster#path: /etc/chef/cookbooks/aws-parallelcluster#g" /etc/chef/cookbooks/aws-parallelcluster-*/test/inspec.yml
+              sed -Ei "s#path: cookbooks/aws-parallelcluster#path: /etc/chef/cookbooks/aws-parallelcluster#g" /etc/chef/cookbooks/aws-parallelcluster-*/test/inspec.yml
               echo "InSpec profiles patched"
 
       - name: NvidiaEnabled
