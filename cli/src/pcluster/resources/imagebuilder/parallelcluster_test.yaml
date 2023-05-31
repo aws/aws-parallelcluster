@@ -219,6 +219,18 @@ phases:
                 fi
               fi
 
+      - name: InSpecTestsForAwsBatch
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec tests for AwsBatch on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster-awsbatch
+              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec tests for AwsBatch failed" && exit 1
+              echo "InSpec tests for AwsBatch passed"
+
       - name: InSpecTestsForPlatform
         action: ExecuteBash
         inputs:
@@ -254,3 +266,27 @@ phases:
               inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for compute fleet failed" && exit 1
               echo "InSpec tests for compute fleet passed"
+
+      - name: InSpecTestsForShared
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec tests for shared cookbook on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster-shared
+              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec tests for shared cookbook failed" && exit 1
+              echo "InSpec tests for shared cookbook passed"
+
+      - name: InSpecTestsForSlurm
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Performing InSpec tests for slurm on the AMI..."
+              cd /etc/chef/cookbooks/aws-parallelcluster-slurm
+              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              [[ $? -ne 0 ]] && echo "InSpec tests for slurm failed" && exit 1
+              echo "InSpec tests for slurm passed"
