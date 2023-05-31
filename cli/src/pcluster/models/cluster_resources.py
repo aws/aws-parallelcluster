@@ -102,7 +102,6 @@ class ClusterStack(StackInfo):
         @dataclass
         class ClusterCreationFailure:
             """Represent the object holding the data of ClusterCreationFailure."""
-
             failure_code: str
             api_failure_reason: str
             cfn_failure_reason: str
@@ -168,6 +167,11 @@ class ClusterStack(StackInfo):
             ),
             ClusterCreationFailure(
                 "HeadNodeBootstrapFailure", "Cluster creation timed out.", "WaitCondition timed out"
+            ),
+            ClusterCreationFailure(
+                "ClusterBoostrapFailure",
+                "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning.",
+                "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning"
             ),
         ]
 

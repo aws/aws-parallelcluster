@@ -1033,6 +1033,28 @@ class TestDescribeCluster:
                 [],
                 [{"failureCode": "ClusterCreationFailure", "failureReason": "Failed to create the cluster."}],
             ),
+            (
+                "CREATE_FAILED",
+                [
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "Cluster has been set to PROTECTED mode "
+                                                    "due to failures detected in static node provisioning.",
+                        },
+                    ]
+                ],
+                [
+                    {
+                        "failureCode": "ClusterBoostrapFailure",
+                        "failureReason": "Cluster has been set to PROTECTED mode "
+                                         "due to failures detected in static node provisioning.",
+                    }
+                ]
+            ),
         ],
         ids=[
             "get_stack_events_without_next_token",
@@ -1041,6 +1063,7 @@ class TestDescribeCluster:
             "cluster_creation_timeout",
             "cluster_resource_creation_failure",
             "no_stack_event",
+            "cluster_protected_mode"
         ],
     )
     def test_cluster_creation_failed(
