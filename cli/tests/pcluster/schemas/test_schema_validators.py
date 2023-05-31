@@ -27,7 +27,6 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeEphemeralVolumeSchema,
     HeadNodeNetworkingSchema,
     HeadNodeRootVolumeSchema,
-    IamSchema,
     ImageSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
@@ -41,6 +40,8 @@ from pcluster.schemas.cluster_schema import (
     SshSchema,
     LoginNodeImageSchema,
     LoginNodePoolSchema,
+    LoginNodesSchema,
+    BaseIamSchema,
 )
 
 
@@ -649,7 +650,7 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
 )
 def test_instance_role_validator(instance_role, expected_message):
     """Verify that instance role behaves as expected when parsed in a config file."""
-    _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)
+    _validate_and_assert_error(BaseIamSchema(), {"InstanceRole": instance_role}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -698,58 +699,47 @@ def test_login_node_pool_count_validator(count, expected_message):
             "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
             "Count": count,
             "Ssh": {"KeyName": "valid_key_name"},
-            "AdminUser": "admin",
-            "GracetimePeriod": 60
         },
         expected_message,
     )
 
 
 @pytest.mark.parametrize(
-    "name, expected_message",
+    "pools, expected_message",
     [
-        ("validname", None),
-        ("invalid_name", "does not match expected pattern"),
-        ("", "Shorter than minimum length 1."),
-        ("AnameWithUpperCase", "does not match expected pattern"),
+        ([], "has a minimum size of 1, and For the MVP, only 1 pool can be under the LoginNodes section"),
+        ([
+             {
+                 "Name": "validname1",
+                 "InstanceType": "t2.micro",
+                 "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                 "Count": 1,
+                 "Ssh": {"KeyName": "valid_key_name1"},
+             },
+             {
+                 "Name": "validname2",
+                 "InstanceType": "t2.micro",
+                 "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                 "Count": 1,
+                 "Ssh": {"KeyName": "valid_key_name2"},
+             }
+         ], "has a minimum size of 1, and For the MVP, only 1 pool can be under the LoginNodes section"),
+        ([
+             {
+                 "Name": "validname",
+                 "InstanceType": "t2.micro",
+                 "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                 "Count": 1,
+                 "Ssh": {"KeyName": "valid_key_name"},
+             }
+         ], None),
     ],
 )
-def test_login_node_pool_name_validator(name, expected_message):
+def test_pools_validator(pools, expected_message):
     _validate_and_assert_error(
-        LoginNodePoolSchema(),
+        LoginNodesSchema(),
         {
-            "Name": name,
-            "InstanceType": "t2.micro",
-            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
-            "Count": 1,
-            "Ssh": {"KeyName": "valid_key_name"},
-            "AdminUser": "admin",
-            "GracetimePeriod": 60
+            "Pools": pools,
         },
-        expected_message
-    )
-
-
-@pytest.mark.parametrize(
-    "gracetime_period, expected_message",
-    [
-        (120, None),
-        (60, None),
-        (121, "Must be less than or equal to 120."),
-        (500, "Must be less than or equal to 120."),
-    ],
-)
-def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_message):
-    _validate_and_assert_error(
-        LoginNodePoolSchema(),
-        {
-            "Name": "validname",
-            "InstanceType": "t2.micro",
-            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
-            "Count": 1,
-            "Ssh": {"KeyName": "valid_key_name"},
-            "AdminUser": "admin",
-            "GracetimePeriod": gracetime_period
-        },
-        expected_message
+        expected_message,
     )

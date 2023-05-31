@@ -510,8 +510,6 @@ class TestBaseClusterConfig:
 
         login_nodes = LoginNodes(pools=[login_node_pool])
         assert_that(login_nodes.pools[0].count).is_equal_to(1)
-        assert_that(login_nodes.pools[0].gracetime_period).is_equal_to(60)
-        assert_that(login_nodes.pools[0].admin_user).is_equal_to(getpass.getuser())
 
 class TestSharedEbs:
     @pytest.mark.parametrize(

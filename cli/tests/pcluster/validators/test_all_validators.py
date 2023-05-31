@@ -134,10 +134,6 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     mocker.patch(
-        "pcluster.config.cluster_config.LoginNodeNetworking.availability_zone",
-        new_callable=PropertyMock(return_value="us-east-1a"),
-    )
-    mocker.patch(
         "pcluster.config.cluster_config.BaseClusterConfig.head_node_ami",
         new_callable=PropertyMock(return_value="ami-12345678"),
     )
@@ -213,6 +209,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
 
     networking_validators = validators_path + ".networking_validators"
+    availability_zone_validator = mocker.patch(
+        networking_validators + ".AvailabilityZoneValidator._validate", return_value=[]
+    )
     security_groups_validator = mocker.patch(
         networking_validators + ".SecurityGroupsValidator._validate", return_value=[]
     )
@@ -331,6 +330,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
                 subnet_ids=["subnet-23456789"],
             ),
         ]
+    )
+    availability_zone_validator.assert_has_calls(
+        call(login_node_subnet_id="subnet-23456789"), call(head_node_subnet_id="subnet-23456789")
     )
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True

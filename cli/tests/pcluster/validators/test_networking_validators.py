@@ -13,6 +13,7 @@ from collections import defaultdict
 
 import pytest
 
+from pcluster.validators.common import FailureLevel
 from pcluster.validators.networking_validators import (
     LambdaFunctionsVpcConfigValidator,
     MultiAzPlacementGroupValidator,
@@ -20,9 +21,10 @@ from pcluster.validators.networking_validators import (
     SecurityGroupsValidator,
     SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
+    AvailabilityZoneValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.validators.utils import assert_failure_messages
+from tests.pcluster.validators.utils import assert_failure_messages, assert_failure_level
 
 
 def test_ec2_security_group_validator(mocker):
@@ -261,3 +263,43 @@ def test_lambda_functions_vpc_config_validator(
 
     actual_response = LambdaFunctionsVpcConfigValidator().execute(security_group_ids, subnet_ids)
     assert_failure_messages(actual_response, expected_response)
+
+@pytest.mark.parametrize(
+    "login_node_subnet_id, head_node_subnet_id, login_node_az, head_node_az, expected_error_message",
+    [
+        # Test case for different availability zones
+        (
+                "subnet-01b4c1fa1de8a507f",
+                "subnet-09ce1152ecf4b0f52",
+                "us-east-1",
+                "us-west-2",
+                "LoginNode Networking SubnetId must be in the same availability zone as the HeadNode.",
+        ),
+
+        # Test case for same availability zones
+        (
+                "subnet-09bb789sb2bj298fd",
+                "subnet-02cd659mnj89dd7nf",
+                "us-east-1",
+                "us-east-1",
+                None,
+        ),
+    ],
+)
+def test_availability_zone_validator(
+        aws_api_mock,
+        login_node_subnet_id,
+        head_node_subnet_id,
+        login_node_az,
+        head_node_az,
+        expected_error_message
+):
+    aws_api_mock.ec2.get_subnet_avail_zone.side_effect = [login_node_az, head_node_az]
+
+    actual_failures = AvailabilityZoneValidator().execute(login_node_subnet_id, head_node_subnet_id)
+
+    if expected_error_message:
+        assert_failure_messages(actual_failures, expected_error_message)
+        assert_failure_level(actual_failures, FailureLevel.ERROR)
+    else:
+        assert not actual_failures

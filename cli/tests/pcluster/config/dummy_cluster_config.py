@@ -23,7 +23,7 @@ from pcluster.config.cluster_config import (
     Dcv,
     HeadNode,
     HeadNodeNetworking,
-    Iam,
+    HeadNodeAndQueueIam,
     Image,
     Imds,
     Proxy,
@@ -149,7 +149,7 @@ def dummy_slurm_cluster_config(mocker):
     """Generate dummy cluster."""
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
-    queue_iam = Iam(
+    queue_iam = HeadNodeAndQueueIam(
         s3_access=[
             S3Access("dummy-readonly-bucket", enable_write_access=True),
             S3Access("dummy-readwrite-bucket"),
@@ -221,7 +221,7 @@ def dummy_scheduler_plugin_cluster_config(mocker):
     """Generate dummy cluster."""
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
-    queue_iam = Iam(
+    queue_iam = HeadNodeAndQueueIam(
         s3_access=[
             S3Access("dummy-readonly-bucket", enable_write_access=True),
             S3Access("dummy-readwrite-bucket"),

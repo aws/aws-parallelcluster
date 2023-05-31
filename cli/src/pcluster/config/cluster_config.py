@@ -114,8 +114,6 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
-    PoolsValidator,
-    AvailabilityZoneValidator,
 )
 from pcluster.validators.common import ValidatorContext, get_async_timed_validator_type_for
 from pcluster.validators.database_validators import DatabaseUriValidator
@@ -184,6 +182,7 @@ from pcluster.validators.networking_validators import (
     SecurityGroupsValidator,
     SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
+    AvailabilityZoneValidator,
 )
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
@@ -666,8 +665,6 @@ class _BaseNetworking(Resource):
 class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
-    _instance = None
-
     def __init__(self, subnet_id: str, elastic_ip: Union[str, bool] = None, proxy: Proxy = None, **kwargs):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
@@ -683,12 +680,6 @@ class HeadNodeNetworking(_BaseNetworking):
     def availability_zone(self):
         """Compute availability zone from subnet id."""
         return AWSApi.instance().ec2.get_subnet_avail_zone(self.subnet_id)
-
-    @staticmethod
-    def getInstance():
-        if HeadNodeNetworking._instance is None:
-            raise Exception("HeadNode must be instantiated first!")
-        return HeadNodeNetworking._instance
 
 
 class PlacementGroup(Resource):
@@ -924,19 +915,16 @@ class S3Access(Resource):
             return [self.bucket_name, f"{self.bucket_name}/*"]
 
 
-class Iam(Resource):
-    """Represent the IAM configuration for HeadNode and Queue."""
-
+class _BaseIam(Resource):
+    """Represent the base IAM configuration."""
     def __init__(
-        self,
-        s3_access: List[S3Access] = None,
-        additional_iam_policies: List[AdditionalIamPolicy] = (),
-        instance_role: str = None,
-        instance_profile: str = None,
-        **kwargs,
+            self,
+            additional_iam_policies: List[AdditionalIamPolicy] = (),
+            instance_role: str = None,
+            instance_profile: str = None,
+            **kwargs,
     ):
         super().__init__(**kwargs)
-        self.s3_access = s3_access
         self.additional_iam_policies = additional_iam_policies
         self.instance_role = Resource.init_param(instance_role)
         self.instance_profile = Resource.init_param(instance_profile)
@@ -981,6 +969,27 @@ class Iam(Resource):
             self._register_validator(RoleValidator, role_arn=self.instance_role)
         elif self.instance_profile:
             self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
+
+
+class HeadNodeAndQueueIam(_BaseIam):
+    """Represent the IAM configuration for HeadNode and Queue."""
+
+    def __init__(
+        self,
+        s3_access: List[S3Access] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.s3_access = s3_access
+
+
+class LoginNodeIam(_BaseIam):
+    """Represent the IAM configuration for HeadNode and Queue."""
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
 
 
 class Imds(Resource):
@@ -1216,9 +1225,6 @@ class LoginNodeSsh(Ssh):
     ):
         super().__init__(key_name=key_name)
 
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        super()._register_validators(context)
-
 
 class LoginNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the login node."""
@@ -1226,23 +1232,10 @@ class LoginNodeNetworking(_BaseNetworking):
     def __init__(
             self,
             subnet_id: str,
-            security_groups: List[str] = None,
-            additional_security_groups: List[str] = None,
             **kwargs,
     ):
-        super().__init__(security_groups=security_groups, additional_security_groups=additional_security_groups,
-                         **kwargs)
+        super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(AvailabilityZoneValidator, login_node_subnet_id=self.subnet_id,
-                                 head_node_subnet_id=HeadNodeNetworking.getInstance().subnet_id)
-
-    @property
-    def availability_zone(self):
-        """Compute availability zone from subnet id."""
-        return AWSApi.instance().ec2.get_subnet_avail_zone(self.subnet_id)
 
 
 class LoginNodePool(Resource):
@@ -1256,9 +1249,7 @@ class LoginNodePool(Resource):
             networking: LoginNodeNetworking = None,
             count: int = None,
             ssh: LoginNodeSsh = None,
-            iam: Iam = None,
-            gracetime_period: int = None,
-            admin_user: str = None,
+            iam: LoginNodeIam = None,
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1268,9 +1259,7 @@ class LoginNodePool(Resource):
         self.networking = networking
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
-        self.iam = iam or Iam(implied=True)
-        self.gracetime_period = Resource.init_param(gracetime_period, default=60)
-        self.admin_user = Resource.init_param(admin_user, default=getpass.getuser())
+        self.iam = iam or LoginNodeIam(implied=True)
 
     def _register_validators(self, context: ValidatorContext = None):
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
@@ -1285,10 +1274,7 @@ class LoginNodes(Resource):
             **kwargs,
     ):
         super().__init__(**kwargs)
-        self.pools = pools or []
-
-    def _register_validators(self, context: ValidatorContext = None):
-        self._register_validator(PoolsValidator, pools=self.pools)
+        self.pools = pools
 
 
 class HeadNode(Resource):
@@ -1303,7 +1289,7 @@ class HeadNode(Resource):
         local_storage: LocalStorage = None,
         dcv: Dcv = None,
         custom_actions: CustomActions = None,
-        iam: Iam = None,
+        iam: HeadNodeAndQueueIam = None,
         imds: Imds = None,
         image: HeadNodeImage = None,
     ):
@@ -1317,7 +1303,7 @@ class HeadNode(Resource):
         self.local_storage = local_storage or LocalStorage(implied=True)
         self.dcv = dcv
         self.custom_actions = custom_actions
-        self.iam = iam or Iam(implied=True)
+        self.iam = iam or HeadNodeAndQueueIam(implied=True)
         self.imds = imds or Imds(implied=True)
         self.image = image
         self.__instance_type_info = None
@@ -1416,7 +1402,6 @@ class BaseClusterConfig(Resource):
         head_node: HeadNode,
         scheduling=None,
         shared_storage: List[Resource] = None,
-        login_nodes: LoginNodes = None,
         monitoring: Monitoring = None,
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
@@ -1437,7 +1422,6 @@ class BaseClusterConfig(Resource):
         # the self.config_region is never used. It has to be here to make sure cluster_config stores all information
         # from a configuration file, so it is able to recreate the same file.
         self.config_region = config_region
-        self.login_nodes = login_nodes
         self.cluster_name = cluster_name
         self.image = image
         self.head_node = head_node
@@ -2274,7 +2258,7 @@ class _CommonQueue(BaseQueue):
         networking: Union[SlurmQueueNetworking, SchedulerPluginQueueNetworking],
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
-        iam: Iam = None,
+        iam: HeadNodeAndQueueIam = None,
         image: QueueImage = None,
         capacity_reservation_target: CapacityReservationTarget = None,
         **kwargs,
@@ -2282,7 +2266,7 @@ class _CommonQueue(BaseQueue):
         super().__init__(**kwargs)
         self.compute_settings = compute_settings or ComputeSettings(implied=True)
         self.custom_actions = custom_actions
-        self.iam = iam or Iam(implied=True)
+        self.iam = iam or HeadNodeAndQueueIam(implied=True)
         self.image = image
         self.capacity_reservation_target = capacity_reservation_target
         self.compute_resources = compute_resources
@@ -3230,8 +3214,14 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
 class SlurmClusterConfig(CommonSchedulerClusterConfig):
     """Represent the full Slurm Cluster configuration."""
 
-    def __init__(self, cluster_name: str, scheduling: SlurmScheduling, **kwargs):
+    def __init__(self,
+        cluster_name: str,
+        scheduling: SlurmScheduling,
+        login_nodes: LoginNodes,
+        **kwargs,
+    ):
         super().__init__(cluster_name, **kwargs)
+        self.login_nodes = login_nodes
         self.scheduling = scheduling
         self.__image_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
@@ -3283,6 +3273,13 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
 
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
+        for login_node_pool in self.login_nodes.pools:
+            self._register_validator(
+                AvailabilityZoneValidator,
+                login_node_subnet_id=login_node_pool.networking.subnet_id,
+                head_node_subnet_id=self.head_node.networking.subnet_id,
+            )
+
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 if self.scheduling.settings.enable_memory_based_scheduling:

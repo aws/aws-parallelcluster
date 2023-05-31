@@ -70,8 +70,6 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
-    PoolsValidator,
-    AvailabilityZoneValidator,
     _are_subnets_covered_by_cidrs,
     _LaunchTemplateValidator,
 )
@@ -3238,67 +3236,3 @@ def test_multi_network_interfaces_instances_validator(
         assert_failure_level(actual_failures, FailureLevel.ERROR)
     else:
         assert_that(actual_failures).is_empty()
-
-
-@pytest.mark.parametrize(
-    "pools, expected_error_messages",
-    [
-        # Test case for no pools
-        ([], "At least one Pool should be included in the configuration."),
-
-        # Test case for more than one pool
-        (['pool1', 'pool2'], "For the MVP, only 1 pool can be under the LoginNodes section."),
-
-        # Test case for one pool
-        (['pool1'], None),
-    ],
-)
-def test_pools_validator(pools, expected_error_messages):
-    actual_failures = PoolsValidator().execute(pools)
-
-    if expected_error_messages:
-        assert_failure_messages(actual_failures, expected_error_messages)
-        assert_failure_level(actual_failures, FailureLevel.ERROR)
-    else:
-        assert not actual_failures
-
-
-@pytest.mark.parametrize(
-    "login_node_subnet_id, head_node_subnet_id, login_node_az, head_node_az, expected_error_message",
-    [
-        # Test case for different availability zones
-        (
-                "subnet-01b4c1fa1de8a507f",
-                "subnet-09ce1152ecf4b0f52",
-                "us-east-1",
-                "us-west-2",
-                "LoginNode Networking SubnetId must be in the same availability zone as the HeadNode.",
-        ),
-
-        # Test case for same availability zones
-        (
-                "subnet-09bb789sb2bj298fd",
-                "subnet-02cd659mnj89dd7nf",
-                "us-east-1",
-                "us-east-1",
-                None,
-        ),
-    ],
-)
-def test_availability_zone_validator(
-        aws_api_mock,
-        login_node_subnet_id,
-        head_node_subnet_id,
-        login_node_az,
-        head_node_az,
-        expected_error_message
-):
-    aws_api_mock.ec2.get_subnet_avail_zone.side_effect = [login_node_az, head_node_az]
-
-    actual_failures = AvailabilityZoneValidator().execute(login_node_subnet_id, head_node_subnet_id)
-
-    if expected_error_message:
-        assert_failure_messages(actual_failures, expected_error_message)
-        assert_failure_level(actual_failures, FailureLevel.ERROR)
-    else:
-        assert not actual_failures

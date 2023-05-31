@@ -42,8 +42,6 @@ LoginNodes:
   Pools:
   - Name: test
     InstanceType: t2.micro
-    AdminUser: ec2-user
-    GracetimePeriod: 60
     Count: 1
     Networking:
       SubnetId: subnet-12345678
