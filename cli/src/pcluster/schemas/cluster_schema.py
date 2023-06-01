@@ -2205,6 +2205,7 @@ class DirectoryServiceSchema(BaseSchema):
 class ClusterSchema(BaseSchema):
     """Represent the schema of the Cluster."""
 
+    login_nodes = fields.Nested(LoginNodesSchema, many=False)
     image = fields.Nested(ImageSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     head_node = fields.Nested(HeadNodeSchema, required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     scheduling = fields.Nested(SchedulingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})

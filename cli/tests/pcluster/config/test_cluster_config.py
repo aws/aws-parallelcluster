@@ -119,6 +119,7 @@ class TestBaseClusterConfig:
     def test_registration_of_validators(self, memory_scheduling_enabled, mocker):
         cluster_config = SlurmClusterConfig(
             cluster_name="clustername",
+            login_nodes=None,
             image=Image("alinux2"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
             scheduling=SlurmScheduling(

@@ -916,7 +916,7 @@ class S3Access(Resource):
 
 
 class _BaseIam(Resource):
-    """Represent the base IAM configuration."""
+    """Represent the base IAM configuration, with the fields in common between all the Iams."""
     def __init__(
             self,
             additional_iam_policies: List[AdditionalIamPolicy] = (),
@@ -3214,15 +3214,16 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
 class SlurmClusterConfig(CommonSchedulerClusterConfig):
     """Represent the full Slurm Cluster configuration."""
 
-    def __init__(self,
+    def __init__(
+        self,
         cluster_name: str,
         scheduling: SlurmScheduling,
-        login_nodes: LoginNodes,
+        login_nodes: LoginNodes = None,
         **kwargs,
     ):
         super().__init__(cluster_name, **kwargs)
-        self.login_nodes = login_nodes
         self.scheduling = scheduling
+        self.login_nodes = login_nodes
         self.__image_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
         # Since this cache is only used for validation, if AWSClientError happens
@@ -3273,12 +3274,14 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
 
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
-        for login_node_pool in self.login_nodes.pools:
-            self._register_validator(
-                AvailabilityZoneValidator,
-                login_node_subnet_id=login_node_pool.networking.subnet_id,
-                head_node_subnet_id=self.head_node.networking.subnet_id,
-            )
+
+        if self.login_nodes:
+            for login_node_pool in self.login_nodes.pools:
+                self._register_validator(
+                    AvailabilityZoneValidator,
+                    login_node_subnet_id=login_node_pool.networking.subnet_id,
+                    head_node_subnet_id=self.head_node.networking.subnet_id,
+                )
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:

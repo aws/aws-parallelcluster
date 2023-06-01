@@ -48,7 +48,7 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     Ssh,
-    Tag,
+    Tag, LoginNodes, LoginNodePool, LoginNodeSsh, LoginNodeNetworking,
 )
 from pcluster.config.common import Resource
 
@@ -56,8 +56,8 @@ from pcluster.config.common import Resource
 class _DummySlurmClusterConfig(SlurmClusterConfig):
     """Generate dummy Slurm cluster config."""
 
-    def __init__(self, scheduling: SlurmScheduling, **kwargs):
-        super().__init__("clustername", scheduling, **kwargs)
+    def __init__(self, scheduling: SlurmScheduling, login_nodes: LoginNodes, **kwargs):
+        super().__init__("clustername", scheduling, login_nodes, **kwargs)
 
     @property
     def region(self):
@@ -165,6 +165,16 @@ def dummy_slurm_cluster_config(mocker):
         SlurmQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
     ]
     scheduling = SlurmScheduling(queues=queues)
+    pools = [
+        LoginNodePool(
+            name="loginnode1",
+            instance_type="t2.micro",
+            networking=LoginNodeNetworking(subnet_id="subnet-12345678"),
+            count=1,
+            ssh=LoginNodeSsh(key_name="validkeyname")
+        )
+    ]
+    login_nodes = LoginNodes(pools=pools)
     # shared storage
     shared_storage: List[Resource] = []
     shared_storage.append(dummy_fsx())
@@ -175,7 +185,7 @@ def dummy_slurm_cluster_config(mocker):
     shared_storage.append(dummy_raid("/raid1"))
 
     cluster = _DummySlurmClusterConfig(
-        image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
+        image=image, head_node=head_node, scheduling=scheduling, login_nodes=login_nodes, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
     cluster.additional_resources = "https://additional.template.url"
