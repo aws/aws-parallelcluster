@@ -12,7 +12,6 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-import getpass
 import logging
 from abc import abstractmethod
 from collections import defaultdict
