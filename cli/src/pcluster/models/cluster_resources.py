@@ -171,7 +171,7 @@ class ClusterStack(StackInfo):
             ClusterCreationFailure(
                 "StaticNodeBoostrapFailure",
                 "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning.",
-                "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning"
+                "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning",
             ),
         ]
 
