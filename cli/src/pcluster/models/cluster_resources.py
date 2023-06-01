@@ -102,6 +102,7 @@ class ClusterStack(StackInfo):
         @dataclass
         class ClusterCreationFailure:
             """Represent the object holding the data of ClusterCreationFailure."""
+
             failure_code: str
             api_failure_reason: str
             cfn_failure_reason: str
