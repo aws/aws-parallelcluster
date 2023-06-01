@@ -48,7 +48,11 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     Ssh,
-    Tag, LoginNodes, LoginNodePool, LoginNodeSsh, LoginNodeNetworking,
+    Tag,
+    LoginNodes,
+    LoginNodePool,
+    LoginNodeSsh,
+    LoginNodeNetworking,
 )
 from pcluster.config.common import Resource
 
