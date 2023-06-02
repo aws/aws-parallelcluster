@@ -61,8 +61,8 @@ from pcluster.config.cluster_config import (
     HeadNodeImage,
     HeadNodeNetworking,
     HealthChecks,
-    HeadNodeAndQueueIam,
-    LoginNodeIam,
+    Iam,
+    LoginNodesIam,
     Image,
     Imds,
     IntelSoftware,
@@ -111,14 +111,14 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     SlurmSettings,
-    Ssh,
     SudoerConfiguration,
     Timeouts,
     LoginNodes,
-    LoginNodePool,
-    LoginNodeNetworking,
-    LoginNodeImage,
-    LoginNodeSsh,
+    LoginNodesPools,
+    LoginNodesNetworking,
+    LoginNodesImage,
+    LoginNodesSsh,
+    HeadNodeSsh,
 )
 from pcluster.config.common import BaseTag
 from pcluster.config.update_policy import UpdatePolicy
@@ -751,16 +751,19 @@ class SchedulerPluginQueueNetworkingSchema(SlurmQueueNetworkingSchema):
         return SchedulerPluginQueueNetworking(**data)
 
 
-class SshSchema(BaseSchema):
-    """Represent the schema of the SSH."""
-
+class BaseSshSchema(BaseSchema):
+    """Represent the schema of the BaseSsh."""
     key_name = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+
+class HeadNodeSshSchema(BaseSshSchema):
+    """Represent the schema of the HeadNodeSsh."""
     allowed_ips = fields.Str(validate=get_field_validator("cidr"), metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Ssh(**data)
+        return HeadNodeSsh(**data)
 
 
 class DcvSchema(BaseSchema):
@@ -932,7 +935,7 @@ class BaseIamSchema(BaseSchema):
             )
 
 
-class HeadNodeAndQueueIamSchema(BaseIamSchema):
+class IamSchema(BaseIamSchema):
     """Common schema of IAM for HeadNode and Queue."""
 
     s3_access = fields.Nested(
@@ -950,10 +953,10 @@ class HeadNodeAndQueueIamSchema(BaseIamSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return HeadNodeAndQueueIam(**data)
+        return Iam(**data)
 
 
-class HeadNodeIamSchema(HeadNodeAndQueueIamSchema):
+class HeadNodeIamSchema(IamSchema):
     """Represent the schema of IAM for HeadNode."""
 
     instance_profile = fields.Str(
@@ -962,7 +965,7 @@ class HeadNodeIamSchema(HeadNodeAndQueueIamSchema):
     )
 
 
-class QueueIamSchema(HeadNodeAndQueueIamSchema):
+class QueueIamSchema(IamSchema):
     """Represent the schema of IAM for Queue."""
 
     instance_profile = fields.Str(
@@ -971,7 +974,7 @@ class QueueIamSchema(HeadNodeAndQueueIamSchema):
     )
 
 
-class LoginNodeIamSchema(BaseIamSchema):
+class LoginNodesIamSchema(BaseIamSchema):
     """Represent the schema of IAM for LoginNode."""
 
     instance_profile = fields.Str(
@@ -981,7 +984,7 @@ class LoginNodeIamSchema(BaseIamSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodeIam(**data)
+        return LoginNodesIam(**data)
 
 
 class ImdsSchema(BaseSchema):
@@ -1268,7 +1271,7 @@ class HeadNodeSchema(BaseSchema):
     networking = fields.Nested(
         HeadNodeNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
-    ssh = fields.Nested(SshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    ssh = fields.Nested(HeadNodeSshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
@@ -1282,55 +1285,57 @@ class HeadNodeSchema(BaseSchema):
         return HeadNode(**data)
 
 
-class LoginNodeImageSchema(BaseSchema):
+class LoginNodesImageSchema(BaseSchema):
+    """Represent the schema of the LoginNodeImage."""
     custom_ami = fields.Str(validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX))
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodeImage(**data)
+        return LoginNodesImage(**data)
 
 
-class LoginNodeSshSchema(BaseSchema):
-    key_name = fields.Str(required=True)
-
+class LoginNodesSshSchema(BaseSshSchema):
+    """Represent the schema of the LoginNodeSsh."""
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodeSsh(**data)
+        return LoginNodesSsh(**data)
 
 
-class LoginNodeNetworkingSchema(BaseNetworkingSchema):
+class LoginNodesNetworkingSchema(BaseNetworkingSchema):
+    """Represent the schema of the LoginNodeNetworking."""
     subnet_id = fields.Str(required=True)
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodeNetworking(**data)
+        return LoginNodesNetworking(**data)
 
 
-class LoginNodePoolSchema(BaseSchema):
+class LoginNodesPoolsSchema(BaseSchema):
+    """Represent the schema of the LoginNodePool."""
     name = fields.Str(required=True)
     instance_type = fields.Str(required=True)
-    image = fields.Nested(LoginNodeImageSchema)
-    networking = fields.Nested(LoginNodeNetworkingSchema, required=True)
+    image = fields.Nested(LoginNodesImageSchema)
+    networking = fields.Nested(LoginNodesNetworkingSchema, required=True)
     count = fields.Int(required=True, validate=validate.Range(min=1))
-    ssh = fields.Nested(LoginNodeSshSchema, required=True)
-    iam = fields.Nested(LoginNodeIamSchema)
+    ssh = fields.Nested(LoginNodesSshSchema, required=True)
+    iam = fields.Nested(LoginNodesIamSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodePool(**data)
+        return LoginNodesPools(**data)
 
 
 class LoginNodesSchema(BaseSchema):
+    """Represent the schema of the LoginNodes."""
     pools = fields.Nested(
-        LoginNodePoolSchema,
+        LoginNodesPoolsSchema,
         many=True,
         required=True,
-        validate=validate.Length(min=1, max=1, error="has a minimum size of 1, "
-                                                    "and For the MVP, only 1 pool can be under the LoginNodes section"),
+        validate=validate.Length(equal=1, error="Only one pool can be specified when using login nodes."),
         metadata={"update_key": "Name"},
     )
 

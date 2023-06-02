@@ -669,7 +669,6 @@ class HeadNodeNetworking(_BaseNetworking):
         self.subnet_id = Resource.init_param(subnet_id)
         self.elastic_ip = Resource.init_param(elastic_ip)
         self.proxy = proxy
-        HeadNodeNetworking._instance = self
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -762,16 +761,22 @@ class SchedulerPluginQueueNetworking(SlurmQueueNetworking):
     pass
 
 
-class Ssh(Resource):
-    """Represent the SSH configuration for a node."""
-
-    def __init__(self, key_name: str = None, allowed_ips: str = None, **kwargs):
+class _BaseSsh(Resource):
+    """Represent the base SSH configuration, with the fields in common between all the Ssh."""
+    def __init__(self, key_name: str = None, **kwargs):
         super().__init__(**kwargs)
         self.key_name = Resource.init_param(key_name)
-        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(KeyPairValidator, key_name=self.key_name)
+
+
+class HeadNodeSsh(_BaseSsh):
+    """Represent the SSH configuration for HeadNode."""
+
+    def __init__(self, allowed_ips: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
 
 class Dcv(Resource):
@@ -970,7 +975,7 @@ class _BaseIam(Resource):
             self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
 
 
-class HeadNodeAndQueueIam(_BaseIam):
+class Iam(_BaseIam):
     """Represent the IAM configuration for HeadNode and Queue."""
 
     def __init__(
@@ -982,8 +987,8 @@ class HeadNodeAndQueueIam(_BaseIam):
         self.s3_access = s3_access
 
 
-class LoginNodeIam(_BaseIam):
-    """Represent the IAM configuration for HeadNode and Queue."""
+class LoginNodesIam(_BaseIam):
+    """Represent the IAM configuration for LoginNode."""
     def __init__(
         self,
         **kwargs,
@@ -1203,10 +1208,10 @@ class CustomActions(Resource):
         self.on_node_updated = Resource.init_param(on_node_updated)
 
 
-class LoginNodeImage(Resource):
+class LoginNodesImage(Resource):
     """Represent the configuration of LoginNode Image."""
 
-    def __init__(self, custom_ami: str, **kwargs):
+    def __init__(self, custom_ami: str):
         super().__init__()
         self.custom_ami = Resource.init_param(custom_ami)
 
@@ -1215,17 +1220,17 @@ class LoginNodeImage(Resource):
             self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
 
 
-class LoginNodeSsh(Ssh):
+class LoginNodesSsh(_BaseSsh):
     """Represent the SSH configuration for LoginNodes."""
 
     def __init__(
             self,
-            key_name: str,
+            **kwargs
     ):
-        super().__init__(key_name=key_name)
+        super().__init__(**kwargs)
 
 
-class LoginNodeNetworking(_BaseNetworking):
+class LoginNodesNetworking(_BaseNetworking):
     """Represent the networking configuration for the login node."""
 
     def __init__(
@@ -1237,18 +1242,18 @@ class LoginNodeNetworking(_BaseNetworking):
         self.subnet_id = Resource.init_param(subnet_id)
 
 
-class LoginNodePool(Resource):
+class LoginNodesPools(Resource):
     """Represent the configuration of a LoginNodePool."""
 
     def __init__(
             self,
             name: str,
             instance_type: str,
-            image: LoginNodeImage = None,
-            networking: LoginNodeNetworking = None,
+            image: LoginNodesImage = None,
+            networking: LoginNodesNetworking = None,
             count: int = None,
-            ssh: LoginNodeSsh = None,
-            iam: LoginNodeIam = None,
+            ssh: LoginNodesSsh = None,
+            iam: LoginNodesIam = None,
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1258,7 +1263,7 @@ class LoginNodePool(Resource):
         self.networking = networking
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
-        self.iam = iam or LoginNodeIam(implied=True)
+        self.iam = iam or LoginNodesIam(implied=True)
 
     def _register_validators(self, context: ValidatorContext = None):
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
@@ -1269,7 +1274,7 @@ class LoginNodes(Resource):
 
     def __init__(
             self,
-            pools: List[LoginNodePool],
+            pools: List[LoginNodesPools],
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1283,12 +1288,12 @@ class HeadNode(Resource):
         self,
         instance_type: str,
         networking: HeadNodeNetworking,
-        ssh: Ssh = None,
+        ssh: HeadNodeSsh = None,
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
         dcv: Dcv = None,
         custom_actions: CustomActions = None,
-        iam: HeadNodeAndQueueIam = None,
+        iam: Iam = None,
         imds: Imds = None,
         image: HeadNodeImage = None,
     ):
@@ -1298,11 +1303,11 @@ class HeadNode(Resource):
             disable_simultaneous_multithreading, default=False
         )
         self.networking = networking
-        self.ssh = ssh or Ssh(implied=True)
+        self.ssh = ssh or HeadNodeSsh(implied=True)
         self.local_storage = local_storage or LocalStorage(implied=True)
         self.dcv = dcv
         self.custom_actions = custom_actions
-        self.iam = iam or HeadNodeAndQueueIam(implied=True)
+        self.iam = iam or Iam(implied=True)
         self.imds = imds or Imds(implied=True)
         self.image = image
         self.__instance_type_info = None
@@ -2257,7 +2262,7 @@ class _CommonQueue(BaseQueue):
         networking: Union[SlurmQueueNetworking, SchedulerPluginQueueNetworking],
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
-        iam: HeadNodeAndQueueIam = None,
+        iam: Iam = None,
         image: QueueImage = None,
         capacity_reservation_target: CapacityReservationTarget = None,
         **kwargs,
@@ -2265,7 +2270,7 @@ class _CommonQueue(BaseQueue):
         super().__init__(**kwargs)
         self.compute_settings = compute_settings or ComputeSettings(implied=True)
         self.custom_actions = custom_actions
-        self.iam = iam or HeadNodeAndQueueIam(implied=True)
+        self.iam = iam or Iam(implied=True)
         self.image = image
         self.capacity_reservation_target = capacity_reservation_target
         self.compute_resources = compute_resources

@@ -273,7 +273,7 @@ def test_lambda_functions_vpc_config_validator(
                 "subnet-09ce1152ecf4b0f52",
                 "us-east-1",
                 "us-west-2",
-                "LoginNode Networking SubnetId must be in the same availability zone as the HeadNode.",
+                "Login nodes and head node must be in the same availability zone",
         ),
 
         # Test case for same availability zones

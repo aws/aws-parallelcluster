@@ -23,7 +23,7 @@ from pcluster.config.cluster_config import (
     Dcv,
     HeadNode,
     HeadNodeNetworking,
-    HeadNodeAndQueueIam,
+    Iam,
     Image,
     Imds,
     Proxy,
@@ -47,12 +47,12 @@ from pcluster.config.cluster_config import (
     SlurmQueue,
     SlurmQueueNetworking,
     SlurmScheduling,
-    Ssh,
+    HeadNodeSsh,
     Tag,
     LoginNodes,
-    LoginNodePool,
-    LoginNodeSsh,
-    LoginNodeNetworking,
+    LoginNodesPools,
+    LoginNodesSsh,
+    LoginNodesNetworking,
 )
 from pcluster.config.common import Resource
 
@@ -126,7 +126,7 @@ def dummy_head_node(mocker):
     head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
     head_node_dcv = Dcv(enabled=True, port=1024)
     head_node_imds = Imds(secured=True)
-    ssh = Ssh(key_name="test")
+    ssh = HeadNodeSsh(key_name="test")
 
     custom_actions = CustomActions(
         on_node_start=[
@@ -153,7 +153,7 @@ def dummy_slurm_cluster_config(mocker):
     """Generate dummy cluster."""
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
-    queue_iam = HeadNodeAndQueueIam(
+    queue_iam = Iam(
         s3_access=[
             S3Access("dummy-readonly-bucket", enable_write_access=True),
             S3Access("dummy-readwrite-bucket"),
@@ -170,12 +170,12 @@ def dummy_slurm_cluster_config(mocker):
     ]
     scheduling = SlurmScheduling(queues=queues)
     pools = [
-        LoginNodePool(
+        LoginNodesPools(
             name="loginnode1",
             instance_type="t2.micro",
-            networking=LoginNodeNetworking(subnet_id="subnet-12345678"),
+            networking=LoginNodesNetworking(subnet_id="subnet-12345678"),
             count=1,
-            ssh=LoginNodeSsh(key_name="validkeyname")
+            ssh=LoginNodesSsh(key_name="validkeyname")
         )
     ]
     login_nodes = LoginNodes(pools=pools)
@@ -235,7 +235,7 @@ def dummy_scheduler_plugin_cluster_config(mocker):
     """Generate dummy cluster."""
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
-    queue_iam = HeadNodeAndQueueIam(
+    queue_iam = Iam(
         s3_access=[
             S3Access("dummy-readonly-bucket", enable_write_access=True),
             S3Access("dummy-readwrite-bucket"),

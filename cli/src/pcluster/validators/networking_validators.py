@@ -206,6 +206,6 @@ class AvailabilityZoneValidator(Validator):
         if AWSApi.instance().ec2.get_subnet_avail_zone(login_node_subnet_id) != \
                 AWSApi.instance().ec2.get_subnet_avail_zone(head_node_subnet_id):
             self._add_failure(
-                "LoginNode Networking SubnetId must be in the same availability zone as the HeadNode.",
+                "Login nodes and head node must be in the same availability zone",
                 FailureLevel.ERROR,
             )

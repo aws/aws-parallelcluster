@@ -15,7 +15,6 @@ import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-import pyperclip
 import pytest
 import yaml
 from assertpy import assert_that
@@ -102,7 +101,6 @@ def _assert_config_snapshot(config, expected_full_config_path):
     cluster_name = "test_cluster"
     full_config = ClusterSchema(cluster_name).dump(config)
     full_config_yaml = yaml.dump(full_config)
-    pyperclip.copy(full_config_yaml)
 
     with open(expected_full_config_path, "r") as expected_full_config_file:
         expected_full_config = expected_full_config_file.read()
