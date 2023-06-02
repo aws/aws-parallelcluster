@@ -1042,12 +1042,13 @@ class TestDescribeCluster:
                             "StackName": "fake-name",
                             "ResourceType": "AWS::CloudFormation::WaitCondition",
                             "ResourceStatus": "CREATE_FAILED",
-                            "ResourceStatusReason": "Cluster has been set to PROTECTED mode "
+                            "ResourceStatusReason": "WaitCondition received failed message: '"
+                            "Cluster has been set to PROTECTED mode "
                             "due to failures detected in static node provisioning. "
                             "Please check /var/log/chef-client.log in the head node, "
                             "or check the chef-client.log in CloudWatch logs. "
                             "Please refer to https://docs.aws.amazon.com/parallelcluster/"
-                            "latest/ug/troubleshooting-v3.html for more details.",
+                            "latest/ug/troubleshooting-v3.html for more details.'",
                         },
                     ]
                 ],
