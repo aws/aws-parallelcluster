@@ -752,7 +752,7 @@ class SchedulerPluginQueueNetworkingSchema(SlurmQueueNetworkingSchema):
 
 
 class BaseSshSchema(BaseSchema):
-    """Represent the schema of the BaseSsh."""
+    """Represent the schema of common Ssh parameters used by head and login nodes."""
     key_name = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
@@ -975,7 +975,7 @@ class QueueIamSchema(IamSchema):
 
 
 class LoginNodesIamSchema(BaseIamSchema):
-    """Represent the schema of IAM for LoginNode."""
+    """Represent the IAM schema of LoginNodes."""
 
     instance_profile = fields.Str(
         validate=validate.Regexp("^arn:.*:instance-profile/")
@@ -1286,7 +1286,7 @@ class HeadNodeSchema(BaseSchema):
 
 
 class LoginNodesImageSchema(BaseSchema):
-    """Represent the schema of the LoginNodeImage."""
+    """Represent the Image schema of LoginNodes."""
     custom_ami = fields.Str(validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX))
 
     @post_load
@@ -1296,7 +1296,7 @@ class LoginNodesImageSchema(BaseSchema):
 
 
 class LoginNodesSshSchema(BaseSshSchema):
-    """Represent the schema of the LoginNodeSsh."""
+    """Represent the Ssh schema of LoginNodes."""
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
@@ -1304,7 +1304,7 @@ class LoginNodesSshSchema(BaseSshSchema):
 
 
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):
-    """Represent the schema of the LoginNodeNetworking."""
+    """Represent the networking schema of LoginNodes."""
     subnet_id = fields.Str(required=True)
 
     @post_load
@@ -1330,7 +1330,7 @@ class LoginNodesPoolsSchema(BaseSchema):
 
 
 class LoginNodesSchema(BaseSchema):
-    """Represent the schema of the LoginNodes."""
+    """Represent the schema of LoginNodes."""
     pools = fields.Nested(
         LoginNodesPoolsSchema,
         many=True,

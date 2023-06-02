@@ -1209,7 +1209,7 @@ class CustomActions(Resource):
 
 
 class LoginNodesImage(Resource):
-    """Represent the configuration of LoginNode Image."""
+    """Represent the Image configuration of LoginNodes."""
 
     def __init__(self, custom_ami: str):
         super().__init__()
@@ -1231,7 +1231,7 @@ class LoginNodesSsh(_BaseSsh):
 
 
 class LoginNodesNetworking(_BaseNetworking):
-    """Represent the networking configuration for the login node."""
+    """Represent the networking configuration for LoginNodes."""
 
     def __init__(
             self,
@@ -1270,7 +1270,7 @@ class LoginNodesPools(Resource):
 
 
 class LoginNodes(Resource):
-    """Represent the configuration of a LoginNodes."""
+    """Represent the configuration of LoginNodes."""
 
     def __init__(
             self,
