@@ -1264,7 +1264,7 @@ class LoginNodesPools(Resource):
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
 
-    def _register_validators(self, context: ValidatorContext = None):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
 
 
