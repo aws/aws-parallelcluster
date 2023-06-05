@@ -18,6 +18,7 @@ from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
     AwsBatchQueueNetworkingSchema,
     AwsBatchQueueSchema,
+    BaseIamSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
@@ -28,7 +29,12 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeEphemeralVolumeSchema,
     HeadNodeNetworkingSchema,
     HeadNodeRootVolumeSchema,
+    HeadNodeSshSchema,
     ImageSchema,
+    LoginNodesIamSchema,
+    LoginNodesImageSchema,
+    LoginNodesPoolsSchema,
+    LoginNodesSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
@@ -38,12 +44,6 @@ from pcluster.schemas.cluster_schema import (
     SlurmComputeResourceSchema,
     SlurmQueueNetworkingSchema,
     SlurmQueueSchema,
-    HeadNodeSshSchema,
-    LoginNodesImageSchema,
-    LoginNodesPoolsSchema,
-    LoginNodesSchema,
-    BaseIamSchema,
-    LoginNodesIamSchema,
 )
 
 

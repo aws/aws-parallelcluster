@@ -15,6 +15,11 @@ from pcluster.config.cluster_config import (
     HeadNodeNetworking,
     HealthChecks,
     Image,
+    LoginNodes,
+    LoginNodesImage,
+    LoginNodesNetworking,
+    LoginNodesPools,
+    LoginNodesSsh,
     PlacementGroup,
     QueueImage,
     SharedEbs,
@@ -27,11 +32,6 @@ from pcluster.config.cluster_config import (
     SlurmScheduling,
     SlurmSettings,
     Tag,
-    LoginNodesPools,
-    LoginNodesImage,
-    LoginNodesNetworking,
-    LoginNodesSsh,
-    LoginNodes,
 )
 
 mock_compute_resources = [
