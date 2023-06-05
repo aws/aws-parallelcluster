@@ -796,5 +796,9 @@ def test_cluster_health_metric(metric_names, cluster_name, region):
     assert_metrics_has_data(response)
 
 
+def is_dcv_supported(region: str):
+    return "us-iso" not in region
+
+
 def is_fsx_supported(region: str):
     return "us-iso" not in region

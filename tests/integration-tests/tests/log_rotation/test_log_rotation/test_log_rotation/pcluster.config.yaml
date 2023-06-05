@@ -9,7 +9,7 @@ HeadNode:
   Imds:
     Secured: {{ imds_secured }}
   Dcv:
-    Enabled: true
+    Enabled: {{ dcv_enabled }}
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
