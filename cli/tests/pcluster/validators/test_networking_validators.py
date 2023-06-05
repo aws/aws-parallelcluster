@@ -13,7 +13,6 @@ from collections import defaultdict
 
 import pytest
 
-from pcluster.validators.common import FailureLevel
 from pcluster.validators.networking_validators import (
     LambdaFunctionsVpcConfigValidator,
     MultiAzPlacementGroupValidator,
@@ -23,7 +22,7 @@ from pcluster.validators.networking_validators import (
     SubnetsValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.validators.utils import assert_failure_messages, assert_failure_level
+from tests.pcluster.validators.utils import assert_failure_messages
 
 
 def test_ec2_security_group_validator(mocker):
