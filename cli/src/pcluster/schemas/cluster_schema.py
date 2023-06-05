@@ -753,11 +753,13 @@ class SchedulerPluginQueueNetworkingSchema(SlurmQueueNetworkingSchema):
 
 class BaseSshSchema(BaseSchema):
     """Represent the schema of common Ssh parameters used by head and login nodes."""
+
     key_name = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
 class HeadNodeSshSchema(BaseSshSchema):
     """Represent the schema of the HeadNodeSsh."""
+
     allowed_ips = fields.Str(validate=get_field_validator("cidr"), metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
@@ -919,6 +921,7 @@ class ClusterIamSchema(BaseSchema):
 
 class BaseIamSchema(BaseSchema):
     """Represent the schema of common Iam parameters used by head, queue and login nodes."""
+
     instance_role = fields.Str(
         metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
     )
@@ -960,8 +963,7 @@ class HeadNodeIamSchema(IamSchema):
     """Represent the schema of IAM for HeadNode."""
 
     instance_profile = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-        validate=validate.Regexp("^arn:.*:instance-profile/")
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
     )
 
 
@@ -977,9 +979,7 @@ class QueueIamSchema(IamSchema):
 class LoginNodesIamSchema(BaseIamSchema):
     """Represent the IAM schema of LoginNodes."""
 
-    instance_profile = fields.Str(
-        validate=validate.Regexp("^arn:.*:instance-profile/")
-    )
+    instance_profile = fields.Str(validate=validate.Regexp("^arn:.*:instance-profile/"))
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1287,6 +1287,7 @@ class HeadNodeSchema(BaseSchema):
 
 class LoginNodesImageSchema(BaseSchema):
     """Represent the Image schema of LoginNodes."""
+
     custom_ami = fields.Str(validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX))
 
     @post_load
@@ -1297,6 +1298,7 @@ class LoginNodesImageSchema(BaseSchema):
 
 class LoginNodesSshSchema(BaseSshSchema):
     """Represent the Ssh schema of LoginNodes."""
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
@@ -1305,6 +1307,7 @@ class LoginNodesSshSchema(BaseSshSchema):
 
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):
     """Represent the networking schema of LoginNodes."""
+
     subnet_id = fields.Str(required=True)
 
     @post_load
@@ -1315,6 +1318,7 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
 
 class LoginNodesPoolsSchema(BaseSchema):
     """Represent the schema of the LoginNodePool."""
+
     name = fields.Str(required=True)
     instance_type = fields.Str(required=True)
     image = fields.Nested(LoginNodesImageSchema)
@@ -1331,6 +1335,7 @@ class LoginNodesPoolsSchema(BaseSchema):
 
 class LoginNodesSchema(BaseSchema):
     """Represent the schema of LoginNodes."""
+
     pools = fields.Nested(
         LoginNodesPoolsSchema,
         many=True,

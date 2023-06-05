@@ -511,6 +511,7 @@ class TestBaseClusterConfig:
         login_nodes = LoginNodes(pools=[login_node_pool])
         assert_that(login_nodes.pools[0].count).is_equal_to(1)
 
+
 class TestSharedEbs:
     @pytest.mark.parametrize(
         "region, expected_volume_type",

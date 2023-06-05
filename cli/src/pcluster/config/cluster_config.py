@@ -762,6 +762,7 @@ class SchedulerPluginQueueNetworking(SlurmQueueNetworking):
 
 class _BaseSsh(Resource):
     """Represent the base SSH configuration, with the fields in common between all the Ssh."""
+
     def __init__(self, key_name: str = None, **kwargs):
         super().__init__(**kwargs)
         self.key_name = Resource.init_param(key_name)
@@ -920,12 +921,13 @@ class S3Access(Resource):
 
 class _BaseIam(Resource):
     """Represent the base IAM configuration, with the fields in common between all the Iams."""
+
     def __init__(
-            self,
-            additional_iam_policies: List[AdditionalIamPolicy] = (),
-            instance_role: str = None,
-            instance_profile: str = None,
-            **kwargs,
+        self,
+        additional_iam_policies: List[AdditionalIamPolicy] = (),
+        instance_role: str = None,
+        instance_profile: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.additional_iam_policies = additional_iam_policies
@@ -988,6 +990,7 @@ class Iam(_BaseIam):
 
 class LoginNodesIam(_BaseIam):
     """Represent the IAM configuration for LoginNodes."""
+
     def __init__(
         self,
         **kwargs,
@@ -1222,10 +1225,7 @@ class LoginNodesImage(Resource):
 class LoginNodesSsh(_BaseSsh):
     """Represent the SSH configuration for LoginNodes."""
 
-    def __init__(
-            self,
-            **kwargs
-    ):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
@@ -1233,9 +1233,9 @@ class LoginNodesNetworking(_BaseNetworking):
     """Represent the networking configuration for LoginNodes."""
 
     def __init__(
-            self,
-            subnet_id: str,
-            **kwargs,
+        self,
+        subnet_id: str,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
@@ -1245,15 +1245,15 @@ class LoginNodesPools(Resource):
     """Represent the configuration of a LoginNodePool."""
 
     def __init__(
-            self,
-            name: str,
-            instance_type: str,
-            image: LoginNodesImage = None,
-            networking: LoginNodesNetworking = None,
-            count: int = None,
-            ssh: LoginNodesSsh = None,
-            iam: LoginNodesIam = None,
-            **kwargs,
+        self,
+        name: str,
+        instance_type: str,
+        image: LoginNodesImage = None,
+        networking: LoginNodesNetworking = None,
+        count: int = None,
+        ssh: LoginNodesSsh = None,
+        iam: LoginNodesIam = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.name = Resource.init_param(name)
@@ -1272,9 +1272,9 @@ class LoginNodes(Resource):
     """Represent the configuration of LoginNodes."""
 
     def __init__(
-            self,
-            pools: List[LoginNodesPools],
-            **kwargs,
+        self,
+        pools: List[LoginNodesPools],
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.pools = pools
