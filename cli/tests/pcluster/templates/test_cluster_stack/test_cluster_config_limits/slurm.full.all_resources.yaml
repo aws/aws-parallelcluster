@@ -2,7 +2,24 @@ Region: us-east-1
 Image:
   Os: centos7
   CustomAmi: ami-12345678
-
+LoginNodes:
+  Pools:
+  - Name: test
+    InstanceType: t2.micro
+    Count: 1
+    Image:
+      CustomAmi: ami-12345678
+    Networking:
+      SubnetId: subnet-12345678
+      SecurityGroups:
+        {% for i in range(10) %}
+        - sg-3456789{{ i }}
+        {% endfor %}
+    Ssh:
+      KeyName: validate_key_name
+    Iam:
+      AdditionalIamPolicies:
+        - Policy: arn:aws:iam::aws:policy/AdministratorAccess
 HeadNode:
   InstanceType: t2.micro
   Networking:

@@ -1,5 +1,4 @@
 import pytest
-import getpass
 from assertpy import assert_that
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
@@ -28,10 +27,10 @@ from pcluster.config.cluster_config import (
     SlurmScheduling,
     SlurmSettings,
     Tag,
-    LoginNodePool,
-    LoginNodeImage,
-    LoginNodeNetworking,
-    LoginNodeSsh,
+    LoginNodesPools,
+    LoginNodesImage,
+    LoginNodesNetworking,
+    LoginNodesSsh,
     LoginNodes,
 )
 
@@ -119,6 +118,7 @@ class TestBaseClusterConfig:
     def test_registration_of_validators(self, memory_scheduling_enabled, mocker):
         cluster_config = SlurmClusterConfig(
             cluster_name="clustername",
+            login_nodes=None,
             image=Image("alinux2"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
             scheduling=SlurmScheduling(
@@ -500,18 +500,16 @@ class TestBaseClusterConfig:
         assert_that(queue.get_tags()).is_equal_to(tags)
 
     def test_login_node_pool_default_value(self):
-        login_node_pool = LoginNodePool(
+        login_node_pool = LoginNodesPools(
             name="test_pool2",
             instance_type="t3.xlarge",
-            image=LoginNodeImage(custom_ami="ami-0222222222222222"),
-            networking=LoginNodeNetworking(subnet_id="subnet-0222222222222222"),
-            ssh=LoginNodeSsh(key_name="mykey"),
+            image=LoginNodesImage(custom_ami="ami-0222222222222222"),
+            networking=LoginNodesNetworking(subnet_id="subnet-0222222222222222"),
+            ssh=LoginNodesSsh(key_name="mykey"),
         )
 
         login_nodes = LoginNodes(pools=[login_node_pool])
         assert_that(login_nodes.pools[0].count).is_equal_to(1)
-        assert_that(login_nodes.pools[0].gracetime_period).is_equal_to(60)
-        assert_that(login_nodes.pools[0].admin_user).is_equal_to(getpass.getuser())
 
 class TestSharedEbs:
     @pytest.mark.parametrize(

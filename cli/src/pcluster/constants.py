@@ -19,6 +19,7 @@ PCLUSTER_NAME_MAX_LENGTH = 60
 PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING = 40
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
+PCLUSTER_AMI_ID_REGEX = r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"
 
 CIDR_ALL_IPS = "0.0.0.0/0"
 
