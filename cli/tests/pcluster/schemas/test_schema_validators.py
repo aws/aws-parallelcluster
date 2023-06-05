@@ -710,31 +710,37 @@ def test_login_node_pool_count_validator(count, expected_message):
     "pools, expected_message",
     [
         ([], "Only one pool can be specified when using login nodes."),
-        ([
-             {
-                 "Name": "validname1",
-                 "InstanceType": "t2.micro",
-                 "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
-                 "Count": 1,
-                 "Ssh": {"KeyName": "valid_key_name1"},
-             },
-             {
-                 "Name": "validname2",
-                 "InstanceType": "t2.micro",
-                 "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
-                 "Count": 1,
-                 "Ssh": {"KeyName": "valid_key_name2"},
-             }
-         ], "Only one pool can be specified when using login nodes."),
-        ([
-             {
-                 "Name": "validname",
-                 "InstanceType": "t2.micro",
-                 "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
-                 "Count": 1,
-                 "Ssh": {"KeyName": "valid_key_name"},
-             }
-         ], None),
+        (
+            [
+                {
+                    "Name": "validname1",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name1"},
+                },
+                {
+                    "Name": "validname2",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name2"},
+                },
+            ],
+            "Only one pool can be specified when using login nodes.",
+        ),
+        (
+            [
+                {
+                    "Name": "validname",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name"},
+                }
+            ],
+            None,
+        ),
     ],
 )
 def test_pools_validator(pools, expected_message):
@@ -756,14 +762,14 @@ def test_pools_validator(pools, expected_message):
             "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.",
         ),
         (
-                "arn:aws:iam::aws:role/LoginNodeRole",
-                None,
-                None,
+            "arn:aws:iam::aws:role/LoginNodeRole",
+            None,
+            None,
         ),
         (
-                None,
-                "arn:aws:iam::aws:instance-profile/LoginNodeInstanceProfile",
-                None,
+            None,
+            "arn:aws:iam::aws:instance-profile/LoginNodeInstanceProfile",
+            None,
         ),
     ],
 )
@@ -776,8 +782,8 @@ def test_iam_validator(instance_role, instance_profile, expected_message):
 
     if expected_message:
         with pytest.raises(
-                ValidationError,
-                match=expected_message,
+            ValidationError,
+            match=expected_message,
         ):
             LoginNodesIamSchema().load(iam_dict)
     else:
