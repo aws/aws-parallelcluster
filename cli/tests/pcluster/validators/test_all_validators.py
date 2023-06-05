@@ -210,10 +210,6 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
 
     networking_validators = validators_path + ".networking_validators"
 
-    availability_zone_validator = mocker.patch(
-        networking_validators + ".AvailabilityZoneValidator._validate", return_value=[]
-    )
-
     security_groups_validator = mocker.patch(
         networking_validators + ".SecurityGroupsValidator._validate", return_value=[]
     )
@@ -338,9 +334,6 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
     architecture_os_validator.assert_has_calls(
         [call(os="alinux2", architecture="x86_64", custom_ami="ami-12345678", ami_search_filters=None)]
-    )
-    availability_zone_validator.assert_has_calls(
-        [call(login_node_subnet_id="subnet-12345678", head_node_subnet_id="subnet-12345678")]
     )
     _assert_instance_architecture(
         expected_instance_architecture_validator_input=[
