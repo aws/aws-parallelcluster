@@ -181,7 +181,6 @@ from pcluster.validators.networking_validators import (
     SecurityGroupsValidator,
     SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
-    AvailabilityZoneValidator,
 )
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
@@ -988,7 +987,7 @@ class Iam(_BaseIam):
 
 
 class LoginNodesIam(_BaseIam):
-    """Represent the IAM configuration for LoginNode."""
+    """Represent the IAM configuration for LoginNodes."""
     def __init__(
         self,
         **kwargs,
@@ -3278,14 +3277,6 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
 
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
-
-        if self.login_nodes:
-            for login_node_pool in self.login_nodes.pools:
-                self._register_validator(
-                    AvailabilityZoneValidator,
-                    login_node_subnet_id=login_node_pool.networking.subnet_id,
-                    head_node_subnet_id=self.head_node.networking.subnet_id,
-                )
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:

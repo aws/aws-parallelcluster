@@ -198,14 +198,3 @@ class LambdaFunctionsVpcConfigValidator(Validator):
                 f"Some subnets associated to the Lambda are not present in the account: {sorted(missing_subnet_ids)}.",
                 FailureLevel.ERROR,
             )
-
-
-class AvailabilityZoneValidator(Validator):
-
-    def _validate(self, login_node_subnet_id, head_node_subnet_id):
-        if AWSApi.instance().ec2.get_subnet_avail_zone(login_node_subnet_id) != \
-                AWSApi.instance().ec2.get_subnet_avail_zone(head_node_subnet_id):
-            self._add_failure(
-                "Login nodes and head node must be in the same availability zone",
-                FailureLevel.ERROR,
-            )
