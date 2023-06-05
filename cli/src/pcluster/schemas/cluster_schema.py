@@ -60,13 +60,19 @@ from pcluster.config.cluster_config import (
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
+    HeadNodeSsh,
     HealthChecks,
     Iam,
-    LoginNodesIam,
     Image,
     Imds,
     IntelSoftware,
     LocalStorage,
+    LoginNodes,
+    LoginNodesIam,
+    LoginNodesImage,
+    LoginNodesNetworking,
+    LoginNodesPools,
+    LoginNodesSsh,
     LogRotation,
     Logs,
     Monitoring,
@@ -113,12 +119,6 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     SudoerConfiguration,
     Timeouts,
-    LoginNodes,
-    LoginNodesPools,
-    LoginNodesNetworking,
-    LoginNodesImage,
-    LoginNodesSsh,
-    HeadNodeSsh,
 )
 from pcluster.config.common import BaseTag
 from pcluster.config.update_policy import UpdatePolicy
@@ -137,9 +137,9 @@ from pcluster.constants import (
     MIN_SLURM_NODE_PRIORITY,
     ONTAP,
     OPENZFS,
+    PCLUSTER_AMI_ID_REGEX,
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
     SUPPORTED_OSES,
-    PCLUSTER_AMI_ID_REGEX,
 )
 from pcluster.models.s3_bucket import parse_bucket_url
 from pcluster.schemas.common_schema import (

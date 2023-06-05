@@ -23,9 +23,14 @@ from pcluster.config.cluster_config import (
     Dcv,
     HeadNode,
     HeadNodeNetworking,
+    HeadNodeSsh,
     Iam,
     Image,
     Imds,
+    LoginNodes,
+    LoginNodesNetworking,
+    LoginNodesPools,
+    LoginNodesSsh,
     Proxy,
     Raid,
     S3Access,
@@ -47,12 +52,7 @@ from pcluster.config.cluster_config import (
     SlurmQueue,
     SlurmQueueNetworking,
     SlurmScheduling,
-    HeadNodeSsh,
     Tag,
-    LoginNodes,
-    LoginNodesPools,
-    LoginNodesSsh,
-    LoginNodesNetworking,
 )
 from pcluster.config.common import Resource
 
