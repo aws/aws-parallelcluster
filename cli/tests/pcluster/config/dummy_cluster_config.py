@@ -23,9 +23,14 @@ from pcluster.config.cluster_config import (
     Dcv,
     HeadNode,
     HeadNodeNetworking,
+    HeadNodeSsh,
     Iam,
     Image,
     Imds,
+    LoginNodes,
+    LoginNodesNetworking,
+    LoginNodesPools,
+    LoginNodesSsh,
     Proxy,
     Raid,
     S3Access,
@@ -47,7 +52,6 @@ from pcluster.config.cluster_config import (
     SlurmQueue,
     SlurmQueueNetworking,
     SlurmScheduling,
-    Ssh,
     Tag,
 )
 from pcluster.config.common import Resource
@@ -56,8 +60,8 @@ from pcluster.config.common import Resource
 class _DummySlurmClusterConfig(SlurmClusterConfig):
     """Generate dummy Slurm cluster config."""
 
-    def __init__(self, scheduling: SlurmScheduling, **kwargs):
-        super().__init__("clustername", scheduling, **kwargs)
+    def __init__(self, scheduling: SlurmScheduling, login_nodes: LoginNodes, **kwargs):
+        super().__init__("clustername", scheduling, login_nodes, **kwargs)
 
     @property
     def region(self):
@@ -122,7 +126,7 @@ def dummy_head_node(mocker):
     head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
     head_node_dcv = Dcv(enabled=True, port=1024)
     head_node_imds = Imds(secured=True)
-    ssh = Ssh(key_name="test")
+    ssh = HeadNodeSsh(key_name="test")
 
     custom_actions = CustomActions(
         on_node_start=[
@@ -165,6 +169,16 @@ def dummy_slurm_cluster_config(mocker):
         SlurmQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
     ]
     scheduling = SlurmScheduling(queues=queues)
+    pools = [
+        LoginNodesPools(
+            name="loginnode1",
+            instance_type="t2.micro",
+            networking=LoginNodesNetworking(subnet_id="subnet-12345678"),
+            count=1,
+            ssh=LoginNodesSsh(key_name="validkeyname"),
+        )
+    ]
+    login_nodes = LoginNodes(pools=pools)
     # shared storage
     shared_storage: List[Resource] = []
     shared_storage.append(dummy_fsx())
@@ -175,7 +189,7 @@ def dummy_slurm_cluster_config(mocker):
     shared_storage.append(dummy_raid("/raid1"))
 
     cluster = _DummySlurmClusterConfig(
-        image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
+        image=image, head_node=head_node, scheduling=scheduling, login_nodes=login_nodes, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
     cluster.additional_resources = "https://additional.template.url"

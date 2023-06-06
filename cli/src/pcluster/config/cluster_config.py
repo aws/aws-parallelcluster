@@ -760,16 +760,23 @@ class SchedulerPluginQueueNetworking(SlurmQueueNetworking):
     pass
 
 
-class Ssh(Resource):
-    """Represent the SSH configuration for a node."""
+class _BaseSsh(Resource):
+    """Represent the base SSH configuration, with the fields in common between all the Ssh."""
 
-    def __init__(self, key_name: str = None, allowed_ips: str = None, **kwargs):
+    def __init__(self, key_name: str = None, **kwargs):
         super().__init__(**kwargs)
         self.key_name = Resource.init_param(key_name)
-        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(KeyPairValidator, key_name=self.key_name)
+
+
+class HeadNodeSsh(_BaseSsh):
+    """Represent the SSH configuration for HeadNode."""
+
+    def __init__(self, allowed_ips: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
 
 class Dcv(Resource):
@@ -912,19 +919,17 @@ class S3Access(Resource):
             return [self.bucket_name, f"{self.bucket_name}/*"]
 
 
-class Iam(Resource):
-    """Represent the IAM configuration for HeadNode and Queue."""
+class _BaseIam(Resource):
+    """Represent the base IAM configuration, with the fields in common between all the Iams."""
 
     def __init__(
         self,
-        s3_access: List[S3Access] = None,
         additional_iam_policies: List[AdditionalIamPolicy] = (),
         instance_role: str = None,
         instance_profile: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.s3_access = s3_access
         self.additional_iam_policies = additional_iam_policies
         self.instance_role = Resource.init_param(instance_role)
         self.instance_profile = Resource.init_param(instance_profile)
@@ -969,6 +974,28 @@ class Iam(Resource):
             self._register_validator(RoleValidator, role_arn=self.instance_role)
         elif self.instance_profile:
             self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
+
+
+class Iam(_BaseIam):
+    """Represent the IAM configuration for HeadNode and Queue."""
+
+    def __init__(
+        self,
+        s3_access: List[S3Access] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.s3_access = s3_access
+
+
+class LoginNodesIam(_BaseIam):
+    """Represent the IAM configuration for LoginNodes."""
+
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
 
 
 class Imds(Resource):
@@ -1183,6 +1210,76 @@ class CustomActions(Resource):
         self.on_node_updated = Resource.init_param(on_node_updated)
 
 
+class LoginNodesImage(Resource):
+    """Represent the Image configuration of LoginNodes."""
+
+    def __init__(self, custom_ami: str):
+        super().__init__()
+        self.custom_ami = Resource.init_param(custom_ami)
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        if self.custom_ami:
+            self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
+
+
+class LoginNodesSsh(_BaseSsh):
+    """Represent the SSH configuration for LoginNodes."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class LoginNodesNetworking(_BaseNetworking):
+    """Represent the networking configuration for LoginNodes."""
+
+    def __init__(
+        self,
+        subnet_id: str,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.subnet_id = Resource.init_param(subnet_id)
+
+
+class LoginNodesPools(Resource):
+    """Represent the configuration of a LoginNodePool."""
+
+    def __init__(
+        self,
+        name: str,
+        instance_type: str,
+        image: LoginNodesImage = None,
+        networking: LoginNodesNetworking = None,
+        count: int = None,
+        ssh: LoginNodesSsh = None,
+        iam: LoginNodesIam = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.name = Resource.init_param(name)
+        self.instance_type = Resource.init_param(instance_type)
+        self.image = image
+        self.networking = networking
+        self.count = Resource.init_param(count, default=1)
+        self.ssh = ssh
+        self.iam = iam or LoginNodesIam(implied=True)
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
+
+
+class LoginNodes(Resource):
+    """Represent the configuration of LoginNodes."""
+
+    def __init__(
+        self,
+        pools: List[LoginNodesPools],
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.pools = pools
+
+
 class HeadNode(Resource):
     """Represent the Head Node resource."""
 
@@ -1190,7 +1287,7 @@ class HeadNode(Resource):
         self,
         instance_type: str,
         networking: HeadNodeNetworking,
-        ssh: Ssh = None,
+        ssh: HeadNodeSsh = None,
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
         dcv: Dcv = None,
@@ -1205,7 +1302,7 @@ class HeadNode(Resource):
             disable_simultaneous_multithreading, default=False
         )
         self.networking = networking
-        self.ssh = ssh or Ssh(implied=True)
+        self.ssh = ssh or HeadNodeSsh(implied=True)
         self.local_storage = local_storage or LocalStorage(implied=True)
         self.dcv = dcv
         self.custom_actions = custom_actions
@@ -3120,9 +3217,16 @@ class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
 class SlurmClusterConfig(CommonSchedulerClusterConfig):
     """Represent the full Slurm Cluster configuration."""
 
-    def __init__(self, cluster_name: str, scheduling: SlurmScheduling, **kwargs):
+    def __init__(
+        self,
+        cluster_name: str,
+        scheduling: SlurmScheduling,
+        login_nodes: LoginNodes = None,
+        **kwargs,
+    ):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
+        self.login_nodes = login_nodes
         self.__image_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
         # Since this cache is only used for validation, if AWSClientError happens
@@ -3173,6 +3277,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
 
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
+
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 if self.scheduling.settings.enable_memory_based_scheduling:

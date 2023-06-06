@@ -83,6 +83,34 @@ Image:
   Os: centos7
 Imds:
   ImdsSupport: v1.0
+LoginNodes:
+  Pools:
+  - Count: 1
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+    Image:
+      CustomAmi: ami-12345678
+    InstanceType: t2.micro
+    Name: test
+    Networking:
+      AdditionalSecurityGroups: null
+      SecurityGroups:
+      - sg-34567890
+      - sg-34567891
+      - sg-34567892
+      - sg-34567893
+      - sg-34567894
+      - sg-34567895
+      - sg-34567896
+      - sg-34567897
+      - sg-34567898
+      - sg-34567899
+      SubnetId: subnet-12345678
+    Ssh:
+      KeyName: validate_key_name
 Monitoring:
   Dashboards:
     CloudWatch:
