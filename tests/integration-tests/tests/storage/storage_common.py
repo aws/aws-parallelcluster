@@ -317,6 +317,7 @@ def check_fsx(
                     mount_name=mount_name,
                     mount_options=fsx_lustre_mount_options + ",x-systemd.requires=network.service",
                     fsx_id=fsx_id,
+                    region=region,
                 )
                 _test_import_path(remote_command_executor, mount_dir, file_cache_path=file_cache_path)
                 _test_export_path(
@@ -329,6 +330,7 @@ def check_fsx(
                     mount_name=mount_name,
                     mount_options=fsx_lustre_mount_options,
                     fsx_id=fsx_id,
+                    region=region,
                 )
                 if bucket_name:
                     _test_import_path(remote_command_executor, mount_dir)
@@ -542,14 +544,19 @@ def _test_import_path(remote_command_executor, mount_dir, file_cache_path=None):
     assert_that(result.stdout).is_equal_to("Downloaded by FSx Lustre")
 
 
-def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, mount_name, mount_options, fsx_id):
+def assert_fsx_lustre_correctly_mounted(
+    remote_command_executor, mount_dir, region, fsx_id, mount_name=None, mount_options=None
+):
     logging.info("Testing fsx lustre is correctly mounted on the head node")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
+    if not mount_name:
+        mount_name = get_mount_name(fsx_id, region)
+    if not mount_options:
+        mount_options = "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount"
     assert_that(result.stdout).matches(
         r"[0-9\.]+@tcp:/{mount_name}\s+[15]\.[1278]T\s+{mount_dir}".format(mount_name=mount_name, mount_dir=mount_dir)
     )
     # example output: "192.168.46.168@tcp:/cg7k7bmv 1.7T /fsx_mount_dir"
-
     check_fstab_file(
         remote_command_executor,
         r"{fsx_id}\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/{mount_name}"
