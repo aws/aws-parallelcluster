@@ -10,6 +10,7 @@ from retrying import retry
 from time_utils import seconds
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
+from tests.common.utils import get_aws_domain
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
 
@@ -44,8 +45,15 @@ def _is_accounting_enabled(remote_command_executor):
     return remote_command_executor.run_remote_command("sacct", raise_on_error=False).ok
 
 
+def _rds_ca_bundle_url(region):
+    if "us-iso" in region:
+        return f"https://s3.{region}.{get_aws_domain(region)}/rds-downloads/rds-combined-ca-bundle.pem"
+    else:
+        return f"https://truststore.pki.rds.amazonaws.com/{region}/{region}-bundle.pem"
+
+
 def _require_server_identity(remote_command_executor, test_resources_dir, region):
-    ca_url = f"https://truststore.pki.rds.amazonaws.com/{region}/{region}-bundle.pem"
+    ca_url = _rds_ca_bundle_url(region)
     remote_command_executor.run_remote_script(
         os.path.join(str(test_resources_dir), "require_server_identity.sh"),
         args=[
