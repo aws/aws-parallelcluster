@@ -83,6 +83,34 @@ Image:
   Os: centos7
 Imds:
   ImdsSupport: v1.0
+LoginNodes:
+  Pools:
+  - Count: 1
+    Iam:
+      AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      InstanceProfile: null
+      InstanceRole: null
+    Image:
+      CustomAmi: ami-12345678
+    InstanceType: t2.micro
+    Name: test
+    Networking:
+      AdditionalSecurityGroups: null
+      SecurityGroups:
+      - sg-34567890
+      - sg-34567891
+      - sg-34567892
+      - sg-34567893
+      - sg-34567894
+      - sg-34567895
+      - sg-34567896
+      - sg-34567897
+      - sg-34567898
+      - sg-34567899
+      SubnetId: subnet-12345678
+    Ssh:
+      KeyName: validate_key_name
 Monitoring:
   Dashboards:
     CloudWatch:
@@ -105,6 +133,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -122,6 +151,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -180,6 +210,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -197,6 +228,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -255,6 +287,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -272,6 +305,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -330,6 +364,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -347,6 +382,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -405,6 +441,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -422,6 +459,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -480,6 +518,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -497,6 +536,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -555,6 +595,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -572,6 +613,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -630,6 +672,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -647,6 +690,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -705,6 +749,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -722,6 +767,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -780,6 +826,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -797,6 +844,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -855,6 +903,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -872,6 +921,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -930,6 +980,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -947,6 +998,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1005,6 +1057,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1022,6 +1075,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1080,6 +1134,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1097,6 +1152,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1155,6 +1211,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1172,6 +1229,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1230,6 +1288,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1247,6 +1306,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1305,6 +1365,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1322,6 +1383,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1380,6 +1442,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1397,6 +1460,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1455,6 +1519,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1472,6 +1537,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1530,6 +1596,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1547,6 +1614,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1605,6 +1673,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1622,6 +1691,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1680,6 +1750,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1697,6 +1768,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1755,6 +1827,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1772,6 +1845,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1830,6 +1904,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1847,6 +1922,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1905,6 +1981,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: false
+      DynamicNodePriority: 1000
       Efa:
         Enabled: false
         GdrSupport: false
@@ -1922,6 +1999,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: null
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -1980,6 +2058,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -1997,6 +2076,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2045,6 +2125,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2062,6 +2143,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2110,6 +2192,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2127,6 +2210,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2175,6 +2259,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2192,6 +2277,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2240,6 +2326,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2257,6 +2344,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2305,6 +2393,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2322,6 +2411,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2370,6 +2460,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2387,6 +2478,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2435,6 +2527,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2452,6 +2545,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2500,6 +2594,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2517,6 +2612,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2565,6 +2661,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2582,6 +2679,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2630,6 +2728,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2647,6 +2746,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2695,6 +2795,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2712,6 +2813,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2760,6 +2862,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2777,6 +2880,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2825,6 +2929,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2842,6 +2947,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2890,6 +2996,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2907,6 +3014,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -2955,6 +3063,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -2972,6 +3081,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3020,6 +3130,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3037,6 +3148,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3085,6 +3197,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3102,6 +3215,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3150,6 +3264,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3167,6 +3282,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3215,6 +3331,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3232,6 +3349,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3280,6 +3398,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3297,6 +3416,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3345,6 +3465,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3362,6 +3483,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3410,6 +3532,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3427,6 +3550,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3475,6 +3599,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3492,6 +3617,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0
@@ -3540,6 +3666,7 @@ Scheduling:
     - CapacityReservationTarget: null
       CustomSlurmSettings: {}
       DisableSimultaneousMultithreading: true
+      DynamicNodePriority: 1000
       Efa:
         Enabled: true
         GdrSupport: false
@@ -3557,6 +3684,7 @@ Scheduling:
           Name: null
       SchedulableMemory: null
       SpotPrice: 1.1
+      StaticNodePriority: 1
       Tags:
       - Key: computetag0
         Value: computetag0

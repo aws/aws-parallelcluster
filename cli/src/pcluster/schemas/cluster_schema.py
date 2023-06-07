@@ -60,12 +60,19 @@ from pcluster.config.cluster_config import (
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
+    HeadNodeSsh,
     HealthChecks,
     Iam,
     Image,
     Imds,
     IntelSoftware,
     LocalStorage,
+    LoginNodes,
+    LoginNodesIam,
+    LoginNodesImage,
+    LoginNodesNetworking,
+    LoginNodesPools,
+    LoginNodesSsh,
     LogRotation,
     Logs,
     Monitoring,
@@ -110,7 +117,6 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     SlurmSettings,
-    Ssh,
     SudoerConfiguration,
     Timeouts,
 )
@@ -127,8 +133,11 @@ from pcluster.constants import (
     FSX_OPENZFS,
     FSX_VOLUME_ID_REGEX,
     LUSTRE,
+    MAX_SLURM_NODE_PRIORITY,
+    MIN_SLURM_NODE_PRIORITY,
     ONTAP,
     OPENZFS,
+    PCLUSTER_AMI_ID_REGEX,
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
     SUPPORTED_OSES,
 )
@@ -645,7 +654,7 @@ class QueueProxySchema(BaseSchema):
 
 
 class BaseNetworkingSchema(BaseSchema):
-    """Represent the schema of common networking parameters used by head and compute nodes."""
+    """Represent the schema of common networking parameters used by head, compute and login nodes."""
 
     additional_security_groups = fields.List(
         fields.Str(validate=get_field_validator("security_group_id")),
@@ -742,16 +751,21 @@ class SchedulerPluginQueueNetworkingSchema(SlurmQueueNetworkingSchema):
         return SchedulerPluginQueueNetworking(**data)
 
 
-class SshSchema(BaseSchema):
-    """Represent the schema of the SSH."""
+class BaseSshSchema(BaseSchema):
+    """Represent the schema of common Ssh parameters used by head and login nodes."""
 
     key_name = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+
+class HeadNodeSshSchema(BaseSshSchema):
+    """Represent the schema of the HeadNodeSsh."""
+
     allowed_ips = fields.Str(validate=get_field_validator("cidr"), metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Ssh(**data)
+        return HeadNodeSsh(**data)
 
 
 class DcvSchema(BaseSchema):
@@ -905,14 +919,11 @@ class ClusterIamSchema(BaseSchema):
         return ClusterIam(**data)
 
 
-class IamSchema(BaseSchema):
-    """Common schema of IAM for HeadNode and Queue."""
+class BaseIamSchema(BaseSchema):
+    """Represent the schema of common Iam parameters used by head, queue and login nodes."""
 
     instance_role = fields.Str(
         metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
-    )
-    s3_access = fields.Nested(
-        S3AccessSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "BucketName"}
     )
     additional_iam_policies = fields.Nested(
         AdditionalIamPolicySchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Policy"}
@@ -925,6 +936,14 @@ class IamSchema(BaseSchema):
             raise ValidationError(
                 "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together."
             )
+
+
+class IamSchema(BaseIamSchema):
+    """Common schema of IAM for HeadNode and Queue."""
+
+    s3_access = fields.Nested(
+        S3AccessSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "BucketName"}
+    )
 
     @validates_schema
     def no_coexist_s3_access(self, data, **kwargs):
@@ -955,6 +974,17 @@ class QueueIamSchema(IamSchema):
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
         validate=validate.Regexp("^arn:.*:instance-profile/"),
     )
+
+
+class LoginNodesIamSchema(BaseIamSchema):
+    """Represent the IAM schema of LoginNodes."""
+
+    instance_profile = fields.Str(validate=validate.Regexp("^arn:.*:instance-profile/"))
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LoginNodesIam(**data)
 
 
 class ImdsSchema(BaseSchema):
@@ -1095,7 +1125,7 @@ class ImageSchema(BaseSchema):
         required=True, validate=validate.OneOf(SUPPORTED_OSES), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     custom_ami = fields.Str(
-        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
+        validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
 
@@ -1109,7 +1139,7 @@ class HeadNodeImageSchema(BaseSchema):
     """Represent the schema of the HeadNode Image."""
 
     custom_ami = fields.Str(
-        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
+        validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
 
@@ -1123,7 +1153,7 @@ class QueueImageSchema(BaseSchema):
     """Represent the schema of the Queue Image."""
 
     custom_ami = fields.Str(
-        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
+        validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX),
         metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
 
@@ -1241,7 +1271,7 @@ class HeadNodeSchema(BaseSchema):
     networking = fields.Nested(
         HeadNodeNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
-    ssh = fields.Nested(SshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    ssh = fields.Nested(HeadNodeSshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
@@ -1253,6 +1283,71 @@ class HeadNodeSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return HeadNode(**data)
+
+
+class LoginNodesImageSchema(BaseSchema):
+    """Represent the Image schema of LoginNodes."""
+
+    custom_ami = fields.Str(validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX))
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LoginNodesImage(**data)
+
+
+class LoginNodesSshSchema(BaseSshSchema):
+    """Represent the Ssh schema of LoginNodes."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LoginNodesSsh(**data)
+
+
+class LoginNodesNetworkingSchema(BaseNetworkingSchema):
+    """Represent the networking schema of LoginNodes."""
+
+    subnet_id = fields.Str(required=True)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LoginNodesNetworking(**data)
+
+
+class LoginNodesPoolsSchema(BaseSchema):
+    """Represent the schema of the LoginNodePool."""
+
+    name = fields.Str(required=True)
+    instance_type = fields.Str(required=True)
+    image = fields.Nested(LoginNodesImageSchema)
+    networking = fields.Nested(LoginNodesNetworkingSchema, required=True)
+    count = fields.Int(required=True, validate=validate.Range(min=1))
+    ssh = fields.Nested(LoginNodesSshSchema, required=True)
+    iam = fields.Nested(LoginNodesIamSchema)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LoginNodesPools(**data)
+
+
+class LoginNodesSchema(BaseSchema):
+    """Represent the schema of LoginNodes."""
+
+    pools = fields.Nested(
+        LoginNodesPoolsSchema,
+        many=True,
+        required=True,
+        validate=validate.Length(equal=1, error="Only one pool can be specified when using login nodes."),
+        metadata={"update_key": "Name"},
+    )
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LoginNodes(**data)
 
 
 class _ComputeResourceSchema(BaseSchema):
@@ -1321,6 +1416,14 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     custom_slurm_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     tags = fields.Nested(
         QueueTagSchema, many=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY, "update_key": "Key"}
+    )
+    static_node_priority = fields.Int(
+        validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    dynamic_node_priority = fields.Int(
+        validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
     @validates_schema
@@ -2112,6 +2215,7 @@ class DirectoryServiceSchema(BaseSchema):
 class ClusterSchema(BaseSchema):
     """Represent the schema of the Cluster."""
 
+    login_nodes = fields.Nested(LoginNodesSchema, many=False)
     image = fields.Nested(ImageSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     head_node = fields.Nested(HeadNodeSchema, required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     scheduling = fields.Nested(SchedulingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})

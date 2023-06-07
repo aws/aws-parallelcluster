@@ -52,12 +52,24 @@ def cluster_config(cluster_name):
     return config
 
 
+def _get_parameter_if_available(key_attribute_name, key, collection, value_attribute_name):
+    filtered_collection = filter(lambda x: x[key_attribute_name] == key, collection)
+    try:
+        return next(filtered_collection).get(value_attribute_name, None)
+    except StopIteration:
+        return None
+
+
 def _stack_parameter(stack, parameter_key):
-    return next(filter(lambda x: x["ParameterKey"] == parameter_key, stack.parameters)).get("ParameterValue")
+    return _get_parameter_if_available("ParameterKey", parameter_key, stack.parameters, "ParameterValue")
 
 
 def _cluster_tag(cluster, tag_key):
-    return next(filter(lambda t: t["key"] == tag_key, cluster["tags"]))["value"]
+    return _get_parameter_if_available("key", tag_key, cluster["tags"], "value")
+
+
+def _stack_tag(stack, tag_key):
+    return _get_parameter_if_available("Key", tag_key, stack.tags, "Value")
 
 
 def test_cluster_create(region, cluster_custom_resource_factory):
@@ -88,7 +100,7 @@ def test_cluster_create_invalid(region, cluster_custom_resource_factory, paramet
     assert_that(reason).contains(error_message)
 
 
-@pytest.mark.parametrize("external_update", [(False), (True)])
+@pytest.mark.parametrize("external_update", [False, True])
 # pylint: disable=too-many-locals
 def test_cluster_update(region, cluster_custom_resource_factory, external_update):
     """Perform crud validation on cluster."""
@@ -168,6 +180,68 @@ def test_cluster_update_invalid(region, cluster_custom_resource_factory, update_
     assert_that(old_cluster_status["lastUpdatedTime"]).is_equal_to(cluster_status["lastUpdatedTime"])
 
 
+@pytest.mark.parametrize("config_parameter_change", [False, True])
+def test_cluster_update_tag_propagation(region, cluster_custom_resource_factory, config_parameter_change):
+    """Perform crud validation on cluster."""
+    stack = cluster_custom_resource_factory()
+    cluster_name = _stack_parameter(stack, "ClusterName")
+    stack_params = stack.parameters
+    parameters = {x["ParameterKey"]: x["ParameterValue"] for x in stack.parameters}
+
+    stack_tags = [
+        {"Key": "cluster_name", "Value": "new_cluster_name"},
+        {"Key": "inside_configuration_key", "Value": "stack_level_value"},
+        {"Key": "new_key", "Value": "new_value"},
+    ]
+
+    if config_parameter_change:
+        old_config = cluster_config(cluster_name)
+        old_max = int(old_config["Scheduling"]["SlurmQueues"][0]["ComputeResources"][0]["MaxCount"])
+        update_parameters = {"ComputeInstanceMax": str(int(old_max) + 1)}
+        parameters = parameters | update_parameters
+
+        stack_params = [{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()]
+
+        # Update the stack
+        with pytest.raises(StackError) as stack_error:
+            stack.factory.update_stack(
+                stack.name,
+                stack.region,
+                stack_params,
+                stack_is_under_test=True,
+                tags=stack_tags,
+                wait_for_rollback=True,
+            )
+        reason = failure_reason(stack_error.value.stack_events)
+        assert_that(reason).contains(
+            "If you need this change, please consider creating a new cluster instead of updating the existing one"
+        )
+        # Root stack tags here do not update because the stack gets rolled back after cluster update failure
+        assert_that(_stack_tag(stack, "cluster_name")).is_equal_to(cluster_name)
+        assert_that(_stack_tag(stack, "inside_configuration_key")).is_equal_to("stack_level_value")
+        assert_that(_stack_tag(stack, "new_key")).is_none()
+    else:
+        stack.factory.update_stack(stack.name, stack.region, stack_params, stack_is_under_test=True, tags=stack_tags)
+        # Root stack tags here do update because the cluster update is not triggered,
+        # so it does not fail, and the update is not rolled back
+        assert_that(_stack_tag(stack, "cluster_name")).is_equal_to("new_cluster_name")
+        assert_that(_stack_tag(stack, "inside_configuration_key")).is_equal_to("stack_level_value")
+        assert_that(_stack_tag(stack, "new_key")).is_equal_to("new_value")
+
+    assert_that(stack.cfn_outputs["HeadNodeIp"]).is_not_none()
+
+    cluster = pc().describe_cluster(cluster_name=cluster_name)
+
+    # Cluster Tags are never supposed to change, because
+    # 1. If the config is changed update validation will fail as tags update is unsupported in ParallelCluster
+    # 2. If the config is unchanged no update on the cluster stack is triggered
+    # So the state of the cluster is never supposed to change when tags are updated
+    assert_that(_cluster_tag(cluster, "cluster_name")).is_equal_to(cluster_name)
+    assert_that(_cluster_tag(cluster, "inside_configuration_key")).is_equal_to("overridden")
+    assert_that(_cluster_tag(cluster, "new_key")).is_none()
+    assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
+
+
 def test_cluster_delete_out_of_band(
     request, region, cfn, cluster_custom_resource_provider, cluster_custom_resource_factory
 ):
@@ -222,7 +296,7 @@ def test_cluster_create_with_custom_policies(
     custom_resource_gen = cluster_custom_resource_provider_generator(
         cfn_stacks_factory,
         region,
-        generate_stack_name("custom-resource-provider", request.config.getoption("stackname_suffix")),
+        generate_stack_name("integ-test-custom-resource-provider", request.config.getoption("stackname_suffix")),
         parameters,
         cluster_custom_resource_provider_template,
     )

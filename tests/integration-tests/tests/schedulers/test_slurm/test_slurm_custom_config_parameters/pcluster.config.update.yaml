@@ -27,7 +27,6 @@ Scheduling:
           CustomSlurmSettings:
             Port: 20000
             RealMemory: 4000
-            Weight: 75
           Instances:
             - InstanceType: t2.large
           MinCount: 0
@@ -35,7 +34,6 @@ Scheduling:
           CustomSlurmSettings:
             Port: 25000
             RealMemory: 4100
-            Weight: 250
           Instances:
             - InstanceType: t2.large
           MinCount: 0

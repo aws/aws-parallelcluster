@@ -12,11 +12,13 @@ import re
 
 import pytest
 from assertpy import assert_that
+from marshmallow.validate import ValidationError
 
 from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
     AwsBatchQueueNetworkingSchema,
     AwsBatchQueueSchema,
+    BaseIamSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
@@ -27,8 +29,12 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeEphemeralVolumeSchema,
     HeadNodeNetworkingSchema,
     HeadNodeRootVolumeSchema,
-    IamSchema,
+    HeadNodeSshSchema,
     ImageSchema,
+    LoginNodesIamSchema,
+    LoginNodesImageSchema,
+    LoginNodesPoolsSchema,
+    LoginNodesSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
@@ -38,7 +44,6 @@ from pcluster.schemas.cluster_schema import (
     SlurmComputeResourceSchema,
     SlurmQueueNetworkingSchema,
     SlurmQueueSchema,
-    SshSchema,
 )
 
 
@@ -245,7 +250,7 @@ def test_dcv_validator(section_dict, expected_message):
 def test_cidr_validator(section_dict, expected_message):
     """Verify that cidr behaves as expected when parsed in a config file."""
     _validate_and_assert_error(DcvSchema(), section_dict, expected_message)
-    _validate_and_assert_error(SshSchema(), section_dict, expected_message)
+    _validate_and_assert_error(HeadNodeSshSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -647,7 +652,7 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
 )
 def test_instance_role_validator(instance_role, expected_message):
     """Verify that instance role behaves as expected when parsed in a config file."""
-    _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)
+    _validate_and_assert_error(BaseIamSchema(), {"InstanceRole": instance_role}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -659,3 +664,129 @@ def test_instance_role_validator(instance_role, expected_message):
 )
 def test_password_secret_arn_validator(password_secret_arn, expected_message):
     _validate_and_assert_error(DirectoryServiceSchema(), {"PasswordSecretArn": password_secret_arn}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "custom_ami, expected_message",
+    [
+        ("ami-12345678", None),
+        ("ami-00000000000000017", None),
+        ("", "does not match expected pattern"),
+        ("random", "does not match expected pattern"),
+        ("ami-aaaaaaaa", None),
+        ("ami-AAAAAAAA", "does not match expected pattern"),
+        ("NONE", "does not match expected pattern"),
+        ("ami-xx", "does not match expected pattern"),
+    ],
+)
+def test_login_node_custom_ami_validator(custom_ami, expected_message):
+    _validate_and_assert_error(LoginNodesImageSchema(), {"CustomAmi": custom_ami}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "count, expected_message",
+    [
+        (1, None),
+        (10, None),
+        (0, "Must be greater than or equal to 1."),
+        (-5, "Must be greater than or equal to 1."),
+    ],
+)
+def test_login_node_pool_count_validator(count, expected_message):
+    _validate_and_assert_error(
+        LoginNodesPoolsSchema(),
+        {
+            "Name": "validname",
+            "InstanceType": "t2.micro",
+            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+            "Count": count,
+            "Ssh": {"KeyName": "valid_key_name"},
+        },
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "pools, expected_message",
+    [
+        ([], "Only one pool can be specified when using login nodes."),
+        (
+            [
+                {
+                    "Name": "validname1",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name1"},
+                },
+                {
+                    "Name": "validname2",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name2"},
+                },
+            ],
+            "Only one pool can be specified when using login nodes.",
+        ),
+        (
+            [
+                {
+                    "Name": "validname",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name"},
+                }
+            ],
+            None,
+        ),
+    ],
+)
+def test_pools_validator(pools, expected_message):
+    _validate_and_assert_error(
+        LoginNodesSchema(),
+        {
+            "Pools": pools,
+        },
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "instance_role, instance_profile, expected_message",
+    [
+        (
+            "arn:aws:iam::aws:role/LoginNodeRole",
+            "arn:aws:iam::aws:instance-profile/LoginNodeInstanceProfile",
+            "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.",
+        ),
+        (
+            "arn:aws:iam::aws:role/LoginNodeRole",
+            None,
+            None,
+        ),
+        (
+            None,
+            "arn:aws:iam::aws:instance-profile/LoginNodeInstanceProfile",
+            None,
+        ),
+    ],
+)
+def test_iam_validator(instance_role, instance_profile, expected_message):
+    iam_dict = dict()
+    if instance_role:
+        iam_dict["InstanceRole"] = instance_role
+    if instance_profile:
+        iam_dict["InstanceProfile"] = instance_profile
+
+    if expected_message:
+        with pytest.raises(
+            ValidationError,
+            match=expected_message,
+        ):
+            LoginNodesIamSchema().load(iam_dict)
+    else:
+        iam = LoginNodesIamSchema().load(iam_dict)
+        assert_that(iam.instance_role).is_equal_to(instance_role)
+        assert_that(iam.instance_profile).is_equal_to(instance_profile)

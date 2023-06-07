@@ -13,6 +13,7 @@ from typing import Callable, Dict
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config import cluster_config
+from pcluster.constants import MIN_MEMORY_ABSOLUTE_DIFFERENCE, MIN_MEMORY_PRECENTAGE_DIFFERENCE
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -233,8 +234,13 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
             )
 
 
-class InstancesMemorySchedulingValidator(Validator, _FlexibleInstanceTypesValidatorMixin):
-    """Validate support for Memory-based Scheduling when using Flexible Instance Types."""
+class InstancesMemorySchedulingWarningValidator(Validator):
+    """
+    Memory-based Scheduling Warning Validator.
+
+    This validator checks if Memory-based Scheduling is enabled when also using Flexible Instance Types.
+    In this case warns the customer about possible unused resources due to the differences in the instance types.
+    """
 
     def _validate(
         self,
@@ -243,11 +249,28 @@ class InstancesMemorySchedulingValidator(Validator, _FlexibleInstanceTypesValida
         memory_scheduling_enabled: bool,
         **kwargs,
     ):
-        """Memory-based scheduling is NOT supported for Compute Resources with multiple instance types."""
-        if memory_scheduling_enabled and len(instance_types_info.items()) > 1:
+        if (
+            memory_scheduling_enabled
+            and len(instance_types_info.items()) > 1
+            and self.memory_difference_exceeds_thresholds(instance_types_info)
+        ):
             self._add_failure(
-                "Memory-based scheduling is only supported for Compute Resources using either 'InstanceType' or "
-                f"'Instances' with one instance type. Compute Resource {compute_resource_name} has more than "
-                "one instance type specified.",
-                FailureLevel.ERROR,
+                f'Enabling Memory-based scheduling when a Compute Resource ("{compute_resource_name}") has more than'
+                " one instance type specified may lead to unused resources since only the minimum available memory"
+                " across all instance-types can be specified in the Slurm node definition.",
+                FailureLevel.WARNING,
             )
+
+    def memory_difference_exceeds_thresholds(self, instance_types_info: Dict[str, InstanceTypeInfo]):
+        """Return True only if both thresholds are exceeded."""
+        min_memory, max_memory = self._min_max_memory(instance_types_info)
+        absolute_diff = max_memory - min_memory
+        percent_diff = absolute_diff / min_memory
+
+        return absolute_diff > MIN_MEMORY_ABSOLUTE_DIFFERENCE and percent_diff > MIN_MEMORY_PRECENTAGE_DIFFERENCE
+
+    def _min_max_memory(self, instance_types_info: Dict[str, InstanceTypeInfo]):
+        available_memory = [item.ec2memory_size_in_mib() for _, item in instance_types_info.items()]
+        # EC2 API should return valid values, but since it's really cheap better add a check
+        available_memory = [value for value in available_memory if value is not None]
+        return min(available_memory), max(available_memory)

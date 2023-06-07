@@ -19,12 +19,13 @@ PCLUSTER_NAME_MAX_LENGTH = 60
 PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING = 40
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
+PCLUSTER_AMI_ID_REGEX = r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"
 
 CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "rhel8"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "ubuntu2204", "rhel8"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "plugin": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -40,6 +41,7 @@ OS_MAPPING = {
     "alinux2": {"user": "ec2-user", "root-device": "/dev/xvda"},
     "ubuntu1804": {"user": "ubuntu", "root-device": "/dev/sda1"},
     "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
+    "ubuntu2204": {"user": "ubuntu", "root-device": "/dev/sda1"},
     "rhel8": {"user": "ec2-user", "root-device": "/dev/sda1"},
 }
 
@@ -48,6 +50,7 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "centos7": "centos7-hvm",
     "ubuntu1804": "ubuntu-1804-lts-hvm",
     "ubuntu2004": "ubuntu-2004-lts-hvm",
+    "ubuntu2204": "ubuntu-2204-lts-hvm",
     "rhel8": "rhel8-hvm",
 }
 
@@ -105,6 +108,12 @@ SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES = 10
 SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 # Allow for flexibility in how compute resources are distributed in the cluster
 MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER = MAX_COMPUTE_RESOURCES_PER_QUEUE = 50
+MIN_SLURM_NODE_PRIORITY = 1
+MAX_SLURM_NODE_PRIORITY = 2**32 - 1  # max value of uint32_t
+
+# Thresholds used to trigger a warning if Memory Based Scheduling and Flexible Instance Types are used together
+MIN_MEMORY_ABSOLUTE_DIFFERENCE = 4096
+MIN_MEMORY_PRECENTAGE_DIFFERENCE = 0.20
 
 MAX_EBS_COUNT = 5
 MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}

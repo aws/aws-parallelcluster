@@ -158,12 +158,13 @@ def policies_template_with_custom_actions_bucket_access_fixture(policies_templat
 
 
 @pytest.fixture(scope="class", name="policies_uri")
-def policies_uri_fixture(policies_template_with_custom_actions_bucket_access, resource_bucket, region):
-    bucket = boto3.resource("s3", region_name=region).Bucket(resource_bucket)
+def policies_uri_fixture(policies_template_with_custom_actions_bucket_access, s3_bucket_factory, region):
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     path = f"parallelcluster/{get_installed_parallelcluster_version()}/templates/policies/custom-policies.yaml"
     bucket.put_object(Key=path, Body=policies_template_with_custom_actions_bucket_access)
 
-    yield (f"https://{resource_bucket}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}/{path}")
+    yield (f"https://{bucket_name}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn') else ''}/{path}")
 
 
 @pytest.mark.usefixtures("os", "instance")

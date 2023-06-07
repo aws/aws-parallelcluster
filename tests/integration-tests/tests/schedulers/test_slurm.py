@@ -437,12 +437,10 @@ def test_slurm_custom_config_parameters(
     assert "500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
 
     # ComputeResource 1
-    assert "50" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
     assert "10000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
     assert "2000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
 
     # ComputeResource 2
-    assert "150" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
     assert "10010" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
     assert "2500" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
@@ -478,12 +476,10 @@ def test_slurm_custom_config_parameters(
     assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
 
     # ComputeResource 1
-    assert "75" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Weight")
     assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
     assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
 
     # ComputeResource 2
-    assert "250" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Weight")
     assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
     assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
@@ -523,34 +519,14 @@ def test_slurm_memory_based_scheduling(
         test_datadir,
     )
 
-    # Check that jobs submitted prior to an update of SchedulableMemory via queue parameter update
-    # strategy can still access the memory requested at submission time
-    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={
-            "nodes": 1,
-            "slots": 1,
-            "command": "srun ./a.out 3000000000 300",
-            "other_options": "-w queue1-st-ondemand1-i1-1",
-            "raise_on_error": False,
-        }
-    )
-    slurm_commands.wait_job_running(job_id_1)
-    node = slurm_commands.get_job_info(job_id_1, field="NodeList")
+    _test_memory_based_scheduling_with_multiple_instance_types(slurm_commands)
 
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update-schedulable-memory.yaml")
-    cluster.update(
-        config_file=updated_config_file,
-        wait=True,
-    )
-
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
+    _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
         remote_command_executor,
-        ["/var/log/slurmctld.log"],
-        [f"node {node} memory is overallocated"],
+        slurm_commands,
+        pcluster_config_reader,
+        cluster,
     )
-    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
-    slurm_commands.wait_job_completed(job_id_1)
-    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("COMPLETED")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -2241,6 +2217,82 @@ def _test_memory_based_scheduling_enabled_true(
     assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("FAILED")
     slurm_commands.wait_job_completed(job_id_2)
     assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("COMPLETED")
+
+
+def _test_memory_based_scheduling_with_multiple_instance_types(
+    slurm_commands,
+):
+    """Test Slurm memory-based scheduling with multimple instance types configured on a compute resource"""
+
+    jiff = 2
+    # Here two jobs that require 2G of memory are submitted in an instance with 8000 MiB memory
+
+    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "nodes": 1,
+            "slots": 1,
+            "command": "sleep 30",
+            "other_options": "--mem=2000 -w queue1-st-ondemand1-i2-1",
+            "raise_on_error": False,
+        }
+    )
+    time.sleep(jiff)
+    job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "nodes": 1,
+            "slots": 2,
+            "command": "sleep 10",
+            "other_options": "-c 1 --mem-per-cpu=1000 -w queue1-st-ondemand1-i2-1",
+            "raise_on_error": False,
+        }
+    )
+    time.sleep(jiff)
+    # Both should be running
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
+    assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("RUNNING")
+    # Check that memory appears in the TRES allocated for the job
+    assert_that(slurm_commands.get_job_info(job_id_1, field="ReqTRES")).contains("mem=2000M")
+    assert_that(slurm_commands.get_job_info(job_id_2, field="ReqTRES")).contains("mem=2000M")
+    slurm_commands.wait_job_completed(job_id_1)
+    slurm_commands.wait_job_completed(job_id_2)
+    # And they should have succeeded
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("COMPLETED")
+    assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("COMPLETED")
+
+
+def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
+    remote_command_executor,
+    slurm_commands,
+    pcluster_config_reader,
+    cluster,
+):
+    """Checks that running jobs can complete if the SchedulableMemory is reduced"""
+    job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "nodes": 1,
+            "slots": 1,
+            "command": "srun ./a.out 3000000000 300",
+            "other_options": "-w queue1-st-ondemand1-i1-1",
+            "raise_on_error": False,
+        }
+    )
+    slurm_commands.wait_job_running(job_id_1)
+    node = slurm_commands.get_job_info(job_id_1, field="NodeList")
+
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update-schedulable-memory.yaml")
+    cluster.update(
+        config_file=updated_config_file,
+        wait=True,
+    )
+
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/slurmctld.log"],
+        [f"node {node} memory is overallocated"],
+    )
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
+    slurm_commands.wait_job_completed(job_id_1)
+    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("COMPLETED")
 
 
 def _test_scontrol_reboot_nodes(

@@ -311,6 +311,6 @@ Outputs:
   LogGroupArn:
     Description: ARN of LogGroup for Lambda logging
     Value: !GetAtt PclusterCfnFunctionLogGroup.Arn
-  LambaLayerArn:
+  LambdaLayerArn:
     Description: ARN for the ParallelCluster Lambda Layer
     Value: !Ref PclusterLayer

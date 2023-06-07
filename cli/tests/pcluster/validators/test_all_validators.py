@@ -209,6 +209,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
 
     networking_validators = validators_path + ".networking_validators"
+
     security_groups_validator = mocker.patch(
         networking_validators + ".SecurityGroupsValidator._validate", return_value=[]
     )
