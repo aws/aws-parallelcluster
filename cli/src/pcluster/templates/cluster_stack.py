@@ -480,7 +480,7 @@ class ClusterCdkStack:
             group_set=head_eni_group_set,
         )
 
-        elastic_ip = self.config.head_node.networking.elastic_ip
+        elastic_ip = self.config.head_node.networking.headnode_elastic_ip
         if elastic_ip:
             # Create and associate EIP to Head Node
             if elastic_ip is True:

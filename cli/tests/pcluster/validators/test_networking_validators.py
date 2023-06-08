@@ -13,7 +13,9 @@ from collections import defaultdict
 
 import pytest
 
+from pcluster.aws.common import AWSClientError
 from pcluster.validators.networking_validators import (
+    ElasticIpValidator,
     LambdaFunctionsVpcConfigValidator,
     MultiAzPlacementGroupValidator,
     QueueSubnetsValidator,
@@ -261,3 +263,27 @@ def test_lambda_functions_vpc_config_validator(
 
     actual_response = LambdaFunctionsVpcConfigValidator().execute(security_group_ids, subnet_ids)
     assert_failure_messages(actual_response, expected_response)
+
+
+@pytest.mark.parametrize(
+    "elastic_ip, expected_failure,",
+    [
+        ("true", None),
+        ("false", None),
+        (True, None),
+        (False, None),
+        ("True", None),
+        ("False", None),
+        (None, None),
+        ("fake.ip.247.0", "Not a valid IPv4 address."),
+        ("34.209.247.4", None),
+    ],
+)
+def test_elastic_ip_validator(elastic_ip, expected_failure, mocker):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_eip_allocation_id",
+        side_effect=AWSClientError("get_elastic_ip", "Not a valid IPv4 address.") if expected_failure else None,
+    )
+    actual_response = ElasticIpValidator().execute(elastic_ip)
+    assert_failure_messages(actual_response, expected_failure)

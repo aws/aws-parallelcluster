@@ -115,6 +115,8 @@ class ElasticIpValidator(Validator):
 
     def _validate(self, elastic_ip: Union[str, bool]):
         if isinstance(elastic_ip, str):
+            if elastic_ip.lower() in ["true", "false"]:
+                return
             try:
                 AWSApi.instance().ec2.get_eip_allocation_id(elastic_ip)
             except AWSClientError as e:
