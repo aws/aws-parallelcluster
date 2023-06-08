@@ -35,7 +35,6 @@ from tests.common.storage.constants import StorageType
 from tests.common.utils import get_default_vpc_security_group
 from tests.storage.storage_common import (
     assert_fsx_lustre_correctly_mounted,
-    get_efs_ids,
     get_fsx_ids,
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
@@ -106,8 +105,7 @@ def _test_shared_storage_in_private_subnet(
 ):
     """Test FSx can be mounted in private subnet."""
     if storage_type == StorageType.STORAGE_EFS:
-        fs_id = get_efs_ids(cluster, region)[0]
-        test_efs_correctly_mounted(remote_command_executor, mount_dir, region, fs_id)
+        test_efs_correctly_mounted(remote_command_executor, mount_dir)
     elif storage_type == StorageType.STORAGE_FSX:
         fs_id = get_fsx_ids(cluster, region)[0]
         assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, region, fs_id)
