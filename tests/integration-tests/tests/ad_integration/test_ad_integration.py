@@ -30,7 +30,13 @@ from paramiko import RSAKey
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import generate_stack_name, is_fsx_supported, random_alphanumeric, render_jinja_template
+from utils import (
+    generate_stack_name,
+    is_directory_supported,
+    is_fsx_supported,
+    random_alphanumeric,
+    render_jinja_template,
+)
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu
@@ -692,6 +698,9 @@ def test_ad_integration(
 
     Optionally, it executes performance tests using OSU benchmarks.
     """
+    if not is_directory_supported(region, directory_type):
+        pytest.skip(f"Skipping the test because directory type {directory_type} is not supported in region {region}")
+
     head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
     compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
     fsx_supported = is_fsx_supported(region)
