@@ -1,0 +1,22 @@
+Imds:
+  ImdsSupport: v2.0
+Tags:
+  - Key: inside_configuration_key
+    Value: overridden
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+  - Name: queue0
+    ComputeResources:
+    - Name: queue0-cr0
+      InstanceType: {{ instance }}
+      MaxCount: 10
+    Networking:
+      SubnetIds:
+      - {{ private_subnet_id }}

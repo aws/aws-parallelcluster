@@ -17,6 +17,7 @@ import boto3
 import cfn_tools
 import pkg_resources
 import pytest
+import yaml
 from cfn_stacks_factory import CfnStack
 from troposphere import Output, Ref
 from troposphere.iam import ManagedPolicy
@@ -74,10 +75,10 @@ def cluster_custom_resource_provider_generator(cfn_stacks_factory, region, stack
 
 @pytest.fixture(scope="class", name="cluster_custom_resource_provider")
 def cluster_custom_resource_provider_fixture(
-    cfn_stacks_factory,
     request,
     region,
     resource_bucket,
+    cfn_stacks_factory,
     cluster_custom_resource_service_token,
     cluster_custom_resource_provider_template,
 ):
@@ -115,35 +116,43 @@ def cluster_1_click_fixture(cfn_stacks_factory, request, region, key_name, clust
     return stack
 
 
+def get_custom_resource_template(cluster_config_path, cluster_custom_resource_template, deletion_policy="Delete"):
+    with open(cluster_custom_resource_template, "r", encoding="utf-8") as f:
+        template = TemplateGenerator(cfn_tools.load_yaml(f.read()))
+    with open(cluster_config_path, encoding="utf-8") as cluster_config:
+        template.resources["PclusterCluster"].properties["ClusterConfiguration"] = yaml.safe_load(cluster_config.read())
+    template.resources["PclusterCluster"].properties["DeletionPolicy"] = deletion_policy
+    return template
+
+
 @pytest.fixture(scope="class", name="cluster_custom_resource_factory")
 def cluster_custom_resource_factory_fixture(
-    cfn_stacks_factory,
     request,
     region,
-    os,
-    cluster_custom_resource_template,
     cluster_custom_resource_provider,
     vpc_stack,
+    cfn_stacks_factory,
+    cluster_custom_resource_template,
 ):
-    def _produce_cluster_custom_resource_stack(parameters=None):
-        cluster_name = generate_stack_name("integ-test-custom-resource-c", request.config.getoption("stackname_suffix"))
+    created_stacks = []
 
-        parameters = {
-            "ClusterName": cluster_name,
-            "HeadNodeSubnet": vpc_stack.get_public_subnet(),
-            "ComputeNodeSubnet": vpc_stack.get_private_subnet(),
-            "ServiceToken": cluster_custom_resource_provider,
-            "Os": os,
-            **(parameters or {}),
-        }
+    def _produce_cluster_custom_resource_stack(
+        cluster_config_path, cluster_name=None, deletion_policy="Delete", service_token=None
+    ):
+        cluster_name = cluster_name or generate_stack_name(
+            "integ-test-custom-resource-c", request.config.getoption("stackname_suffix")
+        )
 
-        with open(cluster_custom_resource_template, encoding="utf-8") as cfn_file:
-            template_data = cfn_file.read()
+        parameters = {"ClusterName": cluster_name, "ServiceToken": service_token or cluster_custom_resource_provider}
+
+        template = get_custom_resource_template(
+            cluster_config_path, cluster_custom_resource_template, deletion_policy=deletion_policy
+        )
 
         stack = CfnStack(
             name=generate_stack_name("integ-tests-custom-resource", request.config.getoption("stackname_suffix")),
             region=region,
-            template=template_data,
+            template=template.to_yaml(),
             parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
             tags=[
@@ -154,9 +163,13 @@ def cluster_custom_resource_factory_fixture(
 
         cfn_stacks_factory.create_stack(stack, True)
         stack.factory = cfn_stacks_factory
+        created_stacks.append(stack)
         return stack
 
     yield _produce_cluster_custom_resource_stack
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            stack.factory.delete_stack(stack.name, region)
 
 
 @pytest.fixture(scope="class", name="resource_bucket_cluster_template")

@@ -236,7 +236,16 @@ class CfnStacksFactory:
         wait_fixed=5000,
         retry_on_exception=lambda exception: isinstance(exception, ClientError),
     )
-    def update_stack(self, name, region, parameters, stack_is_under_test=False, tags=None, wait_for_rollback=False):
+    def update_stack(
+        self,
+        name,
+        region,
+        parameters,
+        stack_is_under_test=False,
+        tags=None,
+        template_body=None,
+        wait_for_rollback=False,
+    ):
         """Update a created cfn stack."""
         with aws_credential_provider(region, self.__credentials):
             internal_id = self.__get_stack_internal_id(name, region)
@@ -245,12 +254,11 @@ class CfnStacksFactory:
                 try:
                     stack = self.__created_stacks[internal_id]
                     cfn_client = boto3.client("cloudformation", region_name=stack.region)
+                    template_args = {"TemplateBody": template_body} if template_body else {"UsePreviousTemplate": True}
                     if tags is not None:
-                        cfn_client.update_stack(
-                            StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters, Tags=tags
-                        )
+                        cfn_client.update_stack(StackName=stack.name, Parameters=parameters, Tags=tags, **template_args)
                     else:
-                        cfn_client.update_stack(StackName=stack.name, UsePreviousTemplate=True, Parameters=parameters)
+                        cfn_client.update_stack(StackName=stack.name, Parameters=parameters, **template_args)
 
                     if wait_for_rollback:
                         final_status = self.__wait_for_stack_update_rollback(stack.cfn_stack_id, cfn_client)
@@ -322,11 +330,11 @@ class CfnStacksFactory:
         return self.__get_stack_status(name, cfn_client)
 
     @retry(
-        stop_max_attempt_number=15,
+        stop_max_attempt_number=30,
         retry_on_result=lambda result: result == "UPDATE_ROLLBACK_IN_PROGRESS"
         or result == "UPDATE_IN_PROGRESS"
         or result == "UPDATE_FAILED",
-        wait_fixed=5000,
+        wait_fixed=10000,
         retry_on_exception=lambda exception: isinstance(exception, ClientError) and "Rate exceeded" in str(exception),
     )
     def __wait_for_stack_update_rollback(self, name, cfn_client):
