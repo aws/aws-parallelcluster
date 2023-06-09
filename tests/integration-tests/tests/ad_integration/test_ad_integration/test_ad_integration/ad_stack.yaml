@@ -249,27 +249,6 @@ Resources:
     DependsOn:
       - Directory
       - JoinProfile
-  UserAddingDocument:
-    Type: AWS::SSM::Document
-    Properties:
-      Content:
-        schemaVersion: "2.2"
-        description: Add user to AD domain
-        parameters:
-          DirectoryId:
-            type: String
-            description: ID of the direc
-          NumUsersToCreate:
-            type: String
-            description: Number of users to be created
-        mainSteps:
-          - action: aws:runShellScript
-            name: addAdUser
-            inputs:
-              runCommand:
-                - "bash /usr/local/bin/add_a_number_of_users.sh {% raw %}{{ DirectoryId }} {{ NumUsersToCreate }}{% endraw %} "
-      DocumentType: Command
-      TargetType: /AWS::EC2::Instance
 Outputs:
   VpcId:
     Value:
