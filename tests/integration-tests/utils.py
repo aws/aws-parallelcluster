@@ -802,3 +802,7 @@ def is_dcv_supported(region: str):
 
 def is_fsx_supported(region: str):
     return "us-iso" not in region
+
+
+def is_directory_supported(region: str, directory_type: str):
+    return False if "us-iso" in region and directory_type == "SimpleAD" else True
