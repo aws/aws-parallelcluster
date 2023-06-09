@@ -17,6 +17,11 @@ Scheduling:
         - Name: ice-compute-resource
           InstanceType: c5.large
           MinCount: 1
+        - Name: ice-cr-multiple
+          Instances:
+            - InstanceType: t2.large
+            - InstanceType: t3.large
+          MinCount: 1
         - Name: ondemand1-i1
           InstanceType: {{ instance }}
 SharedStorage:
