@@ -253,15 +253,14 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
 def _populate_directory_with_users(directory_stack, num_users_to_create, region):
     logging.info("Creating %s users in directory service", str(num_users_to_create))
     ssm_client = boto3.client("ssm", region_name=region)
-    document_name = directory_stack.cfn_resources["UserAddingDocument"]
     admin_node_instance_id = directory_stack.cfn_resources["AdDomainAdminNode"]
     directory_id = directory_stack.cfn_resources["Directory"]
     command_id = ssm_client.send_command(
-        DocumentName=document_name,
+        DocumentName="AWS-RunShellScript",
         InstanceIds=[directory_stack.cfn_resources["AdDomainAdminNode"]],
         MaxErrors="0",
         TimeoutSeconds=num_users_to_create * 4 + 300,
-        Parameters={"DirectoryId": [directory_id], "NumUsersToCreate": [str(num_users_to_create)]},
+        Parameters={"commands": [f"bash /usr/local/bin/add_a_number_of_users.sh {directory_id} {num_users_to_create}"]},
     )["Command"]["CommandId"]
     _check_ssm_success(ssm_client, command_id, admin_node_instance_id)
     logging.info("Creation of %s users in directory service completed", str(num_users_to_create))
