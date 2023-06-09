@@ -271,6 +271,7 @@ class SlurmCommands(SchedulerCommands):
         after_ok=None,
         partition=None,
         constraint=None,
+        prefer=None,
         other_options=None,
         raise_on_error=True,
     ):
@@ -285,6 +286,7 @@ class SlurmCommands(SchedulerCommands):
             after_ok,
             partition,
             constraint,
+            prefer,
             other_options,
             raise_on_error=raise_on_error,
         )
@@ -334,6 +336,7 @@ class SlurmCommands(SchedulerCommands):
         after_ok=None,
         partition=None,
         constraint=None,
+        prefer=None,
         other_options=None,
         additional_files=None,
         raise_on_error=True,
@@ -351,6 +354,8 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -p {0}".format(partition)
         if constraint:
             submission_command += " -C '{0}'".format(constraint)
+        if prefer:
+            submission_command += " --prefer='{0}'".format(prefer)
         if other_options:
             submission_command += " {0}".format(other_options)
         submission_command += " {0}".format(job_submit_command)
