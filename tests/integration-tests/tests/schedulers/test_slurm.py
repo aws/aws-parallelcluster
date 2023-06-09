@@ -345,34 +345,68 @@ def test_fast_capacity_failover(
     remote_command_executor = RemoteCommandExecutor(cluster)
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    # after the cluster is launched, apply the override patch to launch ice nodes
+
+    # after the cluster is launched, apply the override patch to launch ice for nodes in
+    # "ice-compute-resource" and "ice-cr-multiple" compute resources
     remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
+
+    # All nodes
     nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1", all_nodes=True)
     static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
-    ice_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
-    static_nodes_in_ice_compute_resource = [node for node in static_nodes if "ice-compute-resource" in node]
-    # test enable fast instance capacity failover
+
+    # Nodes in Single Instance Type CR
+    ice_single_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
+    ice_single_static_nodes = [node for node in static_nodes if "ice-compute-resource" in node]
+
+    # Nodes in Multiple Instance Type CR
+    ice_multi_dynamic_nodes = [node for node in dynamic_nodes if "ice-cr-multiple" in node]
+    ice_multi_static_nodes = [node for node in static_nodes if "ice-cr-multiple" in node]
+
+    # Checks Fast Failover in case of Single Instance Type - using RunInstances API
     _test_enable_fast_capacity_failover(
         scheduler_commands,
         remote_command_executor,
         clustermgtd_conf_path,
-        static_nodes_in_ice_compute_resource,
-        ice_dynamic_nodes,
+        ice_single_static_nodes,
+        ice_single_dynamic_nodes,
+        target_compute_resource="ice-compute-resource",
     )
+
+    # Check observability logic
     structured_log_event_utils.assert_that_event_exists(
         cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
     )
     test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
-    # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
-    # test disable ice logic
+
+    # test behavior when Fast Failover is disabled
     _test_disable_fast_capacity_failover(
         scheduler_commands,
         remote_command_executor,
         clustermgtd_conf_path,
-        static_nodes_in_ice_compute_resource,
-        ice_dynamic_nodes,
+        ice_single_static_nodes,
+        ice_single_dynamic_nodes,
+        target_compute_resource="ice-compute-resource",
+    )
+
+    # Checks Fast Failover in case of Multiple Instance Types - using CreateFleet API
+    # test enable fast instance capacity failover for "ice-cr-multiple" cr
+    _test_enable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        ice_multi_static_nodes,
+        ice_multi_dynamic_nodes,
+        target_compute_resource="ice-cr-multiple",
+    )
+
+    # test disable ffo logic
+    _test_disable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        ice_multi_static_nodes,
+        ice_multi_dynamic_nodes,
+        target_compute_resource="ice-cr-multiple",
     )
 
 
@@ -1877,17 +1911,23 @@ def _test_disable_fast_capacity_failover(
     clustermgtd_conf_path,
     static_nodes_in_ice_compute_resource,
     ice_dynamic_nodes,
+    target_compute_resource,
 ):
     """Test fast capacity failover has no effect on cluster when it is disabled."""
-    # set insufficient_capacity_timeout to 0 to disable fast instance capacity failover logic
+    # disable Fast Failover by setting insufficient_capacity_timeout to 0
     _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
+
+    # clear slurm_resume and clustermgtd logs in order to start from a clean state
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+
     # submit a job to trigger insufficient capacity
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "sleep 30",
             "nodes": 2,
             "other_options": "--no-requeue",
-            "constraint": "c5.large",
+            "constraint": target_compute_resource,
         }
     )
     # wait till the node failed to launch
@@ -1938,12 +1978,18 @@ def _test_enable_fast_capacity_failover(
     clustermgtd_conf_path,
     static_nodes_in_ice_compute_resource,
     ice_dynamic_nodes,
+    target_compute_resource,
 ):
     # set insufficient_capacity_timeout to 180 seconds to quicker reset compute resources
     _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
-    # trigger insufficient capacity
+
+    # clear slurm_resume and clustermgtd logs in order to start from a clean state
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
+    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+
+    # trigger insufficient capacity: we are using `prefer` to allow requeuing the job on a different CR
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 30", "nodes": 2}
+        submit_command_args={"command": "sleep 30", "nodes": 2, "prefer": target_compute_resource}
     )
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
         remote_command_executor,
