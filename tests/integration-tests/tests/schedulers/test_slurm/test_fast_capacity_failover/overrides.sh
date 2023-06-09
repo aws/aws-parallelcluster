@@ -32,4 +32,24 @@ def run_instances(region, boto3_config, **run_instances_kwargs):
     else:
         ec2_client = boto3.client("ec2", region_name=region, config=boto3_config)
         return ec2_client.run_instances(**run_instances_kwargs)
+
+
+def create_fleet(region, boto3_config, **create_fleet_kwargs):
+    lt_spec = create_fleet_kwargs.get("LaunchTemplateConfigs", [])[0].get("LaunchTemplateSpecification")
+    if "ice-cr-multiple" in lt_spec.get("LaunchTemplateName"):
+        response = {
+            "Instances": [],
+            "Errors": [
+                {"ErrorCode": "InsufficientInstanceCapacity", "ErrorMessage": "Insufficient capacity."},
+                {"ErrorCode": "InvalidParameterValue", "ErrorMessage": "We couldn't find any instance pools"
+                           " that match your instance requirements. Change your instance requirements, and try again."}
+            ],
+            "ResponseMetadata": {"RequestId": "1234-abcde"},
+        }
+
+        return response
+
+    else:
+        ec2_client = boto3.client("ec2", region_name=region, config=boto3_config)
+        return ec2_client.create_fleet(**create_fleet_kwargs)
 EOF
