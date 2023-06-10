@@ -11,6 +11,7 @@ CHANGELOG
 **BUG FIXES**
 - Remove hardcoding of root volume device name (`/dev/sda1` and `/dev/xvda`) and retrieve it from the AMI(s) used during `create-cluster`.
 - Fix cluster creation failure when using CloudFormation custom resource with `ElasticIp` set to `True`.
+- Fix cluster creation/update failure when using CloudFormation custom resource with large configuration files.
 
 3.6.0
 ----
