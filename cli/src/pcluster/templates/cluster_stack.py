@@ -95,6 +95,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
+from pcluster.templates.login_nodes_stack import LoginNodesStack
 from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_attr, get_http_tokens_setting, get_service_endpoint
 
@@ -239,8 +240,7 @@ class ClusterCdkStack:
             self.log_group = self._add_cluster_log_group()
 
         # Managed security groups
-        self._head_security_group, self._compute_security_group = self._add_security_groups()
-
+        self._head_security_group, self._compute_security_group, self._login_security_group = self._add_security_groups()
         # Head Node ENI
         self._head_eni = self._add_head_eni()
 
@@ -267,6 +267,9 @@ class ClusterCdkStack:
         # Add a dependency to the cleanup Route53 resource, so that Route53 Hosted Zone is cleaned after node is deleted
         if self._condition_is_slurm() and hasattr(self.scheduler_resources, "cleanup_route53_custom_resource"):
             self.head_node_instance.add_depends_on(self.scheduler_resources.cleanup_route53_custom_resource)
+
+        # Initialize Login Nodes
+        self._add_login_nodes_resources()
 
         # AWS Batch related resources
         if self._condition_is_batch():
@@ -406,6 +409,19 @@ class ClusterCdkStack:
             )
         self._add_scheduler_plugin_substack()
 
+    def _add_login_nodes_resources(self):
+        """Method to add Login Nodes related resources."""
+        if self._condition_is_slurm() and self.config.login_nodes:
+            self.login_nodes_stack = LoginNodesStack(
+                scope=self.stack,
+                id="LoginNodes",
+                cluster_config=self.config,
+                shared_storage_infos=self.shared_storage_infos,
+                shared_storage_mount_dirs=self.shared_storage_mount_dirs,
+                shared_storage_attributes=self.shared_storage_attributes,
+                login_security_group=self._login_security_group,
+            )
+
     def _add_cleanup_resources_lambda(self):
         """Create Lambda cleanup resources function and its role."""
         cleanup_resources_lambda_role = None
@@ -496,7 +512,7 @@ class ClusterCdkStack:
         return head_eni
 
     def _add_security_groups(self):
-        """Associate security group to Head node and queues."""
+        """Associate security group to Head node, Login nodes and queues."""
         # Head Node Security Group
         managed_head_security_group = None
         custom_head_security_groups = self.config.head_node.networking.security_groups or []
@@ -505,6 +521,23 @@ class ClusterCdkStack:
             head_node_security_groups = [managed_head_security_group.ref]
         else:
             head_node_security_groups = custom_head_security_groups
+
+        # Login Nodes Security Groups
+        managed_login_security_group = None
+        custom_login_security_groups = set()
+        managed_login_security_group_required = False
+        if self._condition_is_slurm() and self.config.login_nodes:
+            for pool in self.config.login_nodes.pools:
+                pool_security_groups = pool.networking.security_groups
+                if pool_security_groups:
+                    for security_group in pool_security_groups:
+                        custom_login_security_groups.add(security_group)
+                else:
+                    managed_login_security_group_required = True
+        login_security_groups = list(custom_login_security_groups)
+        if managed_login_security_group_required:
+            managed_login_security_group = self._add_login_nodes_security_group()
+            login_security_groups.append(managed_login_security_group.ref)
 
         # Compute Security Groups
         managed_compute_security_group = None
@@ -526,19 +559,25 @@ class ClusterCdkStack:
             compute_security_groups,
             custom_compute_security_groups,
             head_node_security_groups,
+            login_security_groups,
+            custom_login_security_groups,
             managed_compute_security_group,
             managed_head_security_group,
+            managed_login_security_group,
         )
 
-        return managed_head_security_group, managed_compute_security_group
+        return managed_head_security_group, managed_compute_security_group, managed_login_security_group
 
     def _add_inbounds_to_managed_security_groups(
         self,
         compute_security_groups,
         custom_compute_security_groups,
         head_node_security_groups,
+        login_security_groups,
+        custom_login_security_groups,
         managed_compute_security_group,
         managed_head_security_group,
+        managed_login_security_group,
     ):
         if managed_head_security_group:
             for index, security_group in enumerate(compute_security_groups):
@@ -546,11 +585,40 @@ class ClusterCdkStack:
                 self._allow_all_ingress(
                     f"HeadNodeSecurityGroupComputeIngress{index}", security_group, managed_head_security_group.ref
                 )
-        if managed_compute_security_group:
-            # Access to compute nodes from head node
+            for index, security_group in enumerate(login_security_groups):
+                # Access to head node from login nodes
+                self._allow_all_ingress(
+                    f"HeadNodeSecurityGroupLoginIngress{index}", security_group, managed_head_security_group.ref
+                )
+        if managed_login_security_group:
+            # Access to login nodes from head node and compute nodes
             for index, security_group in enumerate(head_node_security_groups):
                 self._allow_all_ingress(
-                    f"ComputeSecurityGroupHeadNodeIngress{index}", security_group, managed_compute_security_group.ref
+                    f"LoginSecurityGroupHeadNodeIngress{index}", security_group, managed_login_security_group.ref
+                )
+            for index, security_group in enumerate(compute_security_groups):
+                self._allow_all_ingress(
+                    f"LoginSecurityGroupComputeIngress{index}", security_group, managed_login_security_group.ref
+                )
+            for index, security_group in enumerate(custom_login_security_groups):
+                self._allow_all_ingress(
+                    f"LoginSecurityGroupCustomLoginSecurityGroupIngress{index}",
+                    security_group,
+                    managed_login_security_group.ref,
+                )
+        if managed_compute_security_group:
+            # Access to compute nodes from head node and login nodes
+            for index, security_group in enumerate(head_node_security_groups):
+                self._allow_all_ingress(
+                    f"ComputeSecurityGroupHeadNodeIngress{index}",
+                    security_group,
+                    managed_compute_security_group.ref,
+                )
+            for index, security_group in enumerate(login_security_groups):
+                self._allow_all_ingress(
+                    f"ComputeSecurityGroupLoginIngress{index}",
+                    security_group,
+                    managed_compute_security_group.ref,
                 )
             for index, security_group in enumerate(custom_compute_security_groups):
                 self._allow_all_ingress(
@@ -558,6 +626,7 @@ class ClusterCdkStack:
                     security_group,
                     managed_compute_security_group.ref,
                 )
+
 
     def _allow_all_ingress(self, description, source_security_group_id, group_id):
         return ec2.CfnSecurityGroupIngress(
@@ -669,6 +738,24 @@ class ClusterCdkStack:
         )
 
         return compute_security_group
+
+    def _add_login_nodes_security_group(self):
+        login_nodes_security_group_ingress = [
+            # SSH access
+            ec2.CfnSecurityGroup.IngressProperty(
+                ip_protocol="tcp",
+                from_port=22,
+                to_port=22,
+                cidr_ip="0.0.0.0/0",
+            )
+        ]
+        return ec2.CfnSecurityGroup(
+            self.stack,
+            "LoginNodesSecurityGroup",
+            group_description="Enable access to the login nodes",
+            vpc_id=self.config.vpc_id,
+            security_group_ingress=login_nodes_security_group_ingress,
+        )
 
     def _add_head_security_group(self):
         head_security_group_ingress = [
