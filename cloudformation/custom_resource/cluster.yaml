@@ -81,6 +81,24 @@ Resources:
               - events:PutTargets
               - events:RemoveTargets
             Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*
+  S3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: S3Policy
+            Effect: Allow
+            Action:
+              - s3:*Object
+              - s3:ListBucket
+              - s3:ListBucketVersions
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::${PclusterCustomResourceBucket}/*
+              - !Sub arn:${AWS::Partition}:s3:::${PclusterCustomResourceBucket}
+
+  PclusterCustomResourceBucket:
+    Type: AWS::S3::Bucket
 
   PclusterLambdaRole:
     Condition: UsePCPolicies
@@ -95,11 +113,12 @@ Resources:
       ManagedPolicyArns: !Split
         - ","
         - !Sub
-          - ${LambdaExecutionPolicy},${ClusterPolicy},${DefaultAdminPolicy},${EventsPolicy}${AdditionalIamPolicies}
+          - ${LambdaExecutionPolicy},${ClusterPolicy},${DefaultAdminPolicy},${EventsPolicy},${S3Policy}${AdditionalIamPolicies}
           - { LambdaExecutionPolicy: !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
               ClusterPolicy: !GetAtt [ PclusterPolicies, Outputs.ParallelClusterClusterPolicy ],
               DefaultAdminPolicy: !GetAtt [ PclusterPolicies, Outputs.DefaultParallelClusterIamAdminPolicy ],
               EventsPolicy: !Ref EventsPolicy,
+              S3Policy: !Ref S3Policy,
               AdditionalIamPolicies: !If [UseAdditionalIamPolicies, !Sub [",${AdditionalPolicies}", AdditionalPolicies: !Join [',', !Ref AdditionalIamPolicies ]], ''] }
 
   PclusterCfnFunction:
@@ -118,8 +137,9 @@ Resources:
       MemorySize: 2048
       Timeout: 60
       Code:
-        ZipFile: |
+        ZipFile: !Sub |
           import boto3
+          import cfnresponse
           import datetime
           import json
           import logging
@@ -183,6 +203,8 @@ Resources:
 
           def create_or_update(event):
               properties = event["ResourceProperties"]
+              full_event = json.loads(boto3.client("s3").get_object(Bucket="${PclusterCustomResourceBucket}",Key=properties.get("ClusterName")+"/event.json")["Body"].read())
+              cluster_configuration = full_event["ResourceProperties"]["ClusterConfiguration"]
               request_type = event["RequestType"].upper()
               helper.Data["validationMessages"] = "[]"  # default value
 
@@ -200,8 +222,9 @@ Resources:
               try:
                   meta_keys = {"ServiceToken", "DeletionPolicy"}
                   kwargs = {**{pcluster.utils.to_snake_case(k): serialize(v) for k, v in drop_keys(properties, meta_keys).items()}, "wait": False}
+                  kwargs["cluster_configuration"] = cluster_configuration
                   resource_tags = [{"Key": "parallelcluster:custom_resource", "Value": "cluster"}]
-                  config_tags = properties["ClusterConfiguration"].get("Tags", [])
+                  config_tags = cluster_configuration.get("Tags", [])
                   stack_tags = get_stack_tags(event['StackId'], {t["Key"] for t in config_tags})
                   kwargs["cluster_configuration"]["Tags"] = stack_tags + config_tags + resource_tags
                   func = {"CREATE": pc.create_cluster, "UPDATE": pc.update_cluster}[request_type]
@@ -241,6 +264,8 @@ Resources:
           def delete(event, context):
               properties = event["ResourceProperties"]
               cluster_name = properties.get("ClusterName")
+
+              boto3.resource('s3').Bucket("${PclusterCustomResourceBucket}").objects.filter(Prefix=f"{cluster_name}/").delete()
 
               deletion_policy = properties.get("DeletionPolicy", "Delete")
               if deletion_policy not in {"Retain", "Delete"}:
@@ -296,6 +321,20 @@ Resources:
               return poll(event)
 
           def handler(event, context):
+              try:
+                  logger.info("Beginning of Pcluster custom resource Lambda function. Printing full event...")
+                  logger.info(event)
+                  if event["ResourceProperties"].get("ClusterConfiguration") or (event.get("OldResourceProperties") and event["OldResourceProperties"].get("ClusterConfiguration")):
+                      boto3.client('s3').put_object(
+                          Body=json.dumps(event), 
+                          Bucket="${PclusterCustomResourceBucket}", 
+                          Key=event["ResourceProperties"].get("ClusterName")+"/event.json"
+                      )
+                      event["ResourceProperties"].pop("ClusterConfiguration", None)
+                      event.get("OldResourceProperties", {}).pop("ClusterConfiguration", None)
+              except Exception as exception:
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, event.get('PhysicalResourceId', 'PclusterClusterCustomResource'), str(exception))
+
               helper(event, context)
 
       Handler: index.handler
@@ -303,6 +342,66 @@ Resources:
       Role: !If [CustomRoleCondition, !Ref CustomLambdaRole, !GetAtt PclusterLambdaRole.Arn]
       Layers:
         - !Ref PclusterLayer
+
+  CleanupS3bucketFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Timeout: 60
+      Code:
+        ZipFile: !Sub |
+          import boto3
+          import cfnresponse
+          import logging
+          import sys
+          from botocore.config import Config
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          
+          def _delete_s3_artifacts(event):
+              """
+              Delete artifacts under the directory that is passed in.
+
+              It exits gracefully if directory does not exist.
+              :param bucket_name: bucket containing cluster artifacts
+              """
+              bucket_name = event["ResourceProperties"]["S3Bucket"]
+              try:
+                  if bucket_name != "NONE":
+                      bucket = boto3.resource("s3", config=Config(retries={"max_attempts": 60})).Bucket(bucket_name)
+                      logger.info("Cluster S3 artifact in %s deletion: STARTED", bucket_name)
+                      bucket.objects.all().delete()
+                      bucket.object_versions.delete()
+                      logger.info("Cluster S3 artifact in %s deletion: COMPLETED", bucket_name)
+              except boto3.client("s3").exceptions.NoSuchBucket as ex:
+                  logger.warning("S3 bucket %s not found. Bucket was probably manually deleted.", bucket_name)
+                  logger.warning(ex, exc_info=True)
+              except Exception as e:
+                  logger.error(
+                      "Failed when deleting cluster S3 artifact in %s with error %s", bucket_name, e
+                  )
+                  raise
+
+          def handler(event, context):
+              try:
+                  if event["RequestType"] == "Delete":
+                      _delete_s3_artifacts(event)
+                  response_status = cfnresponse.SUCCESS
+                  reason = ""
+              except Exception as e:
+                  response_status = cfnresponse.FAILED
+                  reason = str(e)
+              cfnresponse.send(event, context, response_status, {}, event.get('PhysicalResourceId', 'CleanupS3bucketCustomResource'), reason)
+      Handler: index.handler
+      Runtime: python3.9
+      Role: !If [CustomRoleCondition, !Ref CustomLambdaRole, !GetAtt PclusterLambdaRole.Arn]
+
+  CleanupS3bucketCustomResource:
+    DeletionPolicy: Delete
+    Properties:
+      S3Bucket: !Ref PclusterCustomResourceBucket
+      ServiceToken: !GetAtt CleanupS3bucketFunction.Arn
+    Type: AWS::CloudFormation::CustomResource
+    UpdateReplacePolicy: Delete
 
 Outputs:
   ServiceToken:
