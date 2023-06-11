@@ -89,13 +89,14 @@ class LoginNodesStack(NestedStack):
         login_nodes_pool_lt_security_groups,
         login_nodes_instance_profiles,
     ):
-        login_node_lt_nw_interface = ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-            device_index=0,
-            interface_type=None,
-            groups=login_nodes_pool_lt_security_groups,
-            subnet_id=login_nodes_pool.networking.subnet_id
-        )
-
+        login_node_lt_nw_interface = [
+            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
+                device_index=0,
+                interface_type=None,
+                groups=login_nodes_pool_lt_security_groups,
+                subnet_id=login_nodes_pool.networking.subnet_id
+            )
+        ]
         return ec2.CfnLaunchTemplate(
             self,
             f"LoginNodeLaunchTemplate{login_nodes_pool.name}",
