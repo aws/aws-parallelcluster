@@ -152,7 +152,7 @@ def test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size)
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     assert_that(result.stdout).matches(
-        r"/dev/md0 {mount_dir} ext4 defaults,nofail,_netdev 0 2".format(mount_dir=mount_dir)
+        r"/dev/md0 {mount_dir} ext4 defaults,nofail,_netdev 0 0".format(mount_dir=mount_dir)
     )
 
 
