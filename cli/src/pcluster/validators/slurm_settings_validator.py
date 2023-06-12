@@ -90,6 +90,10 @@ class CustomSlurmSettingsValidator(Validator):
         denied_settings = set()
 
         for custom_settings_dict in custom_settings:
+            if settings_level == CustomSlurmSettingLevel.SLURM_CONF and len(custom_settings_dict) > 1:
+                # This can happen only for custom nodes, nodesets and partitions: we do not validate them against the
+                # deny-list.
+                continue
             for custom_setting in list(custom_settings_dict.keys()):
                 if custom_setting.lower() in deny_list:
                     denied_settings.add(custom_setting)

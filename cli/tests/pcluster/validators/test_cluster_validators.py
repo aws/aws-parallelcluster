@@ -219,6 +219,14 @@ def test_cluster_name_validator_slurm_accounting(cluster_name, scheduling, shoul
             "CommunicationParameters,SlurmctldParameters",
         ),
         (
+            "When defining custom partitions or nodelists with parameters that exist also at global level and are"
+            "deny-listed there (e.g. SuspendTime), the validation should not fail",
+            [{"PartitionName": "external", "Nodes": "external-nodes-[1-10]", "State": "UP", "SuspendTime": "INFINITE"}],
+            SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Global"],  # keep the deny-list lowercase
+            CustomSlurmSettingLevel.SLURM_CONF,
+            "",
+        ),
+        (
             "No error when custom settings are not in the deny_list",
             [{"Allowed1": "Value1", "Allowed2": "Value2"}],
             ["denied1", "denied2"],  # keep the deny-list lowercase
