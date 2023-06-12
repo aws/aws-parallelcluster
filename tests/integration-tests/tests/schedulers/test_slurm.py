@@ -601,7 +601,7 @@ def test_scontrol_reboot(
     slurm_commands = scheduler_commands_factory(remote_command_executor)
 
     # Clear clustermgtd logs before starting the tests
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_clustermgtd_log()
 
     # Run first job to wake up dynamic nodes from power_down state
     slurm_commands.submit_command(
@@ -647,7 +647,7 @@ def test_scontrol_reboot(
     )
 
     # Clear clustermgtd logs produced in previous tests
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_clustermgtd_log()
 
     # Check that node in REBOOT_ISSUED state can be powered down
     _test_scontrol_reboot_powerdown_reboot_issued_node(
@@ -723,8 +723,8 @@ def test_scontrol_reboot_ec2_health_checks(
     remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "./{script}"')
 
     # Clear clustermgtd and slurmctld logs before starting the tests
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_slurmctld_log
+    remote_command_executor.clear_clustermgtd_log()
 
     # 2 iterations to cover the two scenarios described in the test description
     for scenario in range(1, 3):
@@ -758,8 +758,8 @@ def test_scontrol_reboot_ec2_health_checks(
         assert_compute_node_states(slurm_commands, compute_nodes, "idle")
 
         # Reset the slurmctld and clustermgtd logs
-        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
-        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+        remote_command_executor.clear_slurmctld_log()
+        remote_command_executor.clear_clustermgtd_log()
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1942,8 +1942,8 @@ def _test_disable_fast_capacity_failover(
     _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
 
     # clear slurm_resume and clustermgtd logs in order to start from a clean state
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_slurm_resume_log()
+    remote_command_executor.clear_clustermgtd_log()
 
     # submit a job to trigger insufficient capacity
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
@@ -2008,8 +2008,8 @@ def _test_enable_fast_capacity_failover(
     _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
 
     # clear slurm_resume and clustermgtd logs in order to start from a clean state
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_slurm_resume_log()
+    remote_command_executor.clear_clustermgtd_log()
 
     # trigger insufficient capacity: we are using `prefer` to allow requeuing the job on a different CR
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(

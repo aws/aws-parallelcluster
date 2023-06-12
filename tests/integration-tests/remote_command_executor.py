@@ -191,3 +191,23 @@ class RemoteCommandExecutor:
         :returns: A `.Result` object.
         """
         return self.__connection.get(*args, **kwargs)
+
+    def clear_log_file(self, path: str):
+        """Clear a log file in a specific path."""
+
+        self.run_remote_command(f"sudo truncate -s 0 {path}")
+
+    def clear_clustermgtd_log(self):
+        """Clear clustermgtd log file."""
+
+        self.clear_log_file("/var/log/parallelcluster/clustermgtd")
+
+    def clear_slurm_resume_log(self):
+        """Clear slurm_resume log file."""
+
+        self.clear_log_file("/var/log/parallelcluster/slurm_resume.log")
+
+    def clear_slurmctld_log(self):
+        """Clear slurmctld log file."""
+
+        self.clear_log_file("/var/log/slurmctld.log")
