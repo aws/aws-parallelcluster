@@ -656,6 +656,16 @@ class HeadNodeNetworking(_BaseNetworking):
         """Compute availability zone from subnet id."""
         return AWSApi.instance().ec2.get_subnet_avail_zone(self.subnet_id)
 
+    @property
+    def headnode_elastic_ip(self):
+        """Headnode Elastic Ip."""
+        if isinstance(self.elastic_ip, bool):
+            return self.elastic_ip
+        if isinstance(self.elastic_ip, str):
+            if self.elastic_ip.lower() in ["true", "false"]:
+                return self.elastic_ip.lower() == "true"
+        return self.elastic_ip
+
 
 class PlacementGroup(Resource):
     """Represent the placement group for networking."""
