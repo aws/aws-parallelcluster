@@ -411,6 +411,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_slurm.py::test_slurm_custom_config_parameters:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
 # This test cannot be executed in US isolated regions
 # because Spot instances are not supported in these regions.
 #  spot:
