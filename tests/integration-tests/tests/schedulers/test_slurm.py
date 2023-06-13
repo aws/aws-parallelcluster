@@ -1781,7 +1781,7 @@ def _test_compute_fleet_status(command_executor, expected_status):
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
-def _test_cluster_creation_failure(cluster, failure_code="StaticNodeBoostrapFailure"):
+def _test_cluster_creation_failure(cluster, failure_code="StaticNodeBootstrapFailure"):
     """Retry describe-cluster until we see {failure_code}."""
     response = cluster.describe_cluster()
     assert_that(response["failures"][0]["failureCode"]).is_equal_to(failure_code)
