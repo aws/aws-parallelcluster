@@ -298,6 +298,13 @@ class QueuesStack(NestedStack):
                                         NODE_BOOTSTRAP_TIMEOUT,
                                     )
                                 ),
+                                "StartupTimeEnabled": str(
+                                    get_attr(
+                                        self._config,
+                                        "dev_settings.startup_time_enabled",
+                                        default=False,
+                                    )
+                                ),
                             },
                             **get_common_user_data_env(queue, self._config),
                         },
