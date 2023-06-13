@@ -13,6 +13,17 @@ CHANGELOG
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
 
 **BUG FIXES**
+- Fix cluster creation failure when using CloudFormation custom resource with `ElastipIp` set to `True`.
+
+3.6.1
+------
+
+**ENHANCEMENTS**
+
+**CHANGES**
+
+**BUG FIXES**
+- Remove hardcoding of root volume device name (`/dev/sda1` and `/dev/xvda`) and retrieve it from the AMI(s) used during `create-cluster`.
 
 3.6.0
 ----

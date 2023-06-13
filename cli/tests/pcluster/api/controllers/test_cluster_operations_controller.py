@@ -1033,6 +1033,33 @@ class TestDescribeCluster:
                 [],
                 [{"failureCode": "ClusterCreationFailure", "failureReason": "Failed to create the cluster."}],
             ),
+            (
+                "CREATE_FAILED",
+                [
+                    [
+                        {
+                            "StackId": "fake-id",
+                            "StackName": "fake-name",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition received failed message: '"
+                            "Cluster has been set to PROTECTED mode "
+                            "due to failures detected in static node provisioning. "
+                            "Please check /var/log/chef-client.log in the head node, "
+                            "or check the chef-client.log in CloudWatch logs. "
+                            "Please refer to https://docs.aws.amazon.com/parallelcluster/"
+                            "latest/ug/troubleshooting-v3.html for more details.'",
+                        },
+                    ]
+                ],
+                [
+                    {
+                        "failureCode": "StaticNodeBoostrapFailure",
+                        "failureReason": "Cluster has been set to PROTECTED mode "
+                        "due to failures detected in static node provisioning.",
+                    }
+                ],
+            ),
         ],
         ids=[
             "get_stack_events_without_next_token",
@@ -1041,6 +1068,7 @@ class TestDescribeCluster:
             "cluster_creation_timeout",
             "cluster_resource_creation_failure",
             "no_stack_event",
+            "cluster_protected_mode",
         ],
     )
     def test_cluster_creation_failed(

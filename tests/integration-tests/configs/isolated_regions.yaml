@@ -5,14 +5,18 @@
 {%- set SCHEDULERS = ["slurm"] -%}
 ---
 test-suites:
-#  We must fix the integ test logic to make this integration test to work in us-isob-east-1
-#  ad_integration:
-#    test_ad_integration.py::test_ad_integration:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+  ad_integration:
+    test_ad_integration.py::test_ad_integration:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+          benchmarks:
+            - mpi_variants: ["openmpi"]
+              num_instances: [5]
+              osu_benchmarks:
+                collective: ["osu_alltoall"]
   cfn-init:
     test_cfn_init.py::test_replace_compute_on_failure:
       dimensions:
@@ -94,15 +98,12 @@ test-suites:
 #          instances: {{ INSTANCES }}
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
-# This test cannot be executed in US isolated regions
-# because it relies on having AMIs for different pcluster versions in the region
-# and this is not the case in these regions.
-#    test_create.py::test_create_wrong_pcluster_version:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+    test_create.py::test_create_wrong_pcluster_version:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_create.py::test_create_imds_secured:
       dimensions:
         - regions: {{ REGIONS }}
@@ -221,14 +222,12 @@ test-suites:
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
   networking:
-# This test is considered out of scope for isolated regions
-# We will evaluate to re-include it after release 3.5.1
-#    test_cluster_networking.py::test_cluster_in_private_subnet:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+    test_cluster_networking.py::test_cluster_in_private_subnet:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_cluster_networking.py::test_existing_eip:
       dimensions:
         - regions: {{ REGIONS }}
@@ -241,12 +240,13 @@ test-suites:
     test_networking.py::test_public_private_network_topology:
       dimensions:
         - regions: {{ REGIONS }}
-    test_cluster_networking.py::test_cluster_in_no_internet_subnet:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
+# Isolated regions do not have VPC endpoints.
+#    test_cluster_networking.py::test_cluster_in_no_internet_subnet:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
     test_multi_cidr.py::test_multi_cidr:
       dimensions:
         - regions: {{ REGIONS }}
@@ -393,21 +393,18 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-# These tests cannot be executed in US isolated regions
-# because Slurm Accounting requires Secrets Manager,
-# which is not supported in these regions.
-#    test_slurm_accounting.py::test_slurm_accounting:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
-#    test_slurm_accounting.py::test_slurm_accounting_disabled_to_enabled_update:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+    test_slurm_accounting.py::test_slurm_accounting:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_slurm_accounting.py::test_slurm_accounting_disabled_to_enabled_update:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_slurm.py::test_slurm_reconfigure_race_condition:
       dimensions:
         - regions: {{ REGIONS }}
@@ -529,19 +526,28 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-#    We must fix the integ test logic to make this integration test to work in us-isob-east-1
-#    test_update.py::test_dynamic_file_systems_update:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          instances: {{ INSTANCES }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
-# This test cannot be executed in US isolated regions
-# because it relies on a CloudFormation stack using resources
-# that are not supported by CloudFormation in ADC,
-# i.e. CapacityReservation and ResourceGroup.
-#    test_update.py::test_multi_az_create_and_update:
-#      dimensions:
-#        - regions: {{ REGIONS }}
-#          oss: {{ OSS }}
-#          schedulers: {{ SCHEDULERS }}
+    test_update.py::test_dynamic_file_systems_update:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_update.py::test_multi_az_create_and_update:
+      dimensions:
+        - regions: {{ REGIONS }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  log_rotation:
+    test_log_rotation.py::test_log_rotation:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  health_checks:
+    test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
