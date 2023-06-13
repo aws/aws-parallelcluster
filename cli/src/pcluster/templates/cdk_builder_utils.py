@@ -26,6 +26,7 @@ from pcluster.config.cluster_config import (
     BaseComputeResource,
     BaseQueue,
     HeadNode,
+    LoginNodesPools,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmComputeResource,
@@ -259,6 +260,26 @@ def get_queue_security_groups_full(managed_compute_security_group: ec2.CfnSecuri
     return queue_security_groups
 
 
+def get_login_nodes_security_groups_full(
+    managed_login_security_group: ec2.CfnSecurityGroup,
+    pool: LoginNodesPools,
+):
+    """Return full security groups to be used for the login node, default plus additional ones."""
+    login_nodes_security_groups = []
+
+    # Default security groups, created by us or provided by the user
+    if pool.networking.security_groups:
+        login_nodes_security_groups.extend(pool.networking.security_groups)
+    else:
+        login_nodes_security_groups.append(managed_login_security_group.ref)
+
+    # Additional security groups
+    if pool.networking.additional_security_groups:
+        login_nodes_security_groups.extend(pool.networking.additional_security_groups)
+
+    return login_nodes_security_groups
+
+
 def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str):
     """Return a path and Name prefix from the Resource prefix config option."""
     full_resource_path = None
@@ -337,7 +358,7 @@ class NodeIamResourcesBase(Construct):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue],
+        node: Union[HeadNode, BaseQueue, LoginNodesPools],
         shared_storage_infos: dict,
         name: str,
     ):
@@ -347,7 +368,12 @@ class NodeIamResourcesBase(Construct):
 
         self._add_role_and_policies(node, shared_storage_infos, name)
 
-    def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], shared_storage_infos: dict, name: str):
+    def _add_role_and_policies(
+        self,
+        node: Union[HeadNode, BaseQueue, LoginNodesPools],
+        shared_storage_infos: dict,
+        name: str,
+    ):
         """Create role and policies for the given node/queue."""
         suffix = create_hash_suffix(name)
         if node.instance_profile:
@@ -369,7 +395,9 @@ class NodeIamResourcesBase(Construct):
                 self._add_custom_cookbook_policies_to_role(self.instance_role.ref, f"CustomCookbookPolicies{suffix}")
 
             # S3 Access Policies
-            if self._condition_create_s3_access_policies(node):
+            if (
+                isinstance(node, HeadNode) or isinstance(node, BaseQueue)
+            ) and self._condition_create_s3_access_policies(node):
                 self._add_s3_access_policies_to_role(node, self.instance_role.ref, f"S3AccessPolicies{suffix}")
 
             # Head node Instance Profile
@@ -387,7 +415,7 @@ class NodeIamResourcesBase(Construct):
             instance_profile_name=instance_profile_name,
         ).ref
 
-    def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
+    def _add_node_role(self, node: Union[HeadNode, BaseQueue, LoginNodesPools], name: str):
         role_path, role_name = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, name, iam_type="AWS::IAM::Role"
         )
@@ -449,7 +477,7 @@ class NodeIamResourcesBase(Construct):
         except AttributeError:
             return False
 
-    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue]):
+    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue, LoginNodesPools]):
         return node.iam and node.iam.s3_access
 
     def _add_custom_cookbook_policies_to_role(self, role_ref: str, name: str):
@@ -481,7 +509,9 @@ class NodeIamResourcesBase(Construct):
             roles=[role_ref],
         )
 
-    def _add_s3_access_policies_to_role(self, node: Union[HeadNode, BaseQueue], role_ref: str, name: str):
+    def _add_s3_access_policies_to_role(
+        self, node: Union[HeadNode, BaseQueue, LoginNodesPools], role_ref: str, name: str
+    ):
         """Attach S3 policies to given role."""
         read_only_s3_resources = []
         read_write_s3_resources = []
@@ -544,7 +574,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue],
+        node: Union[HeadNode, BaseQueue, LoginNodesPools],
         shared_storage_infos: dict,
         name: str,
         cluster_bucket: S3Bucket,
@@ -845,7 +875,7 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue],
+        node: Union[HeadNode, BaseQueue, LoginNodesPools],
         shared_storage_infos: dict,
         name: str,
     ):
@@ -873,6 +903,86 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
                         account="",
                     )
                 ],
+            ),
+        ]
+
+
+class LoginNodesIamResources(NodeIamResourcesBase):
+    """Construct defining IAM resources for a login node."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: LoginNodesPools,
+        shared_storage_infos: dict,
+        name: str,
+    ):
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
+
+    def _build_policy(self) -> List[iam.PolicyStatement]:
+        return [
+            iam.PolicyStatement(
+                sid="Ec2",
+                actions=[
+                    "ec2:DescribeInstances",
+                    "ec2:DescribeInstanceStatus",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="S3",
+                actions=[
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="s3",
+                        resource="{0}-aws-parallelcluster/*".format(Stack.of(self).region),
+                        region="",
+                        account="",
+                    )
+                ],
+            ),
+            iam.PolicyStatement(
+                sid="DynamoDB",
+                actions=[
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="Batch",
+                actions=[
+                    "batch:SubmitJob",
+                    "batch:DescribeJobs",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="IAM",
+                actions=[
+                    "iam:AssumeRole",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="CloudWatchLogs",
+                actions=[
+                    "logs:GetLogEvents",
+                    "logs:FilterLogEvents",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
             ),
         ]
 
