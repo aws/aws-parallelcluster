@@ -678,6 +678,16 @@ class HeadNodeNetworking(_BaseNetworking):
         """Compute availability zone from subnet id."""
         return AWSApi.instance().ec2.get_subnet_avail_zone(self.subnet_id)
 
+    @property
+    def headnode_elastic_ip(self):
+        """Headnode Elastic Ip."""
+        if isinstance(self.elastic_ip, bool):
+            return self.elastic_ip
+        if isinstance(self.elastic_ip, str):
+            if self.elastic_ip.lower() in ["true", "false"]:
+                return self.elastic_ip.lower() == "true"
+        return self.elastic_ip
+
 
 class PlacementGroup(Resource):
     """Represent the placement group for networking."""
@@ -1492,7 +1502,7 @@ class BaseClusterConfig(Resource):
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
             head_node=self.head_node,
-            os=self.image.os,
+            root_volume_device_name=AWSApi.instance().ec2.describe_image(self.head_node_ami).device_name,
             ami_id=self.head_node_ami,
             tags=self.get_tags(),
             imds_support=self.imds.imds_support,
@@ -3030,7 +3040,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                     ComputeResourceLaunchTemplateValidator,
                     queue=queue,
                     ami_id=queue_image,
-                    os=self.image.os,
+                    root_volume_device_name=AWSApi.instance().ec2.describe_image(queue_image).device_name,
                     tags=self.get_tags(),
                     imds_support=self.imds.imds_support,
                 )

@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import FsxStorageInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import FsxStorageInfo, ImageInfo, InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
@@ -397,5 +397,9 @@ class _DummySsmClient(SsmClient):
 def mock_aws_api(mocker, mock_instance_type_info=True):
     """Mock AWS Api."""
     mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_image",
+        return_value=ImageInfo({"BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 35}}]}),
+    )
     if mock_instance_type_info:
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)

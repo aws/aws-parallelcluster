@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import pytest
+from assertpy import assert_that
 
 from pcluster.constants import Feature
 from pcluster.validators.feature_validators import FeatureRegionValidator
@@ -18,43 +19,29 @@ from .utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "feature, region, expected_message",
+    "feature, supported, expected_message",
     [
-        (Feature.BATCH, "ap-northeast-3", "AWS Batch scheduler is not supported in region 'ap-northeast-3'"),
-        (Feature.BATCH, "us-iso-east-1", "AWS Batch scheduler is not supported in region 'us-iso-east-1'"),
-        (Feature.BATCH, "us-iso-west-1", "AWS Batch scheduler is not supported in region 'us-iso-west-1'"),
-        (Feature.BATCH, "us-isob-east-1", "AWS Batch scheduler is not supported in region 'us-isob-east-1'"),
-        (Feature.BATCH, "us-isoWHATEVER", "AWS Batch scheduler is not supported in region 'us-isoWHATEVER'"),
-        (Feature.DCV, "us-iso-east-1", "NICE DCV is not supported in region 'us-iso-east-1'"),
-        (Feature.DCV, "us-iso-west-1", "NICE DCV is not supported in region 'us-iso-west-1'"),
-        (Feature.DCV, "us-isob-east-1", "NICE DCV is not supported in region 'us-isob-east-1'"),
-        (Feature.DCV, "us-isoWHATEVER", "NICE DCV is not supported in region 'us-isoWHATEVER'"),
-        (Feature.FSX_LUSTRE, "us-iso-east-1", "FSx Lustre is not supported in region 'us-iso-east-1'"),
-        (Feature.FSX_LUSTRE, "us-iso-west-1", "FSx Lustre is not supported in region 'us-iso-west-1'"),
-        (Feature.FSX_LUSTRE, "us-isob-east-1", "FSx Lustre is not supported in region 'us-isob-east-1'"),
-        (Feature.FSX_LUSTRE, "us-isoWHATEVER", "FSx Lustre is not supported in region 'us-isoWHATEVER'"),
-        (Feature.FSX_ONTAP, "us-iso-east-1", "FSx ONTAP is not supported in region 'us-iso-east-1'"),
-        (Feature.FSX_ONTAP, "us-iso-west-1", "FSx ONTAP is not supported in region 'us-iso-west-1'"),
-        (Feature.FSX_ONTAP, "us-isob-east-1", "FSx ONTAP is not supported in region 'us-isob-east-1'"),
-        (Feature.FSX_ONTAP, "us-isoWHATEVER", "FSx ONTAP is not supported in region 'us-isoWHATEVER'"),
-        (Feature.FSX_OPENZFS, "us-iso-east-1", "FSx OpenZfs is not supported in region 'us-iso-east-1'"),
-        (Feature.FSX_OPENZFS, "us-iso-west-1", "FSx OpenZfs is not supported in region 'us-iso-west-1'"),
-        (Feature.FSX_OPENZFS, "us-isob-east-1", "FSx OpenZfs is not supported in region 'us-isob-east-1'"),
-        (Feature.FSX_OPENZFS, "us-isoWHATEVER", "FSx OpenZfs is not supported in region 'us-isoWHATEVER'"),
-        (Feature.SLURM_DATABASE, "us-isoWHATEVER", "SLURM Database is not supported in region 'us-isoWHATEVER'"),
-        (Feature.FSX_FILE_CACHE, "us-iso-east-1", "FSx FileCache is not supported in region 'us-iso-east-1'"),
-        (Feature.FSX_FILE_CACHE, "us-iso-west-1", "FSx FileCache is not supported in region 'us-iso-west-1'"),
-        (Feature.FSX_FILE_CACHE, "us-isob-east-1", "FSx FileCache is not supported in region 'us-isob-east-1'"),
-        (Feature.FSX_FILE_CACHE, "us-isoWHATEVER", "FSx FileCache is not supported in region 'us-isoWHATEVER'"),
-        (Feature.BATCH, "WHATEVER-ELSE", None),
-        (Feature.DCV, "WHATEVER-ELSE", None),
-        (Feature.FSX_LUSTRE, "WHATEVER-ELSE", None),
-        (Feature.FSX_ONTAP, "WHATEVER-ELSE", None),
-        (Feature.FSX_OPENZFS, "WHATEVER-ELSE", None),
-        (Feature.SLURM_DATABASE, "WHATEVER-ELSE", None),
-        (Feature.FSX_FILE_CACHE, "WHATEVER-ELSE", None),
+        (Feature.BATCH, True, None),
+        (Feature.BATCH, False, "AWS Batch scheduler is not supported in region 'WHATEVER-REGION'"),
+        (Feature.DCV, True, None),
+        (Feature.DCV, False, "NICE DCV is not supported in region 'WHATEVER-REGION'"),
+        (Feature.FSX_LUSTRE, True, None),
+        (Feature.FSX_LUSTRE, False, "FSx Lustre is not supported in region 'WHATEVER-REGION'"),
+        (Feature.FSX_ONTAP, True, None),
+        (Feature.FSX_ONTAP, False, "FSx ONTAP is not supported in region 'WHATEVER-REGION'"),
+        (Feature.FSX_OPENZFS, True, None),
+        (Feature.FSX_OPENZFS, False, "FSx OpenZfs is not supported in region 'WHATEVER-REGION'"),
+        (Feature.SLURM_DATABASE, True, None),
+        (Feature.SLURM_DATABASE, False, "SLURM Database is not supported in region 'WHATEVER-REGION'"),
+        (Feature.CLUSTER_HEALTH_METRICS, True, None),
+        (Feature.CLUSTER_HEALTH_METRICS, False, "Cluster Health Metrics is not supported in region 'WHATEVER-REGION'"),
     ],
 )
-def test_feature_region_validator(feature, region, expected_message):
-    actual_failures = FeatureRegionValidator().execute(feature=feature, region=region)
-    assert_failure_messages(actual_failures, expected_message)
+def test_feature_region_validator(mocker, feature, supported, expected_message):
+    is_feature_supported = mocker.patch("pcluster.utils.is_feature_supported", return_value=supported)
+    actual_failures = FeatureRegionValidator().execute(feature=feature, region="WHATEVER-REGION")
+    is_feature_supported.assert_called_once()
+    if supported:
+        assert_that(actual_failures).is_empty()
+    else:
+        assert_failure_messages(actual_failures, expected_message)

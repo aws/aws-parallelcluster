@@ -114,6 +114,9 @@ Parameters:
 Transform: AWS::Serverless-2016-10-31
 Conditions:
   CreateSubnets: !Or [!Equals [!Ref DatabaseClusterSubnetOne, ''], !Equals [!Ref DatabaseClusterSubnetTwo, '']]
+  InUsIsobEast1: !Equals [ !Ref AWS::Region, 'us-isob-east-1' ]
+  InUsIsoEast1: !Equals [ !Ref AWS::Region, 'us-iso-east-1' ]
+  UseServerlessDatabase: !Not [!Or [Condition: InUsIsobEast1, Condition: InUsIsoEast1]]
 Rules:
   BadSubnetsCidrsAssertion:
     RuleCondition: !Or
@@ -143,7 +146,9 @@ Resources:
     Condition: CreateSubnets
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Sub '${AWS::Region}a'
+      AvailabilityZone: !Sub
+        - "${AWS::Region}${AzLetter}"
+        - { AzLetter: !If [ InUsIsobEast1, 'c', 'a'] }
       CidrBlock: !Ref Subnet1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
@@ -204,7 +209,6 @@ Resources:
     Type: 'AWS::RDS::DBClusterParameterGroup'
     Properties:
       Description: Cluster parameter group for aurora-mysql
-#      Family: aurora-mysql5.7
       Family: aurora-mysql8.0
       Parameters:
         require_secure_transport: 'ON'
@@ -264,16 +268,18 @@ Resources:
     Properties:
       DBClusterIdentifier: !Ref ClusterName
       Engine: "aurora-mysql"
-      EngineVersion: "8.0.mysql_aurora.3.02.1"
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
       CopyTagsToSnapshot: true
       DBClusterParameterGroupName: !Ref AccountingClusterParameterGroup
       DBSubnetGroupName: !Ref AccountingClusterSubnetGroup
       EnableHttpEndpoint: false
       MasterUsername: !Ref ClusterAdmin
       MasterUserPassword: !Ref AdminPasswordSecretString
-      ServerlessV2ScalingConfiguration:
-        MaxCapacity: !Ref MaxCapacity
-        MinCapacity: !Ref MinCapacity
+      ServerlessV2ScalingConfiguration: !If
+        - UseServerlessDatabase
+        - MaxCapacity: !Ref MaxCapacity
+          MinCapacity: !Ref MinCapacity
+        - !Ref AWS::NoValue
       StorageEncrypted: true
       Tags:
         - Key: 'parallelcluster:usecase'
@@ -287,7 +293,7 @@ Resources:
   AccountingClusterInstance1:
     Type: 'AWS::RDS::DBInstance'
     Properties:
-      DBInstanceClass: 'db.serverless'
+      DBInstanceClass: !If [UseServerlessDatabase, 'db.serverless', 'db.r5.large']
       DBClusterIdentifier: !Ref AccountingCluster
       DBInstanceIdentifier: !Sub '${ClusterName}-instance-1'
       Engine: "aurora-mysql"
@@ -297,7 +303,7 @@ Resources:
   AccountingClusterInstance2:
     Type: 'AWS::RDS::DBInstance'
     Properties:
-      DBInstanceClass: 'db.serverless'
+      DBInstanceClass: !If [UseServerlessDatabase, 'db.serverless', 'db.r5.large']
       DBClusterIdentifier: !Ref AccountingCluster
       DBInstanceIdentifier: !Sub '${ClusterName}-instance-2'
       Engine: "aurora-mysql"

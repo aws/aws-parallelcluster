@@ -16,6 +16,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
+from utils import is_dcv_supported
 
 from tests.cloudwatch_logging.cloudwatch_logging_boto3_utils import get_cluster_log_groups_from_boto3, get_log_events
 
@@ -25,7 +26,8 @@ def test_log_rotation(
     region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir, scheduler_commands_factory, os
 ):
     """Test parallelcluster log rotation configuration."""
-    cluster_config = pcluster_config_reader()
+    dcv_enabled = is_dcv_supported(region)
+    cluster_config = pcluster_config_reader(dcv_enabled=dcv_enabled)
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -54,16 +56,6 @@ def test_log_rotation(
             "trigger_new_entries": True,
         },
         {"log_name": "cfn-init", "log_path": "/var/log/cfn-init.log", "existence": True},
-        {"log_name": "dcv-agent", "log_path": "/var/log/dcv/agent.*.log"},
-        {"log_name": "dcv-session-launcher", "log_path": "/var/log/dcv/sessionlauncher.log", "existence": False},
-        {"log_name": "Xdcv", "log_path": "/var/log/dcv/Xdcv.*.log"},
-        {
-            "log_name": "dcv-server",
-            "log_path": "/var/log/dcv/server.log",
-            "existence": True,
-            "trigger_new_entries": False,
-        },
-        {"log_name": "dcv-xsession", "log_path": "/var/log/dcv/dcv-xsession.*.log"},
         {"log_name": "slurmdbd", "log_path": "/var/log/slurmdbd.log"},
         {"log_name": "slurmctld", "log_path": "/var/log/slurmctld.log", "existence": True, "trigger_new_entries": True},
         {
@@ -100,6 +92,27 @@ def test_log_rotation(
             "existence": True,
         },
     ]
+
+    if dcv_enabled:
+        headnode_specified_logs.extend(
+            [
+                {"log_name": "dcv-agent", "log_path": "/var/log/dcv/agent.*.log"},
+                {
+                    "log_name": "dcv-session-launcher",
+                    "log_path": "/var/log/dcv/sessionlauncher.log",
+                    "existence": False,
+                },
+                {"log_name": "Xdcv", "log_path": "/var/log/dcv/Xdcv.*.log"},
+                {
+                    "log_name": "dcv-server",
+                    "log_path": "/var/log/dcv/server.log",
+                    "existence": True,
+                    "trigger_new_entries": False,
+                },
+                {"log_name": "dcv-xsession", "log_path": "/var/log/dcv/dcv-xsession.*.log"},
+            ]
+        )
+
     compute_specified_logs = [
         {"log_name": "cloud-init-output", "log_path": "/var/log/cloud-init-output.log", "existence": True},
         {
