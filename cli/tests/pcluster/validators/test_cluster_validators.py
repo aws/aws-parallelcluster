@@ -70,6 +70,8 @@ from pcluster.validators.cluster_validators import (
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
+    PoolsValidator,
+    AvailabilityZoneValidator,
     _are_subnets_covered_by_cidrs,
     _LaunchTemplateValidator,
 )
