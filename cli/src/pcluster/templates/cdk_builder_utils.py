@@ -157,7 +157,7 @@ def get_custom_tags(config: Union[BaseClusterConfig, SlurmQueue, SlurmComputeRes
 def get_default_instance_tags(
     stack_name: str,
     config: BaseClusterConfig,
-    node: Union[HeadNode, BaseComputeResource],
+    node: Union[HeadNode, LoginNodesPools, BaseComputeResource],
     node_type: str,
     shared_storage_infos: dict,
     raw_dict: bool = False,

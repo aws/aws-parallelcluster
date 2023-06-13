@@ -3,13 +3,15 @@ from typing import Dict
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import NestedStack, Stack
+from aws_cdk.core import CfnTag, NestedStack, Stack
 from constructs import Construct
 
 from pcluster.config.cluster_config import LoginNodesPools, SlurmClusterConfig
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
+    get_default_instance_tags,
+    get_default_volume_tags,
     get_login_nodes_security_groups_full,
 )
 from pcluster.utils import get_http_tokens_setting
@@ -128,6 +130,22 @@ class LoginNodesStack(NestedStack):
                 network_interfaces=login_node_lt_nw_interface,
                 # user_data=
                 # block_device_mappings=
+                tag_specifications=[
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="instance",
+                        tags=get_default_instance_tags(
+                            self.stack_name, self._config, login_nodes_pool, "LoginNode", self._shared_storage_infos
+                        )
+                        # +
+                        # + custom tags for instance
+                    ),
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="volume",
+                        tags=get_default_volume_tags(self.stack_name, "LoginNode")
+                        # +
+                        # + custom tags for volume
+                    ),
+                ],
             ),
         )
 
