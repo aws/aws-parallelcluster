@@ -170,7 +170,7 @@ class ClusterStack(StackInfo):
                 "HeadNodeBootstrapFailure", "Cluster creation timed out.", "WaitCondition timed out"
             ),
             ClusterCreationFailure(
-                "StaticNodeBoostrapFailure",
+                "StaticNodeBootstrapFailure",
                 "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning.",
                 "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning",
             ),
