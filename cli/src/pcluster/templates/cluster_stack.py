@@ -240,7 +240,11 @@ class ClusterCdkStack:
             self.log_group = self._add_cluster_log_group()
 
         # Managed security groups
-        self._head_security_group, self._compute_security_group, self._login_security_group = self._add_security_groups()
+        (
+            self._head_security_group,
+            self._compute_security_group,
+            self._login_security_group,
+        ) = self._add_security_groups()
         # Head Node ENI
         self._head_eni = self._add_head_eni()
 
@@ -410,7 +414,8 @@ class ClusterCdkStack:
         self._add_scheduler_plugin_substack()
 
     def _add_login_nodes_resources(self):
-        """Method to add Login Nodes related resources."""
+        """Add Login Nodes related resources."""
+
         if self._condition_is_slurm() and self.config.login_nodes:
             self.login_nodes_stack = LoginNodesStack(
                 scope=self.stack,
@@ -626,7 +631,6 @@ class ClusterCdkStack:
                     security_group,
                     managed_compute_security_group.ref,
                 )
-
 
     def _allow_all_ingress(self, description, source_security_group_id, group_id):
         return ec2.CfnSecurityGroupIngress(

@@ -1240,6 +1240,11 @@ class LoginNodesNetworking(_BaseNetworking):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
 
+    @property
+    def availability_zone(self):
+        """Compute availability zone from subnet id."""
+        return AWSApi.instance().ec2.get_subnet_avail_zone(self.subnet_id)
+
 
 class LoginNodesPools(Resource):
     """Represent the configuration of a LoginNodePool."""
@@ -3258,6 +3263,20 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     instance_type_info = compute_resource.instance_type_info_map[instance_type]
                     result[instance_type] = instance_type_info.instance_type_data
         return result
+
+    @property
+    def login_nodes_ami(self):
+        """Get the image id of the LoginNodes."""
+        login_nodes_ami_dict = {}
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.image and pool.image.custom_ami:
+                    login_nodes_ami_dict[pool.name] = pool.image.custom_ami
+                elif self.image.custom_ami:
+                    login_nodes_ami_dict[pool.name] = self.image.custom_ami
+                else:
+                    login_nodes_ami_dict[pool.name] = self.official_ami
+        return login_nodes_ami_dict
 
     @property
     def has_gpu_health_checks_enabled(self):

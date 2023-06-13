@@ -26,11 +26,11 @@ from pcluster.config.cluster_config import (
     BaseComputeResource,
     BaseQueue,
     HeadNode,
+    LoginNodesPools,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
-    LoginNodesPools,
 )
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
@@ -395,8 +395,9 @@ class NodeIamResourcesBase(Construct):
                 self._add_custom_cookbook_policies_to_role(self.instance_role.ref, f"CustomCookbookPolicies{suffix}")
 
             # S3 Access Policies
-            if (isinstance(node, HeadNode) or isinstance(node, BaseQueue)) \
-                    and self._condition_create_s3_access_policies(node):
+            if (
+                isinstance(node, HeadNode) or isinstance(node, BaseQueue)
+            ) and self._condition_create_s3_access_policies(node):
                 self._add_s3_access_policies_to_role(node, self.instance_role.ref, f"S3AccessPolicies{suffix}")
 
             # Head node Instance Profile
@@ -509,10 +510,7 @@ class NodeIamResourcesBase(Construct):
         )
 
     def _add_s3_access_policies_to_role(
-        self,
-        node: Union[HeadNode, BaseQueue, LoginNodesPools],
-        role_ref: str,
-        name: str
+        self, node: Union[HeadNode, BaseQueue, LoginNodesPools], role_ref: str, name: str
     ):
         """Attach S3 policies to given role."""
         read_only_s3_resources = []
