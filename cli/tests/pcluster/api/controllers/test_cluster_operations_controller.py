@@ -1054,7 +1054,7 @@ class TestDescribeCluster:
                 ],
                 [
                     {
-                        "failureCode": "StaticNodeBoostrapFailure",
+                        "failureCode": "StaticNodeBootstrapFailure",
                         "failureReason": "Cluster has been set to PROTECTED mode "
                         "due to failures detected in static node provisioning.",
                     }
