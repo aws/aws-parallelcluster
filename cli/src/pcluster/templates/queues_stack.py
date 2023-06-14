@@ -276,7 +276,6 @@ class QueuesStack(NestedStack):
                                 else "NONE",
                                 "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
-                                "CWDashboardEnabled": "true" if self._config.is_cw_dashboard_enabled else "false",
                                 "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
                                 "QueueName": queue.name,
                                 "ComputeResourceName": compute_resource.name,
@@ -298,10 +297,10 @@ class QueuesStack(NestedStack):
                                         NODE_BOOTSTRAP_TIMEOUT,
                                     )
                                 ),
-                                "StartupTimeEnabled": str(
+                                "ComputeStartupTimeEnabled": str(
                                     get_attr(
                                         self._config,
-                                        "dev_settings.startup_time_enabled",
+                                        "dev_settings.compute_startup_time_enabled",
                                         default=False,
                                     )
                                 ),

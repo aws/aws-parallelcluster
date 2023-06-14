@@ -227,9 +227,8 @@ write_files:
       #maesure end time
       end=$(date +%s)
 
-      if [ "${StartupTimeEnabled}" = "True" ]; then
-        #publish_startup_time $start $end || echo "[WARNING] failed to push the metric StartupTime to CloudWatch."
-        publish_startup_time $start $end || error_exit "failed to push the metric StartupTime to CloudWatch."
+      if [ "${ComputeStartupTimeEnabled}" = "True" ]; then
+        publish_startup_time $start $end || echo "[WARNING] failed to push the metric StartupTime to CloudWatch."
       fi
 
 --==BOUNDARY==

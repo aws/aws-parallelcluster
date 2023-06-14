@@ -1111,7 +1111,7 @@ class ClusterDevSettings(BaseDevSettings):
         ami_search_filters: AmiSearchFilters = None,
         instance_types_data: str = None,
         timeouts: Timeouts = None,
-        startup_time_enabled: bool = None,
+        compute_startup_time_enabled: bool = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1119,7 +1119,7 @@ class ClusterDevSettings(BaseDevSettings):
         self.ami_search_filters = Resource.init_param(ami_search_filters)
         self.instance_types_data = Resource.init_param(instance_types_data)
         self.timeouts = Resource.init_param(timeouts)
-        self.startup_time_enabled = Resource.init_param(startup_time_enabled, default=False)
+        self.compute_startup_time_enabled = Resource.init_param(compute_startup_time_enabled, default=False)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
