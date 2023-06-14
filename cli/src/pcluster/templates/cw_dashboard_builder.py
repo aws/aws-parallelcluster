@@ -431,6 +431,29 @@ class CWDashboardConstruct(Construct):
             )
         )
 
+        cluster_health_metrics.append(
+            _HealthMetric(
+                "Cluster Protected Mode Error",
+                [
+                    _CustomMetricFilter(
+                        metric_name="ClusterInProtectedMode",
+                        filter_pattern='{ $.event-type = "cluster-in-protected-mode" && $.scheduler = "slurm" }',
+                        metric_value="1",
+                        metric_unit="Count",
+                    ),
+                ],
+                left_y_axis=cloudwatch.YAxisProps(min=0.0),
+                left_annotations=[
+                    cloudwatch.HorizontalAnnotation(
+                        value=1,
+                        label="Cluster Is In Protected Mode",
+                        color=cloudwatch.Color.BLUE,
+                        visible=True,
+                    )
+                ],
+            )
+        )
+
         self._add_text_widget("# Cluster Health Metrics")
         self._add_health_metrics_graph_widgets(cluster_health_metrics)
         self._add_text_widget(

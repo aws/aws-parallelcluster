@@ -67,6 +67,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
+    PROTECTED_MODE_THRESHOLD,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
@@ -317,20 +318,37 @@ class ClusterCdkStack:
                 statistic="Maximum",
                 period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
             ),
+            "ProtectedMode": cloudwatch.Metric(
+                namespace="ParallelCluster",
+                metric_name="ClusterInProtectedMode",
+                dimensions_map={"ClusterName": self.stack.stack_name},
+                statistic="SampleCount",
+                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
+            ),
         }
 
         for metric_key, metric in metrics_for_alarms.items():
             alarm_id = f"HeadNode{metric_key}Alarm"
             alarm_name = f"{self.stack.stack_name}_{metric_key}Alarm_HeadNode"
+
+            threshold_value = (
+                PROTECTED_MODE_THRESHOLD if metric_key == "ProtectedMode" else CW_ALARM_PERCENT_THRESHOLD_DEFAULT
+            )
+            comparison_operator = (
+                cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
+                if metric_key == "ProtectedMode"
+                else cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD
+            )
+
             self.alarms.append(
                 cloudwatch.Alarm(
                     scope=self.stack,
                     id=alarm_id,
                     metric=metric,
                     evaluation_periods=CW_ALARM_EVALUATION_PERIODS_DEFAULT,
-                    threshold=CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
+                    threshold=threshold_value,
                     alarm_name=alarm_name,
-                    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    comparison_operator=comparison_operator,
                     datapoints_to_alarm=CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
                 )
             )
