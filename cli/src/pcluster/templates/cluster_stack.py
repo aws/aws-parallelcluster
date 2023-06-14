@@ -415,7 +415,6 @@ class ClusterCdkStack:
 
     def _add_login_nodes_resources(self):
         """Add Login Nodes related resources."""
-
         if self._condition_is_slurm() and self.config.login_nodes:
             self.login_nodes_stack = LoginNodesStack(
                 scope=self.stack,
@@ -517,8 +516,32 @@ class ClusterCdkStack:
         return head_eni
 
     def _add_security_groups(self):
-        """Associate security group to Head node, Login nodes and queues."""
-        # Head Node Security Group
+        head_node_security_groups, managed_head_security_group = self._head_security_groups()
+        (
+            login_security_groups,
+            managed_login_security_group,
+            custom_login_security_groups,
+        ) = self._login_security_groups()
+        (
+            compute_security_groups,
+            managed_compute_security_group,
+            custom_compute_security_groups,
+        ) = self._compute_security_groups()
+
+        self._add_inbounds_to_managed_security_groups(
+            compute_security_groups,
+            custom_compute_security_groups,
+            head_node_security_groups,
+            login_security_groups,
+            custom_login_security_groups,
+            managed_compute_security_group,
+            managed_head_security_group,
+            managed_login_security_group,
+        )
+
+        return managed_head_security_group, managed_compute_security_group, managed_login_security_group
+
+    def _head_security_groups(self):
         managed_head_security_group = None
         custom_head_security_groups = self.config.head_node.networking.security_groups or []
         if not custom_head_security_groups:
@@ -526,8 +549,9 @@ class ClusterCdkStack:
             head_node_security_groups = [managed_head_security_group.ref]
         else:
             head_node_security_groups = custom_head_security_groups
+        return head_node_security_groups, managed_head_security_group
 
-        # Login Nodes Security Groups
+    def _login_security_groups(self):
         managed_login_security_group = None
         custom_login_security_groups = set()
         managed_login_security_group_required = False
@@ -543,8 +567,9 @@ class ClusterCdkStack:
         if managed_login_security_group_required:
             managed_login_security_group = self._add_login_nodes_security_group()
             login_security_groups.append(managed_login_security_group.ref)
+        return login_security_groups, managed_login_security_group, custom_login_security_groups
 
-        # Compute Security Groups
+    def _compute_security_groups(self):
         managed_compute_security_group = None
         custom_compute_security_groups = set()
         managed_compute_security_group_required = False
@@ -559,19 +584,7 @@ class ClusterCdkStack:
         if managed_compute_security_group_required:
             managed_compute_security_group = self._add_compute_security_group()
             compute_security_groups.append(managed_compute_security_group.ref)
-
-        self._add_inbounds_to_managed_security_groups(
-            compute_security_groups,
-            custom_compute_security_groups,
-            head_node_security_groups,
-            login_security_groups,
-            custom_login_security_groups,
-            managed_compute_security_group,
-            managed_head_security_group,
-            managed_login_security_group,
-        )
-
-        return managed_head_security_group, managed_compute_security_group, managed_login_security_group
+        return compute_security_groups, managed_compute_security_group, custom_compute_security_groups
 
     def _add_inbounds_to_managed_security_groups(
         self,
@@ -584,6 +597,27 @@ class ClusterCdkStack:
         managed_head_security_group,
         managed_login_security_group,
     ):
+        self._add_inbounds_to_managed_head_security_group(
+            compute_security_groups, login_security_groups, managed_head_security_group
+        )
+
+        self._add_inbounds_to_managed_login_security_group(
+            head_node_security_groups,
+            compute_security_groups,
+            custom_login_security_groups,
+            managed_login_security_group,
+        )
+
+        self._add_inbounds_to_managed_compute_security_group(
+            head_node_security_groups,
+            login_security_groups,
+            custom_compute_security_groups,
+            managed_compute_security_group,
+        )
+
+    def _add_inbounds_to_managed_head_security_group(
+        self, compute_security_groups, login_security_groups, managed_head_security_group
+    ):
         if managed_head_security_group:
             for index, security_group in enumerate(compute_security_groups):
                 # Access to head node from compute nodes
@@ -595,6 +629,14 @@ class ClusterCdkStack:
                 self._allow_all_ingress(
                     f"HeadNodeSecurityGroupLoginIngress{index}", security_group, managed_head_security_group.ref
                 )
+
+    def _add_inbounds_to_managed_login_security_group(
+        self,
+        head_node_security_groups,
+        compute_security_groups,
+        custom_login_security_groups,
+        managed_login_security_group,
+    ):
         if managed_login_security_group:
             # Access to login nodes from head node and compute nodes
             for index, security_group in enumerate(head_node_security_groups):
@@ -611,6 +653,14 @@ class ClusterCdkStack:
                     security_group,
                     managed_login_security_group.ref,
                 )
+
+    def _add_inbounds_to_managed_compute_security_group(
+        self,
+        head_node_security_groups,
+        login_security_groups,
+        custom_compute_security_groups,
+        managed_compute_security_group,
+    ):
         if managed_compute_security_group:
             # Access to compute nodes from head node and login nodes
             for index, security_group in enumerate(head_node_security_groups):

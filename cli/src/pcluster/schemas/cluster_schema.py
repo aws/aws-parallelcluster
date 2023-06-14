@@ -1323,7 +1323,7 @@ class LoginNodesPoolsSchema(BaseSchema):
     instance_type = fields.Str(required=True)
     image = fields.Nested(LoginNodesImageSchema)
     networking = fields.Nested(LoginNodesNetworkingSchema, required=True)
-    count = fields.Int(required=True, validate=validate.Range(min=1))
+    count = fields.Int(required=True, validate=validate.Range(min=0))
     ssh = fields.Nested(LoginNodesSshSchema, required=True)
     iam = fields.Nested(LoginNodesIamSchema)
 

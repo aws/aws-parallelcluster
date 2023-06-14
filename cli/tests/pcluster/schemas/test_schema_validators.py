@@ -688,8 +688,8 @@ def test_login_node_custom_ami_validator(custom_ami, expected_message):
     [
         (1, None),
         (10, None),
-        (0, "Must be greater than or equal to 1."),
-        (-5, "Must be greater than or equal to 1."),
+        (0, None),
+        (-5, "Must be greater than or equal to 0."),
     ],
 )
 def test_login_node_pool_count_validator(count, expected_message):
