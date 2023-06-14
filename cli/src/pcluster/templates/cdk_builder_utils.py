@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
+# pylint: disable=too-many-lines
 import abc
 import hashlib
 from hashlib import sha1
@@ -395,9 +397,7 @@ class NodeIamResourcesBase(Construct):
                 self._add_custom_cookbook_policies_to_role(self.instance_role.ref, f"CustomCookbookPolicies{suffix}")
 
             # S3 Access Policies
-            if (
-                isinstance(node, HeadNode) or isinstance(node, BaseQueue)
-            ) and self._condition_create_s3_access_policies(node):
+            if isinstance(node, (BaseQueue, HeadNode)) and self._condition_create_s3_access_policies(node):
                 self._add_s3_access_policies_to_role(node, self.instance_role.ref, f"S3AccessPolicies{suffix}")
 
             # Head node Instance Profile
