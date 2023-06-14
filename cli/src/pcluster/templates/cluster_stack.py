@@ -415,6 +415,7 @@ class ClusterCdkStack:
 
     def _add_login_nodes_resources(self):
         """Add Login Nodes related resources."""
+        self.login_nodes_stack = None
         if self._condition_is_slurm() and self.config.login_nodes:
             self.login_nodes_stack = LoginNodesStack(
                 scope=self.stack,
@@ -425,6 +426,8 @@ class ClusterCdkStack:
                 shared_storage_attributes=self.shared_storage_attributes,
                 login_security_group=self._login_security_group,
             )
+            # Add dependency on the Head Node construct
+            self.login_nodes_stack.node.add_dependency(self.head_node_instance)
 
     def _add_cleanup_resources_lambda(self):
         """Create Lambda cleanup resources function and its role."""

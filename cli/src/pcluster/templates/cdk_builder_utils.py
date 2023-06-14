@@ -28,7 +28,7 @@ from pcluster.config.cluster_config import (
     BaseComputeResource,
     BaseQueue,
     HeadNode,
-    LoginNodesPools,
+    LoginNodesPool,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmComputeResource,
@@ -159,7 +159,7 @@ def get_custom_tags(config: Union[BaseClusterConfig, SlurmQueue, SlurmComputeRes
 def get_default_instance_tags(
     stack_name: str,
     config: BaseClusterConfig,
-    node: Union[HeadNode, LoginNodesPools, BaseComputeResource],
+    node: Union[HeadNode, LoginNodesPool, BaseComputeResource],
     node_type: str,
     shared_storage_infos: dict,
     raw_dict: bool = False,
@@ -264,7 +264,7 @@ def get_queue_security_groups_full(managed_compute_security_group: ec2.CfnSecuri
 
 def get_login_nodes_security_groups_full(
     managed_login_security_group: ec2.CfnSecurityGroup,
-    pool: LoginNodesPools,
+    pool: LoginNodesPool,
 ):
     """Return full security groups to be used for the login node, default plus additional ones."""
     login_nodes_security_groups = []
@@ -360,7 +360,7 @@ class NodeIamResourcesBase(Construct):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue, LoginNodesPools],
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
     ):
@@ -372,7 +372,7 @@ class NodeIamResourcesBase(Construct):
 
     def _add_role_and_policies(
         self,
-        node: Union[HeadNode, BaseQueue, LoginNodesPools],
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
     ):
@@ -415,7 +415,7 @@ class NodeIamResourcesBase(Construct):
             instance_profile_name=instance_profile_name,
         ).ref
 
-    def _add_node_role(self, node: Union[HeadNode, BaseQueue, LoginNodesPools], name: str):
+    def _add_node_role(self, node: Union[HeadNode, BaseQueue, LoginNodesPool], name: str):
         role_path, role_name = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, name, iam_type="AWS::IAM::Role"
         )
@@ -477,7 +477,7 @@ class NodeIamResourcesBase(Construct):
         except AttributeError:
             return False
 
-    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue, LoginNodesPools]):
+    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue, LoginNodesPool]):
         return node.iam and node.iam.s3_access
 
     def _add_custom_cookbook_policies_to_role(self, role_ref: str, name: str):
@@ -510,7 +510,7 @@ class NodeIamResourcesBase(Construct):
         )
 
     def _add_s3_access_policies_to_role(
-        self, node: Union[HeadNode, BaseQueue, LoginNodesPools], role_ref: str, name: str
+        self, node: Union[HeadNode, BaseQueue, LoginNodesPool], role_ref: str, name: str
     ):
         """Attach S3 policies to given role."""
         read_only_s3_resources = []
@@ -574,7 +574,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue, LoginNodesPools],
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
         cluster_bucket: S3Bucket,
@@ -875,7 +875,7 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue, LoginNodesPools],
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
     ):
@@ -915,7 +915,7 @@ class LoginNodesIamResources(NodeIamResourcesBase):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: LoginNodesPools,
+        node: LoginNodesPool,
         shared_storage_infos: dict,
         name: str,
     ):

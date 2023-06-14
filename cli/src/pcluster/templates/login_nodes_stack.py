@@ -6,7 +6,7 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk.core import NestedStack, Stack
 from constructs import Construct
 
-from pcluster.config.cluster_config import LoginNodesPools, SlurmClusterConfig
+from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
@@ -49,15 +49,11 @@ class LoginNodesStack(NestedStack):
 
     def _add_resources(self):
         # get unique login nodes pools subnet id
-        subnet_ids = set()
-        for login_nodes_pool in self._login_nodes.pools:
-            subnet_ids.add(login_nodes_pool.networking.subnet_id)
+        subnet_ids = set(pool.networking.subnet_id for pool in self._login_nodes.pools)
         self._pools_subnet_ids = list(subnet_ids)
 
         # get unique login nodes pools availability_zone
-        availability_zones = set()
-        for login_nodes_pool in self._login_nodes.pools:
-            availability_zones.add(login_nodes_pool.networking.availability_zone)
+        availability_zones = set(pool.networking.availability_zone for pool in self._login_nodes.pools)
         self._pools_availability_zones = list(availability_zones)
 
         self._vpc = ec2.Vpc.from_vpc_attributes(
@@ -101,7 +97,7 @@ class LoginNodesStack(NestedStack):
 
     def _add_login_nodes_pool_launch_template(
         self,
-        login_nodes_pool: LoginNodesPools,
+        login_nodes_pool: LoginNodesPool,
         login_nodes_pool_lt_security_groups,
         login_nodes_instance_profiles,
     ):
@@ -195,7 +191,7 @@ class LoginNodesStack(NestedStack):
 
     def _add_login_nodes_pool_auto_scaling_group(
         self,
-        login_nodes_pool: LoginNodesPools,
+        login_nodes_pool: LoginNodesPool,
         login_nodes_target_group,
     ):
         launch_template_specification = autoscaling.CfnAutoScalingGroup.LaunchTemplateSpecificationProperty(

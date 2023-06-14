@@ -33,7 +33,7 @@ from pcluster.schemas.cluster_schema import (
     ImageSchema,
     LoginNodesIamSchema,
     LoginNodesImageSchema,
-    LoginNodesPoolsSchema,
+    LoginNodesPoolSchema,
     LoginNodesSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
@@ -694,7 +694,7 @@ def test_login_node_custom_ami_validator(custom_ami, expected_message):
 )
 def test_login_node_pool_count_validator(count, expected_message):
     _validate_and_assert_error(
-        LoginNodesPoolsSchema(),
+        LoginNodesPoolSchema(),
         {
             "Name": "validname",
             "InstanceType": "t2.micro",

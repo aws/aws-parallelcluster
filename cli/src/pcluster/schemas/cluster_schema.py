@@ -71,7 +71,7 @@ from pcluster.config.cluster_config import (
     LoginNodesIam,
     LoginNodesImage,
     LoginNodesNetworking,
-    LoginNodesPools,
+    LoginNodesPool,
     LoginNodesSsh,
     LogRotation,
     Logs,
@@ -1316,8 +1316,8 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
         return LoginNodesNetworking(**data)
 
 
-class LoginNodesPoolsSchema(BaseSchema):
-    """Represent the schema of the LoginNodePool."""
+class LoginNodesPoolSchema(BaseSchema):
+    """Represent the schema of the LoginNodesPool."""
 
     name = fields.Str(required=True)
     instance_type = fields.Str(required=True)
@@ -1330,14 +1330,14 @@ class LoginNodesPoolsSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodesPools(**data)
+        return LoginNodesPool(**data)
 
 
 class LoginNodesSchema(BaseSchema):
     """Represent the schema of LoginNodes."""
 
     pools = fields.Nested(
-        LoginNodesPoolsSchema,
+        LoginNodesPoolSchema,
         many=True,
         required=True,
         validate=validate.Length(equal=1, error="Only one pool can be specified when using login nodes."),

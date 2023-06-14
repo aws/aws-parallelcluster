@@ -18,7 +18,7 @@ from pcluster.config.cluster_config import (
     LoginNodes,
     LoginNodesImage,
     LoginNodesNetworking,
-    LoginNodesPools,
+    LoginNodesPool,
     LoginNodesSsh,
     PlacementGroup,
     QueueImage,
@@ -500,7 +500,7 @@ class TestBaseClusterConfig:
         assert_that(queue.get_tags()).is_equal_to(tags)
 
     def test_login_node_pool_default_value(self):
-        login_node_pool = LoginNodesPools(
+        login_node_pool = LoginNodesPool(
             name="test_pool2",
             instance_type="t3.xlarge",
             image=LoginNodesImage(custom_ami="ami-0222222222222222"),
