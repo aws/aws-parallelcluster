@@ -67,7 +67,8 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
-    PROTECTED_MODE_THRESHOLD, Feature,
+    PROTECTED_MODE_THRESHOLD,
+    Feature,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
@@ -326,7 +327,8 @@ class ClusterCdkStack:
                 metric_name="ClusterInProtectedMode",
                 dimensions_map={"ClusterName": self.stack.stack_name},
                 statistic="SampleCount",
-                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT), )
+                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
+            )
 
         for metric_key, metric in metrics_for_alarms.items():
             alarm_id = f"HeadNode{metric_key}Alarm"
