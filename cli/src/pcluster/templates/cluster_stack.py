@@ -1182,7 +1182,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::init"
+                            "--override-runlist aws-parallelcluster-entrypoints::init"
                         ),
                         "cwd": "/etc/chef",
                     }
@@ -1198,7 +1198,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::config"
+                            "--override-runlist aws-parallelcluster-entrypoints::config"
                         ),
                         "cwd": "/etc/chef",
                     }
@@ -1214,7 +1214,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::finalize"
+                            "--override-runlist aws-parallelcluster-entrypoints::finalize"
                         ),
                         "cwd": "/etc/chef",
                     },
@@ -1234,7 +1234,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
-                            " --override-runlist aws-parallelcluster::update &&"
+                            " --override-runlist aws-parallelcluster-entrypoints::update &&"
                             " /opt/parallelcluster/scripts/fetch_and_run -postupdate &&"
                             f" cfn-signal --exit-code=0 --reason='Update complete'"
                             f" --region {self.stack.region} --url {cloudformation_url}"
