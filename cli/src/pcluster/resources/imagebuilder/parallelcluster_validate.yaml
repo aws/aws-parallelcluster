@@ -200,8 +200,6 @@ phases:
           commands:
             - |
               set -v
-              sudo sed -i "s#path: cookbooks#path: /etc/chef/cookbooks#g" /etc/chef/cookbooks/aws-parallelcluster/test/recipes/inspec.yml
-              sed -Ei "s#path: .+/aws-parallelcluster#path: /etc/chef/cookbooks/aws-parallelcluster#g" /etc/chef/cookbooks/aws-parallelcluster-*/test/inspec.yml
               sed -Ei "s#path: cookbooks/aws-parallelcluster#path: /etc/chef/cookbooks/aws-parallelcluster#g" /etc/chef/cookbooks/aws-parallelcluster-*/test/inspec.yml
               echo "InSpec profiles patched"
 
@@ -372,18 +370,6 @@ phases:
               inspec exec test --profiles-path . --controls /tag:install/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec validation for AwsBatch failed" && exit 1
               echo "InSpec validation for AwsBatch passed"
-
-      - name: InSpecValidationsForRecipes
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              echo "Performing InSpec validation for recipes on the AMI..."
-              cd /etc/chef/cookbooks/aws-parallelcluster
-              inspec exec test/recipes --profiles-path . --controls /tag:install/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec validation for recipes failed" && exit 1
-              echo "InSpec validation for recipes passed"
 
       - name: InSpecValidationsForPlatform
         action: ExecuteBash
