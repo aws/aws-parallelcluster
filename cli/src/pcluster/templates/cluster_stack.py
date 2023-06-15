@@ -67,7 +67,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
-    PROTECTED_MODE_THRESHOLD,
+    PROTECTED_MODE_THRESHOLD, Feature,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
@@ -97,7 +97,7 @@ from pcluster.templates.cdk_builder_utils import (
 from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting, get_service_endpoint
+from pcluster.utils import get_attr, get_http_tokens_setting, get_service_endpoint, is_feature_supported
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -106,14 +106,14 @@ class ClusterCdkStack:
     """Create the CloudFormation stack template for the Cluster."""
 
     def __init__(
-            self,
-            scope: Construct,
-            construct_id: str,
-            stack_name: str,
-            cluster_config: Union[SlurmClusterConfig, AwsBatchClusterConfig],
-            bucket: S3Bucket,
-            log_group_name=None,
-            **kwargs,
+        self,
+        scope: Construct,
+        construct_id: str,
+        stack_name: str,
+        cluster_config: Union[SlurmClusterConfig, AwsBatchClusterConfig],
+        bucket: S3Bucket,
+        log_group_name=None,
+        **kwargs,
     ) -> None:
         self.stack = Stack(scope=scope, id=construct_id, **kwargs)
         self._stack_name = stack_name
@@ -320,7 +320,7 @@ class ClusterCdkStack:
             ),
         }
 
-        if self._condition_is_slurm():
+        if self._condition_is_slurm() and is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
             metrics_for_alarms["ProtectedMode"] = cloudwatch.Metric(
                 namespace="ParallelCluster",
                 metric_name="ClusterInProtectedMode",
@@ -552,12 +552,12 @@ class ClusterCdkStack:
         return managed_head_security_group, managed_compute_security_group
 
     def _add_inbounds_to_managed_security_groups(
-            self,
-            compute_security_groups,
-            custom_compute_security_groups,
-            head_node_security_groups,
-            managed_compute_security_group,
-            managed_head_security_group,
+        self,
+        compute_security_groups,
+        custom_compute_security_groups,
+        head_node_security_groups,
+        managed_compute_security_group,
+        managed_head_security_group,
     ):
         if managed_head_security_group:
             for index, security_group in enumerate(compute_security_groups):
@@ -859,13 +859,13 @@ class ClusterCdkStack:
         return efs_id
 
     def _add_efs_mount_target(
-            self,
-            efs_cfn_resource_id,
-            file_system_id,
-            security_groups,
-            subnet_id,
-            checked_availability_zones,
-            deletion_policy,
+        self,
+        efs_cfn_resource_id,
+        file_system_id,
+        security_groups,
+        subnet_id,
+        checked_availability_zones,
+        deletion_policy,
     ):
         """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
         availability_zone = AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id)
@@ -1067,9 +1067,9 @@ class ClusterCdkStack:
                     ),
                     "cluster_config_version": self.config.config_version,
                     "change_set_s3_key": f"{self.bucket.artifact_directory}/configs/"
-                                         f"{PCLUSTER_S3_ARTIFACTS_DICT.get('change_set_name')}",
+                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('change_set_name')}",
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/"
-                                                  f"{PCLUSTER_S3_ARTIFACTS_DICT.get('instance_types_data_name')}",
+                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('instance_types_data_name')}",
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                     "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
@@ -1314,7 +1314,7 @@ class ClusterCdkStack:
     def _add_scheduler_plugin_substack(self):
         self.scheduler_plugin_stack = None
         if not self._condition_is_scheduler_plugin() or not get_attr(
-                self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
+            self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
         ):
             return
 
@@ -1349,10 +1349,10 @@ class ClusterCdkStack:
 
     def _condition_create_lambda_iam_role(self):
         return (
-                not self.config.iam
-                or not self.config.iam.roles
-                or not self.config.iam.roles.lambda_functions_role
-                or self.config.iam.roles.get_param("lambda_functions_role").implied
+            not self.config.iam
+            or not self.config.iam.roles
+            or not self.config.iam.roles.lambda_functions_role
+            or self.config.iam.roles.get_param("lambda_functions_role").implied
         )
 
     def _condition_is_slurm(self):
