@@ -3,7 +3,7 @@ from typing import Dict
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import NestedStack, Stack, Construct
+from aws_cdk.core import Construct, NestedStack, Stack
 
 from pcluster.config.cluster_config import SlurmClusterConfig
 from pcluster.templates.cdk_builder_utils import (
@@ -81,9 +81,7 @@ class Pool(Construct):
                 image_id=self._config.login_nodes_ami[self._pool.name],
                 instance_type=self._pool.instance_type,
                 key_name=self._pool.ssh.key_name,
-                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
-                    name=self._instance_profile
-                ),
+                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
                     http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
                 ),
@@ -94,11 +92,7 @@ class Pool(Construct):
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=get_default_instance_tags(
-                            self.stack_name,
-                            self._config,
-                            self._pool,
-                            "LoginNode",
-                            self._shared_storage_infos
+                            self.stack_name, self._config, self._pool, "LoginNode", self._shared_storage_infos
                         )
                         # +
                         # + custom tags for instance
@@ -135,6 +129,7 @@ class Pool(Construct):
 
 class LoginNodesStack(NestedStack):
     """Stack encapsulating a set of LoginNodes and the associated resources."""
+
     def __init__(
         self,
         scope: Construct,
@@ -191,7 +186,7 @@ class LoginNodesStack(NestedStack):
                 self._shared_storage_attributes,
                 self._login_security_group,
                 self._login_nodes_target_group,
-                self.stack_name
+                self.stack_name,
             )
             self.pools[pool.name] = pool_construct
 
