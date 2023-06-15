@@ -17,6 +17,8 @@ from pcluster.utils import get_http_tokens_setting
 
 
 class Pool(Construct):
+    """Construct defining Login Nodes Pool specific resources."""
+
     def __init__(
         self,
         scope: Construct,
