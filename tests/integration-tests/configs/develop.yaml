@@ -1,10 +1,5 @@
 {%- import 'common.jinja2' as common with context -%}
 ---
-scheduler-plugins:
-  slurm_plugin:
-    scheduler-definition: "../../scheduler_plugins/slurm/utils/upload_artifacts.sh"
-    scheduler-commands: "tests.common.schedulers_common.SlurmCommands"
-    requires-sudo: true
 test-suites:
 {{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
 {% filter indent(2) %}

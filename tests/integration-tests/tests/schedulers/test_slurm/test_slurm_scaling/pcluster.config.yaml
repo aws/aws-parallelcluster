@@ -9,12 +9,7 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   {{ scheduler_prefix }}Settings:
-    {% if scheduler == "plugin" %}
-    CustomSettings:
-      ScaledownIdletime: {{ scaledown_idletime }}
-    {% else %}
     ScaledownIdletime: {{ scaledown_idletime }}
-    {% endif %}
   {{ scheduler_prefix }}Queues:
     - Name: ondemand1
       Networking:
@@ -22,19 +17,11 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: dummy-1
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.large
-          {% else %}
           Instances:
             - InstanceType: c5.large
-          {% endif %}
         - Name: ondemand1-i1
-          {% if scheduler == "plugin" %}
-          InstanceType: {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
-          {% endif %}
           MinCount: 2   # FIXME expecting 3 initial nodes and a min count of 2
     - Name: ondemand2
       Networking:
@@ -42,17 +29,9 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: dummy-2
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.large
-          {% else %}
           Instances:
             - InstanceType: c5.large
-          {% endif %}
         - Name: ondemand2-i1
-          {% if scheduler == "plugin" %}
-          InstanceType: {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
-          {% endif %}
           MinCount: 2

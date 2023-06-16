@@ -9,8 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
+SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
 
 OSU_BENCHMARK_VERSION = "5.7.1"
-
-SCHEDULER_PLUGIN_INTERFACE_VERSION = "1.0"

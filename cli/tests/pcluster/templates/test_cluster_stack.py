@@ -52,8 +52,6 @@ MAX_RESOURCES_PER_TEMPLATE = 500
         "slurm.full.yaml",
         "awsbatch.simple.yaml",
         "awsbatch.full.yaml",
-        "scheduler_plugin.required.yaml",
-        "scheduler_plugin.full.yaml",
     ],
 )
 def test_cluster_builder_from_configuration_file(
@@ -198,8 +196,6 @@ def _generate_template(cluster, capsys):
         "slurm.full.yaml",
         "awsbatch.simple.yaml",
         "awsbatch.full.yaml",
-        "scheduler_plugin.required.yaml",
-        "scheduler_plugin.full.yaml",
     ],
 )
 def test_add_alarms(mocker, config_file_name):
@@ -220,195 +216,6 @@ def test_add_alarms(mocker, config_file_name):
     else:
         assert_that(output_yaml).does_not_contain("HeadNodeDiskAlarm")
         assert_that(output_yaml).does_not_contain("HeadNodeMemAlarm")
-
-
-@pytest.mark.parametrize(
-    "config_file_name, expected_scheduler_plugin_stack",
-    [
-        ("scheduler-plugin-without-template.yaml", {}),
-        (
-            "scheduler-plugin-with-template.yaml",
-            {
-                "Type": "AWS::CloudFormation::Stack",
-                "Properties": {
-                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
-                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "scheduler-plugin-substack.cfn",
-                    "Parameters": {
-                        "ClusterName": "clustername",
-                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
-                        "VpcId": "vpc-123",
-                        "HeadNodeRoleName": {"Ref": "RoleHeadNode"},
-                        "ComputeFleetRoleNames": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesRole15b342af42246b70FB1D57C8Ref",
-                            ]
-                        },
-                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                        "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                    },
-                },
-            },
-        ),
-        (
-            "scheduler-plugin-with-head-node-instance-role.yaml",
-            {
-                "Type": "AWS::CloudFormation::Stack",
-                "Properties": {
-                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region."
-                    "amazonaws.com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "scheduler-plugin-substack.cfn",
-                    "Parameters": {
-                        "ClusterName": "clustername",
-                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
-                        "VpcId": "vpc-123",
-                        "HeadNodeRoleName": "",
-                        "ComputeFleetRoleNames": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesRole15b342af42246b70FB1D57C8Ref",
-                            ]
-                        },
-                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                        "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                    },
-                },
-            },
-        ),
-        (
-            "scheduler-plugin-with-compute-fleet-instance-role.yaml",
-            {
-                "Type": "AWS::CloudFormation::Stack",
-                "Properties": {
-                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
-                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "scheduler-plugin-substack.cfn",
-                    "Parameters": {
-                        "ClusterName": "clustername",
-                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
-                        "VpcId": "vpc-123",
-                        "HeadNodeRoleName": "",
-                        "ComputeFleetRoleNames": "",
-                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                        "LaunchTemplate7916067054f91933Version": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate7916067054f9193305F5F96F"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                        "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                    },
-                },
-            },
-        ),
-        (
-            "scheduler_plugin.full.yaml",
-            {
-                "Type": "AWS::CloudFormation::Stack",
-                "Properties": {
-                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
-                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "scheduler-plugin-substack.cfn",
-                    "Parameters": {
-                        "ClusterName": "clustername",
-                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
-                        "VpcId": "vpc-123",
-                        "HeadNodeRoleName": "",
-                        "ComputeFleetRoleNames": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesRole15b342af42246b70FB1D57C8Ref",
-                            ]
-                        },
-                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate1f8c19f38f8d4f7f6AD5CC0E"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                        "LaunchTemplate7916067054f91933Version": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplate7916067054f9193305F5F96F"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                        "LaunchTemplateA46d18b906a50d3aVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA46d18b906a50d3aADBCC4BA"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                        "LaunchTemplateA6f65dee6703df4aVersion": {
-                            "Fn::GetAtt": [
-                                "ComputeFleetQueuesNestedStackQueuesNestedStackResource4C142E85",
-                                "Outputs.clusternameComputeFleetQueuesLaunchTemplateA6f65dee6703df4a53C00131"
-                                + "LatestVersionNumber",
-                            ]
-                        },
-                    },
-                },
-            },
-        ),
-    ],
-)
-def test_scheduler_plugin_substack(mocker, config_file_name, expected_scheduler_plugin_stack, test_datadir):
-    mock_aws_api(mocker)
-    # mock bucket initialization parameters
-    mock_bucket(mocker)
-    mock_bucket_object_utils(mocker)
-
-    if config_file_name == "scheduler_plugin.full.yaml":
-        input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    else:
-        input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
-    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
-    )
-    print(yaml.dump(generated_template))
-    assert_that(generated_template["Resources"].get("SchedulerPluginStack", {})).is_equal_to(
-        expected_scheduler_plugin_stack
-    )
 
 
 def _mock_instance_type_info(instance_type):
@@ -553,13 +360,6 @@ def test_compute_launch_template_properties(
             "awsbatch-imds-secured-false.yaml",
             {"scheduler": "awsbatch", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1201},
         ),
-        ("scheduler-plugin-imds-secured-true.yaml", {"scheduler": "plugin", "head_node_imds_secured": "true"}),
-        (
-            "scheduler-plugin-headnode-hooks-partial.yaml",
-            {
-                "scheduler": "plugin",
-            },
-        ),
         (
             "awsbatch-headnode-hooks-partial.yaml",
             {
@@ -593,10 +393,6 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     generated_head_node_dna_json = json.loads(
         _get_cfn_init_file_content(template=generated_template, resource="HeadNodeLaunchTemplate", file="/tmp/dna.json")
     )
-    plugin__specific_settings = {
-        "scheduler_plugin_substack_arn": "{'Ref': 'SchedulerPluginStack'}",
-        "ddb_table": "{'Ref': 'DynamoDBTable'}",
-    }
     slurm_specific_settings = {
         "ddb_table": "{'Ref': 'DynamoDBTable'}",
         "dns_domain": "{'Ref': 'ClusterDNSDomain'}",
@@ -607,8 +403,6 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
 
     if expected_head_node_dna_json_fields["scheduler"] == "slurm":
         default_head_node_dna_json["cluster"].update(slurm_specific_settings)
-    elif expected_head_node_dna_json_fields["scheduler"] == "plugin":
-        default_head_node_dna_json["cluster"].update(plugin__specific_settings)
 
     default_head_node_dna_json["cluster"].update(expected_head_node_dna_json_fields)
 
@@ -623,8 +417,6 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
         ("slurm.full.yaml", "1201"),
         ("awsbatch.simple.yaml", "1800"),
         ("awsbatch.full.yaml", "1000"),
-        ("scheduler_plugin.required.yaml", "1800"),
-        ("scheduler_plugin.full.yaml", "1201"),
     ],
 )
 def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_node_bootstrap_timeout):
@@ -672,19 +464,6 @@ def _get_cfn_init_file_content(template, resource, file):
         ),
         (
             "awsbatch.full.yaml",
-            {},
-            {
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
-            },
-        ),
-        (
-            "scheduler_plugin.full.yaml",
             {},
             {
                 "parallelcluster:cluster-name": "clustername",
@@ -763,22 +542,6 @@ def test_head_node_tags_from_launch_template(mocker, config_file_name, expected_
                 "two": "two22",
             },
         ),
-        (
-            "scheduler_plugin.full.yaml",
-            {
-                "Name": "HeadNode",
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                "parallelcluster:attributes": "centos7, plugin, [0-9\\.A-Za-z]+, x86_64",
-                "parallelcluster:filesystem": "efs=1, multiebs=1, raid=0, fsx=1",
-                "parallelcluster:networking": "EFA=NONE",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
-            },
-        ),
     ],
 )
 def test_head_node_tags_from_instance_definition(mocker, config_file_name, expected_tags):
@@ -803,13 +566,10 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     [
         ("slurm.required.yaml", "v1.0", "optional"),
         ("awsbatch.simple.yaml", "v1.0", "optional"),
-        ("scheduler_plugin.required.yaml", "v1.0", "optional"),
         ("slurm.required.yaml", None, "optional"),
         ("awsbatch.simple.yaml", None, "optional"),
-        ("scheduler_plugin.required.yaml", None, "optional"),
         ("slurm.required.yaml", "v2.0", "required"),
         ("awsbatch.simple.yaml", "v2.0", "required"),
-        ("scheduler_plugin.required.yaml", "v2.0", "required"),
     ],
 )
 def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_tokens):
@@ -840,13 +600,8 @@ def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_toke
     [
         ("slurm.required.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
         ("awsbatch.simple.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
-        (
-            "scheduler_plugin.required.yaml",
-            {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]},
-        ),
         ("slurm.required.yaml", None),
         ("awsbatch.simple.yaml", None),
-        ("scheduler_plugin.required.yaml", None),
     ],
 )
 def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_config):

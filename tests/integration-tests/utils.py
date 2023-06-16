@@ -715,17 +715,6 @@ def render_jinja_template(template_file_path, **kwargs):
     return template_file_path
 
 
-def scheduler_plugin_definition_uploader(upload_script_path, bucket, key_prefix, region):
-    command = f"{upload_script_path} --bucket {bucket} --key-prefix {key_prefix} --region {region}"
-    logging.info("Calling scheduler plugin upload script with command (%s)", command)
-    try:
-        run_command(command)
-        return f"s3://{bucket}/{key_prefix}/plugin_definition.yaml"
-    except Exception as e:
-        logging.error("Failed when uploading scheduler plugin artifacts", e)
-        raise
-
-
 def create_hash_suffix(string_to_hash: str):
     """Create 16digit hash string."""
     return (

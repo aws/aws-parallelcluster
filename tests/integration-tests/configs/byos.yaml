@@ -39,13 +39,6 @@ test-suites:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-  scheduler_plugin:
-    test_scheduler_plugin.py::test_scheduler_plugin_integration:
-      dimensions:
-        - regions: ["ca-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2", "centos7", "ubuntu2004"]
-          schedulers: ["plugin"]
   pcluster_api:
     test_api.py::test_cluster_slurm:
       dimensions:

@@ -43,10 +43,6 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False)
             "/var/log/parallelcluster/slurm_suspend.log",
             "/var/log/parallelcluster/slurm_fleet_status_manager.log",
         ]
-    elif scheduler == "plugin":
-        log_files = [
-            "/var/log/parallelcluster/clusterstatusmgtd",
-        ]
     else:
         log_files = []
 

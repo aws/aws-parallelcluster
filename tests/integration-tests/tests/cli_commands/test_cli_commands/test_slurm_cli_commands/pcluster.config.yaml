@@ -11,12 +11,7 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   {{ scheduler_prefix }}Settings:
-    {% if scheduler == "plugin" %}
-    CustomSettings:
-      ScaledownIdletime: {{ scaledown_idletime }}
-    {% else %}
     ScaledownIdletime: {{ scaledown_idletime }}
-    {% endif %}
   {{ scheduler_prefix }}Queues:
     - Name: ondemand1
       Networking:

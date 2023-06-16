@@ -1,9 +1,0 @@
-#
-# slurm.sh:
-#   Setup slurm environment variables
-#
-
-PATH=$PATH:<%= node['slurm']['install_dir'] %>/bin
-MANPATH=$MANPATH:<%= node['slurm']['install_dir'] %>/share/man
-
-export PATH MANPATH

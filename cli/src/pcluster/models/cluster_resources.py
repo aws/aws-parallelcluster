@@ -153,9 +153,6 @@ class ClusterStack(StackInfo):
             ClusterCreationFailure("FsxMountFailure", "Failed to mount FSX.", "Failed to mount FSX"),
             ClusterCreationFailure("RaidMountFailure", "Failed to mount RAID array.", "Failed to mount RAID array"),
             ClusterCreationFailure(
-                "HeadNodeBootstrapFailure", "Failed to set up the head node.", "configured scheduler plugin"
-            ),
-            ClusterCreationFailure(
                 "HeadNodeBootstrapFailure", "Failed to set up the head node.", "Failed to run chef recipe"
             ),
             ClusterCreationFailure(

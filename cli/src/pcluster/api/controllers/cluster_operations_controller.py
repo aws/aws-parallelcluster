@@ -235,7 +235,7 @@ def describe_cluster(cluster_name, region=None):
         last_updated_time=to_utc_datetime(cfn_stack.last_updated_time),
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cluster_status,
-        scheduler=Scheduler(type=cluster.stack.scheduler, metadata=cluster.get_plugin_metadata()),
+        scheduler=Scheduler(type=cluster.stack.scheduler),
         failures=_get_creation_failures(cluster_status, cfn_stack),
     )
 
@@ -353,7 +353,6 @@ def update_cluster(
                 force=force_update,
                 validator_suppressors=get_validator_suppressors(suppress_validators),
                 validation_failure_level=FailureLevel[validation_failure_level],
-                dry_run=dryrun,
             )
             change_set, _ = _analyze_changes(changes)
             validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)

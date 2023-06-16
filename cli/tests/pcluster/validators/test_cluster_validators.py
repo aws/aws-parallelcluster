@@ -22,7 +22,6 @@ from pcluster.config.cluster_config import (
     CapacityReservationTarget,
     Database,
     RootVolume,
-    SchedulerPluginQueueNetworking,
     SharedEbs,
     SlurmComputeResource,
     SlurmQueue,
@@ -495,19 +494,12 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
     "resource_name, resources_length, max_length, expected_message",
     [
         ("SlurmQueues", 5, 10, None),
-        ("SchedulerQueues", 10, 10, None),
         ("ComputeResources", 4, 5, None),
         (
             "SlurmQueues",
             11,
             10,
             "Invalid number of SlurmQueues (11) specified. Currently only supports up to 10 SlurmQueues.",
-        ),
-        (
-            "SchedulerQueues",
-            12,
-            10,
-            "Invalid number of SchedulerQueues (12) specified. Currently only supports up to 10 SchedulerQueues.",
         ),
         (
             "ComputeResources",
@@ -2450,40 +2442,6 @@ def test_new_storage_multiple_subnets_validator(
                 "storage configuration. Accessing a shared storage from different AZs can lead to increased storage "
                 "networking latency and added inter-AZ data transfer costs."
             ],
-        ),
-        (
-            [
-                dict(
-                    name="multi-az-queue-partial-match",
-                    compute_resources=[],
-                    networking=SchedulerPluginQueueNetworking(
-                        subnet_ids=["subnet-1", "subnet-2"],
-                    ),
-                ),
-            ],
-            [{"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}],
-            ["us-east-1b"],
-            FailureLevel.INFO,
-            [
-                "Your configuration for Queue 'multi-az-queue-partial-match' includes multiple subnets and external "
-                "shared storage configuration. Accessing a shared storage from different AZs can lead to increased "
-                "storage networking latency and added inter-AZ data transfer costs."
-            ],
-        ),
-        (
-            [
-                dict(
-                    name="multi-az-queue-match",
-                    compute_resources=[],
-                    networking=SchedulerPluginQueueNetworking(
-                        subnet_ids=["subnet-1", "subnet-2"],
-                    ),
-                ),
-            ],
-            [{"subnet-1": "us-east-1a", "subnet-2": "us-east-1b"}],
-            ["us-east-1a", "us-east-1b"],
-            None,
-            [],
         ),
         (
             [

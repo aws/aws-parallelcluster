@@ -6,13 +6,7 @@ from aws_cdk.core import CfnTag, Fn, NestedStack, Stack
 from constructs import Construct
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.config.cluster_config import (
-    SchedulerPluginQueue,
-    SharedStorageType,
-    SlurmClusterConfig,
-    SlurmComputeResource,
-    SlurmQueue,
-)
+from pcluster.config.cluster_config import SharedStorageType, SlurmClusterConfig, SlurmComputeResource, SlurmQueue
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
@@ -262,7 +256,7 @@ class QueuesStack(NestedStack):
                                 ),
                                 "Scheduler": self._config.scheduling.scheduler,
                                 "EphemeralDir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                                if isinstance(queue, (SlurmQueue, SchedulerPluginQueue))
+                                if isinstance(queue, SlurmQueue)
                                 and queue.compute_settings.local_storage.ephemeral_volume
                                 else DEFAULT_EPHEMERAL_DIR,
                                 "EbsSharedDirs": to_comma_separated_string(
