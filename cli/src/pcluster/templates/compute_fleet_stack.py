@@ -46,6 +46,7 @@ class ComputeFleetConstruct(Construct):
         cluster_hosted_zone,
         dynamodb_table,
         head_eni,
+        bucket,
         slurm_construct: SlurmConstruct,
     ):
         super().__init__(scope, id)
@@ -60,6 +61,7 @@ class ComputeFleetConstruct(Construct):
         self._cluster_hosted_zone = cluster_hosted_zone
         self._dynamodb_table = dynamodb_table
         self._head_eni = head_eni
+        self._bucket = bucket
         self._slurm_construct = slurm_construct
 
         self.launch_templates = {}
@@ -95,6 +97,7 @@ class ComputeFleetConstruct(Construct):
             head_eni=self._head_eni,
             slurm_construct=self._slurm_construct,
             compute_security_group=self._compute_security_group,
+            bucket=self._bucket,
         )
 
         self.managed_compute_fleet_instance_roles.update(queues_stack.managed_compute_instance_roles)

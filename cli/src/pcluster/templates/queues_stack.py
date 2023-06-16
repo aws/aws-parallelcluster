@@ -57,6 +57,7 @@ class QueuesStack(NestedStack):
         cluster_hosted_zone,
         dynamodb_table,
         head_eni,
+        bucket,
     ):
         super().__init__(scope, id)
         self._queues = queues
@@ -70,6 +71,7 @@ class QueuesStack(NestedStack):
         self._cluster_hosted_zone = cluster_hosted_zone
         self._dynamodb_table = dynamodb_table
         self._head_eni = head_eni
+        self._bucket = bucket
         self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._add_resources()
 
@@ -275,6 +277,7 @@ class QueuesStack(NestedStack):
                                 if self._cluster_hosted_zone
                                 else "",
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
+                                "ClusterS3Bucket": self._bucket.name,
                                 "ClusterName": self.stack_name,
                                 "SlurmDynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
                                 "LogGroupName": self._log_group.log_group_name

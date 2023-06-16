@@ -402,6 +402,7 @@ class ClusterCdkStack:
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
                 head_eni=self._head_eni,
+                bucket=self.bucket,
                 slurm_construct=self.scheduler_resources,
             )
         self._add_scheduler_plugin_substack()

@@ -92,6 +92,7 @@ write_files:
           "hosted_zone": "${ClusterHostedZone}",
           "node_type": "ComputeFleet",
           "cluster_user": "${OSUser}",
+          "cluster_s3_bucket": "${ClusterS3Bucket}",
           "enable_intel_hpc_platform": "${IntelHPCPlatform}",
           "cw_logging_enabled": "${CWLoggingEnabled}",
           "log_rotation_enabled": "${LogRotationEnabled}",
