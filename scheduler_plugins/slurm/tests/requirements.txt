@@ -1,3 +1,0 @@
-jinja2
-cfn_flip
-cfn-lint

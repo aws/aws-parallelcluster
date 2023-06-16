@@ -570,7 +570,7 @@ class TestDescribeCluster:
         )
 
     @pytest.mark.parametrize(
-        "cfn_stack_data, head_node_data, fail_on_bucket_check, scheduler, metadata, expected_response",
+        "cfn_stack_data, head_node_data, fail_on_bucket_check, scheduler, expected_response",
         [
             (
                 cfn_describe_stack_mock_response(
@@ -590,7 +590,6 @@ class TestDescribeCluster:
                 },
                 False,
                 "slurm",
-                None,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -632,7 +631,6 @@ class TestDescribeCluster:
                 None,
                 False,
                 "awsbatch",
-                None,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -659,14 +657,13 @@ class TestDescribeCluster:
                 cfn_describe_stack_mock_response(
                     {
                         "Parameters": [
-                            {"ParameterKey": "Scheduler", "ParameterValue": "plugin"},
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
                         ],
                     }
                 ),
                 None,
                 True,
-                "plugin",
-                {"Name": "my_scheduler", "Version": "1.0.0"},
+                "slurm",
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -686,7 +683,7 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
-                    "scheduler": {"type": "plugin"},
+                    "scheduler": {"type": "slurm"},
                 },
             ),
             (
@@ -695,14 +692,13 @@ class TestDescribeCluster:
                         "LastUpdatedTime": datetime(2021, 5, 30),
                         "StackStatus": "ROLLBACK_IN_PROGRESS",
                         "Parameters": [
-                            {"ParameterKey": "Scheduler", "ParameterValue": "plugin"},
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
                         ],
                     }
                 ),
                 None,
                 False,
-                "plugin",
-                {"Name": "plugin", "Version": "1.0.0"},
+                "slurm",
                 {
                     "cloudFormationStackStatus": "ROLLBACK_IN_PROGRESS",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -722,7 +718,7 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
-                    "scheduler": {"type": "plugin", "metadata": {"name": "plugin", "version": "1.0.0"}},
+                    "scheduler": {"type": "slurm"},
                     "failures": [
                         {"failureCode": "ClusterCreationFailure", "failureReason": "Failed to create the cluster."},
                     ],
@@ -732,7 +728,7 @@ class TestDescribeCluster:
                 cfn_describe_stack_mock_response(
                     {
                         "Parameters": [
-                            {"ParameterKey": "Scheduler", "ParameterValue": "plugin"},
+                            {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
                         ],
                     }
                 ),
@@ -744,8 +740,7 @@ class TestDescribeCluster:
                     "State": {"Code": 16, "Name": "running"},
                 },
                 False,
-                "plugin",
-                {"Name": "plugin", "Version": "1.0.0"},
+                "slurm",
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -772,7 +767,7 @@ class TestDescribeCluster:
                         "privateIpAddress": "192.168.61.109",
                         "state": "running",
                     },
-                    "scheduler": {"type": "plugin", "metadata": {"name": "plugin", "version": "1.0.0"}},
+                    "scheduler": {"type": "slurm"},
                 },
             ),
         ],

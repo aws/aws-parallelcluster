@@ -43,10 +43,8 @@ from pcluster.constants import (
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
 from pcluster.utils import (
-    get_attr,
     get_installed_version,
     get_resource_name_from_resource_arn,
-    get_url_scheme,
     policy_name_to_arn,
     split_resource_prefix,
 )
@@ -727,34 +725,6 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         )
                     ]
                 )
-
-        if self._config.scheduling.scheduler == "plugin":
-            cluster_shared_artifacts = get_attr(
-                self._config, "scheduling.settings.scheduler_definition.plugin_resources.cluster_shared_artifacts"
-            )
-            if cluster_shared_artifacts:
-                for artifacts in cluster_shared_artifacts:
-                    if get_url_scheme(artifacts.source) == "s3":
-                        bucket_info = parse_bucket_url(artifacts.source)
-                        bucket_name = bucket_info.get("bucket_name")
-                        object_key = bucket_info.get("object_key")
-                        policy.extend(
-                            [
-                                iam.PolicyStatement(
-                                    actions=["s3:GetObject"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[
-                                        self._format_arn(
-                                            region="",
-                                            service="s3",
-                                            account="",
-                                            resource=bucket_name,
-                                            resource_name=object_key,
-                                        )
-                                    ],
-                                ),
-                            ]
-                        )
 
         if self._config.directory_service:
             password_secret_arn = Arn.split(

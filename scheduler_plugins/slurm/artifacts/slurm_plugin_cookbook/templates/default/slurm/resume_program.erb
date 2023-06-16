@@ -1,2 +1,0 @@
-#!/bin/bash
-sudo -u <%= node['plugin']['fleet_mgt_user'] %> CONFIG_FILE="<%= node['pcluster']['local_dir'] %>/parallelcluster_slurm_resume.conf" SLURM_BINARIES_DIR="<%= node['slurm']['install_dir'] %>/bin" <%= node['pcluster']['python_root'] %>/slurm_resume "$@"

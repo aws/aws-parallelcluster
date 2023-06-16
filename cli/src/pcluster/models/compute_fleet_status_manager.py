@@ -144,9 +144,9 @@ class ComputeFleetStatusManager(metaclass=ABCMeta):
         pass
 
     @staticmethod
-    def get_manager(cluster_name, version, scheduler):
+    def get_manager(cluster_name, version):
         """Return compute fleet status manager based on version and plugin."""
-        if packaging.version.parse(version) < packaging.version.parse("3.2.0a0") and scheduler != "plugin":
+        if packaging.version.parse(version) < packaging.version.parse("3.2.0a0"):
             return PlainTextComputeFleetStatusManager(cluster_name)
         else:
             return JsonComputeFleetStatusManager(cluster_name)

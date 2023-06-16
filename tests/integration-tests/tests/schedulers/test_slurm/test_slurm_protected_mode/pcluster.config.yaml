@@ -23,12 +23,8 @@ Scheduling:
           {% endif %}
       ComputeResources:
         - Name: broken-static
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.large # instance type has bootstrap failure
-          {% else %}
           Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
-          {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket }}
@@ -42,19 +38,11 @@ Scheduling:
           {% endif %}
       ComputeResources:
         - Name: broken-dynamic
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.large # instance type has bootstrap failure
-          {% else %}
           Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
-          {% endif %}
         - Name: working-static
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.large # instance type works as expected
-          {% else %}
           Instances:
             - InstanceType: c5.xlarge # instance type works as expected
-          {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket }}
@@ -68,12 +56,8 @@ Scheduling:
           {% endif %}
       ComputeResources:
         - Name: normal
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.xlarge # instance type works as expected
-          {% else %}
           Instances:
             - InstanceType: c5.xlarge # instance type works as expected
-          {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket }}

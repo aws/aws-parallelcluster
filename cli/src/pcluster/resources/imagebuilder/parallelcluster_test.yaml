@@ -63,35 +63,6 @@ phases:
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
-      - name: SchedulerPluginPythonVersion
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PATTERN=$(jq '.default.cluster.scheduler_plugin.python_version' {{ CookbookDefaultFile }})
-              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              echo ${VERSION}
-
-      ### paths ###
-      - name: SchedulerPluginPyenvRoot
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PATTERN=$(jq '.default.cluster.scheduler_plugin.pyenv_root' {{ CookbookDefaultFile }})
-              PYENV_ROOT=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              echo ${PYENV_ROOT}
-
-      - name: SchedulerPluginVirtualenvPath
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              echo "{{ test.SchedulerPluginPyenvRoot.outputs.stdout }}/versions/{{ test.SchedulerPluginPythonVersion.outputs.stdout }}/envs/scheduler_plugin_virtualenv"
-
       ### utils ###
       - name: NvSwitches
         action: ExecuteBash
@@ -111,45 +82,6 @@ phases:
               PATTERN=$(jq '.default.cluster.reserved_base_uid' {{ CookbookDefaultFile }})
               RESERVED_BASE_UID=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo "${RESERVED_BASE_UID}"
-
-      - name: Virtualenv
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-
-              echo "Checking virtualenv python version..."
-
-              if [[ {{ test.OperatingSystemName.outputs.stdout }} != 'rhel8' ]]; then
-                {{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.SchedulerPluginPythonVersion.outputs.stdout }}
-                [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python version failed" && exit 1
-                su -l pcluster-scheduler-plugin -c "which python" | grep envs/scheduler_plugin_virtualenv/bin/python
-                [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python path failed" && exit 1
-              fi
-
-              echo "Virtualenv test passed"
-
-      - name: Pip
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              SCHEDULER_PLUGIN_PIP_VERSION=$({{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
-
-              older_than_required_version(){
-                CURRENT_VERSION="$1"
-                REQUIRED_VERSION="19.3"
-                if (( ${CURRENT_VERSION%%.*} < ${REQUIRED_VERSION%%.*} || ( ${CURRENT_VERSION%%.*} == ${REQUIRED_VERSION%%.*} && ${CURRENT_VERSION##*.} < ${REQUIRED_VERSION##*.} ) )) ; then
-                    echo "true"
-                else
-                    echo "false"
-                fi
-              }
-              # pip versions >= 19.3 is required to enable installation of python wheel binaries on Graviton
-              [[ $(older_than_required_version "${SCHEDULER_PLUGIN_PIP_VERSION}") == true ]] && echo "pip version in scheduler plugin virtualenv must be greater than 19.3" && exit 1
-              echo "Pip test passed"
 
       - name: FabricManager
         action: ExecuteBash
@@ -174,50 +106,6 @@ phases:
               [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
               echo "CloudWatch test passed"
 
-      - name: SchedulerPluginUser
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              SYSTEM_USER_ID_START=$(( {{ test.BaseUID.outputs.stdout }} + 10 ))
-              for i in $(seq 0 9);
-              do
-                  USER_ID=$(($i + $SYSTEM_USER_ID_START))
-                  getent passwd ${USER_ID}
-                  [[ $? -eq 0 ]] && echo "uid ${USER_ID} exists, it should be reserved for ParallelCluster system users. Reserved uid range is ${SYSTEM_USER_ID_START} - $(($SYSTEM_USER_ID_START + 9))" && exit 1
-              done
-              echo "SchedulerPlugin User test passed"
-
-      - name: SchedulerPluginGroup
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              SYSTEM_GROUP_ID_START=$(( {{ test.BaseUID.outputs.stdout }} + 10 ))
-              for i in $(seq 0 9);
-              do
-                  GROUP_ID=$(($i + $SYSTEM_GROUP_ID_START))
-                  getent group ${GROUP_ID}
-                  [[ $? -eq 0 ]] && echo "gid ${GROUP_ID} exists, it should be reserved for ParallelCluster system group. Reserved gid range is ${SYSTEM_GROUP_ID_START} - $(($SYSTEM_GROUP_ID_START + 9))" && exit 1
-              done
-              echo "SchedulerPlugin Group test passed"
-
-      - name: SchedulerPluginEventHandlerScript
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              if [[ {{ test.OperatingSystemName.outputs.stdout }} != 'rhel8' ]]; then
-                Script=/usr/local/sbin/invoke-scheduler-plugin-event-handler.sh
-                if [ -x ${Script} ]; then
-                  echo "Scheduler plugin handler script '${Script}' is executable."
-                else
-                  echo "Scheduler plugin handler script '${Script}' is not executable." && exit 1
-                fi
-              fi
 
       - name: InSpecTestsForAwsBatch
         action: ExecuteBash
