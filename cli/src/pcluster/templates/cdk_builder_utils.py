@@ -926,60 +926,7 @@ class LoginNodesIamResources(NodeIamResourcesBase):
             iam.PolicyStatement(
                 sid="Ec2",
                 actions=[
-                    "ec2:DescribeInstances",
-                    "ec2:DescribeInstanceStatus",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=["*"],
-            ),
-            iam.PolicyStatement(
-                sid="S3",
-                actions=[
-                    "s3:GetObject",
-                    "s3:PutObject",
-                    "s3:DeleteObject",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=[
-                    self._format_arn(
-                        service="s3",
-                        resource="{0}-aws-parallelcluster/*".format(Stack.of(self).region),
-                        region="",
-                        account="",
-                    )
-                ],
-            ),
-            iam.PolicyStatement(
-                sid="DynamoDB",
-                actions=[
-                    "dynamodb:GetItem",
-                    "dynamodb:PutItem",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=["*"],
-            ),
-            iam.PolicyStatement(
-                sid="Batch",
-                actions=[
-                    "batch:SubmitJob",
-                    "batch:DescribeJobs",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=["*"],
-            ),
-            iam.PolicyStatement(
-                sid="IAM",
-                actions=[
-                    "iam:AssumeRole",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=["*"],
-            ),
-            iam.PolicyStatement(
-                sid="CloudWatchLogs",
-                actions=[
-                    "logs:GetLogEvents",
-                    "logs:FilterLogEvents",
+                    "ec2:DescribeInstanceAttribute",
                 ],
                 effect=iam.Effect.ALLOW,
                 resources=["*"],

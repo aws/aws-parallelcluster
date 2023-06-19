@@ -6,7 +6,7 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk.core import CfnTag, Construct, NestedStack, Stack
 
 from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
-from pcluster.constants import PCLUSTER_QUEUE_NAME_TAG
+from pcluster.constants import PCLUSTER_LOGIN_NODES_POOL_NAME_TAG
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
@@ -106,13 +106,13 @@ class Pool(Construct):
                         tags=get_default_instance_tags(
                             self.stack_name, self._config, self._pool, "LoginNode", self._shared_storage_infos
                         )
-                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=self._pool.name)]
+                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
                         # + custom tags for instance
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "LoginNode")
-                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=self._pool.name)]
+                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
                         # + custom tags for instance
                     ),
                 ],
