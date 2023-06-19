@@ -280,14 +280,14 @@ class SlurmCommands(SchedulerCommands):
 
         return self._submit_batch_job(
             job_submit_command,
-            nodes,
-            slots,
-            host,
-            after_ok,
-            partition,
-            constraint,
-            prefer,
-            other_options,
+            nodes=nodes,
+            slots=slots,
+            host=host,
+            after_ok=after_ok,
+            partition=partition,
+            constraint=constraint,
+            prefer=prefer,
+            other_options=other_options,
             raise_on_error=raise_on_error,
         )
 
@@ -316,14 +316,14 @@ class SlurmCommands(SchedulerCommands):
 
         return self._submit_batch_job(
             job_submit_command,
-            nodes,
-            slots,
-            host,
-            after_ok,
-            partition,
-            constraint,
-            other_options,
-            additional_files,
+            nodes=nodes,
+            slots=slots,
+            host=host,
+            after_ok=after_ok,
+            partition=partition,
+            constraint=constraint,
+            other_options=other_options,
+            additional_files=additional_files,
             raise_on_error=raise_on_error,
         )
 
