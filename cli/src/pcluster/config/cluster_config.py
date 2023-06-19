@@ -1267,6 +1267,7 @@ class LoginNodesNetworking(_BaseNetworking):
 
     @property
     def az_list(self):
+        """Get LoginNodesPool availability zones list."""
         return list(self.az_subnet_ids_mapping.keys())
 
 

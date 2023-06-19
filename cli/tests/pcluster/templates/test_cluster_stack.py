@@ -15,7 +15,6 @@ import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-import boto3
 import pytest
 import yaml
 from assertpy import assert_that
@@ -552,7 +551,7 @@ class LoginNodeLTAssertion:
 
     def assert_lt_properties(self, generated_template, resource_type):
         resources = generated_template["Resources"]
-        for resource_name, resource in resources.items():
+        for _resource_name, resource in resources.items():
             if resource["Type"] == resource_type:
                 properties = resource["Properties"]
 
