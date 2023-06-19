@@ -4,6 +4,20 @@ Region: us-east-1
 Image:
   Os: centos7
   CustomAmi: ami-12345678
+LoginNodes:
+  Pools:
+  - Name: test
+    InstanceType: t2.micro
+    Count: 1
+    Image:
+      CustomAmi: ami-12345678
+    Networking:
+      SubnetIds:
+      - subnet-12345678
+    Ssh:
+      KeyName: ec2-key-name
+    Iam:
+      InstanceRole: arn:aws:iam::aws:role/LoginNodeRole
 HeadNode:
   InstanceType: t2.micro
   Networking:

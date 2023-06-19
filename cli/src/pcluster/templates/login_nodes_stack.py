@@ -3,9 +3,10 @@ from typing import Dict
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import Construct, NestedStack, Stack
+from aws_cdk.core import CfnTag, Construct, NestedStack, Stack
 
 from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
+from pcluster.constants import PCLUSTER_QUEUE_NAME_TAG
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
@@ -48,7 +49,7 @@ class Pool(Construct):
             self,
             f"VPC{self._pool.name}",
             vpc_id=self._config.vpc_id,
-            availability_zones=[self._pool.networking.availability_zone],
+            availability_zones=self._pool.networking.az_list,
         )
         self._login_nodes_pool_target_group = self._add_login_nodes_pool_target_group()
         self._login_nodes_pool_load_balancer = self._add_login_nodes_pool_load_balancer(
@@ -81,7 +82,7 @@ class Pool(Construct):
                 device_index=0,
                 interface_type=None,
                 groups=login_nodes_pool_lt_security_groups,
-                subnet_id=self._pool.networking.subnet_id,
+                subnet_id=self._pool.networking.subnet_ids[0],
             )
         ]
         return ec2.CfnLaunchTemplate(
@@ -105,14 +106,14 @@ class Pool(Construct):
                         tags=get_default_instance_tags(
                             self.stack_name, self._config, self._pool, "LoginNode", self._shared_storage_infos
                         )
-                        # +
+                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=self._pool.name)]
                         # + custom tags for instance
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "LoginNode")
-                        # +
-                        # + custom tags for volume
+                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=self._pool.name)]
+                        # + custom tags for instance
                     ),
                 ],
             ),
@@ -132,7 +133,7 @@ class Pool(Construct):
             max_size=str(self._pool.count),
             desired_capacity=str(self._pool.count),
             target_group_arns=[self._login_nodes_pool_target_group.node.default_child.ref],
-            vpc_zone_identifier=[self._pool.networking.subnet_id],
+            vpc_zone_identifier=self._pool.networking.subnet_ids,
         )
 
         return auto_scaling_group
@@ -162,11 +163,8 @@ class Pool(Construct):
             internet_facing=True,
             vpc_subnets=ec2.SubnetSelection(
                 subnets=[
-                    ec2.Subnet.from_subnet_id(
-                        self,
-                        f"LoginNodesSubnet{self._pool.name}",
-                        self._pool.networking.subnet_id,
-                    )
+                    ec2.Subnet.from_subnet_id(self, f"LoginNodesSubnet{i}", subnet_id)
+                    for i, subnet_id in enumerate(self._pool.networking.subnet_ids)
                 ]
             ),
         )

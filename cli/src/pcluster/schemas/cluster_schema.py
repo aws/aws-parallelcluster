@@ -1308,7 +1308,11 @@ class LoginNodesSshSchema(BaseSshSchema):
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):
     """Represent the networking schema of LoginNodes."""
 
-    subnet_id = fields.Str(required=True)
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(min=1),
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

@@ -1244,16 +1244,30 @@ class LoginNodesNetworking(_BaseNetworking):
 
     def __init__(
         self,
-        subnet_id: str,
+        subnet_ids: List[str],
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.subnet_id = Resource.init_param(subnet_id)
+        self.subnet_ids = Resource.init_param(subnet_ids)
+        self._az_subnet_ids_mapping = None
 
     @property
-    def availability_zone(self):
-        """Compute availability zone from subnet id."""
-        return AWSApi.instance().ec2.get_subnet_avail_zone(self.subnet_id)
+    def subnet_id_az_mapping(self):
+        """Map LoginNodesPool subnet ids to availability zones."""
+        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
+    @property
+    def az_subnet_ids_mapping(self):
+        """Map LoginNodesPool subnet ids to availability zones."""
+        if not self._az_subnet_ids_mapping:
+            self._az_subnet_ids_mapping = defaultdict(set)
+            for subnet_id, _az in self.subnet_id_az_mapping.items():
+                self._az_subnet_ids_mapping[_az].add(subnet_id)
+        return self._az_subnet_ids_mapping
+
+    @property
+    def az_list(self):
+        return list(self.az_subnet_ids_mapping.keys())
 
 
 class LoginNodesPool(Resource):
@@ -3299,6 +3313,16 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     return True
         return False
 
+    @property
+    def login_nodes_subnet_ids(self):
+        """Return the list of all compute subnet ids in the cluster."""
+        subnet_ids_list = []
+        for pool in self.login_nodes.pools:
+            for subnet_id in pool.networking.subnet_ids:
+                if subnet_id not in subnet_ids_list:
+                    subnet_ids_list.append(subnet_id)
+        return subnet_ids_list
+
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         self._register_validator(
@@ -3306,6 +3330,13 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             head_node_security_groups=self.head_node.networking.security_groups,
             queues=self.scheduling.queues,
         )
+        if self.login_nodes:
+            self._register_validator(
+                SubnetsValidator,
+                subnet_ids=self.compute_subnet_ids
+                + [self.head_node.networking.subnet_id]
+                + self.login_nodes_subnet_ids,
+            )
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(
                 HostedZoneValidator,

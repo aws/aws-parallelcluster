@@ -504,7 +504,7 @@ class TestBaseClusterConfig:
             name="test_pool2",
             instance_type="t3.xlarge",
             image=LoginNodesImage(custom_ami="ami-0222222222222222"),
-            networking=LoginNodesNetworking(subnet_id="subnet-0222222222222222"),
+            networking=LoginNodesNetworking(subnet_ids=["subnet-0222222222222222"]),
             ssh=LoginNodesSsh(key_name="mykey"),
         )
 

@@ -15,6 +15,7 @@ import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+import boto3
 import pytest
 import yaml
 from assertpy import assert_that
@@ -537,6 +538,70 @@ def test_compute_launch_template_properties(
 
     asset_content = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplate64e1c3597ca4c326")
 
+    for lt_assertion in lt_assertions:
+        lt_assertion.assert_lt_properties(asset_content, "LaunchTemplate64e1c3597ca4c326")
+
+
+class LoginNodeLTAssertion:
+    def __init__(self, pool_name, instance_type, count, subnet_ids, key_name):
+        self.pool_name = pool_name
+        self.instance_type = instance_type
+        self.count = count
+        self.subnet_ids = subnet_ids
+        self.key_name = key_name
+
+    def assert_lt_properties(self, generated_template, resource_type):
+        resources = generated_template["Resources"]
+        for resource_name, resource in resources.items():
+            if resource["Type"] == resource_type:
+                properties = resource["Properties"]
+
+                assert properties["LaunchTemplateData"]["InstanceType"] == self.instance_type
+                assert properties["LaunchTemplateData"]["NetworkInterfaces"][0]["SubnetId"] in self.subnet_ids
+                assert properties["LaunchTemplateData"]["KeyName"] == self.key_name
+
+
+@pytest.mark.parametrize(
+    "config_file_name, lt_assertions",
+    [
+        (
+            "test-login-nodes-stack.yaml",
+            [
+                LoginNodeLTAssertion(
+                    pool_name="testloginnodespool1",
+                    instance_type="t2.micro",
+                    count=2,
+                    subnet_ids=["subnet-12345678"],
+                    key_name="ec2-key-name",
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
+    ],
+)
+def test_login_nodes_launch_template_properties(
+    mocker,
+    config_file_name,
+    lt_assertions,
+    test_datadir,
+):
+    mock_aws_api(mocker, mock_instance_type_info=False)
+
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
+        side_effect=_mock_instance_type_info,
+    )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
+    generated_template, cdk_assets = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    asset_content = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplate64e1c3597ca4c326")
     for lt_assertion in lt_assertions:
         lt_assertion.assert_lt_properties(asset_content, "LaunchTemplate64e1c3597ca4c326")
 

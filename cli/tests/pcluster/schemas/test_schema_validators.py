@@ -698,7 +698,7 @@ def test_login_node_pool_count_validator(count, expected_message):
         {
             "Name": "validname",
             "InstanceType": "t2.micro",
-            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+            "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": count,
             "Ssh": {"KeyName": "valid_key_name"},
         },
@@ -715,14 +715,14 @@ def test_login_node_pool_count_validator(count, expected_message):
                 {
                     "Name": "validname1",
                     "InstanceType": "t2.micro",
-                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
                     "Count": 1,
                     "Ssh": {"KeyName": "valid_key_name1"},
                 },
                 {
                     "Name": "validname2",
                     "InstanceType": "t2.micro",
-                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
                     "Count": 1,
                     "Ssh": {"KeyName": "valid_key_name2"},
                 },
@@ -734,7 +734,7 @@ def test_login_node_pool_count_validator(count, expected_message):
                 {
                     "Name": "validname",
                     "InstanceType": "t2.micro",
-                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
                     "Count": 1,
                     "Ssh": {"KeyName": "valid_key_name"},
                 }
