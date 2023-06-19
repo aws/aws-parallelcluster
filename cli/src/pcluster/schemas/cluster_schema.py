@@ -1043,7 +1043,7 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     ami_search_filters = fields.Nested(AmiSearchFiltersSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     timeouts = fields.Nested(TimeoutsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    compute_startup_time_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    compute_startup_time_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
