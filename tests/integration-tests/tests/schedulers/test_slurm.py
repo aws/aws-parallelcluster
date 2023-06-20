@@ -345,34 +345,80 @@ def test_fast_capacity_failover(
     remote_command_executor = RemoteCommandExecutor(cluster)
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    # after the cluster is launched, apply the override patch to launch ice nodes
+
+    # after the cluster is launched, apply the override patch to launch ice for nodes in
+    # "ice-compute-resource" and "ice-cr-multiple" compute resources
     remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
+
+    # All nodes
     nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1", all_nodes=True)
     static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
-    ice_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
-    static_nodes_in_ice_compute_resource = [node for node in static_nodes if "ice-compute-resource" in node]
-    # test enable fast instance capacity failover
+
+    # Nodes in Single Instance Type CR
+    ice_single_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
+    ice_single_static_nodes = [node for node in static_nodes if "ice-compute-resource" in node]
+
+    # Nodes in Multiple Instance Type (overridden with invalid values)
+    ice_multi_dynamic_nodes = [node for node in dynamic_nodes if "ice-cr-multiple" in node]
+    ice_multi_static_nodes = [node for node in static_nodes if "ice-cr-multiple" in node]
+
+    # Nodes in Multiple Instance Type (overridden with values that will trigger an exception)
+    exception_multi_dynamic_nodes = [node for node in dynamic_nodes if "exception-cr-multiple" in node]
+    exception_multi_static_nodes = [node for node in static_nodes if "exception-cr-multiple" in node]
+
+    # Checks Fast Failover in case of Single Instance Type - using RunInstances API
+    # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
     _test_enable_fast_capacity_failover(
         scheduler_commands,
         remote_command_executor,
         clustermgtd_conf_path,
-        static_nodes_in_ice_compute_resource,
-        ice_dynamic_nodes,
+        ice_single_static_nodes,
+        ice_single_dynamic_nodes,
+        target_compute_resource="ice-compute-resource",
+        expected_error_code="InsufficientHostCapacity",
     )
+
+    # Check observability logic
     structured_log_event_utils.assert_that_event_exists(
         cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
     )
     test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
-    # remove logs from slurm_resume log and clustermgtd log in order to check logs after disable fast capacity fail-over
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/slurm_resume.log")
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
-    # test disable ice logic
+
+    # Test behavior with RunInstance when Fast Failover is disabled
+    # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
     _test_disable_fast_capacity_failover(
         scheduler_commands,
         remote_command_executor,
         clustermgtd_conf_path,
-        static_nodes_in_ice_compute_resource,
-        ice_dynamic_nodes,
+        ice_single_static_nodes,
+        ice_single_dynamic_nodes,
+        target_compute_resource="ice-compute-resource",
+        expected_error_code="InsufficientHostCapacity",
+    )
+
+    # Checks Fast Failover in case of Multiple Instance Types - using CreateFleet API
+    # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
+    # CreateFleet will return an empty list of instances, that should trigger FFO behavior
+    _test_enable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        ice_multi_static_nodes,
+        ice_multi_dynamic_nodes,
+        target_compute_resource="ice-cr-multiple",
+        expected_error_code="InsufficientInstanceCapacity",
+    )
+
+    # Test behavior with CreateFleet when Fast Failover is disabled
+    # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
+    _test_disable_fast_capacity_failover(
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        exception_multi_static_nodes,
+        exception_multi_dynamic_nodes,
+        target_compute_resource="exception-cr-multiple",
+        expected_error_code="InvalidParameterValue",
     )
 
 
@@ -567,7 +613,7 @@ def test_scontrol_reboot(
     slurm_commands = scheduler_commands_factory(remote_command_executor)
 
     # Clear clustermgtd logs before starting the tests
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_clustermgtd_log()
 
     # Run first job to wake up dynamic nodes from power_down state
     slurm_commands.submit_command(
@@ -613,7 +659,7 @@ def test_scontrol_reboot(
     )
 
     # Clear clustermgtd logs produced in previous tests
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_clustermgtd_log()
 
     # Check that node in REBOOT_ISSUED state can be powered down
     _test_scontrol_reboot_powerdown_reboot_issued_node(
@@ -689,8 +735,8 @@ def test_scontrol_reboot_ec2_health_checks(
     remote_command_executor.run_remote_command(f'ssh {str(compute_nodes[0])} "./{script}"')
 
     # Clear clustermgtd and slurmctld logs before starting the tests
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
-    remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+    remote_command_executor.clear_slurmctld_log
+    remote_command_executor.clear_clustermgtd_log()
 
     # 2 iterations to cover the two scenarios described in the test description
     for scenario in range(1, 3):
@@ -724,8 +770,8 @@ def test_scontrol_reboot_ec2_health_checks(
         assert_compute_node_states(slurm_commands, compute_nodes, "idle")
 
         # Reset the slurmctld and clustermgtd logs
-        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/slurmctld.log")
-        remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/parallelcluster/clustermgtd")
+        remote_command_executor.clear_slurmctld_log()
+        remote_command_executor.clear_clustermgtd_log()
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1899,19 +1945,32 @@ def _test_disable_fast_capacity_failover(
     scheduler_commands,
     remote_command_executor,
     clustermgtd_conf_path,
-    static_nodes_in_ice_compute_resource,
-    ice_dynamic_nodes,
+    cr_static_nodes,
+    cr_dynamic_nodes,
+    target_compute_resource,
+    expected_error_code,
 ):
-    """Test fast capacity failover has no effect on cluster when it is disabled."""
-    # set insufficient_capacity_timeout to 0 to disable fast instance capacity failover logic
+    """
+    Test fast capacity failover has no effect on cluster when it is disabled.
+
+    It expects to be run on a CR with at least 1 static node and 1 dynamic node.
+    It expects the job to fail because the node are forced in down by the override to RunInstances or CreateFleet
+    It expects that clustermgtd doesn't activate FastFailover mechanism (it checks the logs)
+    """
+    # disable Fast Failover by setting insufficient_capacity_timeout to 0
     _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
+
+    # clear slurm_resume and clustermgtd logs in order to start from a clean state
+    remote_command_executor.clear_slurm_resume_log()
+    remote_command_executor.clear_clustermgtd_log()
+
     # submit a job to trigger insufficient capacity
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "sleep 30",
             "nodes": 2,
             "other_options": "--no-requeue",
-            "constraint": "c5.large",
+            "constraint": target_compute_resource,
         }
     )
     # wait till the node failed to launch
@@ -1919,7 +1978,7 @@ def _test_disable_fast_capacity_failover(
         remote_command_executor,
         ["/var/log/parallelcluster/slurm_resume.log"],
         [
-            "InsufficientInstanceCapacity",
+            expected_error_code,
         ],
     )
     # assert that ice node is detected as unhealthy node
@@ -1941,8 +2000,10 @@ def _test_disable_fast_capacity_failover(
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_state(job_id, "NODE_FAIL")
     # wait for nodes reset
-    wait_for_compute_nodes_states(scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle"])
-    wait_for_compute_nodes_states(scheduler_commands, ice_dynamic_nodes, expected_states=["idle~"])
+    if len(cr_static_nodes) > 0:
+        wait_for_compute_nodes_states(scheduler_commands, cr_static_nodes, expected_states=["idle"])
+    if len(cr_dynamic_nodes) > 0:
+        wait_for_compute_nodes_states(scheduler_commands, cr_dynamic_nodes, expected_states=["idle~"])
 
 
 def assert_job_requeue_in_time(scheduler_commands, job_id):
@@ -1960,14 +2021,30 @@ def _test_enable_fast_capacity_failover(
     scheduler_commands,
     remote_command_executor,
     clustermgtd_conf_path,
-    static_nodes_in_ice_compute_resource,
-    ice_dynamic_nodes,
+    cr_static_nodes,
+    cr_dynamic_nodes,
+    target_compute_resource,
+    expected_error_code,
 ):
+    """
+    Test behavior when fast capacity failover is enabled.
+
+    It expects to be run on a CR with at least 1 static node and 1 dynamic node.
+    It expects all the dynamic node to fail due to the overrides to RunInstances or CreateFleet
+    It expects all dynamic the nodes in the CR to be put in down by FFO
+    It expects the static node to be healthy
+    It expects the job to succeed becase Slurm will reallocate the failed node in a different CR
+    """
     # set insufficient_capacity_timeout to 180 seconds to quicker reset compute resources
     _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
-    # trigger insufficient capacity
+
+    # clear slurm_resume and clustermgtd logs in order to start from a clean state
+    remote_command_executor.clear_slurm_resume_log()
+    remote_command_executor.clear_clustermgtd_log()
+
+    # trigger insufficient capacity: we are using `prefer` to allow requeuing the job on a different CR
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 30", "nodes": 2}
+        submit_command_args={"command": "sleep 30", "nodes": 2, "prefer": target_compute_resource}
     )
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
         remote_command_executor,
@@ -1977,12 +2054,10 @@ def _test_enable_fast_capacity_failover(
         ],
     )
     # test static nodes in ice compute resource are up
-    assert_compute_node_states(
-        scheduler_commands, static_nodes_in_ice_compute_resource, expected_states=["idle", "mixed", "allocated"]
-    )
+    assert_compute_node_states(scheduler_commands, cr_static_nodes, expected_states=["idle", "mixed", "allocated"])
     # test dynamic nodes in ice compute resource are down
-    assert_compute_node_states(scheduler_commands, ice_dynamic_nodes, expected_states=["down#", "down~"])
-    assert_compute_node_reasons(scheduler_commands, ice_dynamic_nodes, "(Code:InsufficientInstanceCapacity)")
+    assert_compute_node_states(scheduler_commands, cr_dynamic_nodes, expected_states=["down#", "down~"])
+    assert_compute_node_reasons(scheduler_commands, cr_dynamic_nodes, f"(Code:{expected_error_code})")
     # test job takes less than 2 minutes to requeue
     scheduler_commands.wait_job_completed(job_id)
     assert_job_requeue_in_time(scheduler_commands, job_id)
@@ -1996,7 +2071,7 @@ def _test_enable_fast_capacity_failover(
         ],
     )
     # check dynamic nodes in ice compute resource are reset after insufficient_capacity_timeout expired
-    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=ice_dynamic_nodes)
+    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=cr_dynamic_nodes)
     # test insufficient capacity does not trigger protected mode
     assert_no_msg_in_logs(
         remote_command_executor,
