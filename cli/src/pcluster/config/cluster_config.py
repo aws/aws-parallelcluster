@@ -660,6 +660,34 @@ class _BaseNetworking(Resource):
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
 
+class _NetworkingWithSubnetMapping(_BaseNetworking):
+    """Represent the Networking with subnet to AZ mapping for Queue Networking and Login Nodes Networking."""
+
+    def __init__(self, subnet_ids: List[str], **kwargs):
+        super().__init__(**kwargs)
+        self.subnet_ids = Resource.init_param(subnet_ids)
+        self._az_subnet_ids_mapping = None
+
+    @property
+    def subnet_id_az_mapping(self):
+        """Map subnet ids to availability zones."""
+        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
+    @property
+    def az_subnet_ids_mapping(self):
+        """Map subnet ids to availability zones."""
+        if not self._az_subnet_ids_mapping:
+            self._az_subnet_ids_mapping = defaultdict(set)
+            for subnet_id, _az in self.subnet_id_az_mapping.items():
+                self._az_subnet_ids_mapping[_az].add(subnet_id)
+        return self._az_subnet_ids_mapping
+
+    @property
+    def az_list(self):
+        """Get availability zones list."""
+        return list(self.az_subnet_ids_mapping.keys())
+
+
 class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
@@ -720,32 +748,12 @@ class SlurmComputeResourceNetworking(Resource):
         self.placement_group = placement_group or PlacementGroup(implied=True)
 
 
-class _QueueNetworking(_BaseNetworking):
+class _QueueNetworking(_NetworkingWithSubnetMapping):
     """Represent the networking configuration for the Queue."""
 
-    def __init__(self, subnet_ids: List[str], assign_public_ip: str = None, **kwargs):
+    def __init__(self, assign_public_ip: str = None, **kwargs):
         super().__init__(**kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
-        self.subnet_ids = Resource.init_param(subnet_ids)
-        self._az_subnet_ids_mapping = None
-
-    @property
-    def subnet_id_az_mapping(self):
-        """Map queue subnet ids to availability zones."""
-        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
-
-    @property
-    def az_subnet_ids_mapping(self):
-        """Map queue subnet ids to availability zones."""
-        if not self._az_subnet_ids_mapping:
-            self._az_subnet_ids_mapping = defaultdict(set)
-            for subnet_id, _az in self.subnet_id_az_mapping.items():
-                self._az_subnet_ids_mapping[_az].add(subnet_id)
-        return self._az_subnet_ids_mapping
-
-    @property
-    def az_list(self):
-        return list(self.az_subnet_ids_mapping.keys())
 
 
 class SlurmQueueNetworking(_QueueNetworking):
@@ -1239,36 +1247,14 @@ class LoginNodesSsh(_BaseSsh):
         super().__init__(**kwargs)
 
 
-class LoginNodesNetworking(_BaseNetworking):
+class LoginNodesNetworking(_NetworkingWithSubnetMapping):
     """Represent the networking configuration for LoginNodes."""
 
     def __init__(
         self,
-        subnet_ids: List[str],
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.subnet_ids = Resource.init_param(subnet_ids)
-        self._az_subnet_ids_mapping = None
-
-    @property
-    def subnet_id_az_mapping(self):
-        """Map LoginNodesPool subnet ids to availability zones."""
-        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
-
-    @property
-    def az_subnet_ids_mapping(self):
-        """Map LoginNodesPool subnet ids to availability zones."""
-        if not self._az_subnet_ids_mapping:
-            self._az_subnet_ids_mapping = defaultdict(set)
-            for subnet_id, _az in self.subnet_id_az_mapping.items():
-                self._az_subnet_ids_mapping[_az].add(subnet_id)
-        return self._az_subnet_ids_mapping
-
-    @property
-    def az_list(self):
-        """Get LoginNodesPool availability zones list."""
-        return list(self.az_subnet_ids_mapping.keys())
 
     @property
     def is_subnet_public(self):
@@ -1788,12 +1774,11 @@ class BaseClusterConfig(Resource):
     @property
     def compute_subnet_ids(self):
         """Return the list of all compute subnet ids in the cluster."""
-        subnet_ids_list = []
+        subnet_ids_set = set()
         for queue in self.scheduling.queues:
             for subnet_id in queue.networking.subnet_ids:
-                if subnet_id not in subnet_ids_list:
-                    subnet_ids_list.append(subnet_id)
-        return subnet_ids_list
+                subnet_ids_set.add(subnet_id)
+        return list(subnet_ids_set)
 
     @property
     def availability_zones_subnets_mapping(self):
@@ -3321,13 +3306,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
 
     @property
     def login_nodes_subnet_ids(self):
-        """Return the list of all compute subnet ids in the cluster."""
-        subnet_ids_list = []
+        """Return the list of all LoginNodes subnet ids in the cluster."""
+        subnet_ids_set = set()
         for pool in self.login_nodes.pools:
             for subnet_id in pool.networking.subnet_ids:
-                if subnet_id not in subnet_ids_list:
-                    subnet_ids_list.append(subnet_id)
-        return subnet_ids_list
+                subnet_ids_set.add(subnet_id)
+        return list(subnet_ids_set)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)

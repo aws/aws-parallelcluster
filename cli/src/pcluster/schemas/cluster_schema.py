@@ -1311,7 +1311,7 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
     subnet_ids = fields.List(
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
-        validate=validate.Length(equal=1, error="In MVP, only one subnet_id can be specified."),
+        validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool"),
     )
 
     @post_load
