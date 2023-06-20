@@ -923,14 +923,7 @@ class LoginNodesIamResources(NodeIamResourcesBase):
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
         return [
-            iam.PolicyStatement(
-                sid="Ec2",
-                actions=[
-                    "ec2:DescribeInstanceAttribute",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=["*"],
-            ),
+            iam.PolicyStatement(),
         ]
 
 
