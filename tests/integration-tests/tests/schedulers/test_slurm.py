@@ -67,7 +67,18 @@ def test_slurm(
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     scaledown_idletime = 3
-    gpu_instance_type = "g3.4xlarge"
+    if architecture == "arm64":
+        gpu_instance_type = "g5g.4xlarge"
+        instance_type_1 = "c6g.xlarge"
+        instance_type_2 = "c7g.xlarge"
+        gpu_type = "T4g"
+    else:
+        gpu_instance_type = "g3.4xlarge"
+        instance_type_1 = "c4.xlarge"
+        instance_type_2 = "c5.xlarge"
+        gpu_type = "m60"
+        # TODO Revert to x86_64 gpu_instance_type
+
     gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
@@ -76,6 +87,8 @@ def test_slurm(
     cluster_config = pcluster_config_reader(
         scaledown_idletime=scaledown_idletime,
         gpu_instance_type=gpu_instance_type,
+        instance_type_1=instance_type_1,
+        instance_type_2=instance_type_2,
         compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
     )
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
@@ -96,14 +109,15 @@ def test_slurm(
         cluster.cfn_name,
         scaledown_idletime,
         partition="ondemand",
-        instance_type="c5.xlarge",
+        instance_type=instance_type_2,  # TODO revert to c5.xlarge
         cpu_per_instance=4,
     )
     _gpu_resource_check(
         slurm_commands, partition="gpu", instance_type=gpu_instance_type, instance_type_info=gpu_instance_type_info
     )
+    # TODO revert to c5.xlarge
     _test_cluster_limits(
-        slurm_commands, partition="ondemand", instance_type="c5.xlarge", max_count=5, cpu_per_instance=4
+        slurm_commands, partition="ondemand", instance_type=instance_type_2, max_count=5, cpu_per_instance=4
     )
     _test_cluster_gpu_limits(
         slurm_commands,
@@ -111,7 +125,7 @@ def test_slurm(
         instance_type=gpu_instance_type,
         max_count=5,
         gpu_per_instance=_get_num_gpus_on_instance(gpu_instance_type_info),
-        gpu_type="m60",
+        gpu_type=gpu_type,
     )
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)

@@ -18,10 +18,12 @@ Scheduling:
       ComputeResources:
         - Name: ondemand-i1
           Instances:
-            - InstanceType: c4.xlarge
+#TODO revert to c4.xlarge
+            - InstanceType: {{ instance_type_1 }}
         - Name: same-name-diff-queue
           Instances:
-            - InstanceType: c5.xlarge
+#TODO revert to c5.xlarge
+            - InstanceType: {{ instance_type_2 }}
           MaxCount: 5
     - Name: gpu
       Networking:
