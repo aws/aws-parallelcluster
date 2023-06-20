@@ -297,6 +297,13 @@ class QueuesStack(NestedStack):
                                         NODE_BOOTSTRAP_TIMEOUT,
                                     )
                                 ),
+                                "ComputeStartupTimeMetricEnabled": str(
+                                    get_attr(
+                                        self._config,
+                                        "dev_settings.compute_startup_time_metric_enabled",
+                                        default=False,
+                                    )
+                                ),
                             },
                             **get_common_user_data_env(queue, self._config),
                         },
