@@ -19,11 +19,18 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
+- Add support for Slurm accounting in US isolated regions.
 
 **CHANGES**
+- Avoid duplication of nodes seen by `clustermgtd` if compute nodes are added to multiple Slurm partitions.
+- ParallelCluster AMI for US isolated regions are now vended with preconfigured CA certificates to speed up node bootstrap.
 
 **BUG FIXES**
 - Remove hardcoding of root volume device name (`/dev/sda1` and `/dev/xvda`) and retrieve it from the AMI(s) used during `create-cluster`.
+- Fix cluster creation failure when using CloudFormation custom resource with `ElasticIp` set to `True`.
+- Fix cluster creation/update failure when using CloudFormation custom resource with large configuration files.
+- Fix an issue that was preventing `ptrace` protection from being disabled on Ubuntu and was not allowing Cross Memory Attach (CMA) in libfabric.
+- Fix fast insufficient capacity fail-over logic when using multiple instance types and no instances are returned.
 
 3.6.0
 ----
