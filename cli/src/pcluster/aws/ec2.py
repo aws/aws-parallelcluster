@@ -487,3 +487,26 @@ class Ec2Client(Boto3Client):
         except ClientError as e:
             if e.response.get("Error").get("Code") != "DryRunOperation":
                 raise
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_route_tables(self, filters=None):
+        """Describe EC2 route tables."""
+        kwargs = {"Filters": filters} if filters else {}
+        return self._paginate_results(self._client.describe_route_tables, **kwargs)
+
+    @AWSExceptionHandler.handle_client_exception
+    def is_subnet_public(self, subnet_id):
+        """Check if a subnet is public."""
+        route_tables = list(
+            self.describe_route_tables(filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}])
+        )
+        if not route_tables:
+            return False
+
+        route_table = route_tables[0]
+
+        for route in route_table.get("Routes", []):
+            if "GatewayId" in route and route["GatewayId"].startswith("igw-"):
+                return True
+
+        return False

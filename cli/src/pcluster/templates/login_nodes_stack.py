@@ -160,7 +160,7 @@ class Pool(Construct):
             self,
             f"{self._pool.name}LoadBalancer",
             vpc=self._vpc,
-            internet_facing=True,
+            internet_facing=self._pool.networking.is_subnet_public,
             vpc_subnets=ec2.SubnetSelection(
                 subnets=[
                     ec2.Subnet.from_subnet_id(self, f"LoginNodesSubnet{i}", subnet_id)

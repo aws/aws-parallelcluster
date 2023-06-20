@@ -1270,6 +1270,11 @@ class LoginNodesNetworking(_BaseNetworking):
         """Get LoginNodesPool availability zones list."""
         return list(self.az_subnet_ids_mapping.keys())
 
+    @property
+    def is_subnet_public(self):
+        """Get if the subnet is public or private."""
+        return AWSApi.instance().ec2.is_subnet_public(self.subnet_ids[0])
+
 
 class LoginNodesPool(Resource):
     """Represent the configuration of a LoginNodesPool."""
