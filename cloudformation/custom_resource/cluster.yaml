@@ -52,7 +52,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub
-        - https://${Bucket}.s3.${Region}.amazonaws.com/parallelcluster/${Version}/templates/policies/policies.yaml
+        - https://${Bucket}.s3.${Region}.${AWS::URLSuffix}/parallelcluster/${Version}/templates/policies/policies.yaml
         - { Version: !FindInMap [ParallelCluster, Constants, Version ],
             Bucket: !If [UseCustomBucket, !Ref CustomBucket, !Sub "${AWS::Region}-aws-parallelcluster" ],
             Region: !Ref AWS::Region }
