@@ -229,7 +229,7 @@ write_files:
       # measure end time
       end=$(date +%s)
 
-      if [ "${ComputeStartupTimeEnabled}" = "True" ]; then
+      if [ "${ComputeStartupTimeMetricEnabled}" = "True" ]; then
         publish_startup_time $start $end || echo "[WARNING] failed to push the StartupTime metricto CloudWatch."
       fi
 

@@ -297,7 +297,7 @@ class QueuesStack(NestedStack):
                                         NODE_BOOTSTRAP_TIMEOUT,
                                     )
                                 ),
-                                "ComputeStartupTimeEnabled": str(
+                                "ComputeStartupTimeMetricEnabled": str(
                                     get_attr(
                                         self._config,
                                         "dev_settings.compute_startup_time_enabled",
