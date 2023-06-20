@@ -439,7 +439,6 @@ class CWDashboardConstruct(Construct):
                         metric_name="ClusterInProtectedMode",
                         filter_pattern='{ $.event-type = "cluster-in-protected-mode" && $.scheduler = "slurm" }',
                         metric_value="1",
-                        metric_unit="Count",
                     ),
                 ],
                 left_y_axis=cloudwatch.YAxisProps(min=0.0),
