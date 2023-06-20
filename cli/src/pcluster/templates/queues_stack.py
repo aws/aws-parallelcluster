@@ -300,7 +300,7 @@ class QueuesStack(NestedStack):
                                 "ComputeStartupTimeMetricEnabled": str(
                                     get_attr(
                                         self._config,
-                                        "dev_settings.compute_startup_time_enabled",
+                                        "dev_settings.compute_startup_time_metric_enabled",
                                         default=False,
                                     )
                                 ),

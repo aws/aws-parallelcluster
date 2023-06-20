@@ -230,7 +230,7 @@ write_files:
       end=$(date +%s)
 
       if [ "${ComputeStartupTimeMetricEnabled}" = "True" ]; then
-        publish_startup_time $start $end || echo "[WARNING] failed to push the StartupTime metricto CloudWatch."
+        publish_startup_time $start $end || echo "[WARNING] failed to push the StartupTime metric to CloudWatch."
       fi
 
 --==BOUNDARY==
