@@ -891,10 +891,10 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
 #     ):
 #         super().__init__(scope, id, config, node, shared_storage_infos, name)
 #
-    # def _build_policy(self) -> List[iam.PolicyStatement]:
-    #     return [
-    #         iam.PolicyStatement(),
-    #     ]
+# def _build_policy(self) -> List[iam.PolicyStatement]:
+#     return [
+#         iam.PolicyStatement(),
+#     ]
 
 
 def get_lambda_log_group_prefix(function_id: str):
