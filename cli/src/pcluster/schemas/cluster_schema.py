@@ -66,7 +66,7 @@ from pcluster.config.cluster_config import (
     LoginNodesIam,
     LoginNodesImage,
     LoginNodesNetworking,
-    LoginNodesPools,
+    LoginNodesPool,
     LoginNodesSsh,
     LogRotation,
     Logs,
@@ -1269,7 +1269,11 @@ class LoginNodesSshSchema(BaseSshSchema):
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):
     """Represent the networking schema of LoginNodes."""
 
-    subnet_id = fields.Str(required=True)
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool"),
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1277,28 +1281,28 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
         return LoginNodesNetworking(**data)
 
 
-class LoginNodesPoolsSchema(BaseSchema):
-    """Represent the schema of the LoginNodePool."""
+class LoginNodesPoolSchema(BaseSchema):
+    """Represent the schema of the LoginNodesPool."""
 
     name = fields.Str(required=True)
     instance_type = fields.Str(required=True)
     image = fields.Nested(LoginNodesImageSchema)
     networking = fields.Nested(LoginNodesNetworkingSchema, required=True)
-    count = fields.Int(required=True, validate=validate.Range(min=1))
+    count = fields.Int(required=True, validate=validate.Range(min=0))
     ssh = fields.Nested(LoginNodesSshSchema, required=True)
     iam = fields.Nested(LoginNodesIamSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodesPools(**data)
+        return LoginNodesPool(**data)
 
 
 class LoginNodesSchema(BaseSchema):
     """Represent the schema of LoginNodes."""
 
     pools = fields.Nested(
-        LoginNodesPoolsSchema,
+        LoginNodesPoolSchema,
         many=True,
         required=True,
         validate=validate.Length(equal=1, error="Only one pool can be specified when using login nodes."),

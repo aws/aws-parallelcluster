@@ -639,6 +639,34 @@ class _BaseNetworking(Resource):
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
 
+class _NetworkingWithSubnetMapping(_BaseNetworking):
+    """Represent the Networking with subnet to AZ mapping for Queue Networking and Login Nodes Networking."""
+
+    def __init__(self, subnet_ids: List[str], **kwargs):
+        super().__init__(**kwargs)
+        self.subnet_ids = Resource.init_param(subnet_ids)
+        self._az_subnet_ids_mapping = None
+
+    @property
+    def subnet_id_az_mapping(self):
+        """Map subnet ids to availability zones."""
+        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
+
+    @property
+    def az_subnet_ids_mapping(self):
+        """Map subnet ids to availability zones."""
+        if not self._az_subnet_ids_mapping:
+            self._az_subnet_ids_mapping = defaultdict(set)
+            for subnet_id, _az in self.subnet_id_az_mapping.items():
+                self._az_subnet_ids_mapping[_az].add(subnet_id)
+        return self._az_subnet_ids_mapping
+
+    @property
+    def az_list(self):
+        """Get availability zones list."""
+        return list(self.az_subnet_ids_mapping.keys())
+
+
 class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
@@ -699,32 +727,12 @@ class SlurmComputeResourceNetworking(Resource):
         self.placement_group = placement_group or PlacementGroup(implied=True)
 
 
-class _QueueNetworking(_BaseNetworking):
+class _QueueNetworking(_NetworkingWithSubnetMapping):
     """Represent the networking configuration for the Queue."""
 
-    def __init__(self, subnet_ids: List[str], assign_public_ip: str = None, **kwargs):
+    def __init__(self, assign_public_ip: str = None, **kwargs):
         super().__init__(**kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
-        self.subnet_ids = Resource.init_param(subnet_ids)
-        self._az_subnet_ids_mapping = None
-
-    @property
-    def subnet_id_az_mapping(self):
-        """Map queue subnet ids to availability zones."""
-        return AWSApi.instance().ec2.get_subnets_az_mapping(self.subnet_ids)
-
-    @property
-    def az_subnet_ids_mapping(self):
-        """Map queue subnet ids to availability zones."""
-        if not self._az_subnet_ids_mapping:
-            self._az_subnet_ids_mapping = defaultdict(set)
-            for subnet_id, _az in self.subnet_id_az_mapping.items():
-                self._az_subnet_ids_mapping[_az].add(subnet_id)
-        return self._az_subnet_ids_mapping
-
-    @property
-    def az_list(self):
-        return list(self.az_subnet_ids_mapping.keys())
 
 
 class SlurmQueueNetworking(_QueueNetworking):
@@ -1216,20 +1224,23 @@ class LoginNodesSsh(_BaseSsh):
         super().__init__(**kwargs)
 
 
-class LoginNodesNetworking(_BaseNetworking):
+class LoginNodesNetworking(_NetworkingWithSubnetMapping):
     """Represent the networking configuration for LoginNodes."""
 
     def __init__(
         self,
-        subnet_id: str,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.subnet_id = Resource.init_param(subnet_id)
+
+    @property
+    def is_subnet_public(self):
+        """Get if the subnet is public or private."""
+        return AWSApi.instance().ec2.is_subnet_public(self.subnet_ids[0])
 
 
-class LoginNodesPools(Resource):
-    """Represent the configuration of a LoginNodePool."""
+class LoginNodesPool(Resource):
+    """Represent the configuration of a LoginNodesPool."""
 
     def __init__(
         self,
@@ -1251,6 +1262,16 @@ class LoginNodesPools(Resource):
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
 
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for login nodes, if set."""
+        return self.iam.instance_profile if self.iam else None
+
+    @property
+    def instance_role(self):
+        """Return the IAM role for login nodes, if set."""
+        return self.iam.instance_role if self.iam else None
+
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
 
@@ -1260,7 +1281,7 @@ class LoginNodes(Resource):
 
     def __init__(
         self,
-        pools: List[LoginNodesPools],
+        pools: List[LoginNodesPool],
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1730,12 +1751,11 @@ class BaseClusterConfig(Resource):
     @property
     def compute_subnet_ids(self):
         """Return the list of all compute subnet ids in the cluster."""
-        subnet_ids_list = []
+        subnet_ids_set = set()
         for queue in self.scheduling.queues:
             for subnet_id in queue.networking.subnet_ids:
-                if subnet_id not in subnet_ids_list:
-                    subnet_ids_list.append(subnet_id)
-        return subnet_ids_list
+                subnet_ids_set.add(subnet_id)
+        return list(subnet_ids_set)
 
     @property
     def availability_zones_subnets_mapping(self):
@@ -2786,6 +2806,20 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         return result
 
     @property
+    def login_nodes_ami(self):
+        """Get the image id of the LoginNodes."""
+        login_nodes_ami_dict = {}
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.image and pool.image.custom_ami:
+                    login_nodes_ami_dict[pool.name] = pool.image.custom_ami
+                elif self.image.custom_ami:
+                    login_nodes_ami_dict[pool.name] = self.image.custom_ami
+                else:
+                    login_nodes_ami_dict[pool.name] = self.official_ami
+        return login_nodes_ami_dict
+
+    @property
     def has_gpu_health_checks_enabled(self):
         """Return True if an queue or compute resources has GPU health checking enabled."""
         for queue in self.scheduling.queues:
@@ -2796,6 +2830,15 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                     return True
         return False
 
+    @property
+    def login_nodes_subnet_ids(self):
+        """Return the list of all LoginNodes subnet ids in the cluster."""
+        subnet_ids_set = set()
+        for pool in self.login_nodes.pools:
+            for subnet_id in pool.networking.subnet_ids:
+                subnet_ids_set.add(subnet_id)
+        return list(subnet_ids_set)
+
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         self._register_validator(
@@ -2803,6 +2846,13 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             head_node_security_groups=self.head_node.networking.security_groups,
             queues=self.scheduling.queues,
         )
+        if self.login_nodes:
+            self._register_validator(
+                SubnetsValidator,
+                subnet_ids=self.compute_subnet_ids
+                + [self.head_node.networking.subnet_id]
+                + self.login_nodes_subnet_ids,
+            )
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(
                 HostedZoneValidator,

@@ -29,7 +29,7 @@ from pcluster.config.cluster_config import (
     Imds,
     LoginNodes,
     LoginNodesNetworking,
-    LoginNodesPools,
+    LoginNodesPool,
     LoginNodesSsh,
     Proxy,
     Raid,
@@ -141,10 +141,10 @@ def dummy_slurm_cluster_config(mocker):
     ]
     scheduling = SlurmScheduling(queues=queues)
     pools = [
-        LoginNodesPools(
+        LoginNodesPool(
             name="loginnode1",
             instance_type="t2.micro",
-            networking=LoginNodesNetworking(subnet_id="subnet-12345678"),
+            networking=LoginNodesNetworking(subnet_ids=["subnet-12345678"]),
             count=1,
             ssh=LoginNodesSsh(key_name="validkeyname"),
         )

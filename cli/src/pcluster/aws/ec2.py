@@ -487,3 +487,65 @@ class Ec2Client(Boto3Client):
         except ClientError as e:
             if e.response.get("Error").get("Code") != "DryRunOperation":
                 raise
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_route_tables(self, filters=None):
+        """
+        Describe EC2 route tables.
+
+        sample output:
+        [
+            {
+                "Associations": [
+                    {
+                        "Main": False,
+                        "RouteTableAssociationId": "rtbassoc-12345678901234567",
+                        "RouteTableId": "rtb-12345678901234567",
+                        "SubnetId": "subnet-12345678901234567",
+                        "AssociationState": {"State": "associated"},
+                    }
+                ],
+                "PropagatingVgws": [],
+                "RouteTableId": "rtb-12345678901234567",
+                "Routes": [
+                    {
+                        "DestinationCidrBlock": "10.0.0.0/16",
+                        "GatewayId": "local",
+                        "Origin": "CreateRouteTable",
+                        "State": "active",
+                    },
+                    {
+                        "DestinationCidrBlock": "0.0.0.0/0",
+                        "GatewayId": "igw-12345678901234567",
+                        "Origin": "CreateRoute",
+                        "State": "active",
+                    },
+                ],
+                "Tags": [
+                    {"Key": "aws:cloudformation:logical-id", "Value": "RouteTablePublic"},
+                    ...
+                ],
+                "VpcId": "vpc-12345678901234567",
+                "OwnerId": "123456789012"
+            }
+        ]
+        :param filters: The filters to apply when describing the route tables.
+        :return: The route tables that match the filters.
+        """
+        kwargs = {"Filters": filters} if filters else {}
+        return list(self._paginate_results(self._client.describe_route_tables, **kwargs))
+
+    @AWSExceptionHandler.handle_client_exception
+    def is_subnet_public(self, subnet_id):
+        """Check if a subnet is public."""
+        route_tables = self.describe_route_tables(filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}])
+        if not route_tables:
+            return False
+
+        route_table = route_tables[0]
+
+        for route in route_table.get("Routes", []):
+            if "GatewayId" in route and route["GatewayId"].startswith("igw-"):
+                return True
+
+        return False

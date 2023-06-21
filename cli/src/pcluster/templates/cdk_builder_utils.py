@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
+# pylint: disable=too-many-lines
 import abc
 import hashlib
 from hashlib import sha1
@@ -26,6 +28,7 @@ from pcluster.config.cluster_config import (
     BaseComputeResource,
     BaseQueue,
     HeadNode,
+    LoginNodesPool,
     SharedStorageType,
     SlurmClusterConfig,
     SlurmComputeResource,
@@ -154,7 +157,7 @@ def get_custom_tags(config: Union[BaseClusterConfig, SlurmQueue, SlurmComputeRes
 def get_default_instance_tags(
     stack_name: str,
     config: BaseClusterConfig,
-    node: Union[HeadNode, BaseComputeResource],
+    node: Union[HeadNode, LoginNodesPool, BaseComputeResource],
     node_type: str,
     shared_storage_infos: dict,
     raw_dict: bool = False,
@@ -257,6 +260,26 @@ def get_queue_security_groups_full(managed_compute_security_group: ec2.CfnSecuri
     return queue_security_groups
 
 
+def get_login_nodes_security_groups_full(
+    managed_login_security_group: ec2.CfnSecurityGroup,
+    pool: LoginNodesPool,
+):
+    """Return full security groups to be used for the login node, default plus additional ones."""
+    login_nodes_security_groups = []
+
+    # Default security groups, created by us or provided by the user
+    if pool.networking.security_groups:
+        login_nodes_security_groups.extend(pool.networking.security_groups)
+    else:
+        login_nodes_security_groups.append(managed_login_security_group.ref)
+
+    # Additional security groups
+    if pool.networking.additional_security_groups:
+        login_nodes_security_groups.extend(pool.networking.additional_security_groups)
+
+    return login_nodes_security_groups
+
+
 def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str):
     """Return a path and Name prefix from the Resource prefix config option."""
     full_resource_path = None
@@ -335,7 +358,7 @@ class NodeIamResourcesBase(Construct):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue],
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
     ):
@@ -345,7 +368,12 @@ class NodeIamResourcesBase(Construct):
 
         self._add_role_and_policies(node, shared_storage_infos, name)
 
-    def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], shared_storage_infos: dict, name: str):
+    def _add_role_and_policies(
+        self,
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
+        shared_storage_infos: dict,
+        name: str,
+    ):
         """Create role and policies for the given node/queue."""
         suffix = create_hash_suffix(name)
         if node.instance_profile:
@@ -367,7 +395,7 @@ class NodeIamResourcesBase(Construct):
                 self._add_custom_cookbook_policies_to_role(self.instance_role.ref, f"CustomCookbookPolicies{suffix}")
 
             # S3 Access Policies
-            if self._condition_create_s3_access_policies(node):
+            if isinstance(node, (BaseQueue, HeadNode)) and self._condition_create_s3_access_policies(node):
                 self._add_s3_access_policies_to_role(node, self.instance_role.ref, f"S3AccessPolicies{suffix}")
 
             # Head node Instance Profile
@@ -385,7 +413,7 @@ class NodeIamResourcesBase(Construct):
             instance_profile_name=instance_profile_name,
         ).ref
 
-    def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
+    def _add_node_role(self, node: Union[HeadNode, BaseQueue, LoginNodesPool], name: str):
         role_path, role_name = add_cluster_iam_resource_prefix(
             self._config.cluster_name, self._config, name, iam_type="AWS::IAM::Role"
         )
@@ -447,7 +475,7 @@ class NodeIamResourcesBase(Construct):
         except AttributeError:
             return False
 
-    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue]):
+    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue, LoginNodesPool]):
         return node.iam and node.iam.s3_access
 
     def _add_custom_cookbook_policies_to_role(self, role_ref: str, name: str):
@@ -479,7 +507,9 @@ class NodeIamResourcesBase(Construct):
             roles=[role_ref],
         )
 
-    def _add_s3_access_policies_to_role(self, node: Union[HeadNode, BaseQueue], role_ref: str, name: str):
+    def _add_s3_access_policies_to_role(
+        self, node: Union[HeadNode, BaseQueue, LoginNodesPool], role_ref: str, name: str
+    ):
         """Attach S3 policies to given role."""
         read_only_s3_resources = []
         read_write_s3_resources = []
@@ -542,7 +572,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue],
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
         cluster_bucket: S3Bucket,
@@ -815,7 +845,7 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         scope: Construct,
         id: str,
         config: BaseClusterConfig,
-        node: Union[HeadNode, BaseQueue],
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
     ):
@@ -844,6 +874,26 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
                     )
                 ],
             ),
+        ]
+
+
+class LoginNodesIamResources(NodeIamResourcesBase):
+    """Construct defining IAM resources for a login node."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: LoginNodesPool,
+        shared_storage_infos: dict,
+        name: str,
+    ):
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
+
+    def _build_policy(self) -> List[iam.PolicyStatement]:
+        return [
+            iam.PolicyStatement(),
         ]
 
 

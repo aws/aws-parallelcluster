@@ -44,7 +44,8 @@ LoginNodes:
     InstanceType: t2.micro
     Count: 1
     Networking:
-      SubnetId: subnet-12345678
+      SubnetIds:
+        - subnet-12345678
     Ssh:
       KeyName: ec2-key-name
 Scheduling:
