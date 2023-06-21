@@ -55,21 +55,8 @@ class Pool(Construct):
             self._login_nodes_pool_target_group
         )
 
-        # self._add_login_node_iam_resources()
         self._launch_template = self._add_login_nodes_pool_launch_template()
         self._add_login_nodes_pool_auto_scaling_group()
-
-    # def _add_login_node_iam_resources(self):
-    #     self._iam_resource = LoginNodesIamResources(
-    #         self,
-    #         f"LoginNodeIamResources{self._pool.name}",
-    #         self._config,
-    #         self._pool,
-    #         self._shared_storage_infos,
-    #         self._pool.name,
-    #     )
-    #     self._instance_profile = self._iam_resource.instance_profile
-    #     self._instance_role = self._iam_resource.instance_role
 
     def _add_login_nodes_pool_launch_template(self):
         login_nodes_pool_lt_security_groups = get_login_nodes_security_groups_full(

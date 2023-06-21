@@ -877,26 +877,6 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         ]
 
 
-# class LoginNodesIamResources(NodeIamResourcesBase):
-#     """Construct defining IAM resources for a login node."""
-#
-#     def __init__(
-#         self,
-#         scope: Construct,
-#         id: str,
-#         config: BaseClusterConfig,
-#         node: LoginNodesPool,
-#         shared_storage_infos: dict,
-#         name: str,
-#     ):
-#         super().__init__(scope, id, config, node, shared_storage_infos, name)
-#
-# def _build_policy(self) -> List[iam.PolicyStatement]:
-#     return [
-#         iam.PolicyStatement(),
-#     ]
-
-
 def get_lambda_log_group_prefix(function_id: str):
     """Return the prefix of the log group associated to Lambda functions created using PclusterLambdaConstruct."""
     return f"log-group:/aws/lambda/{PCLUSTER_LAMBDA_PREFIX}{function_id}"
