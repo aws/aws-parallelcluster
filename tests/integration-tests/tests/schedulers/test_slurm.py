@@ -301,13 +301,13 @@ def test_slurm_protected_mode(
 
     cw_client = boto3.client("cloudwatch", region_name=region)
     cluster_name = cluster.cfn_name
-    assert_that(cluster_name).is_not_empty()
+
     _test_protected_mode_metric(cw_client, cluster_name)
     _test_protected_mode_alarm(cw_client, cluster_name)
 
-    # test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
-    # _test_job_run_in_working_queue(scheduler_commands)
-    # _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
+    test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
+    _test_job_run_in_working_queue(scheduler_commands)
+    _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
 
 
 @retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
