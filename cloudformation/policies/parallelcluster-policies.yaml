@@ -100,6 +100,9 @@ Conditions:
   EnableIamPolicy: !Or
     - !Equals [!Ref EnableIamAdminAccess, true]
     - !Condition EnablePermissionsBoundary
+  InIsolatedRegion: !Or
+    - !Equals [!Ref AWS::Partition, 'aws-iso']
+    - !Equals [!Ref AWS::Partition, 'aws-iso-b']
 
 Resources:
   ### IAM POLICIES
@@ -184,7 +187,10 @@ Resources:
               Service: lambda.amazonaws.com
       ManagedPolicyArns:
         # Required for Lambda logging and XRay
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !If
+          - InIsolatedRegion
+          - !Ref AWS::NoValue
+          - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
         - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         # Required to run ParallelCluster functionalities
         - !Ref ParallelClusterClusterPolicy
