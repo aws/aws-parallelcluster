@@ -907,24 +907,24 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         ]
 
 
-class LoginNodesIamResources(NodeIamResourcesBase):
-    """Construct defining IAM resources for a login node."""
-
-    def __init__(
-        self,
-        scope: Construct,
-        id: str,
-        config: BaseClusterConfig,
-        node: LoginNodesPool,
-        shared_storage_infos: dict,
-        name: str,
-    ):
-        super().__init__(scope, id, config, node, shared_storage_infos, name)
-
-    def _build_policy(self) -> List[iam.PolicyStatement]:
-        return [
-            iam.PolicyStatement(),
-        ]
+# class LoginNodesIamResources(NodeIamResourcesBase):
+#     """Construct defining IAM resources for a login node."""
+#
+#     def __init__(
+#         self,
+#         scope: Construct,
+#         id: str,
+#         config: BaseClusterConfig,
+#         node: LoginNodesPool,
+#         shared_storage_infos: dict,
+#         name: str,
+#     ):
+#         super().__init__(scope, id, config, node, shared_storage_infos, name)
+#
+    # def _build_policy(self) -> List[iam.PolicyStatement]:
+    #     return [
+    #         iam.PolicyStatement(),
+    #     ]
 
 
 def get_lambda_log_group_prefix(function_id: str):
