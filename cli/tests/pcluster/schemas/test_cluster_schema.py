@@ -486,7 +486,7 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                     }
                 ],
             },
-            "A Compute Resource needs to specify either InstanceType or Instances.",
+            "A Compute Resource needs to specify either InstanceType, Instances or InstanceRequirements.",
         ),
         # Mixing InstanceType and Instances in a Compute Resource should return a validation error
         (
@@ -502,7 +502,7 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                     },
                 ],
             },
-            "A Compute Resource needs to specify either InstanceType or Instances.",
+            "A Compute Resource needs to specify either InstanceType, Instances or InstanceRequirements.",
         ),
         # Instances in a Compute Resource should not have duplicate instance types
         (

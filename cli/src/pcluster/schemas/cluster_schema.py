@@ -60,6 +60,8 @@ from pcluster.config.cluster_config import (
     Iam,
     Image,
     Imds,
+    InstanceRequirementsComputeResource,
+    InstanceRequirementsDefinition,
     IntelSoftware,
     LocalStorage,
     LoginNodes,
@@ -1224,6 +1226,98 @@ class InstanceTypeSchema(BaseSchema):
         return FlexibleInstanceType(**data)
 
 
+class InstanceRequirementsSchema(BaseSchema):
+    """Represent the schema of InstanceRequirements for Compute Resources."""
+
+    # Customer Facing parameters
+    min_vcpus = fields.Int(
+        required=True,
+        data_key="MinvCpus",
+        validate=validate.Range(min=0),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    max_vcpus = fields.Int(
+        data_key="MaxvCpus",
+        validate=validate.Range(min=0),  #
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    min_memory_mib = fields.Int(
+        required=True,
+        data_key="MinMemoryMib",
+        validate=validate.Range(min=0),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    max_memory_mib = fields.Int(
+        data_key="MaxMemoryMib",
+        validate=validate.Range(min=0),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    accelerator_count = fields.Int(
+        data_key="AcceleratorCount",
+        validate=validate.Range(min=0),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    max_price_percentage = fields.Int(
+        data_key="MaxPricePercentageOverLowestPrice",
+        validate=validate.Range(min=0),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    allowed_instance_types = fields.List(
+        fields.Str(), data_key="AllowedInstanceTypes", metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+
+    excluded_instance_types = fields.List(
+        fields.Str(), data_key="ExcludedInstanceTypes", metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
+
+    # Internal (non customer facing) parameters; used to adapt the default behavior
+    accelerator_types = fields.List(
+        fields.Str(),
+        data_key="AcceleratorTypes",
+    )
+
+    accelerator_manufacturers = fields.List(
+        fields.Str(),
+        data_key="AcceleratorManufacturers",
+    )
+
+    bare_metal = fields.List(
+        fields.Str(),
+        missing=["included"],  # forcing the desired behavior
+        data_key="BareMetal",
+    )
+
+    instance_generations = fields.List(
+        fields.Str(),
+        missing=["current"],  # forcing the desired behavior
+        data_key="InstanceGenerations",
+    )
+
+    @validates_schema
+    def only_only_list_of_istances_is_allowed(self, data, **kwargs):
+        """Validate that 'allowed_instance_types' and 'excluded_instance_types' do not co-exist."""
+        if self.fields_coexist(
+            data,
+            ["allowed_instance_types", "excluded_instance_types"],
+            one_required=False,
+            **kwargs,
+        ):
+            raise ValidationError(
+                "Either AllowedInstanceTypes or ExcludedInstanceTypes can be used in InstanceRequirements definition."
+            )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return InstanceRequirementsDefinition(**data)
+
+
 class HeadNodeSchema(BaseSchema):
     """Represent the schema of the HeadNode."""
 
@@ -1359,6 +1453,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         many=True,
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "InstanceType"},
     )
+    instance_requirements = fields.Nested(
+        InstanceRequirementsSchema,
+    )
     max_count = fields.Int(validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.MAX_COUNT})
     min_count = fields.Int(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     spot_price = fields.Float(
@@ -1392,11 +1489,13 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         """Validate that 'instance_type' and 'instances' do not co-exist."""
         if self.fields_coexist(
             data,
-            ["instance_type", "instances"],
+            ["instance_type", "instances", "instance_requirements"],
             one_required=True,
             **kwargs,
         ):
-            raise ValidationError("A Compute Resource needs to specify either InstanceType or Instances.")
+            raise ValidationError(
+                "A Compute Resource needs to specify either InstanceType, Instances or InstanceRequirements."
+            )
 
     @validates("instances")
     def no_duplicate_instance_types(self, flexible_instance_types: List[FlexibleInstanceType]):
@@ -1422,7 +1521,10 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         """Generate resource."""
         if data.get("instances"):
             return SlurmFlexibleComputeResource(**data)
-        return SlurmComputeResource(**data)
+        elif data.get("instance_requirements"):
+            return InstanceRequirementsComputeResource(**data)
+        else:
+            return SlurmComputeResource(**data)
 
 
 class AwsBatchComputeResourceSchema(_ComputeResourceSchema):
