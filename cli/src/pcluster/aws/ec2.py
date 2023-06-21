@@ -487,3 +487,21 @@ class Ec2Client(Boto3Client):
         except ClientError as e:
             if e.response.get("Error").get("Code") != "DryRunOperation":
                 raise
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_instance_types_from_instance_requirements(
+        self, instance_requirements: str, architecture: str = "x86_64"
+    ) -> List[str]:
+        """Get list of instance types matching a set of instance_requirements."""
+        config = {
+            "ArchitectureTypes": [architecture],
+            "VirtualizationTypes": ["hvm"],
+            "InstanceRequirements": instance_requirements,
+        }
+
+        response = self._client.get_instance_types_from_instance_requirements(config)
+        if "InstanceTypes" in response:
+            return [res["InstanceType"] for res in response["InstanceTypes"]]
+        else:
+            return []

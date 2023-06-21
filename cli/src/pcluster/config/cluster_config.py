@@ -2207,6 +2207,46 @@ class InstanceRequirementsDefinition(Resource):
             self.accelerator_types = None
             self.accelerator_manufacturers = None
 
+    def _vcpu_config(self):
+        config = {
+            "Min": self.min_vcpus,
+        }
+        if self.max_vcpus > 0:
+            config["Max"] = self.max_vcpus
+
+        return config
+
+    def _mem_config(self):
+        config = {
+            "Min": self.min_memory_mib,
+        }
+        if self.max_memory_mib > 0:
+            config["Max"] = self.max_memory_mib
+
+        return config
+
+    def config(self):
+        """Compiles an InstanceRequirement config to retrieve the list of matching instance-types."""
+        config = {
+            "VCpuCount": self._vcpu_config(),
+            "MemoryMiB": self._mem_config(),
+            "InstanceGenerations": self.instance_generations,
+            "BareMetal": self.bare_metal,
+            "MaxPricePercentageOverLowestPrice": self.bare_metal,
+        }
+
+        if self.accelerator_count > 0:
+            config["AcceleratorCount"] = self.accelerator_count
+            config["AcceleratorTypes"] = self.accelerator_types
+            config["AcceleratorManufacturers"] = self.max_price_percentage
+
+        if self.allowed_instance_types:
+            config["AllowedInstanceTypes"] = self.allowed_instance_types
+        elif self.excluded_instance_types:
+            config["AllowedInstanceTypes"] = self.allowed_instance_types
+
+        return config
+
 
 class InstanceRequirementsComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource defined through Instance Requirements."""
@@ -2218,7 +2258,7 @@ class InstanceRequirementsComputeResource(_BaseSlurmComputeResource):
     ):
         super().__init__(**kwargs)
         self.instance_requirements = Resource.init_param(instance_requirements)
-        self.instance_type_list = []
+        self.instance_type_list = None
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
@@ -2237,11 +2277,20 @@ class InstanceRequirementsComputeResource(_BaseSlurmComputeResource):
         """
         return 1
 
+    def get_matching_instance_type_list(self, architecture):
+        """Return the list of instance types matching the Requirements for a given architecture."""
+        # TODO add a mechanism to discover the architecture at ComputeResource level
+        #  it should get the HeadNode architecture that wins over the CR config
+        #  Currently we receive if from the outside (Validator) and delegate the burden to it
+        if self.instance_type_list is None:
+            self.instance_type_list = AWSApi.instance().ec2.get_instance_types_from_instance_requirements(
+                self.instance_requirements.config(), architecture
+            )
+        return self.instance_type_list
+
     @property
     def instance_types(self) -> List[str]:
         """Should Return list of instance type names in this compute resource."""
-        # TODO (singleton) retrieve once the list of instance-types derived from the requirements with
-        #  get-instance-types-from-instance-requirements and fill the list
         return self.instance_type_list
 
 
