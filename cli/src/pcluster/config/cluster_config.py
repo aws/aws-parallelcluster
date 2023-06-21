@@ -2167,6 +2167,84 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
         return least_max_nics
 
 
+class InstanceRequirementsDefinition(Resource):
+    """Collects the attributes required to define a Slurm Compute Resource through Instance Requirements."""
+
+    def __init__(
+        self,
+        min_vcpus,
+        min_memory_mib,
+        max_vcpus=0,
+        max_memory_mib=0,
+        accelerator_count=0,
+        max_price_percentage=50,
+        allowed_instance_types: List[str] = None,
+        excluded_instance_types: List[str] = None,
+        accelerator_types: List[str] = None,
+        accelerator_manufacturers: List[str] = None,
+        bare_metal: List[str] = None,
+        instance_generations: List[str] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.min_vcpus = Resource.init_param(min_vcpus)
+        self.max_vcpus = Resource.init_param(max_vcpus)
+        self.min_memory_mib = Resource.init_param(min_memory_mib)
+        self.max_memory_mib = Resource.init_param(max_memory_mib)
+        self.accelerator_count = Resource.init_param(accelerator_count)
+        self.max_price_percentage = Resource.init_param(max_price_percentage)
+        self.allowed_instance_types = Resource.init_param(allowed_instance_types)
+        self.excluded_instance_types = Resource.init_param(excluded_instance_types)
+        self.bare_metal = bare_metal
+        self.instance_generations = instance_generations
+        self.accelerator_types = accelerator_types
+        self.accelerator_manufacturers = accelerator_manufacturers
+        # Enforce desired default behavior
+        if self.accelerator_count > 0:
+            self.accelerator_types = ["gpu"]
+            self.accelerator_manufacturers = ["nvidia"]
+        else:
+            self.accelerator_types = None
+            self.accelerator_manufacturers = None
+
+
+class InstanceRequirementsComputeResource(_BaseSlurmComputeResource):
+    """Represents a Slurm Compute Resource defined through Instance Requirements."""
+
+    def __init__(
+        self,
+        instance_requirements: InstanceRequirementsDefinition,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.instance_requirements = Resource.init_param(instance_requirements)
+        self.instance_type_list = []
+
+    @property
+    def disable_simultaneous_multithreading_manually(self) -> bool:
+        """Return true if simultaneous multithreading must be disabled with a cookbook script."""
+        return self.disable_simultaneous_multithreading
+
+    @property
+    def max_network_interface_count(self) -> int:
+        """Return max number of NICs for the compute resource.
+
+        Currently customers are not allowed to specify 'NetworkInterfaceCount' as requirement so this method is
+        a placeholder for future improvements.
+        An implementation is required since it is an abstract method of the base class.
+        It is meant to be used in the validators.
+        For MVP the validator will list the instance types returned by CreateFlet and pick the minimum common value.
+        """
+        return 1
+
+    @property
+    def instance_types(self) -> List[str]:
+        """Should Return list of instance type names in this compute resource."""
+        # TODO (singleton) retrieve once the list of instance-types derived from the requirements with
+        #  get-instance-types-from-instance-requirements and fill the list
+        return self.instance_type_list
+
+
 class SlurmComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with a Single Instance Type."""
 
