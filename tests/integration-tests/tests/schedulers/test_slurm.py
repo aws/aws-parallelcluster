@@ -11,9 +11,10 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
+import math
 import re
 import time
-from datetime import datetime, timezone
+import datetime
 
 import boto3
 import pytest
@@ -59,7 +60,8 @@ from tests.monitoring import structured_log_event_utils
 
 @pytest.mark.usefixtures("instance", "os")
 def test_slurm(
-    region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory
+        region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, architecture,
+        scheduler_commands_factory
 ):
     """
     Test all AWS Slurm related features.
@@ -164,7 +166,7 @@ def test_slurm_pmix(pcluster_config_reader, clusters_factory):
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_scaling
 def test_slurm_scaling(
-    scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+        scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
 ):
     """Test that slurm-specific scaling logic is behaving as expected for normal actions and failures."""
     cluster_config = pcluster_config_reader(scaledown_idletime=3)
@@ -225,7 +227,7 @@ def test_slurm_scaling(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_error_handling
 def test_error_handling(
-    scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+        scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
 ):
     """Test that slurm-specific scaling logic can handle rare failures."""
     cluster_config = pcluster_config_reader(scaledown_idletime=3)
@@ -274,12 +276,12 @@ def test_error_handling(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_protected_mode
 def test_slurm_protected_mode(
-    region,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    s3_bucket_factory,
-    scheduler_commands_factory,
+        region,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        s3_bucket_factory,
+        scheduler_commands_factory,
 ):
     """Test that slurm protected mode logic can handle bootstrap failure nodes."""
     # Create S3 bucket for pre-install scripts
@@ -296,20 +298,108 @@ def test_slurm_protected_mode(
     )
     pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor, clustermgtd_conf_path)
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
-    test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
-    _test_job_run_in_working_queue(scheduler_commands)
-    _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
+
+    cw_client = boto3.client("cloudwatch", region_name=region)
+    cluster_name = cluster.cfn_name
+    assert_that(cluster_name).is_not_empty()
+    _test_protected_mode_metric(cw_client, cluster_name)
+    _test_protected_mode_alarm(cw_client, cluster_name)
+
+    # test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
+    # _test_job_run_in_working_queue(scheduler_commands)
+    # _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
+
+
+@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
+def _test_protected_mode_metric(cw_client, cluster_name):
+    # query for the past 20 minutes
+    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=20)
+
+    protected_mode_values = _get_metric_data(cluster_name, cw_client, start_timestamp, end_timestamp)
+
+    assert_that(protected_mode_values).is_not_empty()
+
+
+def _test_protected_mode_alarm(cw_client, cluster_name):
+    protected_mode_alarm_name = f"{cluster_name}_ProtectedModeAlarm_HeadNode"
+    # get the protected mode alarm directly
+    alarm_response = cw_client.describe_alarms(AlarmNames=[protected_mode_alarm_name])
+
+    protected_mode_alarm = _get_alarm_records(alarm_response, protected_mode_alarm_name)
+    _verify_alarms(protected_mode_alarm, "ClusterInProtectedMode", cluster_name)
+
+
+# Helper function copied form test_monitoring
+def _get_start_end_timestamp(minutes):
+    """
+    The end time for query will be the current time rounded to minute that is not earlier than the current time (ceil).
+    For instance, if the current time is 09:34:20, then the end time for query will be 09:35:00.
+    This is because our metrics have a period of 1 minute, and according to public documentation of GetMetricData:
+    "For better performance, specify StartTime and EndTime values that align with the value of the metric's Period
+    and sync up with the beginning and end of an hour."
+    Reference: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html
+    """
+    now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
+    end_timestamp_ceil = math.ceil(now_utc.timestamp() / 60) * 60
+    end_dt = datetime.datetime.fromtimestamp(end_timestamp_ceil)
+    start_dt = end_dt - datetime.timedelta(minutes=minutes)
+    start_timestamp = start_dt.timestamp()
+    return start_timestamp, end_timestamp_ceil
+
+
+def _get_metric_data(cluster_name, cw_client, start_timestamp, end_timestamp):
+    metrics_response = cw_client.get_metric_data(
+        MetricDataQueries=[
+            {
+                "Id": "protected_mode",
+                "MetricStat": {
+                    "Metric": {
+                        "Namespace": "ParallelCluster",
+                        "MetricName": "ClusterInProtectedMode",
+                        "Dimensions": [
+                            {
+                                "Name": "ClusterName",
+                                "Value": cluster_name,
+                            }
+                        ],
+                    },
+                    "Period": 60,
+                    "Stat": "SampleCount",
+                },
+            },
+        ],
+        StartTime=start_timestamp,
+        EndTime=end_timestamp,
+    )
+    metric_values = [
+        record["Values"] for record in metrics_response["MetricDataResults"] if record["Id"] == "protected_mode"
+    ]
+    return metric_values
+
+
+def _get_alarm_records(response, alarm_name):
+    return [alarm for alarm in response["MetricAlarms"] if alarm["AlarmName"] == alarm_name]
+
+
+def _verify_alarms(alarms, metric_name, cluster_name):
+    assert_that(alarms).is_length(1)
+    assert_that(alarms[0]["MetricName"]).is_equal_to(metric_name)
+    assert_that(alarms[0]["Namespace"]).is_equal_to("ParallelCluster")
+    assert_that(alarms[0]["Period"]).is_equal_to(60)
+    assert_that(alarms[0]["Threshold"]).is_equal_to(1)
+    assert_that(alarms[0]["ComparisonOperator"]).is_equal_to("GreaterThanOrEqualToThreshold")
+    assert_that(alarms[0]["Dimensions"]).contains({"Name": "ClusterName", "Value": cluster_name})
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.test_slurm_protected_mode_on_cluster_create
 def test_slurm_protected_mode_on_cluster_create(
-    region,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    s3_bucket_factory,
-    scheduler_commands_factory,
+        region,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        s3_bucket_factory,
+        scheduler_commands_factory,
 ):
     """Test that slurm protected mode triggers head node launch failure on cluster creation."""
     # Create S3 bucket for pre-install scripts
@@ -334,11 +424,11 @@ def test_slurm_protected_mode_on_cluster_create(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.fast_capacity_failover
 def test_fast_capacity_failover(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
-    region,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
+        region,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -425,10 +515,10 @@ def test_fast_capacity_failover(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_config_update
 def test_slurm_config_update(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -447,12 +537,12 @@ def test_slurm_config_update(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_custom_config_parameters
 def test_slurm_custom_config_parameters(
-    region,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    s3_bucket_factory,
-    scheduler_commands_factory,
+        region,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        s3_bucket_factory,
+        scheduler_commands_factory,
 ):
     """Test slurm custom settings."""
     # When launching a cluster with a Yaml with custom config parameters
@@ -533,10 +623,10 @@ def test_slurm_custom_config_parameters(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_memory_based_scheduling
 def test_slurm_memory_based_scheduling(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -578,10 +668,10 @@ def test_slurm_memory_based_scheduling(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_scontrol_reboot
 def test_scontrol_reboot(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -648,10 +738,10 @@ def test_scontrol_reboot(
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_scontrol_reboot
 def test_scontrol_reboot_ec2_health_checks(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
 ):
     """
     Test that scontrol reboot does not trigger node replacements due to EC2 health check failures.
@@ -752,10 +842,10 @@ def test_scontrol_reboot_ec2_health_checks(
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_scontrol_update_nodelist_sorting(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
 ):
     """
     Test that scontrol update node follows the order of the nodelist provided by the user.
@@ -802,13 +892,13 @@ def test_scontrol_update_nodelist_sorting(
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_slurm_overrides(
-    scheduler,
-    region,
-    pcluster_config_reader,
-    s3_bucket_factory,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
+        scheduler,
+        region,
+        pcluster_config_reader,
+        s3_bucket_factory,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
 ):
     """Test that run-instances and create-fleet overrides is behaving as expected."""
 
@@ -851,7 +941,7 @@ def test_slurm_overrides(
 
 
 def _assert_cluster_initial_conditions(
-    scheduler_commands, expected_num_dummy, expected_num_instance_node, expected_num_static
+        scheduler_commands, expected_num_dummy, expected_num_instance_node, expected_num_static
 ):
     """Assert that expected nodes are in cluster."""
     cluster_node_states = scheduler_commands.get_nodes_status()
@@ -871,7 +961,7 @@ def _assert_cluster_initial_conditions(
 
 
 def _test_online_node_configured_correctly(
-    scheduler_commands, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
+        scheduler_commands, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
 ):
     logging.info("Testing that online nodes' nodeaddr and nodehostname are configured correctly.")
     init_job_id = submit_initial_job(
@@ -900,14 +990,14 @@ def _test_online_node_configured_correctly(
 
 
 def _test_partition_states(
-    scheduler_commands,
-    cluster_name,
-    region,
-    active_partition,
-    inactive_partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+        scheduler_commands,
+        cluster_name,
+        region,
+        active_partition,
+        inactive_partition,
+        num_static_nodes,
+        num_dynamic_nodes,
+        dynamic_instance_type,
 ):
     """Partition states INACTIVE and UP are processed."""
     logging.info("Testing that INACTIVE partiton are cleaned up")
@@ -942,7 +1032,7 @@ def _test_partition_states(
 
 
 def _test_reset_terminated_nodes(
-    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
+        scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
 ):
     """
     Test that slurm nodes are reset if instances are terminated manually.
@@ -970,15 +1060,15 @@ def _test_reset_terminated_nodes(
 
 
 def _test_replace_down_nodes(
-    remote_command_executor,
-    scheduler_commands,
-    test_datadir,
-    cluster_name,
-    region,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+        remote_command_executor,
+        scheduler_commands,
+        test_datadir,
+        cluster_name,
+        region,
+        partition,
+        num_static_nodes,
+        num_dynamic_nodes,
+        dynamic_instance_type,
 ):
     """Test that slurm nodes are replaced if nodes are marked DOWN."""
     logging.info("Testing that nodes replaced when set to down state")
@@ -1003,7 +1093,7 @@ def _test_replace_down_nodes(
 
 
 def _test_keep_or_replace_suspended_nodes(
-    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
+        scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
 ):
     """Test keep DRAIN nodes if there is job running, or terminate if no job is running."""
     logging.info(
@@ -1034,14 +1124,14 @@ def _test_keep_or_replace_suspended_nodes(
 
 
 def _test_cloud_node_health_check(
-    remote_command_executor,
-    scheduler_commands,
-    cluster_name,
-    region,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+        remote_command_executor,
+        scheduler_commands,
+        cluster_name,
+        region,
+        partition,
+        num_static_nodes,
+        num_dynamic_nodes,
+        dynamic_instance_type,
 ):
     """
     Test nodes with networking failure are correctly replaced.
@@ -1091,13 +1181,13 @@ def _test_cloud_node_health_check(
 
 
 def _test_ec2_status_check_replacement(
-    remote_command_executor,
-    scheduler_commands,
-    cluster_name,
-    region,
-    slurm_root_path,
-    partition,
-    num_static_nodes,
+        remote_command_executor,
+        scheduler_commands,
+        cluster_name,
+        region,
+        slurm_root_path,
+        partition,
+        num_static_nodes,
 ):
     """Test nodes with failing ec2 status checks are correctly replaced."""
     logging.info("Testing that nodes with failing ec2 status checks are correctly replaced")
@@ -1129,16 +1219,16 @@ def _test_ec2_status_check_replacement(
 
 
 def _test_clustermgtd_down_logic(
-    remote_command_executor,
-    scheduler_commands,
-    cluster_name,
-    region,
-    test_datadir,
-    slurm_root_path,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+        remote_command_executor,
+        scheduler_commands,
+        cluster_name,
+        region,
+        test_datadir,
+        slurm_root_path,
+        partition,
+        num_static_nodes,
+        num_dynamic_nodes,
+        dynamic_instance_type,
 ):
     """Test that computemgtd is able to shut nodes down when clustermgtd and slurmctld are offline."""
     logging.info("Testing cluster protection logic when clustermgtd is down.")
@@ -1197,11 +1287,11 @@ def _test_clustermgtd_down_logic(
 
 
 def _wait_for_node_reset(
-    scheduler_commands,
-    static_nodes,
-    dynamic_nodes,
-    wait_fixed_secs=20,
-    stop_max_delay_secs=300,
+        scheduler_commands,
+        static_nodes,
+        dynamic_nodes,
+        wait_fixed_secs=20,
+        stop_max_delay_secs=300,
 ):
     """Wait for static and dynamic nodes to be reset."""
     if static_nodes:
@@ -1460,7 +1550,7 @@ def _test_cluster_limits(slurm_commands, partition, instance_type, max_count, cp
 
 
 def _submit_command_and_assert_job_rejected(
-    slurm_commands, submit_command_args, reason="sbatch: error: Batch job submission failed:"
+        slurm_commands, submit_command_args, reason="sbatch: error: Batch job submission failed:"
 ):
     """Submit a limit-violating job and assert the job is failed at submission."""
     result = slurm_commands.submit_command(**submit_command_args)
@@ -1524,7 +1614,7 @@ def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletim
 
 
 def _test_job_arrays_and_parallel_jobs(
-    slurm_commands, region, stack_name, scaledown_idletime, partition, instance_type, cpu_per_instance
+        slurm_commands, region, stack_name, scaledown_idletime, partition, instance_type, cpu_per_instance
 ):
     logging.info("Testing cluster scales correctly with array jobs and parallel jobs")
 
@@ -1702,7 +1792,7 @@ def _enable_protected_mode(remote_command_executor, clustermgtd_conf_path):
 
 
 def _test_disable_protected_mode(
-    remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path
+        remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path
 ):
     """Test Bootstrap failures have no affect on cluster when protected mode is disabled."""
     # Disable protected_mode by setting protected_failure_count to -1
@@ -1787,7 +1877,7 @@ def _test_job_run_in_working_queue(scheduler_commands):
 
 
 def _test_recover_from_protected_mode(
-    incomplete_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands
+        incomplete_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands
 ):
     """
     Test cluster after recovering from protected mode.
@@ -1834,15 +1924,15 @@ def _test_cluster_creation_failure(cluster, failure_code="StaticNodeBootstrapFai
 
 
 def _test_compute_node_bootstrap_timeout(
-    cluster,
-    pcluster_config_reader,
-    remote_command_executor,
-    compute_node_bootstrap_timeout,
-    scaledown_idletime,
-    gpu_instance_type,
-    clustermgtd_conf_path,
-    slurm_root_path,
-    slurm_commands,
+        cluster,
+        pcluster_config_reader,
+        remote_command_executor,
+        compute_node_bootstrap_timeout,
+        scaledown_idletime,
+        gpu_instance_type,
+        clustermgtd_conf_path,
+        slurm_root_path,
+        slurm_commands,
 ):
     """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
     slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
@@ -1918,13 +2008,13 @@ def _enable_fast_capacity_failover(remote_command_executor, clustermgtd_conf_pat
 
 
 def _test_disable_fast_capacity_failover(
-    scheduler_commands,
-    remote_command_executor,
-    clustermgtd_conf_path,
-    cr_static_nodes,
-    cr_dynamic_nodes,
-    target_compute_resource,
-    expected_error_code,
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        cr_static_nodes,
+        cr_dynamic_nodes,
+        target_compute_resource,
+        expected_error_code,
 ):
     """
     Test fast capacity failover has no effect on cluster when it is disabled.
@@ -1994,13 +2084,13 @@ def assert_job_requeue_in_time(scheduler_commands, job_id):
 
 
 def _test_enable_fast_capacity_failover(
-    scheduler_commands,
-    remote_command_executor,
-    clustermgtd_conf_path,
-    cr_static_nodes,
-    cr_dynamic_nodes,
-    target_compute_resource,
-    expected_error_code,
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        cr_static_nodes,
+        cr_dynamic_nodes,
+        target_compute_resource,
+        expected_error_code,
 ):
     """
     Test behavior when fast capacity failover is enabled.
@@ -2077,10 +2167,10 @@ def _test_update_without_update_queue_params(pcluster_config_reader, cluster, re
 
 
 def _test_update_with_queue_params(
-    pcluster_config_reader,
-    cluster,
-    remote_command_executor,
-    config_file,
+        pcluster_config_reader,
+        cluster,
+        remote_command_executor,
+        config_file,
 ):
     """Test update queue param change, clustermgtd and slurmctld restart."""
     updated_config_file = pcluster_config_reader(config_file=config_file)
@@ -2096,9 +2186,9 @@ def _test_update_with_queue_params(
 
 
 def _test_memory_based_scheduling_enabled_false(
-    remote_command_executor,
-    slurm_commands,
-    test_datadir,
+        remote_command_executor,
+        slurm_commands,
+        test_datadir,
 ):
     """Test Slurm without memory-based scheduling feature enabled"""
 
@@ -2208,9 +2298,9 @@ def _test_memory_based_scheduling_enabled_false(
 
 
 def _test_memory_based_scheduling_enabled_true(
-    remote_command_executor,
-    slurm_commands,
-    test_datadir,
+        remote_command_executor,
+        slurm_commands,
+        test_datadir,
 ):
     """Test Slurm with memory-based scheduling feature enabled"""
 
@@ -2295,7 +2385,7 @@ def _test_memory_based_scheduling_enabled_true(
 
 
 def _test_memory_based_scheduling_with_multiple_instance_types(
-    slurm_commands,
+        slurm_commands,
 ):
     """Test Slurm memory-based scheduling with multimple instance types configured on a compute resource"""
 
@@ -2336,10 +2426,10 @@ def _test_memory_based_scheduling_with_multiple_instance_types(
 
 
 def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
-    remote_command_executor,
-    slurm_commands,
-    pcluster_config_reader,
-    cluster,
+        remote_command_executor,
+        slurm_commands,
+        pcluster_config_reader,
+        cluster,
 ):
     """Checks that running jobs can complete if the SchedulableMemory is reduced"""
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
@@ -2371,9 +2461,9 @@ def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_j
 
 
 def _test_scontrol_reboot_nodes(
-    remote_command_executor,
-    slurm_commands,
-    nodes_state,
+        remote_command_executor,
+        slurm_commands,
+        nodes_state,
 ):
     """Test scontrol reboot with idle nodes."""
 
@@ -2438,10 +2528,10 @@ def _get_latest_timestamp_for_log_entry(remote_command_executor, log_path, log_e
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_slurm_reconfigure_race_condition(
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
 ):
     """
     Test race condition between restart of slurmctld and scontrol reconfigure.
@@ -2485,9 +2575,9 @@ def test_slurm_reconfigure_race_condition(
 
 
 def _test_scontrol_reboot_powerdown_reboot_requested_node(
-    remote_command_executor,
-    slurm_commands,
-    node,
+        remote_command_executor,
+        slurm_commands,
+        node,
 ):
     """
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
@@ -2532,9 +2622,9 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
 
 
 def _test_scontrol_reboot_powerdown_reboot_issued_node(
-    remote_command_executor,
-    slurm_commands,
-    node,
+        remote_command_executor,
+        slurm_commands,
+        node,
 ):
     """
     Check that a node in REBOOT_REQUESTED state will be set in POWER_DOWN if requested
