@@ -8,6 +8,7 @@ CHANGELOG
 - Allow configuration of static and dynamic node priorities in Slurm compute resources via the ParallelCluster configuration YAML file.
 - Add support for Ubuntu 22.
 - Allow memory-based scheduling when multiple instance types are specified for a Slurm Compute Resource.
+- Allow definition of a Slurm Compute Resource through InstanceRequirements.
 
 **CHANGES**
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
