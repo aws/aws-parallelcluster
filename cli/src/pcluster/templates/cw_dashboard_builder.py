@@ -446,7 +446,7 @@ class CWDashboardConstruct(Construct):
                     cloudwatch.HorizontalAnnotation(
                         value=1,
                         label="Cluster Is In Protected Mode",
-                        color=cloudwatch.Color.BLUE,
+                        color=cloudwatch.Color.RED,
                         visible=True,
                     )
                 ],
