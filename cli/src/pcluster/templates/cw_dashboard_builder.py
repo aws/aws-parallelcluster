@@ -705,7 +705,7 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="system-messages",
-                        conditions=[Condition(["alinux2", "centos7", "rhel8"], base_os)],
+                        conditions=[Condition(["alinux2", "centos7", "rhel8", "rocky8"], base_os)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*system-messages")],
                     ),
                     self._new_cw_log_widget(

@@ -18,6 +18,7 @@ Allowed values for Operating System:
 3. ubuntu2004
 4. ubuntu2204
 5. rhel8
+6. rocky8
 Allowed values for VPC ID:
   #  id            name                                 number_of_subnets
 ---  ------------  ---------------------------------  -------------------

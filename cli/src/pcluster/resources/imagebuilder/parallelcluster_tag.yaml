@@ -55,6 +55,8 @@ phases:
                 OS='ubuntu2204'
               elif [ $(echo "${RELEASE}" | grep '^rhel\.8') ]; then
                 OS='rhel8'
+              elif [ $(echo "${RELEASE}" | grep '^rocky\.8') ]; then
+                OS='rocky8'
               fi
 
               echo ${OS}
@@ -70,7 +72,7 @@ phases:
               which aws
               if [[ $? -ne 0 ]]; then
                 echo "Installing unzip"
-                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux|rhel) ]]; then
+                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux|rhel|rocky) ]]; then
                   yum -y install unzip
                 elif [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^ubuntu ]]; then
                   apt-get -y install unzip

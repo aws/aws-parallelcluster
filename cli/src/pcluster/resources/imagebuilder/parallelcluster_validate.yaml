@@ -44,6 +44,8 @@ phases:
                 OS='ubuntu2204'
               elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
                 OS='rhel8'
+              elif [ `echo "${RELEASE}" | grep '^rocky\.8'` ]; then
+                OS='rocky8'
               else
                 echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
               fi
@@ -79,7 +81,7 @@ phases:
               set -v
               OS='{{ validate.OperatingSystemName.outputs.stdout }}'
 
-              if [ `echo "${OS}" | grep -E '^(alinux|centos|rhel)'` ]; then
+              if [ `echo "${OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
                 PLATFORM='RHEL'
               elif [ `echo "${OS}" | grep -E '^ubuntu'` ]; then
                 PLATFORM='DEBIAN'
@@ -124,7 +126,7 @@ phases:
               set -v
               ARCHITECTURE='{{ validate.OperatingSystemArchitecture.outputs.stdout }}'
               OS='{{ validate.OperatingSystemName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux2|rhel8)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux2|rhel8|rocky8)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"

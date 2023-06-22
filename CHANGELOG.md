@@ -31,6 +31,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
+- Add support for Rocky Linux 8.
 - Allow configuration of static and dynamic node priorities in Slurm compute resources via the ParallelCluster configuration YAML file.
 - Add support for Ubuntu 22.
 - Allow memory-based scheduling when multiple instance types are specified for a Slurm Compute Resource.
