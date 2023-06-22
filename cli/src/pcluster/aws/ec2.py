@@ -540,7 +540,7 @@ class Ec2Client(Boto3Client):
         """Check if a subnet is public."""
         route_tables = self.describe_route_tables(filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}])
         if not route_tables:
-            return False
+            raise Exception("No route tables found. The subnet configuration may be incorrect.")
 
         route_table = route_tables[0]
 

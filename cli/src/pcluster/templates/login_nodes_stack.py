@@ -79,7 +79,6 @@ class Pool(Construct):
                 image_id=self._config.login_nodes_ami[self._pool.name],
                 instance_type=self._pool.instance_type,
                 key_name=self._pool.ssh.key_name,
-                # iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
                     http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
                 ),
