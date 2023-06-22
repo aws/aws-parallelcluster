@@ -23,7 +23,7 @@ CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -40,6 +40,7 @@ OS_MAPPING = {
     "ubuntu2004": {"user": "ubuntu"},
     "ubuntu2204": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
+    "rocky8": {"user": "rocky"},
 }
 
 OS_TO_IMAGE_NAME_PART_MAP = {
@@ -48,6 +49,7 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "ubuntu2004": "ubuntu-2004-lts-hvm",
     "ubuntu2204": "ubuntu-2204-lts-hvm",
     "rhel8": "rhel8-hvm",
+    "rocky8": "rocky8-hvm",
 }
 
 IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
