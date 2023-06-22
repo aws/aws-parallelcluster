@@ -12,7 +12,6 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-import hashlib
 import json
 import logging
 import os
@@ -22,17 +21,13 @@ from copy import deepcopy
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Set, Tuple
-from urllib.request import urlopen
 
 import pkg_resources
-from jinja2 import BaseLoader
-from jinja2.sandbox import SandboxedEnvironment
 from marshmallow import ValidationError
 
-from pcluster.api.models import Metadata
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError, get_region
-from pcluster.config.cluster_config import BaseClusterConfig, SchedulerPluginScheduling, Tag
+from pcluster.config.cluster_config import BaseClusterConfig, Tag
 from pcluster.config.common import ValidatorSuppressor
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
@@ -63,14 +58,13 @@ from pcluster.models.common import (
     upload_archive,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url, parse_bucket_url
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.import_cdk import start as start_cdk_import
 from pcluster.utils import (
     datetime_to_epoch,
     generate_random_name_with_prefix,
-    get_attr,
     get_installed_version,
     grouper,
     yaml_load,
@@ -203,7 +197,7 @@ class Cluster:
     @property
     def compute_fleet_status_manager(self) -> ComputeFleetStatusManager:
         """Return compute fleet status manager."""
-        return ComputeFleetStatusManager.get_manager(self.name, self.stack.version, self.stack.scheduler)
+        return ComputeFleetStatusManager.get_manager(self.name, self.stack.version)
 
     def _get_artifact_dir(self):
         """Get artifact directory in S3 bucket by stack output."""
@@ -453,7 +447,7 @@ class Cluster:
             validation_failures = [ValidationResult(data, FailureLevel.ERROR, validator_type="ConfigSchemaValidator")]
             raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)
 
-    def validate_create_request(self, validator_suppressors, validation_failure_level, dry_run=False):
+    def validate_create_request(self, validator_suppressors, validation_failure_level):
         """Validate a create cluster request."""
         self._validate_no_existing_stack()
         self.config, ignored_validation_failures = self._validate_and_parse_config(
@@ -461,8 +455,6 @@ class Cluster:
             validation_failure_level=validation_failure_level,
             context=ValidatorContext(),
         )
-        if dry_run and isinstance(self.config.scheduling, SchedulerPluginScheduling):
-            self._render_and_upload_scheduler_plugin_template(dry_run=dry_run)
         return ignored_validation_failures
 
     def _validate_no_existing_stack(self):
@@ -584,8 +576,6 @@ class Cluster:
                 format=S3FileFormat.JSON,
             )
 
-            if isinstance(self.config.scheduling, SchedulerPluginScheduling):
-                self._render_and_upload_scheduler_plugin_template()
             LOGGER.info("Cluster artifacts uploaded correctly.")
         except BadRequestClusterActionError:
             raise
@@ -593,69 +583,6 @@ class Cluster:
             message = f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
             LOGGER.error(message)
             raise _cluster_error_mapper(e, message)
-
-    def _render_and_upload_scheduler_plugin_template(self, dry_run=False):
-        scheduler_plugin_template = get_attr(
-            self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
-        )
-        if not scheduler_plugin_template:
-            return
-
-        try:
-            LOGGER.info("Downloading scheduler plugin CloudFormation template from %s", scheduler_plugin_template)
-            if scheduler_plugin_template.startswith("s3"):
-                bucket_parsing_result = parse_bucket_url(scheduler_plugin_template)
-                result = AWSApi.instance().s3.get_object(
-                    bucket_name=bucket_parsing_result["bucket_name"],
-                    key=bucket_parsing_result["object_key"],
-                    expected_bucket_owner=get_attr(
-                        self.config,
-                        "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation."
-                        "s3_bucket_owner",
-                    ),
-                )
-                file_content = result["Body"].read().decode("utf-8")
-            else:
-                # A nosec comment is appended to the following line in order to disable the B310 check.
-                # The urlopen argument is properly validated
-                # [B310:blacklist] Audit url open for permitted schemes.
-                with urlopen(scheduler_plugin_template) as f:  # nosec B310 nosemgrep
-                    file_content = f.read().decode("utf-8")
-        except Exception as e:
-            raise BadRequestClusterActionError(
-                f"Error while downloading scheduler plugin artifacts from '{scheduler_plugin_template}': {str(e)}"
-            ) from e
-
-        # checksum
-        self.validate_scheduler_plugin_template_checksum(file_content, scheduler_plugin_template)
-
-        # jinja rendering
-        try:
-            LOGGER.info("Rendering the following scheduler plugin CloudFormation template:\n%s", file_content)
-            environment = SandboxedEnvironment(loader=BaseLoader)
-            environment.filters["hash"] = (
-                # A nosec comment is appended to the following line in order to disable the B324 checks.
-                # The sha1 is used just as a hashing function.
-                # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
-                # [B303:blacklist] Use of insecure MD2, MD4, MD5, or SHA1 hash function
-                lambda value: hashlib.sha1(value.encode())  # nosec nosemgrep
-                .hexdigest()[0:16]
-                .capitalize()
-            )
-            template = environment.from_string(file_content)
-            rendered_template = template.render(
-                cluster_configuration=ClusterSchema(cluster_name=self.name).dump(deepcopy(self.config)),
-                cluster_name=self.name,
-                instance_types_info=self.config.get_instance_types_data(),
-            )
-        except Exception as e:
-            raise BadRequestClusterActionError(
-                f"Error while rendering scheduler plugin template '{scheduler_plugin_template}': {str(e)}"
-            ) from e
-        if not dry_run:
-            self.bucket.upload_cfn_template(
-                rendered_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
-            )
 
     def delete(self, keep_logs: bool = True):
         """Delete cluster preserving log groups."""
@@ -888,7 +815,6 @@ class Cluster:
         validator_suppressors: Set[ValidatorSuppressor] = None,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
         force: bool = False,
-        dry_run: bool = False,
     ):
         """Validate a cluster update request."""
         self._validate_cluster_exists()
@@ -900,11 +826,6 @@ class Cluster:
             context=ValidatorContext(head_node_instance_id=self.head_node_instance.id, during_update=True),
         )
         changes = self._validate_patch(force, target_config)
-
-        self._validate_scheduling_update(changes, target_config)
-
-        if dry_run and isinstance(self.config.scheduling, SchedulerPluginScheduling):
-            self._render_and_upload_scheduler_plugin_template(dry_run=dry_run)
 
         return target_config, changes, ignored_validation_failures
 
@@ -1015,11 +936,6 @@ class Cluster:
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
         cluster_tags = [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]
-        if self.config.scheduling.scheduler == "plugin":
-            scheduler_plugin_tags = get_attr(self.config, "scheduling.settings.scheduler_definition.tags")
-            if scheduler_plugin_tags:
-                custom_scheduler_plugin_tags = [{"Key": tag.key, "Value": tag.value} for tag in scheduler_plugin_tags]
-                cluster_tags += custom_scheduler_plugin_tags
         return cluster_tags
 
     def export_logs(
@@ -1218,85 +1134,3 @@ class Cluster:
     def _stack_events_stream_name(self):
         """Return the name of the stack events log stream."""
         return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.stack_name)
-
-    def _validate_scheduling_update(self, changes, target_config):
-        """Update of Scheduling is not supported when SupportsClusterUpdate of the scheduler plugin is set to false."""
-        # target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling") doesn't mean
-        # there's changes in the config, if queue list in the scheduling dict has different order, target_config dict
-        # and original config dict may be different.
-        if (
-            self.config.scheduling.scheduler == "plugin"
-            and get_attr(self.config, "scheduling.settings.scheduler_definition.requirements.supports_cluster_update")
-            is False
-            and target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling")
-        ):
-            scheduling_changes = []
-            # Example format of changes:
-            # changes = [
-            #     ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
-            #     [
-            #         ["HeadNode", "Iam"],
-            #         "AdditionalIamPolicies",
-            #         None,
-            #         {"Policy": "arn:aws:iam::aws:policy/FakePolicy"},
-            #         "SUCCEEDED",
-            #         "-",
-            #         None,
-            #     ],
-            #     [
-            #         ["HeadNode", "Iam"],
-            #         "AdditionalIamPolicies",
-            #         {"Policy": "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"},
-            #         None,
-            #         "SUCCEEDED",
-            #         "-",
-            #         None,
-            #     ],
-            #     [
-            #         ["Scheduling", "SchedulerQueues[queue1]", "ComputeResources[compute-resource1]"],
-            #         "InstanceType",
-            #         "c5.2xlarge",
-            #         "c5.xlarge",
-            #         "SUCCEEDED",
-            #         "-",
-            #         None,
-            #     ],
-            # ]
-
-            # The first element of changes is:
-            # ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]
-            for change in changes[1:]:
-                if change[0][0] == "Scheduling":  # check if the param_path of the change start from Scheduling
-                    scheduling_changes.append(change)
-            if len(scheduling_changes) >= 1:
-                raise ClusterUpdateError(
-                    "Update failure: The scheduler plugin used for this cluster does not support updating the "
-                    "scheduling configuration.",
-                    [changes[0]] + scheduling_changes,
-                )
-
-    def validate_scheduler_plugin_template_checksum(self, file_content, scheduler_plugin_template):
-        """Validate scheduler plugin template checksum match the expected checksum."""
-        checksum = get_attr(
-            self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.checksum"
-        )
-        if checksum:
-            actual_checksum = hashlib.sha256(file_content.encode()).hexdigest()
-            if actual_checksum != checksum:
-                raise BadRequestClusterActionError(
-                    f"Error when validating scheduler plugin template '{scheduler_plugin_template}': "
-                    f"checksum: {actual_checksum} does not match expected one: {checksum}"
-                )
-
-    def get_plugin_metadata(self):
-        """Get the metadata name and version used for the response of DescribeCluster when the scheduler is plugin."""
-        try:
-            full_metadata = get_attr(self.config, "scheduling.settings.scheduler_definition.metadata")
-            return (
-                Metadata(name=full_metadata.get("Name"), version=full_metadata.get("Version"))
-                if full_metadata
-                else None
-            )
-        except ClusterActionError:
-            LOGGER.warning("Unable to retrieve scheduler metadata from cluster configuration.")
-            return None

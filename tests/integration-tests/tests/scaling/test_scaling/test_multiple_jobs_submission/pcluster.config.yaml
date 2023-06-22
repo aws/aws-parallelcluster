@@ -11,12 +11,7 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   {{ scheduler_prefix }}Settings:
-    {% if scheduler == "plugin" %}
-    CustomSettings:
-      ScaledownIdletime: {{ scaledown_idletime }}
-    {% else %}
     ScaledownIdletime: {{ scaledown_idletime }}
-    {% endif %}
   {{ scheduler_prefix }}Queues:
   {% for q in range(no_of_queues) %}
     - Name: queue-{{q}}

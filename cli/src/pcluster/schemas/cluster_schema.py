@@ -15,17 +15,12 @@
 #
 
 import copy
-import hashlib
 import logging
 import re
 from typing import List
-from urllib.request import urlopen
 
-from marshmallow import ValidationError, fields, post_load, pre_dump, pre_load, validate, validates, validates_schema
-from yaml import YAMLError
+from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
-from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AdditionalPackages,
     AllocationStrategy,
@@ -84,28 +79,6 @@ from pcluster.config.cluster_config import (
     Roles,
     RootVolume,
     S3Access,
-    SchedulerPluginCloudFormationInfrastructure,
-    SchedulerPluginClusterConfig,
-    SchedulerPluginClusterInfrastructure,
-    SchedulerPluginClusterSharedArtifact,
-    SchedulerPluginComputeResource,
-    SchedulerPluginComputeResourceConstraints,
-    SchedulerPluginDefinition,
-    SchedulerPluginEvent,
-    SchedulerPluginEvents,
-    SchedulerPluginExecuteCommand,
-    SchedulerPluginFile,
-    SchedulerPluginLogs,
-    SchedulerPluginMonitoring,
-    SchedulerPluginPluginResources,
-    SchedulerPluginQueue,
-    SchedulerPluginQueueConstraints,
-    SchedulerPluginQueueNetworking,
-    SchedulerPluginRequirements,
-    SchedulerPluginScheduling,
-    SchedulerPluginSettings,
-    SchedulerPluginSupportedDistros,
-    SchedulerPluginUser,
     SharedEbs,
     SharedEfs,
     SharedFsxLustre,
@@ -117,7 +90,6 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     SlurmSettings,
-    SudoerConfiguration,
     Timeouts,
 )
 from pcluster.config.common import BaseTag
@@ -138,10 +110,8 @@ from pcluster.constants import (
     ONTAP,
     OPENZFS,
     PCLUSTER_AMI_ID_REGEX,
-    SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
     SUPPORTED_OSES,
 )
-from pcluster.models.s3_bucket import parse_bucket_url
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
@@ -155,7 +125,6 @@ from pcluster.schemas.common_schema import (
     validate_no_duplicate_tag,
     validate_no_reserved_tag,
 )
-from pcluster.utils import yaml_load
 from pcluster.validators.cluster_validators import EFS_MESSAGES, FSX_MESSAGES
 
 # pylint: disable=C0302
@@ -742,15 +711,6 @@ class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
         return AwsBatchQueueNetworking(**data)
 
 
-class SchedulerPluginQueueNetworkingSchema(SlurmQueueNetworkingSchema):
-    """Represent the schema of the Networking, child of Scheduler Plugin Queue."""
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginQueueNetworking(**data)
-
-
 class BaseSshSchema(BaseSchema):
     """Represent the schema of common Ssh parameters used by head and login nodes."""
 
@@ -1083,6 +1043,7 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     ami_search_filters = fields.Nested(AmiSearchFiltersSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     timeouts = fields.Nested(TimeoutsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    compute_startup_time_metric_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1491,17 +1452,6 @@ class AwsBatchComputeResourceSchema(_ComputeResourceSchema):
         return AwsBatchComputeResource(**data)
 
 
-class SchedulerPluginComputeResourceSchema(SlurmComputeResourceSchema):
-    """Represent the schema of the Scheduler Plugin ComputeResource."""
-
-    custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginComputeResource(**data)
-
-
 class ComputeSettingsSchema(BaseSchema):
     """Represent the schema of the compute_settings schedulers queues."""
 
@@ -1524,7 +1474,7 @@ class BaseQueueSchema(BaseSchema):
 
 
 class _CommonQueueSchema(BaseQueueSchema):
-    """Represent the schema of common part between Slurm and Scheduler Plugin Queue."""
+    """Represent the schema of common part between Slurm and future scheduler Queue."""
 
     compute_settings = fields.Nested(
         ComputeSettingsSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
@@ -1591,25 +1541,6 @@ class AwsBatchQueueSchema(BaseQueueSchema):
         return AwsBatchQueue(**data)
 
 
-class SchedulerPluginQueueSchema(_CommonQueueSchema):
-    """Represent the schema of a Scheduler Plugin Queue."""
-
-    compute_resources = fields.Nested(
-        SchedulerPluginComputeResourceSchema,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
-    networking = fields.Nested(
-        SchedulerPluginQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-    custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginQueue(**data)
-
-
 class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
@@ -1669,427 +1600,12 @@ class AwsBatchSettingsSchema(BaseSchema):
         return AwsBatchSettings(**data)
 
 
-class SchedulerPluginSupportedDistrosSchema(BaseSchema):
-    """Represent the schema for SupportedDistros in a Scheduler Plugin."""
-
-    x86 = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    arm64 = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginSupportedDistros(**data)
-
-
-class SchedulerPluginQueueConstraintsSchema(BaseSchema):
-    """Represent the schema for QueueConstraints in a Scheduler Plugin."""
-
-    max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginQueueConstraints(**data)
-
-
-class SchedulerPluginComputeResourceConstraintsSchema(BaseSchema):
-    """Represent the schema for ComputeResourceConstraints in a Scheduler Plugin."""
-
-    max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginComputeResourceConstraints(**data)
-
-
-class SchedulerPluginRequirementsSchema(BaseSchema):
-    """Represent the schema for Requirements in a Scheduler Plugin."""
-
-    supported_distros = fields.Nested(
-        SchedulerPluginSupportedDistrosSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    supported_regions = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    queue_constraints = fields.Nested(
-        SchedulerPluginQueueConstraintsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    compute_resource_constraints = fields.Nested(
-        SchedulerPluginComputeResourceConstraintsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    requires_sudo_privileges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    supports_cluster_update = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    supported_parallel_cluster_versions = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-        validate=validate.Regexp(
-            r"^((>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?,\s*)*(>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?$"
-        ),
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginRequirements(**data)
-
-
-class SchedulerPluginCloudFormationClusterInfrastructureSchema(BaseSchema):
-    """Represent the CloudFormation section of the Scheduler Plugin ClusterInfrastructure schema."""
-
-    template = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    s3_bucket_owner = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
-    )
-    checksum = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginCloudFormationInfrastructure(**data)
-
-
-class SchedulerPluginClusterInfrastructureSchema(BaseSchema):
-    """Represent the schema for ClusterInfrastructure schema in a Scheduler Plugin."""
-
-    cloud_formation = fields.Nested(
-        SchedulerPluginCloudFormationClusterInfrastructureSchema,
-        required=True,
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginClusterInfrastructure(**data)
-
-
-class SchedulerPluginClusterSharedArtifactSchema(BaseSchema):
-    """Represent the schema for Cluster Shared Artifact in a Scheduler Plugin."""
-
-    source = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    s3_bucket_owner = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
-    )
-    checksum = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginClusterSharedArtifact(**data)
-
-
-class SchedulerPluginResourcesSchema(BaseSchema):
-    """Represent the schema for Plugin Resouces in a Scheduler Plugin."""
-
-    cluster_shared_artifacts = fields.Nested(
-        SchedulerPluginClusterSharedArtifactSchema,
-        many=True,
-        required=True,
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Source"},
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginPluginResources(**data)
-
-
-class SchedulerPluginExecuteCommandSchema(BaseSchema):
-    """Represent the schema for ExecuteCommand in a Scheduler Plugin."""
-
-    command = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginExecuteCommand(**data)
-
-
-class SchedulerPluginEventSchema(BaseSchema):
-    """Represent the schema for Event in a Scheduler Plugin."""
-
-    execute_command = fields.Nested(
-        SchedulerPluginExecuteCommandSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginEvent(**data)
-
-
-class SchedulerPluginEventsSchema(BaseSchema):
-    """Represent the schema for Events in a Scheduler Plugin."""
-
-    head_init = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    head_configure = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    head_finalize = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    compute_init = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    compute_configure = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    compute_finalize = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    head_cluster_update = fields.Nested(
-        SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    head_compute_fleet_update = fields.Nested(
-        SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginEvents(**data)
-
-
-class SchedulerPluginFileSchema(BaseSchema):
-    """Represent the schema of the Scheduler Plugin."""
-
-    file_path = fields.Str(
-        required=True, validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    timestamp_format = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    node_type = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["HEAD", "COMPUTE", "ALL"])
-    )
-    log_stream_name = fields.Str(
-        required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[^:*]*$")
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginFile(**data)
-
-
-class SchedulerPluginLogsSchema(BaseSchema):
-    """Represent the schema of the Scheduler Plugin Logs."""
-
-    files = fields.Nested(
-        SchedulerPluginFileSchema,
-        required=True,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "FilePath"},
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginLogs(**data)
-
-
-class SchedulerPluginMonitoringSchema(BaseSchema):
-    """Represent the schema of the Scheduler plugin Monitoring."""
-
-    logs = fields.Nested(SchedulerPluginLogsSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginMonitoring(**data)
-
-
-class SudoerConfigurationSchema(BaseSchema):
-    """Represent the SudoerConfiguration for scheduler plugin SystemUsers declared in the SchedulerDefinition."""
-
-    commands = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    run_as = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SudoerConfiguration(**data)
-
-
-class SchedulerPluginUserSchema(BaseSchema):
-    """Represent the schema of the Scheduler Plugin."""
-
-    name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    enable_imds = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    sudoer_configuration = fields.Nested(
-        SudoerConfigurationSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginUser(**data)
-
-
-class SchedulerPluginDefinitionSchema(BaseSchema):
-    """Represent the schema of the Scheduler Plugin SchedulerDefinition."""
-
-    plugin_interface_version = fields.Str(
-        required=True,
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-        validate=validate.Regexp(r"^[0-9]+\.[0-9]+$"),
-    )
-    metadata = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, required=True)
-    requirements = fields.Nested(
-        SchedulerPluginRequirementsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    cluster_infrastructure = fields.Nested(
-        SchedulerPluginClusterInfrastructureSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    plugin_resources = fields.Nested(
-        SchedulerPluginResourcesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    events = fields.Nested(
-        SchedulerPluginEventsSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    monitoring = fields.Nested(SchedulerPluginMonitoringSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    system_users = fields.Nested(
-        SchedulerPluginUserSchema,
-        many=True,
-        validate=validate.Length(max=SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS),
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"},
-    )
-    tags = fields.Nested(
-        TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginDefinition(**data)
-
-    @validates("metadata")
-    def validate_metadata(self, value):
-        """Validate metadata contains fieds 'name' and 'version'."""
-        for key in ["Name", "Version"]:
-            if key not in value.keys():
-                raise ValidationError(f"{key} is required for scheduler plugin Metadata.")
-
-
-class SchedulerPluginSettingsSchema(BaseSchema):
-    """Represent the schema of the Scheduling Settings."""
-
-    scheduler_definition = fields.Nested(
-        SchedulerPluginDefinitionSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    grant_sudo_privileges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    scheduler_definition_s3_bucket_owner = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
-    )
-    scheduler_definition_checksum = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
-    )
-
-    def _verify_checksum(self, file_content, original_definition, expected_checksum):
-        if expected_checksum:
-            actual_checksum = hashlib.sha256(file_content.encode()).hexdigest()
-            if actual_checksum != expected_checksum:
-                raise ValidationError(
-                    f"Error when validating SchedulerDefinition '{original_definition}': "
-                    f"checksum ({actual_checksum}) does not match expected one ({expected_checksum})"
-                )
-
-    def _fetch_scheduler_definition_from_s3(self, original_scheduler_definition, s3_bucket_owner):
-        try:
-            bucket_parsing_result = parse_bucket_url(original_scheduler_definition)
-            result = AWSApi.instance().s3.get_object(
-                bucket_name=bucket_parsing_result["bucket_name"],
-                key=bucket_parsing_result["object_key"],
-                expected_bucket_owner=s3_bucket_owner,
-            )
-            scheduler_definition = result["Body"].read().decode("utf-8")
-            return scheduler_definition
-        except AWSClientError as e:
-            error_message = (
-                f"Error while downloading scheduler definition from {original_scheduler_definition}: {str(e)}"
-            )
-            if s3_bucket_owner and e.error_code == "AccessDenied":
-                error_message = (
-                    f"{error_message}. This can be due to bucket owner not matching the expected "
-                    f"one '{s3_bucket_owner}'"
-                )
-            raise ValidationError(error_message) from e
-        except Exception as e:
-            raise ValidationError(
-                f"Error while downloading scheduler definition from {original_scheduler_definition}: {str(e)}"
-            ) from e
-
-    def _fetch_scheduler_definition_from_https(self, original_scheduler_definition):
-        try:
-            # A nosec comment is appended to the following line in order to disable the B310 check.
-            # The urlopen argument is properly validated
-            # [B310:blacklist] Audit url open for permitted schemes.
-            with urlopen(original_scheduler_definition) as f:  # nosec B310 nosemgrep
-                scheduler_definition = f.read().decode("utf-8")
-                return scheduler_definition
-        except Exception:
-            error_message = (
-                f"Error while downloading scheduler definition from {original_scheduler_definition}: "
-                "The provided URL is invalid or unavailable."
-            )
-            raise ValidationError(error_message)
-
-    def _validate_scheduler_definition_url(self, original_scheduler_definition, s3_bucket_owner):
-        """Validate SchedulerDefinition url is valid."""
-        if not original_scheduler_definition.startswith("s3") and not original_scheduler_definition.startswith("https"):
-            raise ValidationError(
-                f"Error while downloading scheduler definition from {original_scheduler_definition}: The provided value"
-                " for SchedulerDefinition is invalid. You can specify this as an S3 URL, HTTPS URL or as an inline "
-                "YAML object."
-            )
-        if original_scheduler_definition.startswith("https") and s3_bucket_owner:
-            raise ValidationError(
-                f"Error while downloading scheduler definition from {original_scheduler_definition}: "
-                "SchedulerDefinitionS3BucketOwner can only be specified when SchedulerDefinition is S3 URL."
-            )
-
-    def _fetch_scheduler_definition_from_url(
-        self, original_scheduler_definition, s3_bucket_owner, scheduler_definition_checksum, data
-    ):
-        LOGGER.info("Downloading scheduler plugin definition from %s", original_scheduler_definition)
-        if original_scheduler_definition.startswith("s3"):
-            scheduler_definition = self._fetch_scheduler_definition_from_s3(
-                original_scheduler_definition, s3_bucket_owner
-            )
-        elif original_scheduler_definition.startswith("https"):
-            scheduler_definition = self._fetch_scheduler_definition_from_https(original_scheduler_definition)
-
-        self._verify_checksum(scheduler_definition, original_scheduler_definition, scheduler_definition_checksum)
-
-        LOGGER.info("Using the following scheduler plugin definition:\n%s", scheduler_definition)
-        try:
-            data["SchedulerDefinition"] = yaml_load(scheduler_definition)
-        except YAMLError as e:
-            raise ValidationError(
-                f"The retrieved SchedulerDefinition ({original_scheduler_definition}) is not a valid YAML."
-            ) from e
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SchedulerPluginSettings(**data)
-
-    @pre_load
-    def fetch_scheduler_definition(self, data, **kwargs):
-        """Fetch scheduler definition if it is s3 or https url."""
-        original_scheduler_definition = data["SchedulerDefinition"]
-        s3_bucket_owner = data.get("SchedulerDefinitionS3BucketOwner", None)
-        scheduler_definition_checksum = data.get("SchedulerDefinitionChecksum", None)
-        if isinstance(original_scheduler_definition, str):
-            self._validate_scheduler_definition_url(original_scheduler_definition, s3_bucket_owner)
-            self._fetch_scheduler_definition_from_url(
-                original_scheduler_definition, s3_bucket_owner, scheduler_definition_checksum, data
-            )
-        elif s3_bucket_owner or scheduler_definition_checksum:
-            raise ValidationError(
-                "SchedulerDefinitionS3BucketOwner or SchedulerDefinitionChecksum can only specified when "
-                "SchedulerDefinition is a URL."
-            )
-        return data
-
-
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch", "plugin"]),
+        validate=validate.OneOf(["slurm", "awsbatch"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     # Slurm schema
@@ -2109,29 +1625,16 @@ class SchedulingSchema(BaseSchema):
     aws_batch_settings = fields.Nested(
         AwsBatchSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
-    # Scheduler Plugin
-    scheduler_settings = fields.Nested(
-        SchedulerPluginSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-    scheduler_queues = fields.Nested(
-        SchedulerPluginQueueSchema,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
 
     @validates_schema
     def no_coexist_schedulers(self, data, **kwargs):
         """Validate that *_settings and *_queues for different schedulers do not co-exist."""
         scheduler = data.get("scheduler")
-        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings", "scheduler_settings"], **kwargs):
+        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings"], **kwargs):
             raise ValidationError("Multiple *Settings sections cannot be specified in the Scheduling section.")
-        if self.fields_coexist(
-            data, ["aws_batch_queues", "slurm_queues", "scheduler_queues"], one_required=True, **kwargs
-        ):
+        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues"], one_required=True, **kwargs):
             if scheduler == "awsbatch":
                 scheduler_prefix = "AwsBatch"
-            elif scheduler == "plugin":
-                scheduler_prefix = "Scheduler"
             else:
                 scheduler_prefix = scheduler.capitalize()
             raise ValidationError(f"{scheduler_prefix}Queues section must be specified in the Scheduling section.")
@@ -2142,7 +1645,6 @@ class SchedulingSchema(BaseSchema):
         for scheduler, settings, queues in [
             ("awsbatch", "aws_batch_settings", "aws_batch_queues"),
             ("slurm", "slurm_settings", "slurm_queues"),
-            ("plugin", "scheduler_settings", "scheduler_queues"),
         ]:
             # Verify the settings section is associated to the right scheduler type
             configured_scheduler = data.get("scheduler")
@@ -2161,10 +1663,6 @@ class SchedulingSchema(BaseSchema):
         scheduler = data.get("scheduler")
         if scheduler == "slurm":
             return SlurmScheduling(queues=data.get("slurm_queues"), settings=data.get("slurm_settings", None))
-        if scheduler == "plugin":
-            return SchedulerPluginScheduling(
-                queues=data.get("scheduler_queues"), settings=data.get("scheduler_settings", None)
-            )
         if scheduler == "awsbatch":
             return AwsBatchScheduling(
                 queues=data.get("aws_batch_queues"), settings=data.get("aws_batch_settings", None)
@@ -2177,8 +1675,6 @@ class SchedulingSchema(BaseSchema):
         adapted_data = copy.deepcopy(data)
         if adapted_data.scheduler == "awsbatch":
             scheduler_prefix = "aws_batch"
-        elif adapted_data.scheduler == "plugin":
-            scheduler_prefix = "scheduler"
         else:
             scheduler_prefix = adapted_data.scheduler
         setattr(adapted_data, f"{scheduler_prefix}_queues", copy.copy(getattr(adapted_data, "queues", None)))
@@ -2281,8 +1777,6 @@ class ClusterSchema(BaseSchema):
             cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         elif scheduler == "awsbatch":
             cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
-        elif scheduler == "plugin":
-            cluster = SchedulerPluginClusterConfig(cluster_name=self.cluster_name, **data)
         else:
             raise ValidationError(f"Unsupported scheduler {scheduler}.")
 

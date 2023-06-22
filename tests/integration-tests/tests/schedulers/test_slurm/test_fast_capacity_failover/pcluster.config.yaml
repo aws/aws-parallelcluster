@@ -1,5 +1,6 @@
 Image:
   Os: {{ os }}
+  CustomAmi: ami-0b2e93208d0d6c2d8
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -16,6 +17,16 @@ Scheduling:
       ComputeResources:
         - Name: ice-compute-resource
           InstanceType: c5.large
+          MinCount: 1
+        - Name: ice-cr-multiple
+          Instances:
+            - InstanceType: t2.large
+            - InstanceType: t3.large
+          MinCount: 1
+        - Name: exception-cr-multiple
+          Instances:
+            - InstanceType: t2.large
+            - InstanceType: t3.large
           MinCount: 1
         - Name: ondemand1-i1
           InstanceType: {{ instance }}

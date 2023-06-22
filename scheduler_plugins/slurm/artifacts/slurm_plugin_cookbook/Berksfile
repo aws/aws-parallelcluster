@@ -1,5 +1,0 @@
-source chef_repo: '.'
-
-metadata
-
-cookbook 'line', path: './third-party/line-4.0.1'

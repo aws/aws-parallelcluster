@@ -9,12 +9,7 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   {{ scheduler_prefix }}Settings:
-    {% if scheduler == "plugin" %}
-    CustomSettings:
-      ScaledownIdletime: {{ scaledown_idletime }}
-    {% else %}
     ScaledownIdletime: {{ scaledown_idletime }}
-    {% endif %}
   {{ scheduler_prefix }}Queues:
     - Name: ondemand
       Networking:
@@ -22,19 +17,11 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: ondemand-i1
-          {% if scheduler == "plugin" %}
-          InstanceType: c4.xlarge
-          {% else %}
           Instances:
             - InstanceType: c4.xlarge
-          {% endif %}
         - Name: same-name-diff-queue
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.xlarge
-          {% else %}
           Instances:
             - InstanceType: c5.xlarge
-          {% endif %}
           MaxCount: 5
     - Name: gpu
       Networking:
@@ -43,12 +30,8 @@ Scheduling:
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: same-name-diff-queue
-          {% if scheduler == "plugin" %}
-          InstanceType: {{ gpu_instance_type }}
-          {% else %}
           Instances:
             - InstanceType: {{ gpu_instance_type }}
-          {% endif %}
           MaxCount: 5
 SharedStorage:
   - MountDir: /shared  # Test comment

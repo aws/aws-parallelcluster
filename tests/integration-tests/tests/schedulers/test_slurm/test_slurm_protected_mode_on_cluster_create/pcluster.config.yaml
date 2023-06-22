@@ -19,12 +19,8 @@ Scheduling:
     - Name: queue
       ComputeResources:
         - Name: compute
-          {% if scheduler == "plugin" %}
-          InstanceType: c5.large # instance type has bootstrap failure
-          {% else %}
           Instances:
             - InstanceType: c5.large # instance type has bootstrap failure
-          {% endif %}
           MinCount: 3
           MaxCount: 10
       Networking:

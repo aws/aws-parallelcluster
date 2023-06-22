@@ -63,22 +63,3 @@ mapping:
                         sequence:
                           - type: any
                             required: true
-  scheduler-plugins:
-    type: map
-    required: false
-    mapping:
-      regex;(.+):
-        type: map
-        required: true
-        mapping:
-          scheduler-definition:
-            type: str
-            required: true
-            pattern: (s3|https)://.+|.*/upload_artifacts.sh
-          scheduler-commands:
-            type: str
-            required: true
-            pattern: "[a-zA-Z0-9_-]+"
-          requires-sudo:
-            type: bool
-            required: false

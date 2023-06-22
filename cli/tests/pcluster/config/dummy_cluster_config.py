@@ -34,16 +34,6 @@ from pcluster.config.cluster_config import (
     Proxy,
     Raid,
     S3Access,
-    SchedulerPluginClusterConfig,
-    SchedulerPluginComputeResource,
-    SchedulerPluginDefinition,
-    SchedulerPluginEvent,
-    SchedulerPluginEvents,
-    SchedulerPluginExecuteCommand,
-    SchedulerPluginQueue,
-    SchedulerPluginQueueNetworking,
-    SchedulerPluginScheduling,
-    SchedulerPluginSettings,
     SharedEbs,
     SharedEfs,
     SharedFsxLustre,
@@ -80,25 +70,6 @@ class _DummyAwsBatchClusterConfig(AwsBatchClusterConfig):
     """Generate dummy Slurm cluster config."""
 
     def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
-        super().__init__("clustername", scheduling, **kwargs)
-
-    @property
-    def region(self):
-        return "us-east-1"
-
-    @property
-    def partition(self):
-        return "aws"
-
-    @property
-    def vpc_id(self):
-        return "dummy_vpc_id"
-
-
-class _DummySchedulerPluginClusterConfig(SchedulerPluginClusterConfig):
-    """Generate dummy Scheduler Plugin cluster config."""
-
-    def __init__(self, scheduling: SchedulerPluginScheduling, **kwargs):
         super().__init__("clustername", scheduling, **kwargs)
 
     @property
@@ -220,60 +191,6 @@ def dummy_awsbatch_cluster_config(mocker):
     shared_storage.append(dummy_raid("/raid1"))
 
     cluster = _DummyAwsBatchClusterConfig(
-        image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
-    )
-    cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
-    cluster.additional_resources = "https://additional.template.url"
-    cluster.config_version = "1.0"
-    cluster.iam = ClusterIam()
-
-    cluster.tags = [Tag(key="test", value="testvalue")]
-    return cluster
-
-
-def dummy_scheduler_plugin_cluster_config(mocker):
-    """Generate dummy cluster."""
-    image = Image(os="alinux2")
-    head_node = dummy_head_node(mocker)
-    queue_iam = Iam(
-        s3_access=[
-            S3Access("dummy-readonly-bucket", enable_write_access=True),
-            S3Access("dummy-readwrite-bucket"),
-        ]
-    )
-    compute_resources = [
-        SchedulerPluginComputeResource(
-            name="dummy_compute_resource1", instance_type="dummyc5.xlarge", custom_settings={"key1": "value1"}
-        )
-    ]
-    queue_networking1 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
-    queue_networking2 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
-    queue_networking3 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
-    scheduler_plugin_queues = [
-        SchedulerPluginQueue(
-            name="queue1", networking=queue_networking1, compute_resources=compute_resources, iam=queue_iam
-        ),
-        SchedulerPluginQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
-        SchedulerPluginQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
-    ]
-
-    scheduler_plugin_settings = SchedulerPluginSettings(
-        SchedulerPluginDefinition(
-            plugin_interface_version="1.0",
-            events=SchedulerPluginEvents(head_init=SchedulerPluginEvent(SchedulerPluginExecuteCommand("test"))),
-        )
-    )
-    scheduling = SchedulerPluginScheduling(queues=scheduler_plugin_queues, settings=scheduler_plugin_settings)
-    # shared storage
-    shared_storage: List[Resource] = []
-    shared_storage.append(dummy_fsx())
-    shared_storage.append(dummy_ebs("/ebs1"))
-    shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))
-    shared_storage.append(dummy_ebs("/ebs3", raid=Raid(raid_type=1, number_of_volumes=5)))
-    shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
-    shared_storage.append(dummy_raid("/raid1"))
-
-    cluster = _DummySchedulerPluginClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"

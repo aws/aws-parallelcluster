@@ -80,7 +80,6 @@ from pcluster.templates.cdk_builder_utils import (
     apply_permissions_boundary,
     convert_deletion_policy,
     create_hash_suffix,
-    generate_launch_template_version_cfn_parameter_hash,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
     get_common_user_data_env,
@@ -173,20 +172,6 @@ class ClusterCdkStack:
             compute_group_set.append(self._compute_security_group.ref)
 
         return compute_group_set
-
-    def _generate_compute_fleet_role_names_cfn_parameter(self):
-        """
-        Generate compute fleet role names.
-
-        Return a comma separate string for compute fleet role names cfn parameter
-        in Scheduler Plugin cfn substack template.
-        """
-        role_list = []
-        for _, instance_role in self.compute_fleet_resources.managed_compute_instance_roles.items():
-            if instance_role is None:
-                continue
-            role_list.append(instance_role)
-        return ",".join([instance_role.ref for instance_role in role_list])
 
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
@@ -427,7 +412,6 @@ class ClusterCdkStack:
                 head_eni=self._head_eni,
                 slurm_construct=self.scheduler_resources,
             )
-        self._add_scheduler_plugin_substack()
 
     def _add_cleanup_resources_lambda(self):
         """Create Lambda cleanup resources function and its role."""
@@ -933,8 +917,6 @@ class ClusterCdkStack:
                 get_attr(self.config, "dev_settings.timeouts.head_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT)
             ),
         )
-        if self.scheduler_plugin_stack:
-            wait_condition.add_depends_on(self.scheduler_plugin_stack)
         return wait_condition, wait_condition_handle
 
     def _add_head_node(self):
@@ -1012,9 +994,6 @@ class ClusterCdkStack:
                 "cluster": {
                     "stack_name": self._stack_name,
                     "stack_arn": self.stack.stack_id,
-                    "scheduler_plugin_substack_arn": self.scheduler_plugin_stack.ref
-                    if self.scheduler_plugin_stack
-                    else "",
                     "raid_vol_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.RAID),
                     "raid_shared_dir": to_comma_separated_string(
                         self.shared_storage_mount_dirs[SharedStorageType.RAID]
@@ -1205,7 +1184,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::init"
+                            "--override-runlist aws-parallelcluster-entrypoints::init"
                         ),
                         "cwd": "/etc/chef",
                     }
@@ -1221,7 +1200,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::config"
+                            "--override-runlist aws-parallelcluster-entrypoints::config"
                         ),
                         "cwd": "/etc/chef",
                     }
@@ -1237,7 +1216,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::finalize"
+                            "--override-runlist aws-parallelcluster-entrypoints::finalize"
                         ),
                         "cwd": "/etc/chef",
                     },
@@ -1257,7 +1236,7 @@ class ClusterCdkStack:
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
-                            " --override-runlist aws-parallelcluster::update &&"
+                            " --override-runlist aws-parallelcluster-entrypoints::update &&"
                             " /opt/parallelcluster/scripts/fetch_and_run -postupdate &&"
                             f" cfn-signal --exit-code=0 --reason='Update complete'"
                             f" --region {self.stack.region} --url {cloudformation_url}"
@@ -1296,9 +1275,6 @@ class ClusterCdkStack:
         if not self._condition_is_batch():
             head_node_instance.node.add_dependency(self.compute_fleet_resources)
 
-        if self._condition_is_scheduler_plugin() and self.scheduler_plugin_stack:
-            head_node_instance.add_depends_on(self.scheduler_plugin_stack)
-
         return head_node_instance
 
     def _get_launch_templates_config(self):
@@ -1315,40 +1291,6 @@ class ClusterCdkStack:
 
         return lt_config
 
-    def _add_scheduler_plugin_substack(self):
-        self.scheduler_plugin_stack = None
-        if not self._condition_is_scheduler_plugin() or not get_attr(
-            self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
-        ):
-            return
-
-        template_url = self.bucket.get_cfn_template_url(
-            template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("scheduler_plugin_template_name")
-        )
-
-        parameters = {
-            "ClusterName": self._stack_name,
-            "ParallelClusterStackId": self.stack.stack_id,
-            "VpcId": self.config.vpc_id,
-            # Empty if passed in config and not created by pclsuter
-            "HeadNodeRoleName": self._managed_head_node_instance_role.ref
-            if self._managed_head_node_instance_role
-            else "",
-            # Comma separated list of compute_fleet roles that are created by pcluster not the ones passed in config
-            "ComputeFleetRoleNames": self._generate_compute_fleet_role_names_cfn_parameter(),
-        }
-
-        for queue_name, queue in self._get_launch_templates_config()["Queues"].items():
-            for compute_resource_name, compute_resource in queue["ComputeResources"].items():
-                parameters[
-                    f"LaunchTemplate"
-                    f"{generate_launch_template_version_cfn_parameter_hash(queue_name, compute_resource_name)}Version"
-                ] = compute_resource["LaunchTemplate"]["Version"]
-
-        self.scheduler_plugin_stack = CfnStack(
-            self.stack, "SchedulerPluginStack", template_url=template_url, parameters=parameters
-        )
-
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
     def _condition_create_lambda_iam_role(self):
@@ -1361,9 +1303,6 @@ class ClusterCdkStack:
 
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"
-
-    def _condition_is_scheduler_plugin(self):
-        return self.config.scheduling.scheduler == "plugin"
 
     def _condition_is_batch(self):
         return self.config.scheduling.scheduler == "awsbatch"

@@ -16,7 +16,9 @@ from pcluster.models.compute_fleet_status_manager import JsonComputeFleetStatusM
 from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
-def cfn_describe_stack_mock_response(scheduler, stack_status="CREATE_COMPLETE"):
+def cfn_describe_stack_mock_response(
+    scheduler, stack_status="CREATE_COMPLETE", use_plain_text_fleet_status_manager=True
+):
     return {
         "StackId": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
         "StackName": "clustername",
@@ -24,13 +26,13 @@ def cfn_describe_stack_mock_response(scheduler, stack_status="CREATE_COMPLETE"):
         "Outputs": [],
         "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": scheduler}],
         "Tags": [
-            {"Key": "parallelcluster:version", "Value": "3.0.0"},
+            {"Key": "parallelcluster:version", "Value": "3.0.0" if use_plain_text_fleet_status_manager else "3.3.0"},
         ],
     }
 
 
-def _build_dynamodb_item(scheduler, status, last_status_updated_time=None):
-    if scheduler == "slurm":
+def _build_dynamodb_item(status, last_status_updated_time=None, use_plain_text_fleet_status_manager=True):
+    if use_plain_text_fleet_status_manager:
         if status == "UNKNOWN":
             dynamodb_item = {}  # Test dynamodb item not exist
         else:
@@ -40,7 +42,7 @@ def _build_dynamodb_item(scheduler, status, last_status_updated_time=None):
             else:
                 last_status_updated_time = str(datetime.now())
             dynamodb_item["Item"]["LastUpdatedTime"] = last_status_updated_time
-    elif scheduler == "plugin":
+    else:
         compute_fleet_status_manager = JsonComputeFleetStatusManager("cluster-name")
 
         if status == "UNKNOWN":
@@ -61,7 +63,6 @@ def _build_dynamodb_item(scheduler, status, last_status_updated_time=None):
             dynamodb_item["Item"][compute_fleet_status_manager.DB_DATA][
                 compute_fleet_status_manager.COMPUTE_FLEET_LAST_UPDATED_TIME_ATTRIBUTE
             ] = last_status_updated_time
-
     return dynamodb_item
 
 
@@ -87,34 +88,37 @@ class TestUpdateComputeFleetStatus:
         )
 
     @pytest.mark.parametrize(
-        "scheduler, status, last_status_updated_time",
+        "scheduler, status, use_plain_text_fleet_status_manager, last_status_updated_time",
         [
-            ("slurm", "STOP_REQUESTED", datetime.now()),
-            ("slurm", "START_REQUESTED", datetime.now()),
-            ("plugin", "STOP_REQUESTED", datetime.now()),
-            ("plugin", "START_REQUESTED", datetime.now()),
-            ("awsbatch", "ENABLED", None),
-            ("awsbatch", "DISABLED", None),
+            ("slurm", "STOP_REQUESTED", True, datetime.now()),
+            ("slurm", "START_REQUESTED", True, datetime.now()),
+            ("slurm", "STOP_REQUESTED", False, datetime.now()),
+            ("slurm", "START_REQUESTED", False, datetime.now()),
+            ("awsbatch", "ENABLED", None, None),
+            ("awsbatch", "DISABLED", None, None),
         ],
     )
-    def test_successful_request(self, mocker, client, scheduler, status, last_status_updated_time):  # noqa: C901 FIXME
+    def test_successful_request(
+        self, mocker, client, scheduler, status, use_plain_text_fleet_status_manager, last_status_updated_time
+    ):  # noqa: C901 FIXME
         mocker.patch(
-            "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response(scheduler)
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(
+                scheduler, use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager
+            ),
         )
         config_mock = mocker.patch("pcluster.models.cluster.Cluster.config")
         config_mock.scheduling.scheduler = scheduler
-        if scheduler in ["slurm", "plugin"]:
+        if scheduler == "slurm":
             # mock the method to check the status before update
             mocker.patch(
                 "pcluster.aws.dynamo.DynamoResource.get_item",
-                return_value=_build_dynamodb_item(scheduler, status, last_status_updated_time),
+                return_value=_build_dynamodb_item(
+                    status, last_status_updated_time, use_plain_text_fleet_status_manager
+                ),
             )
-            if scheduler == "slurm":
-                # mock the method to update the item in dynamodb
-                mocker.patch("pcluster.aws.dynamo.DynamoResource.put_item")
-            else:
-                # mock the method to update the item in dynamodb
-                mocker.patch("pcluster.aws.dynamo.DynamoResource.update_item")
+            # mock the method to update the item in dynamodb
+            mocker.patch("pcluster.aws.dynamo.DynamoResource.put_item")
         elif scheduler == "awsbatch":
             mocker.patch("pcluster.aws.batch.BatchClient.get_compute_environment_state", return_value=status)
             if status == "ENABLED":
@@ -155,7 +159,7 @@ class TestUpdateComputeFleetStatus:
             ),
             (
                 {"region": "us-east-1"},
-                "plugin",
+                "slurm",
                 {"status": "RUNNING"},
                 {
                     "message": "Bad Request: 'RUNNING' is not one of "
@@ -169,15 +173,6 @@ class TestUpdateComputeFleetStatus:
                 {
                     "message": "Bad Request: the update compute fleet status can only be set to"
                     " `START_REQUESTED` or `STOP_REQUESTED` for Slurm scheduler clusters."
-                },
-            ),
-            (
-                {"region": "us-east-1"},
-                "plugin",
-                {"status": "ENABLED"},
-                {
-                    "message": "Bad Request: the update compute fleet status can only be set to"
-                    " `START_REQUESTED` or `STOP_REQUESTED` for Plugin scheduler clusters."
                 },
             ),
             (
@@ -200,22 +195,7 @@ class TestUpdateComputeFleetStatus:
             ),
             (
                 {"region": "us-east-1"},
-                "plugin",
-                {"status": None},
-                {
-                    "message": "Bad Request: None is not one of "
-                    "['START_REQUESTED', 'STOP_REQUESTED', 'ENABLED', 'DISABLED'] - 'status'"
-                },
-            ),
-            (
-                {"region": "us-east-1"},
                 "slurm",
-                None,
-                {"message": "Bad Request: request body is required"},
-            ),
-            (
-                {"region": "us-east-1"},
-                "plugin",
                 None,
                 {"message": "Bad Request: request body is required"},
             ),
@@ -240,15 +220,6 @@ class TestUpdateComputeFleetStatus:
                 {
                     "message": "Bad Request: Failed when stopping compute fleet with error: Cannot stop/disable"
                     " compute fleet while stack is in CREATE_IN_PROGRESS status."
-                },
-            ),
-            (
-                "CREATE_FAILED",
-                "plugin",
-                {"status": "STOP_REQUESTED"},
-                {
-                    "message": "Bad Request: Failed when stopping compute fleet with error: "
-                    "Cannot stop/disable compute fleet while stack is in CREATE_FAILED status."
                 },
             ),
             (
@@ -277,7 +248,7 @@ class TestUpdateComputeFleetStatus:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
-        "current_status, target_status, expected_response, scheduler",
+        "current_status, target_status, expected_response, scheduler, use_plain_text_fleet_status_manager",
         [
             (
                 "RUNNING",
@@ -287,6 +258,7 @@ class TestUpdateComputeFleetStatus:
                     "a concurrent update of the status. Please retry the operation."
                 },
                 "slurm",
+                True,
             ),
             (
                 "STOPPED",
@@ -296,6 +268,7 @@ class TestUpdateComputeFleetStatus:
                     "a concurrent update of the status. Please retry the operation."
                 },
                 "slurm",
+                True,
             ),
             (
                 "RUNNING",
@@ -304,7 +277,8 @@ class TestUpdateComputeFleetStatus:
                     "message": "Bad Request: Failed when stopping compute fleet due to "
                     "a concurrent update of the status. Please retry the operation."
                 },
-                "plugin",
+                "slurm",
+                False,
             ),
             (
                 "STOPPED",
@@ -313,22 +287,35 @@ class TestUpdateComputeFleetStatus:
                     "message": "Bad Request: Failed when starting compute fleet due to "
                     "a concurrent update of the status. Please retry the operation."
                 },
-                "plugin",
+                "slurm",
+                False,
             ),
         ],
     )
     def test_concurrent_update_bad_request(
-        self, mocker, client, current_status, target_status, expected_response, scheduler
+        self,
+        mocker,
+        client,
+        current_status,
+        target_status,
+        expected_response,
+        scheduler,
+        use_plain_text_fleet_status_manager,
     ):
         """Test when the dynamodb put_item request generates concurrent issue exception."""
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=cfn_describe_stack_mock_response(scheduler),
+            return_value=cfn_describe_stack_mock_response(
+                scheduler, use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager
+            ),
         )
         config_mock = mocker.patch("pcluster.models.cluster.Cluster.config")
         config_mock.scheduling.scheduler = scheduler
         mocker.patch(
-            "pcluster.aws.dynamo.DynamoResource.get_item", return_value=_build_dynamodb_item(scheduler, current_status)
+            "pcluster.aws.dynamo.DynamoResource.get_item",
+            return_value=_build_dynamodb_item(
+                current_status, use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager
+            ),
         )
         mocker.patch(
             "pcluster.aws.dynamo.DynamoResource.put_item",
@@ -369,30 +356,40 @@ class TestDescribeComputeFleet:
         )
 
     @pytest.mark.parametrize(
-        "scheduler, status, last_status_updated_time",
+        "scheduler, status, use_plain_text_fleet_status_manager, last_status_updated_time",
         [
-            ("slurm", "RUNNING", datetime.now()),
-            ("slurm", "STOPPED", datetime.now()),
-            ("slurm", "STOPPING", datetime.now()),
-            ("slurm", "STARTING", datetime.now()),
-            ("slurm", "STOP_REQUESTED", datetime.now()),
-            ("slurm", "START_REQUESTED", datetime.now()),
-            ("slurm", "PROTECTED", datetime.now()),
-            ("slurm", "UNKNOWN", None),
-            ("plugin", "RUNNING", datetime.now()),
-            ("plugin", "STOPPED", datetime.now()),
-            ("awsbatch", "ENABLED", None),
-            ("awsbatch", "DISABLED", None),
+            ("slurm", "RUNNING", True, datetime.now()),
+            ("slurm", "STOPPED", True, datetime.now()),
+            ("slurm", "STOPPING", True, datetime.now()),
+            ("slurm", "STARTING", True, datetime.now()),
+            ("slurm", "STOP_REQUESTED", True, datetime.now()),
+            ("slurm", "START_REQUESTED", True, datetime.now()),
+            ("slurm", "PROTECTED", True, datetime.now()),
+            ("slurm", "UNKNOWN", None, None),
+            ("slurm", "RUNNING", False, datetime.now()),
+            ("slurm", "STOPPED", False, datetime.now()),
+            ("awsbatch", "ENABLED", None, None),
+            ("awsbatch", "DISABLED", None, None),
         ],
     )
-    def test_successful_request(self, mocker, client, scheduler, status, last_status_updated_time):
+    def test_successful_request(
+        self, mocker, client, scheduler, use_plain_text_fleet_status_manager, status, last_status_updated_time
+    ):
         mocker.patch(
-            "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response(scheduler)
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(
+                scheduler,
+                use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager,
+            ),
         )
-        if scheduler in ["slurm", "plugin"]:
+        if scheduler == "slurm":
             mocker.patch(
                 "pcluster.aws.dynamo.DynamoResource.get_item",
-                return_value=_build_dynamodb_item(scheduler, status, last_status_updated_time=last_status_updated_time),
+                return_value=_build_dynamodb_item(
+                    status,
+                    last_status_updated_time=last_status_updated_time,
+                    use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager,
+                ),
             )
         elif scheduler == "awsbatch":
             mocker.patch("pcluster.aws.batch.BatchClient.get_compute_environment_state", return_value=status)
@@ -406,10 +403,7 @@ class TestDescribeComputeFleet:
 
     @pytest.mark.parametrize(
         "scheduler",
-        [
-            "slurm",
-            "plugin",
-        ],
+        ["slurm"],
     )
     def test_dynamo_table_not_exist(self, mocker, client, scheduler):
         """When stack exists but the dynamodb table to store the status does not exist, the status should be UNKNOWN."""
@@ -432,7 +426,7 @@ class TestDescribeComputeFleet:
 
     @pytest.mark.parametrize(
         "scheduler, stack_status",
-        [("slurm", "CREATE_IN_PROGRESS"), ("plugin", "DELETE_IN_PROGRESS"), ("awsbatch", "DELETE_IN_PROGRESS")],
+        [("slurm", "CREATE_IN_PROGRESS"), ("awsbatch", "DELETE_IN_PROGRESS")],
     )
     def test_unknown_status_on_unstable_stack(self, mocker, client, scheduler, stack_status):
         """When stack is in unstable status, the status should be UNKNOWN."""

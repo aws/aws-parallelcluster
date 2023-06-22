@@ -271,6 +271,7 @@ class SlurmCommands(SchedulerCommands):
         after_ok=None,
         partition=None,
         constraint=None,
+        prefer=None,
         other_options=None,
         raise_on_error=True,
     ):
@@ -279,13 +280,14 @@ class SlurmCommands(SchedulerCommands):
 
         return self._submit_batch_job(
             job_submit_command,
-            nodes,
-            slots,
-            host,
-            after_ok,
-            partition,
-            constraint,
-            other_options,
+            nodes=nodes,
+            slots=slots,
+            host=host,
+            after_ok=after_ok,
+            partition=partition,
+            constraint=constraint,
+            prefer=prefer,
+            other_options=other_options,
             raise_on_error=raise_on_error,
         )
 
@@ -314,14 +316,14 @@ class SlurmCommands(SchedulerCommands):
 
         return self._submit_batch_job(
             job_submit_command,
-            nodes,
-            slots,
-            host,
-            after_ok,
-            partition,
-            constraint,
-            other_options,
-            additional_files,
+            nodes=nodes,
+            slots=slots,
+            host=host,
+            after_ok=after_ok,
+            partition=partition,
+            constraint=constraint,
+            other_options=other_options,
+            additional_files=additional_files,
             raise_on_error=raise_on_error,
         )
 
@@ -334,6 +336,7 @@ class SlurmCommands(SchedulerCommands):
         after_ok=None,
         partition=None,
         constraint=None,
+        prefer=None,
         other_options=None,
         additional_files=None,
         raise_on_error=True,
@@ -351,6 +354,8 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -p {0}".format(partition)
         if constraint:
             submission_command += " -C '{0}'".format(constraint)
+        if prefer:
+            submission_command += " --prefer='{0}'".format(prefer)
         if other_options:
             submission_command += " {0}".format(other_options)
         submission_command += " {0}".format(job_submit_command)
