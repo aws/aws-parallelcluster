@@ -322,14 +322,13 @@ def _test_protected_mode_metric(cw_client, cluster_name):
 
 def _test_protected_mode_alarm(cw_client, cluster_name):
     protected_mode_alarm_name = f"{cluster_name}_ProtectedModeAlarm_HeadNode"
-    # get the protected mode alarm directly
+
     alarm_response = cw_client.describe_alarms(AlarmNames=[protected_mode_alarm_name])
 
     protected_mode_alarm = _get_alarm_records(alarm_response, protected_mode_alarm_name)
     _verify_alarms(protected_mode_alarm, "ClusterInProtectedMode", cluster_name)
 
 
-# Helper function copied form test_monitoring
 def _get_start_end_timestamp(minutes):
     """
     The end time for query will be the current time rounded to minute that is not earlier than the current time (ceil).
