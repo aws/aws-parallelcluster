@@ -337,21 +337,13 @@ class ClusterCdkStack:
             alarm_id = f"HeadNode{alarm_key}Alarm"
             alarm_name = f"{self.stack.stack_name}_{alarm_key}Alarm_HeadNode"
 
-            if alarm_key == "ProtectedMode":
-                metric = cloudwatch.Metric(
-                    namespace=alarm_values["namespace"],
-                    metric_name=alarm_values["metric_name"],
-                    dimensions_map=alarm_values["dimensions_map"],
-                    period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
-                )
-            else:
-                metric = cloudwatch.Metric(
-                    namespace=alarm_values["namespace"],
-                    metric_name=alarm_values["metric_name"],
-                    dimensions_map=alarm_values["dimensions_map"],
-                    statistic=alarm_values["statistic"],
-                    period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
-                )
+            metric = cloudwatch.Metric(
+                namespace=alarm_values["namespace"],
+                metric_name=alarm_values["metric_name"],
+                dimensions_map=alarm_values["dimensions_map"],
+                statistic=alarm_values.get("statistics"),
+                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
+            )
 
             self.alarms.append(
                 cloudwatch.Alarm(
