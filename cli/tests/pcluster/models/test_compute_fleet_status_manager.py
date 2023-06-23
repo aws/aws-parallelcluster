@@ -168,30 +168,12 @@ class TestComputeFleetStatusManager:
         assert_that(caplog.text).is_empty()
 
     @pytest.mark.parametrize(
-        "version, scheduler, expected_compute_fleet_status_manager_instance",
+        "version, expected_compute_fleet_status_manager_instance",
         [
-            (
-                "3.2.0",
-                "slurm",
-                JsonComputeFleetStatusManager,
-            ),
-            (
-                "3.2.0",
-                "plugin",
-                JsonComputeFleetStatusManager,
-            ),
-            (
-                "3.1.1",
-                "slurm",
-                PlainTextComputeFleetStatusManager,
-            ),
-            (
-                "3.1.1",
-                "plugin",
-                JsonComputeFleetStatusManager,
-            ),
+            ("3.2.0", JsonComputeFleetStatusManager),
+            ("3.1.1", PlainTextComputeFleetStatusManager),
         ],
     )
-    def test_get_manager(self, version, scheduler, expected_compute_fleet_status_manager_instance):
-        compute_fleet_status_manager = ComputeFleetStatusManager.get_manager("cluster-name", version, scheduler)
+    def test_get_manager(self, version, expected_compute_fleet_status_manager_instance):
+        compute_fleet_status_manager = ComputeFleetStatusManager.get_manager("cluster-name", version)
         assert_that(compute_fleet_status_manager).is_instance_of(expected_compute_fleet_status_manager_instance)

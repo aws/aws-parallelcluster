@@ -22,7 +22,7 @@ from pykwalify.core import Core
 
 package_directory = os.path.dirname(os.path.abspath(__file__))
 CONFIG_SCHEMA = f"{package_directory}/config_schema.yaml"
-PCLUSTER_SCHEDULERS = {"slurm", "awsbatch", "plugin"}
+PCLUSTER_SCHEDULERS = {"slurm", "awsbatch"}
 
 
 def assert_valid_config(config, tests_root_dir):
@@ -56,10 +56,9 @@ def _validate_schedulers(config, schedulers):
     """Verify that the scheduler entries are valid."""
     for scheduler in schedulers:
         if scheduler not in PCLUSTER_SCHEDULERS:
-            if scheduler not in config.get("scheduler-plugins", {}).keys():
-                error = f"Invalid scheduler ({scheduler}) found in config or missing the scheduler plugin definition."
-                logging.error(error)
-                raise AssertionError(error)
+            error = f"Invalid scheduler ({scheduler}) found in config."
+            logging.error(error)
+            raise AssertionError(error)
 
 
 def _validate_against_schema(config):

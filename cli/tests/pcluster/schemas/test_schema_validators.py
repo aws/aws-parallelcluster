@@ -39,7 +39,6 @@ from pcluster.schemas.cluster_schema import (
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
     RaidSchema,
-    SchedulerPluginQueueNetworkingSchema,
     SharedStorageSchema,
     SlurmComputeResourceSchema,
     SlurmQueueNetworkingSchema,
@@ -602,10 +601,9 @@ def test_subnet_id_validator_aws_batch(subnet_ids, expected_message):
         (["subnet-12345678", "subnet-87654321"], None),
     ],
 )
-def test_subnet_id_validator_slurm_and_scheduler_plugin(subnet_ids, expected_message):
+def test_subnet_id_validator_slurm(subnet_ids, expected_message):
     """Verify that subnet ids behaves as expected when parsed in a config file."""
     _validate_and_assert_error(SlurmQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
-    _validate_and_assert_error(SchedulerPluginQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
 
 
 @pytest.mark.parametrize(

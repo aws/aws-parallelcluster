@@ -10,8 +10,6 @@
 # limitations under the License.
 from enum import Enum
 
-from pkg_resources import packaging
-
 PCLUSTER_NAME_MAX_LENGTH = 60
 # When Slurm accounting is enabled, Slurm creates database tables with the format 'cluster_name' + 'suffix'.
 # MySQL and MariaDB have a maximum table name length of 64 characters.
@@ -24,9 +22,9 @@ PCLUSTER_AMI_ID_REGEX = r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"
 CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
-SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
+SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
 SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004", "ubuntu2204", "rhel8"]
-SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "plugin": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
+SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
 DELETION_POLICIES = [DELETE_POLICY, RETAIN_POLICY]
@@ -104,8 +102,6 @@ EBS_VOLUME_TYPE_DEFAULT_US_ISO = "gp2"
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0
 MAX_NUMBER_OF_QUEUES = 50
-SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES = 10
-SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES = 5
 # Allow for flexibility in how compute resources are distributed in the cluster
 MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER = MAX_COMPUTE_RESOURCES_PER_QUEUE = 50
 MIN_SLURM_NODE_PRIORITY = 1
@@ -173,7 +169,6 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "image_config_name": "image-config.yaml",
     "config_name": "cluster-config-with-implied-values.yaml",
     "template_name": "aws-parallelcluster.cfn.yaml",
-    "scheduler_plugin_template_name": "scheduler-plugin-substack.cfn",
     "instance_types_data_name": "instance-types-data.json",
     "custom_artifacts_name": "artifacts.zip",
     "scheduler_resources_name": "scheduler_resources.zip",
@@ -217,16 +212,11 @@ SUPPORTED_REGIONS = [
     "us-west-2",
 ]
 
-SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS = 10
-
 # see https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html
 NODEJS_MIN_VERSION = "10.13.0"
 NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
 
 NODE_BOOTSTRAP_TIMEOUT = 1800
-
-SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version("1.0")
-SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE = packaging.version.Version("1.0")
 
 # DirectoryService
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}

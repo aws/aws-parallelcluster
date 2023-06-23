@@ -52,21 +52,9 @@ from pcluster.constants import (
     NODE_BOOTSTRAP_TIMEOUT,
     ONTAP,
     OPENZFS,
-    SCHEDULER_PLUGIN_INTERFACE_VERSION,
-    SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
-    SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
-    SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES,
-    SUPPORTED_OSES,
     Feature,
 )
-from pcluster.utils import (
-    get_attr,
-    get_installed_version,
-    get_partition,
-    get_resource_name_from_resource_arn,
-    replace_url_parameters,
-    to_snake_case,
-)
+from pcluster.utils import get_partition, get_resource_name_from_resource_arn, to_snake_case
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -187,15 +175,6 @@ from pcluster.validators.s3_validators import (
     S3BucketUriValidator,
     S3BucketValidator,
     UrlValidator,
-)
-from pcluster.validators.scheduler_plugin_validators import (
-    GrantSudoPrivilegesValidator,
-    PluginInterfaceVersionValidator,
-    SchedulerPluginOsArchitectureValidator,
-    SchedulerPluginRegionValidator,
-    SudoPrivilegesValidator,
-    SupportedVersionsValidator,
-    UserNameValidator,
 )
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
@@ -764,12 +743,6 @@ class AwsBatchQueueNetworking(_QueueNetworking):
         super().__init__(**kwargs)
 
 
-class SchedulerPluginQueueNetworking(SlurmQueueNetworking):
-    """Represent the networking configuration for the Scheduler Plugin Queue."""
-
-    pass
-
-
 class _BaseSsh(Resource):
     """Represent the base SSH configuration, with the fields in common between all the Ssh."""
 
@@ -1138,6 +1111,7 @@ class ClusterDevSettings(BaseDevSettings):
         ami_search_filters: AmiSearchFilters = None,
         instance_types_data: str = None,
         timeouts: Timeouts = None,
+        compute_startup_time_metric_enabled: bool = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1145,6 +1119,9 @@ class ClusterDevSettings(BaseDevSettings):
         self.ami_search_filters = Resource.init_param(ami_search_filters)
         self.instance_types_data = Resource.init_param(instance_types_data)
         self.timeouts = Resource.init_param(timeouts)
+        self.compute_startup_time_metric_enabled = Resource.init_param(
+            compute_startup_time_metric_enabled, default=False
+        )
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -1721,7 +1698,7 @@ class BaseClusterConfig(Resource):
             ].add(self.head_node.instance_type)
 
         scheduling = self.scheduling
-        if isinstance(scheduling, (SchedulerPluginScheduling, SlurmScheduling)):
+        if isinstance(scheduling, SlurmScheduling):
             for queue in scheduling.queues:
                 instance_types_with_instance_storage = queue.instance_types_with_instance_storage
                 if instance_types_with_instance_storage:
@@ -2250,25 +2227,13 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         return self.disable_simultaneous_multithreading and self.instance_type_info.default_threads_per_core() > 1
 
 
-class SchedulerPluginComputeResource(SlurmComputeResource):
-    """Represent the Scheduler Plugin Compute Resource."""
-
-    def __init__(
-        self,
-        custom_settings: Dict = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.custom_settings = custom_settings
-
-
 class _CommonQueue(BaseQueue):
-    """Represent the Common Queue resource between Slurm and Scheduler Plugin."""
+    """Represent the Common Queue resource between Slurm and future scheduler implementation."""
 
     def __init__(
         self,
-        compute_resources: List[Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]],
-        networking: Union[SlurmQueueNetworking, SchedulerPluginQueueNetworking],
+        compute_resources: List[_BaseSlurmComputeResource],
+        networking: SlurmQueueNetworking,
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -2321,7 +2286,7 @@ class _CommonQueue(BaseQueue):
         return managed_placement_group_keys
 
     def get_placement_group_settings_for_compute_resource(
-        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+        self, compute_resource: _BaseSlurmComputeResource
     ) -> Dict[str, bool]:
         # Placement Group key is None and not managed by default
         placement_group_key, managed = None, False
@@ -2333,13 +2298,11 @@ class _CommonQueue(BaseQueue):
             placement_group_key, managed = f"{self.name}-{compute_resource.name}", True
         return {"key": placement_group_key, "is_managed": managed}
 
-    def is_placement_group_enabled_for_compute_resource(
-        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
-    ) -> bool:
+    def is_placement_group_enabled_for_compute_resource(self, compute_resource: _BaseSlurmComputeResource) -> bool:
         return self.get_placement_group_settings_for_compute_resource(compute_resource).get("key") is not None
 
     def get_chosen_placement_group_setting_for_compute_resource(
-        self, compute_resource: Union[_BaseSlurmComputeResource, SchedulerPluginComputeResource]
+        self, compute_resource: _BaseSlurmComputeResource
     ) -> PlacementGroup:
         """Handle logic that the Placement Group on compute resource level overrides queue level."""
         return (
@@ -2629,254 +2592,6 @@ class SlurmScheduling(Resource):
         )
 
 
-class SchedulerPluginQueue(_CommonQueue):
-    """Represent the Scheduler Plugin queue."""
-
-    def __init__(
-        self,
-        custom_settings: Dict = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.custom_settings = custom_settings
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(
-            DuplicateNameValidator,
-            name_list=[compute_resource.name for compute_resource in self.compute_resources],
-            resource_name="Compute resource",
-        )
-        self._register_validator(
-            MaxCountValidator,
-            resources_length=len(self.compute_resources),
-            max_length=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
-            resource_name="ComputeResources per Queue",
-        )
-        self._register_validator(
-            QueueSubnetsValidator,
-            queue_name=self.name,
-            subnet_ids=self.networking.subnet_ids,
-            az_subnet_ids_mapping=self.networking.az_subnet_ids_mapping,
-        )
-        if any(isinstance(compute_resource, SlurmComputeResource) for compute_resource in self.compute_resources):
-            self._register_validator(
-                SingleInstanceTypeSubnetValidator,
-                queue_name=self.name,
-                subnet_ids=self.networking.subnet_ids,
-            )
-        for compute_resource in self.compute_resources:
-            self._register_validator(
-                CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
-            )
-            self._register_validator(
-                EfaSecurityGroupValidator,
-                efa_enabled=compute_resource.efa.enabled,
-                security_groups=self.networking.security_groups,
-                additional_security_groups=self.networking.additional_security_groups,
-            )
-            self._register_validator(
-                EfaPlacementGroupValidator,
-                efa_enabled=compute_resource.efa.enabled,
-                placement_group_key=self.get_placement_group_settings_for_compute_resource(compute_resource).get("key"),
-                placement_group_disabled=self.get_chosen_placement_group_setting_for_compute_resource(
-                    compute_resource
-                ).enabled
-                is False,
-                multi_az_enabled=self.multi_az_enabled,
-            )
-
-    @property
-    def instance_type_list(self):
-        """Return the list of instance types associated to the Queue."""
-        return [compute_resource.instance_type for compute_resource in self.compute_resources]
-
-    @property
-    def instance_types_with_instance_storage(self):
-        """Return a set of instance types in the queue that have instance store."""
-        result = set()
-        for compute_resource in self.compute_resources:
-            if compute_resource.instance_type_info.instance_storage_supported():
-                result.add(compute_resource.instance_type)
-        return result
-
-
-class SchedulerPluginSupportedDistros(Resource):
-    """Represent the Supported Distros for a Scheduler Plugin."""
-
-    def __init__(self, x86: List[str] = None, arm64: List[str] = None, **kwargs):
-        super().__init__(**kwargs)
-        self.x86 = Resource.init_param(x86, default=SUPPORTED_OSES)
-        self.arm64 = Resource.init_param(arm64, default=SUPPORTED_OSES)
-
-
-class SchedulerPluginQueueConstraints(Resource):
-    """Represent the Queue Constraints for a Scheduler Plugin."""
-
-    def __init__(self, max_count: int = None, **kwargs):
-        super().__init__(**kwargs)
-        self.max_count = Resource.init_param(max_count, default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES)
-
-
-class SchedulerPluginComputeResourceConstraints(Resource):
-    """Represent the Compute Resource Constraints for a Scheduler Plugin."""
-
-    def __init__(self, max_count: int = None, **kwargs):
-        super().__init__(**kwargs)
-        self.max_count = Resource.init_param(max_count, default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES)
-
-
-class SchedulerPluginRequirements(Resource):
-    """Represent the Requirements for a Scheduler Plugin."""
-
-    def __init__(
-        self,
-        supported_distros: SchedulerPluginSupportedDistros = None,
-        supported_regions: List[str] = None,
-        queue_constraints: SchedulerPluginQueueConstraints = None,
-        compute_resource_constraints: SchedulerPluginComputeResourceConstraints = None,
-        requires_sudo_privileges: bool = None,
-        supports_cluster_update: bool = None,
-        supported_parallel_cluster_versions: str = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.supported_distros = supported_distros
-        self.supported_regions = supported_regions
-        self.queue_constraints = queue_constraints
-        self.compute_resource_constraints = compute_resource_constraints
-        self.requires_sudo_privileges = Resource.init_param(requires_sudo_privileges, default=False)
-        self.supports_cluster_update = Resource.init_param(supports_cluster_update, default=True)
-        self.supported_parallel_cluster_versions = supported_parallel_cluster_versions
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        if self.supported_parallel_cluster_versions:
-            self._register_validator(
-                SupportedVersionsValidator,
-                installed_version=get_installed_version(),
-                supported_versions_string=self.supported_parallel_cluster_versions,
-            )
-
-
-class SchedulerPluginCloudFormationInfrastructure(Resource):
-    """Represent the CloudFormation infrastructure for a Scheduler Plugin."""
-
-    def __init__(self, template: str, s3_bucket_owner: str = None, checksum: str = None, **kwargs):
-        super().__init__(**kwargs)
-        self.template = replace_url_parameters(template)
-        self.s3_bucket_owner = s3_bucket_owner
-        self.checksum = checksum
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(
-            UrlValidator,
-            url=self.template,
-            fail_on_https_error=True,
-            fail_on_s3_error=True,
-            expected_bucket_owner=self.s3_bucket_owner,
-        )
-
-
-class SchedulerPluginClusterInfrastructure(Resource):
-    """Represent the ClusterInfastructure config for a Scheduler Plugin."""
-
-    def __init__(self, cloud_formation: SchedulerPluginCloudFormationInfrastructure = None, **kwargs):
-        super().__init__(**kwargs)
-        self.cloud_formation = cloud_formation
-
-
-class SchedulerPluginClusterSharedArtifact(Resource):
-    """Represent the ClusterSharedArtifact config for a Scheduler Plugin."""
-
-    def __init__(self, source: str, s3_bucket_owner: str = None, checksum: str = None, **kwargs):
-        super().__init__(**kwargs)
-        self.source = replace_url_parameters(source)
-        self.s3_bucket_owner = s3_bucket_owner
-        self.checksum = checksum
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(UrlValidator, url=self.source, expected_bucket_owner=self.s3_bucket_owner)
-
-
-class SchedulerPluginPluginResources(Resource):
-    """Represent the PluginResources config for a Scheduler Plugin."""
-
-    def __init__(self, cluster_shared_artifacts: [SchedulerPluginClusterSharedArtifact], **kwargs):
-        super().__init__(**kwargs)
-        self.cluster_shared_artifacts = cluster_shared_artifacts
-
-
-class SchedulerPluginExecuteCommand(Resource):
-    """Represent the ExecuteCommand for a Scheduler Plugin."""
-
-    def __init__(self, command: str, **kwargs):
-        super().__init__(**kwargs)
-        self.command = command
-
-
-class SchedulerPluginEvent(Resource):
-    """Represent the Event config for a Scheduler Plugin."""
-
-    def __init__(self, execute_command: SchedulerPluginExecuteCommand, **kwargs):
-        super().__init__(**kwargs)
-        self.execute_command = execute_command
-
-
-class SchedulerPluginEvents(Resource):
-    """Represent the Events config for a Scheduler Plugin."""
-
-    def __init__(
-        self,
-        head_init: SchedulerPluginEvent = None,
-        head_configure: SchedulerPluginEvent = None,
-        head_finalize: SchedulerPluginEvent = None,
-        compute_init: SchedulerPluginEvent = None,
-        compute_configure: SchedulerPluginEvent = None,
-        compute_finalize: SchedulerPluginEvent = None,
-        head_cluster_update: SchedulerPluginEvent = None,
-        head_compute_fleet_update: SchedulerPluginEvent = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.head_init = head_init
-        self.head_configure = head_configure
-        self.head_finalize = head_finalize
-        self.compute_init = compute_init
-        self.compute_configure = compute_configure
-        self.compute_finalize = compute_finalize
-        self.head_cluster_update = head_cluster_update
-        self.head_compute_fleet_update = head_compute_fleet_update
-
-
-class SchedulerPluginFile(Resource):
-    """Represent the Scheduler Plugin file resource."""
-
-    def __init__(
-        self, file_path: str, log_stream_name: str, node_type: str = None, timestamp_format: str = None, **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.file_path = file_path
-        self.timestamp_format = Resource.init_param(timestamp_format, default="%Y-%m-%dT%H:%M:%S%z")
-        self.node_type = Resource.init_param(node_type, default="ALL")
-        self.log_stream_name = log_stream_name
-
-
-class SchedulerPluginLogs(Resource):
-    """Represent the Scheduler Plugin logs resource."""
-
-    def __init__(self, files: [SchedulerPluginFile], **kwargs):
-        super().__init__(**kwargs)
-        self.files = files
-
-
-class SchedulerPluginMonitoring(Resource):
-    """Represent the Scheduler Plugin monitoring resource."""
-
-    def __init__(self, logs: SchedulerPluginLogs, **kwargs):
-        super().__init__(**kwargs)
-        self.logs = logs
-
-
 class SudoerConfiguration(Resource):
     """Represent the SudoerConfiguration resource."""
 
@@ -2886,133 +2601,8 @@ class SudoerConfiguration(Resource):
         self.run_as = run_as
 
 
-class SchedulerPluginUser(Resource):
-    """Represent the Scheduler Plugin user resource."""
-
-    def __init__(
-        self, name: str, enable_imds: bool = None, sudoer_configuration: List[SudoerConfiguration] = (), **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.name = name
-        self.enable_imds = Resource.init_param(enable_imds, default=False)
-        self.sudoer_configuration = sudoer_configuration
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(
-            UserNameValidator,
-            user_name=self.name,
-        )
-
-
-class SchedulerPluginDefinition(Resource):
-    """Represent the Scheduler Plugin scheduler definition."""
-
-    def __init__(
-        self,
-        plugin_interface_version: str,
-        events: SchedulerPluginEvents,
-        metadata: Dict = None,
-        requirements: SchedulerPluginRequirements = None,
-        cluster_infrastructure: SchedulerPluginClusterInfrastructure = None,
-        plugin_resources: SchedulerPluginPluginResources = None,
-        monitoring: SchedulerPluginMonitoring = None,
-        system_users: [SchedulerPluginUser] = None,
-        tags: List[Tag] = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.plugin_interface_version = plugin_interface_version
-        self.metadata = metadata
-        self.requirements = requirements
-        self.cluster_infrastructure = cluster_infrastructure
-        self.plugin_resources = plugin_resources
-        self.events = events
-        self.monitoring = monitoring
-        self.system_users = system_users
-        self.tags = tags
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(
-            PluginInterfaceVersionValidator,
-            plugin_version=self.plugin_interface_version,
-            support_version_low_range=SCHEDULER_PLUGIN_INTERFACE_VERSION_LOW_RANGE,
-            support_version_high_range=SCHEDULER_PLUGIN_INTERFACE_VERSION,
-        )
-
-
-class SchedulerPluginSettings(Resource):
-    """Represent the Scheduler Plugin settings."""
-
-    def __init__(
-        self,
-        scheduler_definition: SchedulerPluginDefinition,
-        grant_sudo_privileges: bool = None,
-        custom_settings: Dict = None,
-        scheduler_definition_s3_bucket_owner: str = None,
-        scheduler_definition_checksum: str = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.scheduler_definition = scheduler_definition
-        self.grant_sudo_privileges = Resource.init_param(grant_sudo_privileges, default=False)
-        self.custom_settings = custom_settings
-        self.scheduler_definition_s3_bucket_owner = scheduler_definition_s3_bucket_owner
-        self.scheduler_definition_checksum = scheduler_definition_checksum
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(
-            SudoPrivilegesValidator,
-            grant_sudo_privileges=self.grant_sudo_privileges,
-            requires_sudo_privileges=self.scheduler_definition.requirements.requires_sudo_privileges
-            if self.scheduler_definition.requirements
-            else None,
-        )
-
-        self._register_validator(
-            GrantSudoPrivilegesValidator,
-            grant_sudo_privileges=self.grant_sudo_privileges,
-            system_users=get_attr(self.scheduler_definition, "system_users"),
-        )
-
-
-class SchedulerPluginScheduling(Resource):
-    """Represent a Scheduler Plugin Scheduling resource."""
-
-    def __init__(self, queues: List[SchedulerPluginQueue], settings: SchedulerPluginSettings, **kwargs):
-        super().__init__(**kwargs)
-        self.scheduler = "plugin"
-        self.queues = queues
-        self.settings = settings
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(
-            DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
-        )
-        self._register_validator(
-            MaxCountValidator,
-            resources_length=len(self.queues),
-            max_length=get_attr(
-                self.settings.scheduler_definition,
-                "requirements.queue_constraints.max_count",
-                default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_QUEUES,
-            ),
-            resource_name="SchedulerQueues",
-        )
-        for queue in self.queues:
-            self._register_validator(
-                MaxCountValidator,
-                resources_length=len(queue.compute_resources),
-                max_length=get_attr(
-                    self.settings.scheduler_definition,
-                    "requirements.compute_resource_constraints.max_count",
-                    default=SCHEDULER_PLUGIN_MAX_NUMBER_OF_COMPUTE_RESOURCES,
-                ),
-                resource_name="ComputeResources",
-            )
-
-
 class CommonSchedulerClusterConfig(BaseClusterConfig):
-    """Represent the common Cluster configuration between Slurm Config and Scheduler Plugin Config."""
+    """Represent the common Cluster configuration between Slurm Config and future scheduler Config."""
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -3158,70 +2748,6 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
             if queue.custom_actions:
                 return True
         return False
-
-
-class SchedulerPluginClusterConfig(CommonSchedulerClusterConfig):
-    """Represent the full Scheduler Plugin Cluster configuration."""
-
-    def __init__(self, cluster_name: str, scheduling: SchedulerPluginScheduling, **kwargs):
-        super().__init__(cluster_name, **kwargs)
-        self.scheduling = scheduling
-        self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls.
-        # Since this cache is only used for validation, if AWSClientError happens
-        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
-        # blocking CLI execution if the user want to suppress the validation.
-        try:
-            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
-        except AWSClientError:
-            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
-
-    def get_instance_types_data(self):
-        """Get instance type infos for all instance types used in the configuration file."""
-        result = {}
-        instance_type_info = self.head_node.instance_type_info
-        result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
-        for queue in self.scheduling.queues:
-            for compute_resource in queue.compute_resources:
-                instance_type_info = compute_resource.instance_type_info
-                result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
-        return result
-
-    def get_tags(self):
-        """Return tags configured in the root of the cluster config and under scheduler definition."""
-        return (self.tags if self.tags else []) + get_attr(
-            self.scheduling, "settings.scheduler_definition.tags", default=[]
-        )
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        scheduler_definition = self.scheduling.settings.scheduler_definition
-        self._register_validator(
-            SchedulerPluginOsArchitectureValidator,
-            os=self.image.os,
-            architecture=self.head_node.architecture,
-            supported_x86=get_attr(scheduler_definition, "requirements.supported_distros.x86", default=SUPPORTED_OSES),
-            supported_arm64=get_attr(
-                scheduler_definition, "requirements.supported_distros.arm64", default=SUPPORTED_OSES
-            ),
-        )
-        self._register_validator(
-            SchedulerPluginRegionValidator,
-            region=self.region,
-            supported_regions=get_attr(scheduler_definition, "requirements.supported_regions"),
-        )
-
-    @property
-    def image_dict(self):
-        """Return image dict of queues, key is queue name, value is image id."""
-        if self.__image_dict:
-            return self.__image_dict
-        self.__image_dict = {}
-
-        for queue in self.scheduling.queues:
-            self.__image_dict[queue.name] = queue.queue_ami or self.image.custom_ami or self.official_ami
-
-        return self.__image_dict
 
 
 class SlurmClusterConfig(CommonSchedulerClusterConfig):

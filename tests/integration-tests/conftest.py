@@ -78,7 +78,6 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
-    scheduler_plugin_definition_uploader,
     set_logger_formatter,
     to_pascal_case,
 )
@@ -552,7 +551,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_plugin_configuration):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -579,9 +578,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, scheduler_p
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         output_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(
-                output_file_path, request, region, benchmarks, scheduler_plugin_configuration
-            )
+            inject_additional_config_settings(output_file_path, request, region, benchmarks)
         else:
             inject_additional_image_configs_settings(output_file_path, request)
         return output_file_path
@@ -616,9 +613,7 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
-def inject_additional_config_settings(  # noqa: C901
-    cluster_config, request, region, benchmarks=None, scheduler_plugin_configuration=None
-):  # noqa C901
+def inject_additional_config_settings(cluster_config, request, region, benchmarks=None):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -691,7 +686,7 @@ def inject_additional_config_settings(  # noqa: C901
                 _add_policy_for_pre_post_install(config_content["HeadNode"], option, request, region)
 
             if scheduler != "awsbatch":
-                scheduler_prefix = "Scheduler" if scheduler == "plugin" else scheduler.capitalize()
+                scheduler_prefix = scheduler.capitalize()
                 for queue in config_content["Scheduling"][f"{scheduler_prefix}Queues"]:
                     if not dict_has_nested_key(queue, ("CustomActions", config_param)):
                         dict_add_nested_key(
@@ -718,26 +713,8 @@ def inject_additional_config_settings(  # noqa: C901
                     # Use larger max count to support performance tests if not specified explicitly.
                     compute_resource["MaxCount"] = 150
 
-    configure_scheduler_plugin(scheduler_plugin_configuration, config_content)
-
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
-
-
-def configure_scheduler_plugin(scheduler_plugin_configuration, config_content):
-    if scheduler_plugin_configuration and not dict_has_nested_key(
-        config_content, ("Scheduling", "SchedulerSettings", "SchedulerDefinition")
-    ):
-        dict_add_nested_key(
-            config_content,
-            scheduler_plugin_configuration["scheduler-definition-url"],
-            ("Scheduling", "SchedulerSettings", "SchedulerDefinition"),
-        )
-        dict_add_nested_key(
-            config_content,
-            scheduler_plugin_configuration["requires-sudo"],
-            ("Scheduling", "SchedulerSettings", "GrantSudoPrivileges"),
-        )
 
 
 def _add_policy_for_pre_post_install(node_config, custom_option, request, region):
@@ -776,14 +753,8 @@ def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     default_values["partition"] = get_arn_partition(default_values["region"])
     default_values["key_name"] = request.config.getoption("key_name")
 
-    if default_values.get("scheduler") in request.config.getoption("tests_config", default={}).get(
-        "scheduler-plugins", {}
-    ):
-        default_values["scheduler"] = "plugin"
     default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
-    default_values["scheduler_prefix"] = {"slurm": "Slurm", "awsbatch": "AwsBatch", "plugin": "Scheduler"}.get(
-        default_values.get("scheduler")
-    )
+    default_values["scheduler_prefix"] = {"slurm": "Slurm", "awsbatch": "AwsBatch"}.get(default_values.get("scheduler"))
 
     return default_values
 
@@ -1032,37 +1003,6 @@ def s3_bucket(s3_bucket_factory_shared, region):
 @pytest.fixture(scope="class")
 def s3_bucket_key_prefix():
     return random_alphanumeric()
-
-
-@xdist_session_fixture(autouse=True)
-def scheduler_plugin_definitions(s3_bucket_factory_shared, request) -> dict:
-    scheduler_definition_dict = {}
-    tests_config = request.config.getoption("tests_config", default={})
-    if tests_config:
-        plugins = tests_config.get("scheduler-plugins", {})
-        for plugin_name in plugins:
-            plugin = plugins.get(plugin_name)
-            scheduler_definition = plugin.get("scheduler-definition")
-            if os.path.isfile(scheduler_definition):
-                logging.info(
-                    "Found scheduler-definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
-                )
-                scheduler_definition_dict[plugin_name] = {}
-                for region, s3_bucket in s3_bucket_factory_shared.items():
-                    with aws_credential_provider(region, request.config.getoption("credential")):
-                        scheduler_plugin_definition_url = scheduler_plugin_definition_uploader(
-                            scheduler_definition, s3_bucket, plugin_name, region
-                        )
-                    scheduler_definition_dict[plugin_name].update({region: scheduler_plugin_definition_url})
-            else:
-                logging.info(
-                    "Found scheduler definition (%s) for scheduler plugin (%s)", scheduler_definition, plugin_name
-                )
-                scheduler_definition_dict[plugin_name] = {}
-                for region in s3_bucket_factory_shared.keys():
-                    scheduler_definition_dict[plugin_name].update({region: scheduler_definition})
-
-    return scheduler_definition_dict
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -1463,23 +1403,6 @@ def run_benchmarks(request, mpi_variants, test_datadir, instance, os, region, be
 
 
 @pytest.fixture()
-def scheduler_plugin_configuration(request, region, scheduler_plugin_definitions):
-    try:
-        scheduler = request.getfixturevalue("scheduler")
-    except pytest.FixtureLookupError:
-        scheduler = None
-    scheduler_plugin = request.config.getoption("tests_config", default={}).get("scheduler-plugins", {}).get(scheduler)
-    scheduler_definition_url = scheduler_plugin_definitions.get(scheduler, {}).get(region, {})
-    if scheduler_definition_url:
-        logging.info(
-            "Adding scheduler plugin (%s) scheduler-definition-url to be (%s)", scheduler, scheduler_definition_url
-        )
-        scheduler_plugin["scheduler-definition-url"] = scheduler_definition_url
-
-    return scheduler_plugin
-
-
-@pytest.fixture()
 def test_custom_config(request):
     feature, test_id = request.node.nodeid.split("/", 1)
     test_id = test_id.split("[", 1)[0]
@@ -1490,20 +1413,8 @@ def test_custom_config(request):
 
 
 @pytest.fixture()
-def scheduler_commands_factory(scheduler, scheduler_plugin_configuration):
-    if scheduler_plugin_configuration:
-        import importlib
-
-        scheduler_commands = scheduler_plugin_configuration["scheduler-commands"]
-        logging.info("Loading scheduler commands from %s", scheduler_commands)
-        try:
-            module_name, class_name = scheduler_commands.rsplit(".", 1)
-            return getattr(importlib.import_module(module_name), class_name)
-        except Exception as e:
-            logging.error("Failed when loading scheduler commands from %s: %s", scheduler_commands, e)
-            raise
-    else:
-        return partial(get_scheduler_commands, scheduler=scheduler)
+def scheduler_commands_factory(scheduler):
+    return partial(get_scheduler_commands, scheduler=scheduler)
 
 
 @pytest.fixture(scope="class")

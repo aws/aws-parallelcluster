@@ -16,7 +16,7 @@ for PID in "${PIDS[@]}"
 do
     CMD_LINE=($(ps -p ${PID} -o args --no-headers))
     # CMD_LINE is in the form
-    # /opt/parallelcluster/shared/scheduler-plugin/pyenv/versions/3.9.9/envs/scheduler_plugin_virtualenv/bin/python3.9 /opt/parallelcluster/shared/scheduler-plugin/pyenv/versions/3.9.9/envs/scheduler_plugin_virtualenv/bin/supervisord -n -c /opt/parallelcluster/scheduler-plugin/supervisord.conf
+    # /opt/parallelcluster/shared/path/pyenv/versions/3.9.9/envs/some_virtualenv/bin/python3.9 /opt/parallelcluster/shared/some-path/pyenv/versions/3.9.9/envs/some_virtualenv/bin/supervisord -n -c /opt/parallelcluster/some-path/supervisord.conf
     if ${CMD_LINE[0]} $(dirname ${CMD_LINE[1]})/supervisorctl -c ${CMD_LINE[4]} status clustermgtd &>/dev/null; then
         ${CMD_LINE[0]} $(dirname ${CMD_LINE[1]})/supervisorctl -c ${CMD_LINE[4]} stop clustermgtd
     fi

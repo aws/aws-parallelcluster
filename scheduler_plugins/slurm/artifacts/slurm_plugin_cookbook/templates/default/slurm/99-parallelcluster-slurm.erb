@@ -1,3 +1,0 @@
-Cmnd_Alias SLURM_HOOKS_COMMANDS = <%= node['pcluster']['python_root'] %>/slurm_suspend, <%= node['pcluster']['python_root'] %>/slurm_resume, <%= node['pcluster']['python_root'] %>/slurm_fleet_status_manager
-
-<%= node['slurm']['user'] %> ALL = (<%= node['plugin']['fleet_mgt_user'] %>) NOPASSWD:SETENV: SLURM_HOOKS_COMMANDS

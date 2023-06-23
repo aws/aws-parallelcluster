@@ -23,7 +23,6 @@ _help() {
   Bump ParallelCluster version.
 
   --version <version>                                               ParallelCluster version
-  --plugin-interface-version <plugin-interface-version>             SchedulerPlugin interface version
   -h, --help                                                        Print this help message
 EOF
 }
@@ -34,8 +33,6 @@ main() {
         case "$1" in
             --version)                            _version="$2"; shift;;
             --version=*)                          _version="${1#*=}";;
-            --plugin-interface-version)           _plugin_interface_version="$2"; shift;;
-            --plugin-interface-version=*)         _plugin_interface_version="${1#*=}";;
             -h|--help|help)                       _help; exit 0;;
             *)                                    _help; _error_exit "[error] Unrecognized option '$1'";;
         esac
@@ -69,13 +66,6 @@ main() {
         git add "$PC_SUPPORT_DIR/os_$NEW_VERSION.json"
 
         pushd api && ./gradlew generatePythonClient && popd
-    fi
-
-    if [ "${_plugin_interface_version}" ]; then
-        NEW_VERSION=$_plugin_interface_version
-        CURRENT_VERSION=$(sed -ne "s/^SCHEDULER_PLUGIN_INTERFACE_VERSION = \"\(.*\)\"/\1/p" tests/integration-tests/constants.py)
-        sed -i "s/SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version(\"$CURRENT_VERSION\")/SCHEDULER_PLUGIN_INTERFACE_VERSION = packaging.version.Version(\"$NEW_VERSION\")/g" cli/src/pcluster/constants.py
-        sed -i "s/SCHEDULER_PLUGIN_INTERFACE_VERSION = \"$CURRENT_VERSION\"/SCHEDULER_PLUGIN_INTERFACE_VERSION = \"$NEW_VERSION\"/g" tests/integration-tests/constants.py
     fi
 }
 
