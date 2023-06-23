@@ -24,13 +24,13 @@ from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
 from utils import (
+    _get_alarm_records,
+    _get_start_end_timestamp,
     check_status,
     get_compute_nodes_instance_ids,
     get_instance_info,
     test_cluster_health_metric,
     wait_for_computefleet_changed,
-    _get_alarm_records,
-    _get_start_end_timestamp,
 )
 
 from tests.common.assertions import (

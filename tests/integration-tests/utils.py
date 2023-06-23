@@ -152,8 +152,8 @@ class InstanceTypesData:
     def get_instance_info(instance_type, region_name=None):
         """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
         if (
-                InstanceTypesData.additional_instance_types_data
-                and instance_type in InstanceTypesData.additional_instance_types_data.keys()
+            InstanceTypesData.additional_instance_types_data
+            and instance_type in InstanceTypesData.additional_instance_types_data.keys()
         ):
             instance_info = InstanceTypesData.additional_instance_types_data[instance_type]
         else:
@@ -175,13 +175,13 @@ def retry_if_subprocess_error(exception):
 
 
 def run_command(
-        command,
-        capture_output=True,
-        log_error=True,
-        env=None,
-        timeout=None,
-        raise_on_error=True,
-        shell=False,
+    command,
+    capture_output=True,
+    log_error=True,
+    env=None,
+    timeout=None,
+    raise_on_error=True,
+    shell=False,
 ):
     """Execute shell command."""
     if isinstance(command, str) and not shell:
@@ -368,13 +368,13 @@ def get_compute_nodes_instance_ips(stack_name, region):
 
 
 def describe_cluster_instances(
-        stack_name,
-        region,
-        filter_by_node_type=None,
-        filter_by_name=None,
-        filter_by_instance_types=None,
-        filter_by_queue_name=None,
-        filter_by_compute_resource_name=None,
+    stack_name,
+    region,
+    filter_by_node_type=None,
+    filter_by_name=None,
+    filter_by_instance_types=None,
+    filter_by_queue_name=None,
+    filter_by_compute_resource_name=None,
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
@@ -757,10 +757,10 @@ def _generate_metric_data_queries(metric_name, cluster_name):
 
 
 def retrieve_metric_data(
-        cluster_name,
-        metric_names,
-        region,
-        collection_time_min=20,
+    cluster_name,
+    metric_names,
+    region,
+    collection_time_min=20,
 ):
     """Create Boto3 get_metric_data request and output the results."""
     metric_queries = [_generate_metric_data_queries(name, cluster_name) for name in metric_names]
