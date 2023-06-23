@@ -511,6 +511,42 @@ class TestBaseClusterConfig:
         login_nodes = LoginNodes(pools=[login_node_pool])
         assert_that(login_nodes.pools[0].count).is_equal_to(1)
 
+    @pytest.mark.parametrize(
+        "queue, expected_value",
+        [
+            # JobExclusiveAllocation should be disabled by default
+            (
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    compute_resources=mock_compute_resources,
+                ),
+                False,
+            ),
+            (
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    job_exclusive_allocation=True,
+                    compute_resources=mock_compute_resources,
+                ),
+                True,
+            ),
+            (
+                dict(
+                    name="queue",
+                    networking=SlurmQueueNetworking(subnet_ids=[], placement_group=PlacementGroup(enabled=False)),
+                    job_exclusive_allocation=False,
+                    compute_resources=mock_compute_resources,
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_job_exclusive_allocation_defaults(self, queue, expected_value):
+        queue = SlurmQueue(**queue)
+        assert_that(queue.job_exclusive_allocation).is_equal_to(expected_value)
+
 
 class TestSharedEbs:
     @pytest.mark.parametrize(

@@ -2355,12 +2355,14 @@ class SlurmQueue(_CommonQueue):
         allocation_strategy: str = None,
         custom_slurm_settings: Dict = None,
         health_checks: HealthChecks = None,
+        job_exclusive_allocation: bool = None,
         tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.health_checks = health_checks or HealthChecks(implied=True)
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings, default={})
+        self.job_exclusive_allocation = Resource.init_param(job_exclusive_allocation, default=False)
         self.tags = tags
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
