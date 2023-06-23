@@ -1513,6 +1513,7 @@ class SlurmQueueSchema(_CommonQueueSchema):
     tags = fields.Nested(
         QueueTagSchema, many=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY, "update_key": "Key"}
     )
+    job_exclusive_allocation = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

@@ -189,6 +189,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-0
     Networking:
       AdditionalSecurityGroups: null
@@ -266,6 +267,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-1
     Networking:
       AdditionalSecurityGroups: null
@@ -343,6 +345,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-2
     Networking:
       AdditionalSecurityGroups: null
@@ -420,6 +423,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-3
     Networking:
       AdditionalSecurityGroups: null
@@ -497,6 +501,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-4
     Networking:
       AdditionalSecurityGroups: null
@@ -574,6 +579,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-5
     Networking:
       AdditionalSecurityGroups: null
@@ -651,6 +657,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-6
     Networking:
       AdditionalSecurityGroups: null
@@ -728,6 +735,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-7
     Networking:
       AdditionalSecurityGroups: null
@@ -805,6 +813,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-8
     Networking:
       AdditionalSecurityGroups: null
@@ -882,6 +891,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-9
     Networking:
       AdditionalSecurityGroups: null
@@ -959,6 +969,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-10
     Networking:
       AdditionalSecurityGroups: null
@@ -1036,6 +1047,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-11
     Networking:
       AdditionalSecurityGroups: null
@@ -1113,6 +1125,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-12
     Networking:
       AdditionalSecurityGroups: null
@@ -1190,6 +1203,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-13
     Networking:
       AdditionalSecurityGroups: null
@@ -1267,6 +1281,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-14
     Networking:
       AdditionalSecurityGroups: null
@@ -1344,6 +1359,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-15
     Networking:
       AdditionalSecurityGroups: null
@@ -1421,6 +1437,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-16
     Networking:
       AdditionalSecurityGroups: null
@@ -1498,6 +1515,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-17
     Networking:
       AdditionalSecurityGroups: null
@@ -1575,6 +1593,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-18
     Networking:
       AdditionalSecurityGroups: null
@@ -1652,6 +1671,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-19
     Networking:
       AdditionalSecurityGroups: null
@@ -1729,6 +1749,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-20
     Networking:
       AdditionalSecurityGroups: null
@@ -1806,6 +1827,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-21
     Networking:
       AdditionalSecurityGroups: null
@@ -1883,6 +1905,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-22
     Networking:
       AdditionalSecurityGroups: null
@@ -1960,6 +1983,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-23
     Networking:
       AdditionalSecurityGroups: null
@@ -2037,6 +2061,7 @@ Scheduling:
         KeyName: null
     Image:
       CustomAmi: ami-12345678
+    JobExclusiveAllocation: false
     Name: queue-ondemand-24
     Networking:
       AdditionalSecurityGroups: null
@@ -2103,6 +2128,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-0
     Networking:
       AdditionalSecurityGroups: null
@@ -2170,6 +2196,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-1
     Networking:
       AdditionalSecurityGroups: null
@@ -2237,6 +2264,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-2
     Networking:
       AdditionalSecurityGroups: null
@@ -2304,6 +2332,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-3
     Networking:
       AdditionalSecurityGroups: null
@@ -2371,6 +2400,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-4
     Networking:
       AdditionalSecurityGroups: null
@@ -2438,6 +2468,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-5
     Networking:
       AdditionalSecurityGroups: null
@@ -2505,6 +2536,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-6
     Networking:
       AdditionalSecurityGroups: null
@@ -2572,6 +2604,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-7
     Networking:
       AdditionalSecurityGroups: null
@@ -2639,6 +2672,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-8
     Networking:
       AdditionalSecurityGroups: null
@@ -2706,6 +2740,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-9
     Networking:
       AdditionalSecurityGroups: null
@@ -2773,6 +2808,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-10
     Networking:
       AdditionalSecurityGroups: null
@@ -2840,6 +2876,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-11
     Networking:
       AdditionalSecurityGroups: null
@@ -2907,6 +2944,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-12
     Networking:
       AdditionalSecurityGroups: null
@@ -2974,6 +3012,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-13
     Networking:
       AdditionalSecurityGroups: null
@@ -3041,6 +3080,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-14
     Networking:
       AdditionalSecurityGroups: null
@@ -3108,6 +3148,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-15
     Networking:
       AdditionalSecurityGroups: null
@@ -3175,6 +3216,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-16
     Networking:
       AdditionalSecurityGroups: null
@@ -3242,6 +3284,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-17
     Networking:
       AdditionalSecurityGroups: null
@@ -3309,6 +3352,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-18
     Networking:
       AdditionalSecurityGroups: null
@@ -3376,6 +3420,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-19
     Networking:
       AdditionalSecurityGroups: null
@@ -3443,6 +3488,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-20
     Networking:
       AdditionalSecurityGroups: null
@@ -3510,6 +3556,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-21
     Networking:
       AdditionalSecurityGroups: null
@@ -3577,6 +3624,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-22
     Networking:
       AdditionalSecurityGroups: null
@@ -3644,6 +3692,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-23
     Networking:
       AdditionalSecurityGroups: null
@@ -3711,6 +3760,7 @@ Scheduling:
       S3Access: null
     Image:
       CustomAmi: ami-23456789
+    JobExclusiveAllocation: false
     Name: queue-spot-24
     Networking:
       AdditionalSecurityGroups: null
