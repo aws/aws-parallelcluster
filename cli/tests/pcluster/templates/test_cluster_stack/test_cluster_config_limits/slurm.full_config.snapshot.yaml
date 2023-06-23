@@ -108,7 +108,8 @@ LoginNodes:
       - sg-34567897
       - sg-34567898
       - sg-34567899
-      SubnetId: subnet-12345678
+      SubnetIds:
+      - subnet-12345678
     Ssh:
       KeyName: validate_key_name
 Monitoring:

@@ -33,7 +33,7 @@ from pcluster.schemas.cluster_schema import (
     ImageSchema,
     LoginNodesIamSchema,
     LoginNodesImageSchema,
-    LoginNodesPoolsSchema,
+    LoginNodesPoolSchema,
     LoginNodesSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
@@ -686,17 +686,17 @@ def test_login_node_custom_ami_validator(custom_ami, expected_message):
     [
         (1, None),
         (10, None),
-        (0, "Must be greater than or equal to 1."),
-        (-5, "Must be greater than or equal to 1."),
+        (0, None),
+        (-5, "Must be greater than or equal to 0."),
     ],
 )
 def test_login_node_pool_count_validator(count, expected_message):
     _validate_and_assert_error(
-        LoginNodesPoolsSchema(),
+        LoginNodesPoolSchema(),
         {
             "Name": "validname",
             "InstanceType": "t2.micro",
-            "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+            "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": count,
             "Ssh": {"KeyName": "valid_key_name"},
         },
@@ -713,14 +713,14 @@ def test_login_node_pool_count_validator(count, expected_message):
                 {
                     "Name": "validname1",
                     "InstanceType": "t2.micro",
-                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
                     "Count": 1,
                     "Ssh": {"KeyName": "valid_key_name1"},
                 },
                 {
                     "Name": "validname2",
                     "InstanceType": "t2.micro",
-                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
                     "Count": 1,
                     "Ssh": {"KeyName": "valid_key_name2"},
                 },
@@ -732,7 +732,7 @@ def test_login_node_pool_count_validator(count, expected_message):
                 {
                     "Name": "validname",
                     "InstanceType": "t2.micro",
-                    "Networking": {"SubnetId": "subnet-01b4c1fa1de8a507f"},
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
                     "Count": 1,
                     "Ssh": {"KeyName": "valid_key_name"},
                 }

@@ -174,6 +174,9 @@ class _DummyEc2Client(Ec2Client):
     def get_subnet_vpc(self, subnet_id):
         return "vpc-123"
 
+    def is_subnet_public(self, subnet_id):
+        return True
+
     def get_eip_allocation_id(self, eip):
         return "eipalloc-123"
 

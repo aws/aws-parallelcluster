@@ -10,7 +10,8 @@ LoginNodes:
     Image:
       CustomAmi: ami-12345678
     Networking:
-      SubnetId: subnet-12345678
+      SubnetIds:
+        - subnet-12345678
       SecurityGroups:
         {% for i in range(10) %}
         - sg-3456789{{ i }}

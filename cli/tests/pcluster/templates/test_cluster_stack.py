@@ -300,6 +300,29 @@ class EbsLTAssertion(LTPropertyAssertion):
             assert_that(ebs_optimized).is_none()
 
 
+def get_generated_template_and_cdk_assets(
+    mocker,
+    config_file_name,
+    test_datadir,
+):
+    mock_aws_api(mocker, mock_instance_type_info=False)
+
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
+        side_effect=_mock_instance_type_info,
+    )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
+    generated_template, cdk_assets = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    return generated_template, cdk_assets
+
+
 @pytest.mark.parametrize(
     "config_file_name, lt_assertions",
     [
@@ -327,25 +350,208 @@ def test_compute_launch_template_properties(
     lt_assertions,
     test_datadir,
 ):
-    mock_aws_api(mocker, mock_instance_type_info=False)
-
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
-        side_effect=_mock_instance_type_info,
-    )
-    # mock bucket initialization parameters
-    mock_bucket(mocker)
-    mock_bucket_object_utils(mocker)
-
-    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
-    generated_template, cdk_assets = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    generated_template, cdk_assets = get_generated_template_and_cdk_assets(
+        mocker,
+        config_file_name,
+        test_datadir,
     )
 
     asset_content = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplate64e1c3597ca4c326")
 
     for lt_assertion in lt_assertions:
         lt_assertion.assert_lt_properties(asset_content, "LaunchTemplate64e1c3597ca4c326")
+
+
+class LoginNodeLTAssertion:
+    def __init__(
+        self,
+        pool_name,
+        instance_type,
+        count,
+        subnet_ids,
+        key_name,
+        security_groups,
+    ):
+        self.pool_name = pool_name
+        self.instance_type = instance_type
+        self.count = count
+        self.subnet_ids = subnet_ids
+        self.key_name = key_name
+        self.security_groups = security_groups
+
+    def assert_lt_properties(self, generated_template, resource_type):
+        resources = generated_template["Resources"]
+        for _resource_name, resource in resources.items():
+            if resource["Type"] == resource_type:
+                properties = resource["Properties"]
+                assert properties["LaunchTemplateData"]["InstanceType"] == self.instance_type
+                assert properties["LaunchTemplateData"]["NetworkInterfaces"][0]["SubnetId"] in self.subnet_ids
+                assert properties["LaunchTemplateData"]["KeyName"] == self.key_name
+                assert properties["LaunchTemplateData"]["SecurityGroups"] == self.security_groups
+
+
+@pytest.mark.parametrize(
+    "config_file_name, lt_assertions",
+    [
+        (
+            "test-login-nodes-stack.yaml",
+            [
+                LoginNodeLTAssertion(
+                    pool_name="testloginnodespool1",
+                    instance_type="t2.micro",
+                    count=2,
+                    subnet_ids=["subnet-12345678"],
+                    key_name="ec2-key-name",
+                    security_groups=[
+                        "sg-34567891",
+                        "sg-34567892",
+                        "sg-34567893",
+                        "sg-34567894",
+                        "sg-3456785",
+                        "sg-34567896",
+                        "sg-34567897",
+                        "sg-34567898",
+                        "sg-34567899",
+                    ],
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
+    ],
+)
+def test_login_nodes_launch_template_properties(
+    mocker,
+    config_file_name,
+    lt_assertions,
+    test_datadir,
+):
+    generated_template, cdk_assets = get_generated_template_and_cdk_assets(
+        mocker,
+        config_file_name,
+        test_datadir,
+    )
+
+    asset_content = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplate64e1c3597ca4c326")
+    for lt_assertion in lt_assertions:
+        lt_assertion.assert_lt_properties(asset_content, "LaunchTemplate64e1c3597ca4c326")
+
+
+class AutoScalingGroupAssertion:
+    def __init__(self, min_size: int, max_size: int, desired_capacity: int):
+        self.min_size = min_size
+        self.max_size = max_size
+        self.desired_capacity = desired_capacity
+
+    def assert_asg_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::AutoScaling::AutoScalingGroup"
+        properties = resource["Properties"]
+        assert int(properties["MinSize"]) == self.min_size
+        assert int(properties["MaxSize"]) == self.max_size
+        assert int(properties["DesiredCapacity"]) == self.desired_capacity
+
+
+class NetworkLoadBalancerAssertion:
+    def __init__(self, expected_vpc_id: str, expected_internet_facing: bool):
+        self.expected_vpc_id = expected_vpc_id
+        self.expected_internet_facing = expected_internet_facing
+
+    def assert_nlb_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::ElasticLoadBalancingV2::LoadBalancer"
+        properties = resource["Properties"]
+        assert properties["Type"] == "network"
+        assert properties["Subnets"][0] == self.expected_vpc_id
+        assert properties["Scheme"] == ("internet-facing" if self.expected_internet_facing else "internal")
+
+
+class TargetGroupAssertion:
+    def __init__(self, expected_health_check: str, expected_port: int, expected_protocol: str):
+        self.expected_health_check = expected_health_check
+        self.expected_port = expected_port
+        self.expected_protocol = expected_protocol
+
+    def assert_tg_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::ElasticLoadBalancingV2::TargetGroup"
+        properties = resource["Properties"]
+        assert properties["HealthCheckProtocol"] == self.expected_health_check
+        assert int(properties["Port"]) == self.expected_port
+        assert properties["Protocol"] == self.expected_protocol
+
+
+class NetworkLoadBalancerListenerAssertion:
+    def __init__(self, expected_port: int, expected_protocol: str):
+        self.expected_port = expected_port
+        self.expected_protocol = expected_protocol
+
+    def assert_nlb_listener_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::ElasticLoadBalancingV2::Listener"
+        properties = resource["Properties"]
+        assert int(properties["Port"]) == self.expected_port
+        assert properties["Protocol"] == self.expected_protocol
+
+
+@pytest.mark.parametrize(
+    "config_file_name, lt_assertions",
+    [
+        (
+            "test-login-nodes-stack.yaml",
+            [
+                AutoScalingGroupAssertion(min_size=2, max_size=2, desired_capacity=2),
+                NetworkLoadBalancerAssertion(expected_vpc_id="subnet-12345678", expected_internet_facing=True),
+                TargetGroupAssertion(expected_health_check="TCP", expected_port=22, expected_protocol="TCP"),
+                NetworkLoadBalancerListenerAssertion(expected_port=22, expected_protocol="TCP"),
+            ],
+        ),
+    ],
+)
+def test_login_nodes_traffic_management_resources_values_properties(
+    mocker,
+    config_file_name,
+    lt_assertions,
+    test_datadir,
+):
+    generated_template, cdk_assets = get_generated_template_and_cdk_assets(
+        mocker,
+        config_file_name,
+        test_datadir,
+    )
+
+    asset_content_asg = get_asset_content_with_resource_name(
+        cdk_assets, "Pooltestloginnodespool1Pooltestloginnodespool1AutoScalingGroup41053D91"
+    )
+    asset_content_nlb = get_asset_content_with_resource_name(
+        cdk_assets, "Pooltestloginnodespool1testloginnodespool1LoadBalancer18C3DA82"
+    )
+    asset_content_target_group = get_asset_content_with_resource_name(
+        cdk_assets, "Pooltestloginnodespool1testloginnodespool1TargetGroupD150DBF2"
+    )
+    asset_content_nlb_listener = get_asset_content_with_resource_name(
+        cdk_assets,
+        "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
+    )
+
+    for lt_assertion in lt_assertions:
+        if isinstance(lt_assertion, AutoScalingGroupAssertion):
+            lt_assertion.assert_asg_properties(
+                asset_content_asg, "Pooltestloginnodespool1Pooltestloginnodespool1AutoScalingGroup41053D91"
+            )
+        elif isinstance(lt_assertion, NetworkLoadBalancerAssertion):
+            lt_assertion.assert_nlb_properties(
+                asset_content_nlb, "Pooltestloginnodespool1testloginnodespool1LoadBalancer18C3DA82"
+            )
+        elif isinstance(lt_assertion, TargetGroupAssertion):
+            lt_assertion.assert_tg_properties(
+                asset_content_target_group, "Pooltestloginnodespool1testloginnodespool1TargetGroupD150DBF2"
+            )
+        elif isinstance(lt_assertion, NetworkLoadBalancerListenerAssertion):
+            lt_assertion.assert_nlb_listener_properties(
+                asset_content_nlb_listener,
+                "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
+            )
 
 
 @pytest.mark.parametrize(

@@ -620,3 +620,36 @@ def test_describe_volume(boto3_stubber):
     response = AWSApi.instance().ec2.describe_volume(volume_id)
 
     assert_that(response["AvailabilityZone"] == az).is_true()
+
+
+def get_describe_route_tables_mocked_request(subnet_id, gateway_id):
+    return MockedBoto3Request(
+        method="describe_route_tables",
+        response={
+            "RouteTables": [
+                {"Routes": [{"GatewayId": gateway_id}]},
+            ]
+        },
+        expected_params={"Filters": [{"Name": "association.subnet-id", "Values": [subnet_id]}]},
+    )
+
+
+def test_is_subnet_public(boto3_stubber):
+    # First boto3 call. The subnet should be private
+    subnet_id = "subnet-12345678"
+    # The first mocked request and the third are about the same subnet. However, the gateway id
+    # changes from not starting with 'igw-' to starting with 'igw-'. The second mocked request is about another subnet
+    mocked_requests = [
+        get_describe_route_tables_mocked_request(subnet_id, "vgw-0123456789abcdef0"),
+        get_describe_route_tables_mocked_request("subnet-01234567", "vgw-0123456789abcdef0"),
+        get_describe_route_tables_mocked_request(subnet_id, "igw-0123456789abcdef0"),
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    assert AWSApi.instance().ec2.is_subnet_public(subnet_id) is False
+
+    # Second boto3 call with another subnet.
+    # The subnet already checked should not be included in the boto3 call.
+    assert AWSApi.instance().ec2.is_subnet_public("subnet-01234567") is False
+
+    # Third boto3 call. The result should be from the latest response even if the gateway id of the subnet is different
+    assert AWSApi.instance().ec2.is_subnet_public(subnet_id) is True
