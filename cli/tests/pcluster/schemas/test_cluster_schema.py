@@ -984,3 +984,113 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
     else:
         conf = QueueTagSchema().load(config_dict)
         QueueTagSchema().dump(conf)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message, expected_job_exc_inst_alloc",
+    [
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": True,
+            },
+            None,
+            True,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": False,
+            },
+            None,
+            False,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": "WRONG",
+            },
+            "Not a valid boolean",
+            False,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": "",
+            },
+            "Not a valid boolean",
+            False,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": None,
+            },
+            "Field may not be null.",
+            False,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": 0,
+            },
+            None,
+            False,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": 1,
+            },
+            None,
+            True,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": "true",
+            },
+            None,
+            True,
+        ),
+        (
+            {
+                "Name": "Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "JobExclusiveAllocation": "false",
+            },
+            None,
+            False,
+        ),
+    ],
+)
+def test_job_exclusive_allocation(
+    mocker,
+    config_dict,
+    failure_message,
+    expected_job_exc_inst_alloc,
+):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SlurmQueueSchema().load(config_dict)
+    else:
+        queue = SlurmQueueSchema().load(config_dict)
+        assert_that(queue.job_exclusive_allocation).is_equal_to(expected_job_exc_inst_alloc)
