@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
+import math
 import os
 import random
 import re
@@ -151,8 +152,8 @@ class InstanceTypesData:
     def get_instance_info(instance_type, region_name=None):
         """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
         if (
-            InstanceTypesData.additional_instance_types_data
-            and instance_type in InstanceTypesData.additional_instance_types_data.keys()
+                InstanceTypesData.additional_instance_types_data
+                and instance_type in InstanceTypesData.additional_instance_types_data.keys()
         ):
             instance_info = InstanceTypesData.additional_instance_types_data[instance_type]
         else:
@@ -174,13 +175,13 @@ def retry_if_subprocess_error(exception):
 
 
 def run_command(
-    command,
-    capture_output=True,
-    log_error=True,
-    env=None,
-    timeout=None,
-    raise_on_error=True,
-    shell=False,
+        command,
+        capture_output=True,
+        log_error=True,
+        env=None,
+        timeout=None,
+        raise_on_error=True,
+        shell=False,
 ):
     """Execute shell command."""
     if isinstance(command, str) and not shell:
@@ -367,13 +368,13 @@ def get_compute_nodes_instance_ips(stack_name, region):
 
 
 def describe_cluster_instances(
-    stack_name,
-    region,
-    filter_by_node_type=None,
-    filter_by_name=None,
-    filter_by_instance_types=None,
-    filter_by_queue_name=None,
-    filter_by_compute_resource_name=None,
+        stack_name,
+        region,
+        filter_by_node_type=None,
+        filter_by_name=None,
+        filter_by_instance_types=None,
+        filter_by_queue_name=None,
+        filter_by_compute_resource_name=None,
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
@@ -756,10 +757,10 @@ def _generate_metric_data_queries(metric_name, cluster_name):
 
 
 def retrieve_metric_data(
-    cluster_name,
-    metric_names,
-    region,
-    collection_time_min=20,
+        cluster_name,
+        metric_names,
+        region,
+        collection_time_min=20,
 ):
     """Create Boto3 get_metric_data request and output the results."""
     metric_queries = [_generate_metric_data_queries(name, cluster_name) for name in metric_names]
@@ -806,3 +807,24 @@ def is_fsx_supported(region: str):
 
 def is_directory_supported(region: str, directory_type: str):
     return False if "us-iso" in region and directory_type == "SimpleAD" else True
+
+
+def _get_alarm_records(response, alarm_name):
+    return [alarm for alarm in response["MetricAlarms"] if alarm["AlarmName"] == alarm_name]
+
+
+def _get_start_end_timestamp(minutes):
+    """
+    The end time for query will be the current time rounded to minute that is not earlier than the current time (ceil).
+    For instance, if the current time is 09:34:20, then the end time for query will be 09:35:00.
+    This is because our metrics have a period of 1 minute, and according to public documentation of GetMetricData:
+    "For better performance, specify StartTime and EndTime values that align with the value of the metric's Period
+    and sync up with the beginning and end of an hour."
+    Reference: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html
+    """
+    now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
+    end_timestamp_ceil = math.ceil(now_utc.timestamp() / 60) * 60
+    end_dt = datetime.datetime.fromtimestamp(end_timestamp_ceil)
+    start_dt = end_dt - datetime.timedelta(minutes=minutes)
+    start_timestamp = start_dt.timestamp()
+    return start_timestamp, end_timestamp_ceil
