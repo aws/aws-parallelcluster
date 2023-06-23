@@ -9,6 +9,16 @@ LoginNodes:
     Networking:
       SubnetIds:
       - subnet-12345678
+      SecurityGroups:
+      - sg-34567891
+      - sg-34567892
+      - sg-34567893
+      - sg-34567894
+      - sg-34567895
+      - sg-34567896
+      - sg-34567897
+      - sg-34567898
+      - sg-34567899
     Ssh:
       KeyName: ec2-key-name
 HeadNode:

@@ -660,7 +660,7 @@ class _BaseNetworking(Resource):
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
 
-class _SubnetsAZMappingMixin:
+class SubnetsMixin:
     """Represent Mixin class for networking functionality."""
 
     def __init__(self, subnet_ids: List[str], **kwargs):
@@ -747,12 +747,12 @@ class SlurmComputeResourceNetworking(Resource):
         self.placement_group = placement_group or PlacementGroup(implied=True)
 
 
-class _QueueNetworking(_BaseNetworking, _SubnetsAZMappingMixin):
+class _QueueNetworking(_BaseNetworking, SubnetsMixin):
     """Represent the networking configuration for the Queue."""
 
     def __init__(self, subnet_ids: List[str], assign_public_ip: str = None, **kwargs):
         _BaseNetworking.__init__(self, **kwargs)
-        _SubnetsAZMappingMixin.__init__(self, subnet_ids, **kwargs)
+        SubnetsMixin.__init__(self, subnet_ids, **kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
 
 
@@ -1247,12 +1247,12 @@ class LoginNodesSsh(_BaseSsh):
         super().__init__(**kwargs)
 
 
-class LoginNodesNetworking(_BaseNetworking, _SubnetsAZMappingMixin):
+class LoginNodesNetworking(_BaseNetworking, SubnetsMixin):
     """Represent the networking configuration for LoginNodes."""
 
     def __init__(self, subnet_ids: List[str], **kwargs):
         _BaseNetworking.__init__(self, **kwargs)
-        _SubnetsAZMappingMixin.__init__(self, subnet_ids, **kwargs)
+        SubnetsMixin.__init__(self, subnet_ids, **kwargs)
 
     @property
     def is_subnet_public(self):
@@ -3318,13 +3318,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             head_node_security_groups=self.head_node.networking.security_groups,
             queues=self.scheduling.queues,
         )
-        if self.login_nodes:
-            self._register_validator(
-                SubnetsValidator,
-                subnet_ids=self.compute_subnet_ids
-                + [self.head_node.networking.subnet_id]
-                + self.login_nodes_subnet_ids,
-            )
+
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(
                 HostedZoneValidator,

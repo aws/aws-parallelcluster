@@ -556,22 +556,31 @@ def test_compute_launch_template_properties(
 
 
 class LoginNodeLTAssertion:
-    def __init__(self, pool_name, instance_type, count, subnet_ids, key_name):
+    def __init__(
+        self,
+        pool_name,
+        instance_type,
+        count,
+        subnet_ids,
+        key_name,
+        security_groups,
+    ):
         self.pool_name = pool_name
         self.instance_type = instance_type
         self.count = count
         self.subnet_ids = subnet_ids
         self.key_name = key_name
+        self.security_groups = security_groups
 
     def assert_lt_properties(self, generated_template, resource_type):
         resources = generated_template["Resources"]
         for _resource_name, resource in resources.items():
             if resource["Type"] == resource_type:
                 properties = resource["Properties"]
-
                 assert properties["LaunchTemplateData"]["InstanceType"] == self.instance_type
                 assert properties["LaunchTemplateData"]["NetworkInterfaces"][0]["SubnetId"] in self.subnet_ids
                 assert properties["LaunchTemplateData"]["KeyName"] == self.key_name
+                assert properties["LaunchTemplateData"]["SecurityGroups"] == self.security_groups
 
 
 @pytest.mark.parametrize(
@@ -586,6 +595,17 @@ class LoginNodeLTAssertion:
                     count=2,
                     subnet_ids=["subnet-12345678"],
                     key_name="ec2-key-name",
+                    security_groups=[
+                        "sg-34567891",
+                        "sg-34567892",
+                        "sg-34567893",
+                        "sg-34567894",
+                        "sg-3456785",
+                        "sg-34567896",
+                        "sg-34567897",
+                        "sg-34567898",
+                        "sg-34567899",
+                    ],
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
