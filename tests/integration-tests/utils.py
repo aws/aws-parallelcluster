@@ -809,11 +809,11 @@ def is_directory_supported(region: str, directory_type: str):
     return False if "us-iso" in region and directory_type == "SimpleAD" else True
 
 
-def _get_alarm_records(response, alarm_name):
+def get_alarm_records(response, alarm_name):
     return [alarm for alarm in response["MetricAlarms"] if alarm["AlarmName"] == alarm_name]
 
 
-def _get_start_end_timestamp(minutes):
+def get_start_end_timestamp(minutes):
     """
     The end time for query will be the current time rounded to minute that is not earlier than the current time (ceil).
     For instance, if the current time is 09:34:20, then the end time for query will be 09:35:00.

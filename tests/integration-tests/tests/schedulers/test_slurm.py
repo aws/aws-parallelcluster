@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
-import math
 import re
 import time
 from datetime import datetime, timezone
@@ -24,11 +23,11 @@ from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
 from utils import (
-    _get_alarm_records,
-    _get_start_end_timestamp,
     check_status,
+    get_alarm_records,
     get_compute_nodes_instance_ids,
     get_instance_info,
+    get_start_end_timestamp,
     test_cluster_health_metric,
     wait_for_computefleet_changed,
 )
@@ -314,7 +313,7 @@ def test_slurm_protected_mode(
 @retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
 def _test_protected_mode_metric(cw_client, cluster_name):
     # query for the past 20 minutes
-    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=20)
+    start_timestamp, end_timestamp = get_start_end_timestamp(minutes=20)
 
     protected_mode_values = _get_metric_data(cluster_name, cw_client, start_timestamp, end_timestamp)
 
@@ -326,7 +325,7 @@ def _test_protected_mode_alarm(cw_client, cluster_name):
 
     alarm_response = cw_client.describe_alarms(AlarmNames=[protected_mode_alarm_name])
 
-    protected_mode_alarm = _get_alarm_records(alarm_response, protected_mode_alarm_name)
+    protected_mode_alarm = get_alarm_records(alarm_response, protected_mode_alarm_name)
     _verify_alarms(protected_mode_alarm, "ClusterInProtectedMode", cluster_name)
 
 
