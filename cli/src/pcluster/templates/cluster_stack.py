@@ -67,6 +67,8 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
+    PROTECTED_MODE_THRESHOLD,
+    Feature,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
@@ -95,7 +97,7 @@ from pcluster.templates.cdk_builder_utils import (
 from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting, get_service_endpoint
+from pcluster.utils import get_attr, get_http_tokens_setting, get_service_endpoint, is_feature_supported
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -287,35 +289,56 @@ class ClusterCdkStack:
     def _add_alarms(self):
         self.alarms = []
 
-        metrics_for_alarms = {
-            "Mem": cloudwatch.Metric(
-                namespace="CWAgent",
-                metric_name="mem_used_percent",
-                dimensions_map={"InstanceId": self.head_node_instance.ref},
-                statistic="Maximum",
-                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
-            ),
-            "Disk": cloudwatch.Metric(
-                namespace="CWAgent",
-                metric_name="disk_used_percent",
-                dimensions_map={"InstanceId": self.head_node_instance.ref, "path": "/"},
-                statistic="Maximum",
-                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
-            ),
+        alarm_settings = {
+            "Mem": {
+                "namespace": "CWAgent",
+                "metric_name": "mem_used_percent",
+                "dimensions_map": {"InstanceId": self.head_node_instance.ref},
+                "statistic": "Maximum",
+                "threshold": CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
+                "comparison_operator": cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            },
+            "Disk": {
+                "namespace": "CWAgent",
+                "metric_name": "disk_used_percent",
+                "dimensions_map": {"InstanceId": self.head_node_instance.ref, "path": "/"},
+                "statistic": "Maximum",
+                "threshold": CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
+                "comparison_operator": cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            },
         }
 
-        for metric_key, metric in metrics_for_alarms.items():
-            alarm_id = f"HeadNode{metric_key}Alarm"
-            alarm_name = f"{self.stack.stack_name}_{metric_key}Alarm_HeadNode"
+        if self._condition_is_slurm() and is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
+            alarm_settings["ProtectedMode"] = {
+                "namespace": "ParallelCluster",
+                "metric_name": "ClusterInProtectedMode",
+                "dimensions_map": {"ClusterName": self.stack.stack_name},
+                "period": Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
+                "threshold": PROTECTED_MODE_THRESHOLD,
+                "comparison_operator": cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            }
+
+        for alarm_key, alarm_values in alarm_settings.items():
+            alarm_id = f"HeadNode{alarm_key}Alarm"
+            alarm_name = f"{self.stack.stack_name}_{alarm_key}Alarm_HeadNode"
+
+            metric = cloudwatch.Metric(
+                namespace=alarm_values["namespace"],
+                metric_name=alarm_values["metric_name"],
+                dimensions_map=alarm_values["dimensions_map"],
+                statistic=alarm_values.get("statistics"),
+                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
+            )
+
             self.alarms.append(
                 cloudwatch.Alarm(
                     scope=self.stack,
                     id=alarm_id,
                     metric=metric,
                     evaluation_periods=CW_ALARM_EVALUATION_PERIODS_DEFAULT,
-                    threshold=CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
+                    threshold=alarm_values["threshold"],
                     alarm_name=alarm_name,
-                    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    comparison_operator=alarm_values["comparison_operator"],
                     datapoints_to_alarm=CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
                 )
             )
