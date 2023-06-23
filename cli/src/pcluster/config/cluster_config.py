@@ -639,7 +639,7 @@ class _BaseNetworking(Resource):
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
 
-class _NetworkingMixin:
+class _SubnetsAZMappingMixin:
     """Represent Mixin class for networking functionality."""
 
     def __init__(self, subnet_ids: List[str], **kwargs):
@@ -726,12 +726,12 @@ class SlurmComputeResourceNetworking(Resource):
         self.placement_group = placement_group or PlacementGroup(implied=True)
 
 
-class _QueueNetworking(_BaseNetworking, _NetworkingMixin):
+class _QueueNetworking(_BaseNetworking, _SubnetsAZMappingMixin):
     """Represent the networking configuration for the Queue."""
 
     def __init__(self, subnet_ids: List[str], assign_public_ip: str = None, **kwargs):
         _BaseNetworking.__init__(self, **kwargs)
-        _NetworkingMixin.__init__(self, subnet_ids, **kwargs)
+        _SubnetsAZMappingMixin.__init__(self, subnet_ids, **kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
 
 
@@ -1224,12 +1224,12 @@ class LoginNodesSsh(_BaseSsh):
         super().__init__(**kwargs)
 
 
-class LoginNodesNetworking(_BaseNetworking, _NetworkingMixin):
+class LoginNodesNetworking(_BaseNetworking, _SubnetsAZMappingMixin):
     """Represent the networking configuration for LoginNodes."""
 
     def __init__(self, subnet_ids: List[str], **kwargs):
         _BaseNetworking.__init__(self, **kwargs)
-        _NetworkingMixin.__init__(self, subnet_ids, **kwargs)
+        _SubnetsAZMappingMixin.__init__(self, subnet_ids, **kwargs)
 
     @property
     def is_subnet_public(self):
