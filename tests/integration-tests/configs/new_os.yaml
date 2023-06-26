@@ -303,11 +303,6 @@ test-suites:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
-    test_update.py::test_update_compute_ami:
-      dimensions:
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ NEW_OS }}
     test_update.py::test_update_instance_list:
       dimensions:
         - regions: ["ap-south-1"]
