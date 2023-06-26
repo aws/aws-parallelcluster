@@ -43,6 +43,7 @@ from pcluster.schemas.cluster_schema import (
     SlurmComputeResourceSchema,
     SlurmQueueNetworkingSchema,
     SlurmQueueSchema,
+    SlurmSettingsSchema,
 )
 
 
@@ -788,3 +789,18 @@ def test_iam_validator(instance_role, instance_profile, expected_message):
         iam = LoginNodesIamSchema().load(iam_dict)
         assert_that(iam.instance_role).is_equal_to(instance_role)
         assert_that(iam.instance_profile).is_equal_to(instance_profile)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"ScaledownIdletime": -100}, "Must be greater than or equal"),
+        ({"ScaledownIdletime": -2}, "Must be greater than or equal"),
+        ({"ScaledownIdletime": -1}, None),
+        ({"ScaledownIdletime": 0}, None),
+        ({"ScaledownIdletime": 1}, None),
+        ({"ScaledownIdletime": 100}, None),
+    ],
+)
+def test_slurm_scaledown_idletime_validator(section_dict, expected_message):
+    _validate_and_assert_error(SlurmSettingsSchema(), section_dict, expected_message)
