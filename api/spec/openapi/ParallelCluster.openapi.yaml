@@ -2319,6 +2319,7 @@ components:
       enum:
         - HeadNode
         - ComputeNode
+        - LoginNode
     NotFoundExceptionResponseContent:
       type: object
       description: This exception is thrown when the requested entity is not found.
