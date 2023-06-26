@@ -622,6 +622,17 @@ class QueueProxySchema(BaseSchema):
         return Proxy(**data)
 
 
+class LoginNodeProxySchema(BaseSchema):
+    """Represent the schema of proxy for a Login Node."""
+
+    http_proxy_address = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Proxy(**data)
+
+
 class BaseNetworkingSchema(BaseSchema):
     """Represent the schema of common networking parameters used by head, compute and login nodes."""
 
@@ -1274,6 +1285,8 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
         required=True,
         validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool"),
     )
+
+    proxy = fields.Nested(LoginNodeProxySchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

@@ -97,6 +97,8 @@ LoginNodes:
     Name: test
     Networking:
       AdditionalSecurityGroups: null
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
       SecurityGroups:
       - sg-34567890
       - sg-34567891

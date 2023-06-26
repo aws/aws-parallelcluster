@@ -16,6 +16,8 @@ LoginNodes:
         {% for i in range(10) %}
         - sg-3456789{{ i }}
         {% endfor %}
+      Proxy:
+        HttpProxyAddress: https://proxy-address:port
     Ssh:
       KeyName: validate_key_name
     Iam:
