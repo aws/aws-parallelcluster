@@ -15,6 +15,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix cluster creation failure when using CloudFormation custom resource with `ElastipIp` set to `True`.
+- Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
 
 3.6.1
 ------
