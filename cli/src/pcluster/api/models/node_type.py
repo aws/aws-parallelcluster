@@ -9,7 +9,6 @@
 # pylint: disable=R0801
 
 
-from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
 
 
@@ -24,6 +23,7 @@ class NodeType(Model):
     """
     HEADNODE = "HeadNode"
     COMPUTENODE = "ComputeNode"
+    LOGINNODE = "LoginNode"
 
     def __init__(self):
         """NodeType - a model defined in OpenAPI"""
