@@ -33,10 +33,6 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     # TODO: use marketplace AMI if possible
     "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"], "includeDeprecated": True},
-    "ubuntu1804": {
-        "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-*",
-        "owners": ["099720109477", "513442679011", "837727238323"],
-    },
     "ubuntu2004": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-*-server-*",
         "owners": ["099720109477"],
@@ -49,7 +45,6 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
     "centos7": {"name": "FPGA Developer AMI*", "owners": ["679593333241"]},
-    "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
     "ubuntu2004": {"name": "Deep Learning AMI GPU CUDA * (Ubuntu 20.04)*", "owners": ["amazon"]},
     # Simple redhat8 to be able to build in remarkable test
     "rhel8": {"name": "RHEL-8.7*_HVM*", "owners": ["309956199498", "841258680906", "219670896067"]},
@@ -65,7 +60,6 @@ PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "centos7": {"name": "centos7-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
-    "ubuntu1804": {"name": "ubuntu-1804-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2004": {"name": "ubuntu-2004-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rhel8": {"name": "rhel8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
 }
