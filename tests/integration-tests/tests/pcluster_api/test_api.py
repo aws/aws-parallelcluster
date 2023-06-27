@@ -219,6 +219,35 @@ def test_cluster_awsbatch(
     )
 
 
+@pytest.mark.usefixtures("os", "instance")
+def test_login_nodes(
+    region,
+    api_client,
+    create_cluster,
+    request,
+    pcluster_config_reader,
+    scheduler,
+):
+    assert_that(scheduler).is_equal_to("slurm")
+    config_template_args = {}
+    initial_config_file = pcluster_config_reader(**config_template_args)
+
+    cluster_name = generate_stack_name("integ-tests", request.config.getoption("stackname_suffix"))
+    cluster_operations_client = cluster_operations_api.ClusterOperationsApi(api_client)
+    cluster_instances_client = cluster_instances_api.ClusterInstancesApi(api_client)
+
+    cluster = _test_create_cluster(cluster_operations_client, create_cluster, cluster_name, initial_config_file)
+
+    _test_list_clusters(region, cluster_operations_client, cluster_name, "CREATE_IN_PROGRESS")
+    _test_describe_cluster(region, cluster_operations_client, cluster_name, "CREATE_IN_PROGRESS")
+
+    _cloudformation_wait(region, cluster_name, "stack_create_complete")
+
+    cluster.mark_as_created()
+    _test_describe_cluster_login_nodes(region, cluster_instances_client, cluster_name)
+    _test_delete_cluster(region, cluster_operations_client, cluster_name)
+
+
 def _test_cluster_workflow(
     region,
     api_client,
@@ -349,6 +378,13 @@ def _test_describe_cluster_compute_nodes(region, client, cluster_name, all_termi
             assert_that(instances).is_not_empty()
 
     return compute_nodes_map
+
+
+def _test_describe_cluster_login_nodes(region, client, cluster_name):
+    response = client.describe_cluster_instances(
+        cluster_name=cluster_name, node_type=NodeType("LoginNode"), region=region
+    )
+    assert_that(response.instances).is_length(1)
 
 
 def _add_compute_nodes(instances, compute_node_map):

@@ -564,6 +564,26 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: ResourceGroupRead
+          - Action:
+              - autoscaling:CreateAutoScalingGroup
+              - autoscaling:DeleteAutoScalingGroup
+              - autoscaling:DescribeAutoScalingGroups
+              - autoscaling:DescribeScalingActivities
+              - autoscaling:UpdateAutoScalingGroup
+              - elasticloadbalancing:AddTags
+              - elasticloadbalancing:CreateListener
+              - elasticloadbalancing:CreateLoadBalancer
+              - elasticloadbalancing:CreateTargetGroup
+              - elasticloadbalancing:DeleteListener
+              - elasticloadbalancing:DeleteLoadBalancer
+              - elasticloadbalancing:DeleteTargetGroup
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:ModifyLoadBalancerAttributes
+            Resource: '*'
+            Effect: Allow
+            Sid: LoginNodesFunctionalities
 
 
   # ### IMAGE ACTIONS POLICIES

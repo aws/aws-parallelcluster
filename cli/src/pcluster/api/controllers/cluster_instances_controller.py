@@ -82,6 +82,11 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
     )
     ec2_instances = []
     for instance in instances:
+        node_type = ApiNodeType.COMPUTENODE
+        if instance.node_type == NodeType.HEAD_NODE.value:
+            node_type = ApiNodeType.HEADNODE
+        elif instance.node_type == NodeType.LOGIN_NODE.value:
+            node_type = ApiNodeType.LOGINNODE
         ec2_instances.append(
             ClusterInstance(
                 instance_id=instance.id,
@@ -90,9 +95,7 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
                 instance_type=instance.instance_type,
                 state=instance.state,
                 private_ip_address=instance.private_ip,
-                node_type=ApiNodeType.HEADNODE
-                if instance.node_type == NodeType.HEAD_NODE.value
-                else ApiNodeType.COMPUTENODE,
+                node_type=node_type,
                 queue_name=instance.queue_name,
             )
         )

@@ -124,10 +124,11 @@ class TestDescribeClusterInstances:
         [
             ("clustername", None, None),
             ("clustername", NodeType.HEADNODE, None),
+            ("clustername", NodeType.LOGINNODE, None),
             ("clustername", NodeType.COMPUTENODE, None),
             ("clustername", None, "queuename"),
         ],
-        ids=["all instances", "head only", "compute only", "queuename only"],
+        ids=["all instances", "head only", "login only", "compute only", "queuename only"],
     )
     def test_filters(self, mocker, client, cluster_name, node_type, queue_name):
         describe_instances_mock = mocker.patch(
@@ -147,6 +148,8 @@ class TestDescribeClusterInstances:
             if node_type:
                 if node_type == NodeType.HEADNODE:
                     expected_value = "HeadNode"
+                elif node_type == NodeType.LOGINNODE:
+                    expected_value = "LoginNode"
                 else:
                     expected_value = "Compute"
             else:
@@ -159,7 +162,7 @@ class TestDescribeClusterInstances:
         [
             (
                 {"node_type": "wrong_node_type"},
-                {"message": "Bad Request: 'wrong_node_type' is not one of ['HeadNode', 'ComputeNode']"},
+                {"message": "Bad Request: 'wrong_node_type' is not one of ['HeadNode', 'ComputeNode', 'LoginNode']"},
             ),
             (
                 {"region": "eu-west-"},

@@ -9,6 +9,7 @@
 # pylint: disable=R0801
 
 
+from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
 
 
