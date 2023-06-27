@@ -1,5 +1,9 @@
 {%- import 'common.jinja2' as common -%}
+{% if REGIONS  %}
+{%- set NEW_REGION = [ REGIONS ] -%}
+{% else %}
 {%- set NEW_REGION = ["##PLACEHOLDER##"] -%}
+{% endif %}
 ---
 test-suites:
   scaling:
