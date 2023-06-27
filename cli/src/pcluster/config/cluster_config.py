@@ -1227,9 +1227,10 @@ class LoginNodesSsh(_BaseSsh):
 class LoginNodesNetworking(_BaseNetworking, SubnetsMixin):
     """Represent the networking configuration for LoginNodes."""
 
-    def __init__(self, subnet_ids: List[str], **kwargs):
+    def __init__(self, subnet_ids: List[str], proxy: Proxy = None, **kwargs):
         _BaseNetworking.__init__(self, **kwargs)
         SubnetsMixin.__init__(self, subnet_ids, **kwargs)
+        self.proxy = proxy
 
     @property
     def is_subnet_public(self):
