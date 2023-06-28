@@ -12,6 +12,7 @@ CHANGELOG
 
 **CHANGES**
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
+- Make `aws-parallelcluster-node` daemons handle only ParallelCluster-managed Slurm partitions.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
