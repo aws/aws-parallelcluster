@@ -39,7 +39,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu1804"]
+          oss: ["rhel8"]
           schedulers: ["slurm"]
   configure:
     test_pcluster_configure.py::test_pcluster_configure:
@@ -53,7 +53,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu1804"]
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   update:
     test_update.py::test_update_slurm:
@@ -75,7 +75,7 @@ test-suites:
         # DCV on GPU enabled instance
         - regions: {{ NEW_REGION }}
           instances: ["g3.8xlarge"]
-          oss: ["ubuntu1804"]
+          oss: ["rhel8"]
           schedulers: ["slurm"]
         # DCV om non GPU enabled instance
         - regions: {{ NEW_REGION }}
@@ -108,7 +108,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu1804"]
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
     test_networking.py::test_public_network_topology:
       dimensions:

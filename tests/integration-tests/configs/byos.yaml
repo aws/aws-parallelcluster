@@ -6,7 +6,7 @@ test-suites:
       dimensions:
         - regions: [ "ap-northeast-2" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ "ubuntu1804" ]
+          oss: [ "ubuntu2004" ]
           schedulers: [ "slurm" ]
   schedulers:
     test_slurm.py::test_slurm:
