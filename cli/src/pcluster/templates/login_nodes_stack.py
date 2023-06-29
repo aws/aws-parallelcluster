@@ -138,18 +138,21 @@ def handler(event, context):
 
         # User data to setup and run the daemon script
         user_data = """#!/bin/bash
-echo -e '#!/bin/bash
+cat << 'EOF' > /opt/parallelcluster/scripts/daemon_script.sh
+#!/bin/bash
 while true; do
   TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-  LIFECYCLE_STATE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v \
-  http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
+  LIFECYCLE_STATE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+  -v http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
   if [[ $LIFECYCLE_STATE == "Terminated" ]]; then
-    /opt/parallelcluster/scripts/termination_script.sh
+    bash /opt/parallelcluster/scripts/termination_script.sh
   fi
   sleep 60
-done' > /opt/parallelcluster/scripts/daemon_script.sh
+done
+EOF
 
-echo -e '#!/bin/bash
+cat << 'EOF' > /opt/parallelcluster/scripts/termination_script.sh
+#!/bin/bash
 DEFAULT_USER=''
 OS=$(cat /etc/os-release | grep '^ID=' | cut -f2 -d'"')
 if [[ $OS == "amzn" ]]; then
@@ -169,7 +172,8 @@ systemctl reload sshd
 
 # Broadcast a message to all logged in users using the wall command
 MSG="System is going down for termination in {0} minutes!"
-wall "$MSG"' > /opt/parallelcluster/scripts/termination_script.sh
+wall "$MSG"
+EOF
 
 chmod +x /opt/parallelcluster/scripts/*.sh
 nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log 2>&1 &
