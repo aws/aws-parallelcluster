@@ -9,8 +9,6 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-import datetime
-import math
 import time
 
 import boto3
@@ -19,6 +17,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 from retrying import retry
 from time_utils import minutes
+from utils import get_alarm_records, get_start_end_timestamp
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
@@ -60,7 +59,7 @@ def test_monitoring(
 @retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
 def _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_id):
     # query for the past 20 minutes
-    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=20)
+    start_timestamp, end_timestamp = get_start_end_timestamp(minutes=20)
 
     # test memory and disk metrics are collected for the head node
     metrics_response_headnode = _get_metric_data(headnode_instance_id, cw_client, start_timestamp, end_timestamp)
@@ -105,29 +104,12 @@ def _test_alarms(cw_client, cluster_name, headnode_instance_id, dashboard_enable
     if dashboard_enabled:
         mem_alarm_name = f"{cluster_name}_MemAlarm_HeadNode"
         disk_alarm_name = f"{cluster_name}_DiskAlarm_HeadNode"
-        mem_alarms = _get_alarm_records(alarm_response, mem_alarm_name)
-        disk_alarms = _get_alarm_records(alarm_response, disk_alarm_name)
+        mem_alarms = get_alarm_records(alarm_response, mem_alarm_name)
+        disk_alarms = get_alarm_records(alarm_response, disk_alarm_name)
         _verify_alarms(mem_alarms, "mem_used_percent", headnode_instance_id)
         _verify_alarms(disk_alarms, "disk_used_percent", headnode_instance_id)
     else:
         assert_that(alarm_response["MetricAlarms"]).is_empty()
-
-
-def _get_start_end_timestamp(minutes):
-    """
-    The end time for query will be the current time rounded to minute that is not earlier than the current time (ceil).
-    For instance, if the current time is 09:34:20, then the end time for query will be 09:35:00.
-    This is because our metrics have a period of 1 minute, and according to public documentation of GetMetricData:
-    "For better performance, specify StartTime and EndTime values that align with the value of the metric's Period
-    and sync up with the beginning and end of an hour."
-    Reference: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html
-    """
-    now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
-    end_timestamp_ceil = math.ceil(now_utc.timestamp() / 60) * 60
-    end_dt = datetime.datetime.fromtimestamp(end_timestamp_ceil)
-    start_dt = end_dt - datetime.timedelta(minutes=minutes)
-    start_timestamp = start_dt.timestamp()
-    return start_timestamp, end_timestamp_ceil
 
 
 def _get_metric_data(instance_id, cw_client, start_timestamp, end_timestamp):
@@ -177,10 +159,6 @@ def _get_metric_data(instance_id, cw_client, start_timestamp, end_timestamp):
 
 def _get_metric_data_values(response, query_id):
     return [record["Values"] for record in response["MetricDataResults"] if record["Id"] == query_id][0]
-
-
-def _get_alarm_records(response, alarm_name):
-    return [alarm for alarm in response["MetricAlarms"] if alarm["AlarmName"] == alarm_name]
 
 
 def _verify_alarms(alarms, metric_name, instance_id):
