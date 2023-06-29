@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
+import math
 import os
 import random
 import re
@@ -795,3 +796,24 @@ def is_fsx_supported(region: str):
 
 def is_directory_supported(region: str, directory_type: str):
     return False if "us-iso" in region and directory_type == "SimpleAD" else True
+
+
+def get_alarm_records(response, alarm_name):
+    return [alarm for alarm in response["MetricAlarms"] if alarm["AlarmName"] == alarm_name]
+
+
+def get_start_end_timestamp(minutes):
+    """
+    The end time for query will be the current time rounded to minute that is not earlier than the current time (ceil).
+    For instance, if the current time is 09:34:20, then the end time for query will be 09:35:00.
+    This is because our metrics have a period of 1 minute, and according to public documentation of GetMetricData:
+    "For better performance, specify StartTime and EndTime values that align with the value of the metric's Period
+    and sync up with the beginning and end of an hour."
+    Reference: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html
+    """
+    now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
+    end_timestamp_ceil = math.ceil(now_utc.timestamp() / 60) * 60
+    end_dt = datetime.datetime.fromtimestamp(end_timestamp_ceil)
+    start_dt = end_dt - datetime.timedelta(minutes=minutes)
+    start_timestamp = start_dt.timestamp()
+    return start_timestamp, end_timestamp_ceil

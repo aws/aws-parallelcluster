@@ -24,8 +24,10 @@ from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
 from time_utils import minutes, seconds
 from utils import (
     check_status,
+    get_alarm_records,
     get_compute_nodes_instance_ids,
     get_instance_info,
+    get_start_end_timestamp,
     test_cluster_health_metric,
     wait_for_computefleet_changed,
 )
@@ -386,9 +388,75 @@ def test_slurm_protected_mode(
         scheduler_commands, remote_command_executor, running_partition=partition, failing_partition=partition
     )
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
+
+    cw_client = boto3.client("cloudwatch", region_name=region)
+    cluster_name = cluster.cfn_name
+
+    _test_protected_mode_metric(cw_client, cluster_name)
+    _test_protected_mode_alarm(cw_client, cluster_name)
+
     test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
     _test_job_run_in_working_queue(scheduler_commands)
     _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
+
+
+@retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
+def _test_protected_mode_metric(cw_client, cluster_name):
+    # query for the past 20 minutes
+    start_timestamp, end_timestamp = get_start_end_timestamp(minutes=20)
+
+    protected_mode_values = _get_metric_data(cluster_name, cw_client, start_timestamp, end_timestamp)
+
+    assert_that(protected_mode_values).is_not_empty()
+
+
+def _test_protected_mode_alarm(cw_client, cluster_name):
+    protected_mode_alarm_name = f"{cluster_name}_ProtectedModeAlarm_HeadNode"
+
+    alarm_response = cw_client.describe_alarms(AlarmNames=[protected_mode_alarm_name])
+
+    protected_mode_alarm = get_alarm_records(alarm_response, protected_mode_alarm_name)
+    _verify_alarms(protected_mode_alarm, "ClusterInProtectedMode", cluster_name)
+
+
+def _get_metric_data(cluster_name, cw_client, start_timestamp, end_timestamp):
+    metrics_response = cw_client.get_metric_data(
+        MetricDataQueries=[
+            {
+                "Id": "protected_mode",
+                "MetricStat": {
+                    "Metric": {
+                        "Namespace": "ParallelCluster",
+                        "MetricName": "ClusterInProtectedMode",
+                        "Dimensions": [
+                            {
+                                "Name": "ClusterName",
+                                "Value": cluster_name,
+                            }
+                        ],
+                    },
+                    "Period": 60,
+                    "Stat": "SampleCount",
+                },
+            },
+        ],
+        StartTime=start_timestamp,
+        EndTime=end_timestamp,
+    )
+    metric_values = [
+        record["Values"] for record in metrics_response["MetricDataResults"] if record["Id"] == "protected_mode"
+    ]
+    return metric_values
+
+
+def _verify_alarms(alarms, metric_name, cluster_name):
+    assert_that(alarms).is_length(1)
+    assert_that(alarms[0]["MetricName"]).is_equal_to(metric_name)
+    assert_that(alarms[0]["Namespace"]).is_equal_to("ParallelCluster")
+    assert_that(alarms[0]["Period"]).is_equal_to(60)
+    assert_that(alarms[0]["Threshold"]).is_equal_to(1)
+    assert_that(alarms[0]["ComparisonOperator"]).is_equal_to("GreaterThanOrEqualToThreshold")
+    assert_that(alarms[0]["Dimensions"]).contains({"Name": "ClusterName", "Value": cluster_name})
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
