@@ -1250,6 +1250,7 @@ class LoginNodesPool(Resource):
         count: int = None,
         ssh: LoginNodesSsh = None,
         iam: LoginNodesIam = None,
+        gracetime_period: int = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1260,6 +1261,7 @@ class LoginNodesPool(Resource):
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
+        self.gracetime_period = Resource.init_param(gracetime_period, default=60)
 
     @property
     def instance_profile(self):
@@ -1476,10 +1478,6 @@ class BaseClusterConfig(Resource):
             self._register_validator(
                 AmiOsCompatibleValidator, os=self.image.os, image_id=self.head_node.image.custom_ami
             )
-        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
-        self._register_validator(
-            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
-        )
         self._register_storage_validators()
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
@@ -2010,6 +2008,10 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
+        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
+        self._register_validator(
+            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
+        )
         if self.shared_storage:
             for storage in self.shared_storage:
                 if isinstance(storage, BaseSharedFsx):
@@ -2847,6 +2849,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             head_node_security_groups=self.head_node.networking.security_groups,
             queues=self.scheduling.queues,
         )
+        # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
+        if self.login_nodes:
+            self._register_validator(
+                SubnetsValidator,
+                subnet_ids=self.login_nodes_subnet_ids + self.compute_subnet_ids + [self.head_node.networking.subnet_id]
+            )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(

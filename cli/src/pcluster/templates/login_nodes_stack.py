@@ -1,10 +1,15 @@
+from time import sleep
+
 from typing import Dict
 
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import CfnTag, Construct, NestedStack, Stack
-
+from aws_cdk.core import CfnTag, Construct, NestedStack, Stack, Fn, Duration
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_sns as sns
+from aws_cdk import aws_sns_subscriptions as subscriptions
+from aws_cdk import aws_lambda as _lambda
 from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
 from pcluster.constants import PCLUSTER_LOGIN_NODES_POOL_NAME_TAG
 from pcluster.templates.cdk_builder_utils import (
@@ -58,6 +63,65 @@ class Pool(Construct):
         self._launch_template = self._add_login_nodes_pool_launch_template()
         self._add_login_nodes_pool_auto_scaling_group()
 
+    def _add_lifecycle_hook_lambda(self):
+        """Create a Lambda function to handle the ASG lifecycle hook."""
+        lifecycle_hook_function = _lambda.Function(
+            self, "LifecycleHookFunction",
+            code=_lambda.Code.from_inline(
+                """
+import json
+import boto3
+import time
+import os
+
+def handler(event, context):
+    print(f"Received event: {event}")
+    asg = boto3.client('autoscaling')
+    
+    message = json.loads(event['Records'][0]['Sns']['Message'])
+    lifecycle_hook_name = message['LifecycleHookName']
+    ec2_instance_id = message['EC2InstanceId']
+    asg_group_name = message['AutoScalingGroupName']
+    lifecycle_action_token = message['LifecycleActionToken']
+
+    gracetime = int(os.environ['GRACETIME']) # read gracetime from environment variable
+
+    try:
+        time.sleep(gracetime)
+
+        # tell ASG to complete the lifecycle action so it can terminate the instance
+        asg.complete_lifecycle_action(
+            LifecycleHookName=lifecycle_hook_name,
+            AutoScalingGroupName=asg_group_name,
+            LifecycleActionResult='CONTINUE',
+            InstanceId=ec2_instance_id,
+            LifecycleActionToken=lifecycle_action_token
+        )
+
+    except Exception as e:
+        asg.complete_lifecycle_action(
+            LifecycleHookName=lifecycle_hook_name,
+            AutoScalingGroupName=asg_group_name,
+            LifecycleActionResult='ABANDON',
+            InstanceId=ec2_instance_id,
+            LifecycleActionToken=lifecycle_action_token
+        )
+
+        print(f"Error handling lifecycle hook: {e}")
+                """
+            ),
+            handler="index.handler",
+            timeout=Duration.seconds(  # additional 300 seconds is for the lambda running time
+                self._pool.gracetime_period * 60 + 300
+            ),
+            runtime=_lambda.Runtime.PYTHON_3_9,
+            role=self.LogAutoScalingEventRole,
+            environment={  # pass the gracetime as an environment variable
+                "GRACETIME": str(self._pool.gracetime_period * 60)
+            }
+        )
+        return lifecycle_hook_function
+
     def _add_login_nodes_pool_launch_template(self):
         login_nodes_pool_lt_security_groups = get_login_nodes_security_groups_full(
             self._login_security_group,
@@ -71,6 +135,44 @@ class Pool(Construct):
                 subnet_id=self._pool.networking.subnet_ids[0],
             )
         ]
+
+        # User data to setup and run the daemon script
+        user_data = """echo -e '#!/bin/bash
+while true; do
+  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+  LIFECYCLE_STATE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
+  if [[ $LIFECYCLE_STATE == "Terminated" ]]; then
+    /opt/parallelcluster/scripts/termination_script.sh
+  fi
+  sleep 60
+done' > /opt/parallelcluster/scripts/daemon_script.sh
+
+echo -e '#!/bin/bash
+DEFAULT_USER=''
+OS=$(cat /etc/os-release | grep '^ID=' | cut -f2 -d'"')
+if [[ $OS == "amzn" ]]; then
+    DEFAULT_USER='ec2-user'
+elif [[ $OS == "centos" ]]; then
+    DEFAULT_USER='centos'
+elif [[ $OS == "ubuntu" ]]; then
+    DEFAULT_USER='ubuntu'
+elif [[ $OS == "rhel" ]]; then
+    DEFAULT_USER='ec2-user'
+fi
+# Prevent further login/SSH attempts by updating ssh config
+echo "AllowUsers $DEFAULT_USER" >> /etc/ssh/sshd_config
+
+# Reload the ssh configuration
+systemctl reload sshd
+
+# Broadcast a message to all logged in users using the wall command
+MSG="System is going down for termination in {0} minutes!"
+wall "$MSG"' > /opt/parallelcluster/scripts/termination_script.sh
+
+chmod +x /opt/parallelcluster/scripts/*.sh
+nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log 2>&1 &
+""".format(self._pool.gracetime_period)
+
         return ec2.CfnLaunchTemplate(
             self,
             f"LoginNodeLaunchTemplate{self._pool.name}",
@@ -79,6 +181,7 @@ class Pool(Construct):
                 image_id=self._config.login_nodes_ami[self._pool.name],
                 instance_type=self._pool.instance_type,
                 key_name=self._pool.ssh.key_name,
+                user_data=Fn.base64(user_data),
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
                     http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
                 ),
@@ -117,7 +220,51 @@ class Pool(Construct):
             vpc_zone_identifier=self._pool.networking.subnet_ids,
         )
 
+        self._add_lifecycle_hook(auto_scaling_group)
+
         return auto_scaling_group
+
+    def _add_lifecycle_hook(self, auto_scaling_group):
+        self.LogAutoScalingEventRole = self._get_iam_role()
+        self.lifecycle_hook_function = self._add_lifecycle_hook_lambda()
+
+        lifecycle_topic = sns.Topic(self, "lifecycleTopic")
+        lifecycle_topic.add_subscription(subscriptions.LambdaSubscription(self.lifecycle_hook_function))
+
+        return autoscaling.CfnLifecycleHook(
+            self,
+            "LoginNodesASGLifecycleHook",
+            auto_scaling_group_name=auto_scaling_group.ref,
+            lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
+            notification_target_arn=lifecycle_topic.topic_arn,
+            role_arn=self.LogAutoScalingEventRole.role_arn,
+        )
+
+    def _get_iam_role(self):
+        role = iam.Role(
+            self,
+            "LifecycleHookExecutionRole",
+            assumed_by=iam.CompositePrincipal(
+                iam.ServicePrincipal("lambda.amazonaws.com"),
+                iam.ServicePrincipal("autoscaling.amazonaws.com"),
+            ),
+        )
+        role.add_to_policy(
+            iam.PolicyStatement(
+                resources=["*"],
+                actions=[
+                    "autoscaling:CompleteLifecycleAction",
+                    "autoscaling:RecordLifecycleActionHeartbeat",
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "lambda:InvokeFunction",
+                    "sns:Publish",
+                ]
+            )
+        )
+
+        return role
 
     def _add_login_nodes_pool_target_group(self):
         return elbv2.NetworkTargetGroup(
