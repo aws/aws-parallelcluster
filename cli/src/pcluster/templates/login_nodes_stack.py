@@ -1,15 +1,14 @@
-from time import sleep
-
 from typing import Dict
 
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import CfnTag, Construct, NestedStack, Stack, Fn, Duration
 from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as _lambda
 from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sns_subscriptions as subscriptions
-from aws_cdk import aws_lambda as _lambda
+from aws_cdk.core import CfnTag, Construct, Duration, Fn, NestedStack, Stack
+
 from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
 from pcluster.constants import PCLUSTER_LOGIN_NODES_POOL_NAME_TAG
 from pcluster.templates.cdk_builder_utils import (
@@ -66,7 +65,8 @@ class Pool(Construct):
     def _add_lifecycle_hook_lambda(self):
         """Create a Lambda function to handle the ASG lifecycle hook."""
         lifecycle_hook_function = _lambda.Function(
-            self, "LifecycleHookFunction",
+            self,
+            "LifecycleHookFunction",
             code=_lambda.Code.from_inline(
                 """
 import json
@@ -77,7 +77,7 @@ import os
 def handler(event, context):
     print(f"Received event: {event}")
     asg = boto3.client('autoscaling')
-    
+
     message = json.loads(event['Records'][0]['Sns']['Message'])
     lifecycle_hook_name = message['LifecycleHookName']
     ec2_instance_id = message['EC2InstanceId']
@@ -118,7 +118,7 @@ def handler(event, context):
             role=self.LogAutoScalingEventRole,
             environment={  # pass the gracetime as an environment variable
                 "GRACETIME": str(self._pool.gracetime_period * 60)
-            }
+            },
         )
         return lifecycle_hook_function
 
@@ -141,7 +141,8 @@ def handler(event, context):
 echo -e '#!/bin/bash
 while true; do
   TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-  LIFECYCLE_STATE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
+  LIFECYCLE_STATE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v \
+  http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
   if [[ $LIFECYCLE_STATE == "Terminated" ]]; then
     /opt/parallelcluster/scripts/termination_script.sh
   fi
@@ -172,8 +173,9 @@ wall "$MSG"' > /opt/parallelcluster/scripts/termination_script.sh
 
 chmod +x /opt/parallelcluster/scripts/*.sh
 nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log 2>&1 &
-""".format(self._pool.gracetime_period)
-
+""".format(
+            self._pool.gracetime_period
+        )
 
         return ec2.CfnLaunchTemplate(
             self,
@@ -262,7 +264,7 @@ nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log
                     "logs:PutLogEvents",
                     "lambda:InvokeFunction",
                     "sns:Publish",
-                ]
+                ],
             )
         )
 

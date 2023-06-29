@@ -2853,7 +2853,9 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         if self.login_nodes:
             self._register_validator(
                 SubnetsValidator,
-                subnet_ids=self.login_nodes_subnet_ids + self.compute_subnet_ids + [self.head_node.networking.subnet_id]
+                subnet_ids=self.login_nodes_subnet_ids
+                + self.compute_subnet_ids
+                + [self.head_node.networking.subnet_id],
             )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
