@@ -137,7 +137,8 @@ def handler(event, context):
         ]
 
         # User data to setup and run the daemon script
-        user_data = """echo -e '#!/bin/bash
+        user_data = """#!/bin/bash
+echo -e '#!/bin/bash
 while true; do
   TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
   LIFECYCLE_STATE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
@@ -172,6 +173,7 @@ wall "$MSG"' > /opt/parallelcluster/scripts/termination_script.sh
 chmod +x /opt/parallelcluster/scripts/*.sh
 nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log 2>&1 &
 """.format(self._pool.gracetime_period)
+
 
         return ec2.CfnLaunchTemplate(
             self,
