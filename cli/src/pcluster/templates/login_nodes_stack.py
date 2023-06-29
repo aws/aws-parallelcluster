@@ -115,7 +115,7 @@ def handler(event, context):
                 self._pool.gracetime_period * 60 + 300
             ),
             runtime=_lambda.Runtime.PYTHON_3_9,
-            role=self.LogAutoScalingEventRole,
+            role=self.lifecycle_hook_execution_role,
             environment={  # pass the gracetime as an environment variable
                 "GRACETIME": str(self._pool.gracetime_period * 60)
             },
@@ -233,7 +233,7 @@ nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log
         return auto_scaling_group
 
     def _add_lifecycle_hook(self, auto_scaling_group):
-        self.LogAutoScalingEventRole = self._get_iam_role()
+        self.lifecycle_hook_execution_role = self._get_iam_role()
         self.lifecycle_hook_function = self._add_lifecycle_hook_lambda()
 
         lifecycle_topic = sns.Topic(self, "lifecycleTopic")
@@ -245,7 +245,7 @@ nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log
             auto_scaling_group_name=auto_scaling_group.ref,
             lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
             notification_target_arn=lifecycle_topic.topic_arn,
-            role_arn=self.LogAutoScalingEventRole.role_arn,
+            role_arn=self.lifecycle_hook_execution_role.role_arn,
         )
 
     def _get_iam_role(self):
