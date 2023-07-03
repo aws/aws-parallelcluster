@@ -461,10 +461,10 @@ def test_region_validator(region, expected_message):
     "os, scheduler, expected_message",
     [
         ("centos7", "slurm", None),
-        ("ubuntu1804", "slurm", None),
         ("ubuntu2004", "slurm", None),
         ("alinux2", "slurm", None),
         ("rhel8", "slurm", None),
+        ("ubuntu1804", "slurm", "scheduler supports the following operating systems"),
         ("centos7", "awsbatch", "scheduler supports the following operating systems"),
         ("rhel8", "awsbatch", "scheduler supports the following operating systems"),
         ("ubuntu1804", "awsbatch", "scheduler supports the following operating systems"),
@@ -825,7 +825,13 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
         ("rhel8", "x86_64", "custom-ami", None, None),
         ("centos7", "x86_64", None, None, None),
         ("centos7", "x86_64", "custom-ami", None, None),
-        ("ubuntu1804", "x86_64", None, None, None),
+        (
+            "ubuntu1804",
+            "x86_64",
+            None,
+            None,
+            "The architecture x86_64 is only supported for the following operating systems",
+        ),
         ("ubuntu2004", "x86_64", None, None, None),
         # All OSes supported for ARM
         ("alinux2", "arm64", None, None, None),
@@ -839,7 +845,13 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
         ),
         ("centos7", "arm64", None, {"ami_search_filters"}, None),
         ("centos7", "arm64", "custom-ami", None, None),
-        ("ubuntu1804", "arm64", None, None, None),
+        (
+            "ubuntu1804",
+            "arm64",
+            None,
+            None,
+            "The architecture arm64 is only supported for the following operating systems",
+        ),
         ("ubuntu2004", "arm64", None, None, None),
         ("rhel8", "arm64", None, None, None),
         ("rhel8", "arm64", "custom-ami", None, None),
@@ -1298,13 +1310,25 @@ def test_fsx_network_validator(
         ("x86_64", "alinux2", None),
         ("x86_64", "centos7", None),
         ("x86_64", "rhel8", None),
-        ("x86_64", "ubuntu1804", None),
         ("x86_64", "ubuntu2004", None),
-        ("arm64", "ubuntu1804", None),
         ("arm64", "ubuntu2004", None),
         ("arm64", "rhel8", None),
         ("arm64", "alinux2", None),
         # Unsupported combinations
+        (
+            "x86_64",
+            "ubuntu1804",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="x86_64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("x86_64")
+            ),
+        ),
+        (
+            "arm64",
+            "ubuntu1804",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
         (
             "UnsupportedArchitecture",
             "alinux2",
@@ -1473,16 +1497,14 @@ def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
     "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
     [
         (True, "centos7", "t2.medium", None, None, None),
-        (True, "ubuntu1804", "t2.medium", None, None, None),
         (True, "rhel8", "t2.medium", None, None, None),
-        (True, "ubuntu1804", "t2.medium", None, "1.2.3.4/32", None),
+        (True, "ubuntu1804", "t2.medium", None, "1.2.3.4/32", "Please double check the os configuration"),
         (True, "ubuntu2004", "t2.medium", None, None, None),
         (True, "centos7", "t2.medium", "0.0.0.0/0", 8443, "port 8443 to the world"),
         (True, "alinux2", "t2.medium", None, None, None),
         (True, "alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
         (True, "alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
         (False, "alinux2", "t2.micro", None, None, None),  # doesn't fail because DCV is disabled
-        (True, "ubuntu1804", "m6g.xlarge", None, None, None),
         (True, "alinux2", "m6g.xlarge", None, None, None),
         (True, "rhel8", "m6g.xlarge", None, None, None),
         (True, "ubuntu2004", "m6g.xlarge", None, None, "Please double check the os configuration"),

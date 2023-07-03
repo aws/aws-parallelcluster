@@ -453,7 +453,7 @@ def _run_input_test(
 ):
     if with_input:
         input_composer = ComposeInput(aws_region_name="us-east-1", key="key2", scheduler="slurm")
-        input_composer.add_first_flow(op_sys="ubuntu1804", head_node_instance=head_node_instance)
+        input_composer.add_first_flow(op_sys="ubuntu2004", head_node_instance=head_node_instance)
         input_composer.add_compute_instance(compute_instance, "18")
         input_composer.add_no_automation_no_empty_vpc(
             vpc_id="vpc-34567891", head_node_id="subnet-34567891", compute_id="subnet-45678912"

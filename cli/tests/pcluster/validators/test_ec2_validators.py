@@ -383,8 +383,8 @@ def test_capacity_type_validator(mocker, capacity_type, supported_usage_classes,
         (
             "ami-111111111111",
             "alinux2",
-            ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "ubuntu1804"}]}),
-            "The OS of node AMI ami-111111111111 is ubuntu1804, it is not compatible with cluster OS alinux2.",
+            ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "ubuntu2004"}]}),
+            "The OS of node AMI ami-111111111111 is ubuntu2004, it is not compatible with cluster OS alinux2.",
         ),
         (
             "ami-222222222222",
