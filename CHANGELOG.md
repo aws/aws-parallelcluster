@@ -14,7 +14,6 @@ CHANGELOG
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
 
 **BUG FIXES**
-- Fix cluster creation failure when using CloudFormation custom resource with `ElastipIp` set to `True`.
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
 
 3.6.1
