@@ -75,7 +75,6 @@ import time
 import os
 
 def handler(event, context):
-    print(f"Received event: {event}")
     asg = boto3.client('autoscaling')
 
     message = json.loads(event['Records'][0]['Sns']['Message'])
@@ -146,8 +145,10 @@ while true; do
   -v http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
   if [[ $LIFECYCLE_STATE == "Terminated" ]]; then
     bash /opt/parallelcluster/scripts/termination_script.sh
+    break
+  else
+    sleep 60
   fi
-  sleep 60
 done
 EOF
 
@@ -173,6 +174,10 @@ systemctl reload sshd
 # Broadcast a message to all logged in users using the wall command
 MSG="System is going down for termination in {0} minutes!"
 wall "$MSG"
+while true; do
+  sleep 60
+  wall "System is going down for termination, please save your work!"
+done
 EOF
 
 chmod +x /opt/parallelcluster/scripts/*.sh
