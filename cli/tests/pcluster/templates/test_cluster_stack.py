@@ -371,6 +371,7 @@ class LoginNodeLTAssertion:
         subnet_ids,
         key_name,
         security_groups,
+        gracetime_period,
     ):
         self.pool_name = pool_name
         self.instance_type = instance_type
@@ -378,6 +379,7 @@ class LoginNodeLTAssertion:
         self.subnet_ids = subnet_ids
         self.key_name = key_name
         self.security_groups = security_groups
+        self.gracetime_period = gracetime_period
 
     def assert_lt_properties(self, generated_template, resource_type):
         resources = generated_template["Resources"]
@@ -388,6 +390,7 @@ class LoginNodeLTAssertion:
                 assert properties["LaunchTemplateData"]["NetworkInterfaces"][0]["SubnetId"] in self.subnet_ids
                 assert properties["LaunchTemplateData"]["KeyName"] == self.key_name
                 assert properties["LaunchTemplateData"]["SecurityGroups"] == self.security_groups
+                assert properties["LaunchTemplateData"]["GracetimePeriod"] == self.gracetime_period
 
 
 @pytest.mark.parametrize(
@@ -402,6 +405,7 @@ class LoginNodeLTAssertion:
                     count=2,
                     subnet_ids=["subnet-12345678"],
                     key_name="ec2-key-name",
+                    gracetime_period=120,
                     security_groups=[
                         "sg-34567891",
                         "sg-34567892",
@@ -494,6 +498,19 @@ class NetworkLoadBalancerListenerAssertion:
         assert properties["Protocol"] == self.expected_protocol
 
 
+class LifecycleHookAssertion:
+    def __init__(self, expected_lifecycle_transition, expected_heartbeat_timeout):
+        self.expected_lifecycle_transition = expected_lifecycle_transition
+        self.expected_heartbeat_timeout = expected_heartbeat_timeout
+
+    def assert_lifecycle_hook_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::AutoScaling::LifecycleHook"
+        properties = resource["Properties"]
+        assert properties["LifecycleTransition"] == self.expected_lifecycle_transition
+        assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
+
+
 @pytest.mark.parametrize(
     "config_file_name, lt_assertions",
     [
@@ -504,6 +521,10 @@ class NetworkLoadBalancerListenerAssertion:
                 NetworkLoadBalancerAssertion(expected_vpc_id="subnet-12345678", expected_internet_facing=True),
                 TargetGroupAssertion(expected_health_check="TCP", expected_port=22, expected_protocol="TCP"),
                 NetworkLoadBalancerListenerAssertion(expected_port=22, expected_protocol="TCP"),
+                LifecycleHookAssertion(
+                    expected_lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
+                    expected_heartbeat_timeout=7200,
+                ),
             ],
         ),
     ],
@@ -533,6 +554,10 @@ def test_login_nodes_traffic_management_resources_values_properties(
         cdk_assets,
         "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
     )
+    asset_content_lifecycle_hook = get_asset_content_with_resource_name(
+        cdk_assets,
+        "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467",
+    )
 
     for lt_assertion in lt_assertions:
         if isinstance(lt_assertion, AutoScalingGroupAssertion):
@@ -551,6 +576,10 @@ def test_login_nodes_traffic_management_resources_values_properties(
             lt_assertion.assert_nlb_listener_properties(
                 asset_content_nlb_listener,
                 "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
+            )
+        elif isinstance(lt_assertion, LifecycleHookAssertion):
+            lt_assertion.assert_lifecycle_hook_properties(
+                asset_content_lifecycle_hook, "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467"
             )
 
 
