@@ -67,6 +67,9 @@ class TestCluster:
             (NodeType.COMPUTE, [{}, {}, {}], 3),
             (NodeType.COMPUTE, [{}, {}], 2),
             (NodeType.COMPUTE, [], 0),
+            (NodeType.LOGIN_NODE, [{}, {}, {}], 3),
+            (NodeType.LOGIN_NODE, [{}, {}], 2),
+            (NodeType.LOGIN_NODE, [], 0),
         ],
     )
     def test_describe_instances(self, cluster, mocker, node_type, expected_response, expected_instances):

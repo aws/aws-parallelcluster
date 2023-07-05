@@ -504,7 +504,6 @@ def get_username_for_os(os):
     usernames = {
         "alinux2": "ec2-user",
         "centos7": "centos",
-        "ubuntu1804": "ubuntu",
         "ubuntu2004": "ubuntu",
         "rhel8": "ec2-user",
     }

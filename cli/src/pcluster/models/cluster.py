@@ -83,6 +83,7 @@ class NodeType(Enum):
 
     HEAD_NODE = "HeadNode"
     COMPUTE = "Compute"
+    LOGIN_NODE = "LoginNode"
 
     def __str__(self):
         return str(self.value)

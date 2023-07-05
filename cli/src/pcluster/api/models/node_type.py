@@ -24,6 +24,7 @@ class NodeType(Model):
     """
     HEADNODE = "HeadNode"
     COMPUTENODE = "ComputeNode"
+    LOGINNODE = "LoginNode"
 
     def __init__(self):
         """NodeType - a model defined in OpenAPI"""

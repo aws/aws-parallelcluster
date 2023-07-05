@@ -30,11 +30,11 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_buc
         ("centos7.slurm.full.yaml", "us-east-1"),
         ("rhel8.slurm.full.yaml", "us-east-1"),
         ("alinux2.slurm.conditional_vol.yaml", "us-east-1"),
-        ("ubuntu18.slurm.simple.yaml", "us-east-1"),
+        ("ubuntu20.slurm.simple.yaml", "us-east-1"),
         ("alinux2.batch.no_head_node_log.yaml", "us-east-1"),
-        ("ubuntu18.slurm.no_dashboard.yaml", "us-east-1"),
+        ("ubuntu20.slurm.no_dashboard.yaml", "us-east-1"),
         ("alinux2.batch.head_node_log.yaml", "us-east-1"),
-        ("ubuntu18.slurm.simple.yaml", "us-iso-WHATEVER"),
+        ("ubuntu20.slurm.simple.yaml", "us-iso-WHATEVER"),
     ],
 )
 def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, region):
@@ -197,7 +197,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
     if cluster_config.image.os in ["alinux2", "centos7", "rhel8"]:
         assert_that(output_yaml).contains("system-messages")
         assert_that(output_yaml).does_not_contain("syslog")
-    elif cluster_config.image.os in ["ubuntu1804"]:
+    elif cluster_config.image.os in ["ubuntu2004"]:
         assert_that(output_yaml).contains("syslog")
         assert_that(output_yaml).does_not_contain("system-messages")
 

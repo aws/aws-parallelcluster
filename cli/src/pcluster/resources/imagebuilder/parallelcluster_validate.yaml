@@ -38,8 +38,6 @@ phases:
                 OS='alinux2'
               elif [ `echo "${RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
-              elif [ `echo "${RELEASE}" | grep '^ubuntu\.18'` ]; then
-                OS='ubuntu1804'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.22'` ]; then
@@ -126,7 +124,7 @@ phases:
               set -v
               ARCHITECTURE='{{ validate.OperatingSystemArchitecture.outputs.stdout }}'
               OS='{{ validate.OperatingSystemName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(18|20|22)04|alinux2|rhel8)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux2|rhel8)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"
@@ -326,8 +324,6 @@ phases:
                 echo "Checking for Lustre client..."
                 if [ ${OS} == centos7 ]; then
                   rpm -qa | grep lustre-client
-                elif [ ${OS} == ubuntu1804 ]; then
-                  dpkg -l | grep lustre
                 fi
               fi
               [[ $? -ne 0 ]] && echo "Check for Lustre client failed" && exit 1
