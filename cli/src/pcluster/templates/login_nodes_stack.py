@@ -111,10 +111,6 @@ systemctl reload sshd
 # Broadcast a message to all logged in users using the wall command
 MSG="System is going down for termination in {0} minutes!"
 wall "$MSG"
-while true; do
-  sleep 60
-  wall "System is going down for termination, please save your work!"
-done
 EOF
 
 chmod +x /opt/parallelcluster/scripts/*.sh
