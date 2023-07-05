@@ -1,0 +1,46 @@
+Region: {{ region }}
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ ami } }
+Imds:
+  ImdsSupport: v2.0
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q1
+      ComputeResources:
+        - Name: c5n18xl-efa
+          InstanceType: {{ instance }}
+          MinCount: {{ number_of_nodes }}
+          MaxCount: {{ number_of_nodes }}
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: true
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+SharedStorage:
+  - MountDir: /shared
+    Name: shared-fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 2400
+      DeploymentType: PERSISTENT_1
+      AutomaticBackupRetentionDays: 30
+      DailyAutomaticBackupStartTime: 00:00
+      PerUnitStorageThroughput: 100
+      StorageType: SSD

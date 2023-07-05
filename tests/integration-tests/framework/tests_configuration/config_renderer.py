@@ -19,7 +19,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
 
 
-def read_config_file(config_file, print_rendered=False):
+def read_config_file(config_file, print_rendered=False, **kwargs):
     """
     Read the test config file and apply Jinja rendering.
     Multiple invocations of the same function within the same process produce the same rendering output. This is done
@@ -30,7 +30,7 @@ def read_config_file(config_file, print_rendered=False):
     :return: a dict containig the parsed config file
     """
     logging.info("Parsing config file: %s", config_file)
-    rendered_config = _render_config_file(config_file)
+    rendered_config = _render_config_file(config_file, **kwargs)
     try:
         return yaml.safe_load(rendered_config)
     except Exception:
@@ -48,7 +48,7 @@ def dump_rendered_config_file(config):
 
 
 @lru_cache(maxsize=None)
-def _render_config_file(config_file):
+def _render_config_file(config_file, **kwargs):
     """
     Apply Jinja rendering to the specified config file.
 
@@ -61,7 +61,7 @@ def _render_config_file(config_file):
         return (
             SandboxedEnvironment(loader=file_loader)
             .get_template(config_name)
-            .render(additional_instance_types_map=InstanceTypesData.additional_instance_types_map)
+            .render(additional_instance_types_map=InstanceTypesData.additional_instance_types_map, **kwargs)
         )
     except Exception as e:
         logging.error("Failed when rendering config file %s with error: %s", config_file, e)

@@ -2,7 +2,7 @@ Imds:
   ImdsSupport: v2.0
 Region: us-east-1
 Image:
-  Os: alinux2  # alinux2 | centos7 | ubuntu1804 | ubuntu2004
+  Os: alinux2  # alinux2 | centos7 | ubuntu2004
   CustomAmi: ami-12345678
 HeadNode:
   InstanceType: t2.micro

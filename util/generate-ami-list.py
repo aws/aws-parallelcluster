@@ -31,7 +31,6 @@ DISTROS = OrderedDict(
     [
         ("alinux2", "amzn2"),
         ("centos7", "centos7"),
-        ("ubuntu1804", "ubuntu-1804"),
         ("ubuntu2004", "ubuntu-2004"),
     ]
 )
@@ -67,7 +66,6 @@ def get_ami_list_from_file(regions, json_amis):
         "af-south-1": {
           "alinux2": "ami-xxx",
           "centos7": "UNSUPPORTED",
-          "ubuntu1804": "ami-zzz",
           "ubuntu2004": "ami-www"
         },
         "ap-east-1": {

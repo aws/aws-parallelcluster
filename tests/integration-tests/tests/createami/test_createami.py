@@ -443,7 +443,7 @@ def test_build_image_custom_components(
 ):
     """Test custom components and base AMI is ParallelCluster AMI"""
     # Custom script
-    custom_script_file = "custom_script_ubuntu.sh" if os in ["ubuntu1804", "ubuntu2004"] else "custom_script.sh"
+    custom_script_file = "custom_script_ubuntu.sh" if os in ["ubuntu2004"] else "custom_script.sh"
 
     # Create S3 bucket for pre install scripts, to remove epel package if it is installed
     bucket_name = s3_bucket_factory()

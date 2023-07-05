@@ -75,12 +75,6 @@ test-suites:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
-    test_createami.py::test_kernel4_build_image_run_cluster:
-      dimensions:
-        - regions: ["us-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          schedulers: ["slurm"]
-          oss: {{ NEW_OS }}
   dcv:
     test_dcv.py::test_dcv_configuration:
       dimensions:
@@ -129,13 +123,6 @@ test-suites:
           instances: ["c6gn.16xlarge"]
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-  intel_hpc:
-    test_intel_hpc.py::test_intel_hpc:
-      dimensions:
-        - regions: ["us-east-2"]
-          instances: ["c5.18xlarge"]
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_cluster_in_private_subnet:
       dimensions:
@@ -164,15 +151,15 @@ test-suites:
   scaling:
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
-        - regions: {{ common.REGIONS_COMMERCIAL }}
+        - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
           schedulers: [ "slurm" ]
-        - regions: {{ common.REGIONS_CHINA }}
+        - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
           schedulers: [ "slurm" ]
-        - regions: {{ common.REGIONS_GOVCLOUD }}
+        - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
           schedulers: [ "slurm" ]
@@ -308,11 +295,6 @@ test-suites:
     test_update.py::test_update_slurm:
       dimensions:
         - regions: ["eu-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ NEW_OS }}
-    test_update.py::test_update_compute_ami:
-      dimensions:
-        - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
     test_update.py::test_update_instance_list:

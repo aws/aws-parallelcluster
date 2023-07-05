@@ -13,6 +13,7 @@ string InstanceState
 @enum([
     {name: "HEADNODE", value: "HeadNode"},
     {name: "COMPUTENODE", value: "ComputeNode"},
+    {name: "LOGINNODE", value: "LoginNode"},
 ])
 string NodeType
 

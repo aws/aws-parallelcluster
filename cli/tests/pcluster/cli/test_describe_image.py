@@ -42,14 +42,14 @@ class TestDescribeImageCommand:
             "imageConfiguration": {
                 "url": "s3://parallelcluster-0000000000000000-v1-do-not-delete/parallelcluster/3.0.0/config.yaml"
             },
-            "imageId": "aws-parallelcluster-3-0-0-ubuntu-1804-lts-hvm-arm64-202101010000",
+            "imageId": "aws-parallelcluster-3-0-0-ubuntu-2004-lts-hvm-arm64-202101010000",
             "creationTime": "2021-01-01T00:00:00.000Z",
             "imageBuildStatus": "BUILD_COMPLETE",
             "region": "eu-west-2",
             "ec2AmiInfo": {
-                "amiName": "aws-parallelcluster-3.0.0-ubuntu-1804-lts-hvm-x86_64-202101010000 2021-01-01T00-00-00.000Z",
+                "amiName": "aws-parallelcluster-3.0.0-ubuntu-2004-lts-hvm-x86_64-202101010000 2021-01-01T00-00-00.000Z",
                 "amiId": "ami-FEED0DEAD0BEEF000",
-                "description": "AWS ParallelCluster AMI for ubuntu1804",
+                "description": "AWS ParallelCluster AMI for ubuntu2004",
                 "state": "AVAILABLE",
                 "tags": [
                     {"key": "parallelcluster:lustre_version", "value": "5.4.0.1051.33"},

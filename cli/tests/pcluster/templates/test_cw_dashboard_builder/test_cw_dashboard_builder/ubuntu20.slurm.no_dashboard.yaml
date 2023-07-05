@@ -1,5 +1,5 @@
 Image:
-  Os: ubuntu1804
+  Os: ubuntu2004
 HeadNode:
   InstanceType: t2.micro
   Networking:

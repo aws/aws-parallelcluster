@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_ids[0] }}
+    SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -27,4 +27,4 @@ Scheduling:
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_subnet_ids[1] }}
+          - {{ private_subnet_id }}

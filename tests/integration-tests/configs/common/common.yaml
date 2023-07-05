@@ -39,7 +39,7 @@ cli_commands:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
 cloudwatch_logging:
   test_cloudwatch_logging.py::test_cloudwatch_logging:
@@ -60,7 +60,7 @@ cloudwatch_logging:
         schedulers: ["slurm"]
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804", "centos7"]
+        oss: ["rhel8", "centos7"]
         schedulers: ["slurm"]
   test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
     dimensions:
@@ -120,7 +120,7 @@ create:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]  # os must be different from ubuntu2004 to test os validation logic when wrong os is provided
+        oss: ["rhel8"]  # os must be different from ubuntu2004 to test os validation logic when wrong os is provided
         schedulers: ["slurm"]
   test_create.py::test_create_wrong_pcluster_version:
     dimensions:
@@ -162,7 +162,7 @@ createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004", "alinux2", "ubuntu1804"]
+        oss: ["ubuntu2004", "alinux2", "rhel8"]
   test_createami.py::test_kernel4_build_image_run_cluster:
     dimensions:
       - regions: ["eu-south-1"]
@@ -460,7 +460,7 @@ schedulers:
     dimensions:
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_memory_based_scheduling:
     dimensions:
@@ -580,7 +580,7 @@ storage:
     dimensions:
       - regions: ["us-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["ubuntu1804"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
   # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
@@ -637,7 +637,7 @@ storage:
     dimensions:
       - regions: ["us-east-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_single:
     dimensions:
@@ -653,7 +653,7 @@ storage:
         schedulers: ["slurm"]
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
+        oss: ["rhel8"]
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_existing:
     dimensions:

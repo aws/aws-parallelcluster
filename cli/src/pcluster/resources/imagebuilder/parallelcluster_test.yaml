@@ -38,8 +38,6 @@ phases:
                 OS='alinux2'
               elif [ `echo "${RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
-              elif [ `echo "${RELEASE}" | grep '^ubuntu\.18'` ]; then
-                OS='ubuntu1804'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.22'` ]; then
