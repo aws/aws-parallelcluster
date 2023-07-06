@@ -1,7 +1,6 @@
 Region: {{ region }}
 Image:
   Os: {{ os }}
-  CustomAmi: {{ ami } }
 Imds:
   ImdsSupport: v2.0
 HeadNode:
@@ -13,6 +12,7 @@ HeadNode:
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess #Required to read software artifacts from s3
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
