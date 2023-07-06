@@ -37,6 +37,10 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
         "name": "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-*-server-*",
         "owners": ["099720109477"],
     },
+    "ubuntu2204": {
+        "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-*-server-*",
+        "owners": ["099720109477"],
+    },
     # We need to specify the minor because the most recently created RHEL8 AMI is currently 8.4
     "rhel8": {"name": "RHEL-8.7*_HVM*", "owners": ["309956199498", "841258680906", "219670896067"]},
 }
