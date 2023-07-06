@@ -54,7 +54,7 @@ def transform(payload):
         action['index']['_index'] = indexName
         action['index']['_id'] = logEvent['id']
 
-        bulkRequestBody += json.dumps(action) + "\n" + json.dumps(source) +"\n"
+        bulkRequestBody += json.dumps(action) + "\n" + json.dumps(source) + "\n"
 
     return bulkRequestBody
 
