@@ -120,7 +120,7 @@ def create_cluster(
 
         if dryrun:
             ignored_validation_failures = cluster.validate_create_request(
-                get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level], dry_run=dryrun
+                get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level]
             )
             validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)
             raise DryrunOperationException(validation_messages=validation_messages or None)
