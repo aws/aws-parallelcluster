@@ -1,0 +1,50 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    CustomSlurmSettings:
+      - NodeSet: nodeset
+        Nodes: "ondemand1-st-ondemand1-i1-[1-2],ondemand2-dy-ondemand2-c5large-[1-10]"
+      - PartitionName: CustomerPartition1
+        Nodes: nodeset
+      - PartitionName: CustomerPartition2
+        Nodes: nodeset
+  SlurmQueues:
+    - Name: ondemand1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand1-c5large
+          Instances:
+            - InstanceType: c5.large
+        - Name: ondemand1-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 2
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket }}
+      CustomActions:
+        OnNodeStart:
+          # pre-install script to make c5.large instance type instance has bootstrap error
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
+    - Name: ondemand2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand2-c5large
+          Instances:
+            - InstanceType: c5.large
+        - Name: ondemand2-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
