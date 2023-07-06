@@ -15,7 +15,7 @@ OLD_PWD=$(pwd)
 
 cd "${TARGET_USER_DIR}"
 
-aws s3 cp s3://kkolurbucket/pc211debug.tgz ${STARCCM_PACKAGE_ZIP}
+aws s3 cp s3://performance-tests-resources-for-parallelcluster/pc211debug.tgz ${STARCCM_PACKAGE_ZIP}
 tar -xf $(basename ${STARCCM_PACKAGE_ZIP})
 
 STARCCM_INSTALLER_ZIP="STAR-CCM+16.02.008_01_linux-x86_64-2.17_gnu9.2.zip"
