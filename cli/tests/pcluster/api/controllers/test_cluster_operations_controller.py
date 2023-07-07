@@ -474,6 +474,9 @@ class TestDeleteCluster:
     )
     def test_successful_request(self, mocker, client, cfn_stack_data, expected_response):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.login_nodes_status", new_callable=mocker.PropertyMock
+        ).return_value = None
         cluster_delete_mock = mocker.patch("pcluster.models.cluster.Cluster.delete")
         response = self._send_test_request(client)
 
@@ -813,6 +816,9 @@ class TestDescribeCluster:
         mocker.patch(
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
         ).return_value = ComputeFleetStatus.RUNNING
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.login_nodes_status", new_callable=mocker.PropertyMock
+        ).return_value = None
         if not fail_on_bucket_check:
             mocker.patch(
                 "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
@@ -1088,7 +1094,9 @@ class TestDescribeCluster:
         mocker.patch(
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
         ).return_value = ComputeFleetStatus.RUNNING
-
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.login_nodes_status", new_callable=mocker.PropertyMock
+        ).return_value = None
         expected_response = {
             "cloudFormationStackStatus": cfn_stack_status,
             "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
