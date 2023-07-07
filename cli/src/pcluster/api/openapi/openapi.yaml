@@ -2349,6 +2349,12 @@ components:
     DescribeClusterResponseContent:
       example:
         creationTime: 2000-01-23T04:56:07.000+00:00
+        loginNodes:
+          unhealthyNodes: 1
+          address: address
+          scheme: internal
+          healthyNodes: 3
+          status: active
         version: version
         clusterConfiguration:
           url: url
@@ -3142,6 +3148,39 @@ components:
       - logStreamName
       - uploadSequenceToken
       title: LogStream
+      type: object
+    LoginNodesState:
+      enum:
+      - pending
+      - active
+      - failed
+      title: LoginNodesState
+      type: string
+    LoginNodesPool:
+      example:
+        unhealthyNodes: 1
+        address: address
+        scheme: internal
+        healthyNodes: 3
+        status: active
+      properties:
+        status:
+          $ref: '#/components/schemas/LoginNodesState'
+        address:
+          title: address
+          type: string
+        scheme:
+          title: scheme
+          type: string
+        healthyNodes:
+          title: healthyNodes
+          type: number
+        unhealthyNodes:
+          title: unhealthyNodes
+          type: number
+      required:
+      - status
+      title: LoginNodesPool
       type: object
     Metadata:
       example:

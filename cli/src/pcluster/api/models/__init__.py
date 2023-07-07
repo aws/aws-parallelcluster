@@ -65,6 +65,8 @@ from pcluster.api.models.list_images_response_content import ListImagesResponseC
 from pcluster.api.models.list_official_images_response_content import ListOfficialImagesResponseContent
 from pcluster.api.models.log_event import LogEvent
 from pcluster.api.models.log_stream import LogStream
+from pcluster.api.models.login_nodes_pool import LoginNodesPool
+from pcluster.api.models.login_nodes_state import LoginNodesState
 from pcluster.api.models.metadata import Metadata
 from pcluster.api.models.node_type import NodeType
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent
