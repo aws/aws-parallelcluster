@@ -1304,6 +1304,7 @@ class LoginNodesPoolSchema(BaseSchema):
     count = fields.Int(required=True, validate=validate.Range(min=0))
     ssh = fields.Nested(LoginNodesSshSchema, required=True)
     iam = fields.Nested(LoginNodesIamSchema)
+    gracetime_period = fields.Int(validate=validate.Range(min=0, max=120))
 
     @post_load
     def make_resource(self, data, **kwargs):
