@@ -505,11 +505,17 @@ schedulers:
         oss: ["centos7"]
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_reconfigure_race_condition:
-     dimensions:
+    dimensions:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: [ "slurm" ]
+  test_slurm.py::test_slurm_custom_partitions:
+    dimensions:
+      - regions: ["ap-northeast-2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
 spot:
   test_spot.py::test_spot_default:
     dimensions:
