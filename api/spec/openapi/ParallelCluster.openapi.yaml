@@ -1904,6 +1904,8 @@ components:
           description: Tags associated with the cluster.
         headNode:
           $ref: '#/components/schemas/EC2Instance'
+        loginNodes:
+          $ref: '#/components/schemas/LoginNodesPool'
         failures:
           type: array
           items:
@@ -2307,6 +2309,27 @@ components:
         - logStreamArn
         - logStreamName
         - uploadSequenceToken
+    LoginNodesState:
+      type: string
+      enum:
+        - pending
+        - active
+        - failed
+    LoginNodesPool:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/LoginNodesState'
+        address:
+          type: string
+        scheme:
+          type: string
+        healthyNodes:
+          type: number
+        unhealthyNodes:
+          type: number
+      required:
+        - status
     Metadata:
       type: object
       properties:
