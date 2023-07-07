@@ -46,7 +46,10 @@ class RemoteCommandExecutor:
             "host": node_ip,
             "user": username,
             "forward_agent": False,
-            "connect_kwargs": {"key_filename": [alternate_ssh_key if alternate_ssh_key else cluster.ssh_key]},
+            "connect_kwargs": {
+                "key_filename": [alternate_ssh_key if alternate_ssh_key else cluster.ssh_key],
+                "look_for_keys": False,
+            },
         }
         if bastion:
             # Need to execute simple ssh command before using Connection to avoid Paramiko _check_banner error
@@ -55,6 +58,10 @@ class RemoteCommandExecutor:
             )
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
+        logging.info(
+            f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
+            f"{connection_kwargs['connect_kwargs']['key_filename']}"
+        )
         self.__connection = Connection(**connection_kwargs)
         self.__user_at_hostname = "{0}@{1}".format(username, node_ip)
 
