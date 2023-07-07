@@ -3,7 +3,7 @@ from typing import Dict
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
+from aws_cdk.core import CfnTag, Construct, NestedStack, Stack
 
 from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
 from pcluster.constants import PCLUSTER_LOGIN_NODES_POOL_NAME_TAG
