@@ -12,6 +12,7 @@ CHANGELOG
 
 **CHANGES**
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
+- Make `aws-parallelcluster-node` daemons handle only ParallelCluster-managed Slurm partitions.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
@@ -25,6 +26,7 @@ CHANGELOG
 **CHANGES**
 - Avoid duplication of nodes seen by `clustermgtd` if compute nodes are added to multiple Slurm partitions.
 - ParallelCluster AMI for US isolated regions are now vended with preconfigured CA certificates to speed up node bootstrap.
+- Replace `nvidia-persistenced` service with `parallelcluster_nvidia` service to avoid conflicts with DLAMI.
 
 **BUG FIXES**
 - Remove hardcoding of root volume device name (`/dev/sda1` and `/dev/xvda`) and retrieve it from the AMI(s) used during `create-cluster`.
