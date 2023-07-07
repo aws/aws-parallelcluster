@@ -72,53 +72,6 @@ class Pool(Construct):
             )
         ]
 
-        # User data to setup and run the daemon script
-        user_data = """#!/bin/bash
-cat << 'EOF' > /opt/parallelcluster/scripts/daemon_script.sh
-#!/bin/bash
-while true; do
-  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-  LIFECYCLE_STATE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
-  -v http://169.254.169.254/latest/meta-data/autoscaling/target-lifecycle-state)
-  if [[ $LIFECYCLE_STATE == "Terminated" ]]; then
-    bash /opt/parallelcluster/scripts/termination_script.sh
-    break
-  else
-    sleep 60
-  fi
-done
-EOF
-
-cat << 'EOF' > /opt/parallelcluster/scripts/termination_script.sh
-#!/bin/bash
-DEFAULT_USER=''
-OS=$(cat /etc/os-release | grep '^ID=' | cut -f2 -d'"')
-if [[ $OS == "amzn" ]]; then
-    DEFAULT_USER='ec2-user'
-elif [[ $OS == "centos" ]]; then
-    DEFAULT_USER='centos'
-elif [[ $OS == "ubuntu" ]]; then
-    DEFAULT_USER='ubuntu'
-elif [[ $OS == "rhel" ]]; then
-    DEFAULT_USER='ec2-user'
-fi
-# Prevent further login/SSH attempts by updating ssh config
-echo "AllowUsers $DEFAULT_USER" >> /etc/ssh/sshd_config
-
-# Reload the ssh configuration
-systemctl reload sshd
-
-# Broadcast a message to all logged in users using the wall command
-MSG="System is going down for termination in {0} minutes!"
-wall "$MSG"
-EOF
-
-chmod +x /opt/parallelcluster/scripts/*.sh
-nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log 2>&1 &
-""".format(
-            self._pool.gracetime_period
-        )
-
         return ec2.CfnLaunchTemplate(
             self,
             f"LoginNodeLaunchTemplate{self._pool.name}",
@@ -127,7 +80,6 @@ nohup /opt/parallelcluster/scripts/daemon_script.sh > /var/log/daemon_script.log
                 image_id=self._config.login_nodes_ami[self._pool.name],
                 instance_type=self._pool.instance_type,
                 key_name=self._pool.ssh.key_name,
-                user_data=Fn.base64(user_data),
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
                     http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
                 ),
