@@ -71,6 +71,7 @@ class Pool(Construct):
                 subnet_id=self._pool.networking.subnet_ids[0],
             )
         ]
+
         return ec2.CfnLaunchTemplate(
             self,
             f"LoginNodeLaunchTemplate{self._pool.name}",
@@ -117,7 +118,18 @@ class Pool(Construct):
             vpc_zone_identifier=self._pool.networking.subnet_ids,
         )
 
+        self._add_lifecycle_hook(auto_scaling_group)
+
         return auto_scaling_group
+
+    def _add_lifecycle_hook(self, auto_scaling_group):
+        return autoscaling.CfnLifecycleHook(
+            self,
+            "LoginNodesASGLifecycleHook",
+            auto_scaling_group_name=auto_scaling_group.ref,
+            lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
+            heartbeat_timeout=self._pool.gracetime_period * 60,
+        )
 
     def _add_login_nodes_pool_target_group(self):
         return elbv2.NetworkTargetGroup(
