@@ -2349,6 +2349,12 @@ components:
     DescribeClusterResponseContent:
       example:
         creationTime: 2000-01-23T04:56:07.000+00:00
+        loginNodes:
+          unhealthyNodes: 6
+          address: address
+          scheme: scheme
+          healthyNodes: 0
+          status: null
         version: version
         clusterConfiguration:
           url: url
@@ -2423,6 +2429,8 @@ components:
           type: array
         headNode:
           $ref: '#/components/schemas/EC2Instance'
+        loginNodes:
+          $ref: '#/components/schemas/LoginNodesPool'
         failureReason:
           description: "Reason of the failure when the stack is in CREATE_FAILED,\
             \ UPDATE_FAILED or DELETE_FAILED status."
@@ -3143,6 +3151,41 @@ components:
       - uploadSequenceToken
       title: LogStream
       type: object
+    LoginNodesPool:
+      example:
+        unhealthyNodes: 6
+        address: address
+        scheme: scheme
+        healthyNodes: 0
+        status: null
+      properties:
+        status:
+          $ref: '#/components/schemas/LoginNodesState'
+        address:
+          title: address
+          type: string
+        scheme:
+          title: scheme
+          type: string
+        healthyNodes:
+          format: int32
+          title: healthyNodes
+          type: integer
+        unhealthyNodes:
+          format: int32
+          title: unhealthyNodes
+          type: integer
+      required:
+      - status
+      title: LoginNodesPool
+      type: object
+    LoginNodesState:
+      enum:
+      - pending
+      - active
+      - failed
+      title: LoginNodesState
+      type: string
     Metadata:
       example:
         name: name
