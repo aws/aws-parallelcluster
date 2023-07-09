@@ -12,12 +12,13 @@ import itertools
 import os
 from copy import deepcopy
 
+import pytest
 from assertpy import assert_that
 
 from pcluster.constants import LAMBDA_VPC_ACCESS_MANAGED_POLICY
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import load_yaml_dict
+from pcluster.utils import get_chunks, load_yaml_dict
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket
 
 
@@ -121,3 +122,32 @@ def load_cfn_templates_from_config(config_file_path, pcluster_config_reader):
     return CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
+
+
+@pytest.mark.parametrize(
+    "input_lst, desired_size, expected_output",
+    [
+        ([], None, [[]]),
+        ([], 5, [[]]),
+        ([0, 1, 2, 3, 4, 5], None, [[0, 1, 2, 3, 4, 5]]),
+        (
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+            None,
+            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], [20, 21, 22]],
+        ),
+        (
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+            10,
+            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [10, 11, 12, 13, 14, 15, 16, 17, 18, 19], [20, 21, 22]],
+        ),
+    ],
+)
+def test_get_chunks(input_lst, desired_size, expected_output):
+    if desired_size:
+        chunks = get_chunks(input_lst, desired_size)
+    else:
+        chunks = get_chunks(input_lst)
+    index = 0
+    for chunk in chunks:
+        assert_that(chunk).is_equal_to(expected_output[index])
+        index += 1
