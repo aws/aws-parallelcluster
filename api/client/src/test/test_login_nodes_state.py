@@ -37,7 +37,6 @@ class TestLoginNodesState(unittest.TestCase):
                             r"must be one of ['pending', 'active', 'failed']")
         ):
             LoginNodesState("invalid_value")
-        pass
 
 
 if __name__ == '__main__':

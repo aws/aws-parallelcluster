@@ -32,51 +32,51 @@ class LoginNodesStatus:
     """Represents the status of the cluster login nodes pools."""
 
     def __init__(self, stack_name):
-        self.stack_name = stack_name
-        self.login_nodes_pool_available = False
-        self.load_balancer_arn = None
-        self.target_group_arn = None
-        self.status = None
-        self.dns_name = None
-        self.scheme = None
-        self.healthy_nodes = None
-        self.unhealthy_nodes = None
+        self._stack_name = stack_name
+        self._login_nodes_pool_available = False
+        self._load_balancer_arn = None
+        self._target_group_arn = None
+        self._status = None
+        self._dns_name = None
+        self._scheme = None
+        self._healthy_nodes = None
+        self._unhealthy_nodes = None
 
     def __str__(self):
         return (
-            f'("status": "{self.status}", "address": "{self.dns_name}", "scheme": "{self.scheme}", '
-            f'"healthyNodes": "{self.healthy_nodes}", "unhealthy_nodes": "{self.unhealthy_nodes}")'
+            f'("status": "{self._status}", "address": "{self._dns_name}", "scheme": "{self._scheme}", '
+            f'"healthyNodes": "{self._healthy_nodes}", "unhealthy_nodes": "{self._unhealthy_nodes}")'
         )
 
     def get_login_nodes_pool_available(self):
         """Return the status of a login nodes fleet."""
-        return self.login_nodes_pool_available
+        return self._login_nodes_pool_available
 
     def get_status(self):
         """Return the status of a login nodes fleet."""
-        return self.status
+        return self._status
 
     def get_address(self):
         """Return the single connection address of a login nodes fleet."""
-        return self.dns_name
+        return self._dns_name
 
     def get_scheme(self):
         """Return the schema of a login nodes fleet."""
-        return self.scheme
+        return self._scheme
 
     def get_healthy_nodes(self):
         """Return the number of healthy nodes of a login nodes fleet."""
-        return self.healthy_nodes
+        return self._healthy_nodes
 
     def get_unhealthy_nodes(self):
         """Return the number of unhealthy nodes of a login nodes fleet."""
-        return self.unhealthy_nodes
+        return self._unhealthy_nodes
 
     def retrieve_data(self):
         """Initialize the class with the information related to the login nodes pool."""
         self._retrieve_assigned_load_balancer()
-        if self.load_balancer_arn:
-            self.login_nodes_pool_available = True
+        if self._load_balancer_arn:
+            self._login_nodes_pool_available = True
             self._populate_target_groups()
             self._populate_target_group_health()
 
@@ -85,17 +85,17 @@ class LoginNodesStatus:
         tags = self._retrieve_all_tags([o.get("LoadBalancerArn") for o in load_balancers])
         for tag in tags:
             if any(
-                kv.get("Key") == "parallelcluster:cluster-name" and kv.get("Value") == self.stack_name
+                "parallelcluster:cluster-name" == kv.get("Key") and kv.get("Value") == self._stack_name
                 for kv in tag.get("Tags")
             ):
-                self.load_balancer_arn = tag.get("ResourceArn")
+                self._load_balancer_arn = tag.get("ResourceArn")
                 break
-        if self.load_balancer_arn:
+        if self._load_balancer_arn:
             for load_balancer in load_balancers:
-                if load_balancer.get("LoadBalancerArn") == self.load_balancer_arn:
+                if load_balancer.get("LoadBalancerArn") == self._load_balancer_arn:
                     self._map_status(load_balancer.get("State").get("Code"))
-                    self.dns_name = load_balancer.get("DNSName")
-                    self.scheme = load_balancer.get("Scheme")
+                    self._dns_name = load_balancer.get("DNSName")
+                    self._scheme = load_balancer.get("Scheme")
                     break
 
     def _retrieve_all_tags(self, load_balancers):
@@ -108,18 +108,18 @@ class LoginNodesStatus:
 
     def _map_status(self, load_balancer_state):
         if load_balancer_state == "provisioning":
-            self.status = LoginNodesPoolState.PENDING
+            self._status = LoginNodesPoolState.PENDING
         elif load_balancer_state == "active":
-            self.status = LoginNodesPoolState.ACTIVE
+            self._status = LoginNodesPoolState.ACTIVE
         else:
-            self.status = LoginNodesPoolState.FAILED
+            self._status = LoginNodesPoolState.FAILED
 
     def _populate_target_groups(self):
-        if self.status is LoginNodesPoolState.ACTIVE:
+        if self._status is LoginNodesPoolState.ACTIVE:
             try:
-                target_groups = AWSApi.instance().elb.describe_target_groups(self.load_balancer_arn)
+                target_groups = AWSApi.instance().elb.describe_target_groups(self._load_balancer_arn)
                 if target_groups:
-                    self.target_group_arn = target_groups[0].get("TargetGroupArn")
+                    self._target_group_arn = target_groups[0].get("TargetGroupArn")
             except Exception as e:
                 LOGGER.warning(
                     "Failed when retrieving target_groups with error %s. "
@@ -128,16 +128,16 @@ class LoginNodesStatus:
                 )
 
     def _populate_target_group_health(self):
-        if self.target_group_arn:
+        if self._target_group_arn:
             try:
-                target_group_healths = AWSApi.instance().elb.describe_target_health(self.target_group_arn)
+                target_group_healths = AWSApi.instance().elb.describe_target_health(self._target_group_arn)
                 healthy_target = [
                     target_health.get("Target").get("Id")
                     for target_health in target_group_healths
                     if target_health.get("TargetHealth").get("State") == "healthy"
                 ]
-                self.healthy_nodes = len(healthy_target)
-                self.unhealthy_nodes = len(target_group_healths) - len(healthy_target)
+                self._healthy_nodes = len(healthy_target)
+                self._unhealthy_nodes = len(target_group_healths) - len(healthy_target)
             except Exception as e:
                 LOGGER.warning(
                     "Failed when retrieving information on the target group health with error %s. "
