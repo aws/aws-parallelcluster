@@ -429,6 +429,12 @@ def remove_none_values(original_dictionary):
     return {key: value for key, value in original_dictionary.items() if value is not None}
 
 
+def get_chunks(input_lst, desired_size=20):
+    """Get a list of lists splitting the input list in chunks with a specific length."""
+    for i in range(0, len(input_lst), desired_size):
+        yield input_lst[i : i + desired_size]  # noqa: E203
+
+
 def batch_by_property_callback(items, property_callback: Callable[..., int], batch_size):
     """
     Group a list of items into batches based on a property of each item and the specified `batch_size`.
