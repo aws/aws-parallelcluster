@@ -58,6 +58,7 @@ from pcluster.models.common import (
     upload_archive,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
+from pcluster.models.login_nodes_status import LoginNodesStatus
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -279,6 +280,13 @@ class Cluster:
         """Status of the cluster compute fleet."""
         status, _ = self.compute_fleet_status_with_last_updated_time
         return status
+
+    @property
+    def login_nodes_status(self):
+        """Status of the login nodes pool."""
+        login_nodes_status = LoginNodesStatus(self.stack_name)
+        login_nodes_status.retrieve_data()
+        return login_nodes_status
 
     @property
     def compute_fleet_status_with_last_updated_time(self) -> Tuple[ComputeFleetStatus, str]:
