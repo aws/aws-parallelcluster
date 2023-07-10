@@ -6,6 +6,7 @@ LoginNodes:
   - Name: testloginnodespool1
     InstanceType: t2.micro
     Count: 2
+    GracetimePeriod: 120
     Networking:
       SubnetIds:
       - subnet-12345678
