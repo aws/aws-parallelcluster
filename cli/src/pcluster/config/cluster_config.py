@@ -1250,6 +1250,7 @@ class LoginNodesPool(Resource):
         count: int = None,
         ssh: LoginNodesSsh = None,
         iam: LoginNodesIam = None,
+        gracetime_period: int = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1260,6 +1261,7 @@ class LoginNodesPool(Resource):
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
+        self.gracetime_period = Resource.init_param(gracetime_period, default=60)
 
     @property
     def instance_profile(self):
