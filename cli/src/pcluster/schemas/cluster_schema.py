@@ -1301,10 +1301,17 @@ class LoginNodesPoolSchema(BaseSchema):
     instance_type = fields.Str(required=True)
     image = fields.Nested(LoginNodesImageSchema)
     networking = fields.Nested(LoginNodesNetworkingSchema, required=True)
-    count = fields.Int(required=True, validate=validate.Range(min=0))
+    count = fields.Int(
+        required=True,
+        validate=validate.Range(min=0, error="The count for LoginNodes Pool must be greater than or equal to 0."),
+    )
     ssh = fields.Nested(LoginNodesSshSchema, required=True)
     iam = fields.Nested(LoginNodesIamSchema)
-    gracetime_period = fields.Int(validate=validate.Range(min=1, max=120))
+    gracetime_period = fields.Int(
+        validate=validate.Range(
+            min=1, max=120, error="The gracetime period for LoginNodes Pool must be an interger from 1 to 120."
+        )
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

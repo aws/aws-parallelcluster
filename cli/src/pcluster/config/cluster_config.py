@@ -85,6 +85,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    LoginNodesSchedulerValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -122,7 +123,9 @@ from pcluster.validators.ebs_validators import (
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
+    AmiArchValidator,
     AmiOsCompatibleValidator,
+    AmiOsValidator,
     CapacityReservationResourceGroupValidator,
     CapacityReservationValidator,
     CapacityTypeValidator,
@@ -1275,6 +1278,7 @@ class LoginNodesPool(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        self._register_validator(NameValidator, name=self.name)
 
 
 class LoginNodes(Resource):
@@ -1287,6 +1291,10 @@ class LoginNodes(Resource):
     ):
         super().__init__(**kwargs)
         self.pools = pools
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(AmiOsValidator, login_nodes_pools=self.pools)
+        self._register_validator(AmiArchValidator, login_nodes_pools=self.pools)
 
 
 class HeadNode(Resource):
@@ -2843,7 +2851,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                 subnet_ids_set.add(subnet_id)
         return list(subnet_ids_set)
 
-    def _register_validators(self, context: ValidatorContext = None):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: C901
         super()._register_validators(context)
         self._register_validator(
             MixedSecurityGroupOverwriteValidator,
@@ -2858,6 +2866,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                 subnet_ids=self.login_nodes_subnet_ids
                 + self.compute_subnet_ids
                 + [self.head_node.networking.subnet_id],
+            )
+
+        if self.login_nodes:
+            self._register_validator(
+                LoginNodesSchedulerValidator,
+                scheduler=self.scheduling.scheduler,
             )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
