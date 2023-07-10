@@ -88,6 +88,7 @@ Resources:
         - !Ref ParallelClusterListImagesManagedPolicy
         - !Ref ParallelClusterDescribeImageManagedPolicy
         - !Ref ParallelClusterLogRetrievalPolicy
+        - !Ref ParallelClusterLoginNodesStack
 
   ### IAM POLICIES
 
@@ -784,6 +785,39 @@ Resources:
               - StringEquals:
                   aws:RequestedRegion:
                     - !Ref Region
+
+  ### LOGIN NODES ACTIONS
+
+  ParallelClusterLoginNodesStack:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Policies needed to create LoginNodes stack
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - autoscaling:CreateAutoScalingGroup
+              - autoscaling:DeleteAutoScalingGroup
+              - autoscaling:DescribeAutoScalingGroups
+              - autoscaling:DescribeLifecycleHooks
+              - autoscaling:DescribeScalingActivities
+              - autoscaling:PutLifecycleHook
+              - autoscaling:UpdateAutoScalingGroup
+              - elasticloadbalancing:AddTags
+              - elasticloadbalancing:CreateListener
+              - elasticloadbalancing:CreateLoadBalancer
+              - elasticloadbalancing:CreateTargetGroup
+              - elasticloadbalancing:DeleteListener
+              - elasticloadbalancing:DeleteLoadBalancer
+              - elasticloadbalancing:DeleteTargetGroup
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:ModifyLoadBalancerAttributes
+            Resource: '*'
+            Effect: Allow
+
 
   ### INTEG-TESTS POLICIES
 
