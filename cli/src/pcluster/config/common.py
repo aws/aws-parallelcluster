@@ -366,7 +366,7 @@ class Imds(Resource):
 
     def __init__(self, imds_support: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.imds_support = Resource.init_param(imds_support, default="v1.0")
+        self.imds_support = Resource.init_param(imds_support, default="v2.0")
 
 
 class DeploymentSettings(Resource):

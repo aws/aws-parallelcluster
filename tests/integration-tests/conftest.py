@@ -596,9 +596,6 @@ def inject_additional_image_configs_settings(image_config, request):
     with open(image_config, encoding="utf-8") as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
-    if not dict_has_nested_key(config_content, ("Build", "Imds", "ImdsSupport")):
-        dict_add_nested_key(config_content, "v2.0", ("Build", "Imds", "ImdsSupport"))
-
     if request.config.getoption("createami_custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")
     ):
@@ -633,9 +630,6 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
             dict_add_nested_key(config_content, f"{instance_ip}/32", ("HeadNode", "Ssh", "AllowedIps"))
         else:
             logging.info("Skipping AllowedIps rule because unable to find local and public IP for the instance.")
-
-    if not dict_has_nested_key(config_content, ("Imds", "ImdsSupport")):
-        dict_add_nested_key(config_content, "v2.0", ("Imds", "ImdsSupport"))
 
     if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")

@@ -86,23 +86,23 @@ def test_create_wrong_pcluster_version(
 
 @pytest.mark.usefixtures("instance", "scheduler")
 @pytest.mark.parametrize(
-    "imds_secured, users_allow_list, imds_support",
+    "imds_secured, users_allow_list",
     [
-        (True, {"root": True, "pcluster-admin": True, "slurm": False}, "v2.0"),
-        (False, {"root": True, "pcluster-admin": True, "slurm": True}, "v1.0"),
+        (True, {"root": True, "pcluster-admin": True, "slurm": False}),
+        (False, {"root": True, "pcluster-admin": True, "slurm": True}),
     ],
 )
 def test_create_imds_secured(
-    imds_secured, users_allow_list, imds_support, region, os, pcluster_config_reader, clusters_factory, architecture
+    imds_secured, users_allow_list, region, os, pcluster_config_reader, clusters_factory, architecture
 ):
     """
     Test IMDS access with different configurations.
     In particular, it also verifies that IMDS access is preserved on instance reboot.
     Also checks that the cluster instances respect the desired ImdsSupport setting.
     """
-    cluster_config = pcluster_config_reader(imds_secured=imds_secured, imds_support=imds_support)
+    cluster_config = pcluster_config_reader(imds_secured=imds_secured)
     cluster = clusters_factory(cluster_config, raise_on_error=True)
-    status = "required" if imds_support == "v2.0" else "optional"
+    status = "required"
 
     logging.info("Checking cluster access after cluster creation")
     assert_head_node_is_running(region, cluster)

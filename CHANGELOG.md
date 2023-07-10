@@ -21,6 +21,7 @@ CHANGELOG
   - Libfabric-aws: `libfabric-aws-1.18.0-1`
   - Rdma-core: `rdma-core-46.0-1`
   - Open MPI: `openmpi40-aws-4.1.5-1`
+- Change the default value of `Imds/ImdsSupport` from `v1.0` to `v2.0`.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
