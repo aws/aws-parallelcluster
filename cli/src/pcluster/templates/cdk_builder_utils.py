@@ -854,29 +854,10 @@ class LoginNodesIamResources(NodeIamResourcesBase):
     def _build_policy(self) -> List[iam.PolicyStatement]:
         return [
             iam.PolicyStatement(
-                actions=[
-                    "cloudwatch:PutMetricData",
-                    "ec2:DescribeVolumes",
-                    "ec2:DescribeTags",
-                    "logs:PutLogEvents",
-                    "logs:DescribeLogStreams",
-                    "logs:DescribeLogGroups",
-                    "logs:CreateLogStream",
-                    "logs:CreateLogGroup",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=["*"],
-            ),
-            iam.PolicyStatement(
-                actions=["ssm:GetParameter"],
-                effect=iam.Effect.ALLOW,
-                resources=["arn:aws:ssm:*:*:parameter/AmazonCloudWatch-*"],
-            ),
-            iam.PolicyStatement(
                 sid="Ec2",
                 actions=["ec2:DescribeInstanceAttribute"],
                 effect=iam.Effect.ALLOW,
-                resources=[""],
+                resources=["*"],
             ),
             iam.PolicyStatement(
                 sid="S3GetObj",
