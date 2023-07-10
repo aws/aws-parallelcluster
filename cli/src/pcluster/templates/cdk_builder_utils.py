@@ -863,7 +863,14 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                 sid="S3GetObj",
                 actions=["s3:GetObject"],
                 effect=iam.Effect.ALLOW,
-                resources=["arn:aws:s3:::{0}-aws-parallelcluster/".format(Stack.of(self).region)],
+                resources=[
+                    self._format_arn(
+                        service="s3",
+                        resource="{0}-aws-parallelcluster/*".format(Stack.of(self).region),
+                        region="",
+                        account="",
+                    )
+                ],
             ),
         ]
 
