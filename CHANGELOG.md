@@ -13,6 +13,7 @@ CHANGELOG
 **CHANGES**
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
 - Make `aws-parallelcluster-node` daemons handle only ParallelCluster-managed Slurm partitions.
+- Increase EFS-utils watchdog poll interval to 10 seconds. Note: This change is meaningful only if [EncryptionInTransit](https://docs.aws.amazon.com/parallelcluster/latest/ug/SharedStorage-v3.html#yaml-SharedStorage-EfsSettings-EncryptionInTransit) is set to `true`, because the watchdog does not run otherwise.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
