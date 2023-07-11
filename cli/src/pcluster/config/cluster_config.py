@@ -123,9 +123,7 @@ from pcluster.validators.ebs_validators import (
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
-    AmiArchValidator,
     AmiOsCompatibleValidator,
-    AmiOsValidator,
     CapacityReservationResourceGroupValidator,
     CapacityReservationValidator,
     CapacityTypeValidator,
@@ -1291,10 +1289,6 @@ class LoginNodes(Resource):
     ):
         super().__init__(**kwargs)
         self.pools = pools
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(AmiOsValidator, login_nodes_pools=self.pools)
-        self._register_validator(AmiArchValidator, login_nodes_pools=self.pools)
 
 
 class HeadNode(Resource):
@@ -2873,6 +2867,16 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                 LoginNodesSchedulerValidator,
                 scheduler=self.scheduling.scheduler,
             )
+
+        # check the LoginNodes/Pools[N]/Image/CustomAMI must be an ami of the same os family.
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.image and pool.image.custom_ami:
+                    self._register_validator(
+                        AmiOsCompatibleValidator,
+                        os=self.image.os,
+                        image_id=pool.image.custom_ami,
+                    )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(

@@ -255,46 +255,6 @@ class AmiOsCompatibleValidator(Validator):
             )
 
 
-class AmiOsValidator(Validator):
-    """Validator for Custom AMI OS family."""
-
-    def _validate(self, login_nodes_pools: list):
-        expected_os = None
-        for pool in login_nodes_pools:
-            if pool.image.custom_ami:
-                ami_info = AWSApi.instance().ec2.describe_images(ImageIds=[pool.image.custom_ami])["Images"][0]
-                ami_os = ami_info["PlatformDetails"].split("/")[0]
-                if not expected_os:
-                    expected_os = ami_os
-                if ami_os != expected_os:
-                    self._add_failure(
-                        f"The CustomAMI {pool.image.custom_ami} for pool {pool.name} "
-                        f"is not an AMI from the same OS family. "
-                        f"Please make sure all CustomAMIs are from the same OS family.",
-                        FailureLevel.ERROR,
-                    )
-
-
-class AmiArchValidator(Validator):
-    """Validator for Custom AMI architecture family."""
-
-    def _validate(self, login_nodes_pools: list):
-        expected_arch = None
-        for pool in login_nodes_pools:
-            if pool.image.custom_ami:
-                ami_info = AWSApi.instance().ec2.describe_images(ImageIds=[pool.image.custom_ami])["Images"][0]
-                ami_arch = ami_info["Architecture"]
-                if not expected_arch:
-                    expected_arch = ami_arch
-                if ami_arch != expected_arch:
-                    self._add_failure(
-                        f"The CustomAMI {pool.image.custom_ami} for pool {pool.name} "
-                        f"is not an AMI from the same architecture family. "
-                        f"Please make sure all CustomAMIs are from the same architecture family.",
-                        FailureLevel.ERROR,
-                    )
-
-
 class CapacityReservationValidator(Validator):
     """Validate capacity reservation can be used with the instance type and subnet."""
 
