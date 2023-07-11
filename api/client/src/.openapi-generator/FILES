@@ -58,6 +58,8 @@ docs/ListImagesResponseContent.md
 docs/ListOfficialImagesResponseContent.md
 docs/LogEvent.md
 docs/LogStream.md
+docs/LoginNodesPool.md
+docs/LoginNodesState.md
 docs/Metadata.md
 docs/NodeType.md
 docs/NotFoundExceptionResponseContent.md
@@ -137,6 +139,8 @@ pcluster_client/model/list_images_response_content.py
 pcluster_client/model/list_official_images_response_content.py
 pcluster_client/model/log_event.py
 pcluster_client/model/log_stream.py
+pcluster_client/model/login_nodes_pool.py
+pcluster_client/model/login_nodes_state.py
 pcluster_client/model/metadata.py
 pcluster_client/model/node_type.py
 pcluster_client/model/not_found_exception_response_content.py
@@ -160,4 +164,6 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
+test/test_login_nodes_pool.py
+test/test_login_nodes_state.py
 tox.ini
