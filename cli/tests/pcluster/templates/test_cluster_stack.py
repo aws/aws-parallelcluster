@@ -14,6 +14,7 @@ import os
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any, Dict, List
 
 import pytest
 import yaml
@@ -511,6 +512,29 @@ class LifecycleHookAssertion:
         assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
 
 
+class IamRoleAssertion:
+    def __init__(self, expected_managed_policy_arn: str):
+        self.expected_managed_policy_arn = expected_managed_policy_arn
+
+    def assert_iam_role_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::IAM::Role"
+        properties = resource["Properties"]
+        assert properties["ManagedPolicyArns"][0] == self.expected_managed_policy_arn
+
+
+class IamPolicyAssertion:
+    def __init__(self, expected_statements: List[Dict[str, Any]]):
+        self.expected_statements = expected_statements
+
+    def assert_iam_policy_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::IAM::Policy"
+        properties = resource["Properties"]
+        policy_doc = properties["PolicyDocument"]
+        assert policy_doc["Statement"] == self.expected_statements
+
+
 @pytest.mark.parametrize(
     "config_file_name, lt_assertions",
     [
@@ -524,6 +548,34 @@ class LifecycleHookAssertion:
                 LifecycleHookAssertion(
                     expected_lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
                     expected_heartbeat_timeout=7200,
+                ),
+                IamRoleAssertion(expected_managed_policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"),
+                IamPolicyAssertion(
+                    expected_statements=[
+                        {
+                            "Action": "ec2:DescribeInstanceAttribute",
+                            "Effect": "Allow",
+                            "Resource": "*",
+                            "Sid": "Ec2",
+                        },
+                        {
+                            "Action": "s3:GetObject",
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":s3:::",
+                                        {"Ref": "AWS::Region"},
+                                        "-aws-parallelcluster/*",
+                                    ],
+                                ]
+                            },
+                            "Sid": "S3GetObj",
+                        },
+                    ]
                 ),
             ],
         ),
@@ -558,7 +610,15 @@ def test_login_nodes_traffic_management_resources_values_properties(
         cdk_assets,
         "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467",
     )
-
+    asset_content_iam_role = get_asset_content_with_resource_name(
+        cdk_assets,
+        "RoleA50bdea9651dc48c",
+    )
+    asset_content_iam_policy = get_asset_content_with_resource_name(
+        cdk_assets,
+        "ParallelClusterPoliciesA50bdea9651dc48c",
+    )
+    print(cdk_assets)
     for lt_assertion in lt_assertions:
         if isinstance(lt_assertion, AutoScalingGroupAssertion):
             lt_assertion.assert_asg_properties(
@@ -580,6 +640,12 @@ def test_login_nodes_traffic_management_resources_values_properties(
         elif isinstance(lt_assertion, LifecycleHookAssertion):
             lt_assertion.assert_lifecycle_hook_properties(
                 asset_content_lifecycle_hook, "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467"
+            )
+        elif isinstance(lt_assertion, IamRoleAssertion):
+            lt_assertion.assert_iam_role_properties(asset_content_iam_role, "RoleA50bdea9651dc48c")
+        elif isinstance(lt_assertion, IamPolicyAssertion):
+            lt_assertion.assert_iam_policy_properties(
+                asset_content_iam_policy, "ParallelClusterPoliciesA50bdea9651dc48c"
             )
 
 

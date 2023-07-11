@@ -837,6 +837,44 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         return list(pass_role_resources)
 
 
+class LoginNodesIamResources(NodeIamResourcesBase):
+    """Construct defining IAM resources for a login node."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
+        shared_storage_infos: dict,
+        name: str,
+    ):
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
+
+    def _build_policy(self) -> List[iam.PolicyStatement]:
+        return [
+            iam.PolicyStatement(
+                sid="Ec2",
+                actions=["ec2:DescribeInstanceAttribute"],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="S3GetObj",
+                actions=["s3:GetObject"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="s3",
+                        resource="{0}-aws-parallelcluster/*".format(Stack.of(self).region),
+                        region="",
+                        account="",
+                    )
+                ],
+            ),
+        ]
+
+
 class ComputeNodeIamResources(NodeIamResourcesBase):
     """Construct defining IAM resources for a compute node."""
 
