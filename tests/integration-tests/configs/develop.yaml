@@ -100,7 +100,7 @@ test-suites:
       dimensions:
         - regions: ["usw2-az4"]  # do not move, unless instance type support is moved as well
           schedulers: ["slurm"]
-          oss: ["ubuntu2204"]
+          oss: ["ubuntu2004"]
   custom_resource:
     test_cluster_custom_resource.py::test_cluster_create:
       dimensions:
