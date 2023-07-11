@@ -776,6 +776,17 @@ class TestCluster:
         asset_parameters = Cluster._generate_asset_parameters(assets_metadata)
         assert_that(asset_parameters).is_equal_to(expected_parameters)
 
+    @pytest.mark.parametrize("login_nodes_available", [True, False])
+    def test_login_nodes_status(self, mocker, cluster, login_nodes_available):
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
+        mocker.patch(
+            "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
+            return_value=login_nodes_available,
+        )
+        lns = cluster.login_nodes_status
+        assert_that(lns.get_login_nodes_pool_available()).is_equal_to(login_nodes_available)
+
 
 OLD_CONFIGURATION = """
 Image:
