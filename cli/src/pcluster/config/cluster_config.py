@@ -2868,7 +2868,7 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                 scheduler=self.scheduling.scheduler,
             )
 
-        # check the LoginNodes/Pools[N]/Image/CustomAMI must be an ami of the same os family.
+        # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
         if self.login_nodes:
             for pool in self.login_nodes.pools:
                 if pool.image and pool.image.custom_ami:
@@ -2876,6 +2876,11 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                         AmiOsCompatibleValidator,
                         os=self.image.os,
                         image_id=pool.image.custom_ami,
+                    )
+                    self._register_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=pool.instance_type,
+                        image=self.login_nodes_ami[pool.name],
                     )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
