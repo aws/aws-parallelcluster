@@ -75,7 +75,7 @@ def get_user_data_content(user_data_path: str):
     return user_data_content
 
 
-def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClusterConfig) -> dict:
+def get_common_user_data_env(node: Union[HeadNode, SlurmQueue, LoginNodesPool], config: BaseClusterConfig) -> dict:
     """Return a dict containing the common env variables to be replaced in user data."""
     return {
         "YumProxy": node.networking.proxy.http_proxy_address if node.networking.proxy else "_none_",
