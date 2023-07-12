@@ -2,6 +2,7 @@ import base64
 import datetime
 import json
 import math
+import re
 import zlib
 
 import botocore.session
@@ -12,7 +13,7 @@ from botocore.awsrequest import AWSRequest
 session = botocore.session.Session()
 # Now using hard coded signature and endpoint
 sigv4 = SigV4Auth(session.get_credentials(), "es", "us-east-1")
-endpoint = "https://search-myfirstdomain-rzzmn4tktxvewmsi6hmc7tumli.us-east-1.es.amazonaws.com/_bulk"
+endpoint = "https://search-myfirstdomain-rzzmn4tktxvewmsi6hmc7tumli.us-east-1.es.amazonaws.com"
 
 
 def lambda_handler(event, context):
@@ -43,6 +44,23 @@ def transform(payload):
         index_name = "cwl-" + ".".join(index_name)
 
         source = build_source(log_event["message"], log_event.get("extractedFields", None))
+        if source["event-type"] == "scontrol-show-job-information":
+            query = {
+                "size": 1,
+                "query": {"match": {"event-type.keyword": "node-instance-mapping-event"}},
+                "sort": [{"datetime": {"order": "desc"}}],
+            }
+            response = json.loads(get(query).text)
+            node_name = source["detail"]["node_list"]
+            node_name_list = get_node_list(node_name)
+            node_map = response["hits"]["hits"][0]["_source"]["detail"]["node_list"]
+            nodes = []
+            node_dict = get_node_dict(node_map)
+            for node in node_name_list:
+                nodes.append(node_dict[node])
+            source["detail"]["nodes"] = nodes
+            del source["detail"]["node_list"]
+
         source["@id"] = log_event["id"]
         source["@timestamp"] = timestamp
         source["@message"] = log_event["message"]
@@ -57,6 +75,61 @@ def transform(payload):
         bulk_request_body += json.dumps(action) + "\n" + json.dumps(source) + "\n"
 
     return bulk_request_body
+
+
+def get_node_list(node_names):
+    """
+    Convert node_names to a list of nodes.
+
+    Example input node_names: "queue1-st-c5xlarge-[1,3,4-5],queue1-st-c5large-20"
+    Example output [queue1-st-c5xlarge-1, queue1-st-c5xlarge-3, queue1-st-c5xlarge-4, queue1-st-c5xlarge-5,
+    queue1-st-c5large-20]
+    """
+    matches = []
+    if type(node_names) is str:
+        matches = re.findall(r"((([a-z0-9\-]+)-(st|dy)-([a-z0-9\-]+)-)(\[[\d+,-]+\]|\d+))(,|$)", node_names)
+        # [('queue1-st-c5xlarge-[1,3,4-5]', 'queue1-st-c5xlarge-', 'queue1', 'st', 'c5xlarge', '[1,3,4-5]'),
+        # ('queue1-st-c5large-20', 'queue1-st-c5large-', 'queue1', 'st', 'c5large', '20')]
+    node_list = []
+    if not matches:
+        print("Invalid Node Name Error")
+    for match in matches:
+        node_name, prefix, _, _, _, nodes, _ = match
+        if "[" not in nodes:
+            # Single node name
+            node_list.append(node_name)
+        else:
+            # Multiple node names
+            try:
+                node_range = convert_range_to_list(nodes.strip("[]"))
+            except ValueError:
+                print("Invalid Node Name Error")
+            node_list += [prefix + str(n) for n in node_range]
+    return node_list
+
+
+def convert_range_to_list(node_range):
+    """
+    Convert a number range to a list.
+
+    Example input: Input can be like one of the format: "1-3", "1-2,6", "2, 8"
+    Example output: [1, 2, 3]
+    """
+    return sum(
+        (
+            (list(range(*[int(j) + k for k, j in enumerate(i.split("-"))])) if "-" in i else [int(i)])
+            for i in node_range.split(",")
+        ),
+        [],
+    )
+
+
+def get_node_dict(node_map):
+    node_name_dict = {}
+    for node in node_map:
+        name = node["node_name"]
+        node_name_dict[name] = node
+    return node_name_dict
 
 
 def build_source(message, extracted_fields):
@@ -76,10 +149,10 @@ def build_source(message, extracted_fields):
 
             source[key] = value
         return source
-
-    json_substring = extract_json(message)
-    if json_substring:
-        return json.loads(json_substring)
+    if is_valid_json(message):
+        json_substring = extract_json(message)
+        if json_substring:
+            return json.loads(json_substring)
     return {}
 
 
@@ -103,11 +176,22 @@ def is_valid_json(message):
 
 def post(body):
     headers = {"Content-Type": "application/json"}
-    request = AWSRequest(method="POST", url=endpoint, data=body, headers=headers)
-    request.context[
-        "payload_signing_enabled"
-    ] = True  # This is mandatory since VpcLattice does not support payload signing.
+    endpoint_for_post = endpoint + "/_bulk"
+    request = AWSRequest(method="POST", url=endpoint_for_post, data=body, headers=headers)
+    request.context["payload_signing_enabled"] = True
     sigv4.add_auth(request)
     prepped = request.prepare()
-    response = requests.post(prepped.url, data=body, headers=prepped.headers, timeout=20)
+    response = requests.post(prepped.url, data=body, headers=prepped.headers, timeout=200)
+    return response
+
+
+def get(query):
+    data = json.dumps(query)
+    headers = {"Content-Type": "application/json"}
+    endpoint_for_get = endpoint + "/cwl-2023.07.*/_search"
+    request = AWSRequest(method="GET", url=endpoint_for_get, data=data, headers=headers)
+    request.context["payload_signing_enabled"] = True
+    sigv4.add_auth(request)
+    prepped = request.prepare()
+    response = requests.get(prepped.url, data=data, headers=prepped.headers, timeout=200)
     return response
