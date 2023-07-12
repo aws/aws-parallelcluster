@@ -661,7 +661,7 @@ storage:
   test_ephemeral.py::test_head_node_stop:
     dimensions:
       - regions: ["use1-az4"]
-        instances: ["m5d.xlarge", "h1.2xlarge"]
+        instances: ["m5d.xlarge"]  # SSD based instance
         oss: ["alinux2"]
         schedulers: ["slurm"]
 tags:
