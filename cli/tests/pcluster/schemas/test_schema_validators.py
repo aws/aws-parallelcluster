@@ -839,11 +839,7 @@ def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_m
         (["subnet-12345678"], None),
         (["subnet-12345678", "subnet-23456789"], "Only one subnet can be associated with a login node pool"),
         (
-            [
-                "subnet-12345678",
-                "subnet-12345678901234567",
-                "subnet-23456789"
-            ],
+            ["subnet-12345678", "subnet-12345678901234567", "subnet-23456789"],
             "Only one subnet can be associated with a login node pool",
         ),
     ],
