@@ -836,8 +836,10 @@ class TestDescribeCluster:
                 "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
             ).side_effect = ClusterActionError("failed")
             mocker.patch(
-                "pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock
-            ).side_effect = ClusterActionError("failed")
+                "pcluster.models.cluster.Cluster.config",
+                new_callable=mocker.PropertyMock,
+                side_effect=[DummyLoginNodesConfig(False), ClusterActionError("failed")],
+            )
 
         response = self._send_test_request(client)
 
@@ -1132,8 +1134,11 @@ class TestDescribeCluster:
             "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
         ).side_effect = ClusterActionError("failed")
         mocker.patch(
-            "pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock
-        ).side_effect = ClusterActionError("failed")
+            "pcluster.models.cluster.Cluster.config",
+            new_callable=mocker.PropertyMock,
+            side_effect=[DummyLoginNodesConfig(False), ClusterActionError("failed")],
+        )
+
         response = self._send_test_request(client)
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
@@ -2435,3 +2440,8 @@ def test_analyze_changes(changes, expected_current_value, expected_requested_val
     change_set, errors = _analyze_changes(changes)
     assert_that(change_set[0].current_value).is_equal_to(expected_current_value)
     assert_that(change_set[0].requested_value).is_equal_to(expected_requested_value)
+
+
+class DummyLoginNodesConfig:
+    def __init__(self, is_available):
+        self.login_nodes = True if is_available else None
