@@ -1283,7 +1283,7 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
     subnet_ids = fields.List(
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
-        validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool"),
+        validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool."),
     )
 
     proxy = fields.Nested(LoginNodeProxySchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
