@@ -60,7 +60,8 @@ write_files:
           "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
           "cw_logging_enabled": "false",
           "directory_service": {
-            "enabled": "${DirectoryServiceEnabled}"
+            "enabled": "${DirectoryServiceEnabled}",
+            "generate_ssh_keys_for_users": "${DirectoryServiceGenerateSshKeys}"
           },
           "ebs_shared_dirs": "${EbsSharedDirs}",
           "efs_fs_ids": "${EFSIds}",
