@@ -779,6 +779,7 @@ class TestCluster:
     @pytest.mark.parametrize("login_nodes_available", [True, False])
     def test_login_nodes_status(self, mocker, cluster, login_nodes_available):
         mock_aws_api(mocker)
+        cluster.config = dummy_slurm_cluster_config(mocker)
         mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
         mocker.patch(
             "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
