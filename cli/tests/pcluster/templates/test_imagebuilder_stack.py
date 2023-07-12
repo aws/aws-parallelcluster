@@ -3503,7 +3503,7 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
                     }
                 ],
             },
-            "optional",
+            "required",
         ),
     ],
 )

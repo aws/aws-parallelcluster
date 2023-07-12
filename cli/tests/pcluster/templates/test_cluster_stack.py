@@ -867,8 +867,8 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     [
         ("slurm.required.yaml", "v1.0", "optional"),
         ("awsbatch.simple.yaml", "v1.0", "optional"),
-        ("slurm.required.yaml", None, "optional"),
-        ("awsbatch.simple.yaml", None, "optional"),
+        ("slurm.required.yaml", None, "required"),
+        ("awsbatch.simple.yaml", None, "required"),
         ("slurm.required.yaml", "v2.0", "required"),
         ("awsbatch.simple.yaml", "v2.0", "required"),
     ],

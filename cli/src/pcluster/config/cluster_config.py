@@ -1453,7 +1453,7 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
         self.original_config_version = ""
         self._official_ami = None
-        self.imds = imds or TopLevelImds(implied="v1.0")
+        self.imds = imds or TopLevelImds(implied="v2.0")
         self.deployment_settings = deployment_settings
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
