@@ -431,6 +431,7 @@ class ClusterCdkStack:
                 scope=self.stack,
                 id="LoginNodes",
                 cluster_config=self.config,
+                log_group=self.log_group,
                 shared_storage_infos=self.shared_storage_infos,
                 shared_storage_mount_dirs=self.shared_storage_mount_dirs,
                 shared_storage_attributes=self.shared_storage_attributes,
