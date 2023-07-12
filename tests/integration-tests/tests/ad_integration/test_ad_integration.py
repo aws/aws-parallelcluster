@@ -533,7 +533,7 @@ def _check_ssh_key_generation(user, remote_command_executor, scheduler_commands,
         generate_ssh_keys_for_user,
     )
 
-    ssh_key_path = f"{user.home_dir}/.ssh/id_rsa"
+    ssh_key_path = f"{user.home_dir}/.ssh/id_ed25519"
 
     # Switch User - Interactive
     switch_user_commands = [
@@ -594,7 +594,7 @@ def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, schedu
     """
     logging.info("Checking SSH key for user %s (expected to exist: %s)", user.alias, ssh_generation_enabled)
 
-    ssh_key_path = f"{user.home_dir}/.ssh/id_rsa"
+    ssh_key_path = f"{user.home_dir}/.ssh/id_ed25519"
 
     # Check existence
     check_existence = f"sudo ls {ssh_key_path}"

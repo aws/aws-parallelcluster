@@ -207,8 +207,7 @@ def test_cluster_creation_with_invalid_ebs(
     expected_cfn_failure_reason = (
         "Failed to mount EBS volume. Please check /var/log/chef-client.log in the head "
         "node, or check the chef-client.log in CloudWatch logs. Please refer to "
-        "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#"
-        "troubleshooting-v3-get-logs for more details on ParallelCluster logs."
+        "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html for more details."
     )
 
     assert_that(cfn_failure_reason).contains(expected_cfn_failure_reason)

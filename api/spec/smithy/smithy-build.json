@@ -6,7 +6,8 @@
       "apiGatewayType": "REST",
       "protocol": "aws.protocols#restJson1",
       "tags": true,
-      "defaultTimestampFormat": "date-time"
+      "defaultTimestampFormat": "date-time",
+      "useIntegerType": true
     }
   }
 }

@@ -28,6 +28,7 @@ from pcluster.models.cluster import (
     LimitExceededClusterActionError,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
+from pcluster.models.login_nodes_status import LoginNodesPoolState
 from pcluster.utils import get_installed_version, to_iso_timestr
 from pcluster.validators.common import FailureLevel, ValidationResult
 
@@ -474,6 +475,11 @@ class TestDeleteCluster:
     )
     def test_successful_request(self, mocker, client, cfn_stack_data, expected_response):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
+        mocker.patch(
+            "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
+            return_value=False,
+        )
         cluster_delete_mock = mocker.patch("pcluster.models.cluster.Cluster.delete")
         response = self._send_test_request(client)
 
@@ -813,6 +819,11 @@ class TestDescribeCluster:
         mocker.patch(
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
         ).return_value = ComputeFleetStatus.RUNNING
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
+        mocker.patch(
+            "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
+            return_value=False,
+        )
         if not fail_on_bucket_check:
             mocker.patch(
                 "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
@@ -1089,6 +1100,11 @@ class TestDescribeCluster:
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
         ).return_value = ComputeFleetStatus.RUNNING
 
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
+        mocker.patch(
+            "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
+            return_value=False,
+        )
         expected_response = {
             "cloudFormationStackStatus": cfn_stack_status,
             "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1143,6 +1159,349 @@ class TestDescribeCluster:
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(http_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "login_nodes_pool_available, status, scheme, address, healthy_nodes, unhealthy_nodes, expected_response",
+        [
+            (
+                False,
+                None,
+                None,
+                None,
+                0,
+                0,
+                {
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
+                    "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                    "clusterConfiguration": {"url": "presigned-url"},
+                    "clusterName": "clustername",
+                    "clusterStatus": "CREATE_COMPLETE",
+                    "computeFleetStatus": "RUNNING",
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "region": "us-east-1",
+                    "tags": [
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
+                        {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                        {
+                            "key": "parallelcluster:cluster_dir",
+                            "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                        },
+                    ],
+                    "version": get_installed_version(),
+                    "headNode": {
+                        "instanceId": "i-020c2ec1b6d550000",
+                        "instanceType": "t2.micro",
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
+                        "privateIpAddress": "192.168.61.109",
+                        "publicIpAddress": "34.251.236.164",
+                        "state": "running",
+                    },
+                    "scheduler": {"type": "slurm"},
+                },
+            ),
+            (
+                True,
+                LoginNodesPoolState.PENDING,
+                None,
+                None,
+                0,
+                0,
+                {
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
+                    "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                    "clusterConfiguration": {"url": "presigned-url"},
+                    "clusterName": "clustername",
+                    "clusterStatus": "CREATE_COMPLETE",
+                    "computeFleetStatus": "RUNNING",
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "loginNodes": {"status": "pending"},
+                    "region": "us-east-1",
+                    "tags": [
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
+                        {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                        {
+                            "key": "parallelcluster:cluster_dir",
+                            "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                        },
+                    ],
+                    "version": get_installed_version(),
+                    "headNode": {
+                        "instanceId": "i-020c2ec1b6d550000",
+                        "instanceType": "t2.micro",
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
+                        "privateIpAddress": "192.168.61.109",
+                        "publicIpAddress": "34.251.236.164",
+                        "state": "running",
+                    },
+                    "scheduler": {"type": "slurm"},
+                },
+            ),
+            (
+                True,
+                LoginNodesPoolState.ACTIVE,
+                "external",
+                "load.balancer.com",
+                5,
+                2,
+                {
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
+                    "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                    "clusterConfiguration": {"url": "presigned-url"},
+                    "clusterName": "clustername",
+                    "clusterStatus": "CREATE_COMPLETE",
+                    "computeFleetStatus": "RUNNING",
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "loginNodes": {
+                        "address": "load.balancer.com",
+                        "healthyNodes": 5,
+                        "scheme": "external",
+                        "status": "active",
+                        "unhealthyNodes": 2,
+                    },
+                    "region": "us-east-1",
+                    "tags": [
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
+                        {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                        {
+                            "key": "parallelcluster:cluster_dir",
+                            "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                        },
+                    ],
+                    "version": get_installed_version(),
+                    "headNode": {
+                        "instanceId": "i-020c2ec1b6d550000",
+                        "instanceType": "t2.micro",
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
+                        "privateIpAddress": "192.168.61.109",
+                        "publicIpAddress": "34.251.236.164",
+                        "state": "running",
+                    },
+                    "scheduler": {"type": "slurm"},
+                },
+            ),
+            (
+                True,
+                LoginNodesPoolState.ACTIVE,
+                "external",
+                "load.balancer.com",
+                0,
+                2,
+                {
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
+                    "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                    "clusterConfiguration": {"url": "presigned-url"},
+                    "clusterName": "clustername",
+                    "clusterStatus": "CREATE_COMPLETE",
+                    "computeFleetStatus": "RUNNING",
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "loginNodes": {
+                        "address": "load.balancer.com",
+                        "scheme": "external",
+                        "status": "active",
+                        "unhealthyNodes": 2,
+                    },
+                    "region": "us-east-1",
+                    "tags": [
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
+                        {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                        {
+                            "key": "parallelcluster:cluster_dir",
+                            "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                        },
+                    ],
+                    "version": get_installed_version(),
+                    "headNode": {
+                        "instanceId": "i-020c2ec1b6d550000",
+                        "instanceType": "t2.micro",
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
+                        "privateIpAddress": "192.168.61.109",
+                        "publicIpAddress": "34.251.236.164",
+                        "state": "running",
+                    },
+                    "scheduler": {"type": "slurm"},
+                },
+            ),
+            (
+                True,
+                LoginNodesPoolState.ACTIVE,
+                "external",
+                "load.balancer.com",
+                5,
+                0,
+                {
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
+                    "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                    "clusterConfiguration": {"url": "presigned-url"},
+                    "clusterName": "clustername",
+                    "clusterStatus": "CREATE_COMPLETE",
+                    "computeFleetStatus": "RUNNING",
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "loginNodes": {
+                        "address": "load.balancer.com",
+                        "healthyNodes": 5,
+                        "scheme": "external",
+                        "status": "active",
+                    },
+                    "region": "us-east-1",
+                    "tags": [
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
+                        {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                        {
+                            "key": "parallelcluster:cluster_dir",
+                            "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                        },
+                    ],
+                    "version": get_installed_version(),
+                    "headNode": {
+                        "instanceId": "i-020c2ec1b6d550000",
+                        "instanceType": "t2.micro",
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
+                        "privateIpAddress": "192.168.61.109",
+                        "publicIpAddress": "34.251.236.164",
+                        "state": "running",
+                    },
+                    "scheduler": {"type": "slurm"},
+                },
+            ),
+            (
+                True,
+                LoginNodesPoolState.FAILED,
+                "internal",
+                "load.balancer.com",
+                0,
+                0,
+                {
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
+                    "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                    "clusterConfiguration": {"url": "presigned-url"},
+                    "clusterName": "clustername",
+                    "clusterStatus": "CREATE_COMPLETE",
+                    "computeFleetStatus": "RUNNING",
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "loginNodes": {
+                        "address": "load.balancer.com",
+                        "scheme": "internal",
+                        "status": "failed",
+                    },
+                    "region": "us-east-1",
+                    "tags": [
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
+                        {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                        {
+                            "key": "parallelcluster:cluster_dir",
+                            "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                        },
+                    ],
+                    "version": get_installed_version(),
+                    "headNode": {
+                        "instanceId": "i-020c2ec1b6d550000",
+                        "instanceType": "t2.micro",
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
+                        "privateIpAddress": "192.168.61.109",
+                        "publicIpAddress": "34.251.236.164",
+                        "state": "running",
+                    },
+                    "scheduler": {"type": "slurm"},
+                },
+            ),
+        ],
+        ids=["no_login_nodes_pool", "pending", "active_full", "active_only_healthy", "active_only_unhealthy", "failed"],
+    )
+    def test_login_nodes_pool_information(
+        self,
+        mocker,
+        client,
+        login_nodes_pool_available,
+        status,
+        scheme,
+        address,
+        healthy_nodes,
+        unhealthy_nodes,
+        expected_response,
+    ):
+        cfn_stack_data = cfn_describe_stack_mock_response(
+            {
+                "Parameters": [
+                    {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
+                ],
+            }
+        )
+        head_node_data = {
+            "InstanceId": "i-020c2ec1b6d550000",
+            "InstanceType": "t2.micro",
+            "LaunchTime": datetime(2021, 5, 10, 13, 55, 48),
+            "PrivateIpAddress": "192.168.61.109",
+            "PublicIpAddress": "34.251.236.164",
+            "State": {"Code": 16, "Name": "running"},
+        }
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([head_node_data], "") if head_node_data else ([], ""),
+        )
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_events",
+            return_value={
+                "StackEvents": [
+                    {
+                        "StackId": "fake-id",
+                        "StackName": "fake-name",
+                        "LogicalResourceId": "fake-id",
+                        "ResourceType": "AWS::CloudFormation::Stack",
+                        "ResourceStatus": "CREATE_COMPLETE",
+                    },
+                    {
+                        "StackId": "fake-id",
+                        "StackName": "fake-name",
+                        "ResourceType": "AWS::CloudFormation::WaitCondition",
+                        "ResourceStatus": "CREATE_FAILED",
+                        "ResourceStatusReason": "some errors",
+                    },
+                ]
+            },
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
+        ).return_value = ComputeFleetStatus.RUNNING
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
+        ).return_value = "presigned-url"
+        config_mock = mocker.patch("pcluster.models.cluster.Cluster.config", new_callable=mocker.PropertyMock)
+        config_mock.return_value.scheduling.settings.scheduler_definition.metadata = ""
+        config_mock.return_value.scheduling.scheduler = "slurm"
+
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
+        mocker.patch(
+            "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
+            return_value=login_nodes_pool_available,
+        )
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_status", return_value=status)
+        if scheme:
+            mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_scheme", return_value=scheme)
+        if address:
+            mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_address", return_value=address)
+        if healthy_nodes:
+            mocker.patch(
+                "pcluster.models.login_nodes_status.LoginNodesStatus.get_healthy_nodes",
+                return_value=healthy_nodes,
+            )
+        if unhealthy_nodes:
+            mocker.patch(
+                "pcluster.models.login_nodes_status.LoginNodesStatus.get_unhealthy_nodes",
+                return_value=unhealthy_nodes,
+            )
+
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
 
