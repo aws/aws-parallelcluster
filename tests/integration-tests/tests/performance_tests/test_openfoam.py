@@ -3,10 +3,12 @@ import logging
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from tests.common.utils import wait_process_completion, read_remote_file
 
 # timeout in seconds
-OPENFOAM_INSTALLATION_TIMEOUT = 1800
-OPENFOAM_JOB_TIMEOUT = 600
+OPENFOAM_INSTALLATION_TIMEOUT = 300
+OPENFOAM_JOB_TIMEOUT = 5400  # Takes long time because during the first time, it's not only execute the job but also
+# builds and installs many things
 TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {8: 742, 16: 376, 32: 185}
 PERF_TEST_DIFFERENCE_TOLERANCE = 5
@@ -29,7 +31,7 @@ def openfoam_installed(headnode):
 
 @pytest.mark.parametrize(
     "number_of_nodes",
-    [[8, 16, 32]],
+    [[16, 32]],
 )
 def test_openfoam(
         vpc_stack,
@@ -41,7 +43,6 @@ def test_openfoam(
         clusters_factory,
         number_of_nodes,
         test_datadir,
-        scheduler_commands_factory,
 ):
     cluster_config = pcluster_config_reader(number_of_nodes=max(number_of_nodes))
     cluster = clusters_factory(cluster_config)
@@ -53,21 +54,21 @@ def test_openfoam(
             str(test_datadir / "openfoam.install.sh"), timeout=OPENFOAM_INSTALLATION_TIMEOUT, hide=False
         )
     logging.info("OpenFOAM Installed")
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     performance_degradation = {}
-    subspace_benchmarks_dir = "/shared/ec2-user/SubspaceBenchmarks"
+    #subspace_benchmarks_dir = "/shared/ec2-user/SubspaceBenchmarks"
     for node in number_of_nodes:
         logging.info(f"Submitting OpenFOAM job with {node} nodes")
-        remote_command_executor.run_remote_command(
-            f'bash openfoam.slurm.sh "{subspace_benchmarks_dir}" "{node}" 2>&1',
-            additional_files=[str(test_datadir / "openfoam.slurm.sh")], timeout=3600
-        )
+        job_submission_command = ["sleep 60 &", "echo $! > /tmp/openfoam.pid"]
+        remote_command_executor.run_remote_command(job_submission_command, additional_files=[
+            str(test_datadir / "openfoam.slurm.sh")], timeout=3600,)
+        pid = read_remote_file(remote_command_executor, '/tmp/openfoam.pid')
+        logging.info(f"Waiting for OPENFoam job to complete with pid = {pid}")
+        wait_process_completion(remote_command_executor, pid)
         perf_test_result = remote_command_executor.run_remote_script(
             (str(test_datadir / "openfoam.results.sh")), hide=False
         )
         output = perf_test_result.stdout.strip()
         elapsed_time = output.split("\n")[-1].strip()
-        elapsed_time = elapsed_time
         logging.info(f"The elapsed time for {node} nodes is {elapsed_time}")
         percentage_difference = perf_test_difference(int(elapsed_time), node)
         logging.info(

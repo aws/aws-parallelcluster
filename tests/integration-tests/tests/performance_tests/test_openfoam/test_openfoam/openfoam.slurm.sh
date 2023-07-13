@@ -1,8 +1,7 @@
 # Absolute path to the SubspaceBenchmarks repository
-# E.g.: /shared/ec2-user/SubspaceBenchmarks
 SUBSPACE_BENCHMARKS_PATH=${1}
 
-# NumProcesses / (vCPUS / 2); valid NumProcesses are 288, 576, 1152 as per https://t.corp.amazon.com/D39020520
+# NumProcesses / (vCPUS / 2); valid NumProcesses are 288, 576, 1152
 # E.g.: with 1152 processes using compute nodes c5n.18xlarge with multithreading disabled, the value should be 1152 / (72/2) = 32
 # E.g.: with 576 processes using compute nodes c5n.18xlarge with multithreading disabled, the value should be 576 / (72/2) = 16
 # E.g.: with 288 processes using compute nodes c5n.18xlarge with multithreading disabled, the value should be 288 / (72/2) = 8

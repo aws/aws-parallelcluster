@@ -13,6 +13,9 @@ HeadNode:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
       - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess #Required to read software artifacts from s3
+    S3Access:
+      - BucketName: performance-tests-resources-for-parallelcluster
+        EnableWriteAccess: false
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
