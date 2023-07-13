@@ -788,6 +788,11 @@ class TestCluster:
         lns = cluster.login_nodes_status
         assert_that(lns.get_login_nodes_pool_available()).is_equal_to(login_nodes_available)
 
+    def test_login_nodes_on_batch(self, mocker, cluster):
+        mocker.patch("pcluster.models.cluster_resources.ClusterStack.scheduler", return_value="awsbatch")
+        lns = cluster.login_nodes_status
+        assert_that(lns.get_login_nodes_pool_available()).is_false()
+
 
 OLD_CONFIGURATION = """
 Image:
