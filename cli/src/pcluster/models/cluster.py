@@ -172,6 +172,7 @@ class Cluster:
         self.__official_ami = None
         self.__has_running_capacity = None
         self.__running_capacity = None
+        self.__has_running_login_nodes = None
 
     @property
     def stack(self):
@@ -730,6 +731,14 @@ class Cluster:
                     self.compute_fleet_status_manager.get_status() != ComputeFleetStatus.STOPPED
                 )
         return self.__has_running_capacity
+
+    def has_running_login_nodes(self, updated_value: bool = False) -> bool:
+        """Return True if the cluster has running login nodes. Note: the value will be cached."""
+        if self.__has_running_login_nodes is None or updated_value:
+            self.__has_running_login_nodes = (
+                self.login_nodes_status.get_healthy_nodes() + self.login_nodes_status.get_unhealthy_nodes() != 0
+            )
+        return self.__has_running_login_nodes
 
     def get_running_capacity(self, updated_value: bool = False):
         """Return the number of instances or desired capacity. Note: the value will be cached."""

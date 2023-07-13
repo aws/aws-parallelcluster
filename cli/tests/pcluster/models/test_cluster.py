@@ -788,6 +788,37 @@ class TestCluster:
         lns = cluster.login_nodes_status
         assert_that(lns.get_login_nodes_pool_available()).is_equal_to(login_nodes_available)
 
+    @pytest.mark.parametrize(
+        "healthy, unhealthy, expected_result",
+        [
+            pytest.param(
+                0,
+                0,
+                False,
+                id="Cluster has no login nodes running if it has no healthy or unhealthy nodes",
+            ),
+            pytest.param(
+                1,
+                0,
+                True,
+                id="Cluster has running login nodes if it has at least one healthy node",
+            ),
+            pytest.param(
+                0,
+                1,
+                True,
+                id="Cluster has running login nodes if it has at least one unhealthy node",
+            ),
+        ],
+    )
+    def test_has_running_login_nodes(self, mocker, cluster, healthy, unhealthy, expected_result):
+        mock_aws_api(mocker)
+        cluster.config = dummy_slurm_cluster_config(mocker)
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_healthy_nodes", return_value=healthy)
+        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_unhealthy_nodes", return_value=unhealthy)
+        assert_that(cluster.has_running_login_nodes()).is_equal_to(expected_result)
+
     def test_login_nodes_on_batch(self, mocker, cluster):
         mocker.patch("pcluster.models.cluster_resources.ClusterStack.scheduler", return_value="awsbatch")
         lns = cluster.login_nodes_status
