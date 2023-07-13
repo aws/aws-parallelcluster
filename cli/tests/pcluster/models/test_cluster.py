@@ -779,6 +779,7 @@ class TestCluster:
     @pytest.mark.parametrize("login_nodes_available", [True, False])
     def test_login_nodes_status(self, mocker, cluster, login_nodes_available):
         mock_aws_api(mocker)
+        cluster.config = dummy_slurm_cluster_config(mocker)
         mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
         mocker.patch(
             "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
@@ -786,6 +787,11 @@ class TestCluster:
         )
         lns = cluster.login_nodes_status
         assert_that(lns.get_login_nodes_pool_available()).is_equal_to(login_nodes_available)
+
+    def test_login_nodes_on_batch(self, mocker, cluster):
+        mocker.patch("pcluster.models.cluster_resources.ClusterStack.scheduler", return_value="awsbatch")
+        lns = cluster.login_nodes_status
+        assert_that(lns.get_login_nodes_pool_available()).is_false()
 
 
 OLD_CONFIGURATION = """

@@ -3,18 +3,27 @@ from typing import Dict
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import CfnTag, Construct, NestedStack, Stack
+from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
 
-from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
-from pcluster.constants import PCLUSTER_LOGIN_NODES_POOL_NAME_TAG
+from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
+from pcluster.constants import (
+    DEFAULT_EPHEMERAL_DIR,
+    NODE_BOOTSTRAP_TIMEOUT,
+    OS_MAPPING,
+    PCLUSTER_LOGIN_NODES_POOL_NAME_TAG,
+)
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
+    get_common_user_data_env,
     get_default_instance_tags,
     get_default_volume_tags,
     get_login_nodes_security_groups_full,
+    get_shared_storage_ids_by_type,
+    get_user_data_content,
+    to_comma_separated_string,
 )
-from pcluster.utils import get_http_tokens_setting
+from pcluster.utils import get_attr, get_http_tokens_setting
 
 
 class Pool(Construct):
@@ -31,6 +40,7 @@ class Pool(Construct):
         shared_storage_attributes: Dict,
         login_security_group,
         stack_name,
+        head_eni,
     ):
         super().__init__(scope, id)
         self._pool = pool
@@ -41,7 +51,7 @@ class Pool(Construct):
         self._shared_storage_attributes = shared_storage_attributes
         self._login_security_group = login_security_group
         self.stack_name = stack_name
-
+        self._head_eni = head_eni
         self._add_resources()
 
     def _add_resources(self):
@@ -86,6 +96,8 @@ class Pool(Construct):
             )
         ]
 
+        ds_config = self._config.directory_service
+        ds_generate_keys = str(ds_config.generate_ssh_keys_for_users).lower() if ds_config else "false"
         return ec2.CfnLaunchTemplate(
             self,
             f"LoginNodeLaunchTemplate{self._pool.name}",
@@ -98,6 +110,81 @@ class Pool(Construct):
                     http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
                 ),
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
+                user_data=Fn.base64(
+                    Fn.sub(
+                        get_user_data_content("../resources/login_node/user_data.sh"),
+                        {
+                            **{
+                                "BaseOS": self._config.image.os,
+                                "ClusterName": self.stack_name,
+                                "CustomNodePackage": self._config.custom_node_package or "",
+                                "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
+                                "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
+                                "DirectoryServiceEnabled": str(ds_config is not None).lower(),
+                                "DirectoryServiceGenerateSshKeys": ds_generate_keys,
+                                "EbsSharedDirs": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.EBS]
+                                ),
+                                "EFSIds": get_shared_storage_ids_by_type(
+                                    self._shared_storage_infos, SharedStorageType.EFS
+                                ),
+                                "EFSSharedDirs": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.EFS]
+                                ),
+                                "EFSEncryptionInTransits": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
+                                    use_lower_case=True,
+                                ),
+                                "EFSIamAuthorizations": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
+                                    use_lower_case=True,
+                                ),
+                                "EphemeralDir": DEFAULT_EPHEMERAL_DIR,
+                                "ExtraJson": self._config.extra_chef_attributes,
+                                "FSXIds": get_shared_storage_ids_by_type(
+                                    self._shared_storage_infos, SharedStorageType.FSX
+                                ),
+                                "FSXMountNames": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["MountNames"]
+                                ),
+                                "FSXDNSNames": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["DNSNames"]
+                                ),
+                                "FSXVolumeJunctionPaths": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["VolumeJunctionPaths"]
+                                ),
+                                "FSXFileSystemTypes": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
+                                ),
+                                "FSXSharedDirs": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.FSX]
+                                ),
+                                "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
+                                "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
+                                "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
+                                "OSUser": OS_MAPPING[self._config.image.os]["user"],
+                                "RAIDSharedDir": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.RAID]
+                                ),
+                                "RAIDType": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
+                                ),
+                                "Scheduler": self._config.scheduling.scheduler,
+                                "UsePrivateHostname": str(
+                                    get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
+                                ).lower(),
+                                "Timeout": str(
+                                    get_attr(
+                                        self._config,
+                                        "dev_settings.timeouts.compute_node_bootstrap_timeout",
+                                        NODE_BOOTSTRAP_TIMEOUT,
+                                    )
+                                ),
+                            },
+                            **get_common_user_data_env(self._pool, self._config),
+                        },
+                    )
+                ),
                 network_interfaces=login_nodes_pool_lt_nw_interface,
                 tag_specifications=[
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
@@ -194,6 +281,7 @@ class LoginNodesStack(NestedStack):
         shared_storage_mount_dirs: Dict,
         shared_storage_attributes: Dict,
         login_security_group,
+        head_eni,
     ):
         super().__init__(scope, id)
         self._login_nodes = cluster_config.login_nodes
@@ -203,7 +291,7 @@ class LoginNodesStack(NestedStack):
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
-
+        self._head_eni = head_eni
         self._add_resources()
 
     @property
@@ -224,5 +312,6 @@ class LoginNodesStack(NestedStack):
                 self._shared_storage_attributes,
                 self._login_security_group,
                 self.stack_name,
+                self._head_eni,
             )
             self.pools[pool.name] = pool_construct

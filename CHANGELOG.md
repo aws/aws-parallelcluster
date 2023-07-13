@@ -14,6 +14,14 @@ CHANGELOG
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
 - Make `aws-parallelcluster-node` daemons handle only ParallelCluster-managed Slurm partitions.
 - Increase EFS-utils watchdog poll interval to 10 seconds. Note: This change is meaningful only if [EncryptionInTransit](https://docs.aws.amazon.com/parallelcluster/latest/ug/SharedStorage-v3.html#yaml-SharedStorage-EfsSettings-EncryptionInTransit) is set to `true`, because the watchdog does not run otherwise.
+- Upgrade EFA installer to `1.24.0`
+  - Efa-driver: `efa-2.4.1-1`
+  - Efa-config: `efa-config-1.15-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.18.0-1`
+  - Rdma-core: `rdma-core-46.0-1`
+  - Open MPI: `openmpi40-aws-4.1.5-1`
+- Change the default value of `Imds/ImdsSupport` from `v1.0` to `v2.0`.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.

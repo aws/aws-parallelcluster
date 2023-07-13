@@ -285,7 +285,8 @@ class Cluster:
     def login_nodes_status(self):
         """Status of the login nodes pool."""
         login_nodes_status = LoginNodesStatus(self.stack_name)
-        login_nodes_status.retrieve_data()
+        if self.stack.scheduler == "slurm" and self.config.login_nodes:
+            login_nodes_status.retrieve_data()
         return login_nodes_status
 
     @property
