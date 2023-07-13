@@ -158,6 +158,10 @@ def build_source(message, extracted_fields):
         json_substring = extract_json(message)
         if json_substring:
             return json.loads(json_substring)
+
+    json_substring = extract_json(message)
+    if json_substring:
+        return json.loads(json_substring)
     return {}
 
 
