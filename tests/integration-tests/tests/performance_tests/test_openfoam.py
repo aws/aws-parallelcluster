@@ -55,7 +55,7 @@ def test_openfoam(
         )
     logging.info("OpenFOAM Installed")
     performance_degradation = {}
-    #subspace_benchmarks_dir = "/shared/ec2-user/SubspaceBenchmarks"
+    subspace_benchmarks_dir = "/shared/ec2-user/SubspaceBenchmarks"
     for node in number_of_nodes:
         logging.info(f"Submitting OpenFOAM job with {node} nodes")
         job_submission_command = ["sleep 60 &", "echo $! > /tmp/openfoam.pid"]
