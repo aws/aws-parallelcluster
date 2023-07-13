@@ -1472,3 +1472,15 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
                     f"public IPs can only be assigned to instances launched with a single network interface.",
                     FailureLevel.ERROR,
                 )
+
+
+class LoginNodesSchedulerValidator(Validator):
+    """Verify that when using LoginNodes, the scheduler must be slurm."""
+
+    def _validate(self, scheduler):
+        if scheduler != "slurm":
+            self._add_failure(
+                "When using LoginNodes, the configured scheduler must be set to Slurm. "
+                "Please set the scheduler to Slurm.",
+                FailureLevel.ERROR,
+            )

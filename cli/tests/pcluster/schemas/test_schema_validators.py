@@ -688,7 +688,7 @@ def test_login_node_custom_ami_validator(custom_ami, expected_message):
         (1, None),
         (10, None),
         (0, None),
-        (-5, "Must be greater than or equal to 0."),
+        (-5, "The count for LoginNodes Pool must be greater than or equal to 0."),
     ],
 )
 def test_login_node_pool_count_validator(count, expected_message):
@@ -804,3 +804,55 @@ def test_iam_validator(instance_role, instance_profile, expected_message):
 )
 def test_slurm_scaledown_idletime_validator(section_dict, expected_message):
     _validate_and_assert_error(SlurmSettingsSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "gracetime_period, expected_message",
+    [
+        (0, "The gracetime period for LoginNodes Pool must be an interger from 1 to 120."),
+        (1, None),
+        (10, None),
+        (120, None),
+        (-5, "The gracetime period for LoginNodes Pool must be an interger from 1 to 120."),
+        (121, "The gracetime period for LoginNodes Pool must be an interger from 1 to 120."),
+    ],
+)
+def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_message):
+    _validate_and_assert_error(
+        LoginNodesPoolSchema(),
+        {
+            "Name": "validname",
+            "InstanceType": "t2.micro",
+            "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
+            "Count": 1,
+            "Ssh": {"KeyName": "valid_key_name"},
+            "GracetimePeriod": gracetime_period,
+        },
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "subnet_ids, expected_message",
+    [
+        ([], "Only one subnet can be associated with a login node pool."),
+        (["subnet-12345678"], None),
+        (["subnet-12345678", "subnet-23456789"], "Only one subnet can be associated with a login node pool"),
+        (
+            ["subnet-12345678", "subnet-12345678901234567", "subnet-23456789"],
+            "Only one subnet can be associated with a login node pool",
+        ),
+    ],
+)
+def test_login_node_pool_subnet_ids_validator(subnet_ids, expected_message):
+    _validate_and_assert_error(
+        LoginNodesPoolSchema(),
+        {
+            "Name": "validname",
+            "InstanceType": "t2.micro",
+            "Networking": {"SubnetIds": subnet_ids},
+            "Count": 1,
+            "Ssh": {"KeyName": "valid_key_name"},
+        },
+        expected_message,
+    )

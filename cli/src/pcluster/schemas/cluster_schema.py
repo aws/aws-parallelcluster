@@ -1283,7 +1283,7 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
     subnet_ids = fields.List(
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
-        validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool"),
+        validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool."),
     )
 
     proxy = fields.Nested(LoginNodeProxySchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
@@ -1301,10 +1301,17 @@ class LoginNodesPoolSchema(BaseSchema):
     instance_type = fields.Str(required=True)
     image = fields.Nested(LoginNodesImageSchema)
     networking = fields.Nested(LoginNodesNetworkingSchema, required=True)
-    count = fields.Int(required=True, validate=validate.Range(min=0))
+    count = fields.Int(
+        required=True,
+        validate=validate.Range(min=0, error="The count for LoginNodes Pool must be greater than or equal to 0."),
+    )
     ssh = fields.Nested(LoginNodesSshSchema, required=True)
     iam = fields.Nested(LoginNodesIamSchema)
-    gracetime_period = fields.Int(validate=validate.Range(min=1, max=120))
+    gracetime_period = fields.Int(
+        validate=validate.Range(
+            min=1, max=120, error="The gracetime period for LoginNodes Pool must be an interger from 1 to 120."
+        )
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
