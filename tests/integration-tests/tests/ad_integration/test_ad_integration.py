@@ -26,7 +26,7 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
 from OpenSSL import crypto
 from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
-from paramiko import RSAKey
+from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
@@ -636,7 +636,7 @@ def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, schedu
         key_content = result.stdout
         assert_that(key_content).is_not_empty()
 
-        user_command_executor = user.ssh_connect(pkey=RSAKey.from_private_key(io.StringIO(key_content)))
+        user_command_executor = user.ssh_connect(pkey=Ed25519Key.from_private_key(io.StringIO(key_content)))
         logging.info(
             "Verified SSH key usable for SSH login to the head node for user %s (expected to exist: %s)",
             user.alias,
