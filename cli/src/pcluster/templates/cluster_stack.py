@@ -11,6 +11,8 @@
 
 # pylint: disable=too-many-lines
 
+import collections.abc
+
 #
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
@@ -56,6 +58,7 @@ from pcluster.config.cluster_config import (
     SlurmClusterConfig,
 )
 from pcluster.constants import (
+    ALL_PORTS_RANGE,
     CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
     CW_ALARM_EVALUATION_PERIODS_DEFAULT,
     CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
@@ -63,11 +66,15 @@ from pcluster.constants import (
     CW_LOG_GROUP_NAME_PREFIX,
     CW_LOGS_CFN_PARAM_NAME,
     DEFAULT_EPHEMERAL_DIR,
+    EFS_PORT,
+    FSX_PORTS,
     LUSTRE,
+    NFS_PORT,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
+    SLURM_PORTS_RANGE,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
@@ -172,6 +179,24 @@ class ClusterCdkStack:
             compute_group_set.append(self._compute_security_group.ref)
 
         return compute_group_set
+
+    def _get_login_security_groups(self):
+        """Return list of security groups to be used for the login nodes, created by us AND provided by the user."""
+        login_security_groups = (
+            [
+                security_group
+                for pool in self.config.login_nodes.pools
+                if pool.networking.security_groups
+                for security_group in pool.networking.security_groups
+            ]
+            if isinstance(self.config, SlurmClusterConfig) and self.config.login_nodes
+            else []
+        )
+
+        if self._login_security_group:
+            login_security_groups.append(self._login_security_group.ref)
+
+        return login_security_groups
 
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
@@ -623,7 +648,18 @@ class ClusterCdkStack:
             for index, security_group in enumerate(login_security_groups):
                 # Access to head node from login nodes
                 self._allow_all_ingress(
-                    f"HeadNodeSecurityGroupLoginIngress{index}", security_group, managed_head_security_group.ref
+                    f"HeadNodeSecurityGroupLoginSlurmIngress{index}",
+                    security_group,
+                    managed_head_security_group.ref,
+                    ip_protocol="tcp",
+                    port=SLURM_PORTS_RANGE,
+                )
+                self._allow_all_ingress(
+                    f"HeadNodeSecurityGroupLoginNfsIngress{index}",
+                    security_group,
+                    managed_head_security_group.ref,
+                    ip_protocol="tcp",
+                    port=NFS_PORT,
                 )
 
     def _add_inbounds_to_managed_login_security_group(
@@ -678,13 +714,13 @@ class ClusterCdkStack:
                     managed_compute_security_group.ref,
                 )
 
-    def _allow_all_ingress(self, description, source_security_group_id, group_id):
+    def _allow_all_ingress(self, description, source_security_group_id, group_id, ip_protocol="-1", port=(0, 65535)):
         return ec2.CfnSecurityGroupIngress(
             self.stack,
             description,
-            ip_protocol="-1",
-            from_port=0,
-            to_port=65535,
+            ip_protocol=ip_protocol,
+            from_port=port[0] if isinstance(port, collections.abc.Sequence) else port,
+            to_port=port[1] if isinstance(port, collections.abc.Sequence) else port,
             source_security_group_id=source_security_group_id,
             group_id=group_id,
         )
@@ -716,15 +752,29 @@ class ClusterCdkStack:
         target_security_groups = {
             "Head": self._get_head_node_security_groups(),
             "Compute": self._get_compute_security_groups(),
+            "Login": self._get_login_security_groups(),
             "Storage": [storage_security_group.ref],
         }
 
         for sg_type, sg_refs in target_security_groups.items():
             for sg_ref_id, sg_ref in enumerate(sg_refs):
+                # TODO Scope down ingress rules to allow only traffic on the strictly necessary ports.
+                #      Currently scoped down only on Login nodes to limit blast radius.
+                ingress_protocol = "-1"
+                ingress_port = ALL_PORTS_RANGE
+                if sg_type == "Login":
+                    if storage_type == SharedStorageType.EFS:
+                        ingress_protocol = "tcp"
+                        ingress_port = EFS_PORT
+                    elif storage_type == SharedStorageType.FSX:
+                        ingress_protocol = "tcp"
+                        ingress_port = FSX_PORTS[LUSTRE]["tcp"][0]
                 ingress_rule = self._allow_all_ingress(
                     description=f"{storage_cfn_id}SecurityGroup{sg_type}Ingress{sg_ref_id}",
                     source_security_group_id=sg_ref,
                     group_id=storage_security_group.ref,
+                    ip_protocol=ingress_protocol,
+                    port=ingress_port,
                 )
 
                 egress_rule = self._allow_all_egress(
