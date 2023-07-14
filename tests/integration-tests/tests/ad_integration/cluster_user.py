@@ -40,7 +40,7 @@ class ClusterUser:
         self._configure_public_ssh_keys()
 
     def _generate_ssh_keypair(self):
-        """Create an RSA SSH keypair for the user."""
+        """Create an ED25519 SSH keypair for the user."""
         logging.info("Creating SSH keypair for user %s", self.alias)
         cmd = [
             "ssh-keygen",
@@ -48,7 +48,7 @@ class ClusterUser:
             "-f",
             self.ssh_keypair_path_prefix,
             "-t",
-            "rsa",
+            "ed25519",
             "-N",
             "",
             "-C",
