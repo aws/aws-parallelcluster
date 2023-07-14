@@ -151,3 +151,32 @@ def test_get_chunks(input_lst, desired_size, expected_output):
     for chunk in chunks:
         assert_that(chunk).is_equal_to(expected_output[index])
         index += 1
+
+
+def assert_sg_rule(
+    generated_template: dict,
+    sg_name: str,
+    rule_type: str,
+    protocol: str,
+    port_range: list,
+    target_sg: str,
+    deletion_policy: str = None,
+):
+    constants = {
+        "ingress": {"resource_type": "AWS::EC2::SecurityGroupIngress", "sg_field": "SourceSecurityGroupId"},
+        "egress": {"resource_type": "AWS::EC2::SecurityGroupEgress", "sg_field": "DestinationSecurityGroupId"},
+    }
+    sg_rules = get_resources(
+        generated_template,
+        type=constants[rule_type]["resource_type"],
+        deletion_policy=deletion_policy,
+        properties={
+            "GroupId": {"Ref": sg_name},
+            "IpProtocol": protocol,
+            "FromPort": port_range[0],
+            "ToPort": port_range[1],
+            constants[rule_type]["sg_field"]: target_sg if target_sg.startswith("sg-") else {"Ref": target_sg},
+        },
+    )
+
+    assert_that(sg_rules).is_length(1)

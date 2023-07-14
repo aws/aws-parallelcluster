@@ -22,26 +22,30 @@ LoginNodes:
       Networking:
         SubnetIds:
           - subnet-12345678
-        AdditionalSecurityGroups:
+        SecurityGroups:
           - sg-12345678
       Ssh:
         KeyName: kn-12345678
 SharedStorage:
-  - MountDir: /opt/shared/efs/managed/1
-    Name: shared-efs-managed-1
-    StorageType: Efs
-  - MountDir: /opt/shared/efs/managed/2
-    Name: shared-efs-managed-2
-    StorageType: Efs
-    EfsSettings:
+  - MountDir: /opt/shared/fsx-lustre/managed/1
+    Name: shared-fsx-lustre-managed-1
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+  - MountDir: /opt/shared/fsx-lustre/managed/2
+    Name: shared-fsx-lustre-managed-2
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
       DeletionPolicy: Delete
-  - MountDir: /opt/shared/efs/managed/3
-    Name: shared-efs-managed-3
-    StorageType: Efs
-    EfsSettings:
+  - MountDir: /opt/shared/fsx-lustre/managed/3
+    Name: shared-fsx-lustre-managed-3
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
       DeletionPolicy: Retain
-#  - MountDir: /opt/shared/efs/external/1
-#    Name: shared-efs-external-1
-#    StorageType: Efs
-#    EfsSettings:
+#  - MountDir: /opt/shared/fsx/external/1
+#    Name: shared-fsx-external-1
+#    StorageType: FsxLustre
+#    FsxLustreSettings:
 #      FileSystemId: fs-0123456789
