@@ -360,6 +360,19 @@ def condition_checker_shared_storage_update_policy(change, patch):
     return result
 
 
+def condition_checker_login_nodes_pools_policy(change, _):
+    """Login fleet stop is required when a login pool is removed."""
+    return not is_login_pool_removed(change)
+
+
+def is_login_pool_removed(change):
+    return change.is_list and change.key == "Pools" and change.old_value is not None and change.new_value is None
+
+
+def condition_checker_login_nodes_stop_policy(_, patch):
+    return not patch.cluster.has_running_login_nodes()
+
+
 # Common fail_reason messages
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
@@ -369,6 +382,7 @@ UpdatePolicy.FAIL_REASONS = {
         "applies updates to compute nodes. If you still want to proceed, first stop the compute fleet with the "
         "pcluster update-compute-fleet command and then run an update with the --force-update flag"
     ),
+    "login_nodes_running": lambda change, patch: "The update is not supported when login nodes are running",
 }
 
 # Common action_needed messages
@@ -382,6 +396,10 @@ UpdatePolicy.ACTIONS_NEEDED = {
     "managed_placement_group": actions_needed_managed_placement_group,
     "shared_storage_update_conditional": actions_needed_shared_storage_update,
     "managed_fsx": actions_needed_managed_fsx,
+    "login_nodes_stop": lambda change, patch: (
+        "Stop the login nodes by setting Count parameter to 0 "
+        "and update the cluster with the pcluster update-cluster command"
+    ),
 }
 
 # Base policies
@@ -525,4 +543,23 @@ UpdatePolicy.MANAGED_FSX = UpdatePolicy(
     fail_reason=fail_reason_managed_fsx,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["managed_fsx"],
     condition_checker=condition_checker_managed_fsx,
+)
+
+
+# Update policy for updating LoginNodes / Pools
+UpdatePolicy.LOGIN_NODES_POOLS = UpdatePolicy(
+    name="LOGIN_NODES_POOLS_UPDATE_POLICY",
+    level=6,
+    condition_checker=condition_checker_login_nodes_pools_policy,
+    fail_reason=UpdatePolicy.FAIL_REASONS["login_nodes_running"],
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["login_nodes_stop"],
+)
+
+# Update supported only with all login nodes down
+UpdatePolicy.LOGIN_NODES_STOP = UpdatePolicy(
+    name="LOGIN_NODES_STOP",
+    level=10,
+    condition_checker=condition_checker_login_nodes_stop_policy,
+    fail_reason=UpdatePolicy.FAIL_REASONS["login_nodes_running"],
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["login_nodes_stop"],
 )

@@ -104,6 +104,9 @@ from pcluster.constants import (
     FSX_ONTAP,
     FSX_OPENZFS,
     FSX_VOLUME_ID_REGEX,
+    IAM_INSTANCE_PROFILE_REGEX,
+    IAM_POLICY_REGEX,
+    IAM_ROLE_REGEX,
     LUSTRE,
     MAX_SLURM_NODE_PRIORITY,
     MIN_SLURM_NODE_PRIORITY,
@@ -879,7 +882,7 @@ class ClusterIamSchema(BaseSchema):
 
     roles = fields.Nested(RolesSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     permissions_boundary = fields.Str(
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(IAM_POLICY_REGEX)
     )
 
     resource_prefix = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -894,7 +897,7 @@ class BaseIamSchema(BaseSchema):
     """Represent the schema of common Iam parameters used by head, queue and login nodes."""
 
     instance_role = fields.Str(
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(IAM_ROLE_REGEX)
     )
     additional_iam_policies = fields.Nested(
         AdditionalIamPolicySchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Policy"}
@@ -934,7 +937,7 @@ class HeadNodeIamSchema(IamSchema):
     """Represent the schema of IAM for HeadNode."""
 
     instance_profile = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(IAM_INSTANCE_PROFILE_REGEX)
     )
 
 
@@ -943,14 +946,26 @@ class QueueIamSchema(IamSchema):
 
     instance_profile = fields.Str(
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
-        validate=validate.Regexp("^arn:.*:instance-profile/"),
+        validate=validate.Regexp(IAM_INSTANCE_PROFILE_REGEX),
     )
 
 
 class LoginNodesIamSchema(BaseIamSchema):
     """Represent the IAM schema of LoginNodes."""
 
-    instance_profile = fields.Str(validate=validate.Regexp("^arn:.*:instance-profile/"))
+    instance_role = fields.Str(
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}, validate=validate.Regexp(IAM_ROLE_REGEX)
+    )
+
+    additional_iam_policies = fields.Nested(
+        AdditionalIamPolicySchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP, "update_key": "Policy"},
+    )
+
+    instance_profile = fields.Str(
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}, validate=validate.Regexp(IAM_INSTANCE_PROFILE_REGEX)
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1260,7 +1275,10 @@ class HeadNodeSchema(BaseSchema):
 class LoginNodesImageSchema(BaseSchema):
     """Represent the Image schema of LoginNodes."""
 
-    custom_ami = fields.Str(validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX))
+    custom_ami = fields.Str(
+        validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX),
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1270,6 +1288,8 @@ class LoginNodesImageSchema(BaseSchema):
 
 class LoginNodesSshSchema(BaseSshSchema):
     """Represent the Ssh schema of LoginNodes."""
+
+    key_name = fields.Str(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1284,9 +1304,18 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
         validate=validate.Length(equal=1, error="Only one subnet can be associated with a login node pool."),
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP},
+    )
+    additional_security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP},
+    )
+    security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP},
     )
 
-    proxy = fields.Nested(LoginNodeProxySchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    proxy = fields.Nested(LoginNodeProxySchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1297,20 +1326,27 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
 class LoginNodesPoolSchema(BaseSchema):
     """Represent the schema of the LoginNodesPool."""
 
-    name = fields.Str(required=True)
-    instance_type = fields.Str(required=True)
-    image = fields.Nested(LoginNodesImageSchema)
-    networking = fields.Nested(LoginNodesNetworkingSchema, required=True)
+    name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    instance_type = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    image = fields.Nested(LoginNodesImageSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    networking = fields.Nested(
+        LoginNodesNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}
+    )
     count = fields.Int(
         required=True,
-        validate=validate.Range(min=0, error="The count for LoginNodes Pool must be greater than or equal to 0."),
+        validate=validate.Range(
+            min=0,
+            error="The count for LoginNodes Pool must be greater than or equal to 0.",
+        ),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-    ssh = fields.Nested(LoginNodesSshSchema, required=True)
-    iam = fields.Nested(LoginNodesIamSchema)
+    ssh = fields.Nested(LoginNodesSshSchema, required=True, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    iam = fields.Nested(LoginNodesIamSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     gracetime_period = fields.Int(
         validate=validate.Range(
             min=1, max=120, error="The gracetime period for LoginNodes Pool must be an interger from 1 to 120."
-        )
+        ),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
     @post_load
@@ -1327,7 +1363,7 @@ class LoginNodesSchema(BaseSchema):
         many=True,
         required=True,
         validate=validate.Length(equal=1, error="Only one pool can be specified when using login nodes."),
-        metadata={"update_key": "Name"},
+        metadata={"update_policy": UpdatePolicy(UpdatePolicy.LOGIN_NODES_POOLS), "update_key": "Name"},
     )
 
     @post_load()
@@ -1740,7 +1776,7 @@ class DirectoryServiceSchema(BaseSchema):
 class ClusterSchema(BaseSchema):
     """Represent the schema of the Cluster."""
 
-    login_nodes = fields.Nested(LoginNodesSchema, many=False)
+    login_nodes = fields.Nested(LoginNodesSchema, many=False, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(ImageSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     head_node = fields.Nested(HeadNodeSchema, required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     scheduling = fields.Nested(SchedulingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
