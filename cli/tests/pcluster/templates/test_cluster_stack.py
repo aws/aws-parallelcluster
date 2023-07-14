@@ -423,6 +423,26 @@ class LoginNodeLTAssertion:
                 InstanceTypeLTAssertion(has_instance_type=True),
             ],
         ),
+        (
+            "test-login-nodes-stack-without-ssh.yaml",
+            [
+                LoginNodeLTAssertion(
+                    pool_name="testloginnodespool1",
+                    instance_type="t2.micro",
+                    count=2,
+                    subnet_ids=["subnet-12345678"],
+                    key_name="ec2-key-name",
+                    gracetime_period=120,
+                    security_groups=[
+                        "sg-34567891",
+                        "sg-34567892",
+                        "sg-34567893",
+                    ],
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
     ],
 )
 def test_login_nodes_launch_template_properties(

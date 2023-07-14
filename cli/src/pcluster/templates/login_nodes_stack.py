@@ -41,6 +41,7 @@ class Pool(Construct):
         login_security_group,
         stack_name,
         head_eni,
+        cluster_hosted_zone,
     ):
         super().__init__(scope, id)
         self._pool = pool
@@ -52,6 +53,7 @@ class Pool(Construct):
         self._login_security_group = login_security_group
         self.stack_name = stack_name
         self._head_eni = head_eni
+        self._cluster_hosted_zone = cluster_hosted_zone
         self._add_resources()
 
     def _add_resources(self):
@@ -96,6 +98,8 @@ class Pool(Construct):
             )
         ]
 
+        ds_config = self._config.directory_service
+        ds_generate_keys = str(ds_config.generate_ssh_keys_for_users).lower() if ds_config else "false"
         return ec2.CfnLaunchTemplate(
             self,
             f"LoginNodeLaunchTemplate{self._pool.name}",
@@ -113,14 +117,22 @@ class Pool(Construct):
                         get_user_data_content("../resources/login_node/user_data.sh"),
                         {
                             **{
-                                "RAIDSharedDir": to_comma_separated_string(
-                                    self._shared_storage_mount_dirs[SharedStorageType.RAID]
-                                ),
-                                "RAIDType": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
-                                ),
-                                "DisableMultiThreadingManually": "false",
                                 "BaseOS": self._config.image.os,
+                                "ClusterName": self.stack_name,
+                                "ClusterDNSDomain": str(self._cluster_hosted_zone.name)
+                                if self._cluster_hosted_zone
+                                else "",
+                                "ClusterHostedZone": str(self._cluster_hosted_zone.ref)
+                                if self._cluster_hosted_zone
+                                else "",
+                                "CustomNodePackage": self._config.custom_node_package or "",
+                                "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
+                                "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
+                                "DirectoryServiceEnabled": str(ds_config is not None).lower(),
+                                "DirectoryServiceGenerateSshKeys": ds_generate_keys,
+                                "EbsSharedDirs": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.EBS]
+                                ),
                                 "EFSIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.EFS
                                 ),
@@ -135,6 +147,8 @@ class Pool(Construct):
                                     self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
                                     use_lower_case=True,
                                 ),
+                                "EphemeralDir": DEFAULT_EPHEMERAL_DIR,
+                                "ExtraJson": self._config.extra_chef_attributes,
                                 "FSXIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.FSX
                                 ),
@@ -153,24 +167,20 @@ class Pool(Construct):
                                 "FSXSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.FSX]
                                 ),
-                                "Scheduler": self._config.scheduling.scheduler,
-                                "EphemeralDir": DEFAULT_EPHEMERAL_DIR,
-                                "EbsSharedDirs": to_comma_separated_string(
-                                    self._shared_storage_mount_dirs[SharedStorageType.EBS]
-                                ),
-                                "OSUser": OS_MAPPING[self._config.image.os]["user"],
-                                "ClusterName": self.stack_name,
+                                "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
                                 "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
-                                "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
                                 "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
-                                "CustomNodePackage": self._config.custom_node_package or "",
-                                "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
-                                "ExtraJson": self._config.extra_chef_attributes,
+                                "OSUser": OS_MAPPING[self._config.image.os]["user"],
+                                "RAIDSharedDir": to_comma_separated_string(
+                                    self._shared_storage_mount_dirs[SharedStorageType.RAID]
+                                ),
+                                "RAIDType": to_comma_separated_string(
+                                    self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
+                                ),
+                                "Scheduler": self._config.scheduling.scheduler,
                                 "UsePrivateHostname": str(
                                     get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
                                 ).lower(),
-                                "DirectoryServiceEnabled": str(self._config.directory_service is not None).lower(),
-                                "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
                                 "Timeout": str(
                                     get_attr(
                                         self._config,
@@ -280,6 +290,7 @@ class LoginNodesStack(NestedStack):
         shared_storage_attributes: Dict,
         login_security_group,
         head_eni,
+        cluster_hosted_zone,
     ):
         super().__init__(scope, id)
         self._login_nodes = cluster_config.login_nodes
@@ -290,6 +301,7 @@ class LoginNodesStack(NestedStack):
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
         self._head_eni = head_eni
+        self._cluster_hosted_zone = cluster_hosted_zone
         self._add_resources()
 
     @property
@@ -311,5 +323,6 @@ class LoginNodesStack(NestedStack):
                 self._login_security_group,
                 self.stack_name,
                 self._head_eni,
+                cluster_hosted_zone=self._cluster_hosted_zone,
             )
             self.pools[pool.name] = pool_construct

@@ -85,6 +85,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    LoginNodesSchedulerValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -1275,6 +1276,7 @@ class LoginNodesPool(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        self._register_validator(NameValidator, name=self.name)
 
 
 class LoginNodes(Resource):
@@ -1478,10 +1480,7 @@ class BaseClusterConfig(Resource):
             self._register_validator(
                 AmiOsCompatibleValidator, os=self.image.os, image_id=self.head_node.image.custom_ami
             )
-        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
-        self._register_validator(
-            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
-        )
+
         self._register_storage_validators()
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
@@ -2012,6 +2011,10 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
+        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
+        self._register_validator(
+            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
+        )
         if self.shared_storage:
             for storage in self.shared_storage:
                 if isinstance(storage, BaseSharedFsx):
@@ -2786,6 +2789,12 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.login_nodes = login_nodes
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.ssh and not pool.ssh.key_name:
+                    pool.ssh.key_name = self.head_node.ssh.key_name
+                elif not pool.ssh:
+                    pool.ssh = LoginNodesSsh(key_name=self.head_node.ssh.key_name)
         self.__image_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
         # Since this cache is only used for validation, if AWSClientError happens
@@ -2842,13 +2851,43 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
                 subnet_ids_set.add(subnet_id)
         return list(subnet_ids_set)
 
-    def _register_validators(self, context: ValidatorContext = None):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: C901
         super()._register_validators(context)
         self._register_validator(
             MixedSecurityGroupOverwriteValidator,
             head_node_security_groups=self.head_node.networking.security_groups,
             queues=self.scheduling.queues,
         )
+
+        # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
+        if self.login_nodes:
+            self._register_validator(
+                SubnetsValidator,
+                subnet_ids=self.login_nodes_subnet_ids
+                + self.compute_subnet_ids
+                + [self.head_node.networking.subnet_id],
+            )
+
+        if self.login_nodes:
+            self._register_validator(
+                LoginNodesSchedulerValidator,
+                scheduler=self.scheduling.scheduler,
+            )
+
+        # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.image and pool.image.custom_ami:
+                    self._register_validator(
+                        AmiOsCompatibleValidator,
+                        os=self.image.os,
+                        image_id=pool.image.custom_ami,
+                    )
+                    self._register_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=pool.instance_type,
+                        image=self.login_nodes_ami[pool.name],
+                    )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(

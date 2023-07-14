@@ -60,7 +60,8 @@ write_files:
           "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
           "cw_logging_enabled": "false",
           "directory_service": {
-            "enabled": "${DirectoryServiceEnabled}"
+            "enabled": "${DirectoryServiceEnabled}",
+            "generate_ssh_keys_for_users": "${DirectoryServiceGenerateSshKeys}"
           },
           "ebs_shared_dirs": "${EbsSharedDirs}",
           "efs_fs_ids": "${EFSIds}",
@@ -76,6 +77,8 @@ write_files:
           "fsx_fs_types": "${FSXFileSystemTypes}",
           "fsx_shared_dirs": "${FSXSharedDirs}",
           "head_node_private_ip": "${HeadNodePrivateIp}",
+          "dns_domain": "${ClusterDNSDomain}",
+          "hosted_zone": "${ClusterHostedZone}",
           "log_rotation_enabled": "${LogRotationEnabled}",
           "node_type": "LoginNode",
           "proxy": "${ProxyServer}",
