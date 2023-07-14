@@ -410,6 +410,7 @@ class ClusterCdkStack:
                 shared_storage_attributes=self.shared_storage_attributes,
                 login_security_group=self._login_security_group,
                 head_eni=self._head_eni,
+                cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
             )
             # Add dependency on the Head Node construct
             self.login_nodes_stack.node.add_dependency(self.head_node_instance)
