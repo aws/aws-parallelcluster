@@ -2627,156 +2627,7 @@ class SudoerConfiguration(Resource):
         self.run_as = run_as
 
 
-class CommonSchedulerClusterConfig(BaseClusterConfig):
-    """Represent the common Cluster configuration between Slurm Config and future scheduler Config."""
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        checked_images = []
-        for index, queue in enumerate(self.scheduling.queues):
-            queue_image = self.image_dict[queue.name]
-            if index == 0:
-                # Execute LaunchTemplateValidator only for the first queue
-                self._register_validator(
-                    ComputeResourceLaunchTemplateValidator,
-                    queue=queue,
-                    ami_id=queue_image,
-                    root_volume_device_name=AWSApi.instance().ec2.describe_image(queue_image).device_name,
-                    tags=self.get_tags(),
-                    imds_support=self.imds.imds_support,
-                )
-            ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
-            root_volume = queue.compute_settings.local_storage.root_volume
-            root_volume_size = root_volume.size
-            if root_volume_size is None:  # If root volume size is not specified, it will be the size of the AMI.
-                root_volume_size = ami_volume_size
-            self._register_validator(
-                RootVolumeSizeValidator,
-                root_volume_size=root_volume_size,
-                ami_volume_size=ami_volume_size,
-            )
-            self._register_validator(
-                EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
-            )
-            self._register_validator(
-                EbsVolumeIopsValidator,
-                volume_type=root_volume.volume_type,
-                volume_size=root_volume_size,
-                volume_iops=root_volume.iops,
-            )
-            if queue_image not in checked_images and queue.queue_ami:
-                checked_images.append(queue_image)
-                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
-            for compute_resource in queue.compute_resources:
-                for instance_type in compute_resource.instance_types:
-                    self._register_validator(
-                        InstanceTypeBaseAMICompatibleValidator,
-                        instance_type=instance_type,
-                        image=queue_image,
-                    )
-                self._register_validator(
-                    InstanceArchitectureCompatibilityValidator,
-                    instance_type_info_list=list(compute_resource.instance_type_info_map.values()),
-                    architecture=self.head_node.architecture,
-                )
-                self._register_validator(
-                    EfaOsArchitectureValidator,
-                    efa_enabled=compute_resource.efa.enabled,
-                    os=self.image.os,
-                    architecture=self.head_node.architecture,
-                )
-                # The validation below has to be in cluster config class instead of queue class
-                # to make sure the subnet APIs are cached by previous validations.
-                cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
-                if cr_target:
-                    self._register_validator(
-                        CapacityReservationValidator,
-                        capacity_reservation_id=cr_target.capacity_reservation_id,
-                        instance_type=getattr(compute_resource, "instance_type", None),
-                        subnet=queue.networking.subnet_ids[0],
-                    )
-                    self._register_validator(
-                        CapacityReservationResourceGroupValidator,
-                        capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
-                        instance_types=compute_resource.instance_types,
-                        subnet_ids=queue.networking.subnet_ids,
-                        queue_name=queue.name,
-                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
-                    )
-                    self._register_validator(
-                        PlacementGroupCapacityReservationValidator,
-                        placement_group=queue.get_placement_group_settings_for_compute_resource(compute_resource).get(
-                            "key"
-                        ),
-                        odcr=cr_target,
-                        subnet=queue.networking.subnet_ids[0],
-                        instance_types=compute_resource.instance_types,
-                        multi_az_enabled=queue.multi_az_enabled,
-                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
-                    )
-
-    @property
-    def _capacity_reservation_targets(self):
-        """Return a list of capacity reservation targets from all queues and compute resources with the section."""
-        capacity_reservation_targets_list = []
-        for queue in self.scheduling.queues:
-            if queue.capacity_reservation_target:
-                capacity_reservation_targets_list.append(queue.capacity_reservation_target)
-            for compute_resource in queue.compute_resources:
-                if compute_resource.capacity_reservation_target:
-                    capacity_reservation_targets_list.append(compute_resource.capacity_reservation_target)
-        return capacity_reservation_targets_list
-
-    @property
-    def capacity_reservation_ids(self):
-        """Return a list of capacity reservation ids specified in the config."""
-        result = set()
-        for capacity_reservation_target in self._capacity_reservation_targets:
-            if capacity_reservation_target.capacity_reservation_id:
-                result.add(capacity_reservation_target.capacity_reservation_id)
-        return list(result)
-
-    @property
-    def capacity_reservation_arns(self):
-        """Return a list of capacity reservation ARNs specified in the config."""
-        return [
-            capacity_reservation["CapacityReservationArn"]
-            for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
-                self.capacity_reservation_ids
-            )
-        ]
-
-    @property
-    def capacity_reservation_resource_group_arns(self):
-        """Return a list of capacity reservation resource group in the config."""
-        result = set()
-        for capacity_reservation_target in self._capacity_reservation_targets:
-            if capacity_reservation_target.capacity_reservation_resource_group_arn:
-                result.add(capacity_reservation_target.capacity_reservation_resource_group_arn)
-        return list(result)
-
-    @property
-    def all_relevant_capacity_reservation_ids(self):
-        """Return a list of capacity reservation ids specified in the config or used by resource groups."""
-        capacity_reservation_ids = set(self.capacity_reservation_ids)
-        for capacity_reservation_resource_group_arn in self.capacity_reservation_resource_group_arns:
-            capacity_reservation_ids.update(
-                AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
-                    capacity_reservation_resource_group_arn
-                )
-            )
-        return list(capacity_reservation_ids)
-
-    @property
-    def has_custom_actions_in_queue(self):
-        """Return True if any queues have custom scripts."""
-        for queue in self.scheduling.queues:
-            if queue.custom_actions:
-                return True
-        return False
-
-
-class SlurmClusterConfig(CommonSchedulerClusterConfig):
+class SlurmClusterConfig(BaseClusterConfig):
     """Represent the full Slurm Cluster configuration."""
 
     def __init__(
@@ -2863,20 +2714,13 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             )
 
         if self.login_nodes:
-            self._register_validator(
-                LoginNodesSchedulerValidator,
-                scheduler=self.scheduling.scheduler,
-            )
+            self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
 
         # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
         if self.login_nodes:
             for pool in self.login_nodes.pools:
                 if pool.image and pool.image.custom_ami:
-                    self._register_validator(
-                        AmiOsCompatibleValidator,
-                        os=self.image.os,
-                        image_id=pool.image.custom_ami,
-                    )
+                    self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=pool.image.custom_ami)
                     self._register_validator(
                         InstanceTypeBaseAMICompatibleValidator,
                         instance_type=pool.instance_type,
@@ -2893,17 +2737,92 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
 
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
-
-        for queue in self.scheduling.queues:
+        checked_images = []
+        for index, queue in enumerate(self.scheduling.queues):
+            queue_image = self.image_dict[queue.name]
+            if index == 0:
+                # Execute LaunchTemplateValidator only for the first queue
+                self._register_validator(
+                    ComputeResourceLaunchTemplateValidator,
+                    queue=queue,
+                    ami_id=queue_image,
+                    root_volume_device_name=AWSApi.instance().ec2.describe_image(queue_image).device_name,
+                    tags=self.get_tags(),
+                    imds_support=self.imds.imds_support,
+                )
+            ami_volume_size = AWSApi.instance().ec2.describe_image(queue_image).volume_size
+            root_volume = queue.compute_settings.local_storage.root_volume
+            root_volume_size = root_volume.size
+            if root_volume_size is None:  # If root volume size is not specified, it will be the size of the AMI.
+                root_volume_size = ami_volume_size
+            self._register_validator(
+                RootVolumeSizeValidator, root_volume_size=root_volume_size, ami_volume_size=ami_volume_size
+            )
+            self._register_validator(
+                EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
+            )
+            self._register_validator(
+                EbsVolumeIopsValidator,
+                volume_type=root_volume.volume_type,
+                volume_size=root_volume_size,
+                volume_iops=root_volume.iops,
+            )
+            if queue_image not in checked_images and queue.queue_ami:
+                checked_images.append(queue_image)
+                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
-                if self.scheduling.settings.enable_memory_based_scheduling:
-                    for instance_type in compute_resource.instance_types:
+                self._register_validator(
+                    InstanceArchitectureCompatibilityValidator,
+                    instance_type_info_list=list(compute_resource.instance_type_info_map.values()),
+                    architecture=self.head_node.architecture,
+                )
+                self._register_validator(
+                    EfaOsArchitectureValidator,
+                    efa_enabled=compute_resource.efa.enabled,
+                    os=self.image.os,
+                    architecture=self.head_node.architecture,
+                )
+                # The validation below has to be in cluster config class instead of queue class
+                # to make sure the subnet APIs are cached by previous validations.
+                cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+                if cr_target:
+                    self._register_validator(
+                        CapacityReservationValidator,
+                        capacity_reservation_id=cr_target.capacity_reservation_id,
+                        instance_type=getattr(compute_resource, "instance_type", None),
+                        subnet=queue.networking.subnet_ids[0],
+                    )
+                    self._register_validator(
+                        CapacityReservationResourceGroupValidator,
+                        capacity_reservation_resource_group_arn=cr_target.capacity_reservation_resource_group_arn,
+                        instance_types=compute_resource.instance_types,
+                        subnet_ids=queue.networking.subnet_ids,
+                        queue_name=queue.name,
+                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
+                    )
+                    self._register_validator(
+                        PlacementGroupCapacityReservationValidator,
+                        placement_group=queue.get_placement_group_settings_for_compute_resource(compute_resource).get(
+                            "key"
+                        ),
+                        odcr=cr_target,
+                        subnet=queue.networking.subnet_ids[0],
+                        instance_types=compute_resource.instance_types,
+                        multi_az_enabled=queue.multi_az_enabled,
+                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
+                    )
+                for instance_type in compute_resource.instance_types:
+                    if self.scheduling.settings.enable_memory_based_scheduling:
                         self._register_validator(
                             InstanceTypeMemoryInfoValidator,
                             instance_type=instance_type,
                             instance_type_data=instance_types_data[instance_type],
                         )
-                for instance_type in compute_resource.instance_types:
+                    self._register_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=instance_type,
+                        image=queue_image,
+                    )
                     self._register_validator(
                         InstanceTypeAcceleratorManufacturerValidator,
                         instance_type=instance_type,
@@ -2958,3 +2877,63 @@ class SlurmClusterConfig(CommonSchedulerClusterConfig):
             self.__image_dict[queue.name] = queue.queue_ami or self.image.custom_ami or self.official_ami
 
         return self.__image_dict
+
+    @property
+    def _capacity_reservation_targets(self):
+        """Return a list of capacity reservation targets from all queues and compute resources with the section."""
+        capacity_reservation_targets_list = []
+        for queue in self.scheduling.queues:
+            if queue.capacity_reservation_target:
+                capacity_reservation_targets_list.append(queue.capacity_reservation_target)
+            for compute_resource in queue.compute_resources:
+                if compute_resource.capacity_reservation_target:
+                    capacity_reservation_targets_list.append(compute_resource.capacity_reservation_target)
+        return capacity_reservation_targets_list
+
+    @property
+    def capacity_reservation_ids(self):
+        """Return a list of capacity reservation ids specified in the config."""
+        result = set()
+        for capacity_reservation_target in self._capacity_reservation_targets:
+            if capacity_reservation_target.capacity_reservation_id:
+                result.add(capacity_reservation_target.capacity_reservation_id)
+        return list(result)
+
+    @property
+    def capacity_reservation_arns(self):
+        """Return a list of capacity reservation ARNs specified in the config."""
+        return [
+            capacity_reservation["CapacityReservationArn"]
+            for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
+                self.capacity_reservation_ids
+            )
+        ]
+
+    @property
+    def capacity_reservation_resource_group_arns(self):
+        """Return a list of capacity reservation resource group in the config."""
+        result = set()
+        for capacity_reservation_target in self._capacity_reservation_targets:
+            if capacity_reservation_target.capacity_reservation_resource_group_arn:
+                result.add(capacity_reservation_target.capacity_reservation_resource_group_arn)
+        return list(result)
+
+    @property
+    def all_relevant_capacity_reservation_ids(self):
+        """Return a list of capacity reservation ids specified in the config or used by resource groups."""
+        capacity_reservation_ids = set(self.capacity_reservation_ids)
+        for capacity_reservation_resource_group_arn in self.capacity_reservation_resource_group_arns:
+            capacity_reservation_ids.update(
+                AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(
+                    capacity_reservation_resource_group_arn
+                )
+            )
+        return list(capacity_reservation_ids)
+
+    @property
+    def has_custom_actions_in_queue(self):
+        """Return True if any queues have custom scripts."""
+        for queue in self.scheduling.queues:
+            if queue.custom_actions:
+                return True
+        return False
