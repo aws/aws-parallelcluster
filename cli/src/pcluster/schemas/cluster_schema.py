@@ -1336,7 +1336,7 @@ class LoginNodesPoolSchema(BaseSchema):
         required=True,
         validate=validate.Range(
             min=0,
-            validate=validate.Range(min=0, error="The count for LoginNodes Pool must be greater than or equal to 0."),
+            error="The count for LoginNodes Pool must be greater than or equal to 0.",
         ),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
