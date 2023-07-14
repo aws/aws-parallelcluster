@@ -122,6 +122,13 @@ def test_build_image(
     # remarkable AMIs are not available for ARM and ubuntu2204, centos7 yet
     if os not in ["ubuntu2204", "centos7"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+    elif os in ["ubuntu2204"]:
+        base_ami = retrieve_latest_ami(
+            region,
+            os,
+            architecture=architecture,
+            additional_filters=[{"Name": "creation-date", "Values": ["2023-01-06T*"]}],
+        )
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
