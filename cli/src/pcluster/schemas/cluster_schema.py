@@ -104,6 +104,9 @@ from pcluster.constants import (
     FSX_ONTAP,
     FSX_OPENZFS,
     FSX_VOLUME_ID_REGEX,
+    IAM_INSTANCE_PROFILE_REGEX,
+    IAM_POLICY_REGEX,
+    IAM_ROLE_REGEX,
     LUSTRE,
     MAX_SLURM_NODE_PRIORITY,
     MIN_SLURM_NODE_PRIORITY,
@@ -879,7 +882,7 @@ class ClusterIamSchema(BaseSchema):
 
     roles = fields.Nested(RolesSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     permissions_boundary = fields.Str(
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(IAM_POLICY_REGEX)
     )
 
     resource_prefix = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -894,7 +897,7 @@ class BaseIamSchema(BaseSchema):
     """Represent the schema of common Iam parameters used by head, queue and login nodes."""
 
     instance_role = fields.Str(
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(IAM_ROLE_REGEX)
     )
     additional_iam_policies = fields.Nested(
         AdditionalIamPolicySchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Policy"}
@@ -934,7 +937,7 @@ class HeadNodeIamSchema(IamSchema):
     """Represent the schema of IAM for HeadNode."""
 
     instance_profile = fields.Str(
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(IAM_INSTANCE_PROFILE_REGEX)
     )
 
 
@@ -943,7 +946,7 @@ class QueueIamSchema(IamSchema):
 
     instance_profile = fields.Str(
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
-        validate=validate.Regexp("^arn:.*:instance-profile/"),
+        validate=validate.Regexp(IAM_INSTANCE_PROFILE_REGEX),
     )
 
 
@@ -951,7 +954,7 @@ class LoginNodesIamSchema(BaseIamSchema):
     """Represent the IAM schema of LoginNodes."""
 
     instance_role = fields.Str(
-        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}, validate=validate.Regexp("^arn:.*:role/")
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}, validate=validate.Regexp(IAM_ROLE_REGEX)
     )
 
     additional_iam_policies = fields.Nested(
@@ -961,7 +964,7 @@ class LoginNodesIamSchema(BaseIamSchema):
     )
 
     instance_profile = fields.Str(
-        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}, validate=validate.Regexp("^arn:.*:instance-profile/")
+        metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}, validate=validate.Regexp(IAM_INSTANCE_PROFILE_REGEX)
     )
 
     @post_load
@@ -1331,8 +1334,11 @@ class LoginNodesPoolSchema(BaseSchema):
     )
     count = fields.Int(
         required=True,
-        validate=validate.Range(min=0, validate=validate.Range(min=0, error="The count for LoginNodes Pool must be greater than or equal to 0."),),
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}
+        validate=validate.Range(
+            min=0,
+            validate=validate.Range(min=0, error="The count for LoginNodes Pool must be greater than or equal to 0."),
+        ),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     ssh = fields.Nested(LoginNodesSshSchema, required=True, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     iam = fields.Nested(LoginNodesIamSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
@@ -1340,7 +1346,7 @@ class LoginNodesPoolSchema(BaseSchema):
         validate=validate.Range(
             min=1, max=120, error="The gracetime period for LoginNodes Pool must be an interger from 1 to 120."
         ),
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
     @post_load
