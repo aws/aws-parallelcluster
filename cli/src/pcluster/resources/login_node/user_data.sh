@@ -77,6 +77,8 @@ write_files:
           "fsx_fs_types": "${FSXFileSystemTypes}",
           "fsx_shared_dirs": "${FSXSharedDirs}",
           "head_node_private_ip": "${HeadNodePrivateIp}",
+          "dns_domain": "${ClusterDNSDomain}",
+          "hosted_zone": "${ClusterHostedZone}",
           "log_rotation_enabled": "${LogRotationEnabled}",
           "node_type": "LoginNode",
           "proxy": "${ProxyServer}",
