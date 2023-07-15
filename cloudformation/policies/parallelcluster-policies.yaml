@@ -565,25 +565,31 @@ Resources:
             Effect: Allow
             Sid: ResourceGroupRead
           - Action:
-              - autoscaling:CreateAutoScalingGroup
               - autoscaling:DeleteAutoScalingGroup
-              - autoscaling:DescribeAutoScalingGroups
-              - autoscaling:DescribeScalingActivities
+              - autoscaling:DeleteLifecycleHook
+              - autoscaling:Describe*
+              - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
-              - elasticloadbalancing:AddTags
               - elasticloadbalancing:CreateListener
-              - elasticloadbalancing:CreateLoadBalancer
               - elasticloadbalancing:CreateTargetGroup
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
               - elasticloadbalancing:DeleteTargetGroup
-              - elasticloadbalancing:DescribeListeners
-              - elasticloadbalancing:DescribeLoadBalancers
-              - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:Describe*
               - elasticloadbalancing:ModifyLoadBalancerAttributes
             Resource: '*'
+            Condition:
+              ForAllValues:StringEquals:
+                aws:TagKeys: [ "parallelcluster:cluster-name" ]
             Effect: Allow
             Sid: LoginNodesFunctionalities
+          - Action:
+              - autoscaling:CreateAutoScalingGroup
+              - elasticloadbalancing:AddTags
+              - elasticloadbalancing:CreateLoadBalancer
+            Resource: '*'
+            Effect: Allow
+            Sid: LoginNodesFunctionalitiesNoCondition
 
 
   # ### IMAGE ACTIONS POLICIES
