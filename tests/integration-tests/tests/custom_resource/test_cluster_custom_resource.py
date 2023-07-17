@@ -267,9 +267,7 @@ def test_cluster_update_tag_propagation(
 
 
 @pytest.mark.usefixtures("instance", "os", "region")
-def test_cluster_delete_out_of_band(
-    cfn, cluster_custom_resource_provider, cluster_custom_resource_factory, pcluster_config_reader
-):
+def test_cluster_delete_out_of_band(cfn, cluster_custom_resource_factory, pcluster_config_reader):
     """Perform crud validation on cluster."""
 
     stack = cluster_custom_resource_factory(pcluster_config_reader())
@@ -285,9 +283,7 @@ def test_cluster_delete_out_of_band(
 
 
 @pytest.mark.usefixtures("instance", "os", "region")
-def test_cluster_delete_retain(
-    cluster_custom_resource_provider, cluster_custom_resource_factory, pcluster_config_reader
-):
+def test_cluster_delete_retain(cluster_custom_resource_factory, pcluster_config_reader):
     """Perform crud validation on cluster."""
 
     stack = cluster_custom_resource_factory(pcluster_config_reader(), deletion_policy="Retain")
