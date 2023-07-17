@@ -3,6 +3,7 @@ import logging
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+
 # from tests.common.utils import read_remote_file
 # from tests.common.utils import wait_process_completion, read_remote_file
 
@@ -32,7 +33,7 @@ def openfoam_installed(headnode):
 
 @pytest.mark.parametrize(
     "number_of_nodes",
-    [[8]],
+    [[8, 16, 32]],
 )
 def test_openfoam(
         vpc_stack,
