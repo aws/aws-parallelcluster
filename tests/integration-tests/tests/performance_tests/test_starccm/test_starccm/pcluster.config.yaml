@@ -9,8 +9,11 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
-      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess #Required to read software artifacts from s3
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+    S3Access:
+      - BucketName: performance-tests-resources-for-parallelcluster
+        KeyName: starccm/*
+        EnableWriteAccess: false
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -30,7 +33,7 @@ Scheduling:
           Enabled: true
       Iam:
         AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
 SharedStorage:
   - MountDir: /shared
     Name: shared-fsx
