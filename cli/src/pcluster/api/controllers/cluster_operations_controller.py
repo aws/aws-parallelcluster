@@ -252,13 +252,13 @@ def describe_cluster(cluster_name, region=None):
             state=InstanceState.from_dict(head_node.state),
             private_ip_address=head_node.private_ip,
         )
+        login_nodes = _get_login_nodes(cluster)
+        if login_nodes:
+            response.login_nodes = login_nodes
     except ClusterActionError as e:
-        # This should not be treated as a failure cause head node might not be running in some cases
+        # This should not be treated as a failure cause head node and login node might not be running in some cases.
+        # e.g. when the cluster is in DELETE_IN_PROGRESS
         LOGGER.info(e)
-
-    login_nodes = _get_login_nodes(cluster)
-    if login_nodes:
-        response.login_nodes = login_nodes
 
     return response
 

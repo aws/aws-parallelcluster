@@ -1340,7 +1340,7 @@ class LoginNodesPoolSchema(BaseSchema):
         ),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-    ssh = fields.Nested(LoginNodesSshSchema, required=True, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    ssh = fields.Nested(LoginNodesSshSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     iam = fields.Nested(LoginNodesIamSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     gracetime_period = fields.Int(
         validate=validate.Range(

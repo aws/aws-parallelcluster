@@ -8,6 +8,7 @@ class TestLoginNodesStatus:
     dummy_stack_name = "dummy_cluster_name"
     dummy_load_balancer_arn = "dummy_load_balancer_arn"
     dummy_load_balancer_arn_2 = "dummy_load_balancer_arn_2"
+    dummy_pool_name = "dummy_pool_name"
     dummy_scheme = "internet-facing"
     dummy_status = "active"
     dummy_dns_name = "dummy_dns_name"
@@ -36,14 +37,22 @@ class TestLoginNodesStatus:
                     "Key": "parallelcluster:cluster-name",
                     "Value": dummy_stack_name,
                 },
+                {
+                    "Key": "parallelcluster:login-nodes-pool",
+                    "Value": dummy_pool_name,
+                },
             ],
         },
         {
             "ResourceArn": "another_dummy_load_balancer_arn",
             "Tags": [
                 {
-                    "Key": dummy_load_balancer_arn_2,
+                    "Key": "parallelcluster:cluster-name",
                     "Value": "pcluster-name-2",
+                },
+                {
+                    "Key": "parallelcluster:login-nodes-pool",
+                    "Value": "dummy_pool_name_2",
                 },
             ],
         },
@@ -100,7 +109,7 @@ class TestLoginNodesStatus:
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_groups", return_value=self.dummy_target_groups)
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_health", return_value=self.dummy_targets_health)
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data()
+        login_nodes_status.retrieve_data(self.dummy_pool_name)
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_true()
         assert_that(login_nodes_status.get_status()).is_equal_to(LoginNodesPoolState.ACTIVE)
         assert_that(login_nodes_status.get_address()).is_equal_to(self.dummy_dns_name)
@@ -121,7 +130,7 @@ class TestLoginNodesStatus:
         mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
         mocker.patch("pcluster.aws.elb.ElbClient.list_load_balancers", return_value=[])
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data()
+        login_nodes_status.retrieve_data(self.dummy_pool_name)
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_false()
 
     def test_wrong_load_balancer_available(self, mocker):
@@ -140,7 +149,7 @@ class TestLoginNodesStatus:
         ]
         mocker.patch("pcluster.aws.elb.ElbClient.describe_tags", return_value=dummy_tags_description)
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data()
+        login_nodes_status.retrieve_data(self.dummy_pool_name)
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_false()
 
     def test_target_group_arn_not_available(self, mocker):
@@ -154,7 +163,7 @@ class TestLoginNodesStatus:
             "pcluster.aws.elb.ElbClient.describe_target_groups", side_effect=Exception("Target Group Not Available")
         )
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data()
+        login_nodes_status.retrieve_data(self.dummy_pool_name)
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_true()
         assert_that(login_nodes_status.get_healthy_nodes()).is_none()
         assert_that(login_nodes_status.get_unhealthy_nodes()).is_none()
@@ -171,7 +180,7 @@ class TestLoginNodesStatus:
             "pcluster.aws.elb.ElbClient.describe_target_health", side_effect=Exception("Target Group Not Available")
         )
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data()
+        login_nodes_status.retrieve_data(self.dummy_pool_name)
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_true()
         assert_that(login_nodes_status.get_healthy_nodes()).is_none()
         assert_that(login_nodes_status.get_unhealthy_nodes()).is_none()
@@ -202,6 +211,6 @@ class TestLoginNodesStatus:
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_groups", return_value=self.dummy_target_groups)
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_health", return_value=self.dummy_targets_health)
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data()
+        login_nodes_status.retrieve_data(self.dummy_pool_name)
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_true()
         assert_that(login_nodes_status.get_status()).is_equal_to(expected_status)

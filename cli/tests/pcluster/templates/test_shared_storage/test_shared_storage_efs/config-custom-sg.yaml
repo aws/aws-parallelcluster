@@ -22,7 +22,7 @@ LoginNodes:
       Networking:
         SubnetIds:
           - subnet-12345678
-        AdditionalSecurityGroups:
+        SecurityGroups:
           - sg-12345678
       Ssh:
         KeyName: kn-12345678

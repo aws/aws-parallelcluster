@@ -3,6 +3,7 @@ from typing import Dict
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
+from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
 
 from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
@@ -35,16 +36,19 @@ class Pool(Construct):
         id: str,
         pool: LoginNodesPool,
         config: SlurmClusterConfig,
+        log_group: logs.CfnLogGroup,
         shared_storage_infos,
         shared_storage_mount_dirs: Dict,
         shared_storage_attributes: Dict,
         login_security_group,
         stack_name,
         head_eni,
+        cluster_hosted_zone,
     ):
         super().__init__(scope, id)
         self._pool = pool
         self._config = config
+        self._log_group = log_group
         self._login_nodes_stack_id = id
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
@@ -52,6 +56,7 @@ class Pool(Construct):
         self._login_security_group = login_security_group
         self.stack_name = stack_name
         self._head_eni = head_eni
+        self._cluster_hosted_zone = cluster_hosted_zone
         self._add_resources()
 
     def _add_resources(self):
@@ -117,6 +122,12 @@ class Pool(Construct):
                             **{
                                 "BaseOS": self._config.image.os,
                                 "ClusterName": self.stack_name,
+                                "ClusterDNSDomain": str(self._cluster_hosted_zone.name)
+                                if self._cluster_hosted_zone
+                                else "",
+                                "ClusterHostedZone": str(self._cluster_hosted_zone.ref)
+                                if self._cluster_hosted_zone
+                                else "",
                                 "CustomNodePackage": self._config.custom_node_package or "",
                                 "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
@@ -161,6 +172,7 @@ class Pool(Construct):
                                 ),
                                 "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
                                 "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
+                                "LogGroupName": self._log_group.log_group_name,
                                 "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
                                 "RAIDSharedDir": to_comma_separated_string(
@@ -277,21 +289,25 @@ class LoginNodesStack(NestedStack):
         scope: Construct,
         id: str,
         cluster_config: SlurmClusterConfig,
+        log_group: logs.CfnLogGroup,
         shared_storage_infos: Dict,
         shared_storage_mount_dirs: Dict,
         shared_storage_attributes: Dict,
         login_security_group,
         head_eni,
+        cluster_hosted_zone,
     ):
         super().__init__(scope, id)
         self._login_nodes = cluster_config.login_nodes
         self._config = cluster_config
+        self._log_group = log_group
         self._login_security_group = login_security_group
         self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
         self._head_eni = head_eni
+        self._cluster_hosted_zone = cluster_hosted_zone
         self._add_resources()
 
     @property
@@ -307,11 +323,13 @@ class LoginNodesStack(NestedStack):
                 f"Pool{pool.name}",
                 pool,
                 self._config,
+                self._log_group,
                 self._shared_storage_infos,
                 self._shared_storage_mount_dirs,
                 self._shared_storage_attributes,
                 self._login_security_group,
                 self.stack_name,
                 self._head_eni,
+                cluster_hosted_zone=self._cluster_hosted_zone,
             )
             self.pools[pool.name] = pool_construct

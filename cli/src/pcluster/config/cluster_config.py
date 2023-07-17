@@ -2640,6 +2640,12 @@ class SlurmClusterConfig(BaseClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.login_nodes = login_nodes
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.ssh and not pool.ssh.key_name:
+                    pool.ssh.key_name = self.head_node.ssh.key_name
+                elif not pool.ssh:
+                    pool.ssh = LoginNodesSsh(key_name=self.head_node.ssh.key_name)
         self.__image_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
         # Since this cache is only used for validation, if AWSClientError happens

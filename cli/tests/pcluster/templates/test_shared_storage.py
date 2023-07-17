@@ -19,7 +19,7 @@ from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import _DummyAWSApi, _DummyInstanceTypeInfo, mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket_object_utils
-from tests.pcluster.utils import get_head_node_policy, get_resources, get_statement_by_sid
+from tests.pcluster.utils import assert_sg_rule, get_head_node_policy, get_resources, get_statement_by_sid
 
 
 @pytest.mark.parametrize(
@@ -58,6 +58,7 @@ def test_shared_storage_ebs(mocker, test_datadir, config_file_name, storage_name
         ("config.yaml", "shared-efs-managed-1", "Delete"),
         ("config.yaml", "shared-efs-managed-2", "Delete"),
         ("config.yaml", "shared-efs-managed-3", "Retain"),
+        ("config-custom-sg.yaml", "shared-efs-managed-1", "Delete"),
     ],
 )
 def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name, deletion_policy):
@@ -99,14 +100,22 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
     assert_that(mount_target_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
     assert_that(mount_target_sg["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
-    for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", mount_target_sg_name]:
+    login_nodes_networking = cluster_config.login_nodes.pools[0].networking
+    login_nodes_sg_name = (
+        login_nodes_networking.security_groups[0]
+        if login_nodes_networking.security_groups
+        else "LoginNodesSecurityGroup"
+    )
+    for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", login_nodes_sg_name, mount_target_sg_name]:
+        ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
+        ingress_port_range = [2049, 2049] if sg == login_nodes_sg_name else [0, 65535]
         rule_deletion_policy = deletion_policy if sg == mount_target_sg_name else None
         assert_sg_rule(
             generated_template,
             mount_target_sg_name,
             rule_type="ingress",
-            protocol="-1",
-            port_range=[0, 65535],
+            protocol=ingress_ip_protocol,
+            port_range=ingress_port_range,
             target_sg=sg,
             deletion_policy=rule_deletion_policy,
         )
@@ -127,6 +136,7 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
         ("config.yaml", "shared-fsx-lustre-managed-1", "LUSTRE", "Delete"),
         ("config.yaml", "shared-fsx-lustre-managed-2", "LUSTRE", "Delete"),
         ("config.yaml", "shared-fsx-lustre-managed-3", "LUSTRE", "Retain"),
+        ("config-custom-sg.yaml", "shared-fsx-lustre-managed-1", "LUSTRE", "Delete"),
     ],
 )
 def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name, fs_type, deletion_policy):
@@ -156,14 +166,22 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
     assert_that(file_system_sg["DeletionPolicy"]).is_equal_to(deletion_policy)
     assert_that(file_system_sg["UpdateReplacePolicy"]).is_equal_to(deletion_policy)
 
-    for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", file_system_sg_name]:
+    login_nodes_networking = cluster_config.login_nodes.pools[0].networking
+    login_nodes_sg_name = (
+        login_nodes_networking.security_groups[0]
+        if login_nodes_networking.security_groups
+        else "LoginNodesSecurityGroup"
+    )
+    for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", login_nodes_sg_name, file_system_sg_name]:
+        ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
+        ingress_port_range = [988, 988] if sg == login_nodes_sg_name else [0, 65535]
         rule_deletion_policy = deletion_policy if sg == file_system_sg_name else None
         assert_sg_rule(
             generated_template,
             file_system_sg_name,
             rule_type="ingress",
-            protocol="-1",
-            port_range=[0, 65535],
+            protocol=ingress_ip_protocol,
+            port_range=ingress_port_range,
             target_sg=sg,
             deletion_policy=rule_deletion_policy,
         )
@@ -221,35 +239,6 @@ def test_unmanaged_shared_storage_fsx(mocker, test_datadir, config_file_name):
                 assert_that(storage.volume_path in head_node_dna_json_file).is_true()
             else:
                 assert_that(storage.junction_path in head_node_dna_json_file).is_true()
-
-
-def assert_sg_rule(
-    generated_template: dict,
-    sg_name: str,
-    rule_type: str,
-    protocol: str,
-    port_range: list,
-    target_sg: str,
-    deletion_policy: str,
-):
-    constants = {
-        "ingress": {"resource_type": "AWS::EC2::SecurityGroupIngress", "sg_field": "SourceSecurityGroupId"},
-        "egress": {"resource_type": "AWS::EC2::SecurityGroupEgress", "sg_field": "DestinationSecurityGroupId"},
-    }
-    sg_rules = get_resources(
-        generated_template,
-        type=constants[rule_type]["resource_type"],
-        deletion_policy=deletion_policy,
-        properties={
-            "GroupId": {"Ref": sg_name},
-            "IpProtocol": protocol,
-            "FromPort": port_range[0],
-            "ToPort": port_range[1],
-            constants[rule_type]["sg_field"]: {"Ref": target_sg},
-        },
-    )
-
-    assert_that(sg_rules).is_length(1)
 
 
 @pytest.mark.parametrize(

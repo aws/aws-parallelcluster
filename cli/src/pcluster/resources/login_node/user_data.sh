@@ -58,7 +58,7 @@ write_files:
           "cluster_user": "${OSUser}",
           "custom_node_package": "${CustomNodePackage}",
           "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
-          "cw_logging_enabled": "false",
+          "cw_logging_enabled": "${CWLoggingEnabled}",
           "directory_service": {
             "enabled": "${DirectoryServiceEnabled}",
             "generate_ssh_keys_for_users": "${DirectoryServiceGenerateSshKeys}"
@@ -77,6 +77,9 @@ write_files:
           "fsx_fs_types": "${FSXFileSystemTypes}",
           "fsx_shared_dirs": "${FSXSharedDirs}",
           "head_node_private_ip": "${HeadNodePrivateIp}",
+          "dns_domain": "${ClusterDNSDomain}",
+          "hosted_zone": "${ClusterHostedZone}",
+          "log_group_name": "${LogGroupName}",
           "log_rotation_enabled": "${LogRotationEnabled}",
           "node_type": "LoginNode",
           "proxy": "${ProxyServer}",

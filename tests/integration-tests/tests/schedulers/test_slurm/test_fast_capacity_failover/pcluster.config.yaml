@@ -20,12 +20,12 @@ Scheduling:
         - Name: ice-cr-multiple
           Instances:
             - InstanceType: t3.xlarge
-            - InstanceType: t3.large
+            - InstanceType: m5.xlarge
           MinCount: 1
         - Name: exception-cr-multiple
           Instances:
             - InstanceType: t3.xlarge
-            - InstanceType: t3.large
+            - InstanceType: m5.xlarge
           MinCount: 1
         - Name: ondemand1-i1
           InstanceType: {{ instance }}

@@ -37,6 +37,7 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
 from tests.pcluster.utils import (
     assert_lambdas_have_expected_vpc_config_and_managed_policy,
+    assert_sg_rule,
     get_asset_content_with_resource_name,
     load_cluster_model_from_yaml,
 )
@@ -417,6 +418,26 @@ class LoginNodeLTAssertion:
                         "sg-34567897",
                         "sg-34567898",
                         "sg-34567899",
+                    ],
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
+        (
+            "test-login-nodes-stack-without-ssh.yaml",
+            [
+                LoginNodeLTAssertion(
+                    pool_name="testloginnodespool1",
+                    instance_type="t2.micro",
+                    count=2,
+                    subnet_ids=["subnet-12345678"],
+                    key_name="ec2-key-name",
+                    gracetime_period=120,
+                    security_groups=[
+                        "sg-34567891",
+                        "sg-34567892",
+                        "sg-34567893",
                     ],
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
@@ -921,3 +942,43 @@ def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_confi
     )
 
     assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, vpc_config)
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "config.yaml",
+    ],
+)
+def test_head_node_security_group(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    head_node_sg_name = "HeadNodeSecurityGroup"
+
+    login_nodes_networking = cluster_config.login_nodes.pools[0].networking
+    login_nodes_sg_name = (
+        login_nodes_networking.security_groups[0]
+        if login_nodes_networking.security_groups
+        else "LoginNodesSecurityGroup"
+    )
+    for sg in ["ComputeSecurityGroup", login_nodes_sg_name]:
+        ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
+        ingress_port_ranges = [[6819, 6829], [2049, 2049]] if sg == login_nodes_sg_name else [[0, 65535]]
+        for port_range in ingress_port_ranges:
+            assert_sg_rule(
+                generated_template,
+                head_node_sg_name,
+                rule_type="ingress",
+                protocol=ingress_ip_protocol,
+                port_range=port_range,
+                target_sg=sg,
+            )
