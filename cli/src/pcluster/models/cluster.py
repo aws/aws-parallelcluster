@@ -287,7 +287,9 @@ class Cluster:
         """Status of the login nodes pool."""
         login_nodes_status = LoginNodesStatus(self.stack_name)
         if self.stack.scheduler == "slurm" and self.config.login_nodes:
-            login_nodes_status.retrieve_data()
+            # This approach works since by design we have now only one pool.
+            # We should fix this if we want to add more than a login nodes pool per cluster.
+            login_nodes_status.retrieve_data(self.config.login_nodes.pools[0].name)
         return login_nodes_status
 
     @property
