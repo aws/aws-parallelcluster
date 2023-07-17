@@ -3,7 +3,8 @@ import logging
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from tests.common.utils import wait_process_completion, read_remote_file
+# from tests.common.utils import read_remote_file
+# from tests.common.utils import wait_process_completion, read_remote_file
 
 # timeout in seconds
 OPENFOAM_INSTALLATION_TIMEOUT = 300
@@ -31,7 +32,7 @@ def openfoam_installed(headnode):
 
 @pytest.mark.parametrize(
     "number_of_nodes",
-    [[16, 32]],
+    [[8]],
 )
 def test_openfoam(
         vpc_stack,
@@ -58,12 +59,13 @@ def test_openfoam(
     subspace_benchmarks_dir = "/shared/ec2-user/SubspaceBenchmarks"
     for node in number_of_nodes:
         logging.info(f"Submitting OpenFOAM job with {node} nodes")
-        job_submission_command = ["sleep 60 &", "echo $! > /tmp/openfoam.pid"]
-        remote_command_executor.run_remote_command(job_submission_command, additional_files=[
-            str(test_datadir / "openfoam.slurm.sh")], timeout=3600,)
-        pid = read_remote_file(remote_command_executor, '/tmp/openfoam.pid')
-        logging.info(f"Waiting for OPENFoam job to complete with pid = {pid}")
-        wait_process_completion(remote_command_executor, pid)
+        remote_command_executor.run_remote_command(f'bash openfoam.slurm.sh "{subspace_benchmarks_dir}" "{node}" 2>&1',
+                                                   additional_files=[str(test_datadir / "openfoam.slurm.sh")],
+                                                   timeout=OPENFOAM_JOB_TIMEOUT,
+                                                   )
+        # pid = read_remote_file(remote_command_executor, '/tmp/openfoam.pid')
+        # logging.info(f"Waiting for OpenFOAM job to complete with pid = {pid}")
+        # wait_process_completion(remote_command_executor, pid)
         perf_test_result = remote_command_executor.run_remote_script(
             (str(test_datadir / "openfoam.results.sh")), hide=False
         )

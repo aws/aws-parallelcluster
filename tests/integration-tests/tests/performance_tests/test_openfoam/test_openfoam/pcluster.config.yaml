@@ -15,6 +15,7 @@ HeadNode:
       - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess #Required to read software artifacts from s3
     S3Access:
       - BucketName: performance-tests-resources-for-parallelcluster
+        KeyName: openfoam/*
         EnableWriteAccess: false
 Scheduling:
   Scheduler: slurm
