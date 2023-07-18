@@ -1,7 +1,7 @@
-pytest
-jinja2~=3.0
-cfn-lint
-cfn-flip
 assertpy
 boto3
-PyYAML~=5.3
+cfn-flip
+cfn-lint
+jinja2~=3.0
+pytest
+PyYAML==5.3.1
