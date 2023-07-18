@@ -1750,22 +1750,24 @@ class SchedulingSchema(BaseSchema):
 class DirectoryServiceSchema(BaseSchema):
     """Represent the schema of the DirectoryService."""
 
-    domain_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    domain_addr = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    domain_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
+    domain_addr = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
     password_secret_arn = fields.Str(
         required=True,
         validate=validate.Regexp(r"^arn:.*:(secretsmanager:.*:.*:secret:|ssm:.*:.*:parameter\/).*$"),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP},
     )
-    domain_read_only_user = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    ldap_tls_ca_cert = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    domain_read_only_user = fields.Str(
+        required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP}
+    )
+    ldap_tls_ca_cert = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
     ldap_tls_req_cert = fields.Str(
         validate=validate.OneOf(["never", "allow", "try", "demand", "hard"]),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP},
     )
-    ldap_access_filter = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    generate_ssh_keys_for_users = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    additional_sssd_configs = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    ldap_access_filter = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
+    generate_ssh_keys_for_users = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
+    additional_sssd_configs = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1796,7 +1798,7 @@ class ClusterSchema(BaseSchema):
     )
     iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     directory_service = fields.Nested(
-        DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+        DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP}
     )
     config_region = fields.Str(data_key="Region", metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     imds = fields.Nested(TopLevelImdsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})

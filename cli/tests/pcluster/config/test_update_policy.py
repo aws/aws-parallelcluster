@@ -527,11 +527,12 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
 
 
 @pytest.mark.parametrize(
-    "is_fleet_stopped, key, path, old_value, new_value, update_strategy, expected_result, expected_fail_reason, "
-    "expected_actions_needed, scheduler",
+    "is_fleet_stopped, has_running_login_nodes, key, path, old_value, new_value, update_strategy, expected_result, "
+    "expected_fail_reason, expected_actions_needed, scheduler",
     [
         pytest.param(
             True,
+            False,
             "SharedStorage",
             [],
             None,
@@ -545,18 +546,20 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             True,
+            False,
             "SharedStorage",
             [],
             {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
             None,
             None,
             True,
-            "All compute nodes must be stopped",
+            "All compute and login nodes must be stopped",
             "Stop the compute fleet with the pcluster update-compute-fleet command",
             "slurm",
             id="stopped fleet and remove EBS section",
         ),
         pytest.param(
+            False,
             False,
             "SharedStorage",
             [],
@@ -564,14 +567,17 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
             {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
             None,
             False,
-            "All compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "All login and compute nodes must be stopped or QueueUpdateStrategy must be set",
             "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
-            "configuration used for the 'update-cluster' operation",
+            "configuration used for the 'update-cluster' operation. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and adding a new EBS section with no update strategy set",
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             None,
@@ -586,6 +592,7 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             False,
+            False,
             "SharedStorage",
             [],
             None,
@@ -599,18 +606,22 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             False,
+            False,
             "SharedStorage",
             [],
             {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and Ebs removed with update strategy DRAIN",
         ),
         pytest.param(
+            False,
             False,
             "SharedStorage",
             [],
@@ -625,6 +636,7 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             True,
+            False,
             "SharedStorage",
             [],
             {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs"},
@@ -638,45 +650,55 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs"},
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and Efs removed with update strategy DRAIN",
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Retain"}},
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and Efs removed with DeletionPolicy to Retain and update strategy DRAIN",
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Retain"}},
             None,
             None,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and Efs removed with DeletionPolicy to Retain",
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Retain"}},
@@ -691,19 +713,23 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Delete"}},
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and Efs removed with DeletionPolicy to Delete and update strategy DRAIN",
         ),
         pytest.param(
             True,
+            False,
             "SharedStorage",
             [],
             {"MountDir": "/lstrue", "Name": "Fsx", "StorageType": "FsxLustre"},
@@ -716,6 +742,7 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
             id="Stopped fleet and change FsxLustre section",
         ),
         pytest.param(
+            False,
             False,
             "SharedStorage",
             [],
@@ -730,19 +757,23 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {"MountDir": "/fsx", "Name": "fsx", "StorageType": "FsxLustre"},
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and Fsx removed with update strategy DRAIN",
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {
@@ -754,13 +785,16 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and FSx removed with DeletionPolicy to Retain and update strategy DRAIN",
         ),
         pytest.param(
             True,
+            False,
             "SharedStorage",
             [],
             {"MountDir": "/openzfs", "Name": "Fsx", "StorageType": "FsxOpenZfs"},
@@ -774,6 +808,7 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             True,
+            False,
             "SharedStorage",
             [],
             None,
@@ -787,14 +822,17 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
         ),
         pytest.param(
             False,
+            True,
             "SharedStorage",
             [],
             {"MountDir": "/fsx", "Name": "fsx", "StorageType": "FsxOntap"},
             None,
             None,
             False,
-            "All compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
             "slurm",
             id="running fleet and Efs change with no update strategy set",
         ),
@@ -803,6 +841,7 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
 def test_shared_storage_update_policy_condition_checker(
     mocker,
     is_fleet_stopped,
+    has_running_login_nodes,
     key,
     path,
     old_value,
@@ -816,6 +855,9 @@ def test_shared_storage_update_policy_condition_checker(
     cluster = dummy_cluster()
     cluster_has_running_capacity_mock = mocker.patch.object(
         cluster, "has_running_capacity", return_value=not is_fleet_stopped
+    )
+    cluster_has_running_login_nodes_mock = mocker.patch.object(
+        cluster, "has_running_login_nodes", return_value=has_running_login_nodes
     )
     mocker.patch(
         "pcluster.config.update_policy.is_awsbatch_scheduler", return_value=True if scheduler == "awsbatch" else False
@@ -851,7 +893,11 @@ def test_shared_storage_update_policy_condition_checker(
             expected_actions_needed
         )
     if scheduler != "awsbatch":
-        cluster_has_running_capacity_mock.assert_called()
+        cluster_has_running_login_nodes_mock.assert_called()
+        if has_running_login_nodes:
+            cluster_has_running_capacity_mock.assert_not_called()
+        else:
+            cluster_has_running_capacity_mock.assert_called()
 
 
 @pytest.mark.parametrize(
@@ -1758,6 +1804,128 @@ def test_login_nodes_stop_policy(
 ):
     update_policy = UpdatePolicy.LOGIN_NODES_STOP
     cluster = Cluster(name="mock-name", stack="mock-stack")
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=login_nodes_running)
+    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
+    assert_that(update_policy.condition_checker(change, patch)).is_equal_to(expected_update_allowed)
+    if not expected_update_allowed:
+        assert_that(update_policy.fail_reason(change, patch)).is_equal_to(expected_fail_reason)
+        assert_that(update_policy.action_needed(change, patch)).is_equal_to(expected_action_needed)
+
+
+@pytest.mark.parametrize(
+    "base_config, target_config, change, compute_nodes_running, login_nodes_running,"
+    "expected_update_allowed, expected_fail_reason, expected_action_needed",
+    [
+        pytest.param(
+            {
+                "DirectoryService": {"DomainName": "dn-1"},
+            },
+            {
+                "DirectoryService": {"DomainName": "dn-2"},
+            },
+            Change(
+                path=["DirectoryService", "DomainName"],
+                key="DomainName",
+                old_value="dn-1",
+                new_value="dn-2",
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            False,
+            True,
+            None,
+            None,
+            id="The parameter covered by the policy can be updated when login nodes and compute nodes are not running",
+        ),
+        pytest.param(
+            {
+                "DirectoryService": {"DomainName": "dn-1"},
+            },
+            {
+                "DirectoryService": {"DomainName": "dn-2"},
+            },
+            Change(
+                path=["DirectoryService", "DomainName"],
+                key="DomainName",
+                old_value="dn-1",
+                new_value="dn-2",
+                update_policy={},
+                is_list=False,
+            ),
+            True,
+            True,
+            False,
+            "The update is not supported when compute or login nodes are running",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            id="The parameter covered by the policy cannot be updated when login nodes and compute nodes are running",
+        ),
+        pytest.param(
+            {
+                "DirectoryService": {"DomainName": "dn-1"},
+            },
+            {
+                "DirectoryService": {"DomainName": "dn-2"},
+            },
+            Change(
+                path=["DirectoryService", "DomainName"],
+                key="DomainName",
+                old_value="dn-1",
+                new_value="dn-2",
+                update_policy={},
+                is_list=False,
+            ),
+            True,
+            False,
+            False,
+            "The update is not supported when compute or login nodes are running",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            id="The parameter covered by the policy cannot be updated when compute nodes are running",
+        ),
+        pytest.param(
+            {
+                "DirectoryService": {"DomainName": "dn-1"},
+            },
+            {
+                "DirectoryService": {"DomainName": "dn-2"},
+            },
+            Change(
+                path=["DirectoryService", "DomainName"],
+                key="DomainName",
+                old_value="dn-1",
+                new_value="dn-2",
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            True,
+            False,
+            "The update is not supported when compute or login nodes are running",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            id="The parameter covered by the policy cannot be updated when login nodes are running",
+        ),
+    ],
+)
+def test_compute_and_login_nodes_stop_policy(
+    mocker,
+    base_config,
+    target_config,
+    change,
+    compute_nodes_running,
+    login_nodes_running,
+    expected_update_allowed,
+    expected_fail_reason,
+    expected_action_needed,
+):
+    update_policy = UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP
+    cluster = Cluster(name="mock-name", stack="mock-stack")
+    mocker.patch.object(cluster, "has_running_capacity", return_value=compute_nodes_running)
     mocker.patch.object(cluster, "has_running_login_nodes", return_value=login_nodes_running)
     patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
     assert_that(update_policy.condition_checker(change, patch)).is_equal_to(expected_update_allowed)
