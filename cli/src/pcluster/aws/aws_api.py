@@ -15,6 +15,7 @@ from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.efs import EfsClient
+from pcluster.aws.elb import ElbClient
 from pcluster.aws.fsx import FSxClient
 from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
@@ -47,6 +48,7 @@ class AWSApi:
         self._cfn = None
         self._ec2 = None
         self._efs = None
+        self._elb = None
         self._fsx = None
         self._dynamodb = None
         self._s3 = None  # pylint: disable=C0103
@@ -89,6 +91,13 @@ class AWSApi:
         if not self._efs:
             self._efs = EfsClient(ec2_client=self.ec2)
         return self._efs
+
+    @property
+    def elb(self):
+        """ELB client."""
+        if not self._elb:
+            self._elb = ElbClient()
+        return self._elb
 
     @property
     def fsx(self):

@@ -14,6 +14,7 @@ import os
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any, Dict, List
 
 import pytest
 import yaml
@@ -36,6 +37,7 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
 from tests.pcluster.utils import (
     assert_lambdas_have_expected_vpc_config_and_managed_policy,
+    assert_sg_rule,
     get_asset_content_with_resource_name,
     load_cluster_model_from_yaml,
 )
@@ -371,6 +373,7 @@ class LoginNodeLTAssertion:
         subnet_ids,
         key_name,
         security_groups,
+        gracetime_period,
     ):
         self.pool_name = pool_name
         self.instance_type = instance_type
@@ -378,6 +381,7 @@ class LoginNodeLTAssertion:
         self.subnet_ids = subnet_ids
         self.key_name = key_name
         self.security_groups = security_groups
+        self.gracetime_period = gracetime_period
 
     def assert_lt_properties(self, generated_template, resource_type):
         resources = generated_template["Resources"]
@@ -388,6 +392,7 @@ class LoginNodeLTAssertion:
                 assert properties["LaunchTemplateData"]["NetworkInterfaces"][0]["SubnetId"] in self.subnet_ids
                 assert properties["LaunchTemplateData"]["KeyName"] == self.key_name
                 assert properties["LaunchTemplateData"]["SecurityGroups"] == self.security_groups
+                assert properties["LaunchTemplateData"]["GracetimePeriod"] == self.gracetime_period
 
 
 @pytest.mark.parametrize(
@@ -402,6 +407,7 @@ class LoginNodeLTAssertion:
                     count=2,
                     subnet_ids=["subnet-12345678"],
                     key_name="ec2-key-name",
+                    gracetime_period=120,
                     security_groups=[
                         "sg-34567891",
                         "sg-34567892",
@@ -412,6 +418,26 @@ class LoginNodeLTAssertion:
                         "sg-34567897",
                         "sg-34567898",
                         "sg-34567899",
+                    ],
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
+        (
+            "test-login-nodes-stack-without-ssh.yaml",
+            [
+                LoginNodeLTAssertion(
+                    pool_name="testloginnodespool1",
+                    instance_type="t2.micro",
+                    count=2,
+                    subnet_ids=["subnet-12345678"],
+                    key_name="ec2-key-name",
+                    gracetime_period=120,
+                    security_groups=[
+                        "sg-34567891",
+                        "sg-34567892",
+                        "sg-34567893",
                     ],
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
@@ -494,6 +520,42 @@ class NetworkLoadBalancerListenerAssertion:
         assert properties["Protocol"] == self.expected_protocol
 
 
+class LifecycleHookAssertion:
+    def __init__(self, expected_lifecycle_transition, expected_heartbeat_timeout):
+        self.expected_lifecycle_transition = expected_lifecycle_transition
+        self.expected_heartbeat_timeout = expected_heartbeat_timeout
+
+    def assert_lifecycle_hook_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::AutoScaling::LifecycleHook"
+        properties = resource["Properties"]
+        assert properties["LifecycleTransition"] == self.expected_lifecycle_transition
+        assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
+
+
+class IamRoleAssertion:
+    def __init__(self, expected_managed_policy_arn: str):
+        self.expected_managed_policy_arn = expected_managed_policy_arn
+
+    def assert_iam_role_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::IAM::Role"
+        properties = resource["Properties"]
+        assert properties["ManagedPolicyArns"][0] == self.expected_managed_policy_arn
+
+
+class IamPolicyAssertion:
+    def __init__(self, expected_statements: List[Dict[str, Any]]):
+        self.expected_statements = expected_statements
+
+    def assert_iam_policy_properties(self, template, resource_name: str):
+        resource = template["Resources"][resource_name]
+        assert resource["Type"] == "AWS::IAM::Policy"
+        properties = resource["Properties"]
+        policy_doc = properties["PolicyDocument"]
+        assert policy_doc["Statement"] == self.expected_statements
+
+
 @pytest.mark.parametrize(
     "config_file_name, lt_assertions",
     [
@@ -504,6 +566,38 @@ class NetworkLoadBalancerListenerAssertion:
                 NetworkLoadBalancerAssertion(expected_vpc_id="subnet-12345678", expected_internet_facing=True),
                 TargetGroupAssertion(expected_health_check="TCP", expected_port=22, expected_protocol="TCP"),
                 NetworkLoadBalancerListenerAssertion(expected_port=22, expected_protocol="TCP"),
+                LifecycleHookAssertion(
+                    expected_lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
+                    expected_heartbeat_timeout=7200,
+                ),
+                IamRoleAssertion(expected_managed_policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"),
+                IamPolicyAssertion(
+                    expected_statements=[
+                        {
+                            "Action": "ec2:DescribeInstanceAttribute",
+                            "Effect": "Allow",
+                            "Resource": "*",
+                            "Sid": "Ec2",
+                        },
+                        {
+                            "Action": "s3:GetObject",
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":s3:::",
+                                        {"Ref": "AWS::Region"},
+                                        "-aws-parallelcluster/*",
+                                    ],
+                                ]
+                            },
+                            "Sid": "S3GetObj",
+                        },
+                    ]
+                ),
             ],
         ),
     ],
@@ -533,7 +627,19 @@ def test_login_nodes_traffic_management_resources_values_properties(
         cdk_assets,
         "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
     )
-
+    asset_content_lifecycle_hook = get_asset_content_with_resource_name(
+        cdk_assets,
+        "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467",
+    )
+    asset_content_iam_role = get_asset_content_with_resource_name(
+        cdk_assets,
+        "RoleA50bdea9651dc48c",
+    )
+    asset_content_iam_policy = get_asset_content_with_resource_name(
+        cdk_assets,
+        "ParallelClusterPoliciesA50bdea9651dc48c",
+    )
+    print(cdk_assets)
     for lt_assertion in lt_assertions:
         if isinstance(lt_assertion, AutoScalingGroupAssertion):
             lt_assertion.assert_asg_properties(
@@ -551,6 +657,16 @@ def test_login_nodes_traffic_management_resources_values_properties(
             lt_assertion.assert_nlb_listener_properties(
                 asset_content_nlb_listener,
                 "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
+            )
+        elif isinstance(lt_assertion, LifecycleHookAssertion):
+            lt_assertion.assert_lifecycle_hook_properties(
+                asset_content_lifecycle_hook, "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467"
+            )
+        elif isinstance(lt_assertion, IamRoleAssertion):
+            lt_assertion.assert_iam_role_properties(asset_content_iam_role, "RoleA50bdea9651dc48c")
+        elif isinstance(lt_assertion, IamPolicyAssertion):
+            lt_assertion.assert_iam_policy_properties(
+                asset_content_iam_policy, "ParallelClusterPoliciesA50bdea9651dc48c"
             )
 
 
@@ -772,8 +888,8 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     [
         ("slurm.required.yaml", "v1.0", "optional"),
         ("awsbatch.simple.yaml", "v1.0", "optional"),
-        ("slurm.required.yaml", None, "optional"),
-        ("awsbatch.simple.yaml", None, "optional"),
+        ("slurm.required.yaml", None, "required"),
+        ("awsbatch.simple.yaml", None, "required"),
         ("slurm.required.yaml", "v2.0", "required"),
         ("awsbatch.simple.yaml", "v2.0", "required"),
     ],
@@ -826,3 +942,43 @@ def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_confi
     )
 
     assert_lambdas_have_expected_vpc_config_and_managed_policy(generated_template, vpc_config)
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "config.yaml",
+    ],
+)
+def test_head_node_security_group(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    head_node_sg_name = "HeadNodeSecurityGroup"
+
+    login_nodes_networking = cluster_config.login_nodes.pools[0].networking
+    login_nodes_sg_name = (
+        login_nodes_networking.security_groups[0]
+        if login_nodes_networking.security_groups
+        else "LoginNodesSecurityGroup"
+    )
+    for sg in ["ComputeSecurityGroup", login_nodes_sg_name]:
+        ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
+        ingress_port_ranges = [[6819, 6829], [2049, 2049]] if sg == login_nodes_sg_name else [[0, 65535]]
+        for port_range in ingress_port_ranges:
+            assert_sg_rule(
+                generated_template,
+                head_node_sg_name,
+                rule_type="ingress",
+                protocol=ingress_ip_protocol,
+                port_range=port_range,
+                target_sg=sg,
+            )

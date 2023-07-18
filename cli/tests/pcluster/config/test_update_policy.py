@@ -1652,3 +1652,115 @@ def test_condition_checker_managed_fsx(
     assert_that(condition_checker_managed_fsx(change, patch)).is_equal_to(expected_subnet_updated)
     assert_that(fail_reason_managed_fsx(change, patch)).is_equal_to(expected_fail_reason)
     assert_that(actions_needed_managed_fsx(change, patch)).is_equal_to(expected_action_needed)
+
+
+@pytest.mark.parametrize(
+    "base_config, target_config, change, expected_update_allowed, expected_fail_reason, expected_action_needed",
+    [
+        pytest.param(
+            {
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1"}]},
+            },
+            {
+                "LoginNodes": {"Pools": [{"Name": "mock-lp2"}]},
+            },
+            Change(
+                path=["LoginNodes"],
+                key="Pools",
+                old_value={"Name": "mock-lp1"},
+                new_value=None,
+                update_policy={},
+                is_list=True,
+            ),
+            False,
+            "The update is not supported when login nodes are running",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            id="Login nodes must be stopped to remove a pool",
+        ),
+    ],
+)
+def test_login_nodes_pools_policy(
+    mocker,
+    base_config,
+    target_config,
+    change,
+    expected_update_allowed,
+    expected_fail_reason,
+    expected_action_needed,
+):
+    update_policy = UpdatePolicy.LOGIN_NODES_POOLS
+    cluster = Cluster(name="mock-name", stack="mock-stack")
+    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
+    assert_that(update_policy.condition_checker(change, patch)).is_equal_to(expected_update_allowed)
+    assert_that(update_policy.fail_reason(change, patch)).is_equal_to(expected_fail_reason)
+    assert_that(update_policy.action_needed(change, patch)).is_equal_to(expected_action_needed)
+
+
+@pytest.mark.parametrize(
+    "base_config, target_config, change, login_nodes_running, "
+    "expected_update_allowed, expected_fail_reason, expected_action_needed",
+    [
+        pytest.param(
+            {
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn1"}}]},
+            },
+            {
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn2"}}]},
+            },
+            Change(
+                path=["LoginNodes", "Pools[mock-lp1]", "Ssh"],
+                key="KeyName",
+                old_value="mock-kn1",
+                new_value="mock-kn2",
+                update_policy={},
+                is_list=False,
+            ),
+            False,
+            True,
+            None,
+            None,
+            id="Login nodes parameter covered by the policy can be updated when login nodes are stopped",
+        ),
+        pytest.param(
+            {
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn1"}}]},
+            },
+            {
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn2"}}]},
+            },
+            Change(
+                path=["LoginNodes", "Pools[mock-lp1]", "Ssh"],
+                key="KeyName",
+                old_value="mock-kn1",
+                new_value="mock-kn2",
+                update_policy={},
+                is_list=False,
+            ),
+            True,
+            False,
+            "The update is not supported when login nodes are running",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            id="Login nodes parameter covered by the policy cannot be updated when login nodes are running",
+        ),
+    ],
+)
+def test_login_nodes_stop_policy(
+    mocker,
+    base_config,
+    target_config,
+    change,
+    login_nodes_running,
+    expected_update_allowed,
+    expected_fail_reason,
+    expected_action_needed,
+):
+    update_policy = UpdatePolicy.LOGIN_NODES_STOP
+    cluster = Cluster(name="mock-name", stack="mock-stack")
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=login_nodes_running)
+    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
+    assert_that(update_policy.condition_checker(change, patch)).is_equal_to(expected_update_allowed)
+    if not expected_update_allowed:
+        assert_that(update_policy.fail_reason(change, patch)).is_equal_to(expected_fail_reason)
+        assert_that(update_policy.action_needed(change, patch)).is_equal_to(expected_action_needed)

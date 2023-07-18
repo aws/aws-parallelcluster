@@ -161,6 +161,8 @@ Class | Method | HTTP request | Description
  - [ListOfficialImagesResponseContent](docs/ListOfficialImagesResponseContent.md)
  - [LogEvent](docs/LogEvent.md)
  - [LogStream](docs/LogStream.md)
+ - [LoginNodesPool](docs/LoginNodesPool.md)
+ - [LoginNodesState](docs/LoginNodesState.md)
  - [Metadata](docs/Metadata.md)
  - [NodeType](docs/NodeType.md)
  - [NotFoundExceptionResponseContent](docs/NotFoundExceptionResponseContent.md)

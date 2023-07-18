@@ -26,7 +26,7 @@ test-suites:
           schedulers: [ "slurm" ]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: [{{ common.instance("instance_type_1") }}]
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2204"]
           schedulers: [ "slurm" ]
     test_fabric.py::test_fabric:
       dimensions:
@@ -85,7 +85,7 @@ test-suites:
       dimensions:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
         - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}

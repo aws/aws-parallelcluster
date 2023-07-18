@@ -36,6 +36,7 @@ def lazy_import():
     from pcluster_client.model.compute_fleet_status import ComputeFleetStatus
     from pcluster_client.model.ec2_instance import EC2Instance
     from pcluster_client.model.failure import Failure
+    from pcluster_client.model.login_nodes_pool import LoginNodesPool
     from pcluster_client.model.scheduler import Scheduler
     from pcluster_client.model.tag import Tag
     globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
@@ -44,6 +45,7 @@ def lazy_import():
     globals()['ComputeFleetStatus'] = ComputeFleetStatus
     globals()['EC2Instance'] = EC2Instance
     globals()['Failure'] = Failure
+    globals()['LoginNodesPool'] = LoginNodesPool
     globals()['Scheduler'] = Scheduler
     globals()['Tag'] = Tag
 
@@ -119,6 +121,7 @@ class DescribeClusterResponseContent(ModelNormal):
             'tags': ([Tag],),  # noqa: E501
             'scheduler': (Scheduler,),  # noqa: E501
             'head_node': (EC2Instance,),  # noqa: E501
+            'login_nodes': (LoginNodesPool,),  # noqa: E501
             'failures': ([Failure],),  # noqa: E501
         }
 
@@ -141,6 +144,7 @@ class DescribeClusterResponseContent(ModelNormal):
         'tags': 'tags',  # noqa: E501
         'scheduler': 'scheduler',  # noqa: E501
         'head_node': 'headNode',  # noqa: E501
+        'login_nodes': 'loginNodes',  # noqa: E501
         'failures': 'failures',  # noqa: E501
     }
 
@@ -200,6 +204,7 @@ class DescribeClusterResponseContent(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             scheduler (Scheduler): [optional]  # noqa: E501
             head_node (EC2Instance): [optional]  # noqa: E501
+            login_nodes (LoginNodesPool): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
         """
 
@@ -312,6 +317,7 @@ class DescribeClusterResponseContent(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             scheduler (Scheduler): [optional]  # noqa: E501
             head_node (EC2Instance): [optional]  # noqa: E501
+            login_nodes (LoginNodesPool): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
         """
 

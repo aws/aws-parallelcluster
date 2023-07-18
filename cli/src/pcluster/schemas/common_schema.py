@@ -22,7 +22,7 @@ from marshmallow import Schema, ValidationError, fields, post_dump, post_load, p
 from pcluster.config.cluster_config import BaseTag
 from pcluster.config.common import AdditionalIamPolicy, Cookbook, DeploymentSettings, Imds, LambdaFunctionsVpcConfig
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
+from pcluster.constants import IAM_POLICY_REGEX, PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
 from pcluster.utils import to_pascal_case
 
 ALLOWED_VALUES = {
@@ -185,7 +185,7 @@ class AdditionalIamPolicySchema(BaseSchema):
     """Represent the schema of Additional IAM policy."""
 
     policy = fields.Str(
-        required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
+        required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(IAM_POLICY_REGEX)
     )
 
     @post_load

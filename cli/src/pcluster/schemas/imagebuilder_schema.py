@@ -28,7 +28,7 @@ from pcluster.config.imagebuilder_config import (
     UpdateOsPackages,
     Volume,
 )
-from pcluster.constants import PCLUSTER_IMAGE_NAME_REGEX
+from pcluster.constants import IAM_INSTANCE_PROFILE_REGEX, IAM_POLICY_REGEX, IAM_ROLE_REGEX, PCLUSTER_IMAGE_NAME_REGEX
 from pcluster.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.schemas.common_schema import (
     ALLOWED_VALUES,
@@ -135,11 +135,11 @@ class DistributionConfigurationSchema(BaseSchema):
 class IamSchema(BaseSchema):
     """Represent the schema of the ImageBuilder IAM."""
 
-    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
-    instance_profile = fields.Str(validate=validate.Regexp("^arn:.*:instance-profile/"))
-    cleanup_lambda_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
+    instance_role = fields.Str(validate=validate.Regexp(IAM_ROLE_REGEX))
+    instance_profile = fields.Str(validate=validate.Regexp(IAM_INSTANCE_PROFILE_REGEX))
+    cleanup_lambda_role = fields.Str(validate=validate.Regexp(IAM_ROLE_REGEX))
     additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
-    permissions_boundary = fields.Str(validate=validate.Regexp("^arn:.*:policy/"))
+    permissions_boundary = fields.Str(validate=validate.Regexp(IAM_POLICY_REGEX))
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):

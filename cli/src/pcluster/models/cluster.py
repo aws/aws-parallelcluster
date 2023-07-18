@@ -58,6 +58,7 @@ from pcluster.models.common import (
     upload_archive,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
+from pcluster.models.login_nodes_status import LoginNodesStatus
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -171,6 +172,7 @@ class Cluster:
         self.__official_ami = None
         self.__has_running_capacity = None
         self.__running_capacity = None
+        self.__has_running_login_nodes = None
 
     @property
     def stack(self):
@@ -279,6 +281,16 @@ class Cluster:
         """Status of the cluster compute fleet."""
         status, _ = self.compute_fleet_status_with_last_updated_time
         return status
+
+    @property
+    def login_nodes_status(self):
+        """Status of the login nodes pool."""
+        login_nodes_status = LoginNodesStatus(self.stack_name)
+        if self.stack.scheduler == "slurm" and self.config.login_nodes:
+            # This approach works since by design we have now only one pool.
+            # We should fix this if we want to add more than a login nodes pool per cluster.
+            login_nodes_status.retrieve_data(self.config.login_nodes.pools[0].name)
+        return login_nodes_status
 
     @property
     def compute_fleet_status_with_last_updated_time(self) -> Tuple[ComputeFleetStatus, str]:
@@ -721,6 +733,14 @@ class Cluster:
                     self.compute_fleet_status_manager.get_status() != ComputeFleetStatus.STOPPED
                 )
         return self.__has_running_capacity
+
+    def has_running_login_nodes(self, updated_value: bool = False) -> bool:
+        """Return True if the cluster has running login nodes. Note: the value will be cached."""
+        if self.__has_running_login_nodes is None or updated_value:
+            self.__has_running_login_nodes = (
+                self.login_nodes_status.get_healthy_nodes() + self.login_nodes_status.get_unhealthy_nodes() != 0
+            )
+        return self.__has_running_login_nodes
 
     def get_running_capacity(self, updated_value: bool = False):
         """Return the number of instances or desired capacity. Note: the value will be cached."""

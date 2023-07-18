@@ -86,6 +86,9 @@ FSX_PORTS = {
     ONTAP: {"tcp": [111, 635, 2049, 4046], "udp": [111, 635, 2049, 4046]},
 }
 
+ALL_PORTS_RANGE = (0, 65535)
+SLURM_PORTS_RANGE = (6819, 6829)
+NFS_PORT = 2049
 EFS_PORT = 2049
 
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
@@ -313,3 +316,7 @@ UNSUPPORTED_OPERATIONS_MAP = {
 }
 
 MAX_TAGS_COUNT = 40  # Tags are limited to 50, reserve some tags for parallelcluster specified tags
+
+IAM_ROLE_REGEX = "^arn:.*:role/"
+IAM_INSTANCE_PROFILE_REGEX = "^arn:.*:instance-profile/"
+IAM_POLICY_REGEX = "^arn:.*:policy/"

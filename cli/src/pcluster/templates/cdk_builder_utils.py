@@ -75,7 +75,7 @@ def get_user_data_content(user_data_path: str):
     return user_data_content
 
 
-def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClusterConfig) -> dict:
+def get_common_user_data_env(node: Union[HeadNode, SlurmQueue, LoginNodesPool], config: BaseClusterConfig) -> dict:
     """Return a dict containing the common env variables to be replaced in user data."""
     return {
         "YumProxy": node.networking.proxy.http_proxy_address if node.networking.proxy else "_none_",
@@ -835,6 +835,44 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         else:
             pass_role_resources = {default_pass_role_resource}
         return list(pass_role_resources)
+
+
+class LoginNodesIamResources(NodeIamResourcesBase):
+    """Construct defining IAM resources for a login node."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        config: BaseClusterConfig,
+        node: Union[HeadNode, BaseQueue, LoginNodesPool],
+        shared_storage_infos: dict,
+        name: str,
+    ):
+        super().__init__(scope, id, config, node, shared_storage_infos, name)
+
+    def _build_policy(self) -> List[iam.PolicyStatement]:
+        return [
+            iam.PolicyStatement(
+                sid="Ec2",
+                actions=["ec2:DescribeInstanceAttribute"],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
+            iam.PolicyStatement(
+                sid="S3GetObj",
+                actions=["s3:GetObject"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="s3",
+                        resource="{0}-aws-parallelcluster/*".format(Stack.of(self).region),
+                        region="",
+                        account="",
+                    )
+                ],
+            ),
+        ]
 
 
 class ComputeNodeIamResources(NodeIamResourcesBase):

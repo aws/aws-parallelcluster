@@ -1,0 +1,32 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: t3.small
+      Count: 1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        AdditionalSecurityGroups:
+          - sg-12345678
+      Ssh:
+        KeyName: kn-12345678
+SharedStorage:
+  - MountDir: /opt/shared/efs/managed/1
+    Name: shared-efs-managed-1
+    StorageType: Efs
