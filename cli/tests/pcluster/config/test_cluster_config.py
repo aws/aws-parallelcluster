@@ -13,6 +13,7 @@ from pcluster.config.cluster_config import (
     HeadNode,
     HeadNodeImage,
     HeadNodeNetworking,
+    HeadNodeSsh,
     HealthChecks,
     Image,
     LoginNodes,
@@ -510,6 +511,7 @@ class TestBaseClusterConfig:
 
         login_nodes = LoginNodes(pools=[login_node_pool])
         assert_that(login_nodes.pools[0].count).is_equal_to(1)
+        assert_that(login_nodes.pools[0].gracetime_period).is_equal_to(60)
 
     @pytest.mark.parametrize(
         "queue, expected_value",
@@ -546,6 +548,70 @@ class TestBaseClusterConfig:
     def test_job_exclusive_allocation_defaults(self, queue, expected_value):
         queue = SlurmQueue(**queue)
         assert_that(queue.job_exclusive_allocation).is_equal_to(expected_value)
+
+    @pytest.mark.parametrize(
+        "head_node_ssh, login_node_ssh, expected_value",
+        [
+            (
+                HeadNodeSsh(key_name="head-node-key"),
+                LoginNodesSsh(key_name="login-node-key"),
+                "login-node-key",
+            ),
+            (HeadNodeSsh(key_name="head-node-key"), None, "head-node-key"),
+            (
+                None,
+                LoginNodesSsh(key_name="login-node-key"),
+                "login-node-key",
+            ),
+            (
+                HeadNodeSsh(key_name="head-node-key"),
+                LoginNodesSsh(key_name=None),
+                "head-node-key",
+            ),
+            (
+                None,
+                None,
+                None,
+            ),
+        ],
+    )
+    def test_login_nodes_ssh_key_default_value(self, head_node_ssh, login_node_ssh, expected_value, mocker):
+        cluster_config = SlurmClusterConfig(
+            cluster_name="clustername",
+            login_nodes=LoginNodes(
+                [
+                    LoginNodesPool(
+                        name="test_pool",
+                        instance_type="t3.xlarge",
+                        image=LoginNodesImage(custom_ami="ami-12345678"),
+                        networking=LoginNodesNetworking(subnet_ids=["subnet-12345678"]),
+                        ssh=login_node_ssh,
+                    )
+                ]
+            ),
+            image=Image("alinux2"),
+            head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet"), ssh=head_node_ssh),
+            scheduling=SlurmScheduling(
+                [
+                    SlurmQueue(
+                        name="queue0",
+                        networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
+                        compute_resources=[
+                            SlurmComputeResource(name="compute_resource_1", instance_type="c5.xlarge"),
+                            SlurmFlexibleComputeResource(
+                                [FlexibleInstanceType(instance_type="c5.xlarge")], name="compute_resource_2"
+                            ),
+                            SlurmFlexibleComputeResource(
+                                [FlexibleInstanceType(instance_type="c5n.18xlarge")], name="compute_resource_3"
+                            ),
+                        ],
+                    )
+                ],
+            ),
+        )
+        print(cluster_config.head_node.ssh.key_name)
+        print(cluster_config.login_nodes.pools[0].ssh.key_name)
+        assert_that(cluster_config.login_nodes.pools[0].ssh.key_name).is_equal_to(expected_value)
 
 
 class TestSharedEbs:

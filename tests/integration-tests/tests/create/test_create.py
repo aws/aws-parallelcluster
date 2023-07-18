@@ -86,23 +86,23 @@ def test_create_wrong_pcluster_version(
 
 @pytest.mark.usefixtures("instance", "scheduler")
 @pytest.mark.parametrize(
-    "imds_secured, users_allow_list, imds_support",
+    "imds_secured, users_allow_list",
     [
-        (True, {"root": True, "pcluster-admin": True, "slurm": False}, "v2.0"),
-        (False, {"root": True, "pcluster-admin": True, "slurm": True}, "v1.0"),
+        (True, {"root": True, "pcluster-admin": True, "slurm": False}),
+        (False, {"root": True, "pcluster-admin": True, "slurm": True}),
     ],
 )
 def test_create_imds_secured(
-    imds_secured, users_allow_list, imds_support, region, os, pcluster_config_reader, clusters_factory, architecture
+    imds_secured, users_allow_list, region, os, pcluster_config_reader, clusters_factory, architecture
 ):
     """
     Test IMDS access with different configurations.
     In particular, it also verifies that IMDS access is preserved on instance reboot.
     Also checks that the cluster instances respect the desired ImdsSupport setting.
     """
-    cluster_config = pcluster_config_reader(imds_secured=imds_secured, imds_support=imds_support)
+    cluster_config = pcluster_config_reader(imds_secured=imds_secured)
     cluster = clusters_factory(cluster_config, raise_on_error=True)
-    status = "required" if imds_support == "v2.0" else "optional"
+    status = "required"
 
     logging.info("Checking cluster access after cluster creation")
     assert_head_node_is_running(region, cluster)
@@ -207,8 +207,7 @@ def test_cluster_creation_with_invalid_ebs(
     expected_cfn_failure_reason = (
         "Failed to mount EBS volume. Please check /var/log/chef-client.log in the head "
         "node, or check the chef-client.log in CloudWatch logs. Please refer to "
-        "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#"
-        "troubleshooting-v3-get-logs for more details on ParallelCluster logs."
+        "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html for more details."
     )
 
     assert_that(cfn_failure_reason).contains(expected_cfn_failure_reason)

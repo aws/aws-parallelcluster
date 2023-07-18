@@ -46,6 +46,8 @@ from pcluster.api.models import (
     Failure,
     InstanceState,
     ListClustersResponseContent,
+    LoginNodesPool,
+    LoginNodesState,
     Scheduler,
     Tag,
     UpdateClusterBadRequestExceptionResponseContent,
@@ -67,6 +69,7 @@ from pcluster.models.cluster import (
     NotFoundClusterActionError,
 )
 from pcluster.models.cluster_resources import ClusterStack
+from pcluster.models.login_nodes_status import LoginNodesPoolState
 from pcluster.utils import get_installed_version, to_utc_datetime
 from pcluster.validators.common import FailureLevel
 
@@ -249,11 +252,32 @@ def describe_cluster(cluster_name, region=None):
             state=InstanceState.from_dict(head_node.state),
             private_ip_address=head_node.private_ip,
         )
+        login_nodes = _get_login_nodes(cluster)
+        if login_nodes:
+            response.login_nodes = login_nodes
     except ClusterActionError as e:
-        # This should not be treated as a failure cause head node might not be running in some cases
+        # This should not be treated as a failure cause head node and login node might not be running in some cases.
+        # e.g. when the cluster is in DELETE_IN_PROGRESS
         LOGGER.info(e)
 
     return response
+
+
+def _get_login_nodes(cluster):
+    login_nodes_status = cluster.login_nodes_status
+    if login_nodes_status.get_login_nodes_pool_available():
+        status = LoginNodesState.FAILED
+        if login_nodes_status.get_status() == LoginNodesPoolState.ACTIVE:
+            status = LoginNodesState.ACTIVE
+        elif login_nodes_status.get_status() == LoginNodesPoolState.PENDING:
+            status = LoginNodesState.PENDING
+        login_nodes = LoginNodesPool(status=status)
+        login_nodes.address = login_nodes_status.get_address()
+        login_nodes.scheme = login_nodes_status.get_scheme()
+        login_nodes.healthy_nodes = login_nodes_status.get_healthy_nodes()
+        login_nodes.unhealthy_nodes = login_nodes_status.get_unhealthy_nodes()
+        return login_nodes
+    return None
 
 
 @configure_aws_region()

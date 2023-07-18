@@ -85,6 +85,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    LoginNodesSchedulerValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -1250,6 +1251,7 @@ class LoginNodesPool(Resource):
         count: int = None,
         ssh: LoginNodesSsh = None,
         iam: LoginNodesIam = None,
+        gracetime_period: int = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1260,6 +1262,7 @@ class LoginNodesPool(Resource):
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
+        self.gracetime_period = Resource.init_param(gracetime_period, default=60)
 
     @property
     def instance_profile(self):
@@ -1273,6 +1276,7 @@ class LoginNodesPool(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        self._register_validator(NameValidator, name=self.name)
 
 
 class LoginNodes(Resource):
@@ -1451,7 +1455,7 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
         self.original_config_version = ""
         self._official_ami = None
-        self.imds = imds or TopLevelImds(implied="v1.0")
+        self.imds = imds or TopLevelImds(implied="v2.0")
         self.deployment_settings = deployment_settings
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
@@ -1476,10 +1480,7 @@ class BaseClusterConfig(Resource):
             self._register_validator(
                 AmiOsCompatibleValidator, os=self.image.os, image_id=self.head_node.image.custom_ami
             )
-        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
-        self._register_validator(
-            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
-        )
+
         self._register_storage_validators()
         self._register_validator(
             HeadNodeLaunchTemplateValidator,
@@ -2010,6 +2011,10 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
+        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
+        self._register_validator(
+            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
+        )
         if self.shared_storage:
             for storage in self.shared_storage:
                 if isinstance(storage, BaseSharedFsx):
@@ -2622,11 +2627,122 @@ class SudoerConfiguration(Resource):
         self.run_as = run_as
 
 
-class CommonSchedulerClusterConfig(BaseClusterConfig):
-    """Represent the common Cluster configuration between Slurm Config and future scheduler Config."""
+class SlurmClusterConfig(BaseClusterConfig):
+    """Represent the full Slurm Cluster configuration."""
 
-    def _register_validators(self, context: ValidatorContext = None):
+    def __init__(
+        self,
+        cluster_name: str,
+        scheduling: SlurmScheduling,
+        login_nodes: LoginNodes = None,
+        **kwargs,
+    ):
+        super().__init__(cluster_name, **kwargs)
+        self.scheduling = scheduling
+        self.login_nodes = login_nodes
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.ssh and not pool.ssh.key_name:
+                    pool.ssh.key_name = self.head_node.ssh.key_name
+                elif not pool.ssh:
+                    pool.ssh = LoginNodesSsh(key_name=self.head_node.ssh.key_name)
+        self.__image_dict = None
+        # Cache capacity reservations information together to reduce number of boto3 calls.
+        # Since this cache is only used for validation, if AWSClientError happens
+        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
+        # blocking CLI execution if the user want to suppress the validation.
+        try:
+            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
+
+    def get_instance_types_data(self):
+        """Get instance type infos for all instance types used in the configuration file."""
+        result = {}
+        instance_type_info = self.head_node.instance_type_info
+        result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                for instance_type in compute_resource.instance_types:
+                    instance_type_info = compute_resource.instance_type_info_map[instance_type]
+                    result[instance_type] = instance_type_info.instance_type_data
+        return result
+
+    @property
+    def login_nodes_ami(self):
+        """Get the image id of the LoginNodes."""
+        login_nodes_ami_dict = {}
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.image and pool.image.custom_ami:
+                    login_nodes_ami_dict[pool.name] = pool.image.custom_ami
+                elif self.image.custom_ami:
+                    login_nodes_ami_dict[pool.name] = self.image.custom_ami
+                else:
+                    login_nodes_ami_dict[pool.name] = self.official_ami
+        return login_nodes_ami_dict
+
+    @property
+    def has_gpu_health_checks_enabled(self):
+        """Return True if an queue or compute resources has GPU health checking enabled."""
+        for queue in self.scheduling.queues:
+            if queue.health_checks.gpu.enabled:
+                return True
+            for compute_resource in queue.compute_resources:
+                if compute_resource.health_checks.gpu.enabled:
+                    return True
+        return False
+
+    @property
+    def login_nodes_subnet_ids(self):
+        """Return the list of all LoginNodes subnet ids in the cluster."""
+        subnet_ids_set = set()
+        for pool in self.login_nodes.pools:
+            for subnet_id in pool.networking.subnet_ids:
+                subnet_ids_set.add(subnet_id)
+        return list(subnet_ids_set)
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: C901
         super()._register_validators(context)
+        self._register_validator(
+            MixedSecurityGroupOverwriteValidator,
+            head_node_security_groups=self.head_node.networking.security_groups,
+            queues=self.scheduling.queues,
+        )
+
+        # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
+        if self.login_nodes:
+            self._register_validator(
+                SubnetsValidator,
+                subnet_ids=self.login_nodes_subnet_ids
+                + self.compute_subnet_ids
+                + [self.head_node.networking.subnet_id],
+            )
+
+        if self.login_nodes:
+            self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
+
+        # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
+        if self.login_nodes:
+            for pool in self.login_nodes.pools:
+                if pool.image and pool.image.custom_ami:
+                    self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=pool.image.custom_ami)
+                    self._register_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=pool.instance_type,
+                        image=self.login_nodes_ami[pool.name],
+                    )
+
+        if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
+            self._register_validator(
+                HostedZoneValidator,
+                hosted_zone_id=self.scheduling.settings.dns.hosted_zone_id,
+                cluster_vpc=self.vpc_id,
+                cluster_name=self.cluster_name,
+            )
+
+        instance_types_data = self.get_instance_types_data()
+        self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         checked_images = []
         for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
@@ -2646,9 +2762,7 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
             if root_volume_size is None:  # If root volume size is not specified, it will be the size of the AMI.
                 root_volume_size = ami_volume_size
             self._register_validator(
-                RootVolumeSizeValidator,
-                root_volume_size=root_volume_size,
-                ami_volume_size=ami_volume_size,
+                RootVolumeSizeValidator, root_volume_size=root_volume_size, ami_volume_size=ami_volume_size
             )
             self._register_validator(
                 EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
@@ -2663,12 +2777,6 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                 checked_images.append(queue_image)
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
-                for instance_type in compute_resource.instance_types:
-                    self._register_validator(
-                        InstanceTypeBaseAMICompatibleValidator,
-                        instance_type=instance_type,
-                        image=queue_image,
-                    )
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
                     instance_type_info_list=list(compute_resource.instance_type_info_map.values()),
@@ -2709,6 +2817,72 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
                         multi_az_enabled=queue.multi_az_enabled,
                         subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
+                for instance_type in compute_resource.instance_types:
+                    if self.scheduling.settings.enable_memory_based_scheduling:
+                        self._register_validator(
+                            InstanceTypeMemoryInfoValidator,
+                            instance_type=instance_type,
+                            instance_type_data=instance_types_data[instance_type],
+                        )
+                    self._register_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=instance_type,
+                        image=queue_image,
+                    )
+                    self._register_validator(
+                        InstanceTypeAcceleratorManufacturerValidator,
+                        instance_type=instance_type,
+                        instance_type_data=instance_types_data[instance_type],
+                    )
+                    self._register_validator(
+                        InstanceTypePlacementGroupValidator,
+                        instance_type=instance_type,
+                        instance_type_data=instance_types_data[instance_type],
+                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
+                    )
+                if isinstance(compute_resource, SlurmFlexibleComputeResource):
+                    validator_args = dict(
+                        queue_name=queue.name,
+                        multiaz_queue=queue.multi_az_enabled,
+                        capacity_type=queue.capacity_type,
+                        allocation_strategy=queue.allocation_strategy,
+                        compute_resource_name=compute_resource.name,
+                        instance_types_info=compute_resource.instance_type_info_map,
+                        disable_simultaneous_multithreading=compute_resource.disable_simultaneous_multithreading,
+                        efa_enabled=compute_resource.efa and compute_resource.efa.enabled,
+                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
+                        memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
+                    )
+                    flexible_instance_types_validators = [
+                        InstancesCPUValidator,
+                        InstancesAcceleratorsValidator,
+                        InstancesEFAValidator,
+                        InstancesNetworkingValidator,
+                        InstancesAllocationStrategyValidator,
+                        InstancesMemorySchedulingWarningValidator,
+                    ]
+                    for validator in flexible_instance_types_validators:
+                        self._register_validator(validator, **validator_args)
+                self._register_validator(
+                    ComputeResourceTagsValidator,
+                    queue_name=queue.name,
+                    compute_resource_name=compute_resource.name,
+                    cluster_tags=self.get_tags(),
+                    queue_tags=queue.get_tags(),
+                    compute_resource_tags=compute_resource.get_tags(),
+                )
+
+    @property
+    def image_dict(self):
+        """Return image dict of queues, key is queue name, value is image id."""
+        if self.__image_dict:
+            return self.__image_dict
+        self.__image_dict = {}
+
+        for queue in self.scheduling.queues:
+            self.__image_dict[queue.name] = queue.queue_ami or self.image.custom_ami or self.official_ami
+
+        return self.__image_dict
 
     @property
     def _capacity_reservation_targets(self):
@@ -2769,157 +2943,3 @@ class CommonSchedulerClusterConfig(BaseClusterConfig):
             if queue.custom_actions:
                 return True
         return False
-
-
-class SlurmClusterConfig(CommonSchedulerClusterConfig):
-    """Represent the full Slurm Cluster configuration."""
-
-    def __init__(
-        self,
-        cluster_name: str,
-        scheduling: SlurmScheduling,
-        login_nodes: LoginNodes = None,
-        **kwargs,
-    ):
-        super().__init__(cluster_name, **kwargs)
-        self.scheduling = scheduling
-        self.login_nodes = login_nodes
-        self.__image_dict = None
-        # Cache capacity reservations information together to reduce number of boto3 calls.
-        # Since this cache is only used for validation, if AWSClientError happens
-        # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
-        # blocking CLI execution if the user want to suppress the validation.
-        try:
-            AWSApi.instance().ec2.describe_capacity_reservations(self.all_relevant_capacity_reservation_ids)
-        except AWSClientError:
-            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
-
-    def get_instance_types_data(self):
-        """Get instance type infos for all instance types used in the configuration file."""
-        result = {}
-        instance_type_info = self.head_node.instance_type_info
-        result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
-        for queue in self.scheduling.queues:
-            for compute_resource in queue.compute_resources:
-                for instance_type in compute_resource.instance_types:
-                    instance_type_info = compute_resource.instance_type_info_map[instance_type]
-                    result[instance_type] = instance_type_info.instance_type_data
-        return result
-
-    @property
-    def login_nodes_ami(self):
-        """Get the image id of the LoginNodes."""
-        login_nodes_ami_dict = {}
-        if self.login_nodes:
-            for pool in self.login_nodes.pools:
-                if pool.image and pool.image.custom_ami:
-                    login_nodes_ami_dict[pool.name] = pool.image.custom_ami
-                elif self.image.custom_ami:
-                    login_nodes_ami_dict[pool.name] = self.image.custom_ami
-                else:
-                    login_nodes_ami_dict[pool.name] = self.official_ami
-        return login_nodes_ami_dict
-
-    @property
-    def has_gpu_health_checks_enabled(self):
-        """Return True if an queue or compute resources has GPU health checking enabled."""
-        for queue in self.scheduling.queues:
-            if queue.health_checks.gpu.enabled:
-                return True
-            for compute_resource in queue.compute_resources:
-                if compute_resource.health_checks.gpu.enabled:
-                    return True
-        return False
-
-    @property
-    def login_nodes_subnet_ids(self):
-        """Return the list of all LoginNodes subnet ids in the cluster."""
-        subnet_ids_set = set()
-        for pool in self.login_nodes.pools:
-            for subnet_id in pool.networking.subnet_ids:
-                subnet_ids_set.add(subnet_id)
-        return list(subnet_ids_set)
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(
-            MixedSecurityGroupOverwriteValidator,
-            head_node_security_groups=self.head_node.networking.security_groups,
-            queues=self.scheduling.queues,
-        )
-
-        if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
-            self._register_validator(
-                HostedZoneValidator,
-                hosted_zone_id=self.scheduling.settings.dns.hosted_zone_id,
-                cluster_vpc=self.vpc_id,
-                cluster_name=self.cluster_name,
-            )
-
-        instance_types_data = self.get_instance_types_data()
-        self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
-
-        for queue in self.scheduling.queues:
-            for compute_resource in queue.compute_resources:
-                if self.scheduling.settings.enable_memory_based_scheduling:
-                    for instance_type in compute_resource.instance_types:
-                        self._register_validator(
-                            InstanceTypeMemoryInfoValidator,
-                            instance_type=instance_type,
-                            instance_type_data=instance_types_data[instance_type],
-                        )
-                for instance_type in compute_resource.instance_types:
-                    self._register_validator(
-                        InstanceTypeAcceleratorManufacturerValidator,
-                        instance_type=instance_type,
-                        instance_type_data=instance_types_data[instance_type],
-                    )
-                    self._register_validator(
-                        InstanceTypePlacementGroupValidator,
-                        instance_type=instance_type,
-                        instance_type_data=instance_types_data[instance_type],
-                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
-                    )
-                if isinstance(compute_resource, SlurmFlexibleComputeResource):
-                    validator_args = dict(
-                        queue_name=queue.name,
-                        multiaz_queue=queue.multi_az_enabled,
-                        capacity_type=queue.capacity_type,
-                        allocation_strategy=queue.allocation_strategy,
-                        compute_resource_name=compute_resource.name,
-                        instance_types_info=compute_resource.instance_type_info_map,
-                        disable_simultaneous_multithreading=compute_resource.disable_simultaneous_multithreading,
-                        efa_enabled=compute_resource.efa and compute_resource.efa.enabled,
-                        placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
-                        memory_scheduling_enabled=self.scheduling.settings.enable_memory_based_scheduling,
-                    )
-                    flexible_instance_types_validators = [
-                        InstancesCPUValidator,
-                        InstancesAcceleratorsValidator,
-                        InstancesEFAValidator,
-                        InstancesNetworkingValidator,
-                        InstancesAllocationStrategyValidator,
-                        InstancesMemorySchedulingWarningValidator,
-                    ]
-                    for validator in flexible_instance_types_validators:
-                        self._register_validator(validator, **validator_args)
-                self._register_validator(
-                    ComputeResourceTagsValidator,
-                    queue_name=queue.name,
-                    compute_resource_name=compute_resource.name,
-                    cluster_tags=self.get_tags(),
-                    queue_tags=queue.get_tags(),
-                    compute_resource_tags=compute_resource.get_tags(),
-                )
-
-    @property
-    def image_dict(self):
-        """Return image dict of queues, key is queue name, value is image id."""
-        if self.__image_dict:
-            return self.__image_dict
-        self.__image_dict = {}
-
-        for queue in self.scheduling.queues:
-            self.__image_dict[queue.name] = queue.queue_ami or self.image.custom_ami or self.official_ami
-
-        return self.__image_dict

@@ -74,7 +74,10 @@ def process(source):
     node_name_list = get_node_list(node_name)
     node_map = response["hits"]["hits"][0]["_source"]["detail"]["node_list"]
     nodes = []
-    node_dict = get_node_dict(node_map)
+    node_list = source["detail"]["nodes"]
+    cpu_ids_list = source["detail"]["cpu_ids"]
+    gres_list = source["detail"]["gres"]
+    node_dict = get_node_dict(node_list, cpu_ids_list, gres_list, node_map)
     for node in node_name_list:
         nodes.append(node_dict[node])
     source["detail"]["nodes"] = nodes
@@ -129,12 +132,48 @@ def convert_range_to_list(node_range):
     )
 
 
-def get_node_dict(node_map):
+def get_node_dict(node_list, cpu_ids_list, gres_list, node_map):
     node_name_dict = {}
     for node in node_map:
         name = node["node_name"]
         node_name_dict[name] = node
+    for i in range(len(node_list)):
+        node_names = get_node_list(node_list[i])
+        cpu_ids = cpu_ids_list[i]
+        gres = None
+        for node_name in node_names:
+            node_info = node_name_dict[node_name]
+            node_info["cpu_ids"] = cpu_ids
+            if gres_list:
+                gres = gres_list[i]
+            cpu_usage = 0
+            if "," in cpu_ids:
+                cpu_ids_continuous_list = cpu_ids.split(",")
+                for cpu_ids_continuous in cpu_ids_continuous_list:
+                    cpu_usage += get_cpu_num(cpu_ids_continuous)
+            else:
+                cpu_usage = get_cpu_num(cpu_ids)
+            node_info["cpu_usage"] = cpu_usage
+            if gres:
+                gpu_ids = re.search(r"\((.*?):(\d+)\)", gres).group(2)
+                gpu_type_and_usage = gres[4:].split("(")[0]
+                node_info["gpu_ids"] = gpu_ids
+                node_info["gpu_type"] = gpu_type_and_usage.split(":")[0]
+                node_info["gpu_usage"] = gpu_type_and_usage.split(":")[1]
+            else:
+                node_info["gpu_ids"] = None
+                node_info["gpu_type"] = None
+                node_info["gpu_usage"] = 0
+            node_name_dict[node_name] = node_info
+
     return node_name_dict
+
+
+def get_cpu_num(cpu_ids):
+    if "-" in cpu_ids:
+        split = cpu_ids.split("-")
+        return int(split[1]) - int(split[0]) + 1
+    return 1
 
 
 def build_source(message, extracted_fields):
@@ -158,10 +197,6 @@ def build_source(message, extracted_fields):
         json_substring = extract_json(message)
         if json_substring:
             return json.loads(json_substring)
-
-    json_substring = extract_json(message)
-    if json_substring:
-        return json.loads(json_substring)
     return {}
 
 

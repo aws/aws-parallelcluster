@@ -73,8 +73,8 @@ def test_invalid_config(
 
     # Test Suppression of a validator
 
-    # Get base AMI -- remarkable AMIs are not available for ARM and ubuntu2004, centos7 yet
-    if os not in ["ubuntu2004", "centos7"]:
+    # Get base AMI -- remarkable AMIs are not available for ARM and ubuntu2204, centos7 yet
+    if os not in ["ubuntu2204", "centos7"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
@@ -119,9 +119,16 @@ def test_build_image(
     bucket_name = s3_bucket_factory()
 
     # Get base AMI
-    # remarkable AMIs are not available for ARM and ubuntu2004, centos7 yet
-    if os not in ["centos7"]:
+    # remarkable AMIs are not available for ARM and ubuntu2204, centos7 yet
+    if os not in ["ubuntu2204", "centos7"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+    elif os in ["ubuntu2204"]:
+        base_ami = retrieve_latest_ami(
+            region,
+            os,
+            architecture=architecture,
+            additional_filters=[{"Name": "creation-date", "Values": ["2023-01-06T*"]}],
+        )
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
@@ -185,7 +192,7 @@ def test_kernel4_build_image_run_cluster(
     """
     Test build image for given region and os and run a job in a new cluster created from the new images.
 
-    Also check that the build instance has the desired ImdsSupport setting (v1.0, so IMDSv2 is optional).
+    Also check that the build instance has the desired ImdsSupport setting (IMDSv2, v1.0 is optional).
     """
 
     # Get base AMI from kernel4
@@ -200,7 +207,7 @@ def test_kernel4_build_image_run_cluster(
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
     image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
     _test_build_image_success(image)
-    _test_build_imds_settings(image, "optional", region)
+    _test_build_imds_settings(image, "required", region)
     _test_list_images(image)
 
     cluster_config = pcluster_config_reader(custom_ami=image.ec2_image_id)
