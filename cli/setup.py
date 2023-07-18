@@ -26,7 +26,7 @@ REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
     "tabulate>=0.8.8,<=0.8.10",
-    "PyYAML~=5.3",
+    "PyYAML==5.3.1",
     "jinja2~=3.0",
     "marshmallow~=3.10",
     "aws-cdk.core~=" + CDK_VERSION,
