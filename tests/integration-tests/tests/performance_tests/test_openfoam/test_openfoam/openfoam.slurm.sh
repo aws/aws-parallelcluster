@@ -1,3 +1,4 @@
+#!/bin/bash
 # Absolute path to the SubspaceBenchmarks repository
 SUBSPACE_BENCHMARKS_PATH=${1}
 
