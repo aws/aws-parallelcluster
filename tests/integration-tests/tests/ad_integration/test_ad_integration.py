@@ -525,6 +525,7 @@ def _check_ssh_key_generation(user, remote_command_executor, scheduler_commands,
     # Remove user's home directory to ensure public SSH key doesn't exist
     user.cleanup()
     user.ssh_connect()
+    time.sleep(3)
     _check_home_directory(user, remote_command_executor)
     _check_ssh_key(user, generate_ssh_keys_for_user, remote_command_executor, scheduler_commands)
     logging.info(
