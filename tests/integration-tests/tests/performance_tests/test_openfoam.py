@@ -36,15 +36,15 @@ def openfoam_installed(headnode):
     [[8, 16, 32]],
 )
 def test_openfoam(
-        vpc_stack,
-        instance,
-        os,
-        region,
-        scheduler,
-        pcluster_config_reader,
-        clusters_factory,
-        number_of_nodes,
-        test_datadir,
+    vpc_stack,
+    instance,
+    os,
+    region,
+    scheduler,
+    pcluster_config_reader,
+    clusters_factory,
+    number_of_nodes,
+    test_datadir,
 ):
     cluster_config = pcluster_config_reader(number_of_nodes=max(number_of_nodes))
     cluster = clusters_factory(cluster_config)
@@ -60,10 +60,11 @@ def test_openfoam(
     subspace_benchmarks_dir = "/shared/ec2-user/SubspaceBenchmarks"
     for node in number_of_nodes:
         logging.info(f"Submitting OpenFOAM job with {node} nodes")
-        remote_command_executor.run_remote_command(f'bash openfoam.slurm.sh "{subspace_benchmarks_dir}" "{node}" 2>&1',
-                                                   additional_files=[str(test_datadir / "openfoam.slurm.sh")],
-                                                   timeout=OPENFOAM_JOB_TIMEOUT,
-                                                   )
+        remote_command_executor.run_remote_command(
+            f'bash openfoam.slurm.sh "{subspace_benchmarks_dir}" "{node}" 2>&1',
+            additional_files=[str(test_datadir / "openfoam.slurm.sh")],
+            timeout=OPENFOAM_JOB_TIMEOUT,
+        )
         # pid = read_remote_file(remote_command_executor, '/tmp/openfoam.pid')
         # logging.info(f"Waiting for OpenFOAM job to complete with pid = {pid}")
         # wait_process_completion(remote_command_executor, pid)
