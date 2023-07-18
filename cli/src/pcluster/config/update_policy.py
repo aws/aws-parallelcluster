@@ -230,7 +230,7 @@ def is_stop_required_for_shared_storage(change):
 def fail_reason_shared_storage_update_policy(change, patch):
     if is_awsbatch_scheduler(change, patch):
         return f"Update actions are not currently supported for the '{change.key}' parameter"
-    reason = "All compute nodes must be stopped"
+    reason = "All login and compute nodes must be stopped"
     # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
     if not is_stop_required_for_shared_storage(change) and is_slurm_scheduler(patch):
         reason += " or QueueUpdateStrategy must be set"
@@ -328,6 +328,7 @@ def actions_needed_shared_storage_update(change, patch):
     actions = "Stop the compute fleet with the pcluster update-compute-fleet command"
     if not is_stop_required_for_shared_storage(change) and is_slurm_scheduler(patch):
         actions += ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation"
+    actions += f". {UpdatePolicy.ACTIONS_NEEDED['login_nodes_stop'](change, patch)}"
 
     return actions
 
@@ -347,11 +348,13 @@ def condition_checker_shared_storage_update_policy(change, patch):
     """
     Check different requirements for different schedulers.
 
-    Compute fleet stop is required for plugin scheduler.
+    Compute and login fleet stop is required for plugin scheduler.
     Update for awsbatch scheduler is not supported.
     QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues for slurm scheduler.
     """
     if is_awsbatch_scheduler(change, patch):
+        return False
+    if patch.cluster.has_running_login_nodes():
         return False
     result = not patch.cluster.has_running_capacity()
     if is_slurm_scheduler(patch) and not is_stop_required_for_shared_storage(change):
@@ -383,6 +386,9 @@ UpdatePolicy.FAIL_REASONS = {
         "pcluster update-compute-fleet command and then run an update with the --force-update flag"
     ),
     "login_nodes_running": lambda change, patch: "The update is not supported when login nodes are running",
+    "compute_or_login_nodes_running": lambda change, patch: (
+        "The update is not supported when compute or login nodes are running"
+    ),
 }
 
 # Common action_needed messages
@@ -562,4 +568,20 @@ UpdatePolicy.LOGIN_NODES_STOP = UpdatePolicy(
     condition_checker=condition_checker_login_nodes_stop_policy,
     fail_reason=UpdatePolicy.FAIL_REASONS["login_nodes_running"],
     action_needed=UpdatePolicy.ACTIONS_NEEDED["login_nodes_stop"],
+)
+
+
+# Update supported only with all computre and login nodes down
+UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP = UpdatePolicy(
+    name="COMPUTE_AND_LOGIN_NODES_STOP",
+    level=10,
+    condition_checker=lambda change, patch: (
+        UpdatePolicy.COMPUTE_FLEET_STOP.condition_checker(change, patch)
+        and UpdatePolicy.LOGIN_NODES_STOP.condition_checker(change, patch)
+    ),
+    fail_reason=UpdatePolicy.FAIL_REASONS["compute_or_login_nodes_running"],
+    action_needed=lambda change, patch: "{}. {}".format(
+        UpdatePolicy.COMPUTE_FLEET_STOP.action_needed(change, patch),
+        UpdatePolicy.LOGIN_NODES_STOP.action_needed(change, patch),
+    ),
 )
