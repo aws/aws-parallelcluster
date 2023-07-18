@@ -32,7 +32,8 @@ DEFAULT_RETENTION_DAYS = 180
 NODE_CONFIG_PATH = "/etc/chef/dna.json"
 HEAD_NODE_ROLE_NAME = "HeadNode"
 COMPUTE_NODE_ROLE_NAME = "ComputeFleet"
-NODE_ROLE_NAMES = {HEAD_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME}
+LOGIN_NODE_ROLE_NAME = "LoginNode"
+NODE_ROLE_NAMES = {HEAD_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME, LOGIN_NODE_ROLE_NAME}
 
 
 def _get_log_group_name_for_cluster(cluster_name):
@@ -101,8 +102,8 @@ class CloudWatchLoggingClusterState:
         self.scheduler_commands = get_scheduler_commands(
             scheduler=self.scheduler, remote_command_executor=self.remote_command_executor
         )
-        self._relevant_logs = {HEAD_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: []}
-        self._cluster_log_state = {HEAD_NODE_ROLE_NAME: {}, COMPUTE_NODE_ROLE_NAME: {}}
+        self._relevant_logs = {HEAD_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: [], LOGIN_NODE_ROLE_NAME: []}
+        self._cluster_log_state = {HEAD_NODE_ROLE_NAME: {}, COMPUTE_NODE_ROLE_NAME: {}, LOGIN_NODE_ROLE_NAME: []}
         self._set_cluster_log_state()
 
     @property
@@ -220,11 +221,18 @@ class CloudWatchLoggingClusterState:
         LOGGER.info("DNA config read from compute node: {0}".format(_dump_json(compute_node_config)))
         return compute_node_config
 
+    def _read_login_node_config(self):
+        """Read the node configuration JSON file at NODE_CONFIG_PATH on a login node."""
+        login_node_config = {}
+        # TODO add logic to execute remote commands on LoginNodes
+        return login_node_config
+
     def _read_node_configs(self):
         """Return a dict mapping node role names to the config at NODE_CONFIG_PATH."""
         return {
             HEAD_NODE_ROLE_NAME: self._read_head_node_config(),
             COMPUTE_NODE_ROLE_NAME: self._read_compute_node_config(),
+            LOGIN_NODE_ROLE_NAME: self._read_login_node_config(),
         }
 
     @staticmethod
@@ -409,6 +417,8 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for each node type don't exist."""
         self._populate_head_node_log_existence()
         self._populate_compute_log_existence()
+        # TODO Add function for retrieve logs from login nodes
+        # This requires improvements on the RemoteCommandExecutor
         LOGGER.debug("After populating log existence:\n{0}".format(self._dump_cluster_log_state()))
 
     def _populate_head_node_log_emptiness_and_tail(self):
@@ -447,6 +457,8 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for each node type are empty."""
         self._populate_head_node_log_emptiness_and_tail()
         self._populate_compute_log_emptiness_and_tail()
+        # TODO add function to retrieve logs from login nodes
+        # This requires improvements on the RemoteCommandExecutor
         LOGGER.debug("After populating log emptiness and tails:\n{0}".format(self._dump_cluster_log_state()))
 
     def _populate_head_node_agent_status(self):
@@ -469,6 +481,8 @@ class CloudWatchLoggingClusterState:
         """Get the cloudwatch agent's status for all the nodes in the cluster."""
         self._populate_head_node_agent_status()
         self._populate_compute_agent_status()
+        # TODO add function to retrieve agent status for login nodes
+        # This requires improvements on the RemoteCommandExecutor
         LOGGER.debug("After populating agent statuses:\n{0}".format(self._dump_cluster_log_state()))
 
     def _set_cluster_log_state(self):
@@ -503,7 +517,7 @@ class CloudWatchLoggingTestRunner:
 
     @staticmethod
     def _fqdn_to_local_hostname(fqdn):
-        """Turn a fullly qualified domain name into a local hostname of the form ip-X-X-X-X."""
+        """Turn a fully qualified domain name into a local hostname of the form ip-X-X-X-X."""
         local_hostname = fqdn.split(".")[0]
         assert_that(re.match(r"ip-\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}$", local_hostname)).is_not_none()
         return local_hostname
