@@ -601,6 +601,12 @@ class IamPolicyAssertion:
                             },
                             "Sid": "S3GetObj",
                         },
+                        {
+                            "Action": "cloudformation:SignalResource",
+                            "Effect": "Allow",
+                            "Resource": "*",
+                            "Sid": "CloudFormation",
+                        },
                     ]
                 ),
             ],
@@ -670,11 +676,13 @@ def test_login_nodes_traffic_management_resources_values_properties(
         elif isinstance(lt_assertion, LifecycleHookAssertion):
             if lt_assertion.expected_lifecycle_transition == "autoscaling:EC2_INSTANCE_TERMINATING":
                 lt_assertion.assert_lifecycle_hook_properties(
-                    asset_content_lifecycle_hook_terminating, "Pooltestloginnodespool1LoginNodesASGLifecycleHookTerminating5B004754"
+                    asset_content_lifecycle_hook_terminating,
+                    "Pooltestloginnodespool1LoginNodesASGLifecycleHookTerminating5B004754",
                 )
             else:
                 lt_assertion.assert_lifecycle_hook_properties(
-                    asset_content_lifecycle_hook_launching, "Pooltestloginnodespool1LoginNodesASGLifecycleHookLaunching9DA7619B"
+                    asset_content_lifecycle_hook_launching,
+                    "Pooltestloginnodespool1LoginNodesASGLifecycleHookLaunching9DA7619B",
                 )
         elif isinstance(lt_assertion, IamRoleAssertion):
             lt_assertion.assert_iam_role_properties(asset_content_iam_role, "RoleA50bdea9651dc48c")

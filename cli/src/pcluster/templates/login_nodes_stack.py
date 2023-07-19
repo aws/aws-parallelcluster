@@ -254,7 +254,7 @@ class Pool(Construct):
             "LoginNodesASGLifecycleHookLaunching",
             auto_scaling_group_name=auto_scaling_group.ref,
             lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
-            default_result="ABANDON"
+            default_result="ABANDON",
         )
 
     def _add_login_nodes_pool_target_group(self):

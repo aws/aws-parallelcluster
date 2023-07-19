@@ -216,7 +216,7 @@ else
   timeout ${Timeout} /tmp/bootstrap.sh || error_exit
 fi
 
-cfn-signal --stack ${AWS::StackName} --resource ${AutoScalingGroupName} --region ${AWS::Region}
+cfn-signal --stack ${AWS::StackName} --resource ${AutoScalingGroupName} --region ${AWS::Region} --exit-code 0
 
 # End of file
 --==BOUNDARY==
