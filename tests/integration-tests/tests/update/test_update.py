@@ -774,7 +774,9 @@ def _test_update_queue_strategy_without_running_job(
         ],
     )
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
-    wait_for_compute_nodes_states(scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"])
+    wait_for_compute_nodes_states(
+        scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"], stop_max_delay_secs=600
+    )
     # test volume size are expected after update
     instances = cluster.get_cluster_instance_ids(node_type="Compute", queue_name="queue1")
     for instance in instances:
