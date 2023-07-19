@@ -17,7 +17,8 @@ from typing import List
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
-from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser, get_all_stack_events
+from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser, get_all_stack_events, \
+    describe_stack_resources
 
 
 class ClusterStack(StackInfo):
@@ -86,8 +87,8 @@ class ClusterStack(StackInfo):
 
         def _is_failed_wait(event):
             if (
-                event.get("ResourceType") == "AWS::CloudFormation::WaitCondition"
-                and event.get("ResourceStatus") == "CREATE_FAILED"
+                    event.get("ResourceType") == "AWS::CloudFormation::WaitCondition"
+                    and event.get("ResourceStatus") == "CREATE_FAILED"
             ):
                 return True
             return False
@@ -184,6 +185,26 @@ class ClusterStack(StackInfo):
         return failure.failure_code, failure.api_failure_reason
 
 
+def _get_alarm_names(self):
+    """Get alarm names using cw stack resources."""
+    stack_resources = describe_stack_resources(self.name)
+    alarm_names = []
+    for resource in stack_resources.values():
+        if resource.get("ResourceType") == "AWS::CloudWatch::Alarm":
+            alarm_name = resource.get("PhysicalResourceId")
+            if alarm_name:
+                alarm_names.append(alarm_name)
+    return alarm_names
+
+
+def get_alarms_in_alarm(self):
+    """Loop through the alarm names to get alarms in alarm."""
+    alarm_names = self._get_alarm_names()
+    alarms_in_alarm = AWSApi.instance().cloudwatch.get_alarms_in_alarm(alarm_names)
+
+    return alarms_in_alarm
+
+
 class ClusterInstance(InstanceInfo):
     """Object to store cluster Instance info, initialized with a describe_instances call and other cluster info."""
 
@@ -271,12 +292,12 @@ class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser):
     """Class to manage export cluster logs filters."""
 
     def __init__(
-        self,
-        head_node: ClusterInstance,
-        log_group_name: str,
-        start_time: datetime.datetime = None,
-        end_time: datetime.datetime = None,
-        filters: List[str] = None,
+            self,
+            head_node: ClusterInstance,
+            log_group_name: str,
+            start_time: datetime.datetime = None,
+            end_time: datetime.datetime = None,
+            filters: List[str] = None,
     ):
         super().__init__(head_node, filters)
         self.time_parser = LogGroupTimeFiltersParser(log_group_name, start_time, end_time)

@@ -12,6 +12,7 @@ import os
 
 from pcluster.aws.batch import BatchClient
 from pcluster.aws.cfn import CfnClient
+from pcluster.aws.cloudwatch import CloudWatchClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.efs import EfsClient
@@ -46,6 +47,7 @@ class AWSApi:
 
         self._batch = None
         self._cfn = None
+        self._cloudwatch = None
         self._ec2 = None
         self._efs = None
         self._elb = None
@@ -70,6 +72,13 @@ class AWSApi:
         if not self._cfn:
             self._cfn = CfnClient()
         return self._cfn
+
+    @property
+    def cloudwatch(self):
+        """Cloudwatch client."""
+        if not self._cloudwatch:
+            self._cloudwatch = CloudWatchClient()
+        return self._cloudwatch
 
     @property
     def batch(self):

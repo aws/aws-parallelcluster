@@ -79,7 +79,7 @@ class TestDescribeClusterCommand:
         expected = wire_translate(response)
         assert_that(out).is_equal_to(expected)
         assert_that(describe_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
-        expected_args = {"region": None, "cluster_name": "cluster"}
+        expected_args = {"region": None, "verbose": None, "cluster_name": "cluster"}
         describe_clusters_mock.assert_called_with(**expected_args)
 
     def test_error(self, mocker):
