@@ -89,7 +89,7 @@ write_files:
           "scheduler": "${Scheduler}",
           "stack_name": "${AWS::StackName}",
           "stack_arn": "${AWS::StackId}",
-          "use_private_hostname": "${UsePrivateHostname}"
+          "use_private_hostname": "${UsePrivateHostname}",
           "auto_scaling_group_name": "${AutoScalingGroupName}"
         }
       }
