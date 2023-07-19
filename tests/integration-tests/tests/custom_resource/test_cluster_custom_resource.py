@@ -319,14 +319,26 @@ def test_cluster_create_with_custom_policies(
 ):
     """Create a custom resource provider with a custom role and create a cluster to validate it."""
     parameters = {"CustomBucket": resource_bucket, stack_param: resource_bucket_policies.cfn_outputs[cfn_output]}
+    provider_stack_name = generate_stack_name(
+        "integ-test-custom-resource-provider", request.config.getoption("stackname_suffix")
+    )
     custom_resource_gen = cluster_custom_resource_provider_generator(
         cfn_stacks_factory,
         region,
-        generate_stack_name("integ-test-custom-resource-provider", request.config.getoption("stackname_suffix")),
+        provider_stack_name,
         parameters,
         cluster_custom_resource_provider_template,
     )
     service_token = next(custom_resource_gen)
+
+    if stack_param == "CustomLambdaRole":
+        logging.info("Checking no IAM resources are created when CustomLambdaRole is specified")
+        resources = boto3.client("cloudformation").describe_stack_resources(StackName=provider_stack_name)[
+            "StackResources"
+        ]
+        for resource in resources:
+            resource_type = resource["ResourceType"]
+            assert_that(resource_type).does_not_contain("AWS::IAM::")
 
     stack = cluster_custom_resource_factory(pcluster_config_reader(), service_token=service_token)
     cluster_name = _stack_parameter(stack, "ClusterName")

@@ -26,6 +26,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
+- Fix issue causing dangling IAM policies to be created when creating ParallelCluster CloudFormation custom resource provider with `CustomLambdaRole`.
 
 3.6.1
 ------
