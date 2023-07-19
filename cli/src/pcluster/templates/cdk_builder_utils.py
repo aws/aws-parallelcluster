@@ -848,7 +848,9 @@ class LoginNodesIamResources(NodeIamResourcesBase):
         node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
+        auto_scaling_group_name: str,
     ):
+        self._auto_scaling_group_name = auto_scaling_group_name
         super().__init__(scope, id, config, node, shared_storage_infos, name)
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
@@ -869,6 +871,19 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                         resource="{0}-aws-parallelcluster/*".format(Stack.of(self).region),
                         region="",
                         account="",
+                    )
+                ],
+            ),
+            iam.PolicyStatement(
+                sid="Autoscaling",
+                actions=[
+                    "autoscaling:CompleteLifecycleAction",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="autoscaling",
+                        resource=f"autoScalingGroupName/{self._auto_scaling_group_name}",
                     )
                 ],
             ),

@@ -530,7 +530,8 @@ class LifecycleHookAssertion:
         assert resource["Type"] == "AWS::AutoScaling::LifecycleHook"
         properties = resource["Properties"]
         assert properties["LifecycleTransition"] == self.expected_lifecycle_transition
-        assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
+        if "HeartbeatTimeout" in properties:
+            assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
 
 
 class IamRoleAssertion:
@@ -570,6 +571,10 @@ class IamPolicyAssertion:
                     expected_lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
                     expected_heartbeat_timeout=7200,
                 ),
+                LifecycleHookAssertion(
+                    expected_lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
+                    expected_heartbeat_timeout=600,
+                ),
                 IamRoleAssertion(expected_managed_policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"),
                 IamPolicyAssertion(
                     expected_statements=[
@@ -596,6 +601,25 @@ class IamPolicyAssertion:
                             },
                             "Sid": "S3GetObj",
                         },
+                        {
+                            "Action": "autoscaling:CompleteLifecycleAction",
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":autoscaling:",
+                                        {"Ref": "AWS::Region"},
+                                        ":",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":autoScalingGroupName/clustername-testloginnodespool1-AutoScalingGroup",
+                                    ],
+                                ]
+                            },
+                            "Sid": "Autoscaling",
+                        },
                     ]
                 ),
             ],
@@ -615,21 +639,25 @@ def test_login_nodes_traffic_management_resources_values_properties(
     )
 
     asset_content_asg = get_asset_content_with_resource_name(
-        cdk_assets, "Pooltestloginnodespool1Pooltestloginnodespool1AutoScalingGroup41053D91"
+        cdk_assets, "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937"
     )
     asset_content_nlb = get_asset_content_with_resource_name(
-        cdk_assets, "Pooltestloginnodespool1testloginnodespool1LoadBalancer18C3DA82"
+        cdk_assets, "clusternametestloginnodespool1testloginnodespool1LoadBalancerE1D4FCC7"
     )
     asset_content_target_group = get_asset_content_with_resource_name(
-        cdk_assets, "Pooltestloginnodespool1testloginnodespool1TargetGroupD150DBF2"
+        cdk_assets, "clusternametestloginnodespool1testloginnodespool1TargetGroup713F5EC5"
     )
     asset_content_nlb_listener = get_asset_content_with_resource_name(
         cdk_assets,
-        "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
+        "clusternametestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC",
     )
-    asset_content_lifecycle_hook = get_asset_content_with_resource_name(
+    asset_content_lifecycle_hook_terminating = get_asset_content_with_resource_name(
         cdk_assets,
-        "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467",
+        "clusternametestloginnodespool1LoginNodesASGLifecycleHookTerminating51CA6203",
+    )
+    asset_content_lifecycle_hook_launching = get_asset_content_with_resource_name(
+        cdk_assets,
+        "clusternametestloginnodespool1LoginNodesASGLifecycleHookLaunching879DBA56",
     )
     asset_content_iam_role = get_asset_content_with_resource_name(
         cdk_assets,
@@ -639,29 +667,37 @@ def test_login_nodes_traffic_management_resources_values_properties(
         cdk_assets,
         "ParallelClusterPoliciesA50bdea9651dc48c",
     )
-    print(cdk_assets)
     for lt_assertion in lt_assertions:
         if isinstance(lt_assertion, AutoScalingGroupAssertion):
             lt_assertion.assert_asg_properties(
-                asset_content_asg, "Pooltestloginnodespool1Pooltestloginnodespool1AutoScalingGroup41053D91"
+                asset_content_asg,
+                "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937",
             )
         elif isinstance(lt_assertion, NetworkLoadBalancerAssertion):
             lt_assertion.assert_nlb_properties(
-                asset_content_nlb, "Pooltestloginnodespool1testloginnodespool1LoadBalancer18C3DA82"
+                asset_content_nlb, "clusternametestloginnodespool1testloginnodespool1LoadBalancerE1D4FCC7"
             )
         elif isinstance(lt_assertion, TargetGroupAssertion):
             lt_assertion.assert_tg_properties(
-                asset_content_target_group, "Pooltestloginnodespool1testloginnodespool1TargetGroupD150DBF2"
+                asset_content_target_group, "clusternametestloginnodespool1testloginnodespool1TargetGroup713F5EC5"
             )
         elif isinstance(lt_assertion, NetworkLoadBalancerListenerAssertion):
             lt_assertion.assert_nlb_listener_properties(
                 asset_content_nlb_listener,
-                "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
+                "clusternametestloginnodespool1testloginnodespool1"
+                "LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC",
             )
         elif isinstance(lt_assertion, LifecycleHookAssertion):
-            lt_assertion.assert_lifecycle_hook_properties(
-                asset_content_lifecycle_hook, "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467"
-            )
+            if lt_assertion.expected_lifecycle_transition == "autoscaling:EC2_INSTANCE_TERMINATING":
+                lt_assertion.assert_lifecycle_hook_properties(
+                    asset_content_lifecycle_hook_terminating,
+                    "clusternametestloginnodespool1LoginNodesASGLifecycleHookTerminating51CA6203",
+                )
+            else:
+                lt_assertion.assert_lifecycle_hook_properties(
+                    asset_content_lifecycle_hook_launching,
+                    "clusternametestloginnodespool1LoginNodesASGLifecycleHookLaunching879DBA56",
+                )
         elif isinstance(lt_assertion, IamRoleAssertion):
             lt_assertion.assert_iam_role_properties(asset_content_iam_role, "RoleA50bdea9651dc48c")
         elif isinstance(lt_assertion, IamPolicyAssertion):
