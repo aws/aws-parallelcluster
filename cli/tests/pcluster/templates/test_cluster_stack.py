@@ -530,7 +530,8 @@ class LifecycleHookAssertion:
         assert resource["Type"] == "AWS::AutoScaling::LifecycleHook"
         properties = resource["Properties"]
         assert properties["LifecycleTransition"] == self.expected_lifecycle_transition
-        assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
+        if "HeartbeatTimeout" in properties:
+            assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
 
 
 class IamRoleAssertion:
@@ -569,6 +570,10 @@ class IamPolicyAssertion:
                 LifecycleHookAssertion(
                     expected_lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
                     expected_heartbeat_timeout=7200,
+                ),
+                LifecycleHookAssertion(
+                    expected_lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
+                    expected_heartbeat_timeout=None,
                 ),
                 IamRoleAssertion(expected_managed_policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"),
                 IamPolicyAssertion(
@@ -627,9 +632,13 @@ def test_login_nodes_traffic_management_resources_values_properties(
         cdk_assets,
         "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
     )
-    asset_content_lifecycle_hook = get_asset_content_with_resource_name(
+    asset_content_lifecycle_hook_terminating = get_asset_content_with_resource_name(
         cdk_assets,
-        "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467",
+        "Pooltestloginnodespool1LoginNodesASGLifecycleHookTerminating5B004754",
+    )
+    asset_content_lifecycle_hook_launching = get_asset_content_with_resource_name(
+        cdk_assets,
+        "Pooltestloginnodespool1LoginNodesASGLifecycleHookLaunching9DA7619B",
     )
     asset_content_iam_role = get_asset_content_with_resource_name(
         cdk_assets,
@@ -659,9 +668,14 @@ def test_login_nodes_traffic_management_resources_values_properties(
                 "Pooltestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool1727E619B",
             )
         elif isinstance(lt_assertion, LifecycleHookAssertion):
-            lt_assertion.assert_lifecycle_hook_properties(
-                asset_content_lifecycle_hook, "Pooltestloginnodespool1LoginNodesASGLifecycleHookE54B2467"
-            )
+            if lt_assertion.expected_lifecycle_transition == "autoscaling:EC2_INSTANCE_TERMINATING":
+                lt_assertion.assert_lifecycle_hook_properties(
+                    asset_content_lifecycle_hook_terminating, "Pooltestloginnodespool1LoginNodesASGLifecycleHookTerminating5B004754"
+                )
+            else:
+                lt_assertion.assert_lifecycle_hook_properties(
+                    asset_content_lifecycle_hook_launching, "Pooltestloginnodespool1LoginNodesASGLifecycleHookLaunching9DA7619B"
+                )
         elif isinstance(lt_assertion, IamRoleAssertion):
             lt_assertion.assert_iam_role_properties(asset_content_iam_role, "RoleA50bdea9651dc48c")
         elif isinstance(lt_assertion, IamPolicyAssertion):

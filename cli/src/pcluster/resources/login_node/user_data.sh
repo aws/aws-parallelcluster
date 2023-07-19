@@ -90,6 +90,7 @@ write_files:
           "stack_name": "${AWS::StackName}",
           "stack_arn": "${AWS::StackId}",
           "use_private_hostname": "${UsePrivateHostname}"
+          "auto_scaling_group_name": "${AutoScalingGroupName}"
         }
       }
   - path: /etc/chef/client.rb
@@ -214,6 +215,8 @@ if [ "${Timeout}" == "NONE" ]; then
 else
   timeout ${Timeout} /tmp/bootstrap.sh || error_exit
 fi
+
+cfn-signal --stack ${AWS::StackName} --resource ${AutoScalingGroupName} --region ${AWS::Region}
 
 # End of file
 --==BOUNDARY==

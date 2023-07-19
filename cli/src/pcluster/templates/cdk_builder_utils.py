@@ -872,6 +872,14 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                     )
                 ],
             ),
+            iam.PolicyStatement(
+                sid="CloudFormation",
+                actions=[
+                    "cloudformation:SignalResource",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
         ]
 
 

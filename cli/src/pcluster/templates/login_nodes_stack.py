@@ -192,6 +192,7 @@ class Pool(Construct):
                                         NODE_BOOTSTRAP_TIMEOUT,
                                     )
                                 ),
+                                "AutoScalingGroupName": f"{self._login_nodes_stack_id}-AutoScalingGroup",
                             },
                             **get_common_user_data_env(self._pool, self._config),
                         },
@@ -224,6 +225,7 @@ class Pool(Construct):
         auto_scaling_group = autoscaling.CfnAutoScalingGroup(
             self,
             f"{self._login_nodes_stack_id}-AutoScalingGroup",
+            auto_scaling_group_name=f"{self._login_nodes_stack_id}-AutoScalingGroup",
             launch_template=launch_template_specification,
             min_size=str(self._pool.count),
             max_size=str(self._pool.count),
@@ -232,17 +234,27 @@ class Pool(Construct):
             vpc_zone_identifier=self._pool.networking.subnet_ids,
         )
 
-        self._add_lifecycle_hook(auto_scaling_group)
+        self.terminating_lifecycle_hook = self._add_terminating_lifecycle_hook(auto_scaling_group)
+        self.launching_lifecycle_hook = self._add_launching_lifecycle_hook(auto_scaling_group)
 
         return auto_scaling_group
 
-    def _add_lifecycle_hook(self, auto_scaling_group):
+    def _add_terminating_lifecycle_hook(self, auto_scaling_group):
         return autoscaling.CfnLifecycleHook(
             self,
-            "LoginNodesASGLifecycleHook",
+            "LoginNodesASGLifecycleHookTerminating",
             auto_scaling_group_name=auto_scaling_group.ref,
             lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
             heartbeat_timeout=self._pool.gracetime_period * 60,
+        )
+
+    def _add_launching_lifecycle_hook(self, auto_scaling_group):
+        return autoscaling.CfnLifecycleHook(
+            self,
+            "LoginNodesASGLifecycleHookLaunching",
+            auto_scaling_group_name=auto_scaling_group.ref,
+            lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
+            default_result="ABANDON"
         )
 
     def _add_login_nodes_pool_target_group(self):
