@@ -663,8 +663,8 @@ def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, schedu
     [
         ("SimpleAD", "ldap", False),
         # ("SimpleAD", "ldaps", False),
-        ("SimpleAD", "ldaps", True),
-        ("MicrosoftAD", "ldap", False),
+        # ("SimpleAD", "ldaps", True),
+        # ("MicrosoftAD", "ldap", False),
         # ("MicrosoftAD", "ldaps", False),
         ("MicrosoftAD", "ldaps", True),
     ],
