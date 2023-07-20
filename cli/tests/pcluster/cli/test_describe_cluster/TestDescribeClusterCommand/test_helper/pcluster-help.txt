@@ -1,5 +1,5 @@
-usage: pcluster describe-cluster [-h] -n CLUSTER_NAME [-r REGION] [--verbose VERBOSE] [--debug]
-                                 [--query QUERY]
+usage: pcluster describe-cluster [-h] -n CLUSTER_NAME [-r REGION]
+                                 [--verbose VERBOSE] [--debug] [--query QUERY]
 
 Get detailed information about an existing cluster.
 
