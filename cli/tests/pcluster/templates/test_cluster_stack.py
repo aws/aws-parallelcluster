@@ -637,7 +637,7 @@ def test_login_nodes_traffic_management_resources_values_properties(
         config_file_name,
         test_datadir,
     )
-    print(cdk_assets)
+
     asset_content_asg = get_asset_content_with_resource_name(
         cdk_assets, "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937"
     )
