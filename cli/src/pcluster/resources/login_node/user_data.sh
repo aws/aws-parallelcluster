@@ -61,6 +61,7 @@ write_files:
           "cw_logging_enabled": "${CWLoggingEnabled}",
           "directory_service": {
             "enabled": "${DirectoryServiceEnabled}",
+            "domain_read_only_user": "${DirectoryServiceReadOnlyUser}",
             "generate_ssh_keys_for_users": "${DirectoryServiceGenerateSshKeys}"
           },
           "ebs_shared_dirs": "${EbsSharedDirs}",

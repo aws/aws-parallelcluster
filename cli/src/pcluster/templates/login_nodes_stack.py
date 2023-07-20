@@ -132,6 +132,7 @@ class Pool(Construct):
                                 "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
                                 "DirectoryServiceEnabled": str(ds_config is not None).lower(),
+                                "DirectoryServiceReadOnlyUser": ds_config.domain_read_only_user if ds_config else "",
                                 "DirectoryServiceGenerateSshKeys": ds_generate_keys,
                                 "EbsSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.EBS]
