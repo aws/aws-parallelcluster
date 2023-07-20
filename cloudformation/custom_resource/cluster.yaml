@@ -68,6 +68,7 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${PclusterCfnFunction}
 
   EventsPolicy:
+    Condition: UsePCPolicies
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
@@ -82,6 +83,7 @@ Resources:
               - events:RemoveTargets
             Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*
   S3Policy:
+    Condition: UsePCPolicies
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
