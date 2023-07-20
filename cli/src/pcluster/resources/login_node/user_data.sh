@@ -90,7 +90,8 @@ write_files:
           "stack_name": "${AWS::StackName}",
           "stack_arn": "${AWS::StackId}",
           "use_private_hostname": "${UsePrivateHostname}",
-          "auto_scaling_group_name": "${AutoScalingGroupName}"
+          "auto_scaling_group_name": "${AutoScalingGroupName}",
+          "lifecycle_hook_name": "${LifecycleHookName}"
         }
       }
   - path: /etc/chef/client.rb
@@ -216,7 +217,8 @@ else
   timeout ${Timeout} /tmp/bootstrap.sh || error_exit
 fi
 
-cfn-signal --stack ${AWS::StackName} --resource ${AutoScalingGroupName} --region ${AWS::Region} --exit-code 0
+INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+aws autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE --instance-id ${INSTANCE_ID} --lifecycle-hook-name "${LifecycleHookName}" --auto-scaling-group-name "${AutoScalingGroupName}"  --region ${AWS::Region}
 
 # End of file
 --==BOUNDARY==
