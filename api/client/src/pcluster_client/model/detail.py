@@ -160,7 +160,7 @@ class Detail(ModelNormal):
                         ),
                         path_to_item=_path_to_item,
                         valid_classes=(self.__class__,),
-                        )
+                    )
 
         self._data_store = {}
         self._check_type = _check_type
@@ -171,9 +171,9 @@ class Detail(ModelNormal):
 
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
-                    self._configuration is not None and \
-                    self._configuration.discard_unknown_keys and \
-                    self.additional_properties_type is None:
+                        self._configuration is not None and \
+                        self._configuration.discard_unknown_keys and \
+                        self.additional_properties_type is None:
                 # discard variable.
                 continue
             setattr(self, var_name, var_value)
@@ -245,7 +245,7 @@ class Detail(ModelNormal):
                         ),
                         path_to_item=_path_to_item,
                         valid_classes=(self.__class__,),
-                        )
+                    )
 
         self._data_store = {}
         self._check_type = _check_type
@@ -256,12 +256,12 @@ class Detail(ModelNormal):
 
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
-                    self._configuration is not None and \
-                    self._configuration.discard_unknown_keys and \
-                    self.additional_properties_type is None:
+                        self._configuration is not None and \
+                        self._configuration.discard_unknown_keys and \
+                        self.additional_properties_type is None:
                 # discard variable.
                 continue
             setattr(self, var_name, var_value)
             if var_name in self.read_only_vars:
                 raise ApiAttributeError(f"`{var_name}` is a read-only attribute. Use `from_openapi_data` to instantiate "
-                                        f"class with read only attributes.")
+                                     f"class with read only attributes.")
