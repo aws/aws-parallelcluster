@@ -80,12 +80,12 @@ LOGGER = logging.getLogger(__name__)
 @convert_errors()
 @http_success_status_code(202)
 def create_cluster(
-        create_cluster_request_content: Dict,
-        region: str = None,
-        suppress_validators: List[str] = None,
-        validation_failure_level: str = None,
-        dryrun: bool = None,
-        rollback_on_failure: bool = None,
+    create_cluster_request_content: Dict,
+    region: str = None,
+    suppress_validators: List[str] = None,
+    validation_failure_level: str = None,
+    dryrun: bool = None,
+    rollback_on_failure: bool = None,
 ) -> CreateClusterResponseContent:
     """
     Create a managed cluster in a given region.
@@ -322,13 +322,13 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
 @convert_errors()
 @http_success_status_code(202)
 def update_cluster(
-        update_cluster_request_content: Dict,
-        cluster_name,
-        suppress_validators=None,
-        validation_failure_level=None,
-        region=None,
-        dryrun=None,
-        force_update=None,
+    update_cluster_request_content: Dict,
+    cluster_name,
+    suppress_validators=None,
+    validation_failure_level=None,
+    region=None,
+    dryrun=None,
+    force_update=None,
 ):
     """
     Update a cluster managed in a given region.

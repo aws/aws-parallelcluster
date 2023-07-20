@@ -798,6 +798,7 @@ class TestDescribeCluster:
                 },
             ),
             (
+                True,
                 cfn_describe_stack_mock_response(
                     {
                         "Parameters": [
@@ -814,6 +815,8 @@ class TestDescribeCluster:
                 },
                 False,
                 "slurm",
+                cfn_describe_stack_resources_mock_response(),
+                [],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -913,7 +916,7 @@ class TestDescribeCluster:
                 side_effect=[DummyLoginNodesConfig(False), ClusterActionError("failed")],
             )
 
-        response = self._send_test_request(client,verbose=verbose)
+        response = self._send_test_request(client, verbose=verbose)
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)

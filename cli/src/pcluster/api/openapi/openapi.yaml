@@ -301,8 +301,7 @@ paths:
           description: AWS Region that the operation corresponds to.
           type: string
         style: form
-      - description:
-        explode: true
+      - explode: true
         in: query
         name: verbose
         required: false
