@@ -1545,4 +1545,3 @@ def test_login_nodes_count_update(pcluster_config_reader, clusters_factory, test
     # Describe cluster instances, verify the response contains two login nodes
     instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
     assert_that(len(instances)).is_equal_to(2)
-    print("Done!")
