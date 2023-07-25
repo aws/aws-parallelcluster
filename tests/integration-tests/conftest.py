@@ -725,8 +725,8 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
                 for compute_resources in queues["ComputeResources"]:
                     if dict_has_nested_key(compute_resources, ["Instances"]):
                         instance_type = compute_resources["Instances"][0]["InstanceType"]
-                    compute_resources.pop("Instances")
-                    compute_resources["InstanceType"] = instance_type
+                        compute_resources.pop("Instances")
+                        compute_resources["InstanceType"] = instance_type
 
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
