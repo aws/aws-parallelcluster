@@ -1484,7 +1484,8 @@ def _wait_until_instances_are_stopped(cluster):
     return n_compute_instances <= 1
 
 
-def test_login_nodes_count_update(pcluster_config_reader, clusters_factory, test_datadir):
+@pytest.mark.usefixtures("instance")
+def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test cluster Updates (add, remove LN pools)."""
 
     # Start a cluster without login nodes
