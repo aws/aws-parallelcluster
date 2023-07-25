@@ -62,6 +62,7 @@ class Cluster:
         self.__cfn_resources = None
         self.__cfn_stack_arn = None
         self.custom_cli_credentials = custom_cli_credentials
+        self.cluster_info = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
@@ -187,15 +188,19 @@ class Cluster:
 
     def describe_cluster(self):
         """Run pcluster describe-cluster and return the result."""
-        cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
-        try:
-            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
-            response = json.loads(result.stdout)
-            logging.info("Get cluster {0} status successfully".format(self.name))
-            return response
-        except subprocess.CalledProcessError as e:
-            logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
-            raise
+        if self.cluster_info:
+            return self.cluster_info
+        else:
+            cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
+            try:
+                result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
+                response = json.loads(result.stdout)
+                logging.info("Get cluster {0} status successfully".format(self.name))
+                self.cluster_info = response
+                return self.cluster_info
+            except subprocess.CalledProcessError as e:
+                logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+                raise
 
     def describe_compute_fleet(self):
         """Run pcluster describe-compute-fleet and return the result."""
@@ -384,6 +389,7 @@ class Cluster:
         self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
+        self.cluster_info = None
 
     def delete_resource_by_stack_id_tag(self):
         """Delete resources by stack id tag."""
