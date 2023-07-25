@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+3.8.0
+------
+
+**ENHANCEMENTS**
+
+**CHANGES**
+
+**BUG FIXES**
+
 3.7.0
 ------
 
