@@ -39,7 +39,10 @@ from tests.pcluster.utils import (
     assert_lambdas_have_expected_vpc_config_and_managed_policy,
     assert_sg_rule,
     get_asset_content_with_resource_name,
+    get_resource_from_assets,
     load_cluster_model_from_yaml,
+    render_user_data,
+    validate_dna_json_fields,
 )
 
 EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
@@ -765,6 +768,55 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     default_head_node_dna_json["cluster"].update(expected_head_node_dna_json_fields)
 
     assert_that(generated_head_node_dna_json).is_equal_to(default_head_node_dna_json)
+
+
+@pytest.mark.parametrize(
+    "config_file_name, expected_login_node_dna_json_fields",
+    [
+        (
+            "login-basic-config.yaml",
+            {
+                "dns_domain": "{'Ref': 'referencetoclusternameClusterDNSDomain8D0872E1Ref'}",
+                "ephemeral_dir": "/scratch",
+                "enable_intel_hpc_platform": "false",
+                "head_node_private_ip": "{'Ref': 'referencetoclusternameHeadNodeENI6497A502PrimaryPrivateIpAddress'}",
+                "hosted_zone": "{'Ref': 'referencetoclusternameRoute53HostedZone2388733DRef'}",
+                "log_group_name": "/aws/parallelcluster/clustername",
+                "node_type": "LoginNode",
+                '"proxy"': "NONE",
+                "scheduler": "slurm",
+            },
+        ),
+        (
+            "login-with-directory-service.yaml",
+            {
+                "domain_read_only_user": "cn=ReadOnlyUser,ou=Users,ou=CORP,dc=corp,dc=sirena,dc=com",
+                "generate_ssh_keys_for_users": "true",
+            },
+        ),
+    ],
+)
+def test_login_node_dna_json(mocker, test_datadir, config_file_name, expected_login_node_dna_json_fields):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    # Read yaml and render CF Template
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    _, cdk_assets = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    # Retrieve UserData information from CF Template
+    login_node_lt = get_resource_from_assets(cdk_assets, "clusternameloginLoginNodeLaunchTemplatelogin990F8275")
+    user_data_content = login_node_lt["Properties"]["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"]
+    rendered_login_user_data = render_user_data(user_data_content)
+
+    # Validate dna.json fields in user_data
+    # Note: since all lines of the user data will be checked ensure you are setting the right key to
+    # uniquely identify the line to check
+    # The value may be a substring of the expected value since hash codes may vary
+    validate_dna_json_fields(rendered_login_user_data, expected_login_node_dna_json_fields)
 
 
 @freeze_time("2021-01-01T01:01:01")
