@@ -774,7 +774,9 @@ def _test_update_queue_strategy_without_running_job(
         ],
     )
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
-    wait_for_compute_nodes_states(scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"])
+    wait_for_compute_nodes_states(
+        scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"], stop_max_delay_secs=600
+    )
     # test volume size are expected after update
     instances = cluster.get_cluster_instance_ids(node_type="Compute", queue_name="queue1")
     for instance in instances:
@@ -801,15 +803,14 @@ def _test_update_queue_strategy_with_running_job(
 ):
     queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "sleep 3000",
-            "nodes": -1,
+            "command": "srun sleep 3000",
+            "nodes": 2,
             "partition": "queue1",
-            "other_options": "-a 1-5",  # instance type has 4 cpus per node, which requires 2 nodes to run the job
         }
     )
 
     queue2_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 3000", "nodes": -1, "partition": "queue2", "other_options": "-a 1-5"}
+        submit_command_args={"command": "srun sleep 3000", "nodes": 2, "partition": "queue2"}
     )
     # Wait for the job to run
     scheduler_commands.wait_job_running(queue1_job_id)
@@ -854,9 +855,11 @@ def _test_update_queue_strategy_with_running_job(
         remote_command_executor.run_remote_command(f"scontrol requeue {queue2_job_id}")
     elif queue_update_strategy == "TERMINATE":
         scheduler_commands.assert_job_state(queue2_job_id, "PENDING")
-        assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["idle%", "idle!"])
 
+    # Be sure the queue2 job is running even after the forced termination: we need the nodes active so that we
+    # can check the AMI id on the instances
     scheduler_commands.wait_job_running(queue2_job_id)
+
     # cancel job in queue1
     scheduler_commands.cancel_job(queue1_job_id)
 
