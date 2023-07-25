@@ -65,6 +65,68 @@ def get_asset_content_with_resource_name(assets, resource_name):
     return None
 
 
+def get_resource_from_assets(assets, resource_name):
+    """Return the Resource dictionary containing a specific resource."""
+    asset = get_asset_content_with_resource_name(assets, resource_name)
+    if asset:
+        return asset["Resources"][resource_name]
+
+    return None
+
+
+# It expects as input ['UserData']['Fn::Base64']['Fn::Sub'] that is a list of two elements
+# 1: contains a dictionary with the key-values to be replaced by Fn::Sub
+# 0: contains the file (as str) where those values will be replaced
+def render_user_data(user_data):
+    """Render the UserData as CF will do."""
+    content = user_data[0]
+    values = user_data[1]
+
+    for value in values:
+        content = content.replace("${%s}" % value, str(values[value]))
+
+    return content
+
+
+# user_data should contain the result provided by `render_user_data` function, that is a string with the
+# whole user_data injected in the Login/Compute nodes
+#
+# Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+# MIME-Version: 1.0
+#
+# --==BOUNDARY==
+# Content-Type: text/cloud-boothook; charset="us-ascii"
+# MIME-Version: 1.0
+#
+# #!/bin/bash -x
+# ...
+# write_files:
+#  - path: /tmp/dna.json
+#    permissions: '0644'
+#    owner: root:root
+#    content: |
+#      {
+#        "cluster": {
+#          "base_os": "alinux2",
+#          "cluster_name": "clustername",
+#          "cluster_user": "ec2-user",
+#          "custom_node_package": "",
+# ..
+#      }
+#  - path: /etc/chef/client.rb
+#  permissions: '0644'
+# ..
+def validate_dna_json_fields(user_data, fields):
+    """Validate that all dna.json fields, expressed as key-value pairs, are present in the user_data."""
+    lines = user_data.splitlines()
+    for k, v in fields.items():
+        for line in lines:
+            if k in line:
+                break
+
+        assert v in line, f"Validating Key '{k}' - Value: '{v}' not found in dna.json line:  '{line}'"
+
+
 def get_head_node_policy(template, enforce_not_null=True):
     policy = get_resources(template, type="AWS::IAM::Policy", name="ParallelClusterPoliciesHeadNode").get(
         "ParallelClusterPoliciesHeadNode"
