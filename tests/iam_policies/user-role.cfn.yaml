@@ -814,6 +814,7 @@ Resources:
               - elasticloadbalancing:DescribeListeners
               - elasticloadbalancing:DescribeLoadBalancers
               - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:DescribeTags
               - elasticloadbalancing:ModifyLoadBalancerAttributes
             Resource: '*'
             Effect: Allow
