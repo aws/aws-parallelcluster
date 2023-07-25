@@ -1534,7 +1534,7 @@ def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, 
     # Update the cluster to remove LoginNodes section
     cluster.update(str(initial_config))
 
-    # Describe cluster, verify the response does have the login nodes section
+    # Describe cluster, verify the response doesn't have the login nodes section
     cluster_info = cluster.describe_cluster()
     assert_that(cluster_info).is_not_none()
     assert_that(cluster_info).does_not_contain("loginNodes")
