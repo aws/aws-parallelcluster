@@ -100,3 +100,14 @@ structure Failure {
     @documentation("Failure reason when the cluster stack is in CREATE_FAILED status.")
     failureReason: String,
 }
+
+list Details{
+    member: Detail
+}
+
+structure Detail {
+    @documentation("The alarm type when the verbose flag is set to true.")
+    alarmType: String,
+    @documentation("The alarm state when the verbose flag is set to true.")
+    alarmState: String,
+}

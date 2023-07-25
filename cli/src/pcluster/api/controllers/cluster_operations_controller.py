@@ -42,6 +42,7 @@ from pcluster.api.models import (
     CreateClusterResponseContent,
     DeleteClusterResponseContent,
     DescribeClusterResponseContent,
+    Detail,
     EC2Instance,
     Failure,
     InstanceState,
@@ -201,7 +202,7 @@ def delete_cluster(cluster_name, region=None):
 
 @configure_aws_region()
 @convert_errors()
-def describe_cluster(cluster_name, region=None):
+def describe_cluster(cluster_name, region=None, verbose=None):
     """
     Get detailed information about an existing cluster.
 
@@ -209,7 +210,8 @@ def describe_cluster(cluster_name, region=None):
     :type cluster_name: str
     :param region: AWS Region that the operation corresponds to.
     :type region: str
-
+    :param verbose
+    :type verbose: bool
     :rtype: DescribeClusterResponseContent
     """
     cluster = Cluster(cluster_name)
@@ -240,6 +242,7 @@ def describe_cluster(cluster_name, region=None):
         cluster_status=cluster_status,
         scheduler=Scheduler(type=cluster.stack.scheduler),
         failures=_get_creation_failures(cluster_status, cfn_stack),
+        details=_get_details(cfn_stack, verbose),
     )
 
     try:
@@ -476,3 +479,21 @@ def _get_creation_failures(cluster_status, cfn_stack):
         return None
     failure_code, failure_reason = cfn_stack.get_cluster_creation_failure()
     return [Failure(failure_code=failure_code, failure_reason=failure_reason)]
+
+
+def _get_details(cfn_stack, verbose):
+    return _get_alarms_details(cfn_stack) if verbose else None
+
+
+def _get_alarms_details(cfn_stack):
+    alarms_in_alarm = cfn_stack.get_alarms_in_alarm()
+
+    if not alarms_in_alarm:
+        return None
+
+    # convert AlarmDetail instances to Detail instances
+    alarm_details = [
+        Detail(alarm_type=alarm_detail["alarm_type"], alarm_state=alarm_detail["alarm_state"])
+        for alarm_detail in alarms_in_alarm
+    ]
+    return alarm_details

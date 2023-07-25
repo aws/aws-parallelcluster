@@ -264,6 +264,13 @@ def export_stack_events(stack_name: str, output_file: str):
         cfn_events_file.write(json.dumps(stack_events, cls=JSONEncoder, indent=2))
 
 
+def describe_stack_resources(stack_name: str):
+    """Get stack resources information."""
+    response = AWSApi.instance().cfn.describe_stack_resources(stack_name)
+
+    return response
+
+
 def create_logs_archive(directory: str, output_file: str = None):
     base_directory = os.path.dirname(directory)
     base_name = os.path.basename(directory)

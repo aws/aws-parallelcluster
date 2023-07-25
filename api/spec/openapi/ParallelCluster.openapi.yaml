@@ -255,6 +255,10 @@ paths:
           schema:
             type: string
             description: AWS Region that the operation corresponds to.
+        - name: verbose
+          in: query
+          schema:
+            type: boolean
       responses:
         "200":
           description: DescribeCluster 200 response
@@ -1913,6 +1917,11 @@ components:
           items:
             $ref: '#/components/schemas/Failure'
           description: Failures array containing failures reason and code when the stack is in CREATE_FAILED status.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/Detail'
+          description: Detailed information about the cluster, provided only when the 'verbose' flag is set to true.
       required:
         - cloudFormationStackStatus
         - cloudformationStackArn
@@ -1989,6 +1998,15 @@ components:
         - imageId
         - region
         - version
+    Detail:
+      type: object
+      properties:
+        alarmType:
+          type: string
+          description: The alarm type when the verbose flag is set to true.
+        alarmState:
+          type: string
+          description: The alarm state when the verbose flag is set to true.
     DryrunOperationExceptionResponseContent:
       type: object
       description: Communicates that the operation would have succeeded without the dryrun flag.

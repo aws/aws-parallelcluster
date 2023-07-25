@@ -19,6 +19,7 @@ from pcluster.api.models.cloud_formation_stack_status import CloudFormationStack
 from pcluster.api.models.cluster_configuration_structure import ClusterConfigurationStructure
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
+from pcluster.api.models.detail import Detail
 from pcluster.api.models.ec2_instance import EC2Instance
 from pcluster.api.models.failure import Failure
 from pcluster.api.models.login_nodes_pool import LoginNodesPool
@@ -49,6 +50,7 @@ class DescribeClusterResponseContent(Model):
         scheduler=None,
         login_nodes=None,
         failures=None,
+        details=None,
     ):
         """DescribeClusterResponseContent - a model defined in OpenAPI
 
@@ -81,6 +83,8 @@ class DescribeClusterResponseContent(Model):
         :param login_nodes: The login_nodes of this DescribeClusterResponseContent.  # noqa: E501
         :type login_nodes: LoginNodesPool
         :type failures: List[Failure]
+        :param details: The details of this DescribeClusterResponseContent.  # noqa: E501
+        :type details: List[Detail]
         """
         self.openapi_types = {
             "creation_time": datetime,
@@ -98,6 +102,7 @@ class DescribeClusterResponseContent(Model):
             "scheduler": Scheduler,
             "login_nodes": LoginNodesPool,
             "failures": List[Failure],
+            "details": List[Detail],
         }
 
         self.attribute_map = {
@@ -116,6 +121,7 @@ class DescribeClusterResponseContent(Model):
             "scheduler": "scheduler",
             "login_nodes": "loginNodes",
             "failures": "failures",
+            "details": "details",
         }
 
         self._creation_time = creation_time
@@ -133,6 +139,7 @@ class DescribeClusterResponseContent(Model):
         self._head_node = head_node
         self._login_nodes = login_nodes
         self._scheduler = scheduler
+        self._details = details
 
     @classmethod
     def from_dict(cls, dikt) -> "DescribeClusterResponseContent":
@@ -505,3 +512,22 @@ class DescribeClusterResponseContent(Model):
         """
 
         self._failures = failures
+
+    @property
+    def details(self):
+        """Gets the details of this DescribeClusterResponseContent.
+        Detailed information about the cluster, provided only when the 'verbose' flag is set to true.  # noqa: E501
+        :return: The details of this DescribeClusterResponseContent.
+        :rtype: List[Detail]
+        """
+        return self._details
+
+    @details.setter
+    def details(self, details):
+        """Sets the details of this DescribeClusterResponseContent.
+        Detailed information about the cluster, provided only when the 'verbose' flag is set to true.  # noqa: E501
+        :param details: The details of this DescribeClusterResponseContent.
+        :type details: List[Detail]
+        """
+
+        self._details = details
