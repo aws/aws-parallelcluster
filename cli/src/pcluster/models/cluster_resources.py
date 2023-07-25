@@ -191,13 +191,11 @@ class ClusterStack(StackInfo):
     def _get_alarm_names(self):
         """Get alarm names using cw stack resources."""
         stack_resources = describe_stack_resources(self.name)
-        alarm_names = []
-        for resource in stack_resources.values():
-            if resource.get("ResourceType") == "AWS::CloudWatch::Alarm":
-                alarm_name = resource.get("PhysicalResourceId")
-                if alarm_name:
-                    alarm_names.append(alarm_name)
-        return alarm_names
+        return [
+            resource.get("PhysicalResourceId")
+            for resource in stack_resources.values()
+            if resource.get("ResourceType") == "AWS::CloudWatch::Alarm" and resource.get("PhysicalResourceId")
+        ]
 
     def get_alarms_in_alarm(self):
         """Loop through the alarm names to get alarms in alarm."""

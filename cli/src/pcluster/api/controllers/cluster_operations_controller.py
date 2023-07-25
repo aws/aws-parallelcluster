@@ -482,11 +482,7 @@ def _get_creation_failures(cluster_status, cfn_stack):
 
 
 def _get_details(cfn_stack, verbose):
-    if verbose:
-        alarm_details = _get_alarms_details(cfn_stack)
-    else:
-        alarm_details = None
-    return alarm_details
+    return _get_alarms_details(cfn_stack) if verbose else None
 
 
 def _get_alarms_details(cfn_stack):
