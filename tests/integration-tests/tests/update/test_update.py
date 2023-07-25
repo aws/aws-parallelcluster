@@ -1497,11 +1497,11 @@ def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, 
     assert_that(cluster_info).is_not_none()
     assert_that(cluster_info).does_not_contain("loginNodes")
 
-    # Update the cluster adding 3 head node
+    # Update the cluster adding 3 login nodes
     update_config_1 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_3.config.yaml")
     cluster.update(str(update_config_1))
 
-    # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy node is 3
+    # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy nodes is 3
     cluster_info = cluster.describe_cluster()
     assert_that(cluster_info).is_not_none()
     assert_that(cluster_info).contains("loginNodes")
@@ -1531,18 +1531,10 @@ def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, 
     instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
     assert_that(len(instances)).is_equal_to(0)
 
-    # Update the cluster with count = 2
-    update_config_3 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_2.config.yaml")
-    cluster.update(str(update_config_3))
+    # Update the cluster to remove LoginNodes section
+    cluster.update(str(initial_config))
 
-    # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy node is 2
+    # Describe cluster, verify the response does have the login nodes section
     cluster_info = cluster.describe_cluster()
     assert_that(cluster_info).is_not_none()
-    assert_that(cluster_info).contains("loginNodes")
-    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
-        2
-    )
-
-    # Describe cluster instances, verify the response contains two login nodes
-    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
-    assert_that(len(instances)).is_equal_to(2)
+    assert_that(cluster_info).does_not_contain("loginNodes")
