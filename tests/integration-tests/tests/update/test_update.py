@@ -1482,3 +1482,67 @@ def _wait_until_instances_are_stopped(cluster):
         logging.info("Still found %2d compute instances in the cluster. Waiting... ", n_compute_instances)
 
     return n_compute_instances <= 1
+
+
+def test_login_nodes_count_update(pcluster_config_reader, clusters_factory, test_datadir):
+    """Test cluster Updates (add, remove LN pools)."""
+
+    # Start a cluster without login nodes
+    initial_config = pcluster_config_reader(config_file="pcluster_create_without_login_nodes.config.yaml")
+    cluster = clusters_factory(initial_config)
+
+    # Describe cluster, verify the response is without login node section
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).does_not_contain("loginNodes")
+
+    # Update the cluster adding 3 head node
+    update_config_1 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_3.config.yaml")
+    cluster.update(str(update_config_1))
+
+    # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy node is 3
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("loginNodes")
+    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
+        3
+    )
+
+    # Describe cluster instances, verify the response contains three login nodes
+    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(len(instances)).is_equal_to(3)
+
+    # Update the cluster with count = 0
+    update_config_2 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_0.config.yaml")
+    cluster.update(str(update_config_2))
+
+    # Describe cluster, verify the response has the login node section, but it contains only the lb information
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("loginNodes")
+    assert_that(cluster_info["loginNodes"]).contains("address")
+    assert_that(cluster_info["loginNodes"]["address"]).is_not_none()
+    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
+        0
+    )
+
+    # Describe cluster instances, verify the response doesn't contain login nodes
+    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(len(instances)).is_equal_to(0)
+
+    # Update the cluster with count = 2
+    update_config_3 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_2.config.yaml")
+    cluster.update(str(update_config_3))
+
+    # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy node is 2
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("loginNodes")
+    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
+        2
+    )
+
+    # Describe cluster instances, verify the response contains two login nodes
+    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(len(instances)).is_equal_to(2)
+    print("Done!")

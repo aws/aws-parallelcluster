@@ -219,6 +219,8 @@ class Cluster:
                 node_type = "HeadNode"
             elif node_type == "Compute":
                 node_type = "ComputeNode"
+            elif node_type == "LoginNode":
+                node_type = "LoginNode"
             else:
                 raise ValueError
             cmd_args.extend(["--node-type", node_type])
