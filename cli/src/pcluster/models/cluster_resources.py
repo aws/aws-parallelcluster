@@ -17,7 +17,12 @@ from typing import List
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
-from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser, get_all_stack_events
+from pcluster.models.common import (
+    FiltersParserError,
+    LogGroupTimeFiltersParser,
+    describe_stack_resources,
+    get_all_stack_events,
+)
 
 
 class ClusterStack(StackInfo):
@@ -182,6 +187,22 @@ class ClusterStack(StackInfo):
                 (f for f in cluster_creation_failures if f.cfn_failure_reason in cfn_failure_reason), general_failure
             )
         return failure.failure_code, failure.api_failure_reason
+
+    def _get_alarm_names(self):
+        """Get alarm names using cw stack resources."""
+        stack_resources = describe_stack_resources(self.name)
+        return [
+            resource.get("PhysicalResourceId")
+            for resource in stack_resources.values()
+            if resource.get("ResourceType") == "AWS::CloudWatch::Alarm" and resource.get("PhysicalResourceId")
+        ]
+
+    def get_alarms_in_alarm(self):
+        """Loop through the alarm names to get alarms in alarm."""
+        alarm_names = self._get_alarm_names()
+        alarms_in_alarm = AWSApi.instance().cloudwatch.get_alarms_in_alarm(alarm_names)
+
+        return alarms_in_alarm
 
 
 class ClusterInstance(InstanceInfo):

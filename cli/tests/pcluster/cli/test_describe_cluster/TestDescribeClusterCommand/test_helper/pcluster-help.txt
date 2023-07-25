@@ -1,5 +1,5 @@
-usage: pcluster describe-cluster [-h] -n CLUSTER_NAME [-r REGION] [--debug]
-                                 [--query QUERY]
+usage: pcluster describe-cluster [-h] -n CLUSTER_NAME [-r REGION]
+                                 [--verbose VERBOSE] [--debug] [--query QUERY]
 
 Get detailed information about an existing cluster.
 
@@ -9,5 +9,6 @@ options:
                         Name of the cluster
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.
+  --verbose VERBOSE
   --debug               Turn on debug logging.
   --query QUERY         JMESPath query to perform on output.

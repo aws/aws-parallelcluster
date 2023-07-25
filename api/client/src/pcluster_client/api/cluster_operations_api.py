@@ -212,6 +212,7 @@ class ClusterOperationsApi(object):
                 'all': [
                     'cluster_name',
                     'region',
+                    'verbose',
                 ],
                 'required': [
                     'cluster_name',
@@ -240,14 +241,18 @@ class ClusterOperationsApi(object):
                         (str,),
                     'region':
                         (str,),
+                    'verbose':
+                        (bool,),
                 },
                 'attribute_map': {
                     'cluster_name': 'clusterName',
                     'region': 'region',
+                    'verbose': 'verbose',
                 },
                 'location_map': {
                     'cluster_name': 'path',
                     'region': 'query',
+                    'verbose': 'query',
                 },
                 'collection_format_map': {
                 }
@@ -611,6 +616,7 @@ class ClusterOperationsApi(object):
 
         Keyword Args:
             region (str): AWS Region that the operation corresponds to.. [optional]
+            verbose (bool): [optional]
             _return_http_data_only (bool): response data without head status
                 code and headers. Default is True.
             _preload_content (bool): if False, the urllib3.HTTPResponse object

@@ -74,8 +74,8 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
-    SLURM_PORTS_RANGE,
     PROTECTED_MODE_THRESHOLD,
+    SLURM_PORTS_RANGE,
     Feature,
 )
 from pcluster.models.s3_bucket import S3Bucket

@@ -136,6 +136,7 @@ Class | Method | HTTP request | Description
  - [DescribeClusterResponseContent](docs/DescribeClusterResponseContent.md)
  - [DescribeComputeFleetResponseContent](docs/DescribeComputeFleetResponseContent.md)
  - [DescribeImageResponseContent](docs/DescribeImageResponseContent.md)
+ - [Detail](docs/Detail.md)
  - [DryrunOperationExceptionResponseContent](docs/DryrunOperationExceptionResponseContent.md)
  - [EC2Instance](docs/EC2Instance.md)
  - [Ec2AmiInfo](docs/Ec2AmiInfo.md)
