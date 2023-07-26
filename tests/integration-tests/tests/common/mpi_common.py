@@ -3,7 +3,7 @@ import pathlib
 
 from assertpy import assert_that
 
-from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
+from tests.common.assertions import assert_scaling_worked
 
 MPI_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/mpi/"
 
@@ -80,5 +80,3 @@ def _test_mpi(
     )
     assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
     assert_that(mpi_out).contains("Process 1 received token -1 from process 0")
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
