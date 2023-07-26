@@ -76,14 +76,16 @@ def _test_armpl_examples(
     # On centos7 we need to use binutils v2.30 for proper architecture detection
     scl_centos7 = "scl enable devtoolset-8" if os == "centos7" else ""
 
-    # Assert pass the example tests
-    remote_command_executor.run_remote_command(
-        f"sudo chmod 777 /opt/arm/armpl/{armpl_version}/armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples"
+    armpl_base_dir = (
+        f"/opt/arm/armpl/{armpl_version}/armpl_{armpl_version}_gcc-{gcc_version}"
+        if os == "ubuntu2204"
+        else f"/opt/arm/armpl/{armpl_version}/armpl_{armpl_major_minor_version}_gcc-{gcc_version}"
     )
+    # Assert pass the example tests
+    remote_command_executor.run_remote_command(f"sudo chmod 777 {armpl_base_dir}/examples")
     test_result = remote_command_executor.run_remote_command(
         f"module load {armpl_module_general_name} && "
-        f"cd /opt/arm/armpl/{armpl_version}/"
-        f"armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples && make clean && {scl_centos7} make"
+        f"cd {armpl_base_dir}/examples && make clean && {scl_centos7} make"
     ).stdout.lower()
     assert_that(test_result).contains("testing: no example difference files were generated")
     assert_that(test_result).contains("test passed ok")
