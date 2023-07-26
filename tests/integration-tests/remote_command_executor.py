@@ -28,7 +28,9 @@ class RemoteCommandExecutionError(Exception):
 class RemoteCommandExecutor:
     """Execute remote commands on the cluster head node."""
 
-    def __init__(self, cluster, compute_node_ip=None, username=None, bastion=None, alternate_ssh_key=None):
+    def __init__(
+        self, cluster, compute_node_ip=None, username=None, bastion=None, alternate_ssh_key=None, use_login_node=False
+    ):
         """
         Initiate SSH connection
 
@@ -40,8 +42,13 @@ class RemoteCommandExecutor:
             # Since compute nodes may not be publicly accessible, always use head node as the bastion.
             node_ip = compute_node_ip
             bastion = f"{username}@{cluster.head_node_ip}"
+        elif use_login_node:
+            node_ip = cluster.get_login_node_public_ip()
+            if node_ip is None:
+                raise RemoteCommandExecutionError("No healthy LoginNode found in the cluster.")
         else:
             node_ip = cluster.head_node_ip
+
         connection_kwargs = {
             "host": node_ip,
             "user": username,
