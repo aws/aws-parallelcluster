@@ -476,6 +476,7 @@ def test_fast_capacity_failover(
         # Checks Fast Failover in case of Single Instance Type - using RunInstances API
         # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
         _test_enable_fast_capacity_failover(
+            partition,
             scheduler_commands,
             remote_command_executor,
             clustermgtd_conf_path,
@@ -494,6 +495,7 @@ def test_fast_capacity_failover(
         # Test behavior with RunInstance when Fast Failover is disabled
         # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
         _test_disable_fast_capacity_failover(
+            partition,
             scheduler_commands,
             remote_command_executor,
             clustermgtd_conf_path,
@@ -507,6 +509,7 @@ def test_fast_capacity_failover(
         # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
         # CreateFleet will return an empty list of instances, that should trigger FFO behavior
         _test_enable_fast_capacity_failover(
+            partition,
             scheduler_commands,
             remote_command_executor,
             clustermgtd_conf_path,
@@ -519,6 +522,7 @@ def test_fast_capacity_failover(
         # Test behavior with CreateFleet when Fast Failover is disabled
         # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
         _test_disable_fast_capacity_failover(
+            partition,
             scheduler_commands,
             remote_command_executor,
             clustermgtd_conf_path,
@@ -2047,6 +2051,7 @@ def _enable_fast_capacity_failover(remote_command_executor, clustermgtd_conf_pat
 
 
 def _test_disable_fast_capacity_failover(
+    partition,
     scheduler_commands,
     remote_command_executor,
     clustermgtd_conf_path,
@@ -2076,6 +2081,7 @@ def _test_disable_fast_capacity_failover(
             "nodes": 2,
             "other_options": "--no-requeue",
             "constraint": target_compute_resource,
+            "partition": partition,
         }
     )
     # wait till the node failed to launch
@@ -2123,6 +2129,7 @@ def assert_job_requeue_in_time(scheduler_commands, job_id):
 
 
 def _test_enable_fast_capacity_failover(
+    partition,
     scheduler_commands,
     remote_command_executor,
     clustermgtd_conf_path,
@@ -2149,7 +2156,12 @@ def _test_enable_fast_capacity_failover(
 
     # trigger insufficient capacity: we are using `prefer` to allow requeuing the job on a different CR
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 30", "nodes": 2, "prefer": target_compute_resource}
+        submit_command_args={
+            "command": "sleep 30",
+            "nodes": 2,
+            "partition": partition,
+            "prefer": target_compute_resource,
+        }
     )
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
         remote_command_executor,
