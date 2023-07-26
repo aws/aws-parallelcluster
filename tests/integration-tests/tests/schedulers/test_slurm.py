@@ -430,7 +430,8 @@ def test_fast_capacity_failover(
     scheduler_commands_factory,
     region,
 ):
-    cluster_config = pcluster_config_reader()
+    scaling_strategies = ["job-level", "node-list"]
+    cluster_config = pcluster_config_reader(scaling_strategies=scaling_strategies)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
@@ -440,76 +441,82 @@ def test_fast_capacity_failover(
     # "ice-compute-resource" and "ice-cr-multiple" compute resources
     remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
 
-    # All nodes
-    nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1", all_nodes=True)
-    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
+    for strategy in scaling_strategies:
+        partition = f"queue-{strategy}"
+        # All nodes
+        nodes_in_scheduler = scheduler_commands.get_compute_nodes(partition, all_nodes=True)
+        static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
 
-    # Nodes in Single Instance Type CR
-    ice_single_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
-    ice_single_static_nodes = [node for node in static_nodes if "ice-compute-resource" in node]
+        # Nodes in Single Instance Type CR
+        ice_single_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
+        ice_single_static_nodes = [node for node in static_nodes if "ice-compute-resource" in node]
 
-    # Nodes in Multiple Instance Type (overridden with invalid values)
-    ice_multi_dynamic_nodes = [node for node in dynamic_nodes if "ice-cr-multiple" in node]
-    ice_multi_static_nodes = [node for node in static_nodes if "ice-cr-multiple" in node]
+        # Nodes in Multiple Instance Type (overridden with invalid values)
+        ice_multi_dynamic_nodes = [node for node in dynamic_nodes if "ice-cr-multiple" in node]
+        ice_multi_static_nodes = [node for node in static_nodes if "ice-cr-multiple" in node]
 
-    # Nodes in Multiple Instance Type (overridden with values that will trigger an exception)
-    exception_multi_dynamic_nodes = [node for node in dynamic_nodes if "exception-cr-multiple" in node]
-    exception_multi_static_nodes = [node for node in static_nodes if "exception-cr-multiple" in node]
+        # Nodes in Multiple Instance Type (overridden with values that will trigger an exception)
+        exception_multi_dynamic_nodes = [node for node in dynamic_nodes if "exception-cr-multiple" in node]
+        exception_multi_static_nodes = [node for node in static_nodes if "exception-cr-multiple" in node]
 
-    # Checks Fast Failover in case of Single Instance Type - using RunInstances API
-    # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
-    _test_enable_fast_capacity_failover(
-        scheduler_commands,
-        remote_command_executor,
-        clustermgtd_conf_path,
-        ice_single_static_nodes,
-        ice_single_dynamic_nodes,
-        target_compute_resource="ice-compute-resource",
-        expected_error_code="InsufficientHostCapacity",
-    )
+        # Checks Fast Failover in case of Single Instance Type - using RunInstances API
+        # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
+        _test_enable_fast_capacity_failover(
+            partition,
+            scheduler_commands,
+            remote_command_executor,
+            clustermgtd_conf_path,
+            ice_single_static_nodes,
+            ice_single_dynamic_nodes,
+            target_compute_resource="ice-compute-resource",
+            expected_error_code="InsufficientHostCapacity",
+        )
 
-    # Check observability logic
-    structured_log_event_utils.assert_that_event_exists(
-        cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
-    )
-    test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
+        # Check observability logic
+        structured_log_event_utils.assert_that_event_exists(
+            cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
+        )
+        test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
 
-    # Test behavior with RunInstance when Fast Failover is disabled
-    # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
-    _test_disable_fast_capacity_failover(
-        scheduler_commands,
-        remote_command_executor,
-        clustermgtd_conf_path,
-        ice_single_static_nodes,
-        ice_single_dynamic_nodes,
-        target_compute_resource="ice-compute-resource",
-        expected_error_code="InsufficientHostCapacity",
-    )
+        # Test behavior with RunInstance when Fast Failover is disabled
+        # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
+        _test_disable_fast_capacity_failover(
+            partition,
+            scheduler_commands,
+            remote_command_executor,
+            clustermgtd_conf_path,
+            ice_single_static_nodes,
+            ice_single_dynamic_nodes,
+            target_compute_resource="ice-compute-resource",
+            expected_error_code="InsufficientHostCapacity",
+        )
 
-    # Checks Fast Failover in case of Multiple Instance Types - using CreateFleet API
-    # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
-    # CreateFleet will return an empty list of instances, that should trigger FFO behavior
-    _test_enable_fast_capacity_failover(
-        scheduler_commands,
-        remote_command_executor,
-        clustermgtd_conf_path,
-        ice_multi_static_nodes,
-        ice_multi_dynamic_nodes,
-        target_compute_resource="ice-cr-multiple",
-        expected_error_code="InsufficientInstanceCapacity",
-    )
+        # Checks Fast Failover in case of Multiple Instance Types - using CreateFleet API
+        # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
+        # CreateFleet will return an empty list of instances, that should trigger FFO behavior
+        _test_enable_fast_capacity_failover(
+            partition,
+            scheduler_commands,
+            remote_command_executor,
+            clustermgtd_conf_path,
+            ice_multi_static_nodes,
+            ice_multi_dynamic_nodes,
+            target_compute_resource="ice-cr-multiple",
+            expected_error_code="InsufficientInstanceCapacity",
+        )
 
-    # Test behavior with CreateFleet when Fast Failover is disabled
-    # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
-    _test_disable_fast_capacity_failover(
-        scheduler_commands,
-        remote_command_executor,
-        clustermgtd_conf_path,
-        exception_multi_static_nodes,
-        exception_multi_dynamic_nodes,
-        target_compute_resource="exception-cr-multiple",
-        expected_error_code="InvalidParameterValue",
-    )
+        # Test behavior with CreateFleet when Fast Failover is disabled
+        # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
+        _test_disable_fast_capacity_failover(
+            partition,
+            scheduler_commands,
+            remote_command_executor,
+            clustermgtd_conf_path,
+            exception_multi_static_nodes,
+            exception_multi_dynamic_nodes,
+            target_compute_resource="exception-cr-multiple",
+            expected_error_code="InvalidParameterValue",
+        )
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -2023,6 +2030,7 @@ def _enable_fast_capacity_failover(remote_command_executor, clustermgtd_conf_pat
 
 
 def _test_disable_fast_capacity_failover(
+    partition,
     scheduler_commands,
     remote_command_executor,
     clustermgtd_conf_path,
@@ -2052,6 +2060,7 @@ def _test_disable_fast_capacity_failover(
             "nodes": 2,
             "other_options": "--no-requeue",
             "constraint": target_compute_resource,
+            "partition": partition,
         }
     )
     # wait till the node failed to launch
@@ -2099,6 +2108,7 @@ def assert_job_requeue_in_time(scheduler_commands, job_id):
 
 
 def _test_enable_fast_capacity_failover(
+    partition,
     scheduler_commands,
     remote_command_executor,
     clustermgtd_conf_path,
@@ -2125,7 +2135,12 @@ def _test_enable_fast_capacity_failover(
 
     # trigger insufficient capacity: we are using `prefer` to allow requeuing the job on a different CR
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 30", "nodes": 2, "prefer": target_compute_resource}
+        submit_command_args={
+            "command": "sleep 30",
+            "nodes": 2,
+            "partition": partition,
+            "prefer": target_compute_resource,
+        }
     )
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
         remote_command_executor,
