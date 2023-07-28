@@ -64,16 +64,16 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
         "A" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
         "B" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
     """
-    head_node_file = random_alphanumeric()
-    logging.info(f"Writing HeadNode File: {head_node_file}")
+    executor_node_file = random_alphanumeric()
+    logging.info(f"Writing ExecutorNode File: {executor_node_file}")
     remote_command_executor.run_remote_command(
-        "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
-            mount_dir=mount_dir, head_node_file=head_node_file
+        "touch {mount_dir}/{executor_node_file} && cat {mount_dir}/{executor_node_file}".format(
+            mount_dir=mount_dir, executor_node_file=executor_node_file
         )
     )
 
     # Submit a "Write" job to each partition
-    files_to_read = [head_node_file]
+    files_to_read = [executor_node_file]
     partitions = (
         partitions or scheduler_commands.get_partitions() if isinstance(scheduler_commands, SlurmCommands) else [None]
     )
@@ -92,8 +92,8 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
     read_all_files_command = "cat {files_to_read}".format(
         files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
     )
-    # Attempt reading files from HeadNode
-    logging.info(f"Reading Files: {files_to_read} from HeadNode")
+    # Attempt reading files from executor node
+    logging.info(f"Reading Files: {files_to_read} from executor node")
     remote_command_executor.run_remote_command(read_all_files_command)
 
     # Submit a "Read" job to each partition
