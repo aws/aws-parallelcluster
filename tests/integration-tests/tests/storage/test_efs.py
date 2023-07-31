@@ -22,10 +22,41 @@ from utils import get_arn_partition, get_compute_nodes_instance_ips
 from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
     assert_subnet_az_relations_from_config,
+    test_directory_correctly_shared_between_ln_and_hn,
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
     write_file_into_efs,
 )
+
+
+@pytest.mark.usefixtures("os", "scheduler", "instance")
+def test_efs_use_login_nodes(
+    region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
+    """
+    Test when using LoginNodes section.
+
+    The efs correctly mounted on LoginNodes and compute.
+    """
+    if scheduler != "slurm":
+        return
+
+    mount_dir = "efs_mount_dir"
+    cluster_config = pcluster_config_reader(mount_dir=mount_dir)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor_head_node = RemoteCommandExecutor(cluster)
+
+    mount_dir = "/" + mount_dir
+    scheduler_commands = scheduler_commands_factory(remote_command_executor_head_node)
+    test_efs_correctly_mounted(remote_command_executor_head_node, mount_dir)
+    _test_efs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
+
+    remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
+    test_efs_correctly_mounted(remote_command_executor_login_node, mount_dir)
+    _test_efs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
+    test_directory_correctly_shared_between_ln_and_hn(
+        remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
+    )
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")

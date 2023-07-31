@@ -52,6 +52,38 @@ def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head
     return compute_subnet_ids
 
 
+def test_directory_correctly_shared_between_ln_and_hn(
+    remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
+):
+    head_node_file = random_alphanumeric()
+    logging.info(f"Writing HeadNode File: {head_node_file}")
+    remote_command_executor_head_node.run_remote_command(
+        "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
+            mount_dir=mount_dir, head_node_file=head_node_file
+        )
+    )
+
+    login_node_file = random_alphanumeric()
+    logging.info(f"Writing LoginNode File: {login_node_file}")
+    remote_command_executor_login_node.run_remote_command(
+        "touch {mount_dir}/{login_node_file} && cat {mount_dir}/{login_node_file}".format(
+            mount_dir=mount_dir, login_node_file=login_node_file
+        )
+    )
+
+    files_to_read = [head_node_file, login_node_file]
+    read_all_files_command = "cat {files_to_read}".format(
+        files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
+    )
+    # Attempt reading files from HeadNode
+    logging.info(f"Reading Files: {files_to_read} from HeadNode")
+    remote_command_executor_head_node.run_remote_command(read_all_files_command)
+
+    # Attempt reading files from LoginNode
+    logging.info(f"Reading Files: {files_to_read} from LoginNode")
+    remote_command_executor_login_node.run_remote_command(read_all_files_command)
+
+
 def verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=None):
     """
     Confirm nodes can read and write to the FileSystem

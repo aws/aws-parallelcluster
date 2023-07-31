@@ -16,11 +16,11 @@ import pytest
 import utils
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import random_alphanumeric
 
 from tests.storage.kms_key_factory import KMSKeyFactory
 from tests.storage.storage_common import (
     assert_subnet_az_relations_from_config,
+    test_directory_correctly_shared_between_ln_and_hn,
     test_ebs_correctly_mounted,
     verify_directory_correctly_shared,
 )
@@ -69,7 +69,7 @@ def test_ebs_single(
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
-        _test_ebs_correctly_shared_between_ln_and_hn(
+        test_directory_correctly_shared_between_ln_and_hn(
             remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
         )
 
@@ -130,7 +130,7 @@ def test_ebs_snapshot(
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
-        _test_ebs_correctly_shared_between_ln_and_hn(
+        test_directory_correctly_shared_between_ln_and_hn(
             remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
         )
         result_login_node = remote_command_executor_login_node.run_remote_command("cat {}/test.txt".format(mount_dir))
@@ -188,7 +188,7 @@ def test_ebs_multiple(
             # Test ebs correctly shared between LoginNode and ComputeNodes
             _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
             # Test ebs correctly shared between HeadNode and LoginNode
-            _test_ebs_correctly_shared_between_ln_and_hn(
+            test_directory_correctly_shared_between_ln_and_hn(
                 remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
             )
 
@@ -266,7 +266,7 @@ def test_ebs_existing(
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, existing_mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
-        _test_ebs_correctly_shared_between_ln_and_hn(
+        test_directory_correctly_shared_between_ln_and_hn(
             remote_command_executor_head_node, remote_command_executor_login_node, existing_mount_dir
         )
         result_login_node = remote_command_executor_login_node.run_remote_command(
@@ -283,38 +283,6 @@ def test_ebs_existing(
 def _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands):
     logging.info("Testing ebs correctly mounted on compute nodes")
     verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-
-
-def _test_ebs_correctly_shared_between_ln_and_hn(
-    remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
-):
-    head_node_file = random_alphanumeric()
-    logging.info(f"Writing HeadNode File: {head_node_file}")
-    remote_command_executor_head_node.run_remote_command(
-        "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
-            mount_dir=mount_dir, head_node_file=head_node_file
-        )
-    )
-
-    login_node_file = random_alphanumeric()
-    logging.info(f"Writing LoginNode File: {login_node_file}")
-    remote_command_executor_login_node.run_remote_command(
-        "touch {mount_dir}/{login_node_file} && cat {mount_dir}/{login_node_file}".format(
-            mount_dir=mount_dir, login_node_file=login_node_file
-        )
-    )
-
-    files_to_read = [head_node_file, login_node_file]
-    read_all_files_command = "cat {files_to_read}".format(
-        files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
-    )
-    # Attempt reading files from HeadNode
-    logging.info(f"Reading Files: {files_to_read} from HeadNode")
-    remote_command_executor_head_node.run_remote_command(read_all_files_command)
-
-    # Attempt reading files from LoginNode
-    logging.info(f"Reading Files: {files_to_read} from LoginNode")
-    remote_command_executor_login_node.run_remote_command(read_all_files_command)
 
 
 def _test_home_correctly_shared(remote_command_executor, scheduler_commands):
