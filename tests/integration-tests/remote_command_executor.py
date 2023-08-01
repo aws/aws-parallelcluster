@@ -74,6 +74,10 @@ class RemoteCommandExecutor:
         self.__user_at_hostname = "{0}@{1}".format(username, node_ip)
 
     def __del__(self):
+        self.close_connection()
+
+    def close_connection(self):
+        """Close SSH connection."""
         try:
             self.__connection.close()
         except Exception as e:
@@ -82,7 +86,7 @@ class RemoteCommandExecutor:
 
     def reset_connection(self):
         """Reset SSH connection."""
-        self.__del__()
+        self.close_connection()
         if self.__connection_kwargs:
             self.__connection = Connection(**self.__connection_kwargs)
 
