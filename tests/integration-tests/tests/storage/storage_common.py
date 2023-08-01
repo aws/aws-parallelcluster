@@ -55,7 +55,7 @@ def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head
 def test_directory_correctly_shared_between_ln_and_hn(
     remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
 ):
-    logging.info("Testing efs correctly mounted on login nodes")
+    logging.info("Testing FS correctly mounted on login nodes")
     head_node_file = random_alphanumeric()
     logging.info(f"Writing HeadNode File: {head_node_file}")
     remote_command_executor_head_node.run_remote_command(
