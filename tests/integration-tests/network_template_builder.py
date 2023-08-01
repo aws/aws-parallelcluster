@@ -27,6 +27,7 @@ from troposphere.ec2 import (
     VPCEndpoint,
     VPCGatewayAttachment,
 )
+from troposphere.iam import InstanceProfile, Role
 
 TAGS_PREFIX = "ParallelCluster"
 BASTION_INSTANCE_TYPE = "c5.large"
@@ -280,6 +281,25 @@ class NetworkTemplateBuilder:
                 )
             )
 
+    def __bastion_instance_profile(self):
+        instance_role = Role(
+            "BastionNetworkingRole",
+            ManagedPolicyArns=["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"],
+            AssumeRolePolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [
+                    {"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}
+                ],
+            },
+        )
+        self.__template.add_resource(instance_role)
+        instance_profile = InstanceProfile(
+            "BastionInstanceProfile",
+            Roles=[Ref(instance_role)],
+        )
+        self.__template.add_resource(instance_profile)
+        return instance_profile
+
     def __build_bastion_instance(self, bastion_subnet_id):
         bastion_sg = ec2.SecurityGroup(
             "NetworkingTestBastionSG",
@@ -294,11 +314,18 @@ class NetworkTemplateBuilder:
             ],
             VpcId=Ref(self.__vpc),
         )
-        launch_template = ec2.LaunchTemplate.from_dict(
-            "LaunchTemplateIMDSv2",
-            {
-                "LaunchTemplateData": {"MetadataOptions": {"HttpTokens": "required", "HttpEndpoint": "enabled"}},
-            },
+        instance_profile = self.__bastion_instance_profile()
+        launch_template = ec2.LaunchTemplate(
+            "NetworkingBastionLaunchTemplate",
+            LaunchTemplateData=ec2.LaunchTemplateData(
+                MetadataOptions=ec2.MetadataOptions(
+                    HttpTokens="required",
+                    HttpEndpoint="enabled",
+                ),
+                IamInstanceProfile=ec2.IamInstanceProfile(
+                    Arn=GetAtt(instance_profile, "Arn"),
+                ),
+            ),
         )
         self.__template.add_resource(launch_template)
         instance = ec2.Instance(
