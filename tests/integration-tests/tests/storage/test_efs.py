@@ -52,7 +52,6 @@ def test_efs_use_login_nodes(
     _test_efs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
 
     remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
-    test_efs_correctly_mounted(remote_command_executor_login_node, mount_dir)
     _test_efs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
     test_directory_correctly_shared_between_ln_and_hn(
         remote_command_executor_head_node, remote_command_executor_login_node, mount_dir

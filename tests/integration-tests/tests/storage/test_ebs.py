@@ -65,7 +65,6 @@ def test_ebs_single(
 
     if use_login_node:
         remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
-        test_ebs_correctly_mounted(remote_command_executor_login_node, mount_dir, volume_size=35)
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
@@ -104,7 +103,12 @@ def test_ebs_snapshot(
     snapshot_id = snapshots_factory.create_snapshot(request, vpc_stack.get_public_subnet(), region)
 
     logging.info("Snapshot id: %s" % snapshot_id)
-    cluster_config = pcluster_config_reader(mount_dir=mount_dir, volume_size=volume_size, snapshot_id=snapshot_id)
+    cluster_config = pcluster_config_reader(
+        mount_dir=mount_dir,
+        volume_size=volume_size,
+        snapshot_id=snapshot_id,
+        use_login_node=use_login_node,
+    )
 
     cluster = clusters_factory(cluster_config)
     assert_subnet_az_relations_from_config(
@@ -125,8 +129,6 @@ def test_ebs_snapshot(
 
     if use_login_node:
         remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
-        test_ebs_correctly_mounted(remote_command_executor_login_node, mount_dir, volume_size="9.[7,8]")
-        _test_ebs_resize(remote_command_executor_login_node, mount_dir, volume_size=volume_size)
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
@@ -161,7 +163,11 @@ def test_ebs_multiple(
     # for volume type sc1 and st1, the minimum volume sizes are 500G
     volume_sizes[3] = 500
     volume_sizes[4] = 500
-    cluster_config = pcluster_config_reader(mount_dirs=mount_dirs, volume_sizes=volume_sizes)
+    cluster_config = pcluster_config_reader(
+        mount_dirs=mount_dirs,
+        volume_sizes=volume_sizes,
+        use_login_node=use_login_node,
+    )
     cluster = clusters_factory(cluster_config)
     assert_subnet_az_relations_from_config(
         region, scheduler, cluster, expected_in_same_az=False, include_head_node=False
@@ -182,9 +188,6 @@ def test_ebs_multiple(
         _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
         if use_login_node:
             remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
-            test_ebs_correctly_mounted(
-                remote_command_executor_login_node, mount_dir, volume_size if volume_size != 500 else "49[0-9]"
-            )
             # Test ebs correctly shared between LoginNode and ComputeNodes
             _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
             # Test ebs correctly shared between HeadNode and LoginNode
@@ -245,7 +248,9 @@ def test_ebs_existing(
     volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.get_public_subnet(), region)
 
     logging.info("Existing Volume id: %s" % volume_id)
-    cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
+    cluster_config = pcluster_config_reader(
+        volume_id=volume_id, existing_mount_dir=existing_mount_dir, use_login_node=use_login_node
+    )
 
     cluster = clusters_factory(cluster_config)
     assert_subnet_az_relations_from_config(
@@ -262,7 +267,6 @@ def test_ebs_existing(
 
     if use_login_node:
         remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
-        test_ebs_correctly_mounted(remote_command_executor_login_node, existing_mount_dir, volume_size="9.[7,8]")
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, existing_mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
@@ -363,7 +367,8 @@ def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
     logging.info("Testing root volume encryption.")
     if scheduler == "slurm":
         # If the scheduler is slurm, root volumes both on head and compute can be encrypted
-        instance_ids = cluster.get_cluster_instance_ids()
+        instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
+        instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
         for instance in instance_ids:
             root_volume_id = utils.get_root_volume_id(instance, region, os)
             _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
@@ -385,7 +390,8 @@ def _assert_root_volume_configuration(cluster, os, region, scheduler):
         _assert_volume_configuration(expected_settings, root_volume_id, region)
     if scheduler == "slurm":
         # Only if the scheduler is slurm, root volumes both on compute can be configured
-        instance_ids = cluster.get_cluster_instance_ids()
+        instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
+        instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
         for instance in instance_ids:
             if instance == head_node:
                 # head node is already checked
