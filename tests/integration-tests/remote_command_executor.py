@@ -69,6 +69,7 @@ class RemoteCommandExecutor:
             f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
             f"{connection_kwargs['connect_kwargs']['key_filename']}"
         )
+        self.__connection_kwargs = connection_kwargs
         self.__connection = Connection(**connection_kwargs)
         self.__user_at_hostname = "{0}@{1}".format(username, node_ip)
 
@@ -78,6 +79,12 @@ class RemoteCommandExecutor:
         except Exception as e:
             # Catch all exceptions if we fail to close the clients
             logging.warning("Exception raised when closing remote ssh client: {0}".format(e))
+
+    def reset_connection(self):
+        """Reset SSH connection."""
+        self.__del__()
+        if self.__connection_kwargs:
+            self.__connection = Connection(**self.__connection_kwargs)
 
     @retry(wait_exponential_multiplier=1000, stop_max_attempt_number=5)
     def _run_command(self, command, **kwargs):
