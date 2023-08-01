@@ -9,12 +9,16 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import pathlib
 import time
 
 import boto3
+from remote_command_executor import RemoteCommandExecutor
 from retrying import RetryError, retry
 from time_utils import seconds
 from utils import get_compute_nodes_count
+
+SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
 
 
 def get_compute_nodes_allocation(scheduler_commands, region, stack_name, max_monitoring_time):
@@ -156,3 +160,14 @@ def get_batch_ce_min_size(stack_name, region):
         .get("computeResources")
         .get("minvCpus")
     )
+
+
+def emulate_ice_in_cluster(cluster):
+    """
+    Includes an override file that emulates an ICE error in a cluster.
+
+    It applies the override patch to launch ice for nodes in
+    "ice-compute-resource" and "ice-cr-multiple" compute resources with an ICE error
+    """
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor.run_remote_script(str(SCALING_COMMON_DATADIR / "overrides.sh"), run_as_root=True)

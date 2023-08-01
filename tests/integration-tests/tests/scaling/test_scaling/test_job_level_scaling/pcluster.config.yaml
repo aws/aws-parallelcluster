@@ -1,0 +1,37 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue-jls-1-full
+      JobExclusiveAllocation: true
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: t3.xlarge
+        - Name: compute-resource-1
+          Instances:
+            - InstanceType: m5.xlarge
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: queue-jls-1-partial
+      JobExclusiveAllocation: true
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: t3.xlarge
+        - Name: ice-cr-multiple
+          Instances:
+            - InstanceType: m5.xlarge
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

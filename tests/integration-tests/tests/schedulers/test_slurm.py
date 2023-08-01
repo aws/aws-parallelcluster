@@ -53,6 +53,7 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
+from tests.common.scaling_common import emulate_ice_in_cluster
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.monitoring import structured_log_event_utils
 
@@ -437,9 +438,7 @@ def test_fast_capacity_failover(
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    # after the cluster is launched, apply the override patch to launch ice for nodes in
-    # "ice-compute-resource" and "ice-cr-multiple" compute resources
-    remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
+    emulate_ice_in_cluster(cluster)
 
     for strategy in scaling_strategies:
         partition = f"queue-{strategy}"
