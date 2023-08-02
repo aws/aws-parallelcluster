@@ -332,18 +332,29 @@ def test_instance_type_base_ami_compatible_validator(
     assert_failure_messages(actual_failures, expected_message)
 
 
+GoodKeyPairsDict = {"KeyPairs": [{"KeyType": "ed25519"}]}
+BadKeyPairsDict = {"KeyPairs": [{"KeyType": "rsa"}]}
+
+
 @pytest.mark.parametrize(
-    "key_pair, side_effect, expected_message",
+    "key_pair, os, side_effect, expected_message",
     [
-        ("key-name", None, None),
-        (None, None, "If you do not specify a key pair"),
-        ("c5.xlarge", AWSClientError(function_name="describe_key_pair", message="does not exist"), "does not exist"),
+        ("key-name", None, None, None),
+        (None, None, None, "If you do not specify a key pair"),
+        (
+            "c5.xlarge",
+            None,
+            AWSClientError(function_name="describe_key_pair", message="does not exist"),
+            "does not exist",
+        ),
+        (GoodKeyPairsDict, "ubuntu2204", None, None),
+        (BadKeyPairsDict, "ubuntu2204", None, "Ubuntu 22.04 does not support RSA keys"),
     ],
 )
-def test_key_pair_validator(mocker, key_pair, side_effect, expected_message):
+def test_key_pair_validator(mocker, key_pair, os, side_effect, expected_message):
     mock_aws_api(mocker)
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_key_pair", return_value=key_pair, side_effect=side_effect)
-    actual_failures = KeyPairValidator().execute(key_name=key_pair)
+    actual_failures = KeyPairValidator().execute(key_name=key_pair, os=os)
     assert_failure_messages(actual_failures, expected_message)
 
 

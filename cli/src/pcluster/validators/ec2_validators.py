@@ -171,10 +171,15 @@ class KeyPairValidator(Validator):
     Verify the given key pair is correct.
     """
 
-    def _validate(self, key_name: str):
+    def _validate(self, key_name: str, os: str):
         if key_name:
             try:
-                AWSApi.instance().ec2.describe_key_pair(key_name)
+                key_pair_data = AWSApi.instance().ec2.describe_key_pair(key_name)
+                if os == "ubuntu2204" and key_pair_data["KeyPairs"][0]["KeyType"] == "rsa":
+                    self._add_failure(
+                        "Ubuntu 22.04 does not support RSA keys.  Please generate and use an ed25519 key",
+                        FailureLevel.ERROR,
+                    )
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.ERROR)
         else:
