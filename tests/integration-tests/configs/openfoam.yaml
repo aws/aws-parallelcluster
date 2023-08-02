@@ -1,6 +1,6 @@
 test-suites:
   performance_tests:
-    test_starccm.py::test_starccm:
+    test_openfoam.py::test_openfoam:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
