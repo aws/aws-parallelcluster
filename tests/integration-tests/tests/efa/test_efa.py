@@ -12,6 +12,7 @@
 import logging
 import re
 
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -20,7 +21,7 @@ from utils import get_compute_nodes_instance_ids
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.osu_common import run_individual_osu_benchmark
-from tests.common.utils import fetch_instance_slots, run_system_analyzer
+from tests.common.utils import fetch_instance_slots, get_installed_parallelcluster_version, run_system_analyzer
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
@@ -244,6 +245,8 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
     logging.info(output)
     # Check avg latency for all packet sizes
     failures = 0
+    metric_data = []
+    metric_namespace = "ParallelCluster/test_efa"
     for packet_size, value in re.findall(r"(\d+)\s+(\d+)\.", output):
         with open(
             str(test_datadir / "osu_benchmarks" / "results" / instance / mpi_version / benchmark_name), encoding="utf-8"
@@ -271,11 +274,28 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
                 f"tolerated: {tolerated_value}, current: {value}"
             )
 
+            dimensions = {
+                "PclusterVersion": get_installed_parallelcluster_version(),
+                "MpiVariant": mpi_version,
+                "Instance": instance,
+                "OsuBenchmarkName": benchmark_name,
+                "PacketSize": packet_size,
+            }
+            metric_data.append(
+                {
+                    "MetricName": "Latency",
+                    "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions.items()],
+                    "Value": int(value),
+                    "Unit": "Microseconds",
+                }
+            )
+
             if is_failure:
                 failures = failures + 1
                 logging.error(message)
             else:
                 logging.info(message)
+    boto3.client("cloudwatch").put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
 
     return failures
 
