@@ -1,0 +1,39 @@
+Image:
+  Os: alinux2
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: t2.micro
+      Count: 1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      Ssh:
+        KeyName: ec2-key-name
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: ec2-key-name
+  Imds:
+    Secured: True
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
+DirectoryService:
+  DomainName: corp.sirena.com
+  DomainAddr: ldaps://corp.sirena.com
+  PasswordSecretArn: arn:aws:secretsmanager:eu-west-1:161767479707:secret:PasswordSecret-ad-test-CbpuId
+  DomainReadOnlyUser: cn=ReadOnlyUser,ou=Users,ou=CORP,dc=corp,dc=sirena,dc=com
+  LdapTlsReqCert: never
+  GenerateSshKeysForUsers: true

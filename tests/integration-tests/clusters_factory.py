@@ -62,6 +62,8 @@ class Cluster:
         self.__cfn_resources = None
         self.__cfn_stack_arn = None
         self.custom_cli_credentials = custom_cli_credentials
+        self.cluster_info = None
+        self.login_nodes_info = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
@@ -180,6 +182,11 @@ class Cluster:
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} stopped successfully".format(self.name))
+
+            # reset cached info
+            self.cluster_info = None
+            self.login_nodes_info = None
+
             return result.stdout
         except subprocess.CalledProcessError as e:
             logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
@@ -187,15 +194,21 @@ class Cluster:
 
     def describe_cluster(self):
         """Run pcluster describe-cluster and return the result."""
-        cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
-        try:
-            result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
-            response = json.loads(result.stdout)
-            logging.info("Get cluster {0} status successfully".format(self.name))
-            return response
-        except subprocess.CalledProcessError as e:
-            logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
-            raise
+        if self.cluster_info:
+            return self.cluster_info
+        else:
+            cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
+            try:
+                result = run_pcluster_command(
+                    cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials
+                )
+                response = json.loads(result.stdout)
+                logging.info("Get cluster {0} status successfully".format(self.name))
+                self.cluster_info = response
+                return self.cluster_info
+            except subprocess.CalledProcessError as e:
+                logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+                raise
 
     def describe_compute_fleet(self):
         """Run pcluster describe-compute-fleet and return the result."""
@@ -219,6 +232,8 @@ class Cluster:
                 node_type = "HeadNode"
             elif node_type == "Compute":
                 node_type = "ComputeNode"
+            elif node_type == "LoginNode":
+                node_type = "LoginNode"
             else:
                 raise ValueError
             cmd_args.extend(["--node-type", node_type])
@@ -237,6 +252,22 @@ class Cluster:
         """Run pcluster describe-cluster-instances and collect instance ids."""
         instances = self.describe_cluster_instances(node_type=node_type, queue_name=queue_name)
         return [instance["instanceId"] for instance in instances]
+
+    def describe_login_nodes(self):
+        """List login node instances."""
+        if self.login_nodes_info is None:
+            self.login_nodes_info = self.describe_cluster_instances(node_type="LoginNode")
+
+        return self.login_nodes_info
+
+    def get_login_node_public_ip(self):
+        """Return the ip address of the first healthy login node if exists."""
+        login_nodes = self.describe_login_nodes()
+        for login in login_nodes:
+            if "running" == login["state"]:
+                return login["publicIpAddress"]
+
+        return None
 
     def export_logs(self, bucket, output_file=None, bucket_prefix=None, filters=None):
         """Run pcluster export-cluster-logs and return the result."""
@@ -314,6 +345,12 @@ class Cluster:
             raise
 
     @property
+    def has_login_nodes(self):
+        """Return True if the cluster as a LoginNode pool."""
+        info = self.describe_cluster()
+        return "loginNodes" in info.keys()
+
+    @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""
         return self.name
@@ -384,6 +421,8 @@ class Cluster:
         self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
+        self.cluster_info = None
+        self.login_nodes_info = None
 
     def delete_resource_by_stack_id_tag(self):
         """Delete resources by stack id tag."""
