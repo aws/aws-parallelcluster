@@ -9,6 +9,8 @@
 # import sys
 # sys.setrecursionlimit(n)
 
+from pcluster_client.model.alarm import Alarm
+from pcluster_client.model.alarm_state import AlarmState
 from pcluster_client.model.ami_info import AmiInfo
 from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
 from pcluster_client.model.build_image_bad_request_exception_response_content import BuildImageBadRequestExceptionResponseContent
@@ -63,11 +65,13 @@ from pcluster_client.model.log_stream import LogStream
 from pcluster_client.model.login_nodes_pool import LoginNodesPool
 from pcluster_client.model.login_nodes_state import LoginNodesState
 from pcluster_client.model.metadata import Metadata
+from pcluster_client.model.metric import Metric
 from pcluster_client.model.node_type import NodeType
 from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster_client.model.requested_compute_fleet_status import RequestedComputeFleetStatus
 from pcluster_client.model.scheduler import Scheduler
 from pcluster_client.model.stack_event import StackEvent
+from pcluster_client.model.stat import Stat
 from pcluster_client.model.tag import Tag
 from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
 from pcluster_client.model.update_cluster_bad_request_exception_response_content import UpdateClusterBadRequestExceptionResponseContent

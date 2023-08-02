@@ -32,6 +32,8 @@ from pcluster.api.errors import (
     UpdateClusterBadRequestException,
 )
 from pcluster.api.models import (
+    Alarm,
+    AlarmState,
     Change,
     CloudFormationStackStatus,
     ClusterConfigurationStructure,
@@ -49,7 +51,9 @@ from pcluster.api.models import (
     ListClustersResponseContent,
     LoginNodesPool,
     LoginNodesState,
+    Metric,
     Scheduler,
+    Stat,
     Tag,
     UpdateClusterBadRequestExceptionResponseContent,
     UpdateClusterRequestContent,
@@ -482,18 +486,44 @@ def _get_creation_failures(cluster_status, cfn_stack):
 
 
 def _get_details(cfn_stack, verbose):
-    return _get_alarms_details(cfn_stack) if verbose else None
+    if verbose:
+        alarms = _get_alarms_details(cfn_stack)
+        metrics = _get_cluster_health_metrics_details(cfn_stack)
+        stats = _get_stats_details(cfn_stack)
+        return Detail(alarms=alarms, metrics=metrics, stats=stats)
+    else:
+        return None
 
 
 def _get_alarms_details(cfn_stack):
-    alarms_in_alarm = cfn_stack.get_alarms_in_alarm()
-
-    if not alarms_in_alarm:
+    raw_alarms = cfn_stack.get_alarms_and_states()
+    if not raw_alarms:
         return None
 
-    # convert AlarmDetail instances to Detail instances
-    alarm_details = [
-        Detail(alarm_type=alarm_detail["alarm_type"], alarm_state=alarm_detail["alarm_state"])
-        for alarm_detail in alarms_in_alarm
-    ]
+    alarm_details = []
+    for raw_alarm in raw_alarms:
+        alarm_type = raw_alarm["alarm_type"]
+        alarm_state_value = raw_alarm["alarm_state"]
+
+        # Check if the alarm_state_value is valid for AlarmState
+        if alarm_state_value not in (AlarmState.OK, AlarmState.ALARM, AlarmState.INSUFFICIENT_DATA, AlarmState.UNKNOWN):
+            raise ValueError(f"Invalid alarm state value: {alarm_state_value}")
+
+        alarm_instance = Alarm(alarm_type=alarm_type, alarm_state=alarm_state_value)
+        alarm_details.append(alarm_instance)
+
     return alarm_details
+
+
+def _get_cluster_health_metrics_details(cfn_stack):
+    metrics_details = cfn_stack.get_metrics_and_values()
+    return [
+        Metric(metric_type=metric_detail["metric_type"], metric_value=metric_detail["metric_value"])
+        for metric_detail in metrics_details
+    ]
+
+
+def _get_stats_details(cfn_stack):
+    num = cfn_stack.get_num_of_running_instances()
+    stat_type = "numberOfComputerNodes"
+    return [Stat(stat_type=stat_type, stat_value=num)]

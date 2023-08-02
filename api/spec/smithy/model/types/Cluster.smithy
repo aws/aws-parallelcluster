@@ -101,13 +101,57 @@ structure Failure {
     failureReason: String,
 }
 
-list Details{
-    member: Detail
+list Alarms {
+    member: Alarm
+}
+
+list Metrics {
+    member: Metric
+}
+
+list Stats {
+    member: Stat
 }
 
 structure Detail {
-    @documentation("The alarm type when the verbose flag is set to true.")
+    @documentation("List of alarms when the verbose flag is set to true.")
+    alarms: Alarms
+
+    @documentation("List of metrics when the verbose flag is set to true.")
+    metrics: Metrics
+
+    @documentation("Statistics about the cluster, like the number of running compute nodes.")
+    stats: Stats
+}
+
+structure Alarm {
+    @documentation("The alarm type.")
     alarmType: String,
-    @documentation("The alarm state when the verbose flag is set to true.")
-    alarmState: String,
+
+    @documentation("The alarm state.")
+    alarmState: AlarmState,
+}
+
+@enum([
+    {value: "OK", name: "OK"},
+    {value: "ALARM", name: "ALARM"},
+    {value: "INSUFFICIENT_DATA", name: "INSUFFICIENT_DATA"},
+    {value: "UNKNOWN", name: "UNKNOWN"}
+])
+string AlarmState
+
+structure Metric {
+    @documentation("The metric type.")
+    metricType: String,
+
+    @documentation("The metric value.")
+    metricValue: Integer,
+}
+
+structure Stat {
+    @documentation("The metric type.")
+    statType: String,
+
+    @documentation("The metric value.")
+    statValue: Integer,
 }

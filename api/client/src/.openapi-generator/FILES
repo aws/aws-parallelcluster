@@ -2,6 +2,8 @@
 .gitlab-ci.yml
 .travis.yml
 README.md
+docs/Alarm.md
+docs/AlarmState.md
 docs/AmiInfo.md
 docs/BadRequestExceptionResponseContent.md
 docs/BuildImageBadRequestExceptionResponseContent.md
@@ -62,11 +64,13 @@ docs/LogStream.md
 docs/LoginNodesPool.md
 docs/LoginNodesState.md
 docs/Metadata.md
+docs/Metric.md
 docs/NodeType.md
 docs/NotFoundExceptionResponseContent.md
 docs/RequestedComputeFleetStatus.md
 docs/Scheduler.md
 docs/StackEvent.md
+docs/Stat.md
 docs/Tag.md
 docs/UnauthorizedClientErrorResponseContent.md
 docs/UpdateClusterBadRequestExceptionResponseContent.md
@@ -90,6 +94,8 @@ pcluster_client/apis/__init__.py
 pcluster_client/configuration.py
 pcluster_client/exceptions.py
 pcluster_client/model/__init__.py
+pcluster_client/model/alarm.py
+pcluster_client/model/alarm_state.py
 pcluster_client/model/ami_info.py
 pcluster_client/model/bad_request_exception_response_content.py
 pcluster_client/model/build_image_bad_request_exception_response_content.py
@@ -144,11 +150,13 @@ pcluster_client/model/log_stream.py
 pcluster_client/model/login_nodes_pool.py
 pcluster_client/model/login_nodes_state.py
 pcluster_client/model/metadata.py
+pcluster_client/model/metric.py
 pcluster_client/model/node_type.py
 pcluster_client/model/not_found_exception_response_content.py
 pcluster_client/model/requested_compute_fleet_status.py
 pcluster_client/model/scheduler.py
 pcluster_client/model/stack_event.py
+pcluster_client/model/stat.py
 pcluster_client/model/tag.py
 pcluster_client/model/unauthorized_client_error_response_content.py
 pcluster_client/model/update_cluster_bad_request_exception_response_content.py
@@ -166,6 +174,4 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
-test/test_login_nodes_pool.py
-test/test_login_nodes_state.py
 tox.ini

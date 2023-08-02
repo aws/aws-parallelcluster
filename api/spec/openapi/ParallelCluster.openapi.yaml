@@ -1583,6 +1583,21 @@ paths:
         payloadFormatVersion: "2.0"
 components:
   schemas:
+    Alarm:
+      type: object
+      properties:
+        alarmType:
+          type: string
+          description: The alarm type.
+        alarmState:
+          $ref: '#/components/schemas/AlarmState'
+    AlarmState:
+      type: string
+      enum:
+        - OK
+        - ALARM
+        - INSUFFICIENT_DATA
+        - UNKNOWN
     AmiInfo:
       type: object
       properties:
@@ -1918,10 +1933,7 @@ components:
             $ref: '#/components/schemas/Failure'
           description: Failures array containing failures reason and code when the stack is in CREATE_FAILED status.
         details:
-          type: array
-          items:
-            $ref: '#/components/schemas/Detail'
-          description: Detailed information about the cluster, provided only when the 'verbose' flag is set to true.
+          $ref: '#/components/schemas/Detail'
       required:
         - cloudFormationStackStatus
         - cloudformationStackArn
@@ -2001,12 +2013,21 @@ components:
     Detail:
       type: object
       properties:
-        alarmType:
-          type: string
-          description: The alarm type when the verbose flag is set to true.
-        alarmState:
-          type: string
-          description: The alarm state when the verbose flag is set to true.
+        alarms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alarm'
+          description: List of alarms when the verbose flag is set to true.
+        metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/Metric'
+          description: List of metrics when the verbose flag is set to true.
+        stats:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stat'
+          description: Statistics about the cluster, like the number of running compute nodes.
     DryrunOperationExceptionResponseContent:
       type: object
       description: Communicates that the operation would have succeeded without the dryrun flag.
@@ -2359,6 +2380,16 @@ components:
           type: string
         version:
           type: string
+    Metric:
+      type: object
+      properties:
+        metricType:
+          type: string
+          description: The metric type.
+        metricValue:
+          type: integer
+          description: The metric value.
+          format: int32
     NodeType:
       type: string
       enum:
@@ -2432,6 +2463,16 @@ components:
         - stackId
         - stackName
         - timestamp
+    Stat:
+      type: object
+      properties:
+        statType:
+          type: string
+          description: The metric type.
+        statValue:
+          type: integer
+          description: The metric value.
+          format: int32
     Tag:
       type: object
       properties:

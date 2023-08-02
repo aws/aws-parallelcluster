@@ -6,7 +6,10 @@ from datetime import date, datetime  # noqa: F401
 from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
+from pcluster.api.models.alarm import Alarm  # noqa: E501
 from pcluster.api.models.base_model_ import Model
+from pcluster.api.models.metric import Metric  # noqa: E501
+from pcluster.api.models.stat import Stat  # noqa: E501
 
 
 class Detail(Model):
@@ -15,20 +18,23 @@ class Detail(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, alarm_type=None, alarm_state=None):  # noqa: E501
+    def __init__(self, alarms=None, metrics=None, stats=None):  # noqa: E501
         """Detail - a model defined in OpenAPI
 
-        :param alarm_type: The alarm_type of this Detail.  # noqa: E501
-        :type alarm_type: str
-        :param alarm_state: The alarm_state of this Detail.  # noqa: E501
-        :type alarm_state: str
+        :param alarms: The alarms of this Detail.  # noqa: E501
+        :type alarms: List[Alarm]
+        :param metrics: The metrics of this Detail.  # noqa: E501
+        :type metrics: List[Metric]
+        :param stats: The stats of this Detail.  # noqa: E501
+        :type stats: List[Stat]
         """
-        self.openapi_types = {"alarm_type": str, "alarm_state": str}
+        self.openapi_types = {"alarms": List[Alarm], "metrics": List[Metric], "stats": List[Stat]}
 
-        self.attribute_map = {"alarm_type": "alarmType", "alarm_state": "alarmState"}
+        self.attribute_map = {"alarms": "alarms", "metrics": "metrics", "stats": "stats"}
 
-        self._alarm_type = alarm_type
-        self._alarm_state = alarm_state
+        self._alarms = alarms
+        self._metrics = metrics
+        self._stats = stats
 
     @classmethod
     def from_dict(cls, dikt) -> "Detail":
@@ -42,47 +48,70 @@ class Detail(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def alarm_type(self):
-        """Gets the alarm_type of this Detail.
+    def alarms(self):
+        """Gets the alarms of this Detail.
 
-        The alarm type when the verbose flag is set to true.  # noqa: E501
+        List of alarms when the verbose flag is set to true.  # noqa: E501
 
-        :return: The alarm_type of this Detail.
-        :rtype: str
+        :return: The alarms of this Detail.
+        :rtype: List[Alarm]
         """
-        return self._alarm_type
+        return self._alarms
 
-    @alarm_type.setter
-    def alarm_type(self, alarm_type):
-        """Sets the alarm_type of this Detail.
+    @alarms.setter
+    def alarms(self, alarms):
+        """Sets the alarms of this Detail.
 
-        The alarm type when the verbose flag is set to true.  # noqa: E501
+        List of alarms when the verbose flag is set to true.  # noqa: E501
 
-        :param alarm_type: The alarm_type of this Detail.
-        :type alarm_type: str
+        :param alarms: The alarms of this Detail.
+        :type alarms: List[Alarm]
         """
 
-        self._alarm_type = alarm_type
+        self._alarms = alarms
 
     @property
-    def alarm_state(self):
-        """Gets the alarm_state of this Detail.
+    def metrics(self):
+        """Gets the metrics of this Detail.
 
-        The alarm state when the verbose flag is set to true.  # noqa: E501
+        List of metrics when the verbose flag is set to true.  # noqa: E501
 
-        :return: The alarm_state of this Detail.
-        :rtype: str
+        :return: The metrics of this Detail.
+        :rtype: List[Metric]
         """
-        return self._alarm_state
+        return self._metrics
 
-    @alarm_state.setter
-    def alarm_state(self, alarm_state):
-        """Sets the alarm_state of this Detail.
+    @metrics.setter
+    def metrics(self, metrics):
+        """Sets the metrics of this Detail.
 
-        The alarm state when the verbose flag is set to true.  # noqa: E501
+        List of metrics when the verbose flag is set to true.  # noqa: E501
 
-        :param alarm_state: The alarm_state of this Detail.
-        :type alarm_state: str
+        :param metrics: The metrics of this Detail.
+        :type metrics: List[Metric]
         """
 
-        self._alarm_state = alarm_state
+        self._metrics = metrics
+
+    @property
+    def stats(self):
+        """Gets the stats of this Detail.
+
+        Statistics about the cluster, like the number of running compute nodes.  # noqa: E501
+
+        :return: The stats of this Detail.
+        :rtype: List[Stat]
+        """
+        return self._stats
+
+    @stats.setter
+    def stats(self, stats):
+        """Sets the stats of this Detail.
+
+        Statistics about the cluster, like the number of running compute nodes.  # noqa: E501
+
+        :param stats: The stats of this Detail.
+        :type stats: List[Stat]
+        """
+
+        self._stats = stats

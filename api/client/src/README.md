@@ -111,6 +111,8 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [Alarm](docs/Alarm.md)
+ - [AlarmState](docs/AlarmState.md)
  - [AmiInfo](docs/AmiInfo.md)
  - [BadRequestExceptionResponseContent](docs/BadRequestExceptionResponseContent.md)
  - [BuildImageBadRequestExceptionResponseContent](docs/BuildImageBadRequestExceptionResponseContent.md)
@@ -165,11 +167,13 @@ Class | Method | HTTP request | Description
  - [LoginNodesPool](docs/LoginNodesPool.md)
  - [LoginNodesState](docs/LoginNodesState.md)
  - [Metadata](docs/Metadata.md)
+ - [Metric](docs/Metric.md)
  - [NodeType](docs/NodeType.md)
  - [NotFoundExceptionResponseContent](docs/NotFoundExceptionResponseContent.md)
  - [RequestedComputeFleetStatus](docs/RequestedComputeFleetStatus.md)
  - [Scheduler](docs/Scheduler.md)
  - [StackEvent](docs/StackEvent.md)
+ - [Stat](docs/Stat.md)
  - [Tag](docs/Tag.md)
  - [UnauthorizedClientErrorResponseContent](docs/UnauthorizedClientErrorResponseContent.md)
  - [UpdateClusterBadRequestExceptionResponseContent](docs/UpdateClusterBadRequestExceptionResponseContent.md)

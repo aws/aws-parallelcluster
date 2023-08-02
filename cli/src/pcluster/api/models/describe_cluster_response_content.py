@@ -84,7 +84,7 @@ class DescribeClusterResponseContent(Model):
         :type login_nodes: LoginNodesPool
         :type failures: List[Failure]
         :param details: The details of this DescribeClusterResponseContent.  # noqa: E501
-        :type details: List[Detail]
+        :type details: Detail
         """
         self.openapi_types = {
             "creation_time": datetime,
@@ -102,7 +102,7 @@ class DescribeClusterResponseContent(Model):
             "scheduler": Scheduler,
             "login_nodes": LoginNodesPool,
             "failures": List[Failure],
-            "details": List[Detail],
+            "details": Detail,
         }
 
         self.attribute_map = {
