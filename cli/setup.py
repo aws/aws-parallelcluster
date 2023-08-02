@@ -50,6 +50,7 @@ REQUIRES = [
     "connexion~=2.13.0",
     "flask>=2.2.5,==2.2.*",
     "jmespath~=0.10",
+    "jsii==1.85.0",
 ]
 
 LAMBDA_REQUIRES = [
