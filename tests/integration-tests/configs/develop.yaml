@@ -8,7 +8,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
