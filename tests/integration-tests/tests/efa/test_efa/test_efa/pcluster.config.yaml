@@ -16,6 +16,7 @@ Scheduling:
       Networking:
         PlacementGroup:
           Enabled: {% if instance not in ["p4d.24xlarge", "c6gn.16xlarge"] %}true{% else %}false{% endif %}
+          {% if instance == "c5n.18xlarge" %}Name: c5n_capacity_reservation{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
