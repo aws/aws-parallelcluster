@@ -18,7 +18,7 @@ from retrying import RetryError, retry
 from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_errors_in_logs
-from tests.common.scaling_common import emulate_ice_in_cluster, get_compute_nodes_allocation
+from tests.common.scaling_common import get_compute_nodes_allocation, setup_ec2_launch_override_to_emulate_ice
 from tests.schedulers.test_slurm import _assert_job_state
 
 
@@ -149,7 +149,10 @@ def test_job_level_scaling(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    emulate_ice_in_cluster(cluster)
+    setup_ec2_launch_override_to_emulate_ice(
+        cluster,
+        multi_instance_types_ice_cr="ice-cr-multiple",
+    )
 
     _submit_job_partial_capacity(scheduler_commands, remote_command_executor)
     _submit_job_full_capacity(scheduler_commands, remote_command_executor)

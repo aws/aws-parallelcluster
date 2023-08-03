@@ -53,7 +53,7 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
-from tests.common.scaling_common import emulate_ice_in_cluster
+from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.monitoring import structured_log_event_utils
 
@@ -438,7 +438,12 @@ def test_fast_capacity_failover(
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    emulate_ice_in_cluster(cluster)
+    setup_ec2_launch_override_to_emulate_ice(
+        cluster,
+        single_instance_type_ice_cr="ice-compute-resource",
+        multi_instance_types_ice_cr="ice-cr-multiple",
+        multi_instance_types_exp_cr="exception-cr-multiple",
+    )
 
     for strategy in scaling_strategies:
         partition = f"queue-{strategy}"

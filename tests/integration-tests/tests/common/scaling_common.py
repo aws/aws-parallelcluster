@@ -162,12 +162,25 @@ def get_batch_ce_min_size(stack_name, region):
     )
 
 
-def emulate_ice_in_cluster(cluster):
+def setup_ec2_launch_override_to_emulate_ice(
+    cluster, single_instance_type_ice_cr="", multi_instance_types_ice_cr="", multi_instance_types_exp_cr=""
+):
     """
     Includes an override file that emulates an ICE error in a cluster.
 
     It applies the override patch to launch ice for nodes in
-    "ice-compute-resource" and "ice-cr-multiple" compute resources with an ICE error
+    <single_instance_type_ice_cr> and/or <multi_instance_types_ice_cr> compute resources with an ICE error
     """
     remote_command_executor = RemoteCommandExecutor(cluster)
-    remote_command_executor.run_remote_script(str(SCALING_COMMON_DATADIR / "overrides.sh"), run_as_root=True)
+
+    # fmt: off
+    remote_command_executor.run_remote_script(
+        script_file=str(SCALING_COMMON_DATADIR / "overrides.sh"),
+        args=[
+            f"--single-instance-type-ice-cr \"{single_instance_type_ice_cr}\"",
+            f"--multi-instance-types-ice-cr \"{multi_instance_types_ice_cr}\"",
+            f"--multi-instance-types-exp-cr \"{multi_instance_types_exp_cr}\"",
+        ],
+        run_as_root=True,
+    )
+    # fmt: on
