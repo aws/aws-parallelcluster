@@ -39,7 +39,7 @@ def test_efs_use_login_nodes(
     The efs correctly mounted on LoginNodes and compute.
     """
     if scheduler != "slurm":
-        return
+        pytest.skip(f"Skipping test because scheduler: {scheduler} is not supported for login nodes. Please use Slurm.")
 
     mount_dir = "efs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
