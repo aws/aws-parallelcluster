@@ -40,13 +40,16 @@ class RemoteCommandExecutor:
             username = get_username_for_os(cluster.os)
         if compute_node_ip:
             # Since compute nodes may not be publicly accessible, always use head node as the bastion.
+            self.target = "ComputeNode"
             node_ip = compute_node_ip
             bastion = f"{username}@{cluster.head_node_ip}"
         elif use_login_node:
+            self.target = "LoginNode"
             node_ip = cluster.get_login_node_public_ip()
             if node_ip is None:
                 raise RemoteCommandExecutionError("No healthy LoginNode found in the cluster.")
         else:
+            self.target = "HeadNode"
             node_ip = cluster.head_node_ip
 
         connection_kwargs = {
@@ -83,6 +86,10 @@ class RemoteCommandExecutor:
         except Exception as e:
             # Catch all exceptions if we fail to close the clients
             logging.warning("Exception raised when closing remote ssh client: {0}".format(e))
+
+    def get_target_host_type(self):
+        """Get target host type. ComputeNode, LoginNode or HeadNode."""
+        return self.target
 
     def reset_connection(self):
         """Reset SSH connection."""
