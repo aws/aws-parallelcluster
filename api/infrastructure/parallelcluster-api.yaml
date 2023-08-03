@@ -81,6 +81,8 @@ Parameters:
       When specified, IAM permissions assumed by the API are conditionally restricted to the usage of the given PermissionsBoundary
     Type: String
     Default: ''
+    ConstraintDescription: "The value must be a valid ARN in the format: arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/PolicyNameParameter"
+    AllowedPattern: "^arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/([a-zA-Z0-9_-]+)$"
 
   CreateApiUserRole:
     Description: Creates a IAM role authorized to invoke the API. The Api is configured with a resource based policy to grant invoke permission to the created user only.
@@ -94,6 +96,12 @@ Parameters:
     Description: (Debug only) bucket to retrieve S3 artifacts for internal resources.
     Type: String
     Default: ''
+
+  IAMRoleAndPolicyPrefix:
+    Type: String
+    Description: 'Prefix for IAM roles and policies'
+    Default: ''
+    MaxLength: 10
 
 Mappings:
   ParallelCluster:
@@ -155,6 +163,7 @@ Conditions:
   CreateApiUserRoleCondition: !Equals [!Ref CreateApiUserRole, true]
   UseCustomBucket: !Not [!Equals [!Ref CustomBucket, '']]
   UseCustomPoliciesTemplateUri: !Not [!Equals [!Ref PoliciesTemplateUri, '']]
+  HasPermissionBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
 
 Resources:
   # Policies nested stack
@@ -175,6 +184,7 @@ Resources:
         EnableIamAdminAccess: !Ref EnableIamAdminAccess
         FsxS3Buckets: !Ref FsxS3Buckets
         PermissionsBoundaryPolicy: !Ref PermissionsBoundaryPolicy
+        IAMRoleAndPolicyPrefix: !Ref IAMRoleAndPolicyPrefix
         EnableBatchAccess: true
 
   PclusterLayer:
@@ -258,8 +268,10 @@ Resources:
                - apigateway.amazonaws.com
            Action:
              - 'sts:AssumeRole'
+     PermissionsBoundary: !If [HasPermissionBoundary, !Ref PermissionsBoundaryPolicy, !Ref 'AWS::NoValue']
+     RoleName: !Sub ${IAMRoleAndPolicyPrefix}APIGatewayExecutionRole
      Policies:
-       - PolicyName: lambda-invoke
+       - PolicyName: !Sub ${IAMRoleAndPolicyPrefix}lambda-invoke
          PolicyDocument:
            Version: '2012-10-17'
            Statement:
@@ -293,7 +305,7 @@ Resources:
     Condition: CreateApiUserRoleCondition
     Properties:
       RoleName:  !Sub
-        - ParallelClusterApiUserRole-${StackIdSuffix}
+        - ${IAMRoleAndPolicyPrefix}PCAPIUserRole-${StackIdSuffix}
         - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       AssumeRolePolicyDocument:
         Statement:
@@ -302,8 +314,9 @@ Resources:
             Principal:
               AWS:
                 - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+      PermissionsBoundary: !If [HasPermissionBoundary, !Ref PermissionsBoundaryPolicy, !Ref 'AWS::NoValue']
       Policies:
-        - PolicyName: ParallelClusterApiInvokePolicy
+        - PolicyName: !Sub ${IAMRoleAndPolicyPrefix}ParallelClusterApiInvokePolicy
           PolicyDocument:
             Statement:
               - Action:
