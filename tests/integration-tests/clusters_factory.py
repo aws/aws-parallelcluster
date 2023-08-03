@@ -182,6 +182,11 @@ class Cluster:
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} stopped successfully".format(self.name))
+
+            # reset cached info
+            self.cluster_info = None
+            self.login_nodes_info = None
+
             return result.stdout
         except subprocess.CalledProcessError as e:
             logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)

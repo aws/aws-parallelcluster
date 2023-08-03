@@ -394,6 +394,7 @@ scaling:
         oss: ["centos7"]
         schedulers: ["slurm"]
 schedulers:
+  # TODO AWS Batch MNP jobs are failing, MNP submission tests are disabled until a root cause is found
   test_awsbatch.py::test_awsbatch:
     dimensions:
       - regions: ["us-gov-west-1"]
