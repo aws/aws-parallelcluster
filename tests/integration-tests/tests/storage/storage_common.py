@@ -65,10 +65,11 @@ def test_directory_correctly_shared_between_ln_and_hn(
     Test Steps:
     1. Writes a file from the HeadNode to the shared volume.
     2. Writes a file from the LoginNode to the shared volume.
-    3. Reads both files from both the HeadNode and the LoginNode to validate that the shared volume is working correctly.
+    3. Reads both files from both the HeadNode and the LoginNode to validate that shared volume is working correctly.
 
     Expected Result:
-    - Both files can be successfully read from both the HeadNode and the LoginNode, proving that the shared volume is correctly shared between the two nodes.
+    - Both files can be successfully read from both the HeadNode and the LoginNode,
+      proving that the shared volume is correctly shared between the two nodes.
     """
     logging.info("Testing FS correctly mounted on login nodes")
     head_node_file = random_alphanumeric()
