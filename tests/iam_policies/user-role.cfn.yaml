@@ -799,6 +799,7 @@ Resources:
           - Action:
               - autoscaling:CreateAutoScalingGroup
               - autoscaling:DeleteAutoScalingGroup
+              - autoscaling:DeleteLifecycleHook
               - autoscaling:DescribeAutoScalingGroups
               - autoscaling:DescribeLifecycleHooks
               - autoscaling:DescribeScalingActivities
