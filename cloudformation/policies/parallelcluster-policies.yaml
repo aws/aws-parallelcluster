@@ -45,6 +45,8 @@ Parameters:
       When specified, IAM permissions assumed by the API are conditionally restricted to the usage of the given PermissionsBoundary
     Type: String
     Default: ''
+    ConstraintDescription: "The value must be a valid ARN in the format: arn:{AWS::Partition}:iam::{AWS::AccountId}:policy/PolicyNameParameter"
+    AllowedPattern: "^(arn:.*:iam::.*:policy\\/([a-zA-Z0-9_-]+))|()$"
 
   EnableBatchAccess:
     Description: |
@@ -54,6 +56,11 @@ Parameters:
     AllowedValues:
       - true
       - false
+  IAMRoleAndPolicyPrefix:
+    Type: String
+    Description: 'Prefix for IAM roles and policies'
+    Default: ''
+    MaxLength: 10
 
 Outputs:
   ParallelClusterLogRetrievalPolicy:
@@ -179,6 +186,10 @@ Resources:
   ParallelClusterLambdaRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [EnablePermissionsBoundary, !Ref PermissionsBoundaryPolicy, !Ref 'AWS::NoValue']
+      RoleName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterLambdaRole-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId']]]] }
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -290,7 +301,7 @@ Resources:
     Type: AWS::IAM::Policy
     Condition: EnableFSxS3AccessCondition
     Properties:
-      PolicyName: ParallelClusterFSxS3AccessPolicy
+      PolicyName: !Sub ${IAMRoleAndPolicyPrefix}ParallelClusterFSxS3AccessPolicy
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
