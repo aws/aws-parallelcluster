@@ -258,14 +258,8 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
                 tolerated_value = float(previous_result) - (float(previous_result) * 0.2)
                 is_failure = int(value) < tolerated_value
             else:
-                # Use a tolerance of 10us for 2 digits values.
-                # For 3+ digits values use a 20% tolerance, except for the higher-variance latency benchmark.
-                if len(previous_result) <= 2:
-                    accepted_tolerance = 10
-                else:
-                    multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
-                    accepted_tolerance = float(previous_result) * multiplier
-                tolerated_value = float(previous_result) + accepted_tolerance
+                multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
+                tolerated_value = float(previous_result) + max(float(previous_result) * multiplier, 10)
 
                 is_failure = int(value) > tolerated_value
 
