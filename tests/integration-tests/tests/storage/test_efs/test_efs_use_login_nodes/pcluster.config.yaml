@@ -17,8 +17,6 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
-  Iam:
-    InstanceRole: {{ ec2_iam_role }}
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -39,29 +37,8 @@ Scheduling:
           {% endif %}
       Networking:
         SubnetIds:
-          - {{ private_subnet_ids[0] }}
-      {% if scheduler != "awsbatch" %}
-      Iam:
-        InstanceRole: {{ ec2_iam_role }}
-      {% endif %}
-    {% if scheduler == "slurm" %}
-    - Name: queue-1
-      ComputeResources:
-        - Name: compute-resource-0
-          Instances:
-            - InstanceType: {{ instance }}
-          MinCount: 1
-          MaxCount: 1
-      Networking:
-        SubnetIds:
-          - {{ private_subnet_ids[1] }}
-    {% endif %}
+          - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: {{ mount_dir }}
-    StorageType: Ebs
-    Name: ebs
-    EbsSettings:
-      Iops: 210
-      VolumeType: io1
-      Encrypted: true
-      KmsKeyId: {{ ebs_kms_key_id }}
+    Name: efs
+    StorageType: Efs
