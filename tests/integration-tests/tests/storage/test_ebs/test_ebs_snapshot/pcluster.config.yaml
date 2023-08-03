@@ -1,6 +1,6 @@
 Image:
   Os: {{ os }}
-{% if scheduler == "slurm" and use_login_node %}
+{% if scheduler == "slurm" %}
 LoginNodes:
   Pools:
     - Name: login-node-pool-0

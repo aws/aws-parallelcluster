@@ -55,6 +55,21 @@ def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head
 def test_directory_correctly_shared_between_ln_and_hn(
     remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
 ):
+    """
+    This test verifies if a shared directory is correctly shared between the HeadNode and the LoginNode.
+
+    Preconditions:
+    - An EBS volume is expected to be mounted at <HN_folder> on the HeadNode and exported through NFS.
+    - The EBS volume is expected to be mounted at <LN_folder> on the LoginNode through NFS.
+
+    Test Steps:
+    1. Writes a file from the HeadNode to the shared volume.
+    2. Writes a file from the LoginNode to the shared volume.
+    3. Reads both files from both the HeadNode and the LoginNode to validate that the shared volume is working correctly.
+
+    Expected Result:
+    - Both files can be successfully read from both the HeadNode and the LoginNode, proving that the shared volume is correctly shared between the two nodes.
+    """
     logging.info("Testing FS correctly mounted on login nodes")
     head_node_file = random_alphanumeric()
     logging.info(f"Writing HeadNode File: {head_node_file}")
@@ -98,7 +113,7 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
         "B" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
     """
     executor_node_file = random_alphanumeric()
-    logging.info(f"Writing ExecutorNode File: {executor_node_file}")
+    logging.info(f"{remote_command_executor.get_target_host_type()}: Writing File: {executor_node_file}")
     remote_command_executor.run_remote_command(
         "touch {mount_dir}/{executor_node_file} && cat {mount_dir}/{executor_node_file}".format(
             mount_dir=mount_dir, executor_node_file=executor_node_file
@@ -126,7 +141,7 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
         files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
     )
     # Attempt reading files from executor node
-    logging.info(f"Reading Files: {files_to_read} from executor node")
+    logging.info(f"{remote_command_executor.get_target_host_type()}: Reading Files: {files_to_read}")
     remote_command_executor.run_remote_command(read_all_files_command)
 
     # Submit a "Read" job to each partition

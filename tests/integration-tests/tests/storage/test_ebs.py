@@ -26,7 +26,6 @@ from tests.storage.storage_common import (
 )
 
 
-@pytest.mark.parametrize("use_login_node", [True, False])
 @pytest.mark.usefixtures("instance")
 def test_ebs_single(
     scheduler,
@@ -36,18 +35,13 @@ def test_ebs_single(
     region,
     os,
     scheduler_commands_factory,
-    use_login_node,
 ):
-    if use_login_node and scheduler != "slurm":
-        return
-
     mount_dir = "ebs_mount_dir"
     kms_key_id = kms_key_factory.create_kms_key(region)
     cluster_config = pcluster_config_reader(
         mount_dir=mount_dir,
         ec2_iam_role=kms_key_factory.iam_role_arn,
         ebs_kms_key_id=kms_key_id,
-        use_login_node=use_login_node,
     )
     cluster = clusters_factory(cluster_config)
     assert_subnet_az_relations_from_config(
@@ -63,8 +57,8 @@ def test_ebs_single(
     # Test ebs correctly shared between HeadNode and ComputeNodes
     _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
 
-    if use_login_node:
-        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
+    if scheduler == "slurm":
+        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
@@ -77,7 +71,6 @@ def test_ebs_single(
     _test_root_volume_encryption(cluster, os, region, scheduler, encrypted=True)
 
 
-@pytest.mark.parametrize("use_login_node", [True, False])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_ebs_snapshot(
     request,
@@ -88,11 +81,7 @@ def test_ebs_snapshot(
     clusters_factory,
     scheduler_commands_factory,
     scheduler,
-    use_login_node,
 ):
-    if use_login_node and scheduler != "slurm":
-        return
-
     logging.info("Testing ebs snapshot")
     mount_dir = "ebs_mount_dir"
     volume_size = 21
@@ -107,7 +96,6 @@ def test_ebs_snapshot(
         mount_dir=mount_dir,
         volume_size=volume_size,
         snapshot_id=snapshot_id,
-        use_login_node=use_login_node,
     )
 
     cluster = clusters_factory(cluster_config)
@@ -127,8 +115,8 @@ def test_ebs_snapshot(
     result = remote_command_executor_head_node.run_remote_command("cat {}/test.txt".format(mount_dir))
     assert_that(result.stdout.strip()).is_equal_to("hello world")
 
-    if use_login_node:
-        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
+    if scheduler == "slurm":
+        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
@@ -139,7 +127,6 @@ def test_ebs_snapshot(
         assert_that(result_login_node.stdout.strip()).is_equal_to("hello world")
 
 
-@pytest.mark.parametrize("use_login_node", [True, False])
 def test_ebs_multiple(
     scheduler,
     instance,
@@ -148,11 +135,7 @@ def test_ebs_multiple(
     region,
     os,
     scheduler_commands_factory,
-    use_login_node,
 ):
-    if use_login_node and scheduler != "slurm":
-        return
-
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     if not utils.get_instance_info(instance)["InstanceStorageSupported"]:
         # If the instance type does not support instance store, mount an EBS to /scratch to make sure our code allows it
@@ -166,7 +149,6 @@ def test_ebs_multiple(
     cluster_config = pcluster_config_reader(
         mount_dirs=mount_dirs,
         volume_sizes=volume_sizes,
-        use_login_node=use_login_node,
     )
     cluster = clusters_factory(cluster_config)
     assert_subnet_az_relations_from_config(
@@ -186,8 +168,8 @@ def test_ebs_multiple(
             remote_command_executor_head_node, mount_dir, volume_size if volume_size != 500 else "49[0-9]"
         )
         _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
-        if use_login_node:
-            remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
+        if scheduler == "slurm":
+            remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
             # Test ebs correctly shared between LoginNode and ComputeNodes
             _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
             # Test ebs correctly shared between HeadNode and LoginNode
@@ -224,7 +206,6 @@ def _get_ebs_settings_by_name(config, name):
             return shared_storage["EbsSettings"]
 
 
-@pytest.mark.parametrize("use_login_node", [True, False])
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
     request,
@@ -235,11 +216,7 @@ def test_ebs_existing(
     snapshots_factory,
     clusters_factory,
     scheduler_commands_factory,
-    use_login_node,
 ):
-    if use_login_node and scheduler != "slurm":
-        return
-
     logging.info("Testing ebs existing")
     existing_mount_dir = "existing_mount_dir"
 
@@ -248,9 +225,7 @@ def test_ebs_existing(
     volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.get_public_subnet(), region)
 
     logging.info("Existing Volume id: %s" % volume_id)
-    cluster_config = pcluster_config_reader(
-        volume_id=volume_id, existing_mount_dir=existing_mount_dir, use_login_node=use_login_node
-    )
+    cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
 
     cluster = clusters_factory(cluster_config)
     assert_subnet_az_relations_from_config(
@@ -265,8 +240,8 @@ def test_ebs_existing(
     result = remote_command_executor_head_node.run_remote_command("cat {}/test.txt".format(existing_mount_dir))
     assert_that(result.stdout.strip()).is_equal_to("hello world")
 
-    if use_login_node:
-        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
+    if scheduler == "slurm":
+        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
         # Test ebs correctly shared between LoginNode and ComputeNodes
         _test_ebs_correctly_shared(remote_command_executor_login_node, existing_mount_dir, scheduler_commands)
         # Test ebs correctly shared between HeadNode and LoginNode
