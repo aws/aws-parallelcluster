@@ -1344,7 +1344,7 @@ class LoginNodesPoolSchema(BaseSchema):
     iam = fields.Nested(LoginNodesIamSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     gracetime_period = fields.Int(
         validate=validate.Range(
-            min=3, max=120, error="The gracetime period for LoginNodes Pool must be an interger from 3 to 120."
+            min=3, max=120, error="The gracetime period for LoginNodes Pool must be an integer from 3 to 120."
         ),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
