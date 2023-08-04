@@ -809,12 +809,12 @@ def test_slurm_scaledown_idletime_validator(section_dict, expected_message):
 @pytest.mark.parametrize(
     "gracetime_period, expected_message",
     [
-        (0, "The gracetime period for LoginNodes Pool must be an interger from 3 to 120."),
-        (1, "The gracetime period for LoginNodes Pool must be an interger from 3 to 120."),
+        (0, "The gracetime period for LoginNodes Pool must be an integer from 3 to 120."),
+        (1, "The gracetime period for LoginNodes Pool must be an integer from 3 to 120."),
         (10, None),
         (120, None),
-        (-5, "The gracetime period for LoginNodes Pool must be an interger from 3 to 120."),
-        (121, "The gracetime period for LoginNodes Pool must be an interger from 3 to 120."),
+        (-5, "The gracetime period for LoginNodes Pool must be an integer from 3 to 120."),
+        (121, "The gracetime period for LoginNodes Pool must be an integer from 3 to 120."),
     ],
 )
 def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_message):
