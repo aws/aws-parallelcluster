@@ -301,7 +301,8 @@ paths:
           description: AWS Region that the operation corresponds to.
           type: string
         style: form
-      - explode: true
+      - description: A flag that provides more detailed output about the cluster.
+        explode: true
         in: query
         name: verbose
         required: false

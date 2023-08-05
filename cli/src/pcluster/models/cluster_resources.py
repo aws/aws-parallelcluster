@@ -198,14 +198,17 @@ class ClusterStack(StackInfo):
         ]
 
     def get_alarms_and_states(self):
+        """Retrieve the alarms and their current states for the CloudFormation stack."""
         alarm_names = self._get_alarm_names()
         alarms_and_states = AWSApi.instance().cloudwatch.get_alarms_with_states(alarm_names)
         return alarms_and_states
 
     def get_metrics_and_values(self):
+        """Retrieve the health metrics and their values for the cluster."""
         return AWSApi.instance().cloudwatch.get_cluster_health_metrics_values(self.name)
 
     def get_num_of_running_instances(self):
+        """Retrieve the number of running instances for the cluster."""
         return AWSApi.instance().ec2.get_num_of_running_instances(self.name)
 
 

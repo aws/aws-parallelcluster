@@ -653,3 +653,36 @@ def test_is_subnet_public(boto3_stubber):
 
     # Third boto3 call. The result should be from the latest response even if the gateway id of the subnet is different
     assert AWSApi.instance().ec2.is_subnet_public(subnet_id) is True
+
+
+@pytest.mark.parametrize(
+    "cluster_name, describe_instances_response, expected_num_of_running_instances",
+    [
+        ("test_cluster1", {"Reservations": [{"Instances": [{}]}, {"Instances": [{}]}]}, 2),
+        (
+            "test_cluster2",
+            {"Reservations": [{"Instances": [{}]}, {"Instances": [{}]}, {"Instances": [{}]}, {"Instances": [{}]}]},
+            4,
+        ),
+        ("empty_cluster", {"Reservations": []}, 0),
+    ],
+)
+def test_get_num_of_running_instances(
+    boto3_stubber, cluster_name, describe_instances_response, expected_num_of_running_instances
+):
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_instances",
+            response=describe_instances_response,
+            expected_params={
+                "Filters": [
+                    {"Name": "instance-state-name", "Values": ["running"]},
+                    {"Name": "tag:parallelcluster:cluster-name", "Values": [cluster_name]},
+                    {"Name": "tag:parallelcluster:node-type", "Values": ["Compute"]},
+                ]
+            },
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    result = Ec2Client().get_num_of_running_instances(cluster_name)
+    assert_that(result == expected_num_of_running_instances)

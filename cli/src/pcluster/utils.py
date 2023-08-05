@@ -563,6 +563,8 @@ class AsyncUtils:
 
 def get_start_end_timestamp(minutes):
     """
+    Calculate the start and end timestamps for a given period.
+
     The end time for query will be the current time rounded to minute that is not earlier than the current time (ceil).
     For instance, if the current time is 09:34:20, then the end time for query will be 09:35:00.
     This is because our metrics have a period of 1 minute, and according to public documentation of GetMetricData:

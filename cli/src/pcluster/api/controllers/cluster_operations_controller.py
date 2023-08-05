@@ -214,7 +214,7 @@ def describe_cluster(cluster_name, region=None, verbose=None):
     :type cluster_name: str
     :param region: AWS Region that the operation corresponds to.
     :type region: str
-    :param verbose
+    :param verbose: A flag that provides more detailed output about the cluster.
     :type verbose: bool
     :rtype: DescribeClusterResponseContent
     """
@@ -490,7 +490,7 @@ def _get_details(cfn_stack, verbose):
         alarms = _get_alarms_details(cfn_stack)
         metrics = _get_cluster_health_metrics_details(cfn_stack)
         stats = _get_stats_details(cfn_stack)
-        return Detail(alarms=alarms, metrics=metrics, stats=stats)
+        return [Detail(alarms=alarms, metrics=metrics, stats=stats)]
     else:
         return None
 

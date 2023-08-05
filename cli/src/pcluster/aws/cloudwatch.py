@@ -26,12 +26,12 @@ class CloudWatchClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def get_alarms_with_states(self, alarm_names):
-        """Get alarms and their current state values"""
+        """Get alarms and their current state values."""
         metric_alarms = self.describe_alarms(alarm_names).get("MetricAlarms", [])
         return [{"alarm_type": alarm["AlarmName"], "alarm_state": alarm["StateValue"]} for alarm in metric_alarms]
 
     def _get_metric_data(self, cluster_name, metric_name, start_timestamp, end_timestamp):
-        """Get the cloudwatch metric data results"""
+        """Get the cloudwatch metric data results."""
         metrics_response = self._client.get_metric_data(
             MetricDataQueries=[
                 {
@@ -61,6 +61,7 @@ class CloudWatchClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def get_cluster_health_metrics_values(self, cluster_name):
+        """Loop through the cluster health metrics to retrieve their values."""
         cluster_health_metrics = [
             "IamPolicyErrors",
             "VcpuLimitErrors",
