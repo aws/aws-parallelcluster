@@ -1246,6 +1246,7 @@ class LoginNodesPool(Resource):
         self,
         name: str,
         instance_type: str,
+        local_storage: LocalStorage = None,
         image: LoginNodesImage = None,
         networking: LoginNodesNetworking = None,
         count: int = None,
@@ -1262,6 +1263,7 @@ class LoginNodesPool(Resource):
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
+        self.local_storage = local_storage or LocalStorage(implied=True)
         self.gracetime_period = Resource.init_param(gracetime_period, default=60)
 
     @property

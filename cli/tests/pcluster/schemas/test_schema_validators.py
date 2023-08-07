@@ -624,6 +624,7 @@ def test_tags_validator(key, expected_message):
 def _validate_and_assert_error(schema, section_dict, expected_message, partial=True):
     if expected_message:
         messages = schema.validate(section_dict, partial=partial)
+        print(messages)
         contain = False
         for message in list(messages.values()):
             if isinstance(message, dict):
@@ -637,6 +638,7 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
         assert_that(contain).is_true()
     else:
         messages = schema.validate(section_dict, partial=partial)
+        print(messages)
         assert_that(len(messages)).is_equal_to(0)
 
 

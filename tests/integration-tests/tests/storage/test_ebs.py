@@ -53,7 +53,7 @@ def test_ebs_single(
     scheduler_commands = scheduler_commands_factory(remote_command_executor_head_node)
     volume_id = get_ebs_volume_ids(cluster, region)[0]
 
-    test_ebs_correctly_mounted(remote_command_executor_head_node, mount_dir, volume_size=35)
+    test_ebs_correctly_mounted(remote_command_executor_head_node, mount_dir, volume_size=40)
     # Test ebs correctly shared between HeadNode and ComputeNodes
     _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
 
@@ -342,8 +342,7 @@ def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
     logging.info("Testing root volume encryption.")
     if scheduler == "slurm":
         # If the scheduler is slurm, root volumes both on head and compute can be encrypted
-        instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
-        instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
+        instance_ids = cluster.get_cluster_instance_ids()
         for instance in instance_ids:
             root_volume_id = utils.get_root_volume_id(instance, region, os)
             _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
@@ -365,8 +364,7 @@ def _assert_root_volume_configuration(cluster, os, region, scheduler):
         _assert_volume_configuration(expected_settings, root_volume_id, region)
     if scheduler == "slurm":
         # Only if the scheduler is slurm, root volumes both on compute can be configured
-        instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
-        instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
+        instance_ids = cluster.get_cluster_instance_ids()
         for instance in instance_ids:
             if instance == head_node:
                 # head node is already checked

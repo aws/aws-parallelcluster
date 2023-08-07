@@ -170,6 +170,21 @@ class HeadNodeRootVolumeSchema(BaseSchema):
         return RootVolume(**data)
 
 
+class LoginNodesRootVolumeSchema(BaseSchema):
+    """Represent the RootVolume schema for the LoginNodes."""
+
+    size = fields.Int(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    volume_type = fields.Str(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    iops = fields.Int(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return RootVolume(**data)
+
+
 class QueueRootVolumeSchema(BaseSchema):
     """Represent the RootVolume schema for the queue."""
 
@@ -255,6 +270,19 @@ class HeadNodeEphemeralVolumeSchema(BaseSchema):
         return EphemeralVolume(**data)
 
 
+class LoginNodesEphemeralVolumeSchema(BaseSchema):
+    """Represent the schema of ephemeral volume.It is a child of storage schema."""
+
+    mount_dir = fields.Str(
+        validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return EphemeralVolume(**data)
+
+
 class QueueEphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
@@ -274,6 +302,20 @@ class HeadNodeStorageSchema(BaseSchema):
     root_volume = fields.Nested(HeadNodeRootVolumeSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     ephemeral_volume = fields.Nested(
         HeadNodeEphemeralVolumeSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LocalStorage(**data)
+
+
+class LoginNodesStorageSchema(BaseSchema):
+    """Represent the schema of storage attached to a login node."""
+
+    root_volume = fields.Nested(LoginNodesRootVolumeSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    ephemeral_volume = fields.Nested(
+        LoginNodesEphemeralVolumeSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}
     )
 
     @post_load
@@ -1332,6 +1374,7 @@ class LoginNodesPoolSchema(BaseSchema):
     networking = fields.Nested(
         LoginNodesNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP}
     )
+    local_storage = fields.Nested(LoginNodesStorageSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     count = fields.Int(
         required=True,
         validate=validate.Range(
