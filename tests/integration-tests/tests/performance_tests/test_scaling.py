@@ -34,7 +34,7 @@ def test_scaling(
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "srun sleep 10",
-            "partition": "queue-1",
+            "partition": "queue-0",
             "nodes": max_nodes,
             "slots": max_nodes,
         }
