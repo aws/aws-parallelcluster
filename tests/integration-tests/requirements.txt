@@ -13,7 +13,7 @@ matplotlib
 pexpect
 pykwalify
 pyOpenSSL
-pytest~=7.3.2
+pytest
 pytest-datadir
 pytest-html
 pytest-rerunfailures
