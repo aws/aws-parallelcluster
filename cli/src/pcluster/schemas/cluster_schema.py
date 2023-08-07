@@ -125,6 +125,7 @@ from pcluster.schemas.common_schema import ImdsSchema as TopLevelImdsSchema
 from pcluster.schemas.common_schema import (
     TagSchema,
     get_field_validator,
+    is_cidr_or_prefix_list,
     validate_no_duplicate_tag,
     validate_no_reserved_tag,
 )
@@ -734,7 +735,7 @@ class BaseSshSchema(BaseSchema):
 class HeadNodeSshSchema(BaseSshSchema):
     """Represent the schema of the HeadNodeSsh."""
 
-    allowed_ips = fields.Str(validate=get_field_validator("cidr"), metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    allowed_ips = fields.Str(validate=is_cidr_or_prefix_list, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -747,7 +748,7 @@ class DcvSchema(BaseSchema):
 
     enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     port = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    allowed_ips = fields.Str(validate=get_field_validator("cidr"), metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    allowed_ips = fields.Str(validate=is_cidr_or_prefix_list, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
