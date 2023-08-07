@@ -229,22 +229,42 @@ def test_dcv_validator(section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        ({"AllowedIps": "wrong_value"}, "does not match expected patter"),
-        ({"AllowedIps": ""}, "does not match expected pattern"),
-        ({"AllowedIps": "wrong_value"}, "does not match expected pattern"),
-        ({"AllowedIps": "111.111.111.111"}, "does not match expected pattern"),
-        ({"AllowedIps": "111.111.111.111/222"}, "does not match expected pattern"),
-        ({"AllowedIps": "NONE"}, "does not match expected pattern"),
+        (
+            {"AllowedIps": "wrong_value"},
+            "Invalid value: 'wrong_value' is neither a valid CIDR nor a valid prefix-list.",
+        ),
+        ({"AllowedIps": ""}, "Invalid value: '' is neither a valid CIDR nor a valid prefix-list."),
+        (
+            {"AllowedIps": "wrong_value"},
+            "Invalid value: 'wrong_value' is neither a valid CIDR nor a valid prefix-list.",
+        ),
+        (
+            {"AllowedIps": "111.111.111.111"},
+            "Invalid value: '111.111.111.111' is neither a valid CIDR nor a valid prefix-list.",
+        ),
+        (
+            {"AllowedIps": "111.111.111.111/222"},
+            "Invalid value: '111.111.111.111/222' is neither a valid CIDR nor a valid prefix-list.",
+        ),
+        ({"AllowedIps": "NONE"}, "Invalid value: 'NONE' is neither a valid CIDR nor a valid prefix-list."),
         ({"AllowedIps": "0.0.0.0/0"}, None),
         ({"AllowedIps": "1.1.1.1/0"}, None),
         ({"AllowedIps": "1.1.1.1/8"}, None),
         ({"AllowedIps": "1.1.1.1/15"}, None),
         ({"AllowedIps": "1.1.1.1/32"}, None),
-        ({"AllowedIps": "1.1.1.1/33"}, "does not match expected pattern"),
+        ({"AllowedIps": "1.1.1.1/33"}, "Invalid value: '1.1.1.1/33' is neither a valid CIDR nor a valid prefix-list."),
         ({"AllowedIps": "11.11.11.11/32"}, None),
         ({"AllowedIps": "111.111.111.111/22"}, None),
         ({"AllowedIps": "255.255.255.255/32"}, None),
-        ({"AllowedIps": "255.255.255.256/32"}, "does not match expected pattern"),
+        ({"AllowedIps": "pl-123abcDEF"}, None),
+        (
+            {"AllowedIps": "prefix-list"},
+            "Invalid value: 'prefix-list' is neither a valid CIDR nor a valid prefix-list.",
+        ),
+        (
+            {"AllowedIps": "255.255.255.256/32"},
+            "Invalid value: '255.255.255.256/32' is neither a valid CIDR nor a valid prefix-list.",
+        ),
     ],
 )
 def test_cidr_validator(section_dict, expected_message):
