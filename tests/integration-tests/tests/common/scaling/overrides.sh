@@ -10,6 +10,39 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+
+
+set -ex
+
+
+fail() {
+    echo "[ERROR] $1" >&2
+    exit 1
+}
+
+while [ $# -gt 0 ] ; do
+    case "$1" in
+        --single-instance-type-ice-cr)
+            INSTANCE_TYPE_ICE_CR="$2"
+            shift
+        ;;
+        --multi-instance-types-ice-cr)
+            INSTANCE_TYPES_ICE_CR="$2"
+            shift
+        ;;
+        --multi-instance-types-exp-cr)
+            INSTANCE_TYPES_EXCEPTION_CR="$2"
+            shift
+        ;;
+        *)
+            fail "[ERROR] Unrecognized option '$1'"
+        ;;
+    esac
+    shift
+done
+
+[[ -n "${INSTANCE_TYPE_ICE_CR}" ]] || [[ -n "${INSTANCE_TYPES_ICE_CR}" ]] || fail "You must provide either --single-instance-type-ice-cr or --multi-instance-types-ice-cr or both"
+
 slurm_plugin_path=$(sudo find / -iname slurm_plugin -print0|grep -FzZ 'node_virtualenv')
 cat > $slurm_plugin_path/overrides.py << EOF
 from botocore.exceptions import ClientError
@@ -19,7 +52,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def run_instances(region, boto3_config, **run_instances_kwargs):
-    if "ice-compute-resource" in run_instances_kwargs.get("LaunchTemplate", {}).get("LaunchTemplateName"):
+    if "${INSTANCE_TYPE_ICE_CR}" and "${INSTANCE_TYPE_ICE_CR}" in run_instances_kwargs.get("LaunchTemplate", {}).get("LaunchTemplateName"):
         # Forcing the Placement/tenancy override to host will trigger an InsufficientHostCapacity since we do not
         # have a fleet of reserved hosts
         run_instances_kwargs['Placement']= {'Tenancy': 'host'}
@@ -45,12 +78,12 @@ def create_fleet(region, boto3_config, **create_fleet_kwargs):
     if len(configs) >= 1 and configs[0]:
         lt_config = configs[0]
 
-        if "ice-cr-multiple" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
+        if "${INSTANCE_TYPES_ICE_CR}" and "${INSTANCE_TYPES_ICE_CR}" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
             # CreateFleet will return an Error and an empty list of instances
             lt_config['Overrides'] = update_lt_instance_overrides(lt_config['Overrides'])
             logger.info("Updated Instance Overrides for CreateFleet args: %s", create_fleet_kwargs)
-        elif "exception-cr-multiple" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
-            # force CreateFleet to raise an exception since `inf*` instance types have Inferentia accelerators
+        elif "${INSTANCE_TYPES_EXCEPTION_CR}" and "${INSTANCE_TYPES_EXCEPTION_CR}" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
+            # force CreateFleet to raise an exception since "inf*" instance types have Inferentia accelerators
             # that are manufactured by AWS, and we are also requesting Manufacturer=nvidia
             lt_config['Overrides'] = [{
                         "InstanceRequirements": {

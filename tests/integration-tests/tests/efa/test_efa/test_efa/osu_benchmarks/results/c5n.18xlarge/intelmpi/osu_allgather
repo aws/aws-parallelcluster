@@ -1,10 +1,11 @@
 # OSU MPI Allgather Latency Test v5.7.1
+# The first four latencies were retrieved as the average of four OSU benchmarks during August twenty twenty three
 # Size       Avg Latency(us)
-1                     244.22
-2                     221.93
-4                     219.47
-8                     223.62
-16                    230.11
+1                     205.00
+2                     225.00
+4                     226.00
+8                     259.00
+16                    300.00
 32                    371.38
 64                    416.95
 128                   555.10

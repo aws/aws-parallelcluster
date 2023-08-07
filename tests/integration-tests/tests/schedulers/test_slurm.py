@@ -53,6 +53,7 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
+from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.monitoring import structured_log_event_utils
 
@@ -447,9 +448,12 @@ def test_fast_capacity_failover(
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    # after the cluster is launched, apply the override patch to launch ice for nodes in
-    # "ice-compute-resource" and "ice-cr-multiple" compute resources
-    remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
+    setup_ec2_launch_override_to_emulate_ice(
+        cluster,
+        single_instance_type_ice_cr="ice-compute-resource",
+        multi_instance_types_ice_cr="ice-cr-multiple",
+        multi_instance_types_exp_cr="exception-cr-multiple",
+    )
 
     for strategy in SCALING_STRATEGIES:
         partition = f"queue-{strategy}"
@@ -1606,7 +1610,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 23.02.3")
+    assert_that(version).is_equal_to("slurm 23.02.4")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
