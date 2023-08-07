@@ -656,8 +656,8 @@ def test_queue_parameters_update(
 ):
     """Test update cluster with drain strategy."""
     # Create cluster with initial configuration
-    initial_compute_root_volume_size = 35
-    updated_compute_root_volume_size = 40
+    initial_compute_root_volume_size = 40
+    updated_compute_root_volume_size = 45
     # If you are running this test in your personal account, then you must have
     # ParallelCluster AMIs following the official naming convention
     # and set allow_private_ami to True.
@@ -1279,7 +1279,7 @@ def _test_shared_storages_mount_on_headnode(
     """Check storages are mounted on headnode."""
     # ebs
     for ebs_dir in ebs_mount_dirs:
-        volume_size = "9.[7,8]" if "existing" in ebs_dir else "35"
+        volume_size = "9.[7,8]" if "existing" in ebs_dir else "40"
         test_ebs_correctly_mounted(remote_command_executor, ebs_dir, volume_size=volume_size)
     # check raid
     test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
