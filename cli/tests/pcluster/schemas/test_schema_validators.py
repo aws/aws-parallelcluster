@@ -10,6 +10,7 @@
 # limitations under the License.
 import re
 
+import boto3
 import pytest
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
@@ -709,40 +710,45 @@ def test_login_node_pool_count_validator(count, expected_message):
     "pools, expected_message",
     [
         ([], "Only one pool can be specified when using login nodes."),
-        # (
-        #     [
-        #         {
-        #             "Name": "validname1",
-        #             "InstanceType": "t2.micro",
-        #             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
-        #             "Count": 1,
-        #             "Ssh": {"KeyName": "valid_key_name1"},
-        #         },
-        #         {
-        #             "Name": "validname2",
-        #             "InstanceType": "t2.micro",
-        #             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
-        #             "Count": 1,
-        #             "Ssh": {"KeyName": "valid_key_name2"},
-        #         },
-        #     ],
-        #     "Only one pool can be specified when using login nodes.",
-        # ),
-        # (
-        #     [
-        #         {
-        #             "Name": "validname",
-        #             "InstanceType": "t2.micro",
-        #             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
-        #             "Count": 1,
-        #             "Ssh": {"KeyName": "valid_key_name"},
-        #         }
-        #     ],
-        #     None,
-        # ),
+        (
+            [
+                {
+                    "Name": "validname1",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name1"},
+                },
+                {
+                    "Name": "validname2",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name2"},
+                },
+            ],
+            "Only one pool can be specified when using login nodes.",
+        ),
+        (
+            [
+                {
+                    "Name": "validname",
+                    "InstanceType": "t2.micro",
+                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
+                    "Count": 1,
+                    "Ssh": {"KeyName": "valid_key_name"},
+                }
+            ],
+            None,
+        ),
     ],
 )
-def test_pools_validator(pools, expected_message):
+def test_pools_validator(mocker, pools, expected_message):
+    # Mock boto3 session's region_name to return 'us-east-2'
+    mock_session = mocker.MagicMock()
+    mock_session.region_name = "us-east-2"
+    mocker.patch.object(boto3, "session", Session=lambda: mock_session)
+
     _validate_and_assert_error(
         LoginNodesSchema(),
         {
