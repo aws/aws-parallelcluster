@@ -104,7 +104,8 @@ write_files:
           "head_node_private_ip": "${HeadNodePrivateIp}",
           "directory_service": {
             "enabled": "${DirectoryServiceEnabled}"
-          }
+          },
+          "debug_level": "${DebugLevel}"
         }
       }
   - path: /etc/chef/client.rb
@@ -125,11 +126,14 @@ write_files:
       function error_exit
       {
         echo "Bootstrap failed with error: $1"
-        # wait logs flush before signaling the failure
-        sleep 10
-        # TODO: add possibility to override this behavior and keep the instance for debugging
-        shutdown -h now
-        exit 1
+        if [ "${DebugLevel}" != "info" ]; then
+          echo "Skipping termination because debug_level is set to ${DebugLevel}"
+        else
+          # wait logs flush before signaling the failure
+          sleep 10
+          shutdown -h now
+          exit 1
+        fi
       }
       function vendor_cookbook
       {
@@ -214,11 +218,11 @@ write_files:
       jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' > /etc/chef/dna.json || ( echo "jq not installed or invalid extra_json"; cp /tmp/dna.json /etc/chef/dna.json)
       {
         pushd /etc/chef &&
-        cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::init &&
+        cinc-client --local-mode --config /etc/chef/client.rb --log_level ${DebugLevel} --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::init &&
         /opt/parallelcluster/scripts/fetch_and_run -preinstall &&
-        cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::config &&
+        cinc-client --local-mode --config /etc/chef/client.rb --log_level ${DebugLevel} --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::config &&
         /opt/parallelcluster/scripts/fetch_and_run -postinstall &&
-        cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::finalize &&
+        cinc-client --local-mode --config /etc/chef/client.rb --log_level ${DebugLevel} --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::finalize &&
         popd
       } || error_exit 'Failed to run bootstrap recipes. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
 

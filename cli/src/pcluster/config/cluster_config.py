@@ -1121,6 +1121,7 @@ class ClusterDevSettings(BaseDevSettings):
         instance_types_data: str = None,
         timeouts: Timeouts = None,
         compute_startup_time_metric_enabled: bool = None,
+        debug_level: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1131,6 +1132,7 @@ class ClusterDevSettings(BaseDevSettings):
         self.compute_startup_time_metric_enabled = Resource.init_param(
             compute_startup_time_metric_enabled, default=False
         )
+        self.debug_level = Resource.init_param(debug_level, default="info")
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)

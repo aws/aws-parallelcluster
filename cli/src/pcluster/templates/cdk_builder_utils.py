@@ -87,6 +87,7 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue, LoginNodesPool], 
         "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
         "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
+        "DebugLevel": config.dev_settings.debug_level,
     }
 
 
