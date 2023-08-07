@@ -16,6 +16,7 @@
 import copy
 import enum
 import json
+import re
 
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
@@ -30,6 +31,7 @@ ALLOWED_VALUES = {
     r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])"
     r"(\/([0-9]|[1-2][0-9]|3[0-2]))$",
     "file_path": r"^\/?[^\/.\\][^\/\\]*(\/[^\/.\\][^\/]*)*$",
+    "prefix-list": r"^pl-[a-zA-Z0-9]",
     "security_group_id": r"^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
     "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
     "architectures": SUPPORTED_ARCHITECTURES,
@@ -78,6 +80,16 @@ def validate_no_duplicate_tag(tags):
                 f"Duplicate tag key ({tag_key}) detected. Tags keys should be unique within the Tags section."
             )
         all_tags.add(tag_key)
+
+
+def _match_regex(regex_name, value):
+    _regex = re.compile(ALLOWED_VALUES[regex_name])
+    return _regex.match(value) is not None
+
+
+def is_cidr_or_prefix_list(value):
+    if (_match_regex("cidr", value) or _match_regex("prefix-list", value)) is not True:
+        raise ValidationError(f"Invalid value: '{value}' is neither a valid CIDR nor a valid prefix-list.")
 
 
 def get_field_validator(field_name):
