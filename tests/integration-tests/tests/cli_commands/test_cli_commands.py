@@ -52,6 +52,7 @@ def test_slurm_cli_commands(
 
     cluster = _test_create_cluster(clusters_factory, cluster_config, request)
     _test_describe_cluster(cluster)
+    _test_describe_cluster_verbose(cluster)
     _test_list_cluster(cluster.name, "CREATE_COMPLETE")
 
     _test_update_with_warnings(cluster_config_with_warning, cluster)
@@ -202,6 +203,14 @@ def _test_describe_cluster(cluster):
     assert_that(cluster_info).contains("creationTime")
     assert_that(cluster_info).contains("clusterConfiguration")
     assert_that(cluster_info).contains("scheduler")
+
+
+def _test_describe_cluster_verbose(cluster):
+    cluster_info = cluster.describe_cluster(verbose=True)
+    assert_that(cluster_info).contains("details")
+    assert_that(cluster_info["details"][0]).contains_key("alarms")
+    assert_that(cluster_info["details"][0]).contains_key("metrics")
+    assert_that(cluster_info["details"][0]).contains_key("stats")
 
 
 def _test_list_cluster(cluster_name, expected_status):

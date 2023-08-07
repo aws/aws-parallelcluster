@@ -174,4 +174,6 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
+test/test_login_nodes_pool.py
+test/test_login_nodes_state.py
 tox.ini
