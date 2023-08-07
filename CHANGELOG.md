@@ -22,7 +22,8 @@ CHANGELOG
   - Rdma-core: `rdma-core-46.0-1`
   - Open MPI: `openmpi40-aws-4.1.5-3`
 - Change the default value of `Imds/ImdsSupport` from `v1.0` to `v2.0`.
-- Upgrade Slurm to version 23.02.3.
+- Upgrade Slurm to version 23.02.4.
+- Deprecate Ubuntu 18.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
