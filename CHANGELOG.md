@@ -24,6 +24,7 @@ CHANGELOG
 - Change the default value of `Imds/ImdsSupport` from `v1.0` to `v2.0`.
 - Upgrade Slurm to version 23.02.4.
 - Deprecate Ubuntu 18.
+- Update the default root volume size to 40 GB to account for limits on Centos 7.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
