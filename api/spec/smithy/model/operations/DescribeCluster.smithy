@@ -24,6 +24,7 @@ structure DescribeClusterRequest {
     region: Region,
     @httpQuery("verbose")
     @documentation("A flag that provides more detailed output about the cluster.")
+    verbose: Boolean,
 }
 
 structure DescribeClusterResponse {
