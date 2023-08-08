@@ -267,7 +267,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_name = "AqWzyB" # str | Name of the cluster
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
-    verbose = True # bool | A flag that provides more detailed output about the cluster.  (optional) 
+    verbose = True # bool | A flag that provides more detailed output about the cluster. (optional)
 
     # example passing only required values which don't have defaults set
     try:

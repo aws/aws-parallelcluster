@@ -257,8 +257,10 @@ paths:
             description: AWS Region that the operation corresponds to.
         - name: verbose
           in: query
+          description: A flag that provides more detailed output about the cluster.
           schema:
             type: boolean
+            description: A flag that provides more detailed output about the cluster.
       responses:
         "200":
           description: DescribeCluster 200 response

@@ -23,6 +23,7 @@ structure DescribeClusterRequest {
     @httpQuery("region")
     region: Region,
     @httpQuery("verbose")
+    @documentation("A flag that provides more detailed output about the cluster.")
     verbose: Boolean,
 }
 
@@ -66,6 +67,6 @@ structure DescribeClusterResponse {
     loginNodes: LoginNodesPool,
     @documentation("Failures array containing failures reason and code when the stack is in CREATE_FAILED status.")
     failures: Failures
-    @documentation("Detailed information about the cluster, provided only when the 'verbose' flag is set to true.")
+    @documentation("Detailed information about the cluster, provided only when the verbose flag is set to true.")
     details: Detail
 }

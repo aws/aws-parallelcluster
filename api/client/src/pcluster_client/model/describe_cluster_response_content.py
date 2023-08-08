@@ -210,7 +210,7 @@ class DescribeClusterResponseContent(ModelNormal):
             head_node (EC2Instance): [optional]  # noqa: E501
             login_nodes (LoginNodesPool): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
-            details (Detail): [optional]: Detailed information about the cluster, provided only when the 'verbose' flag is set to true.. [optional] # noqa: E501
+            details (Detail): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -324,7 +324,7 @@ class DescribeClusterResponseContent(ModelNormal):
             head_node (EC2Instance): [optional]  # noqa: E501
             login_nodes (LoginNodesPool): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
-            details (Detail): [optional]: Detailed information about the cluster, provided only when the 'verbose' flag is set to true.. [optional] # noqa: E501
+            details (Detail): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

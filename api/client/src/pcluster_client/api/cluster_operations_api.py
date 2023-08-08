@@ -616,7 +616,7 @@ class ClusterOperationsApi(object):
 
         Keyword Args:
             region (str): AWS Region that the operation corresponds to.. [optional]
-            verbose (bool): A flag that provides more detailed output about the cluster.[optional]
+            verbose (bool): A flag that provides more detailed output about the cluster.. [optional]
             _return_http_data_only (bool): response data without head status
                 code and headers. Default is True.
             _preload_content (bool): if False, the urllib3.HTTPResponse object
