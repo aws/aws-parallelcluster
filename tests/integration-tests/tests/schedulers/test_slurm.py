@@ -53,6 +53,7 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.mpi_common import compile_mpi_ring
+from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.monitoring import structured_log_event_utils
 
@@ -436,9 +437,12 @@ def test_fast_capacity_failover(
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    # after the cluster is launched, apply the override patch to launch ice for nodes in
-    # "ice-compute-resource" and "ice-cr-multiple" compute resources
-    remote_command_executor.run_remote_script(str(test_datadir / "overrides.sh"), run_as_root=True)
+    setup_ec2_launch_override_to_emulate_ice(
+        cluster,
+        single_instance_type_ice_cr="ice-compute-resource",
+        multi_instance_types_ice_cr="ice-cr-multiple",
+        multi_instance_types_exp_cr="exception-cr-multiple",
+    )
 
     # All nodes
     nodes_in_scheduler = scheduler_commands.get_compute_nodes("queue1", all_nodes=True)
