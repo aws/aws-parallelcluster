@@ -83,6 +83,7 @@ class Pool(Construct):
             self._pool,
             self._shared_storage_infos,
             self._pool.name,
+            f"{self._login_nodes_stack_id}-AutoScalingGroup",
         )
         self._instance_profile = self._iam_resource.instance_profile
         self._instance_role = self._iam_resource.instance_role
@@ -132,6 +133,7 @@ class Pool(Construct):
                                 "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
                                 "DirectoryServiceEnabled": str(ds_config is not None).lower(),
+                                "DirectoryServiceReadOnlyUser": ds_config.domain_read_only_user if ds_config else "",
                                 "DirectoryServiceGenerateSshKeys": ds_generate_keys,
                                 "EbsSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.EBS]
@@ -192,6 +194,10 @@ class Pool(Construct):
                                         NODE_BOOTSTRAP_TIMEOUT,
                                     )
                                 ),
+                                "AutoScalingGroupName": f"{self._login_nodes_stack_id}-AutoScalingGroup",
+                                "LaunchingLifecycleHookName": (
+                                    f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook"
+                                ),
                             },
                             **get_common_user_data_env(self._pool, self._config),
                         },
@@ -224,6 +230,7 @@ class Pool(Construct):
         auto_scaling_group = autoscaling.CfnAutoScalingGroup(
             self,
             f"{self._login_nodes_stack_id}-AutoScalingGroup",
+            auto_scaling_group_name=f"{self._login_nodes_stack_id}-AutoScalingGroup",
             launch_template=launch_template_specification,
             min_size=str(self._pool.count),
             max_size=str(self._pool.count),
@@ -231,18 +238,30 @@ class Pool(Construct):
             target_group_arns=[self._login_nodes_pool_target_group.node.default_child.ref],
             vpc_zone_identifier=self._pool.networking.subnet_ids,
         )
-
-        self._add_lifecycle_hook(auto_scaling_group)
+        self.terminating_lifecycle_hook = self._add_terminating_lifecycle_hook(auto_scaling_group)
+        self.launching_lifecycle_hook = self._add_launching_lifecycle_hook(auto_scaling_group)
 
         return auto_scaling_group
 
-    def _add_lifecycle_hook(self, auto_scaling_group):
+    def _add_terminating_lifecycle_hook(self, auto_scaling_group):
         return autoscaling.CfnLifecycleHook(
             self,
-            "LoginNodesASGLifecycleHook",
+            "LoginNodesASGLifecycleHookTerminating",
             auto_scaling_group_name=auto_scaling_group.ref,
             lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
+            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesTerminatingLifecycleHook",
             heartbeat_timeout=self._pool.gracetime_period * 60,
+        )
+
+    def _add_launching_lifecycle_hook(self, auto_scaling_group):
+        return autoscaling.CfnLifecycleHook(
+            self,
+            "LoginNodesASGLifecycleHookLaunching",
+            auto_scaling_group_name=auto_scaling_group.ref,
+            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook",
+            lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
+            default_result="ABANDON",
+            heartbeat_timeout=600,
         )
 
     def _add_login_nodes_pool_target_group(self):
@@ -320,7 +339,7 @@ class LoginNodesStack(NestedStack):
         for pool in self._login_nodes.pools:
             pool_construct = Pool(
                 self,
-                f"Pool{pool.name}",
+                f"{self._config.cluster_name}-{pool.name}",
                 pool,
                 self._config,
                 self._log_group,

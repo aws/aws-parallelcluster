@@ -20,13 +20,13 @@ def readme():
         return f.read()
 
 
-VERSION = "3.7.0"
+VERSION = "3.8.0"
 CDK_VERSION = "1.164"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
     "tabulate>=0.8.8,<=0.8.10",
-    "PyYAML==5.3.1",
+    "PyYAML==6.0.1",
     "jinja2~=3.0",
     "marshmallow~=3.10",
     "aws-cdk.core~=" + CDK_VERSION,
@@ -50,6 +50,7 @@ REQUIRES = [
     "connexion~=2.13.0",
     "flask>=2.2.5,==2.2.*",
     "jmespath~=0.10",
+    "jsii==1.85.0",
 ]
 
 LAMBDA_REQUIRES = [

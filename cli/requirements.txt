@@ -20,7 +20,8 @@ connexion~=2.13.0
 flask>=2.2.5,==2.2.*
 jinja2~=3.0
 jmespath~=0.10
+jsii==1.85.0
 marshmallow~=3.10
-PyYAML==5.3.1
+PyYAML==6.0.1
 tabulate>=0.8.8,<=0.8.10
 werkzeug~=2.0

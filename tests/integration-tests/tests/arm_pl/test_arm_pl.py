@@ -25,8 +25,8 @@ def test_arm_pl(os, pcluster_config_reader, clusters_factory, test_datadir):
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     # arm performance library version and gcc version
-    armpl_version = "21.0.0"
-    gcc_version = "9.3"
+    armpl_version = "23.04.1" if os == "ubuntu2204" else "21.0.0"
+    gcc_version = "11.3" if os == "ubuntu2204" else "9.3"
 
     # loading module armpl/{armpl_version} will load module armpl/gcc-{gcc_version}
     # and armpl/{armpl_version}_gcc-{gcc_vesion}  sequentially
@@ -76,14 +76,16 @@ def _test_armpl_examples(
     # On centos7 we need to use binutils v2.30 for proper architecture detection
     scl_centos7 = "scl enable devtoolset-8" if os == "centos7" else ""
 
-    # Assert pass the example tests
-    remote_command_executor.run_remote_command(
-        f"sudo chmod 777 /opt/arm/armpl/{armpl_version}/armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples"
+    armpl_base_dir = (
+        f"/opt/arm/armpl/{armpl_version}/armpl_{armpl_version}_gcc-{gcc_version}"
+        if os == "ubuntu2204"
+        else f"/opt/arm/armpl/{armpl_version}/armpl_{armpl_major_minor_version}_gcc-{gcc_version}"
     )
+    # Assert pass the example tests
+    remote_command_executor.run_remote_command(f"sudo chmod 777 {armpl_base_dir}/examples")
     test_result = remote_command_executor.run_remote_command(
         f"module load {armpl_module_general_name} && "
-        f"cd /opt/arm/armpl/{armpl_version}/"
-        f"armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples && make clean && {scl_centos7} make"
+        f"cd {armpl_base_dir}/examples && make clean && {scl_centos7} make"
     ).stdout.lower()
     assert_that(test_result).contains("testing: no example difference files were generated")
     assert_that(test_result).contains("test passed ok")

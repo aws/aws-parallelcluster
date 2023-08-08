@@ -1,25 +1,11 @@
 {%- import 'common.jinja2' as common with context -%}
 ---
 test-suites:
-  cli_commands:
-    test_cli_commands.py::test_slurm_cli_commands:
-      dimensions:
-        - regions: ["ap-northeast-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
   efa:
     test_efa.py::test_efa:
       dimensions:
         - regions: ["sa-east-1"]
           instances: ["c5n.9xlarge"]
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
-  intel_hpc:
-    test_intel_hpc.py::test_intel_hpc:
-      dimensions:
-        - regions: ["us-east-2"]
-          instances: ["c5.18xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
   scaling:
@@ -66,10 +52,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
-          instances: [{{ common.instance("instance_type_1") }}]
-          oss: ["alinux2"]
-          schedulers: [ "slurm" ]
     test_slurm.py::test_error_handling:
       dimensions:
         - regions: ["ca-central-1"]
@@ -165,31 +147,22 @@ test-suites:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
-    test_update.py::test_update_compute_ami:
-      dimensions:
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-    test_update.py::test_update_instance_list:
-      dimensions:
-        - regions: ["ap-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
     test_update.py::test_queue_parameters_update:
       dimensions:
         - regions: ["ap-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-    test_update.py::test_dynamic_file_systems_update:
+  dns:
+    test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
-        - regions: ["eu-west-2"]
+        - regions: ["af-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-    test_update.py::test_multi_az_create_and_update:
+    test_dns.py::test_existing_hosted_zone:
       dimensions:
-        - regions: [ "eu-west-2" ]
-          schedulers: [ "slurm" ]
+        - regions: ["eu-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
+          schedulers: ["slurm"]

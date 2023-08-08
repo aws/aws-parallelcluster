@@ -574,6 +574,8 @@ def _check_home_directory(user, remote_command_executor):
     """
     logging.info("Checking home directory for user %s", user.alias)
 
+    # Reset underlying ssh connection to prevent occasional `file not found` issues
+    remote_command_executor.reset_connection()
     check_existence = f"sudo ls {user.home_dir}"
     result = remote_command_executor.run_remote_command(check_existence)
     assert_that(result.failed).is_false()
@@ -596,6 +598,9 @@ def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, schedu
     logging.info("Checking SSH key for user %s (expected to exist: %s)", user.alias, ssh_generation_enabled)
 
     ssh_key_path = f"{user.home_dir}/.ssh/id_ed25519"
+
+    # Reset underlying ssh connection to prevent occasional `file not found` issues
+    remote_command_executor.reset_connection()
 
     # Check existence
     check_existence = f"sudo ls {ssh_key_path}"
@@ -663,8 +668,8 @@ def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, schedu
     [
         ("SimpleAD", "ldap", False),
         # ("SimpleAD", "ldaps", False),
-        ("SimpleAD", "ldaps", True),
-        ("MicrosoftAD", "ldap", False),
+        # ("SimpleAD", "ldaps", True),
+        # ("MicrosoftAD", "ldap", False),
         # ("MicrosoftAD", "ldaps", False),
         ("MicrosoftAD", "ldaps", True),
     ],

@@ -80,6 +80,8 @@ class CfnVpcStack(CfnStack):
         self.az_override = None
         self.__public_subnet_ids = None
         self.__private_subnet_ids = None
+        if "CAPABILITY_NAMED_IAM" not in self.capabilities:
+            self.capabilities.append("CAPABILITY_NAMED_IAM")
 
     def set_az_override(self, az_override):
         """Sets the az_id to override the default AZ used to pick the subnets."""

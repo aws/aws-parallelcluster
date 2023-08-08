@@ -61,6 +61,7 @@ write_files:
           "cw_logging_enabled": "${CWLoggingEnabled}",
           "directory_service": {
             "enabled": "${DirectoryServiceEnabled}",
+            "domain_read_only_user": "${DirectoryServiceReadOnlyUser}",
             "generate_ssh_keys_for_users": "${DirectoryServiceGenerateSshKeys}"
           },
           "ebs_shared_dirs": "${EbsSharedDirs}",
@@ -215,5 +216,9 @@ else
   timeout ${Timeout} /tmp/bootstrap.sh || error_exit
 fi
 
+# Notify the AutoScalingGroup about the successful bootstrap
+IMDS_TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
+aws autoscaling complete-lifecycle-action --auto-scaling-group-name "${AutoScalingGroupName}" --lifecycle-hook-name "${LaunchingLifecycleHookName}" --instance-id "$INSTANCE_ID" --lifecycle-action-result CONTINUE --region "${AWS::Region}"
 # End of file
 --==BOUNDARY==

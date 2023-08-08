@@ -738,7 +738,9 @@ class Cluster:
         """Return True if the cluster has running login nodes. Note: the value will be cached."""
         if self.__has_running_login_nodes is None or updated_value:
             self.__has_running_login_nodes = (
-                self.login_nodes_status.get_healthy_nodes() + self.login_nodes_status.get_unhealthy_nodes() != 0
+                self.login_nodes_status.get_healthy_nodes() is not None
+                and self.login_nodes_status.get_unhealthy_nodes() is not None
+                and self.login_nodes_status.get_healthy_nodes() + self.login_nodes_status.get_unhealthy_nodes() != 0
             )
         return self.__has_running_login_nodes
 

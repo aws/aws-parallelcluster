@@ -35,6 +35,7 @@ def assert_instance_replaced_or_terminating(instance_id, region):
 
 def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False):
     __tracebackhide__ = True
+    ice_patterns = ["InsufficientInstanceCapacity", "Failed to launch instances due to limited EC2 capacity"]
     if scheduler == "slurm":
         log_files = [
             "/var/log/parallelcluster/clustermgtd",
@@ -49,7 +50,7 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False)
     for log_file in log_files:
         log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
         if skip_ice:
-            log = "\n".join([line for line in log.splitlines() if "InsufficientInstanceCapacity" not in line])
+            log = "\n".join([line for line in log.splitlines() if not any(pattern in line for pattern in ice_patterns)])
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
 

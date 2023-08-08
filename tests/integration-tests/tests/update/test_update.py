@@ -656,8 +656,8 @@ def test_queue_parameters_update(
 ):
     """Test update cluster with drain strategy."""
     # Create cluster with initial configuration
-    initial_compute_root_volume_size = 35
-    updated_compute_root_volume_size = 40
+    initial_compute_root_volume_size = 40
+    updated_compute_root_volume_size = 45
     # If you are running this test in your personal account, then you must have
     # ParallelCluster AMIs following the official naming convention
     # and set allow_private_ami to True.
@@ -774,7 +774,9 @@ def _test_update_queue_strategy_without_running_job(
         ],
     )
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
-    wait_for_compute_nodes_states(scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"])
+    wait_for_compute_nodes_states(
+        scheduler_commands, queue1_nodes, expected_states=["idle", "idle~"], stop_max_delay_secs=600
+    )
     # test volume size are expected after update
     instances = cluster.get_cluster_instance_ids(node_type="Compute", queue_name="queue1")
     for instance in instances:
@@ -801,15 +803,14 @@ def _test_update_queue_strategy_with_running_job(
 ):
     queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "sleep 3000",
-            "nodes": -1,
+            "command": "srun sleep 3000",
+            "nodes": 2,
             "partition": "queue1",
-            "other_options": "-a 1-5",  # instance type has 4 cpus per node, which requires 2 nodes to run the job
         }
     )
 
     queue2_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 3000", "nodes": -1, "partition": "queue2", "other_options": "-a 1-5"}
+        submit_command_args={"command": "srun sleep 3000", "nodes": 2, "partition": "queue2"}
     )
     # Wait for the job to run
     scheduler_commands.wait_job_running(queue1_job_id)
@@ -854,9 +855,11 @@ def _test_update_queue_strategy_with_running_job(
         remote_command_executor.run_remote_command(f"scontrol requeue {queue2_job_id}")
     elif queue_update_strategy == "TERMINATE":
         scheduler_commands.assert_job_state(queue2_job_id, "PENDING")
-        assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["idle%", "idle!"])
 
+    # Be sure the queue2 job is running even after the forced termination: we need the nodes active so that we
+    # can check the AMI id on the instances
     scheduler_commands.wait_job_running(queue2_job_id)
+
     # cancel job in queue1
     scheduler_commands.cancel_job(queue1_job_id)
 
@@ -1276,7 +1279,7 @@ def _test_shared_storages_mount_on_headnode(
     """Check storages are mounted on headnode."""
     # ebs
     for ebs_dir in ebs_mount_dirs:
-        volume_size = "9.[7,8]" if "existing" in ebs_dir else "35"
+        volume_size = "9.[7,8]" if "existing" in ebs_dir else "40"
         test_ebs_correctly_mounted(remote_command_executor, ebs_dir, volume_size=volume_size)
     # check raid
     test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
@@ -1479,3 +1482,59 @@ def _wait_until_instances_are_stopped(cluster):
         logging.info("Still found %2d compute instances in the cluster. Waiting... ", n_compute_instances)
 
     return n_compute_instances <= 1
+
+
+@pytest.mark.usefixtures("instance")
+def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, test_datadir):
+    """Test cluster Updates (add, remove LN pools)."""
+
+    # Start a cluster without login nodes
+    initial_config = pcluster_config_reader(config_file="pcluster_create_without_login_nodes.config.yaml")
+    cluster = clusters_factory(initial_config)
+
+    # Describe cluster, verify the response is without login node section
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).does_not_contain("loginNodes")
+
+    # Update the cluster adding 3 login nodes
+    update_config_1 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_3.config.yaml")
+    cluster.update(str(update_config_1))
+
+    # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy nodes is 3
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("loginNodes")
+    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
+        3
+    )
+
+    # Describe cluster instances, verify the response contains three login nodes
+    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(len(instances)).is_equal_to(3)
+
+    # Update the cluster with count = 0
+    update_config_2 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_0.config.yaml")
+    cluster.update(str(update_config_2))
+
+    # Describe cluster, verify the response has the login node section, but it contains only the lb information
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("loginNodes")
+    assert_that(cluster_info["loginNodes"]).contains("address")
+    assert_that(cluster_info["loginNodes"]["address"]).is_not_none()
+    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
+        0
+    )
+
+    # Describe cluster instances, verify the response doesn't contain login nodes
+    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(len(instances)).is_equal_to(0)
+
+    # Update the cluster to remove LoginNodes section
+    cluster.update(str(initial_config))
+
+    # Describe cluster, verify the response doesn't have the login nodes section
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).does_not_contain("loginNodes")

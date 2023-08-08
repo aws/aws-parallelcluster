@@ -49,7 +49,7 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
     "centos7": {"name": "FPGA Developer AMI*", "owners": ["679593333241"]},
-    "ubuntu2004": {"name": "Deep Learning AMI GPU CUDA * (Ubuntu 20.04)*", "owners": ["amazon"]},
+    "ubuntu2004": {"name": "Deep Learning Base GPU AMI (Ubuntu 20.04)*", "owners": ["amazon"]},
     # Simple redhat8 to be able to build in remarkable test
     "rhel8": {"name": "RHEL-8.7*_HVM*", "owners": ["309956199498", "841258680906", "219670896067"]},
 }

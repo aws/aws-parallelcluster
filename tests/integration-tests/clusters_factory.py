@@ -180,6 +180,7 @@ class Cluster:
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} stopped successfully".format(self.name))
+
             return result.stdout
         except subprocess.CalledProcessError as e:
             logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
@@ -221,6 +222,8 @@ class Cluster:
                 node_type = "HeadNode"
             elif node_type == "Compute":
                 node_type = "ComputeNode"
+            elif node_type == "LoginNode":
+                node_type = "LoginNode"
             else:
                 raise ValueError
             cmd_args.extend(["--node-type", node_type])
@@ -239,6 +242,19 @@ class Cluster:
         """Run pcluster describe-cluster-instances and collect instance ids."""
         instances = self.describe_cluster_instances(node_type=node_type, queue_name=queue_name)
         return [instance["instanceId"] for instance in instances]
+
+    def describe_login_nodes(self):
+        """List login node instances."""
+        return self.describe_cluster_instances(node_type="LoginNode")
+
+    def get_login_node_public_ip(self):
+        """Return the ip address of the first healthy login node if exists."""
+        login_nodes = self.describe_login_nodes()
+        for login in login_nodes:
+            if "running" == login["state"]:
+                return login["publicIpAddress"]
+
+        return None
 
     def export_logs(self, bucket, output_file=None, bucket_prefix=None, filters=None):
         """Run pcluster export-cluster-logs and return the result."""
@@ -314,6 +330,12 @@ class Cluster:
         except subprocess.CalledProcessError as e:
             logging.error("Failed listing log events with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
+
+    @property
+    def has_login_nodes(self):
+        """Return True if the cluster as a LoginNode pool."""
+        info = self.describe_cluster()
+        return "loginNodes" in info.keys()
 
     @property
     def cfn_name(self):
