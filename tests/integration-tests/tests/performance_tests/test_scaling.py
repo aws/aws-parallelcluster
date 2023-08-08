@@ -3,6 +3,8 @@ import logging
 import pytest
 from remote_command_executor import RemoteCommandExecutor
 
+from tests.common.assertions import assert_no_msg_in_logs
+
 
 @pytest.mark.parametrize(
     "max_nodes",
@@ -44,3 +46,10 @@ def test_scaling(
     logging.info(f"Cancelling job: {job_id}")
     scheduler_commands.cancel_job(job_id)
     logging.info(f"Job {job_id} cancelled")
+
+    logging.info("Verifying no bootstrap errors in logs")
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        log_files=["/var/log/parallelcluster/clustermgtd"],
+        log_msg=["Found the following bootstrap failure nodes"],
+    )
