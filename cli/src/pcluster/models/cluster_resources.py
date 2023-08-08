@@ -187,7 +187,7 @@ class ClusterStack(StackInfo):
                 (f for f in cluster_creation_failures if f.cfn_failure_reason in cfn_failure_reason), general_failure
             )
         return failure.failure_code, failure.api_failure_reason
-
+      
     def _get_alarm_names(self):
         """Get alarm names using cw stack resources."""
         stack_resources = describe_stack_resources(self.name)
@@ -211,7 +211,7 @@ class ClusterStack(StackInfo):
         """Retrieve the number of running instances for the cluster."""
         return AWSApi.instance().ec2.get_num_of_running_instances(self.name)
 
-
+      
 class ClusterInstance(InstanceInfo):
     """Object to store cluster Instance info, initialized with a describe_instances call and other cluster info."""
 

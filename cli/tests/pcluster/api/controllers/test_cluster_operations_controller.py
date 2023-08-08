@@ -975,6 +975,7 @@ class TestDescribeCluster:
             )
 
         response = self._send_test_request(client, verbose=verbose)
+
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
             assert_that(response.get_json()).is_equal_to(expected_response)

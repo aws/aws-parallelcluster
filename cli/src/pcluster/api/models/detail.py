@@ -36,6 +36,7 @@ class Detail(Model):
         self._metrics = metrics
         self._stats = stats
 
+
     @classmethod
     def from_dict(cls, dikt) -> "Detail":
         """Returns the dict as a model
