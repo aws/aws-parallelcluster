@@ -1246,7 +1246,6 @@ class LoginNodesPool(Resource):
         self,
         name: str,
         instance_type: str,
-        local_storage: LocalStorage = None,
         image: LoginNodesImage = None,
         networking: LoginNodesNetworking = None,
         count: int = None,
@@ -1263,7 +1262,6 @@ class LoginNodesPool(Resource):
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
-        self.local_storage = local_storage or LocalStorage(implied=True)
         self.gracetime_period = Resource.init_param(gracetime_period, default=60)
 
     @property
@@ -2642,6 +2640,22 @@ class SlurmClusterConfig(BaseClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.login_nodes = login_nodes
+        if self.login_nodes:
+            # create a LocalStorage for the LoginNodesPool with the same values as HeadNode LocalStorage.
+            # but ensuring that encrypted = true
+            for pool in self.login_nodes.pools:
+                head_node_root_volume = self.head_node.local_storage.root_volume
+                pool.local_storage = LocalStorage(
+                    implied=True,
+                    root_volume=RootVolume(
+                        size=head_node_root_volume.size,
+                        delete_on_termination=head_node_root_volume.delete_on_termination,
+                        encrypted=True,
+                        volume_type=head_node_root_volume.volume_type,
+                        iops=head_node_root_volume.iops,
+                        throughput=head_node_root_volume.throughput,
+                    )
+                )
         if self.login_nodes:
             for pool in self.login_nodes.pools:
                 if pool.ssh and not pool.ssh.key_name:

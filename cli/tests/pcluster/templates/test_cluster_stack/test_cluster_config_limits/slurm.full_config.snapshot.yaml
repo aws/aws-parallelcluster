@@ -95,15 +95,6 @@ LoginNodes:
     Image:
       CustomAmi: ami-12345678
     InstanceType: t2.micro
-    LocalStorage:
-      EphemeralVolume:
-        MountDir: /test
-      RootVolume:
-        Encrypted: true
-        Iops: 3000
-        Size: 40
-        Throughput: 125
-        VolumeType: gp3
     Name: test
     Networking:
       AdditionalSecurityGroups: null
