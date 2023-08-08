@@ -23,6 +23,15 @@ LoginNodes:
     Iam:
       AdditionalIamPolicies:
         - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+    LocalStorage:
+      EphemeralVolume:
+        MountDir: /test
+      RootVolume:
+        Encrypted: true
+        Iops: 3000
+        Size: 40
+        Throughput: 125
+        VolumeType: gp3
 HeadNode:
   InstanceType: t2.micro
   Networking:
