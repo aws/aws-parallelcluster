@@ -6,10 +6,10 @@ HeadNode:
     SubnetId: {{ public_subnet_ids[0] }}
     {% if assign_additional_security_groups == False %}
     SecurityGroups:
-      - {{ vpc_security_group_id }}
+      - {{ vpc_security_group_id[1] }}
     {% else %}
     AdditionalSecurityGroups:
-      - {{ vpc_security_group_id }}
+      - {{ vpc_security_group_id[1] }}
     {% endif %}
   Ssh:
     KeyName: {{ key_name }}
@@ -34,7 +34,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_ids[1] }}
         SecurityGroups:
-          - {{ vpc_security_group_id }}
+          - {{ vpc_security_group_id[0] }}
 SharedStorage:
   - MountDir: efs
     Name: {{ efs_name }}
