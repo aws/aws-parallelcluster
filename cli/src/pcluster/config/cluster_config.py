@@ -2641,8 +2641,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         self.scheduling = scheduling
         self.login_nodes = login_nodes
         if self.login_nodes:
-            # Create a LocalStorage for the LoginNodesPool with the same values as HeadNode LocalStorage.
-            # but ensuring that encrypted = true
+            # Create a LocalStorage for the LoginNodesPool and ensure that encrypted = true
             for pool in self.login_nodes.pools:
                 pool.local_storage = LocalStorage(
                     implied=True,
