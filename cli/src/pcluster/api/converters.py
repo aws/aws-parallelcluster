@@ -28,6 +28,7 @@ def cloud_formation_status_to_cluster_status(cfn_status):
     return mapping.get(cfn_status, cfn_status)
 
 
+
 def cloud_formation_status_to_image_status(cfn_status):
     mapping = {
         CloudFormationStackStatus.CREATE_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,

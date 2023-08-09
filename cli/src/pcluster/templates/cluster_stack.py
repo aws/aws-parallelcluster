@@ -1232,6 +1232,7 @@ class ClusterCdkStack:
                         self.bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
                     ),
                     "cluster_config_version": self.config.config_version,
+                    "instance_types_data_version": self.config.instance_types_data_version,
                     "change_set_s3_key": f"{self.bucket.artifact_directory}/configs/"
                     f"{PCLUSTER_S3_ARTIFACTS_DICT.get('change_set_name')}",
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/"

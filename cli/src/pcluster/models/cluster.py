@@ -76,6 +76,7 @@ from pcluster.validators.common import FailureLevel, ValidationResult, Validator
 
 LOGGER = logging.getLogger(__name__)
 
+
 # pylint: disable=C0302
 
 
@@ -368,11 +369,12 @@ class Cluster:
                 validator_suppressors, validation_failure_level
             )
 
-            LOGGER.info("Generating artifact dir and uploading config...")
+            LOGGER.info("Generating artifact dir and uploading config and instance types data...")
             self._add_tags()
             self._generate_artifact_dir()
             artifact_dir_generated = True
             self._upload_config()
+            self._upload_instance_types_data()
             LOGGER.info("Generation and upload completed successfully")
 
             # Create template if not provided by the user
@@ -475,7 +477,7 @@ class Cluster:
             raise BadRequestClusterActionError(f"Cluster {self.name} already exists.")
 
     def _validate_and_parse_config(
-        self, validator_suppressors, validation_failure_level, config_text=None, context: ValidatorContext = None
+            self, validator_suppressors, validation_failure_level, config_text=None, context: ValidatorContext = None
     ):
         """
         Perform syntactic and semantic validation and return parsed config.
@@ -534,9 +536,28 @@ class Cluster:
 
                 # original config version will be stored in CloudFormation Parameters
                 self.config.original_config_version = result.get("VersionId")
+
         except Exception as e:
             raise _cluster_error_mapper(
                 e, f"Unable to upload cluster config to the S3 bucket {self.bucket.name} due to exception: {e}"
+            )
+
+    def _upload_instance_types_data(self):
+        """Upload source config and save config version."""
+        self._check_bucket_existence()
+        try:
+            # Upload instance types data
+            result = self.bucket.upload_config(
+                self.config.get_instance_types_data(),
+                PCLUSTER_S3_ARTIFACTS_DICT.get("instance_types_data_name"),
+                format=S3FileFormat.JSON,
+            )
+
+            self.config.instance_types_data_version = result.get("VersionId")
+
+        except Exception as e:
+            raise _cluster_error_mapper(
+                e, f"Unable to upload instance types data to the S3 bucket {self.bucket.name} due to exception: {e}"
             )
 
     def _upload_change_set(self, changes=None):
@@ -581,13 +602,6 @@ class Cluster:
             # Upload template
             if self.template_body:
                 self.bucket.upload_cfn_template(self.template_body, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
-
-            # upload instance types data
-            self.bucket.upload_config(
-                self.config.get_instance_types_data(),
-                PCLUSTER_S3_ARTIFACTS_DICT.get("instance_types_data_name"),
-                format=S3FileFormat.JSON,
-            )
 
             LOGGER.info("Cluster artifacts uploaded correctly.")
         except BadRequestClusterActionError:
@@ -713,7 +727,7 @@ class Cluster:
         return filters
 
     def describe_instances(
-        self, node_type: NodeType = None, next_token: str = None, queue_name: str = None
+            self, node_type: NodeType = None, next_token: str = None, queue_name: str = None
     ) -> Tuple[List[ClusterInstance], str]:
         """Return the cluster instances filtered by node type."""
         try:
@@ -730,7 +744,7 @@ class Cluster:
                 self.__has_running_capacity = self.get_running_capacity() > 0
             else:
                 self.__has_running_capacity = (
-                    self.compute_fleet_status_manager.get_status() != ComputeFleetStatus.STOPPED
+                        self.compute_fleet_status_manager.get_status() != ComputeFleetStatus.STOPPED
                 )
         return self.__has_running_capacity
 
