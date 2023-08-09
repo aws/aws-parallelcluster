@@ -303,7 +303,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         ],
         any_order=True,
     )
-    key_pair_validator.assert_has_calls([call(key_name="ec2-key-name")])
+    key_pair_validator.assert_has_calls([call(key_name="ec2-key-name", os="alinux2")])
     instance_type_validator.assert_has_calls([call(instance_type="c5d.xlarge")])
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [

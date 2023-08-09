@@ -53,7 +53,7 @@ def test_ebs_single(
     scheduler_commands = scheduler_commands_factory(remote_command_executor_head_node)
     volume_id = get_ebs_volume_ids(cluster, region)[0]
 
-    test_ebs_correctly_mounted(remote_command_executor_head_node, mount_dir, volume_size=35)
+    test_ebs_correctly_mounted(remote_command_executor_head_node, mount_dir, volume_size=40)
     # Test ebs correctly shared between HeadNode and ComputeNodes
     _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
 

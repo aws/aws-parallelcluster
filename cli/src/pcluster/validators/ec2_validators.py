@@ -14,7 +14,7 @@ from collections import defaultdict
 from typing import Dict, List
 
 from pcluster import imagebuilder_utils
-from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_api import AWSApi, KeyPairInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
@@ -171,10 +171,15 @@ class KeyPairValidator(Validator):
     Verify the given key pair is correct.
     """
 
-    def _validate(self, key_name: str):
+    def _validate(self, key_name: str, os: str):
         if key_name:
             try:
-                AWSApi.instance().ec2.describe_key_pair(key_name)
+                key_pair = KeyPairInfo(key_name)
+                if os == "ubuntu2204" and key_pair.key_type == "rsa":
+                    self._add_failure(
+                        "Ubuntu 22.04 does not support RSA keys. Please generate and use an ed25519 key",
+                        FailureLevel.ERROR,
+                    )
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.ERROR)
         else:
