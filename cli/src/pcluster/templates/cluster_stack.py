@@ -1295,7 +1295,7 @@ class ClusterCdkStack:
                     # The file is needed by the product
                     # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
                     "/tmp/wait_condition_handle.txt": {  # nosec B108
-                        "mode": "000644",
+                        "mode": "000600",
                         "owner": "root",
                         "group": "root",
                         "content": self.wait_condition_handle.ref,
