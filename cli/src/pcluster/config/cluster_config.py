@@ -2654,7 +2654,7 @@ class SlurmClusterConfig(BaseClusterConfig):
                         volume_type=head_node_root_volume.volume_type,
                         iops=head_node_root_volume.iops,
                         throughput=head_node_root_volume.throughput,
-                    )
+                    ),
                 )
         if self.login_nodes:
             for pool in self.login_nodes.pools:
