@@ -10,7 +10,6 @@
 # limitations under the License.
 import re
 
-import boto3
 import pytest
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
