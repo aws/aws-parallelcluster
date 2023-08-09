@@ -9,17 +9,23 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import itertools
 import logging
+from typing import List
 
 import pytest
+import boto3
 from assertpy import assert_that, soft_assertions
+from botocore.exceptions import ClientError
+
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 
-from tests.common.assertions import assert_no_errors_in_logs
+from tests.common.assertions import assert_no_errors_in_logs, assert_no_msg_in_logs
 from tests.common.scaling_common import get_compute_nodes_allocation
-from tests.schedulers.test_slurm import _assert_job_state
+from tests.schedulers.test_slurm import _assert_job_state, _terminate_nodes_manually
+from utils import get_compute_nodes_instance_ids, get_cluster_nodes_instance_ids
 
 
 @pytest.mark.usefixtures("os", "instance")
@@ -149,3 +155,82 @@ def _assert_test_jobs_completed(remote_command_executor, max_jobs_exec_time):
     jobs_execution_time = jobs_completion_time - jobs_start_time
     logging.info("Test jobs completed in %d seconds", jobs_execution_time)
     assert_that(jobs_execution_time).is_less_than(max_jobs_exec_time)
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_bootstrap(
+        region,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+        scheduler_commands_factory,
+        test_custom_config,
+):
+    scaledown_idletime = 1
+    no_of_queues = 10
+    no_of_nodes_per_job = 1000
+    bootstrap_error_threshold = 0
+
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        no_of_queues=no_of_queues,
+    )
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    for queue_number in range(no_of_queues):
+        logging.info("Executing sleep job to start %s dynamic node in queue %s", no_of_nodes_per_job, queue_number)
+        result = scheduler_commands.submit_command("sleep 1", partition=f"queue-{queue_number}", nodes=no_of_nodes_per_job, other_options="--exclusive")
+        job_id = scheduler_commands.assert_job_submitted(result.stdout)
+        retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
+            scheduler_commands, job_id, job_state="COMPLETED"
+        )
+        logging.info("Terminating cluster EC2 instances manually, so to not hit capacity")
+        _terminate_nodes(get_cluster_nodes_instance_ids(
+            cluster.cfn_name, cluster.region, node_type="Compute", queue_name=f"queue-{queue_number}"
+        ), region)
+
+    bootstrap_errors = _count_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Node bootstrap error"],
+    )
+    assert_that(bootstrap_errors).is_less_than_or_equal_to(bootstrap_error_threshold)
+
+
+def _grouper(iterable, n):
+    """Slice iterable into chunks of size n."""
+    it = iter(iterable)
+    while True:
+        chunk = tuple(itertools.islice(it, n))
+        if not chunk:
+            return
+        yield chunk
+
+
+def _terminate_nodes(instance_ids, region):
+    ec2_client = boto3.client("ec2", region_name=region)
+    for instances in _grouper(instance_ids, 1000):
+        try:
+            # Boto3 clients retries on connection errors only
+            ec2_client.terminate_instances(InstanceIds=list(instances))
+        except ClientError as e:
+            logging.error(
+                "Failed TerminateInstances request: %s", e.response.get("ResponseMetadata").get("RequestId")
+            )
+    logging.info("Terminated nodes: {}".format(instance_ids))
+
+
+def _count_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_files: List[str], log_msg: List[str]):
+    """Count how many log msgs are  in logs."""
+    log = ""
+    count = 0
+    for log_file in log_files:
+        log += remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+    for message in log_msg:
+        if message in log:
+            count += 1
+            logging.error('Expected <%s> to not contain item <%s>, but did.' % (log, message))
+
+    return count
