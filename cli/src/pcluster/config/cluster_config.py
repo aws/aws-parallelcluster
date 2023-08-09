@@ -759,9 +759,6 @@ class _BaseSsh(Resource):
         super().__init__(**kwargs)
         self.key_name = Resource.init_param(key_name)
 
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(KeyPairValidator, key_name=self.key_name)
-
 
 class HeadNodeSsh(_BaseSsh):
     """Represent the SSH configuration for HeadNode."""
@@ -1535,6 +1532,7 @@ class BaseClusterConfig(Resource):
             volume_size=root_volume_size,
             volume_iops=root_volume.iops,
         )
+        self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
 
     def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:

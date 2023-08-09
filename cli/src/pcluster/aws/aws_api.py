@@ -201,3 +201,12 @@ class AWSApi:
     def reset():
         """Reset the instance to clear all caches."""
         AWSApi._instance = None
+
+
+class KeyPairInfo:
+    """Object to store Ec2 Keypair information, initialized with the key name."""
+
+    def __init__(self, key_name: str):
+        self.key_name = key_name
+        self.key_data = AWSApi.instance().ec2.describe_key_pair(key_name)
+        self.key_type = self.key_data["KeyPairs"][0]["KeyType"]
