@@ -2641,27 +2641,20 @@ class SlurmClusterConfig(BaseClusterConfig):
         self.scheduling = scheduling
         self.login_nodes = login_nodes
         if self.login_nodes:
-            # create a LocalStorage for the LoginNodesPool with the same values as HeadNode LocalStorage.
-            # but ensuring that encrypted = true
+            # Create a LocalStorage for the LoginNodesPool and ensure that encrypted = true
             for pool in self.login_nodes.pools:
-                head_node_root_volume = self.head_node.local_storage.root_volume
                 pool.local_storage = LocalStorage(
                     implied=True,
                     root_volume=RootVolume(
-                        size=head_node_root_volume.size,
-                        delete_on_termination=head_node_root_volume.delete_on_termination,
                         encrypted=True,
-                        volume_type=head_node_root_volume.volume_type,
-                        iops=head_node_root_volume.iops,
-                        throughput=head_node_root_volume.throughput,
                     ),
                 )
-        if self.login_nodes:
-            for pool in self.login_nodes.pools:
+                # If there's no customer ssh key for LoginNodes pool, set a default value as HeadNode's ssh key
                 if pool.ssh and not pool.ssh.key_name:
                     pool.ssh.key_name = self.head_node.ssh.key_name
                 elif not pool.ssh:
                     pool.ssh = LoginNodesSsh(key_name=self.head_node.ssh.key_name)
+
         self.__image_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
         # Since this cache is only used for validation, if AWSClientError happens

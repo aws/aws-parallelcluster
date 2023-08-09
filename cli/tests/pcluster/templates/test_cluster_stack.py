@@ -370,32 +370,28 @@ def test_compute_launch_template_properties(
 class LoginNodeLTAssertion:
     def __init__(
         self,
-        pool_name,
-        instance_type,
-        count,
         subnet_ids,
-        key_name,
-        security_groups,
-        gracetime_period,
+        root_volume,
+        image_id,
+        http_tokens,
+        iam_instance_profile_name,
     ):
-        self.pool_name = pool_name
-        self.instance_type = instance_type
-        self.count = count
         self.subnet_ids = subnet_ids
-        self.key_name = key_name
-        self.security_groups = security_groups
-        self.gracetime_period = gracetime_period
+        self.root_volume = root_volume
+        self.image_id = image_id
+        self.http_tokens = http_tokens
+        self.iam_instance_profile_name = iam_instance_profile_name
 
     def assert_lt_properties(self, generated_template, resource_type):
-        resources = generated_template["Resources"]
-        for _resource_name, resource in resources.items():
-            if resource["Type"] == resource_type:
-                properties = resource["Properties"]
-                assert properties["LaunchTemplateData"]["InstanceType"] == self.instance_type
-                assert properties["LaunchTemplateData"]["NetworkInterfaces"][0]["SubnetId"] in self.subnet_ids
-                assert properties["LaunchTemplateData"]["KeyName"] == self.key_name
-                assert properties["LaunchTemplateData"]["SecurityGroups"] == self.security_groups
-                assert properties["LaunchTemplateData"]["GracetimePeriod"] == self.gracetime_period
+        resources = generated_template["Resources"][resource_type]
+        properties = resources["Properties"]
+        assert properties["LaunchTemplateData"]["ImageId"] == self.image_id
+        assert properties["LaunchTemplateData"]["MetadataOptions"]["HttpTokens"] == self.http_tokens
+        assert properties["LaunchTemplateData"]["IamInstanceProfile"]["Name"] == self.iam_instance_profile_name
+        for network_interface in properties["LaunchTemplateData"]["NetworkInterfaces"]:
+            assert network_interface["SubnetId"] in self.subnet_ids
+        lt_block_device_mappings = properties["LaunchTemplateData"]["BlockDeviceMappings"]
+        assert lt_block_device_mappings[len(lt_block_device_mappings) - 1]["Ebs"] == self.root_volume
 
 
 @pytest.mark.parametrize(
@@ -405,23 +401,17 @@ class LoginNodeLTAssertion:
             "test-login-nodes-stack.yaml",
             [
                 LoginNodeLTAssertion(
-                    pool_name="testloginnodespool1",
-                    instance_type="t2.micro",
-                    count=2,
                     subnet_ids=["subnet-12345678"],
-                    key_name="ec2-key-name",
-                    gracetime_period=120,
-                    security_groups=[
-                        "sg-34567891",
-                        "sg-34567892",
-                        "sg-34567893",
-                        "sg-34567894",
-                        "sg-3456785",
-                        "sg-34567896",
-                        "sg-34567897",
-                        "sg-34567898",
-                        "sg-34567899",
-                    ],
+                    root_volume={
+                        "DeleteOnTermination": True,
+                        "Encrypted": True,
+                        "Iops": 3000,
+                        "Throughput": 125,
+                        "VolumeType": "gp3",
+                    },
+                    image_id="dummy-ami-id",
+                    http_tokens="required",
+                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
@@ -431,17 +421,17 @@ class LoginNodeLTAssertion:
             "test-login-nodes-stack-without-ssh.yaml",
             [
                 LoginNodeLTAssertion(
-                    pool_name="testloginnodespool1",
-                    instance_type="t2.micro",
-                    count=2,
                     subnet_ids=["subnet-12345678"],
-                    key_name="ec2-key-name",
-                    gracetime_period=120,
-                    security_groups=[
-                        "sg-34567891",
-                        "sg-34567892",
-                        "sg-34567893",
-                    ],
+                    root_volume={
+                        "DeleteOnTermination": True,
+                        "Encrypted": True,
+                        "Iops": 3000,
+                        "Throughput": 125,
+                        "VolumeType": "gp3",
+                    },
+                    image_id="dummy-ami-id",
+                    http_tokens="required",
+                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
