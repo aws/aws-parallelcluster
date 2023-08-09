@@ -743,12 +743,7 @@ def test_login_node_pool_count_validator(count, expected_message):
         ),
     ],
 )
-def test_pools_validator(mocker, pools, expected_message):
-    # Mock boto3 session's region_name to return 'us-east-2'
-    mock_session = mocker.MagicMock()
-    mock_session.region_name = "us-east-2"
-    mocker.patch.object(boto3, "session", Session=lambda: mock_session)
-
+def test_pools_validator(pools, expected_message):
     _validate_and_assert_error(
         LoginNodesSchema(),
         {
