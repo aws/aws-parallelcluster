@@ -6,6 +6,7 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
@@ -53,6 +54,7 @@ class Pool(Construct):
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
+        self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._login_security_group = login_security_group
         self.stack_name = stack_name
         self._head_eni = head_eni
@@ -109,6 +111,10 @@ class Pool(Construct):
             f"LoginNodeLaunchTemplate{self._pool.name}",
             launch_template_name=f"{self.stack_name}-{self._pool.name}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
+                    self._pool.local_storage.root_volume,
+                    AWSApi.instance().ec2.describe_image(self._config.login_nodes_ami[self._pool.name]).device_name,
+                ),
                 image_id=self._config.login_nodes_ami[self._pool.name],
                 instance_type=self._pool.instance_type,
                 key_name=self._pool.ssh.key_name,
@@ -321,7 +327,6 @@ class LoginNodesStack(NestedStack):
         self._config = cluster_config
         self._log_group = log_group
         self._login_security_group = login_security_group
-        self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
