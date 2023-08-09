@@ -26,7 +26,4 @@ Scheduling:
       Iam:
         S3Access:
           - BucketName: {{ bucket_name }}
-DevSettings:
-  Cookbook:
-    ChefCookbook: https://github.com/hgreebe/aws-parallelcluster-cookbook/tarball/develop
 
