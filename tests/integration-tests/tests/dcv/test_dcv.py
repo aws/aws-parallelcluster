@@ -16,7 +16,7 @@ import pytest
 import requests
 from assertpy import assert_that
 from framework.credential_providers import run_pcluster_command
-from remote_command_executor import RemoteCommandExecutor
+from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from utils import (
     add_keys_to_known_hosts,
     check_head_node_security_group,
@@ -87,15 +87,28 @@ def _test_dcv_configuration(
         dcv_authenticator_port,
         "-d action=requestToken -d authUser=centos -d sessionID=invalidSessionId",
         "The given session does not exists",
+        os,
     )
     _check_auth_ko(
-        remote_command_executor, dcv_authenticator_port, "-d action=test", "The action specified 'test' is not valid"
+        remote_command_executor,
+        dcv_authenticator_port,
+        "-d action=test",
+        "The action specified 'test' is not valid",
+        os,
     )
     _check_auth_ko(
-        remote_command_executor, dcv_authenticator_port, "-d action=requestToken -d authUser=centos", "Wrong parameters"
+        remote_command_executor,
+        dcv_authenticator_port,
+        "-d action=requestToken -d authUser=centos",
+        "Wrong parameters",
+        os,
     )
     _check_auth_ko(
-        remote_command_executor, dcv_authenticator_port, "-d action=sessionToken -d authUser=centos", "Wrong parameters"
+        remote_command_executor,
+        dcv_authenticator_port,
+        "-d action=sessionToken -d authUser=centos",
+        "Wrong parameters",
+        os,
     )
 
     shared_dir = f"/home/{get_username_for_os(os)}"
@@ -130,12 +143,20 @@ def _test_dcv_configuration(
     )
 
 
-def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message):
-    assert_that(
-        remote_command_executor.run_remote_command(
-            f"curl -s -k -X GET -G {SERVER_URL}:{dcv_authenticator_port} {params}"
-        ).stdout
-    ).contains(expected_message)
+def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message, os):
+    if os == "ubuntu2204":
+        with pytest.raises(RemoteCommandExecutionError) as exception_info:
+            remote_command_executor.run_remote_command(
+                f"curl -s -k -X GET -G {SERVER_URL}:{dcv_authenticator_port} {params}"
+            )
+        assert exception_info.type is RemoteCommandExecutionError
+        assert_that(exception_info.value.args[0].stdout).contains(expected_message)
+    else:
+        assert_that(
+            remote_command_executor.run_remote_command(
+                f"curl -s -k -X GET -G {SERVER_URL}:{dcv_authenticator_port} {params}"
+            ).stdout
+        ).contains(expected_message)
 
 
 def _check_shared_dir(remote_command_executor, shared_dir):
