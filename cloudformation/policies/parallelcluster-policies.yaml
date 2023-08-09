@@ -46,7 +46,7 @@ Parameters:
     Type: String
     Default: ''
     ConstraintDescription: "The value must be a valid ARN in the format: arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/PolicyNameParameter"
-    AllowedPattern: "^arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/([a-zA-Z0-9_-]+)$"
+    AllowedPattern: "^(arn:.*:iam::.*:policy\\/([a-zA-Z0-9_-]+))|()$"
 
   EnableBatchAccess:
     Description: |
