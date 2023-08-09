@@ -332,18 +332,38 @@ def test_instance_type_base_ami_compatible_validator(
     assert_failure_messages(actual_failures, expected_message)
 
 
+GoodKeyPairsDict = {"KeyPairs": [{"KeyType": "ed25519"}]}
+BadKeyPairsDict = {"KeyPairs": [{"KeyType": "rsa"}]}
+
+
 @pytest.mark.parametrize(
-    "key_pair, side_effect, expected_message",
+    "key_pair, ec2_return, os, side_effect, expected_message",
     [
-        ("key-name", None, None),
-        (None, None, "If you do not specify a key pair"),
-        ("c5.xlarge", AWSClientError(function_name="describe_key_pair", message="does not exist"), "does not exist"),
+        ("key-name", GoodKeyPairsDict, None, None, None),
+        (None, None, None, None, "If you do not specify a key pair"),
+        (
+            "c5.xlarge",
+            None,
+            None,
+            AWSClientError(function_name="describe_key_pair", message="does not exist"),
+            "does not exist",
+        ),
+        ("key-name", GoodKeyPairsDict, "ubuntu2204", None, None),
+        ("key-name", BadKeyPairsDict, "ubuntu2204", None, "Ubuntu 22.04 does not support RSA keys"),
+        ("key-name", GoodKeyPairsDict, "ubuntu2004", None, None),
+        ("key-name", BadKeyPairsDict, "ubuntu2004", None, None),
+        ("key-name", GoodKeyPairsDict, "centos7", None, None),
+        ("key-name", BadKeyPairsDict, "centos7", None, None),
+        ("key-name", GoodKeyPairsDict, "rhel8", None, None),
+        ("key-name", BadKeyPairsDict, "rhel8", None, None),
+        ("key-name", GoodKeyPairsDict, "alinux2", None, None),
+        ("key-name", BadKeyPairsDict, "alinux2", None, None),
     ],
 )
-def test_key_pair_validator(mocker, key_pair, side_effect, expected_message):
+def test_key_pair_validator(mocker, key_pair, ec2_return, os, side_effect, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_key_pair", return_value=key_pair, side_effect=side_effect)
-    actual_failures = KeyPairValidator().execute(key_name=key_pair)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_key_pair", return_value=ec2_return, side_effect=side_effect)
+    actual_failures = KeyPairValidator().execute(key_name=key_pair, os=os)
     assert_failure_messages(actual_failures, expected_message)
 
 
