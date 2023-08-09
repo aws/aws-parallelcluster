@@ -1,5 +1,16 @@
 Image:
   Os: {{ os }}
+{% if scheduler == "slurm" and use_login_node == True %}
+LoginNodes:
+  Pools:
+    - Name: testpool
+      InstanceType: {{ instance }}
+      Count: 2
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 60
+{% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:

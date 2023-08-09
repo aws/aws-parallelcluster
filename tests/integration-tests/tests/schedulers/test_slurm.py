@@ -59,8 +59,9 @@ from tests.monitoring import structured_log_event_utils
 
 
 @pytest.mark.usefixtures("instance", "os")
+@pytest.mark.parametrize("use_login_node", [False, True])
 def test_slurm(
-    region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory
+    region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory, use_login_node
 ):
     """
     Test all AWS Slurm related features.
@@ -78,9 +79,10 @@ def test_slurm(
         scaledown_idletime=scaledown_idletime,
         gpu_instance_type=gpu_instance_type,
         compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
+        use_login_node=use_login_node,
     )
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
-    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
@@ -133,12 +135,13 @@ def test_slurm(
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_slurm_pmix(pcluster_config_reader, clusters_factory):
+@pytest.mark.parametrize("use_login_node", [False, True])
+def test_slurm_pmix(pcluster_config_reader, clusters_factory, use_login_node):
     """Test interactive job submission using PMIx."""
     num_computes = 2
-    cluster_config = pcluster_config_reader(queue_size=num_computes)
+    cluster_config = pcluster_config_reader(queue_size=num_computes, use_login_node=use_login_node)
     cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
 
     # Ensure the expected PMIx version is listed when running `srun --mpi=list`.
     # Since we're installing PMIx v3.1.5, we expect to see pmix and pmix_v3 in the output.
