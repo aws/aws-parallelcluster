@@ -388,8 +388,8 @@ class LoginNodeLTAssertion:
         assert properties["LaunchTemplateData"]["ImageId"] == self.image_id
         assert properties["LaunchTemplateData"]["MetadataOptions"]["HttpTokens"] == self.http_tokens
         assert properties["LaunchTemplateData"]["IamInstanceProfile"]["Name"] == self.iam_instance_profile_name
-        for NetworkInterface in properties["LaunchTemplateData"]["NetworkInterfaces"]:
-            assert NetworkInterface["SubnetId"] in self.subnet_ids
+        for network_interface in properties["LaunchTemplateData"]["NetworkInterfaces"]:
+            assert network_interface["SubnetId"] in self.subnet_ids
         lt_block_device_mappings = properties["LaunchTemplateData"]["BlockDeviceMappings"]
         assert lt_block_device_mappings[len(lt_block_device_mappings) - 1]["Ebs"] == self.root_volume
 
@@ -403,15 +403,15 @@ class LoginNodeLTAssertion:
                 LoginNodeLTAssertion(
                     subnet_ids=["subnet-12345678"],
                     root_volume={
-                        'DeleteOnTermination': True,
-                        'Encrypted': True,
-                        'Iops': 3000,
-                        'Throughput': 125,
-                        'VolumeType': 'gp3'
+                        "DeleteOnTermination": True,
+                        "Encrypted": True,
+                        "Iops": 3000,
+                        "Throughput": 125,
+                        "VolumeType": "gp3",
                     },
                     image_id="dummy-ami-id",
                     http_tokens="required",
-                    iam_instance_profile_name={'Ref': 'InstanceProfile15b342af42246b70'},
+                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
@@ -423,15 +423,15 @@ class LoginNodeLTAssertion:
                 LoginNodeLTAssertion(
                     subnet_ids=["subnet-12345678"],
                     root_volume={
-                        'DeleteOnTermination': True,
-                        'Encrypted': True,
-                        'Iops': 3000,
-                        'Throughput': 125,
-                        'VolumeType': 'gp3'
+                        "DeleteOnTermination": True,
+                        "Encrypted": True,
+                        "Iops": 3000,
+                        "Throughput": 125,
+                        "VolumeType": "gp3",
                     },
                     image_id="dummy-ami-id",
                     http_tokens="required",
-                    iam_instance_profile_name={'Ref': 'InstanceProfile15b342af42246b70'},
+                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
