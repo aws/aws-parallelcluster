@@ -1,4 +1,4 @@
-aws-cdk.aws-batch~=1.164
+aws-cdk.aws-batch~=1.204
 aws-cdk.aws-cloudformation~=1.164
 aws-cdk.aws-codebuild~=1.164
 aws-cdk.aws-dynamodb~=1.164
