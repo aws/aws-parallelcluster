@@ -14,7 +14,11 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   {{ scheduler_prefix }}Queues:
-    - Name: broken
+  {% for strategy in scaling_strategies %}
+    - Name: {{ strategy }}-broken
+      {% if strategy=="job-level" %}
+      JobExclusiveAllocation: true
+      {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
@@ -30,7 +34,10 @@ Scheduling:
         S3Access:
           - BucketName: {{ bucket }}
             EnableWriteAccess: true
-    - Name: half-broken
+    - Name: {{ strategy }}-half-broken
+      {% if strategy=="job-level" %}
+      JobExclusiveAllocation: true
+      {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
@@ -48,7 +55,10 @@ Scheduling:
         S3Access:
           - BucketName: {{ bucket }}
             EnableWriteAccess: true
-    - Name: normal
+    - Name: {{ strategy }}-normal
+      {% if strategy=="job-level" %}
+      JobExclusiveAllocation: true
+      {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
@@ -63,6 +73,7 @@ Scheduling:
         S3Access:
           - BucketName: {{ bucket }}
             EnableWriteAccess: true
+  {% endfor %}
 SharedStorage:
   - MountDir: /shared  # Test comment
     Name: name1
