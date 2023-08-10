@@ -8,7 +8,7 @@ constants:
       value: 18.2.7
   - BerkshelfVersion:
       type: string
-      value: 7.2.0
+      value: 8.0.7
   - FailExitCode:
       type: string
       value: 1
