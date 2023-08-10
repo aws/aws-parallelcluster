@@ -2641,12 +2641,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         if self.login_nodes:
             # Create a LocalStorage for the LoginNodesPool and ensure that encrypted = true
             for pool in self.login_nodes.pools:
-                pool.local_storage = LocalStorage(
-                    implied=True,
-                    root_volume=RootVolume(
-                        encrypted=True,
-                    ),
-                )
+                pool.local_storage = LocalStorage(implied=True)
                 # If there's no customer ssh key for LoginNodes pool, set a default value as HeadNode's ssh key
                 if pool.ssh and not pool.ssh.key_name:
                     pool.ssh.key_name = self.head_node.ssh.key_name

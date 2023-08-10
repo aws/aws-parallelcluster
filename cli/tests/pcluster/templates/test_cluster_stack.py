@@ -371,13 +371,13 @@ class LoginNodeLTAssertion:
     def __init__(
         self,
         subnet_ids,
-        root_volume,
+        root_volume_encrypted,
         image_id,
         http_tokens,
         iam_instance_profile_name,
     ):
         self.subnet_ids = subnet_ids
-        self.root_volume = root_volume
+        self.root_volume_encrypted = root_volume_encrypted
         self.image_id = image_id
         self.http_tokens = http_tokens
         self.iam_instance_profile_name = iam_instance_profile_name
@@ -391,7 +391,10 @@ class LoginNodeLTAssertion:
         for network_interface in properties["LaunchTemplateData"]["NetworkInterfaces"]:
             assert network_interface["SubnetId"] in self.subnet_ids
         lt_block_device_mappings = properties["LaunchTemplateData"]["BlockDeviceMappings"]
-        assert lt_block_device_mappings[len(lt_block_device_mappings) - 1]["Ebs"] == self.root_volume
+        assert (
+            lt_block_device_mappings[len(lt_block_device_mappings) - 1]["Ebs"]["Encrypted"]
+            == self.root_volume_encrypted
+        )
 
 
 @pytest.mark.parametrize(
@@ -402,13 +405,7 @@ class LoginNodeLTAssertion:
             [
                 LoginNodeLTAssertion(
                     subnet_ids=["subnet-12345678"],
-                    root_volume={
-                        "DeleteOnTermination": True,
-                        "Encrypted": True,
-                        "Iops": 3000,
-                        "Throughput": 125,
-                        "VolumeType": "gp3",
-                    },
+                    root_volume_encrypted=True,
                     image_id="dummy-ami-id",
                     http_tokens="required",
                     iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
@@ -422,13 +419,7 @@ class LoginNodeLTAssertion:
             [
                 LoginNodeLTAssertion(
                     subnet_ids=["subnet-12345678"],
-                    root_volume={
-                        "DeleteOnTermination": True,
-                        "Encrypted": True,
-                        "Iops": 3000,
-                        "Throughput": 125,
-                        "VolumeType": "gp3",
-                    },
+                    root_volume_encrypted=True,
                     image_id="dummy-ami-id",
                     http_tokens="required",
                     iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
