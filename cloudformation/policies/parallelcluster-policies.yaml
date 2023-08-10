@@ -45,7 +45,7 @@ Parameters:
       When specified, IAM permissions assumed by the API are conditionally restricted to the usage of the given PermissionsBoundary
     Type: String
     Default: ''
-    ConstraintDescription: "The value must be a valid ARN in the format: arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/PolicyNameParameter"
+    ConstraintDescription: "The value must be a valid ARN in the format: arn:{AWS::Partition}:iam::{AWS::AccountId}:policy/PolicyNameParameter"
     AllowedPattern: "^(arn:.*:iam::.*:policy\\/([a-zA-Z0-9_-]+))|()$"
 
   EnableBatchAccess:
