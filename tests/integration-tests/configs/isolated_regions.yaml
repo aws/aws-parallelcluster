@@ -135,6 +135,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_structured_log_events.py::test_custom_compute_action_failure:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   disable_hyperthreading:
     test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
       dimensions:
@@ -538,11 +544,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-    test_update.py::test_multi_az_create_and_update:
-      dimensions:
-        - regions: {{ REGIONS }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
+# The following test is not supported in isolated regions because it makes use of CloudFormation resources that are not supported in: CapacityReservation and ResourceGroup.
+#    test_update.py::test_multi_az_create_and_update:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
   log_rotation:
     test_log_rotation.py::test_log_rotation:
       dimensions:
@@ -557,36 +564,37 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-  custom_resource:
-    test_cluster_custom_resource.py::test_cluster_create:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_create_invalid:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_update:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_update_invalid:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_update_tag_propagation:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_delete_out_of_band:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_delete_retain:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
+# pcluster CloudFormation custom resource is not supported in isolated regions. We will work on it for 3.8.
+#  custom_resource:
+#    test_cluster_custom_resource.py::test_cluster_create:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_create_invalid:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_update:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_update_invalid:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_update_tag_propagation:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_delete_out_of_band:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_delete_retain:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
