@@ -254,6 +254,7 @@ Resources:
 
 # Using the tests/integration-tests/resources/file-cache-storage-cfn.yaml which is uploaded in S3 bucket
   FsxFileCacheStack:
+    Condition: CreateFsx
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub "https://${S3BucketFSxFileCacheStack}.s3.amazonaws.com/file-cache-storage-cfn.yaml"

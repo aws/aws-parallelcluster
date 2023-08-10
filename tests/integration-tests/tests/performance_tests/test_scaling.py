@@ -33,9 +33,10 @@ def test_scaling(
     logging.info(f"Submitting an array of {max_nodes} jobs on {max_nodes} nodes")
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "sleep 1800",
-            "partition": "queue-1",
-            "other_options": f"--array [1-{max_nodes}] --exclusive",
+            "command": "srun sleep 10",
+            "partition": "queue-0",
+            "nodes": max_nodes,
+            "slots": max_nodes,
         }
     )
 

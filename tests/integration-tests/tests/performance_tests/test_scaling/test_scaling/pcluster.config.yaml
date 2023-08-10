@@ -17,18 +17,6 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           InstanceType: {{ instance }}
-          MinCount: {{ max_nodes }}
-          MaxCount: {{ max_nodes }}
-      Networking:
-        SubnetIds:
-          - {{ private_subnet_id }}
-      Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
-    - Name: queue-1
-      ComputeResources:
-        - Name: compute-resource-0
-          InstanceType: {{ instance }}
           MinCount: 0
           MaxCount: {{ max_nodes }}
       Networking:
