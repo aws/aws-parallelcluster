@@ -61,7 +61,14 @@ from tests.monitoring import structured_log_event_utils
 @pytest.mark.usefixtures("instance", "os")
 @pytest.mark.parametrize("use_login_node", [False, True])
 def test_slurm(
-    region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory, use_login_node
+    region,
+    scheduler,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    scheduler_commands_factory,
+    use_login_node,
 ):
     """
     Test all AWS Slurm related features.
