@@ -36,6 +36,7 @@ CHANGELOG
 - Change the default value of `Imds/ImdsSupport` from `v1.0` to `v2.0`.
 - Upgrade Slurm to version 23.02.4.
 - Deprecate Ubuntu 18.
+- Upgrade Cinc Client to version 18.2.7.
 - Update the default root volume size to 40 GB to account for limits on Centos 7.
 - Restrict permission on file `/tmp/wait_condition_handle.txt` within the head node so that only root can read it.
 
