@@ -3,7 +3,6 @@ import logging
 
 import boto3
 import pytest
-from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
 # timeout in seconds
@@ -79,13 +78,21 @@ def test_starccm(
         perf_test_result = remote_command_executor.run_remote_script(
             (str(test_datadir / "starccm.results.sh")), args=[job_id], hide=False
         )
-        logging.info(f"The elapsed time for {node} nodes is {perf_test_result.stdout}")
+        logging.info(f"The elapsed time for {node} nodes is {perf_test_result.stdout} seconds")
+        baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[node]
         percentage_difference = perf_test_difference(float(perf_test_result.stdout), node)
+        outcome = "degradation" if percentage_difference > 0 else "improvement"
         logging.info(
-            f"Percentage difference for cluster size {node} between observed elapsed time "
-            f"({perf_test_result.stdout}) and baseline ({BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[node]}):"
-            f" {percentage_difference}"
+            f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {perf_test_result.stdout} seconds, "
+            f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
+        degraded_nodes = {}
         if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
-            performance_degradation[node] = perf_test_result
-    assert_that(performance_degradation).is_empty()
+            performance_degradation[node] = perf_test_result.stdout
+            degraded_nodes.append(node)
+    if performance_degradation:
+        pytest.fail(
+            f"Performance test results show performance degradation for the following nodes:" f"{degraded_nodes}"
+        )
+    else:
+        logging.info("Performance test results show no performance degradation")
