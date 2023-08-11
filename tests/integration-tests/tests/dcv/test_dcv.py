@@ -85,17 +85,20 @@ def _test_dcv_configuration(
     _check_auth_ko(
         remote_command_executor,
         dcv_authenticator_port,
-        "-d action=requestToken -d authUser=centos -d sessionID=invalidSessionId",
+        "action=requestToken&authUser=centos&sessionID=invalidSessionId",
         "The given session does not exists",
     )
     _check_auth_ko(
-        remote_command_executor, dcv_authenticator_port, "-d action=test", "The action specified 'test' is not valid"
+        remote_command_executor,
+        dcv_authenticator_port,
+        "action=test",
+        "The action specified 'test' is not valid",
     )
     _check_auth_ko(
-        remote_command_executor, dcv_authenticator_port, "-d action=requestToken -d authUser=centos", "Wrong parameters"
-    )
-    _check_auth_ko(
-        remote_command_executor, dcv_authenticator_port, "-d action=sessionToken -d authUser=centos", "Wrong parameters"
+        remote_command_executor,
+        dcv_authenticator_port,
+        "action=requestToken&authUser=centos",
+        "Wrong parameters",
     )
 
     shared_dir = f"/home/{get_username_for_os(os)}"
@@ -133,7 +136,8 @@ def _test_dcv_configuration(
 def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message):
     assert_that(
         remote_command_executor.run_remote_command(
-            f"curl -s -k -X GET -G {SERVER_URL}:{dcv_authenticator_port} {params}"
+            "wget --no-check-certificate --output-document - --quiet "
+            f"'{SERVER_URL}:{dcv_authenticator_port}?{params}'"
         ).stdout
     ).contains(expected_message)
 
