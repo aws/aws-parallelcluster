@@ -771,22 +771,20 @@ class TestDescribeCluster:
                     ],
                     "version": get_installed_version(),
                     "scheduler": {"type": "slurm"},
-                    "details": [
-                        {
-                            "alarms": [
-                                {"alarmType": "test_DiskAlarm_HeadNode", "alarmState": "OK"},
-                                {"alarmType": "test_MemAlarm_HeadNode", "alarmState": "OK"},
-                                {"alarmType": "test_ProtectedModeAlarm_HeadNode", "alarmState": "ALARM"},
-                            ],
-                            "metrics": [],
-                            "stats": [
-                                {
-                                    "statType": "numberOfComputerNodes",
-                                    "statValue": 0,
-                                }
-                            ],
-                        }
-                    ],
+                    "details": {
+                        "alarms": [
+                            {"alarmType": "test_DiskAlarm_HeadNode", "alarmState": "OK"},
+                            {"alarmType": "test_MemAlarm_HeadNode", "alarmState": "OK"},
+                            {"alarmType": "test_ProtectedModeAlarm_HeadNode", "alarmState": "ALARM"},
+                        ],
+                        "metrics": [],
+                        "stats": [
+                            {
+                                "statType": "numberOfComputerNodes",
+                                "statValue": 0,
+                            }
+                        ],
+                    },
                 },
             ),
             (
@@ -830,7 +828,7 @@ class TestDescribeCluster:
                     "failures": [
                         {"failureCode": "ClusterCreationFailure", "failureReason": "Failed to create the cluster."},
                     ],
-                    "details": [{"metrics": [], "stats": [{"statType": "numberOfComputerNodes", "statValue": 0}]}],
+                    "details": {"metrics": [], "stats": [{"statType": "numberOfComputerNodes", "statValue": 0}]},
                 },
             ),
             (
@@ -882,17 +880,15 @@ class TestDescribeCluster:
                         "state": "running",
                     },
                     "scheduler": {"type": "slurm"},
-                    "details": [
-                        {
-                            "metrics": [],
-                            "stats": [
-                                {
-                                    "statType": "numberOfComputerNodes",
-                                    "statValue": 18,
-                                }
-                            ],
-                        }
-                    ],
+                    "details": {
+                        "metrics": [],
+                        "stats": [
+                            {
+                                "statType": "numberOfComputerNodes",
+                                "statValue": 18,
+                            }
+                        ],
+                    },
                 },
             ),
         ],
@@ -975,7 +971,7 @@ class TestDescribeCluster:
             )
 
         response = self._send_test_request(client, verbose=verbose)
-
+        print(response.get_json())
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
             assert_that(response.get_json()).is_equal_to(expected_response)

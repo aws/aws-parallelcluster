@@ -44,7 +44,7 @@ from pcluster.api.models import (
     CreateClusterResponseContent,
     DeleteClusterResponseContent,
     DescribeClusterResponseContent,
-    Detail,
+    Details,
     EC2Instance,
     Failure,
     InstanceState,
@@ -490,7 +490,8 @@ def _get_details(cfn_stack, verbose):
         alarms = _get_alarms_details(cfn_stack)
         metrics = _get_cluster_health_metrics_details(cfn_stack)
         stats = _get_stats_details(cfn_stack)
-        return [Detail(alarms=alarms, metrics=metrics, stats=stats)]
+
+        return Details(alarms=alarms, metrics=metrics, stats=stats)
     else:
         return None
 
@@ -506,8 +507,8 @@ def _get_alarms_details(cfn_stack):
         alarm_state_value = raw_alarm["alarm_state"]
 
         # Check if the alarm_state_value is valid for AlarmState
-        if alarm_state_value not in (AlarmState.OK, AlarmState.ALARM, AlarmState.INSUFFICIENT_DATA, AlarmState.UNKNOWN):
-            raise ValueError(f"Invalid alarm state value: {alarm_state_value}")
+        if alarm_state_value not in (AlarmState.OK, AlarmState.ALARM, AlarmState.INSUFFICIENT_DATA):
+            alarm_state_value = AlarmState.UNKNOWN
 
         alarm_instance = Alarm(alarm_type=alarm_type, alarm_state=alarm_state_value)
         alarm_details.append(alarm_instance)

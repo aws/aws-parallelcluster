@@ -19,7 +19,7 @@ from pcluster.api.models.cloud_formation_stack_status import CloudFormationStack
 from pcluster.api.models.cluster_configuration_structure import ClusterConfigurationStructure
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
-from pcluster.api.models.detail import Detail
+from pcluster.api.models.details import Details
 from pcluster.api.models.ec2_instance import EC2Instance
 from pcluster.api.models.failure import Failure
 from pcluster.api.models.login_nodes_pool import LoginNodesPool
@@ -102,7 +102,7 @@ class DescribeClusterResponseContent(Model):
             "scheduler": Scheduler,
             "login_nodes": LoginNodesPool,
             "failures": List[Failure],
-            "details": Detail,
+            "details": Details,
         }
 
         self.attribute_map = {
@@ -516,18 +516,16 @@ class DescribeClusterResponseContent(Model):
     @property
     def details(self):
         """Gets the details of this DescribeClusterResponseContent.
-        Detailed information about the cluster, provided only when the 'verbose' flag is set to true.  # noqa: E501
         :return: The details of this DescribeClusterResponseContent.
-        :rtype: List[Detail]
+        :rtype: Details
         """
         return self._details
 
     @details.setter
     def details(self, details):
         """Sets the details of this DescribeClusterResponseContent.
-        Detailed information about the cluster, provided only when the 'verbose' flag is set to true.  # noqa: E501
         :param details: The details of this DescribeClusterResponseContent.
-        :type details: List[Detail]
+        :type details: Details
         """
 
         self._details = details

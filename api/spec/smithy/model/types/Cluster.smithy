@@ -113,7 +113,7 @@ list Stats {
     member: Stat
 }
 
-structure Detail {
+structure Details {
     @documentation("List of alarms when the verbose flag is set to true.")
     alarms: Alarms
 

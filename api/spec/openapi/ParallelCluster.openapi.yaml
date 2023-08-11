@@ -1935,7 +1935,7 @@ components:
             $ref: '#/components/schemas/Failure'
           description: Failures array containing failures reason and code when the stack is in CREATE_FAILED status.
         details:
-          $ref: '#/components/schemas/Detail'
+          $ref: '#/components/schemas/Details'
       required:
         - cloudFormationStackStatus
         - cloudformationStackArn
@@ -2012,7 +2012,7 @@ components:
         - imageId
         - region
         - version
-    Detail:
+    Details:
       type: object
       properties:
         alarms:

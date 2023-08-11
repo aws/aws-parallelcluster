@@ -2383,10 +2383,21 @@ components:
         cloudformationStackArn: cloudformationStackArn
         lastUpdatedTime: 2000-01-23T04:56:07.000+00:00
         details:
-          - alarmType: alarmType
-            alarmState: alarmState
-          - alarmType: alarmType
-            alarmState: alarmState
+          stats:
+            - statValue: 5
+              statType: statType
+            - statValue: 5
+              statType: statType
+          alarms:
+            - alarmType: alarmType
+              alarmState: null
+            - alarmType: alarmType
+              alarmState: null
+          metrics:
+            - metricType: metricType
+              metricValue: 1
+            - metricType: metricType
+              metricValue: 1
         region: region
         clusterStatus: null
         headNode:
@@ -2451,11 +2462,11 @@ components:
           type: string
         details:
           description: "Detailed information about the cluster, provided only when\
-                    \ the 'verbose' flag is set to true."
+                    \ the verbose flag is set to true."
           items:
-            $ref: '#/components/schemas/Detail'
+            $ref: '#/components/schemas/Details'
           title: details
-          type: array
+          type: object
       required:
       - cloudFormationStackStatus
       - cloudformationStackArn
@@ -2581,7 +2592,7 @@ components:
       - version
       title: DescribeImageResponseContent
       type: object
-    Detail:
+    Details:
       example:
         alarmType: alarmType
         alarmState: alarmState
@@ -2594,7 +2605,7 @@ components:
           description: The alarm state when the verbose flag is set to true.
           title: alarmState
           type: string
-      title: Detail
+      title: Details
       type: object
     DryrunOperationExceptionResponseContent:
       description: Communicates that the operation would have succeeded without the
