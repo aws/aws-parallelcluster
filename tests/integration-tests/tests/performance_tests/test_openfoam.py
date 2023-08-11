@@ -1,11 +1,7 @@
 import logging
 
 import pytest
-from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-
-# from tests.common.utils import read_remote_file
-# from tests.common.utils import wait_process_completion, read_remote_file
 
 # timeout in seconds
 OPENFOAM_INSTALLATION_TIMEOUT = 300
@@ -65,21 +61,26 @@ def test_openfoam(
             additional_files=[str(test_datadir / "openfoam.slurm.sh")],
             timeout=OPENFOAM_JOB_TIMEOUT,
         )
-        # pid = read_remote_file(remote_command_executor, '/tmp/openfoam.pid')
-        # logging.info(f"Waiting for OpenFOAM job to complete with pid = {pid}")
-        # wait_process_completion(remote_command_executor, pid)
         perf_test_result = remote_command_executor.run_remote_script(
             (str(test_datadir / "openfoam.results.sh")), hide=False
         )
         output = perf_test_result.stdout.strip()
         elapsed_time = output.split("\n")[-1].strip()
-        logging.info(f"The elapsed time for {node} nodes is {elapsed_time}")
+        baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[node]
+        logging.info(f"The elapsed time for {node} nodes is {elapsed_time} seconds")
         percentage_difference = perf_test_difference(int(elapsed_time), node)
+        outcome = "degradation" if percentage_difference > 0 else "improvement"
         logging.info(
-            f"Percentage difference for cluster size {node} between observed elapsed time "
-            f"({elapsed_time}) and baseline ({BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[node]}):"
-            f" {percentage_difference}"
+            f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {elapsed_time} seconds, "
+            f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
+        degraded_nodes = {}
         if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
-            performance_degradation[node] = perf_test_result
-    assert_that(performance_degradation).is_empty()
+            performance_degradation[node] = elapsed_time
+            degraded_nodes.append(node)
+    if performance_degradation:
+        pytest.fail(
+            f"Performance test results show performance degradation for the following nodes:" f"{degraded_nodes}"
+        )
+    else:
+        logging.info("Performance test results show no performance degradation")
