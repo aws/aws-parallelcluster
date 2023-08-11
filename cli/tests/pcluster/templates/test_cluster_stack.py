@@ -449,10 +449,11 @@ def test_login_nodes_launch_template_properties(
 
 
 class AutoScalingGroupAssertion:
-    def __init__(self, min_size: int, max_size: int, desired_capacity: int):
+    def __init__(self, min_size: int, max_size: int, desired_capacity: int, expected_lifecycle_specification: List):
         self.min_size = min_size
         self.max_size = max_size
         self.desired_capacity = desired_capacity
+        self.expected_lifecycle_specification = expected_lifecycle_specification
 
     def assert_asg_properties(self, template, resource_name: str):
         resource = template["Resources"][resource_name]
@@ -461,6 +462,7 @@ class AutoScalingGroupAssertion:
         assert int(properties["MinSize"]) == self.min_size
         assert int(properties["MaxSize"]) == self.max_size
         assert int(properties["DesiredCapacity"]) == self.desired_capacity
+        assert properties["LifecycleHookSpecificationList"] == self.expected_lifecycle_specification
 
 
 class NetworkLoadBalancerAssertion:
