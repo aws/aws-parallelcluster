@@ -20,6 +20,7 @@ import pytest
 import yaml
 from assertpy import assert_that
 from freezegun import freeze_time
+from marshmallow import ValidationError
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.constants import (
@@ -1051,3 +1052,57 @@ def test_head_node_security_group(mocker, test_datadir, config_file_name):
                 port_range=port_range,
                 target_sg=sg,
             )
+
+
+@pytest.mark.parametrize(
+    "config_file_name, expected_field, expected_value, should_fail, error_message",
+    [
+        ("config_restricted_ssh_cidr.yaml", "CidrIp", "1.2.3.4/19", False, ""),
+        ("config_restricted_ssh_prefix_list.yaml", "SourcePrefixListId", "pl-012345abcdABCD", False, ""),
+        (
+            "config_restricted_ssh_invalid.yaml",
+            None,
+            None,
+            True,
+            "Invalid value: 'invalid-cidr' is neither a valid CIDR or a valid prefix-list.",
+        ),
+    ],
+)
+def test_security_group_with_restricted_ssh_access(
+    mocker, test_datadir, config_file_name, expected_field, expected_value, should_fail, error_message
+):
+    """
+    Validates that both HeadNode and LoginNoes SecurityGroups have restricted SSH access.
+
+    If AllowedIPs setting is defined in the HeadNode SSH section both HeadNode and LoginNoes SecurityGroups
+    should have restricted SSH access.
+    LoginNodes do not expose this parameter in the config, so they rely on what is specified on the HeadNode.
+    This may change once we remove access for regular users to the HeadNode.
+    """
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    if should_fail:
+        with pytest.raises(ValidationError) as e:
+            ClusterSchema(cluster_name="clustername").load(input_yaml)
+            assert e.is_instance_of(ValidationError)
+            assert str(e.value).is_equal_to(error_message)
+    else:
+        cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+        generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+            cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+        )
+
+        head_node_sg = generated_template["Resources"]["HeadNodeSecurityGroup"]
+        hn_ingress_rules = head_node_sg["Properties"]["SecurityGroupIngress"]
+        for rule in hn_ingress_rules:
+            if rule["FromPort"] == 22:  # SSH
+                assert rule[expected_field] == expected_value
+
+        login_node_sg = generated_template["Resources"]["LoginNodesSecurityGroup"]
+        ln_ingress_rules = login_node_sg["Properties"]["SecurityGroupIngress"]
+        for rule in ln_ingress_rules:
+            if rule["FromPort"] == 22:  # SSH
+                assert rule[expected_field] == expected_value
