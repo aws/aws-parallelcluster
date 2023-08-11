@@ -837,3 +837,107 @@ def _check_ssh_auth(user, expect_success=True):
             raise e
         else:
             logging.info(f"SSH access denied for user {user.alias}, as expected")
+
+
+@pytest.mark.parametrize(
+    "directory_type,directory_protocol,directory_certificate_verification",
+    [
+        ("SimpleAD", "ldap", False),
+        ("MicrosoftAD", "ldaps", True),
+    ],
+)
+@pytest.mark.usefixtures("os", "instance")
+def test_ad_integration_on_login_nodes(
+    region,
+    scheduler,
+    scheduler_commands_factory,
+    pcluster_config_reader,
+    directory_type,
+    directory_protocol,
+    directory_certificate_verification,
+    test_datadir,
+    directory_factory,
+    request,
+    store_secret_in_secret_manager,
+    clusters_factory,
+):
+    """
+    Verify AD integration works as expected.
+    In particular, it verifies that :
+    1. AD users can access to the login node, both with password and SSH key (if created);
+    2. SSH key for AD users is created when the property GenerateSshKeysForUsers is true;
+    3. AD users can submit workloads;
+    """
+    head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
+    compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
+    config_params = {
+        "compute_instance_type": compute_instance_type_info.get("name"),
+        "head_node_instance_type": head_node_instance_type,
+    }
+    directory_stack_name, nlb_stack_name = directory_factory(
+        request.config.getoption("directory_stack_name"),
+        request.config.getoption("ldaps_nlb_stack_name"),
+        directory_type,
+        str(test_datadir),
+        region,
+    )
+    directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
+    ad_user_password = directory_stack_outputs.get("UserPassword")
+    password_secret_arn = store_secret_in_secret_manager(
+        region, secret_string=directory_stack_outputs.get("AdminPassword")
+    )
+    nlb_stack_parameters = get_infra_stack_parameters(nlb_stack_name)
+    ldap_tls_ca_cert = "/opt/parallelcluster/shared_login_nodes/directory_service/certificate.crt"
+    config_params.update(
+        get_ad_config_param_vals(
+            directory_stack_outputs,
+            nlb_stack_parameters,
+            password_secret_arn,
+            ldap_tls_ca_cert,
+            directory_type,
+            directory_protocol,
+            directory_certificate_verification,
+        )
+    )
+    cluster_config = pcluster_config_reader(**config_params)
+    cluster = clusters_factory(cluster_config)
+
+    certificate_secret_arn = nlb_stack_parameters.get("CertificateSecretArn")
+    certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretBinary"]
+    with open(test_datadir / "certificate.crt", "wb") as f:
+        f.write(certificate)
+
+    # Publish compute node count metric every minute via cron job
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor.run_remote_command(
+        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo service sssd restart",
+        additional_files=[test_datadir / "certificate.crt"],
+    )
+    if directory_certificate_verification:
+        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
+        time.sleep(600)
+        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
+        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
+
+    login_node_command_executor = RemoteCommandExecutor(cluster, use_login_node=True)
+    scheduler_commands = scheduler_commands_factory(login_node_command_executor)
+    users = []
+    for user_num in range(NUM_USERS_TO_TEST):
+        users.append(
+            ClusterUser(
+                user_num,
+                test_datadir,
+                cluster,
+                scheduler,
+                login_node_command_executor,
+                ad_user_password,
+                scheduler_commands_factory,
+            )
+        )
+
+    # Let's test that AD users can login into a LoginNode and they'll have their home and ssh-key created
+    # With the same behavior we have in the HeadNode
+    for user in users:
+        _check_ssh_key_generation(user, login_node_command_executor, scheduler_commands, True)
+
+    run_system_analyzer(cluster, scheduler_commands_factory, request)
