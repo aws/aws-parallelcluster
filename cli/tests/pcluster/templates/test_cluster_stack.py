@@ -599,7 +599,8 @@ class IamPolicyAssertion:
                                         {"Ref": "AWS::Region"},
                                         ":",
                                         {"Ref": "AWS::AccountId"},
-                                        ":autoScalingGroupName/clustername-testloginnodespool1-AutoScalingGroup",
+                                        ":autoScalingGroup:*:autoScalingGroupName/clustername-"
+                                        "testloginnodespool1-AutoScalingGroup",
                                     ],
                                 ]
                             },
