@@ -203,6 +203,7 @@ class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
     distribution_configuration = fields.Nested(DistributionConfigurationSchema)
     terminate_instance_on_failure = fields.Bool()
     disable_validate_and_test = fields.Bool()
+    cinc_installer_url = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):
