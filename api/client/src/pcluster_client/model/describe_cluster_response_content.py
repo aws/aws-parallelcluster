@@ -34,7 +34,7 @@ def lazy_import():
     from pcluster_client.model.cluster_configuration_structure import ClusterConfigurationStructure
     from pcluster_client.model.cluster_status import ClusterStatus
     from pcluster_client.model.compute_fleet_status import ComputeFleetStatus
-    from pcluster_client.model.detail import Detail
+    from pcluster_client.model.details import Details
     from pcluster_client.model.ec2_instance import EC2Instance
     from pcluster_client.model.failure import Failure
     from pcluster_client.model.login_nodes_pool import LoginNodesPool
@@ -44,7 +44,7 @@ def lazy_import():
     globals()['ClusterConfigurationStructure'] = ClusterConfigurationStructure
     globals()['ClusterStatus'] = ClusterStatus
     globals()['ComputeFleetStatus'] = ComputeFleetStatus
-    globals()['Detail'] = Detail
+    globals()['Details'] = Details
     globals()['EC2Instance'] = EC2Instance
     globals()['Failure'] = Failure
     globals()['LoginNodesPool'] = LoginNodesPool
@@ -125,7 +125,7 @@ class DescribeClusterResponseContent(ModelNormal):
             'head_node': (EC2Instance,),  # noqa: E501
             'login_nodes': (LoginNodesPool,),  # noqa: E501
             'failures': ([Failure],),  # noqa: E501
-            'details': (Detail,),  # noqa: E501
+            'details': (Details,),  # noqa: E501
         }
 
     @cached_property
@@ -210,7 +210,7 @@ class DescribeClusterResponseContent(ModelNormal):
             head_node (EC2Instance): [optional]  # noqa: E501
             login_nodes (LoginNodesPool): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
-            details (Detail): [optional]  # noqa: E501
+            details (Details): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -324,7 +324,7 @@ class DescribeClusterResponseContent(ModelNormal):
             head_node (EC2Instance): [optional]  # noqa: E501
             login_nodes (LoginNodesPool): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
-            details (Detail): [optional]  # noqa: E501
+            details (Details): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

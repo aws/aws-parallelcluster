@@ -1,4 +1,4 @@
-# Detail
+# Details
 
 
 ## Properties
