@@ -243,31 +243,28 @@ class Pool(Construct):
             desired_capacity=str(self._pool.count),
             target_group_arns=[self._login_nodes_pool_target_group.node.default_child.ref],
             vpc_zone_identifier=self._pool.networking.subnet_ids,
+            lifecycle_hook_specification_list=[
+                self._get_terminating_lifecycle_hook_specification(),
+                self._get_launching_lifecycle_hook_specification(),
+            ],
         )
-        self.terminating_lifecycle_hook = self._add_terminating_lifecycle_hook(auto_scaling_group)
-        self.launching_lifecycle_hook = self._add_launching_lifecycle_hook(auto_scaling_group)
 
         return auto_scaling_group
 
-    def _add_terminating_lifecycle_hook(self, auto_scaling_group):
-        return autoscaling.CfnLifecycleHook(
-            self,
-            "LoginNodesASGLifecycleHookTerminating",
-            auto_scaling_group_name=auto_scaling_group.ref,
-            lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
-            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesTerminatingLifecycleHook",
+    def _get_terminating_lifecycle_hook_specification(self):
+        return autoscaling.CfnAutoScalingGroup.LifecycleHookSpecificationProperty(
+            default_result="ABANDON",
             heartbeat_timeout=self._pool.gracetime_period * 60,
+            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesTerminatingLifecycleHook",
+            lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
         )
 
-    def _add_launching_lifecycle_hook(self, auto_scaling_group):
-        return autoscaling.CfnLifecycleHook(
-            self,
-            "LoginNodesASGLifecycleHookLaunching",
-            auto_scaling_group_name=auto_scaling_group.ref,
-            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook",
-            lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
+    def _get_launching_lifecycle_hook_specification(self):
+        return autoscaling.CfnAutoScalingGroup.LifecycleHookSpecificationProperty(
             default_result="ABANDON",
             heartbeat_timeout=600,
+            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook",
+            lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
         )
 
     def _add_login_nodes_pool_target_group(self):
