@@ -183,7 +183,16 @@ class ImageBuilderCdkStack(Stack):
         CfnParameter(
             self, "CfnParamChefCookbook", type="String", default=custom_chef_cookbook, description="ChefCookbook"
         )
-        CfnParameter(self, "CfnParamCincInstaller", type="String", default="", description="CincInstaller")
+
+        custom_cinc_installer_url = (
+            self.config.dev_settings.cinc_installer_url
+            if self.config.dev_settings and self.config.dev_settings.cinc_installer_url
+            else ""
+        )
+        CfnParameter(
+            self, "CfnParamCincInstaller", type="String", default=custom_cinc_installer_url, description="CincInstaller"
+        )
+
         CfnParameter(
             self,
             "CfnParamChefDnaJson",

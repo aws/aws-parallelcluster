@@ -197,6 +197,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         distribution_configuration: DistributionConfiguration = None,
         terminate_instance_on_failure: bool = None,
         disable_validate_and_test: bool = None,
+        cinc_installer_url: str = None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -204,6 +205,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self.distribution_configuration = distribution_configuration
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
         self.disable_validate_and_test = Resource.init_param(disable_validate_and_test, default=True)
+        self.cinc_installer_url = Resource.init_param(cinc_installer_url, default="")
 
 
 # ---------------------- ImageBuilder ---------------------- #
