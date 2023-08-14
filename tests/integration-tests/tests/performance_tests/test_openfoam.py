@@ -69,16 +69,17 @@ def test_openfoam(
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[node]
         logging.info(f"The elapsed time for {node} nodes is {elapsed_time} seconds")
         percentage_difference = perf_test_difference(int(elapsed_time), node)
-        outcome = "degradation" if percentage_difference > 0 else "improvement"
+        if percentage_difference < 0:
+            outcome = "improvement"
+        else:
+            outcome = "degradation"
+            performance_degradation[node] = elapsed_time
         logging.info(
             f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {elapsed_time} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
-        degraded_nodes = {}
-        if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
-            performance_degradation[node] = elapsed_time
-            degraded_nodes.append(node)
     if performance_degradation:
+        degraded_nodes = performance_degradation.keys()
         pytest.fail(
             f"Performance test results show performance degradation for the following nodes:" f"{degraded_nodes}"
         )
