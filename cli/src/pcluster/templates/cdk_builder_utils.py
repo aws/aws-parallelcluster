@@ -883,7 +883,7 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                 resources=[
                     self._format_arn(
                         service="autoscaling",
-                        resource=f"autoScalingGroupName/{self._auto_scaling_group_name}",
+                        resource=f"autoScalingGroup:*:autoScalingGroupName/{self._auto_scaling_group_name}",
                     )
                 ],
             ),

@@ -6,6 +6,7 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
@@ -53,6 +54,7 @@ class Pool(Construct):
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
+        self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._login_security_group = login_security_group
         self.stack_name = stack_name
         self._head_eni = head_eni
@@ -109,6 +111,10 @@ class Pool(Construct):
             f"LoginNodeLaunchTemplate{self._pool.name}",
             launch_template_name=f"{self.stack_name}-{self._pool.name}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
+                    self._pool.local_storage.root_volume,
+                    AWSApi.instance().ec2.describe_image(self._config.login_nodes_ami[self._pool.name]).device_name,
+                ),
                 image_id=self._config.login_nodes_ami[self._pool.name],
                 instance_type=self._pool.instance_type,
                 key_name=self._pool.ssh.key_name,
@@ -237,31 +243,28 @@ class Pool(Construct):
             desired_capacity=str(self._pool.count),
             target_group_arns=[self._login_nodes_pool_target_group.node.default_child.ref],
             vpc_zone_identifier=self._pool.networking.subnet_ids,
+            lifecycle_hook_specification_list=[
+                self._get_terminating_lifecycle_hook_specification(),
+                self._get_launching_lifecycle_hook_specification(),
+            ],
         )
-        self.terminating_lifecycle_hook = self._add_terminating_lifecycle_hook(auto_scaling_group)
-        self.launching_lifecycle_hook = self._add_launching_lifecycle_hook(auto_scaling_group)
 
         return auto_scaling_group
 
-    def _add_terminating_lifecycle_hook(self, auto_scaling_group):
-        return autoscaling.CfnLifecycleHook(
-            self,
-            "LoginNodesASGLifecycleHookTerminating",
-            auto_scaling_group_name=auto_scaling_group.ref,
-            lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
-            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesTerminatingLifecycleHook",
+    def _get_terminating_lifecycle_hook_specification(self):
+        return autoscaling.CfnAutoScalingGroup.LifecycleHookSpecificationProperty(
+            default_result="ABANDON",
             heartbeat_timeout=self._pool.gracetime_period * 60,
+            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesTerminatingLifecycleHook",
+            lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
         )
 
-    def _add_launching_lifecycle_hook(self, auto_scaling_group):
-        return autoscaling.CfnLifecycleHook(
-            self,
-            "LoginNodesASGLifecycleHookLaunching",
-            auto_scaling_group_name=auto_scaling_group.ref,
-            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook",
-            lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
+    def _get_launching_lifecycle_hook_specification(self):
+        return autoscaling.CfnAutoScalingGroup.LifecycleHookSpecificationProperty(
             default_result="ABANDON",
             heartbeat_timeout=600,
+            lifecycle_hook_name=f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook",
+            lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
         )
 
     def _add_login_nodes_pool_target_group(self):
@@ -321,7 +324,6 @@ class LoginNodesStack(NestedStack):
         self._config = cluster_config
         self._log_group = log_group
         self._login_security_group = login_security_group
-        self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes

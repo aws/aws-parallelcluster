@@ -20,6 +20,7 @@ import pytest
 import yaml
 from assertpy import assert_that
 from freezegun import freeze_time
+from marshmallow import ValidationError
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.constants import (
@@ -370,32 +371,31 @@ def test_compute_launch_template_properties(
 class LoginNodeLTAssertion:
     def __init__(
         self,
-        pool_name,
-        instance_type,
-        count,
         subnet_ids,
-        key_name,
-        security_groups,
-        gracetime_period,
+        root_volume_encrypted,
+        image_id,
+        http_tokens,
+        iam_instance_profile_name,
     ):
-        self.pool_name = pool_name
-        self.instance_type = instance_type
-        self.count = count
         self.subnet_ids = subnet_ids
-        self.key_name = key_name
-        self.security_groups = security_groups
-        self.gracetime_period = gracetime_period
+        self.root_volume_encrypted = root_volume_encrypted
+        self.image_id = image_id
+        self.http_tokens = http_tokens
+        self.iam_instance_profile_name = iam_instance_profile_name
 
     def assert_lt_properties(self, generated_template, resource_type):
-        resources = generated_template["Resources"]
-        for _resource_name, resource in resources.items():
-            if resource["Type"] == resource_type:
-                properties = resource["Properties"]
-                assert properties["LaunchTemplateData"]["InstanceType"] == self.instance_type
-                assert properties["LaunchTemplateData"]["NetworkInterfaces"][0]["SubnetId"] in self.subnet_ids
-                assert properties["LaunchTemplateData"]["KeyName"] == self.key_name
-                assert properties["LaunchTemplateData"]["SecurityGroups"] == self.security_groups
-                assert properties["LaunchTemplateData"]["GracetimePeriod"] == self.gracetime_period
+        resources = generated_template["Resources"][resource_type]
+        properties = resources["Properties"]
+        assert properties["LaunchTemplateData"]["ImageId"] == self.image_id
+        assert properties["LaunchTemplateData"]["MetadataOptions"]["HttpTokens"] == self.http_tokens
+        assert properties["LaunchTemplateData"]["IamInstanceProfile"]["Name"] == self.iam_instance_profile_name
+        for network_interface in properties["LaunchTemplateData"]["NetworkInterfaces"]:
+            assert network_interface["SubnetId"] in self.subnet_ids
+        lt_block_device_mappings = properties["LaunchTemplateData"]["BlockDeviceMappings"]
+        assert (
+            lt_block_device_mappings[len(lt_block_device_mappings) - 1]["Ebs"]["Encrypted"]
+            == self.root_volume_encrypted
+        )
 
 
 @pytest.mark.parametrize(
@@ -405,23 +405,11 @@ class LoginNodeLTAssertion:
             "test-login-nodes-stack.yaml",
             [
                 LoginNodeLTAssertion(
-                    pool_name="testloginnodespool1",
-                    instance_type="t2.micro",
-                    count=2,
                     subnet_ids=["subnet-12345678"],
-                    key_name="ec2-key-name",
-                    gracetime_period=120,
-                    security_groups=[
-                        "sg-34567891",
-                        "sg-34567892",
-                        "sg-34567893",
-                        "sg-34567894",
-                        "sg-3456785",
-                        "sg-34567896",
-                        "sg-34567897",
-                        "sg-34567898",
-                        "sg-34567899",
-                    ],
+                    root_volume_encrypted=True,
+                    image_id="dummy-ami-id",
+                    http_tokens="required",
+                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
@@ -431,17 +419,11 @@ class LoginNodeLTAssertion:
             "test-login-nodes-stack-without-ssh.yaml",
             [
                 LoginNodeLTAssertion(
-                    pool_name="testloginnodespool1",
-                    instance_type="t2.micro",
-                    count=2,
                     subnet_ids=["subnet-12345678"],
-                    key_name="ec2-key-name",
-                    gracetime_period=120,
-                    security_groups=[
-                        "sg-34567891",
-                        "sg-34567892",
-                        "sg-34567893",
-                    ],
+                    root_volume_encrypted=True,
+                    image_id="dummy-ami-id",
+                    http_tokens="required",
+                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
@@ -467,10 +449,11 @@ def test_login_nodes_launch_template_properties(
 
 
 class AutoScalingGroupAssertion:
-    def __init__(self, min_size: int, max_size: int, desired_capacity: int):
+    def __init__(self, min_size: int, max_size: int, desired_capacity: int, expected_lifecycle_specification: List):
         self.min_size = min_size
         self.max_size = max_size
         self.desired_capacity = desired_capacity
+        self.expected_lifecycle_specification = expected_lifecycle_specification
 
     def assert_asg_properties(self, template, resource_name: str):
         resource = template["Resources"][resource_name]
@@ -479,6 +462,7 @@ class AutoScalingGroupAssertion:
         assert int(properties["MinSize"]) == self.min_size
         assert int(properties["MaxSize"]) == self.max_size
         assert int(properties["DesiredCapacity"]) == self.desired_capacity
+        assert properties["LifecycleHookSpecificationList"] == self.expected_lifecycle_specification
 
 
 class NetworkLoadBalancerAssertion:
@@ -523,20 +507,6 @@ class NetworkLoadBalancerListenerAssertion:
         assert properties["Protocol"] == self.expected_protocol
 
 
-class LifecycleHookAssertion:
-    def __init__(self, expected_lifecycle_transition, expected_heartbeat_timeout):
-        self.expected_lifecycle_transition = expected_lifecycle_transition
-        self.expected_heartbeat_timeout = expected_heartbeat_timeout
-
-    def assert_lifecycle_hook_properties(self, template, resource_name: str):
-        resource = template["Resources"][resource_name]
-        assert resource["Type"] == "AWS::AutoScaling::LifecycleHook"
-        properties = resource["Properties"]
-        assert properties["LifecycleTransition"] == self.expected_lifecycle_transition
-        if "HeartbeatTimeout" in properties:
-            assert properties["HeartbeatTimeout"] == self.expected_heartbeat_timeout
-
-
 class IamRoleAssertion:
     def __init__(self, expected_managed_policy_arn: str):
         self.expected_managed_policy_arn = expected_managed_policy_arn
@@ -566,18 +536,28 @@ class IamPolicyAssertion:
         (
             "test-login-nodes-stack.yaml",
             [
-                AutoScalingGroupAssertion(min_size=2, max_size=2, desired_capacity=2),
+                AutoScalingGroupAssertion(
+                    min_size=2,
+                    max_size=2,
+                    desired_capacity=2,
+                    expected_lifecycle_specification=[
+                        {
+                            "DefaultResult": "ABANDON",
+                            "HeartbeatTimeout": 7200,
+                            "LifecycleHookName": "clustername-testloginnodespool1-LoginNodesTerminatingLifecycleHook",
+                            "LifecycleTransition": "autoscaling:EC2_INSTANCE_TERMINATING",
+                        },
+                        {
+                            "DefaultResult": "ABANDON",
+                            "HeartbeatTimeout": 600,
+                            "LifecycleHookName": "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook",
+                            "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING",
+                        },
+                    ],
+                ),
                 NetworkLoadBalancerAssertion(expected_vpc_id="subnet-12345678", expected_internet_facing=True),
                 TargetGroupAssertion(expected_health_check="TCP", expected_port=22, expected_protocol="TCP"),
                 NetworkLoadBalancerListenerAssertion(expected_port=22, expected_protocol="TCP"),
-                LifecycleHookAssertion(
-                    expected_lifecycle_transition="autoscaling:EC2_INSTANCE_TERMINATING",
-                    expected_heartbeat_timeout=7200,
-                ),
-                LifecycleHookAssertion(
-                    expected_lifecycle_transition="autoscaling:EC2_INSTANCE_LAUNCHING",
-                    expected_heartbeat_timeout=600,
-                ),
                 IamRoleAssertion(expected_managed_policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"),
                 IamPolicyAssertion(
                     expected_statements=[
@@ -617,7 +597,8 @@ class IamPolicyAssertion:
                                         {"Ref": "AWS::Region"},
                                         ":",
                                         {"Ref": "AWS::AccountId"},
-                                        ":autoScalingGroupName/clustername-testloginnodespool1-AutoScalingGroup",
+                                        ":autoScalingGroup:*:autoScalingGroupName/clustername-"
+                                        + "testloginnodespool1-AutoScalingGroup",
                                     ],
                                 ]
                             },
@@ -640,7 +621,6 @@ def test_login_nodes_traffic_management_resources_values_properties(
         config_file_name,
         test_datadir,
     )
-
     asset_content_asg = get_asset_content_with_resource_name(
         cdk_assets, "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937"
     )
@@ -653,14 +633,6 @@ def test_login_nodes_traffic_management_resources_values_properties(
     asset_content_nlb_listener = get_asset_content_with_resource_name(
         cdk_assets,
         "clusternametestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC",
-    )
-    asset_content_lifecycle_hook_terminating = get_asset_content_with_resource_name(
-        cdk_assets,
-        "clusternametestloginnodespool1LoginNodesASGLifecycleHookTerminating51CA6203",
-    )
-    asset_content_lifecycle_hook_launching = get_asset_content_with_resource_name(
-        cdk_assets,
-        "clusternametestloginnodespool1LoginNodesASGLifecycleHookLaunching879DBA56",
     )
     asset_content_iam_role = get_asset_content_with_resource_name(
         cdk_assets,
@@ -690,17 +662,6 @@ def test_login_nodes_traffic_management_resources_values_properties(
                 "clusternametestloginnodespool1testloginnodespool1"
                 "LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC",
             )
-        elif isinstance(lt_assertion, LifecycleHookAssertion):
-            if lt_assertion.expected_lifecycle_transition == "autoscaling:EC2_INSTANCE_TERMINATING":
-                lt_assertion.assert_lifecycle_hook_properties(
-                    asset_content_lifecycle_hook_terminating,
-                    "clusternametestloginnodespool1LoginNodesASGLifecycleHookTerminating51CA6203",
-                )
-            else:
-                lt_assertion.assert_lifecycle_hook_properties(
-                    asset_content_lifecycle_hook_launching,
-                    "clusternametestloginnodespool1LoginNodesASGLifecycleHookLaunching879DBA56",
-                )
         elif isinstance(lt_assertion, IamRoleAssertion):
             lt_assertion.assert_iam_role_properties(asset_content_iam_role, "RoleA50bdea9651dc48c")
         elif isinstance(lt_assertion, IamPolicyAssertion):
@@ -1070,3 +1031,57 @@ def test_head_node_security_group(mocker, test_datadir, config_file_name):
                 port_range=port_range,
                 target_sg=sg,
             )
+
+
+@pytest.mark.parametrize(
+    "config_file_name, expected_field, expected_value, should_fail, error_message",
+    [
+        ("config_restricted_ssh_cidr.yaml", "CidrIp", "1.2.3.4/19", False, ""),
+        ("config_restricted_ssh_prefix_list.yaml", "SourcePrefixListId", "pl-012345abcdABCD", False, ""),
+        (
+            "config_restricted_ssh_invalid.yaml",
+            None,
+            None,
+            True,
+            "Invalid value: 'invalid-cidr' is neither a valid CIDR or a valid prefix-list.",
+        ),
+    ],
+)
+def test_security_group_with_restricted_ssh_access(
+    mocker, test_datadir, config_file_name, expected_field, expected_value, should_fail, error_message
+):
+    """
+    Validates that both HeadNode and LoginNoes SecurityGroups have restricted SSH access.
+
+    If AllowedIPs setting is defined in the HeadNode SSH section both HeadNode and LoginNoes SecurityGroups
+    should have restricted SSH access.
+    LoginNodes do not expose this parameter in the config, so they rely on what is specified on the HeadNode.
+    This may change once we remove access for regular users to the HeadNode.
+    """
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    if should_fail:
+        with pytest.raises(ValidationError) as e:
+            ClusterSchema(cluster_name="clustername").load(input_yaml)
+            assert e.is_instance_of(ValidationError)
+            assert str(e.value).is_equal_to(error_message)
+    else:
+        cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+        generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+            cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+        )
+
+        head_node_sg = generated_template["Resources"]["HeadNodeSecurityGroup"]
+        hn_ingress_rules = head_node_sg["Properties"]["SecurityGroupIngress"]
+        for rule in hn_ingress_rules:
+            if rule["FromPort"] == 22:  # SSH
+                assert rule[expected_field] == expected_value
+
+        login_node_sg = generated_template["Resources"]["LoginNodesSecurityGroup"]
+        ln_ingress_rules = login_node_sg["Properties"]["SecurityGroupIngress"]
+        for rule in ln_ingress_rules:
+            if rule["FromPort"] == 22:  # SSH
+                assert rule[expected_field] == expected_value
