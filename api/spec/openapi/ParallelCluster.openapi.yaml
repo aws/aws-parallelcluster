@@ -2389,9 +2389,9 @@ components:
           type: string
           description: The metric type.
         metricValue:
-          type: integer
+          type: number
           description: The metric value.
-          format: int32
+          format: float
     NodeType:
       type: string
       enum:
@@ -2472,9 +2472,9 @@ components:
           type: string
           description: The metric type.
         statValue:
-          type: integer
+          type: number
           description: The metric value.
-          format: int32
+          format: float
     Tag:
       type: object
       properties:

@@ -145,7 +145,7 @@ structure Metric {
     metricType: String,
 
     @documentation("The metric value.")
-    metricValue: Integer,
+    metricValue: Float,
 }
 
 structure Stat {
@@ -153,5 +153,5 @@ structure Stat {
     statType: String,
 
     @documentation("The metric value.")
-    statValue: Integer,
+    statValue: Float,
 }

@@ -82,7 +82,7 @@ class Metric(ModelNormal):
         """
         return {
             'metric_type': (str,),  # noqa: E501
-            'metric_value': (int,),  # noqa: E501
+            'metric_value': (float,),  # noqa: E501
         }
 
     @cached_property
@@ -137,7 +137,7 @@ class Metric(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             metric_type (str): The metric type.. [optional]  # noqa: E501
-            metric_value (int): The metric value.. [optional]  # noqa: E501
+            metric_value (float): The metric value.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -224,7 +224,7 @@ class Metric(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             metric_type (str): The metric type.. [optional]  # noqa: E501
-            metric_value (int): The metric value.. [optional]  # noqa: E501
+            metric_value (float): The metric value.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
