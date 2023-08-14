@@ -4,4 +4,4 @@ cfn-flip
 cfn-lint
 jinja2~=3.0
 pytest
-PyYAML==5.3.1
+PyYAML==6.0.1
