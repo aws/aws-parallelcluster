@@ -535,7 +535,7 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["ubuntu2204"]
         schedulers: ["slurm"]
-  test_fsx_lustre.py::test_fsx_file_cache:
+  test_fsx_lustre.py::test_file_cache:
     dimensions:
       - regions: [ "eu-west-2" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}

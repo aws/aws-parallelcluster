@@ -1,13 +1,13 @@
 
-Description: This template to create and delete FSx FileCache storage that can be attached to a cluster.
+Description: This template to create and delete FileCache storage that can be attached to a cluster.
 
 Parameters:
   FileCachePath:
-    Description: Fsx FileCachePath for Data Repository Association.
+    Description: FileCachePath for Data Repository Association.
     Type: String
-    Default: "/fsx-cache-path/"
+    Default: "/file-cache-path/"
   S3BucketName:
-    Description: S3 Bucket used as Data Repository for FSX File Cache.
+    Description: S3 Bucket used as Data Repository for File Cache.
     Type: String
     Default: ""
   VpcId:
@@ -21,10 +21,10 @@ Parameters:
 
 Resources:
 
-  FsxFileCacheSecurityGroup:
+  FileCacheSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow TCP Traffic for FSx FileCache
+      GroupDescription: Allow TCP Traffic for FileCache
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           FromPort: -1
@@ -37,13 +37,13 @@ Resources:
           ToPort: 988
       VpcId: !Ref VpcId
 
-  CreateDeleteFsxFileCacheLambda:
+  CreateDeleteFileCacheLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Description: !Sub "${AWS::StackName}: custom resource handler to creation and deletion of FSx FileCache."
+      Description: !Sub "${AWS::StackName}: custom resource handler to creation and deletion of FileCache."
       Handler: index.handler
       MemorySize: 128
-      Role: !GetAtt FsxFileCacheLambdaRole.Arn
+      Role: !GetAtt FileCacheLambdaRole.Arn
       Runtime: python3.9
       Timeout: 300
       TracingConfig:
@@ -62,7 +62,7 @@ Resources:
           fsx = boto3.client("fsx")
 
           def delete_file_cache_id(file_cache_id):
-            logger.info(f"Deleting Fsx File Cache {file_cache_id}...")
+            logger.info(f"Deleting File Cache {file_cache_id}...")
             max_attempts = 5
             sleep_time = 60
             for attempt in range(1, max_attempts+1):
@@ -70,14 +70,14 @@ Resources:
                 fsx.delete_file_cache(FileCacheId=file_cache_id)
                 break
               except fsx.exceptions.InternalServerError as e:
-                logger.error(f"(Attempt {attempt}/{max_attempts}) Cannot delete Fsx FileCache because of InternalServerError. Retrying in {sleep_time} seconds...")
+                logger.error(f"(Attempt {attempt}/{max_attempts}) Cannot delete FileCache because of InternalServerError. Retrying in {sleep_time} seconds...")
                 if attempt == max_attempts:
-                  raise Exception(f"Cannot delete Fsx FileCache {file_cache_id}: {e}")
+                  raise Exception(f"Cannot delete FileCache {file_cache_id}: {e}")
                 else:
                   time.sleep(sleep_time)
 
           def create_file_cache_id(file_cache_path, s3_bucket, subnet_id, securitygroup_id):
-            logger.info(f"Creating Fsx File Cache ...")
+            logger.info(f"Creating File Cache ...")
             try:
               return (
                 fsx.create_file_cache(
@@ -101,8 +101,8 @@ Resources:
               )
 
             except fsx.exceptions.InternalServerError as e:
-              logger.error(f"Cannot create Fsx FileCache because of InternalServerError.")
-              raise Exception(f"Cannot create Fsx FileCache {e}")
+              logger.error(f"Cannot create FileCache because of InternalServerError.")
+              raise Exception(f"Cannot create FileCache {e}")
 
 
           def handler(event, context):
@@ -136,13 +136,13 @@ Resources:
                 response_data['Message'] = 'Resource creation successful!'
                 physical_resource_id = file_cache_id
 
-                logger.info(f"fsx_file_cache_id: {file_cache_id}")
+                logger.info(f"file_cache_id: {file_cache_id}")
                 # provide outputs
                 response_data['FileCacheId'] = file_cache_id
                 response_data['FileCacheARN'] = file_cache_arn
               elif event['RequestType'] == 'Delete':
                 physical_resource_id = event.get("PhysicalResourceId")
-                logger.info('fsx_file_cache_id {}'.format(physical_resource_id))
+                logger.info('file_cache_id {}'.format(physical_resource_id))
                 delete_file_cache_id(file_cache_id=physical_resource_id)
 
               else:
@@ -155,18 +155,18 @@ Resources:
 
 
 
-  CreateDeleteFsxFileCache:
-    Type: Custom::CreateDeleteFsxFileCacheLambda
+  CreateDeleteFileCache:
+    Type: Custom::CreateDeleteFileCacheLambda
     DependsOn:
-      - FsxFileCacheSecurityGroup
+      - FileCacheSecurityGroup
     Properties:
-      ServiceToken: !GetAtt CreateDeleteFsxFileCacheLambda.Arn
+      ServiceToken: !GetAtt CreateDeleteFileCacheLambda.Arn
       FileCachePath: !Ref FileCachePath
       S3BucketName: !Ref S3BucketName
       SubnetId: !Ref SubnetId
-      SecurityGroupId: !Ref FsxFileCacheSecurityGroup
+      SecurityGroupId: !Ref FileCacheSecurityGroup
 
-  FsxFileCacheLambdaRole:
+  FileCacheLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -213,7 +213,7 @@ Resources:
                 Resource: !Sub arn:aws:s3:::${S3BucketName}
 
 Outputs:
-  FsxFileCacheId:
-    Value: !GetAtt CreateDeleteFsxFileCache.FileCacheId
-  FsxFileCacheSecurityGroupId:
-    Value: !GetAtt FsxFileCacheSecurityGroup.GroupId
+  FileCacheId:
+    Value: !GetAtt CreateDeleteFileCache.FileCacheId
+  FileCacheSecurityGroupId:
+    Value: !GetAtt FileCacheSecurityGroup.GroupId

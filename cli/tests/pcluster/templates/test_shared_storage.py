@@ -13,7 +13,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
-from pcluster.config.cluster_config import ExistingFsxFileCache, ExistingFsxOpenZfs
+from pcluster.config.cluster_config import ExistingFileCache, ExistingFsxOpenZfs
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
@@ -229,7 +229,7 @@ def test_unmanaged_shared_storage_fsx(mocker, test_datadir, config_file_name):
     for storage in cluster_config.shared_storage:
         if storage.existing_dns_name:
             assert_that(storage.existing_dns_name in head_node_dna_json_file).is_true()
-        if isinstance(storage, ExistingFsxFileCache):
+        if isinstance(storage, ExistingFileCache):
             assert_that(storage.file_cache_id in head_node_dna_json_file).is_true()
             assert_that(storage.file_cache_mount_name in head_node_dna_json_file).is_true()
             assert_that(storage.file_cache_id in generated_template.get("Outputs").get("FSXIds").get("Value")).is_true()
