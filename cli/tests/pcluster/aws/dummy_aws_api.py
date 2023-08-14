@@ -269,7 +269,7 @@ class _DummyFSxClient(FSxClient):
         return result
 
     def describe_file_caches(self, file_cache_ids):
-        """Describe FSx File cache."""
+        """Describe File Cache."""
         if self.non_happy_describe_storage_error is not None:
             raise self.non_happy_describe_storage_error
 

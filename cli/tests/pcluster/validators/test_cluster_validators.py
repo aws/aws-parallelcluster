@@ -1100,7 +1100,7 @@ def test_fsx_network_validator(
 ):
     fsx_mocked_requests = []
     if fsx_file_system_type == "LUSTRE":
-        # Creating describe Fsx Filecache mocker
+        # Creating describe FileCache mocker
         describe_file_caches_response = {
             "FileCaches": [
                 {
@@ -1286,7 +1286,7 @@ def test_fsx_network_validator(
     boto3_stubber("ec2", ec2_mocked_requests)
 
     if fsx_file_system_type == "LUSTRE":
-        # Testing for FSx File Cache
+        # Testing for File Cache
         actual_failures = ExistingFsxNetworkingValidator().execute(
             subnet_ids=["subnet-12345678"],
             security_groups_by_nodes=nodes_security_groups,

@@ -48,7 +48,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     BaseSharedFsx,
-    ExistingFsxFileCache,
+    ExistingFileCache,
     ExistingFsxOntap,
     ExistingFsxOpenZfs,
     SharedEbs,
@@ -904,7 +904,7 @@ class ClusterCdkStack:
         """Add specific Cfn Resources to map the FSX storage."""
         if isinstance(shared_fsx, SharedFsxLustre):
             fsx_id = shared_fsx.file_system_id
-        elif isinstance(shared_fsx, ExistingFsxFileCache):
+        elif isinstance(shared_fsx, ExistingFileCache):
             fsx_id = shared_fsx.file_cache_id
         else:
             fsx_id = shared_fsx.volume_id
@@ -919,7 +919,7 @@ class ClusterCdkStack:
                 volume_junction_path = shared_fsx.volume_path
             if isinstance(shared_fsx, SharedFsxLustre):
                 mount_name = shared_fsx.existing_mount_name
-            if isinstance(shared_fsx, ExistingFsxFileCache):
+            if isinstance(shared_fsx, ExistingFileCache):
                 mount_name = shared_fsx.file_cache_mount_name
         else:
             # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).

@@ -596,8 +596,8 @@ class ExistingFsxOntap(BaseSharedFsx):
         ]["Nfs"]["DNSName"]
 
 
-class ExistingFsxFileCache(BaseSharedFsx):
-    """Represent the shared FSX FileCache resource."""
+class ExistingFileCache(BaseSharedFsx):
+    """Represent the shared FileCache resource."""
 
     def __init__(self, file_cache_id: str, **kwargs):
         super().__init__(**kwargs)
@@ -607,12 +607,12 @@ class ExistingFsxFileCache(BaseSharedFsx):
 
     @property
     def existing_dns_name(self):
-        """Return DNSName of the existing FSx File Cache."""
+        """Return DNSName of the existing File Cache."""
         return AWSApi.instance().fsx.describe_file_caches([self.file_cache_id])[0].dns_name
 
     @property
     def file_cache_mount_name(self):
-        """Return Mount Name of the existing FSx File Cache."""
+        """Return Mount Name of the existing File Cache."""
         return AWSApi.instance().fsx.describe_file_caches([self.file_cache_id])[0].mount_name
 
 
@@ -1581,10 +1581,10 @@ class BaseClusterConfig(Resource):
                     existing_storage_count["fsx"] += 1
                     existing_fsx.add(storage.file_system_id)
                     self._register_validator(FeatureRegionValidator, feature=Feature.FSX_ONTAP, region=self.region)
-                elif isinstance(storage, ExistingFsxFileCache):
+                elif isinstance(storage, ExistingFileCache):
                     existing_storage_count["fsx"] += 1
                     existing_fsx.add(storage.file_cache_id)
-                    self._register_validator(FeatureRegionValidator, feature=Feature.FSX_FILE_CACHE, region=self.region)
+                    self._register_validator(FeatureRegionValidator, feature=Feature.FILE_CACHE, region=self.region)
                 elif isinstance(storage, SharedEbs):
                     if storage.raid:
                         new_storage_count["raid"] += 1
@@ -1746,7 +1746,7 @@ class BaseClusterConfig(Resource):
                     storage_id = storage.file_system_id
                 elif isinstance(storage, (SharedEbs, ExistingFsxOpenZfs, ExistingFsxOntap)):
                     storage_id = storage.volume_id
-                elif isinstance(storage, ExistingFsxFileCache):
+                elif isinstance(storage, ExistingFileCache):
                     storage_id = storage.file_cache_id
                 if storage_id:
                     storage_id_list.append(storage_id)

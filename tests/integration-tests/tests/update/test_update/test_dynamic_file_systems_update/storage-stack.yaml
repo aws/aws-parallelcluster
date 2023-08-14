@@ -3,16 +3,16 @@ Description: >-
   This template creates EFS, FSX Lustre, FSX Ontap, FSX Open ZFS storage that can be attached to a cluster.
 Parameters:
   FileCachePath:
-    Description: Fsx FileCachePath for Data Repository Association.
+    Description: FileCachePath for Data Repository Association.
     Type: String
-    Default: "/fsx-cache-path/"
+    Default: "/file-cache-path/"
   PublicSubnetId:
     Type: String
     Default: ''
   ImportPathParam:
     Type: String
     Default: ''
-  S3BucketFSxFileCacheStack:
+  S3BucketFileCacheStack:
     Description: The s3 Bucket Name containing the FsxFileStack
     Type: String
     Default: ""
@@ -253,16 +253,17 @@ Resources:
     Type: AWS::CloudFormation::WaitConditionHandle
 
 # Using the tests/integration-tests/resources/file-cache-storage-cfn.yaml which is uploaded in S3 bucket
-  FsxFileCacheStack:
+  FileCacheStack:
+    Condition: CreateFsx
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${S3BucketFSxFileCacheStack}.s3.amazonaws.com/file-cache-storage-cfn.yaml"
+      TemplateURL: !Sub "https://${S3BucketFileCacheStack}.s3.amazonaws.com/file-cache-storage-cfn.yaml"
       TimeoutInMinutes: 20
       Parameters:
         FileCachePath: !Ref FileCachePath
         VpcId: !Ref vpc
         SubnetId: !Ref PublicSubnetId
-        S3BucketName: !Ref S3BucketFSxFileCacheStack
+        S3BucketName: !Ref S3BucketFileCacheStack
 
 Outputs:
   EfsId:
@@ -273,5 +274,5 @@ Outputs:
     Value: !If [ CreateFsx, !Ref SVMVolume0, '']
   FsxOpenZfsVolumeId:
     Value: !If [ CreateFsx, !Ref OpenZFSVolume0, '']
-  FsxFileCacheId:
-    Value: !If [ CreateFsx, !GetAtt FsxFileCacheStack.Outputs.FsxFileCacheId, '']
+  FileCacheId:
+    Value: !If [ CreateFsx, !GetAtt FileCacheStack.Outputs.FileCacheId, '']
