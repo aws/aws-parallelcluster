@@ -105,9 +105,9 @@ SharedStorage:
     StorageType: FsxOntap
     FsxOntapSettings:
       VolumeId: {{ fsx_ontap_volume_id }}
-  - MountDir: {{ fsx_file_cache_mount_dir }}
+  - MountDir: {{ file_cache_mount_dir }}
     Name: existingfilecache
-    StorageType: FsxFileCache
-    FsxFileCacheSettings:
-      FileCacheId: {{ existing_fsx_file_cache_id }}
+    StorageType: FileCache
+    FileCacheSettings:
+      FileCacheId: {{ existing_file_cache_id }}
   {% endif %}

@@ -328,10 +328,10 @@ def test_multiple_fsx(
 
 
 @pytest.mark.usefixtures("instance")
-def test_fsx_file_cache(
+def test_file_cache(
     os,
     region,
-    create_fsx_file_cache,
+    create_file_cache,
     pcluster_config_reader,
     s3_bucket_factory,
     clusters_factory,
@@ -339,7 +339,7 @@ def test_fsx_file_cache(
     test_datadir,
 ):
     """
-    Test existing Fsx file cache
+    Test existing File Cache
 
     Check fsx_fc_id provided in config file can be mounted correctly
     """
@@ -350,12 +350,12 @@ def test_fsx_file_cache(
         bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
         bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
 
-        fsx_file_cache_id = _get_fsx_file_cache_id(
-            create_fsx_file_cache,
-            "/fsx-cache-path/",
+        file_cache_id = _get_file_cache_id(
+            create_file_cache,
+            "/file-cache-path/",
             bucket_name,
         )
-        cluster_config = pcluster_config_reader(fsx_file_cache_id=fsx_file_cache_id, bucket_name=bucket_name)
+        cluster_config = pcluster_config_reader(file_cache_id=file_cache_id, bucket_name=bucket_name)
         cluster = clusters_factory(cluster_config)
 
         check_fsx(
@@ -364,7 +364,7 @@ def test_fsx_file_cache(
             scheduler_commands_factory,
             ["/existing-file-cache-mount-1"],
             bucket_name,
-            file_cache_path="/fsx-cache-path/",
+            file_cache_path="/file-cache-path/",
         )
 
 
@@ -433,22 +433,22 @@ def _create_fsx_open_zfs_volume_ids(num_existing_fsx_open_zfs_volumes, fsx_facto
     return []
 
 
-def _get_fsx_file_cache_id(create_fsx_file_cache, file_cache_path, bucket_name):
-    return create_fsx_file_cache(file_cache_path, bucket_name)
+def _get_file_cache_id(create_file_cache, file_cache_path, bucket_name):
+    return create_file_cache(file_cache_path, bucket_name)
 
 
 @pytest.fixture
-def create_fsx_file_cache(request, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
-    """Create a FSx File Cache Stack with its required Networking resources."""
+def create_file_cache(request, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
+    """Create a File Cache Stack with its required Networking resources."""
     file_cache_config_file = os.path.join("resources", "file-cache-storage-cfn.yaml")
 
-    def _create_fsx_file_cache(file_cache_path, bucket_name):
+    def _create_file_cache(file_cache_path, bucket_name):
         if request.config.getoption("external_shared_storage_stack_name"):
             stack = CfnStack(
                 name=request.config.getoption("external_shared_storage_stack_name"), region=region, template=None
             )
         else:
-            logging.info("Creating the stack for Fsx File Cache")
+            logging.info("Creating the stack for File Cache")
             params = [
                 {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
                 {"ParameterKey": "S3BucketName", "ParameterValue": bucket_name},
@@ -467,13 +467,13 @@ def create_fsx_file_cache(request, region, vpc_stack: CfnVpcStack, cfn_stacks_fa
                 capabilities=["CAPABILITY_IAM"],
             )
             cfn_stacks_factory.create_stack(stack)
-            logging.info("Created the FileCacheId {0}".format(stack.cfn_outputs["FsxFileCacheId"]))
+            logging.info("Created the FileCacheId {0}".format(stack.cfn_outputs["FileCacheId"]))
             # Immediately using the FileCacheId after its creation gives Error
             time.sleep(100)
 
-        return stack.cfn_outputs["FsxFileCacheId"]
+        return stack.cfn_outputs["FileCacheId"]
 
-    yield _create_fsx_file_cache
+    yield _create_file_cache
 
 
 def _create_fsx_lustre_volume_ids(num_existing_fsx_lustre, fsx_factory, import_path, export_path):

@@ -897,7 +897,7 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
                 {"ParameterKey": "vpc", "ParameterValue": vpc},
                 {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
                 {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
-                {"ParameterKey": "S3BucketFSxFileCacheStack", "ParameterValue": bucket_name},
+                {"ParameterKey": "S3BucketFileCacheStack", "ParameterValue": bucket_name},
                 {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
                 {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
                 {"ParameterKey": "CreateEfs", "ParameterValue": "true"},
@@ -944,7 +944,7 @@ def test_dynamic_file_systems_update(
     fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir"
     fsx_ontap_mount_dir = "/existing_fsx_ontap_mount_dir"
     fsx_open_zfs_mount_dir = "/existing_fsx_open_zfs_mount_dir"
-    fsx_file_cache_mount_dir = "/existing_fsx_file_cache_mount_dir"
+    file_cache_mount_dir = "/existing_file_cache_mount_dir"
     new_ebs_mount_dir = "/new_ebs_mount_dir"
     new_raid_mount_dir = "/new_raid_dir"
     new_efs_mount_dir = "/new_efs_mount_dir"
@@ -957,7 +957,7 @@ def test_dynamic_file_systems_update(
             fsx_lustre_mount_dir,
             fsx_open_zfs_mount_dir,
             fsx_ontap_mount_dir,
-            fsx_file_cache_mount_dir,
+            file_cache_mount_dir,
         ]
         if fsx_supported
         else []
@@ -968,14 +968,14 @@ def test_dynamic_file_systems_update(
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     bucket.upload_file(os_path.join("resources", "file-cache-storage-cfn.yaml"), "file-cache-storage-cfn.yaml")
-    file_cache_path = "/fsx-cache-path/"
+    file_cache_path = "/file-cache-path/"
     (
         existing_ebs_volume_id,
         existing_efs_id,
         existing_fsx_lustre_fs_id,
         existing_fsx_ontap_volume_id,
         existing_fsx_open_zfs_volume_id,
-        existing_fsx_file_cache_id,
+        existing_file_cache_id,
     ) = _create_shared_storages_resources(
         snapshots_factory,
         request,
@@ -1019,12 +1019,12 @@ def test_dynamic_file_systems_update(
         fsx_lustre_mount_dir=fsx_lustre_mount_dir,
         fsx_ontap_mount_dir=fsx_ontap_mount_dir,
         fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
-        fsx_file_cache_mount_dir=fsx_file_cache_mount_dir,
+        file_cache_mount_dir=file_cache_mount_dir,
         existing_efs_id=existing_efs_id,
         existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
         fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
-        existing_fsx_file_cache_id=existing_fsx_file_cache_id,
+        existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
         new_ebs_deletion_policy="Delete",
@@ -1087,12 +1087,12 @@ def test_dynamic_file_systems_update(
         fsx_lustre_mount_dir=fsx_lustre_mount_dir,
         fsx_ontap_mount_dir=fsx_ontap_mount_dir,
         fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
-        fsx_file_cache_mount_dir=fsx_file_cache_mount_dir,
+        file_cache_mount_dir=file_cache_mount_dir,
         existing_efs_id=existing_efs_id,
         existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
         fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
-        existing_fsx_file_cache_id=existing_fsx_file_cache_id,
+        existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
         new_ebs_deletion_policy="Retain",
@@ -1114,7 +1114,7 @@ def test_dynamic_file_systems_update(
             existing_fsx_lustre_fs_id,
             existing_fsx_ontap_volume_id,
             existing_fsx_open_zfs_volume_id,
-            existing_fsx_file_cache_id,
+            existing_file_cache_id,
         ]
         if fsx_supported
         else []
@@ -1217,7 +1217,7 @@ def _create_shared_storages_resources(
         storage_stack.cfn_outputs["FsxLustreFsId"],
         storage_stack.cfn_outputs["FsxOntapVolumeId"],
         storage_stack.cfn_outputs["FsxOpenZfsVolumeId"],
-        storage_stack.cfn_outputs["FsxFileCacheId"],
+        storage_stack.cfn_outputs["FileCacheId"],
     )
 
 
