@@ -85,11 +85,12 @@ def test_starccm(
             outcome = "improvement"
         else:
             outcome = "degradation"
-            performance_degradation[node] = perf_test_result.stdout
         logging.info(
             f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {perf_test_result.stdout} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
+        if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
+            performance_degradation[node] = perf_test_result.stdout
     if performance_degradation:
         degraded_nodes = performance_degradation.keys()
         pytest.fail(
