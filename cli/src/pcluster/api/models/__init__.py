@@ -11,6 +11,9 @@
 # flake8: noqa
 
 
+from pcluster.api.models.alarm import Alarm
+from pcluster.api.models.alarm_state import AlarmState
+
 # import models into model package
 from pcluster.api.models.ami_info import AmiInfo
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent
@@ -40,7 +43,7 @@ from pcluster.api.models.describe_cluster_instances_response_content import Desc
 from pcluster.api.models.describe_cluster_response_content import DescribeClusterResponseContent
 from pcluster.api.models.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent
 from pcluster.api.models.describe_image_response_content import DescribeImageResponseContent
-from pcluster.api.models.detail import Detail
+from pcluster.api.models.details import Details
 from pcluster.api.models.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
 from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.ec2_ami_info_summary import Ec2AmiInfoSummary
@@ -69,11 +72,13 @@ from pcluster.api.models.log_stream import LogStream
 from pcluster.api.models.login_nodes_pool import LoginNodesPool
 from pcluster.api.models.login_nodes_state import LoginNodesState
 from pcluster.api.models.metadata import Metadata
+from pcluster.api.models.metric import Metric
 from pcluster.api.models.node_type import NodeType
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster.api.models.requested_compute_fleet_status import RequestedComputeFleetStatus
 from pcluster.api.models.scheduler import Scheduler
 from pcluster.api.models.stack_event import StackEvent
+from pcluster.api.models.stat import Stat
 from pcluster.api.models.tag import Tag
 from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
 from pcluster.api.models.update_cluster_bad_request_exception_response_content import (

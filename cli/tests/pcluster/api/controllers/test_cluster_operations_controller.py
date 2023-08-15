@@ -629,8 +629,8 @@ class TestDescribeCluster:
         )
 
     @pytest.mark.parametrize(
-        "verbose, cfn_stack_data, head_node_data, fail_on_bucket_check, scheduler, stack_resources_data, cw_alarms, "
-        "expected_response",
+        "verbose, cfn_stack_data, head_node_data, fail_on_bucket_check, scheduler, stack_resources_data, "
+        "cw_alarms_and_states, cw_metrics_and_values, stats, expected_response",
         [
             (
                 False,
@@ -652,7 +652,13 @@ class TestDescribeCluster:
                 False,
                 "slurm",
                 cfn_describe_stack_resources_mock_response(),
-                [],
+                [
+                    {"alarmType": "test_DiskAlarm_HeadNode", "alarmState": "OK"},
+                    {"alarmType": "test_MemAlarm_HeadNode", "alarmState": "OK"},
+                    {"alarmType": "test_ProtectedModeAlarm_HeadNode", "alarmState": "INSUFFICIENT_DATA"},
+                ],
+                [{"metricType": "MaxDynamicNodeIdleTime", "metricValue": 508.30772600000006}],
+                [{"statType": "numberOfComputerNodes", "statValue": 0}],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -696,7 +702,13 @@ class TestDescribeCluster:
                 False,
                 "awsbatch",
                 cfn_describe_stack_resources_mock_response(),
-                [],
+                [
+                    {"alarmType": "test_DiskAlarm_HeadNode", "alarmState": "OK"},
+                    {"alarmType": "test_MemAlarm_HeadNode", "alarmState": "OK"},
+                    {"alarmType": "test_ProtectedModeAlarm_HeadNode", "alarmState": "INSUFFICIENT_DATA"},
+                ],
+                [{"metricType": "InsufficientCapacityErrors", "metricValue": 3.0}],
+                [{"statType": "numberOfComputerNodes", "statValue": 15}],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -732,7 +744,13 @@ class TestDescribeCluster:
                 True,
                 "slurm",
                 cfn_describe_stack_resources_mock_response(),
-                [{"alarm_type": "test_ProtectedModeAlarm_HeadNode", "alarm_state": "ALARM"}],
+                [
+                    {"alarm_type": "test_DiskAlarm_HeadNode", "alarm_state": "OK"},
+                    {"alarm_type": "test_MemAlarm_HeadNode", "alarm_state": "OK"},
+                    {"alarm_type": "test_ProtectedModeAlarm_HeadNode", "alarm_state": "ALARM"},
+                ],
+                [],
+                0,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -753,7 +771,20 @@ class TestDescribeCluster:
                     ],
                     "version": get_installed_version(),
                     "scheduler": {"type": "slurm"},
-                    "details": [{"alarmType": "test_ProtectedModeAlarm_HeadNode", "alarmState": "ALARM"}],
+                    "details": {
+                        "alarms": [
+                            {"alarmType": "test_DiskAlarm_HeadNode", "alarmState": "OK"},
+                            {"alarmType": "test_MemAlarm_HeadNode", "alarmState": "OK"},
+                            {"alarmType": "test_ProtectedModeAlarm_HeadNode", "alarmState": "ALARM"},
+                        ],
+                        "metrics": [],
+                        "stats": [
+                            {
+                                "statType": "numberOfComputerNodes",
+                                "statValue": 0,
+                            }
+                        ],
+                    },
                 },
             ),
             (
@@ -772,6 +803,8 @@ class TestDescribeCluster:
                 "slurm",
                 cfn_describe_stack_resources_mock_response(),
                 [],
+                [],
+                0,
                 {
                     "cloudFormationStackStatus": "ROLLBACK_IN_PROGRESS",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -795,6 +828,7 @@ class TestDescribeCluster:
                     "failures": [
                         {"failureCode": "ClusterCreationFailure", "failureReason": "Failed to create the cluster."},
                     ],
+                    "details": {"metrics": [], "stats": [{"statType": "numberOfComputerNodes", "statValue": 0}]},
                 },
             ),
             (
@@ -817,6 +851,8 @@ class TestDescribeCluster:
                 "slurm",
                 cfn_describe_stack_resources_mock_response(),
                 [],
+                [],
+                18,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -844,6 +880,15 @@ class TestDescribeCluster:
                         "state": "running",
                     },
                     "scheduler": {"type": "slurm"},
+                    "details": {
+                        "metrics": [],
+                        "stats": [
+                            {
+                                "statType": "numberOfComputerNodes",
+                                "statValue": 18,
+                            }
+                        ],
+                    },
                 },
             ),
         ],
@@ -856,7 +901,9 @@ class TestDescribeCluster:
         verbose,
         cfn_stack_data,
         stack_resources_data,
-        cw_alarms,
+        cw_alarms_and_states,
+        cw_metrics_and_values,
+        stats,
         head_node_data,
         fail_on_bucket_check,
         scheduler,
@@ -869,7 +916,14 @@ class TestDescribeCluster:
             return_value=([head_node_data], "") if head_node_data else ([], ""),
         )
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resources", return_value=stack_resources_data)
-        mocker.patch("pcluster.aws.cloudwatch.CloudWatchClient.get_alarms_in_alarm", return_value=cw_alarms)
+        mocker.patch(
+            "pcluster.aws.cloudwatch.CloudWatchClient.get_alarms_with_states", return_value=cw_alarms_and_states
+        )
+        mocker.patch(
+            "pcluster.aws.cloudwatch.CloudWatchClient.get_cluster_health_metrics_values",
+            return_value=cw_metrics_and_values,
+        )
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_num_of_running_instances", return_value=stats)
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.get_stack_events",
             return_value={
@@ -917,7 +971,6 @@ class TestDescribeCluster:
             )
 
         response = self._send_test_request(client, verbose=verbose)
-
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
             assert_that(response.get_json()).is_equal_to(expected_response)

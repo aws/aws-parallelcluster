@@ -197,12 +197,19 @@ class ClusterStack(StackInfo):
             if resource.get("ResourceType") == "AWS::CloudWatch::Alarm" and resource.get("PhysicalResourceId")
         ]
 
-    def get_alarms_in_alarm(self):
-        """Loop through the alarm names to get alarms in alarm."""
+    def get_alarms_and_states(self):
+        """Retrieve the alarms and their current states for the CloudFormation stack."""
         alarm_names = self._get_alarm_names()
-        alarms_in_alarm = AWSApi.instance().cloudwatch.get_alarms_in_alarm(alarm_names)
+        alarms_and_states = AWSApi.instance().cloudwatch.get_alarms_with_states(alarm_names)
+        return alarms_and_states
 
-        return alarms_in_alarm
+    def get_metrics_and_values(self):
+        """Retrieve the health metrics and their values for the cluster."""
+        return AWSApi.instance().cloudwatch.get_cluster_health_metrics_values(self.name)
+
+    def get_num_of_running_instances(self):
+        """Retrieve the number of running instances for the cluster."""
+        return AWSApi.instance().ec2.get_num_of_running_instances(self.name)
 
 
 class ClusterInstance(InstanceInfo):

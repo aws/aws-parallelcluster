@@ -549,3 +549,18 @@ class Ec2Client(Boto3Client):
                 return True
 
         return False
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_num_of_running_instances(self, cluster_name):
+        """Get the number of running compute nodes."""
+        response = self._client.describe_instances(
+            Filters=[
+                {"Name": "instance-state-name", "Values": ["running"]},
+                {"Name": "tag:parallelcluster:cluster-name", "Values": [cluster_name]},
+                {"Name": "tag:parallelcluster:node-type", "Values": ["Compute"]},
+            ]
+        )
+        running_instances = [
+            instance for reservation in response["Reservations"] for instance in reservation["Instances"]
+        ]
+        return len(running_instances)

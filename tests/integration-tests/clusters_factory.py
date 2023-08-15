@@ -186,9 +186,11 @@ class Cluster:
             logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def describe_cluster(self):
+    def describe_cluster(self, verbose=False):
         """Run pcluster describe-cluster and return the result."""
         cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
+        if verbose:
+            cmd_args.extend(["--verbose", "true"])
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
