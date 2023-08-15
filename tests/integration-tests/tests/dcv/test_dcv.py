@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
 import os as operating_system
 import re
 
@@ -16,7 +17,7 @@ import pytest
 import requests
 from assertpy import assert_that
 from framework.credential_providers import run_pcluster_command
-from remote_command_executor import RemoteCommandExecutor
+from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from utils import (
     add_keys_to_known_hosts,
     check_head_node_security_group,
@@ -85,20 +86,14 @@ def _test_dcv_configuration(
     _check_auth_ko(
         remote_command_executor,
         dcv_authenticator_port,
-        "action=requestToken&authUser=centos&sessionID=invalidSessionId",
+        "-d action=requestToken -d authUser=centos -d sessionID=invalidSessionId",
         "The given session does not exists",
     )
     _check_auth_ko(
-        remote_command_executor,
-        dcv_authenticator_port,
-        "action=test",
-        "The action specified 'test' is not valid",
+        remote_command_executor, dcv_authenticator_port, "-d action=test", "The action specified 'test' is not valid"
     )
     _check_auth_ko(
-        remote_command_executor,
-        dcv_authenticator_port,
-        "action=requestToken&authUser=centos",
-        "Wrong parameters",
+        remote_command_executor, dcv_authenticator_port, "-d action=requestToken -d authUser=centos", "Wrong parameters"
     )
 
     shared_dir = f"/home/{get_username_for_os(os)}"
@@ -134,12 +129,15 @@ def _test_dcv_configuration(
 
 
 def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message):
-    assert_that(
-        remote_command_executor.run_remote_command(
-            "wget --no-check-certificate --output-document - --quiet "
-            f"'{SERVER_URL}:{dcv_authenticator_port}?{params}'"
-        ).stdout
-    ).contains(expected_message)
+    try:
+        assert_that(
+            remote_command_executor.run_remote_command(
+                f"curl -s -k -X GET -G {SERVER_URL}:{dcv_authenticator_port} {params}"
+            ).stdout
+        ).contains(expected_message)
+    except RemoteCommandExecutionError as e:
+        logging.info(f"Exception: {e}")
+        assert_that(e.result.stdout).contains(expected_message)
 
 
 def _check_shared_dir(remote_command_executor, shared_dir):
