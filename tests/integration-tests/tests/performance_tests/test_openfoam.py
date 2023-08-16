@@ -81,8 +81,6 @@ def test_openfoam(
             performance_degradation[node] = perf_test_result.stdout
     if performance_degradation:
         degraded_nodes = list(performance_degradation.keys())
-        pytest.fail(
-            f"Performance test results show performance degradation for the following nodes: {degraded_nodes}"
-        )
+        pytest.fail(f"Performance test results show performance degradation for the following nodes: {degraded_nodes}")
     else:
         logging.info("Performance test results show no performance degradation")
