@@ -73,15 +73,16 @@ def test_openfoam(
             outcome = "improvement"
         else:
             outcome = "degradation"
-            performance_degradation[node] = elapsed_time
         logging.info(
             f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {elapsed_time} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
+        if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
+            performance_degradation[node] = perf_test_result.stdout
     if performance_degradation:
-        degraded_nodes = performance_degradation.keys()
+        degraded_nodes = list(performance_degradation.keys())
         pytest.fail(
-            f"Performance test results show performance degradation for the following nodes:" f"{degraded_nodes}"
+            f"Performance test results show performance degradation for the following nodes: {degraded_nodes}"
         )
     else:
         logging.info("Performance test results show no performance degradation")
