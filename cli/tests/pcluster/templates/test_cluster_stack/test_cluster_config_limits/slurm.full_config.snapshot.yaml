@@ -86,7 +86,7 @@ Imds:
 LoginNodes:
   Pools:
   - Count: 1
-    GracetimePeriod: 60
+    GracetimePeriod: 10
     Iam:
       AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AdministratorAccess
