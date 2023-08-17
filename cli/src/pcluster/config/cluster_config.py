@@ -1264,7 +1264,7 @@ class LoginNodesPool(Resource):
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
         self.iam = iam or LoginNodesIam(implied=True)
-        self.gracetime_period = Resource.init_param(gracetime_period, default=60)
+        self.gracetime_period = Resource.init_param(gracetime_period, default=10)
 
     @property
     def instance_profile(self):
