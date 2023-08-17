@@ -18,10 +18,10 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: {{ scheduler }}
-  {{ scheduler_prefix }}Settings:
+  Scheduler: slurm
+  SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
-  {{ scheduler_prefix }}Queues:
+  SlurmQueues:
     - Name: ondemand
       Networking:
         SubnetIds:
