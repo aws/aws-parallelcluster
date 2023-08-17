@@ -45,9 +45,12 @@ class RemoteCommandExecutor:
             bastion = f"{username}@{cluster.head_node_ip}"
         elif use_login_node:
             self.target = "LoginNode"
-            node_ip = cluster.get_login_node_public_ip()
+            if bastion:
+                node_ip = cluster.get_login_node_private_ip()
+            else:
+                node_ip = cluster.get_login_node_public_ip()
             if node_ip is None:
-                raise RemoteCommandExecutionError("No healthy LoginNode found in the cluster.")
+                raise RemoteCommandExecutionError("Unable to retrieve a valid LoginNode IP Address.")
         else:
             self.target = "HeadNode"
             node_ip = cluster.head_node_ip
@@ -68,6 +71,7 @@ class RemoteCommandExecutor:
             )
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
+            connection_kwargs["connect_kwargs"]["banner_timeout"] = 60
         logging.info(
             f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
             f"{connection_kwargs['connect_kwargs']['key_filename']}"
