@@ -64,7 +64,6 @@ SCALING_STRATEGIES = ["job-level", "node-list"]
 @pytest.mark.parametrize("use_login_node", [True, False])
 def test_slurm(
     region,
-    scheduler,
     pcluster_config_reader,
     clusters_factory,
     test_datadir,
@@ -77,8 +76,6 @@ def test_slurm(
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    if use_login_node and scheduler != "slurm":
-        pytest.skip(f"Skipping test because scheduler: {scheduler} is not supported for login nodes. Please use Slurm.")
     scaledown_idletime = 3
     gpu_instance_type = "g3.4xlarge"
     gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
@@ -123,8 +120,7 @@ def test_slurm(
         partition="gpu",
         instance_type=gpu_instance_type,
         max_count=5,
-        gpu_per_instance=_get_num_gpus_on_instance(gpu_instance_type_info),
-        gpu_type="m60",
+        gpu_instance_type_info=gpu_instance_type_info,
     )
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
@@ -134,20 +130,19 @@ def test_slurm(
     assert_no_errors_in_logs(head_node_command_executor, "slurm")
     # Test compute node bootstrap timeout
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(head_node_command_executor)
-    if scheduler == "slurm":  # TODO enable this once bootstrap_timeout feature is implemented in slurm plugin
-        _test_compute_node_bootstrap_timeout(
-            cluster,
-            pcluster_config_reader,
-            remote_command_executor,
-            compute_node_bootstrap_timeout,
-            scaledown_idletime,
-            gpu_instance_type,
-            clustermgtd_conf_path,
-            slurm_root_path,
-            slurm_commands,
-            use_login_node,
-            head_node_command_executor,
-        )
+    _test_compute_node_bootstrap_timeout(
+        cluster,
+        pcluster_config_reader,
+        remote_command_executor,
+        compute_node_bootstrap_timeout,
+        scaledown_idletime,
+        gpu_instance_type,
+        clustermgtd_conf_path,
+        slurm_root_path,
+        slurm_commands,
+        use_login_node,
+        head_node_command_executor,
+    )
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1484,8 +1479,11 @@ def _check_mpi_process(remote_command_executor, slurm_commands, num_nodes, after
         assert_that(proc_track_result.stdout).contains("IMB-MPI1")
 
 
-def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count, gpu_per_instance, gpu_type):
+def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count, gpu_instance_type_info):
     """Test edge cases regarding the number of GPUs."""
+    gpu_per_instance = _get_num_gpus_on_instance(gpu_instance_type_info)
+    # This assumes homogeneity in the type of GPUs available on the GPU instance
+    gpu_type = gpu_instance_type_info.get("GpuInfo").get("Gpus")[0].get("Name").lower()
     logging.info("Testing scheduler does not accept jobs when requesting for more GPUs than available")
     # Expect commands below to fail with exit 1
     _submit_command_and_assert_job_rejected(
