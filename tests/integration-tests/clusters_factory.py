@@ -246,11 +246,22 @@ class Cluster:
         return self.describe_cluster_instances(node_type="LoginNode")
 
     def get_login_node_public_ip(self):
-        """Return the ip address of the first healthy login node if exists."""
+        """Return the public ip address of the first healthy login node if exists."""
+        return self._get_login_node_ip(private=False)
+
+    def get_login_node_private_ip(self):
+        """Return the private ip address of the first healthy login node if exists."""
+        return self._get_login_node_ip(private=True)
+
+    def _get_login_node_ip(self, private=False):
+        key = "publicIpAddress"
+        if private:
+            key = "privateIpAddress"
+
         login_nodes = self.describe_login_nodes()
-        for login in login_nodes:
-            if "running" == login["state"]:
-                return login["publicIpAddress"]
+        for node in login_nodes:
+            if "running" == node["state"] and key in node:
+                return node[key]
 
         return None
 
