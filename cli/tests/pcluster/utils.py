@@ -10,6 +10,7 @@
 # limitations under the License.
 import itertools
 import os
+import re
 from copy import deepcopy
 
 import pytest
@@ -60,7 +61,7 @@ def get_asset_content_with_resource_name(assets, resource_name):
     for asset in assets:
         asset_content = asset.get("content")
         if asset_content:
-            if asset_content["Resources"].get(resource_name):
+            if any(re.match(resource_name, k) for k in asset_content["Resources"].keys()):
                 return asset_content
     return None
 
