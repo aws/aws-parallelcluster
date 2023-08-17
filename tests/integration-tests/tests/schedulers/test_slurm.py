@@ -94,12 +94,6 @@ def test_slurm(
     )
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
-    remote_command_executor_for_head_node = None
-    if use_login_node:
-        remote_command_executor_for_head_node = RemoteCommandExecutor(cluster)
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(
-        remote_command_executor if not use_login_node else remote_command_executor_for_head_node
-    )
     slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
     _test_slurm_version(remote_command_executor)
@@ -134,10 +128,12 @@ def test_slurm(
     )
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
-    assert_no_errors_in_logs(
-        remote_command_executor if not use_login_node else remote_command_executor_for_head_node, "slurm"
-    )
+
+    # Tests below must run on HeadNode or need HeadNode participate.
+    head_node_command_executor = RemoteCommandExecutor(cluster)
+    assert_no_errors_in_logs(head_node_command_executor, "slurm")
     # Test compute node bootstrap timeout
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(head_node_command_executor)
     if scheduler == "slurm":  # TODO enable this once bootstrap_timeout feature is implemented in slurm plugin
         _test_compute_node_bootstrap_timeout(
             cluster,
@@ -150,7 +146,7 @@ def test_slurm(
             slurm_root_path,
             slurm_commands,
             use_login_node,
-            remote_command_executor_for_head_node,
+            head_node_command_executor,
         )
 
 
@@ -1998,18 +1994,14 @@ def _test_compute_node_bootstrap_timeout(
     slurm_root_path,
     slurm_commands,
     use_login_node,
-    remote_command_executor_for_head_node,
+    head_node_command_executor,
 ):
     """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
     slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
         "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
     ).stdout
     assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={compute_node_bootstrap_timeout}")
-    clustermgtd_conf = (
-        remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
-        if not use_login_node
-        else remote_command_executor_for_head_node.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
-    )
+    clustermgtd_conf = head_node_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
     # Update cluster
     update_compute_node_bootstrap_timeout = 10
@@ -2021,21 +2013,12 @@ def _test_compute_node_bootstrap_timeout(
         use_login_node=use_login_node,
     )
     _update_and_start_cluster(cluster, updated_config_file)
-    slurm_parallelcluster_conf = (
-        remote_command_executor.run_remote_command(
-            "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
-        ).stdout
-        if not use_login_node
-        else remote_command_executor_for_head_node.run_remote_command(
-            "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
-        ).stdout
-    )
+    slurm_parallelcluster_conf = head_node_command_executor.run_remote_command(
+        "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
+    ).stdout
+
     assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={update_compute_node_bootstrap_timeout}")
-    clustermgtd_conf = (
-        remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
-        if not use_login_node
-        else remote_command_executor_for_head_node.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
-    )
+    clustermgtd_conf = head_node_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
     assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
 
