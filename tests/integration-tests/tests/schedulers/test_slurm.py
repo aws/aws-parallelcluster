@@ -145,6 +145,54 @@ def test_slurm(
     )
 
 
+@pytest.mark.usefixtures("instance", "os")
+def test_slurm_ticket_17399(
+    region, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory
+):
+    """
+    Test Slurm ticket 17399
+
+    Check if certain valid combinations of sbatch options lead to a submission error
+    """
+    gpu_instance_type = "g4dn.12xlarge"
+    disable_multithreading = False
+    gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
+    gpus_per_instance = _get_num_gpus_on_instance(gpu_instance_type_info)
+    if disable_multithreading:
+        cpus_per_instance = gpu_instance_type_info.get("VCpuInfo").get("DefaultCores")
+    else:
+        cpus_per_instance = gpu_instance_type_info.get("VCpuInfo").get("DefaultVCpus")
+
+    cluster_config = pcluster_config_reader(
+        gpu_instance_type=gpu_instance_type,
+    )
+    cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    # This command works fine in Slurm 23.02.4
+    slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "partition": "gpu",
+            "test_only": True,
+            "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
+            f"--cpus-per-task={cpus_per_instance//gpus_per_instance}",
+        }
+    )
+
+    # This command does not work fine in Slurm 23.02.4, even if it should
+    slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "partition": "gpu",
+            "test_only": True,
+            "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
+            f"--cpus-per-task={cpus_per_instance//gpus_per_instance + 1}",
+        }
+    )
+
+
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.parametrize("use_login_node", [True, False])
 def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_login_node):
