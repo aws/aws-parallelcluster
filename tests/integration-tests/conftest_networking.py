@@ -195,26 +195,27 @@ def subnet_name(visibility="Public", az_id=None, flavor=None):
     return f"{az_id_pascal_case}{visibility}{flavor_string}"
 
 
-def get_availability_zones(region, credential):
+def describe_availability_zones(region, credential):
     """
-    Return a list of availability zones for the given region.
+    Return the response of boto3 describe_availability_zones.
 
     Note that this function is called by the vpc_stacks fixture. Because vcp_stacks is session-scoped,
     it cannot utilize setup_sts_credentials, which is required in opt-in regions in order to call
     describe_availability_zones.
     """
-    az_list = []
     with aws_credential_provider(region, credential):
         client = boto3.client("ec2", region_name=region)
-        response_az = client.describe_availability_zones(
+        return client.describe_availability_zones(
             Filters=[
                 {"Name": "region-name", "Values": [str(region)]},
                 {"Name": "zone-type", "Values": ["availability-zone"]},
             ]
-        )
-        for az in response_az.get("AvailabilityZones"):
-            az_list.append(az.get("ZoneName"))
-    return az_list
+        ).get("AvailabilityZones")
+
+
+def get_availability_zones(region, credential):
+    """Return a list of availability zones for the given region."""
+    return [az.get("ZoneName") for az in describe_availability_zones(region, credential)]
 
 
 def get_az_setup_for_region(region: str, credential: list):
@@ -229,14 +230,7 @@ def get_az_setup_for_region(region: str, credential: list):
 
 def get_az_id_to_az_name_map(region, credential):
     """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
-    # credentials are managed manually rather than via setup_sts_credentials because this function
-    # is called by a session-scoped fixture, which cannot make use of a class-scoped fixture.
-    with aws_credential_provider(region, credential):
-        ec2_client = boto3.client("ec2", region_name=region)
-        return {
-            entry.get("ZoneId"): entry.get("ZoneName")
-            for entry in ec2_client.describe_availability_zones().get("AvailabilityZones")
-        }
+    return {entry.get("ZoneId"): entry.get("ZoneName") for entry in describe_availability_zones(region, credential)}
 
 
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
