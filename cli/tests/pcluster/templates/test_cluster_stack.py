@@ -465,6 +465,23 @@ class AutoScalingGroupAssertion:
         assert properties["LifecycleHookSpecificationList"] == self.expected_lifecycle_specification
 
 
+class LoginNodeWaitConditionAssertion:
+    def __init__(self, count, timeout):
+        self.count = count
+        self.timeout = timeout
+
+    def assert_wait_condition_properties(self, template, resource_name: str):
+        # Wait conditions are created using the current timestamp hence we need to match the resource key by regex
+        resource_key_from_pattern = next(
+            resource_key for resource_key in template["Resources"].keys() if re.match(resource_name, resource_key)
+        )
+        resource = template["Resources"][resource_key_from_pattern]
+        assert resource["Type"] == "AWS::CloudFormation::WaitCondition"
+        properties = resource["Properties"]
+        assert int(properties["Count"]) == self.count
+        assert int(properties["Timeout"]) == self.timeout
+
+
 class NetworkLoadBalancerAssertion:
     def __init__(self, expected_vpc_id: str, expected_internet_facing: bool):
         self.expected_vpc_id = expected_vpc_id
@@ -559,6 +576,7 @@ class IamPolicyAssertion:
                 TargetGroupAssertion(expected_health_check="TCP", expected_port=22, expected_protocol="TCP"),
                 NetworkLoadBalancerListenerAssertion(expected_port=22, expected_protocol="TCP"),
                 IamRoleAssertion(expected_managed_policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"),
+                LoginNodeWaitConditionAssertion(count=2, timeout=600),
                 IamPolicyAssertion(
                     expected_statements=[
                         {
@@ -624,6 +642,9 @@ def test_login_nodes_traffic_management_resources_values_properties(
     asset_content_asg = get_asset_content_with_resource_name(
         cdk_assets, "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937"
     )
+    wait_condition = get_asset_content_with_resource_name(
+        cdk_assets, "clusternametestloginnodespool1LoginNodesWaitCondition[0-9].*"
+    )
     asset_content_nlb = get_asset_content_with_resource_name(
         cdk_assets, "clusternametestloginnodespool1testloginnodespool1LoadBalancerE1D4FCC7"
     )
@@ -667,6 +688,10 @@ def test_login_nodes_traffic_management_resources_values_properties(
         elif isinstance(lt_assertion, IamPolicyAssertion):
             lt_assertion.assert_iam_policy_properties(
                 asset_content_iam_policy, "ParallelClusterPoliciesA50bdea9651dc48c"
+            )
+        elif isinstance(lt_assertion, LoginNodeWaitConditionAssertion):
+            lt_assertion.assert_wait_condition_properties(
+                wait_condition, "clusternametestloginnodespool1LoginNodesWaitCondition[0-9].*"
             )
 
 
