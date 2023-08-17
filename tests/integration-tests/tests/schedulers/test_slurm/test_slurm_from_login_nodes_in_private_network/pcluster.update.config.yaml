@@ -1,0 +1,54 @@
+Image:
+  Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: {{ instance }}
+      Count: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      GracetimePeriod: 5
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
+  SlurmQueues:
+    - Name: ondemand
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand-i1
+          Instances:
+            - InstanceType: c5.large
+        - Name: same-name-diff-queue
+          Instances:
+            - InstanceType: c5.xlarge
+          MinCount: 1
+          MaxCount: 5
+    - Name: gpu
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      CapacityType: ONDEMAND
+      ComputeResources:
+        - Name: same-name-diff-queue
+          Instances:
+            - InstanceType: {{ gpu_instance_type }}
+          MaxCount: 5
+SharedStorage:
+  - MountDir: /shared  # Test comment
+    Name: name1
+    StorageType: Ebs
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 1700
+    ComputeNodeBootstrapTimeout: {{compute_node_bootstrap_timeout}}
+

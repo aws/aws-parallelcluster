@@ -189,6 +189,72 @@ def test_slurm_ticket_17399(
     )
 
 
+@pytest.mark.usefixtures("instance", "os")
+def test_slurm_from_login_nodes_in_private_network(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    scheduler_commands_factory,
+    vpc_stack,
+):
+    """Test Slurm features in login nodes inside a private network."""
+
+    scaledown_idletime = 3
+    gpu_instance_type = "g3.4xlarge"
+    gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
+    # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
+    # Else do not spin up compute node and start running regular slurm tests
+    supports_impi = architecture == "x86_64"
+    compute_node_bootstrap_timeout = 1600
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        gpu_instance_type=gpu_instance_type,
+        compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
+    )
+    cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
+
+    bastion = vpc_stack.cfn_outputs["BastionUser"] + "@" + vpc_stack.cfn_outputs["BastionIP"]
+
+    remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion, use_login_node=True)
+    slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
+    assert "/opt/slurm" == slurm_root_path
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    if supports_impi:
+        _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_commands, region, cluster)
+
+    _assert_no_node_in_cluster(region, cluster.cfn_name, slurm_commands)
+    _test_job_dependencies(slurm_commands, region, cluster.cfn_name, scaledown_idletime)
+    _test_job_arrays_and_parallel_jobs(
+        slurm_commands,
+        region,
+        cluster.cfn_name,
+        scaledown_idletime,
+        partition="ondemand",
+        instance_type="c5.xlarge",
+        cpu_per_instance=4,
+    )
+    _gpu_resource_check(
+        slurm_commands, partition="gpu", instance_type=gpu_instance_type, instance_type_info=gpu_instance_type_info
+    )
+    _test_cluster_limits(
+        slurm_commands, partition="ondemand", instance_type="c5.xlarge", max_count=5, cpu_per_instance=4
+    )
+    _test_cluster_gpu_limits(
+        slurm_commands,
+        partition="gpu",
+        instance_type=gpu_instance_type,
+        max_count=5,
+        gpu_instance_type_info=gpu_instance_type_info,
+    )
+    # Test torque command wrapper
+    _test_torque_job_submit(remote_command_executor, test_datadir)
+    head_node_command_executor = RemoteCommandExecutor(cluster)
+    assert_no_errors_in_logs(head_node_command_executor, "slurm")
+
+
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.parametrize("use_login_node", [True, False])
 def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_login_node):
