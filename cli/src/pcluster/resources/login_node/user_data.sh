@@ -114,13 +114,7 @@ write_files:
         # wait logs flush before signaling the failure
         sleep 10
         # TODO: add possibility to override this behavior and keep the instance for debugging
-        # Notify the AutoScalingGroup to proceed with adding the instance for service
-        IMDS_TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
-        INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
-        aws autoscaling complete-lifecycle-action --auto-scaling-group-name "${AutoScalingGroupName}" --lifecycle-hook-name "${LaunchingLifecycleHookName}" --instance-id "$INSTANCE_ID" --lifecycle-action-result CONTINUE --region "${AWS::Region}"
-
-        # Notify CloudFormation that the bootstrap process failed
-        cfn-signal --exit-code=1 --reason="Failed to launch login node" --region ${AWS::Region}  --url ${CloudFormationUrl} "${WaitConditionURL}"
+        shutdown -h now
         exit 1
       }
       function vendor_cookbook
@@ -212,17 +206,9 @@ function error_exit
 {
   echo "Timed-out when bootstrapping instance"
   sleep 10  # Allow logs to propagate
-  # Notify the AutoScalingGroup to proceed with adding the instance for service
-  IMDS_TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
-  INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
-  aws autoscaling complete-lifecycle-action --auto-scaling-group-name "${AutoScalingGroupName}" --lifecycle-hook-name "${LaunchingLifecycleHookName}" --instance-id "$INSTANCE_ID" --lifecycle-action-result CONTINUE --region "${AWS::Region}"
-  # Notify CloudFormation that the bootstrap process failed
-  cfn-signal --exit-code=1 --reason="Failed to launch login node" --region ${AWS::Region}  --url ${CloudFormationUrl} "${WaitConditionURL}"
+  shutdown -h now
   exit 1
 }
-
-# Load ParallelCluster environment variables
-[ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
 
 if [ "${Timeout}" == "NONE" ]; then
   /tmp/bootstrap.sh
@@ -234,9 +220,5 @@ fi
 IMDS_TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
 INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
 aws autoscaling complete-lifecycle-action --auto-scaling-group-name "${AutoScalingGroupName}" --lifecycle-hook-name "${LaunchingLifecycleHookName}" --instance-id "$INSTANCE_ID" --lifecycle-action-result CONTINUE --region "${AWS::Region}"
-
-# Notify CloudFormation that the bootstrap process succeeded
-cfn-signal --success true --region ${AWS::Region}  --url ${CloudFormationUrl} "${WaitConditionURL}"
-
 # End of file
 --==BOUNDARY==
