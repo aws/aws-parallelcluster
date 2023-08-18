@@ -335,7 +335,7 @@ class SlurmCommands(SchedulerCommands):
             test_only=test_only,
         )
 
-    def _submit_batch_job(
+    def _submit_batch_job(  # noqa: C901
         self,
         job_submit_command,
         nodes=0,
