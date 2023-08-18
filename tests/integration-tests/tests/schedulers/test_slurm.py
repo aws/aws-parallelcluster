@@ -1467,7 +1467,7 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_comma
 
     # Wait for compute node to start and check that mpi processes are started
     _wait_computefleet_running(region, cluster, remote_command_executor)
-    retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
+    retry(wait_fixed=seconds(10), stop_max_delay=seconds(500))(_assert_job_state)(
         slurm_commands, job_id, job_state="RUNNING"
     )
     _check_mpi_process(remote_command_executor, slurm_commands, num_nodes=2, after_completion=False)
