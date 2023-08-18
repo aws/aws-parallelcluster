@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import time
 
 import boto3
 import pytest
@@ -255,6 +256,10 @@ def test_ebs_existing(
 
     # delete the cluster before detaching the EBS volume
     cluster.delete()
+
+    # Wait a little longer than 3 minutes to let the LN GracetimePeriod expire (3min)
+    # Note: double check if it is needed. It seems that LN are terminated before the cluster deletion is completed.
+    time.sleep(200)
     # check the volume still exists after deleting the cluster
     _assert_volume_exist(volume_id, region)
 

@@ -10,6 +10,7 @@ CHANGELOG
 - Allow memory-based scheduling when multiple instance types are specified for a Slurm Compute Resource.
 - Add a queue-level parameter (`JobExclusiveAllocation`) to ensure nodes in the partition are exclusively allocated to a single job at any given time.
 - Add support to mount existing Amazon File Cache as shared storage.
+- Add support for login nodes.
 
 **CHANGES**
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
