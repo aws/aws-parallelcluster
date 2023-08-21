@@ -416,6 +416,12 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2204"]
         schedulers: ["slurm"]
+  test_slurm.py::test_slurm_from_login_nodes_in_private_network:
+    dimensions:
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
   test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
     dimensions:
       - regions: ["ap-south-1"]
