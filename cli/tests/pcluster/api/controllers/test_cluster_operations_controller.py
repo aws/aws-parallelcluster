@@ -1156,7 +1156,8 @@ class TestDescribeCluster:
                             "StackName": "update-failed",
                             "ResourceType": "AWS::CloudFormation::WaitCondition",
                             "ResourceStatus": "CREATE_FAILED",
-                            "ResourceStatusReason": "WaitCondition received failed message: 'Failed to mount EBS volume. "
+                            "ResourceStatusReason": "WaitCondition received failed message: 'Failed to mount EBS "
+                            "volume."
                             "Please check /var/log/chef-client.log in the head node, or "
                             "check the chef-client.log in CloudWatch logs. Please refer to "
                             "https://docs.aws.amazon.com/parallelcluster/latest/ug/"
@@ -1177,7 +1178,8 @@ class TestDescribeCluster:
                             "StackName": "update-failed",
                             "ResourceType": "AWS::CloudFormation::WaitCondition",
                             "ResourceStatus": "CREATE_FAILED",
-                            "ResourceStatusReason": "WaitCondition received failed message: 'Failed to mount RAID array. "
+                            "ResourceStatusReason": "WaitCondition received failed message: 'Failed to mount RAID "
+                            "array."
                             "Please check /var/log/chef-client.log in the head node, or "
                             "check the chef-client.log in CloudWatch logs. Please refer to "
                             "https://docs.aws.amazon.com/parallelcluster/latest/ug/"

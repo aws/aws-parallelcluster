@@ -472,8 +472,8 @@ def _create_message(failure_reason, action_needed):
 
 
 def _get_failures(cluster_status, cfn_stack):
-    """
-    Get a list of Failure objects containing failure code and reason
+    """Get a list of Failure objects containing failure code and reason.
+
     when cluster creation or update failed.
     """
     if cluster_status == ClusterStatus.CREATE_FAILED:
