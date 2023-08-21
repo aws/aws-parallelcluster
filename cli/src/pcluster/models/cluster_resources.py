@@ -82,23 +82,30 @@ class ClusterStack(StackInfo):
         return self._get_output("BatchComputeEnvironmentArn")
 
     def _get_failure_reason(self):
-        """Reason of the failure when the cluster_status is in CREATE_FAILED."""
+        """Reason of the failure when the cluster_status is in CREATE_FAILED or UPDATE_FAILED."""
 
-        def _is_failed_wait(event):
-            if (
-                event.get("ResourceType") == "AWS::CloudFormation::WaitCondition"
-                and event.get("ResourceStatus") == "CREATE_FAILED"
-            ):
-                return True
-            return False
+        def _is_failed_event(event):
+            return event.get("ResourceType") == "AWS::CloudFormation::WaitCondition" and (
+                event.get("ResourceStatus") in ["CREATE_FAILED", "UPDATE_FAILED"]
+            )
 
         stack_events = list(itertools.chain.from_iterable(get_all_stack_events(self.name)))
-        failure_event = next(filter(_is_failed_wait, stack_events), None)
+        # Only get the latest failure event
+        failure_event = next(filter(_is_failed_event, stack_events), None)
+
         return failure_event.get("ResourceStatusReason") if failure_event else None
 
     def get_cluster_creation_failure(self):
         """Get error code and error reasons for cluster creation failure."""
+        failures_list, general_failure = self._creation_failures()
+        return self._get_cluster_failure(failures_list, general_failure)
 
+    def get_cluster_update_failure(self):
+        """Get error code and error reasons for cluster update failure."""
+        failures_list, general_failure = self._update_failures()
+        return self._get_cluster_failure(failures_list, general_failure)
+
+    def _creation_failures(self):
         @dataclass
         class ClusterCreationFailure:
             """Represent the object holding the data of ClusterCreationFailure."""
@@ -172,15 +179,33 @@ class ClusterStack(StackInfo):
                 "Cluster has been set to PROTECTED mode due to failures detected in static node provisioning",
             ),
         ]
+        general_failure = ClusterCreationFailure("ClusterCreationFailure", "Failed to create the cluster.", "")
+        return cluster_creation_failures, general_failure
 
-        general_failure = failure = ClusterCreationFailure(
-            "ClusterCreationFailure", "Failed to create the cluster.", ""
-        )
+    def _update_failures(self):
+        @dataclass
+        class ClusterUpdateFailure:
+            """Represent the object holding the data of ClusterCreationFailure."""
+
+            failure_code: str
+            api_failure_reason: str
+            cfn_failure_reason: str  # cloud formation matching string
+
+        cluster_update_failures = [
+            ClusterUpdateFailure("EbsMountFailure", "Failed to mount EBS volume.", "Failed to mount EBS volume"),
+            ClusterUpdateFailure("EfsMountFailure", "Failed to mount EFS.", "Failed to mount EFS"),
+            ClusterUpdateFailure("FsxMountFailure", "Failed to mount FSX.", "Failed to mount FSX"),
+            ClusterUpdateFailure("RaidMountFailure", "Failed to mount RAID array.", "Failed to mount RAID array"),
+        ]
+        general_failure = ClusterUpdateFailure("ClusterUpdateFailure", "Failed to update the cluster.", "")
+        return cluster_update_failures, general_failure
+
+    def _get_cluster_failure(self, failures_list, general_failure):
         cfn_failure_reason = self._get_failure_reason()
         if cfn_failure_reason:
-            failure = next(
-                (f for f in cluster_creation_failures if f.cfn_failure_reason in cfn_failure_reason), general_failure
-            )
+            failure = next((f for f in failures_list if f.cfn_failure_reason in cfn_failure_reason), general_failure)
+        else:
+            failure = general_failure
         return failure.failure_code, failure.api_failure_reason
 
 

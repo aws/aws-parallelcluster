@@ -239,7 +239,8 @@ def describe_cluster(cluster_name, region=None):
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cluster_status,
         scheduler=Scheduler(type=cluster.stack.scheduler),
-        failures=_get_creation_failures(cluster_status, cfn_stack),
+        # failures=_get_creation_failures(cluster_status, cfn_stack),
+        failures=_get_failures(cluster_status, cfn_stack),
     )
 
     try:
@@ -470,9 +471,16 @@ def _create_message(failure_reason, action_needed):
     return message or "Error during update"
 
 
-def _get_creation_failures(cluster_status, cfn_stack):
-    """Get a list of Failure objects containing failure code and reason when cluster creation failed."""
-    if cluster_status != ClusterStatus.CREATE_FAILED:
+def _get_failures(cluster_status, cfn_stack):
+    """
+    Get a list of Failure objects containing failure code and reason
+    when cluster creation or update failed.
+    """
+    if cluster_status == ClusterStatus.CREATE_FAILED:
+        failure_code, failure_reason = cfn_stack.get_cluster_creation_failure()
+    elif cluster_status == ClusterStatus.UPDATE_FAILED:
+        failure_code, failure_reason = cfn_stack.get_cluster_update_failure()
+    else:
         return None
-    failure_code, failure_reason = cfn_stack.get_cluster_creation_failure()
+
     return [Failure(failure_code=failure_code, failure_reason=failure_reason)]

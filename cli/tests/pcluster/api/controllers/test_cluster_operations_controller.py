@@ -1145,6 +1145,123 @@ class TestDescribeCluster:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
+        "cfn_stack_status, get_stack_events_response, expected_failures",
+        [
+            (
+                "UPDATE_ROLLBACK_COMPLETE",
+                [
+                    [
+                        {
+                            "StackId": "update",
+                            "StackName": "update-failed",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition received failed message: 'Failed to mount EBS volume. "
+                            "Please check /var/log/chef-client.log in the head node, or "
+                            "check the chef-client.log in CloudWatch logs. Please refer to "
+                            "https://docs.aws.amazon.com/parallelcluster/latest/ug/"
+                            "troubleshooting-v3.html#troubleshooting-v3-get-logs for more "
+                            "details on ParallelCluster logs.' for "
+                            "uniqueId: i-04800aff0a36ccd29",
+                        }
+                    ]
+                ],
+                [{"failureCode": "EbsMountFailure", "failureReason": "Failed to mount EBS volume."}],
+            ),
+            (
+                "UPDATE_ROLLBACK_COMPLETE",
+                [
+                    [
+                        {
+                            "StackId": "update",
+                            "StackName": "update-failed",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition received failed message: 'Failed to mount RAID array. "
+                            "Please check /var/log/chef-client.log in the head node, or "
+                            "check the chef-client.log in CloudWatch logs. Please refer to "
+                            "https://docs.aws.amazon.com/parallelcluster/latest/ug/"
+                            "troubleshooting-v3.html#troubleshooting-v3-get-logs for more "
+                            "details on ParallelCluster logs.' for "
+                            "uniqueId: i-04800aff0a36ccd29",
+                        }
+                    ]
+                ],
+                [{"failureCode": "RaidMountFailure", "failureReason": "Failed to mount RAID array."}],
+            ),
+            (
+                "UPDATE_ROLLBACK_COMPLETE",
+                [
+                    [
+                        {
+                            "StackId": "update",
+                            "StackName": "update-failed",
+                            "ResourceType": "AWS::CloudFormation::WaitCondition",
+                            "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "WaitCondition received failed message: 'Update failed' "
+                            "for uniqueId: i-04800aff0a36ccd29",
+                        }
+                    ]
+                ],
+                [{"failureCode": "ClusterUpdateFailure", "failureReason": "Failed to update the cluster."}],
+            ),
+        ],
+        ids=[
+            "ebs_mount_failure",
+            "raid_mount_failure",
+            "general_failure_msg",
+        ],
+    )
+    def test_cluster_update_failed(
+        self, client, mocker, cfn_stack_status, get_stack_events_response, expected_failures
+    ):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(
+                {
+                    "StackStatus": cfn_stack_status,
+                }
+            ),
+        )
+        mocker.patch(
+            "pcluster.models.cluster_resources.get_all_stack_events",
+            return_value=get_stack_events_response,
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
+        ).return_value = ComputeFleetStatus.STOPPED
+        expected_response = {
+            "cloudFormationStackStatus": cfn_stack_status,
+            "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+            "clusterConfiguration": {"url": "NOT_AVAILABLE"},
+            "clusterName": "clustername",
+            "clusterStatus": "UPDATE_FAILED",
+            "computeFleetStatus": "STOPPED",
+            "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+            "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
+            "region": "us-east-1",
+            "tags": [
+                {"key": "parallelcluster:version", "value": get_installed_version()},
+                {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
+                {
+                    "key": "parallelcluster:cluster_dir",
+                    "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
+                },
+            ],
+            "version": get_installed_version(),
+            "scheduler": {"type": "slurm"},
+        }
+        if expected_failures:
+            expected_response["failures"] = expected_failures
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.config_presigned_url", new_callable=mocker.PropertyMock
+        ).side_effect = ClusterActionError("failed")
+        response = self._send_test_request(client)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
         "error_type, error_code, http_code",
         [
             (BadRequestError, AWSClientError.ErrorCode.VALIDATION_ERROR.value, 400),
