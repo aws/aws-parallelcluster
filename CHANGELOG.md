@@ -9,6 +9,7 @@ CHANGELOG
 **CHANGES**
 
 **BUG FIXES**
+- Fix inconsistent scaling configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.
 
 3.7.0
 ------
