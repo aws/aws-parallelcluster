@@ -35,7 +35,7 @@ COMPUTE_IP_1=$(host $COMPUTE_NODE_1 | cut -d ' ' -f 4)
 COMPUTE_IP_2=$(host $COMPUTE_NODE_2 | cut -d ' ' -f 4)
 TEST_EXPRESSION=${TEST_CASES//,/ or }
 TEST_ENVIRONMENT_OPTION=""
-[[ "$TEST_OPTIONS" == *"enable-gdr"* ]] && TEST_ENVIRONMENT_OPTION="-E \"FI_EFA_USE_DEVICE_RDMA=1\""
+[[ "$TEST_OPTIONS" == *"enable-gdr"* ]] && TEST_ENVIRONMENT_OPTION="-E FI_EFA_USE_DEVICE_RDMA=1"
 
 mkdir -p $(dirname $PID_FILE)
 mkdir -p $(dirname $LOG_FILE)
