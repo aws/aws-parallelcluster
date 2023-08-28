@@ -677,6 +677,22 @@ class TestCluster:
 
         assert_that(bucket_object_utils_dict.get("upload_config").call_count).is_equal_to(2)
 
+    def test_upload_instance_types_data(self, mocker, cluster):
+        mock_aws_api(mocker)
+        mock_bucket(mocker)
+        mock_bucket_utils(mocker)
+        bucket_object_utils_dict = mock_bucket_object_utils(mocker)
+        cluster.config = dummy_slurm_cluster_config(mocker)
+        cluster._upload_instance_types_data()
+
+        bucket_object_utils_dict.get("upload_config").assert_any_call(
+            cluster.config.get_instance_types_data(),
+            "instance-types-data.json",
+            format=S3FileFormat.JSON,
+        )
+
+        assert_that(bucket_object_utils_dict.get("upload_config").call_count).is_equal_to(1)
+
     @pytest.mark.parametrize(
         "changes, change_set",
         [
