@@ -1,0 +1,20 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: gpu
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: {{ gpu_instance_type|replace(".", "") }}
+          Instances:
+            - InstanceType: {{ gpu_instance_type }}
+          MaxCount: 5

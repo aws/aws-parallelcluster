@@ -1,5 +1,16 @@
 Image:
   Os: {{ os }}
+{% if use_login_node == True %}
+LoginNodes:
+  Pools:
+    - Name: testpool
+      InstanceType: {{ instance }}
+      Count: 2
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 5
+{% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -7,10 +18,10 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: {{ scheduler }}
-  {{ scheduler_prefix }}Settings:
+  Scheduler: slurm
+  SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
-  {{ scheduler_prefix }}Queues:
+  SlurmQueues:
     - Name: ondemand
       Networking:
         SubnetIds:

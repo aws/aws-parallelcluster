@@ -26,11 +26,12 @@ class SchedulerCommands(metaclass=ABCMeta):
         self._remote_command_executor = remote_command_executor
 
     @abstractmethod
-    def assert_job_submitted(self, submit_output):
+    def assert_job_submitted(self, submit_output, test_only: bool = False):
         """
         Assert that a job is successfully submitted.
 
         :param submit_output: stdout from the submit command.
+        :param test_only: boolean flag defining whether the job submission was only a test (relevant for Slurm only)
         :return: the job id
         """
         pass
@@ -150,7 +151,7 @@ class AWSBatchCommands(SchedulerCommands):
     def get_job_exit_status(self, job_id):  # noqa: D102
         return self.wait_job_completed(job_id)
 
-    def assert_job_submitted(self, awsbsub_output):  # noqa: D102
+    def assert_job_submitted(self, awsbsub_output, test_only: bool = False):  # noqa: D102
         __tracebackhide__ = True
         match = re.search(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
         assert_that(match).is_not_none()
@@ -251,9 +252,12 @@ class SlurmCommands(SchedulerCommands):
     def get_job_eligible_time(self, job_id):  # noqa: D102
         return self.get_job_info(job_id, field="EligibleTime")
 
-    def assert_job_submitted(self, sbatch_output):  # noqa: D102
+    def assert_job_submitted(self, sbatch_output, test_only: bool = False):  # noqa: D102
         __tracebackhide__ = True
-        match = re.search(r"Submitted batch job ([0-9]+)", sbatch_output)
+        if test_only:
+            match = re.search(r"Job ([0-9]+) to start at", sbatch_output)
+        else:
+            match = re.search(r"Submitted batch job ([0-9]+)", sbatch_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
@@ -274,6 +278,7 @@ class SlurmCommands(SchedulerCommands):
         prefer=None,
         other_options=None,
         raise_on_error=True,
+        test_only=False,
     ):
         """Submit job with command."""
         job_submit_command = "--wrap='{0}'".format(command)
@@ -289,6 +294,7 @@ class SlurmCommands(SchedulerCommands):
             prefer=prefer,
             other_options=other_options,
             raise_on_error=raise_on_error,
+            test_only=test_only,
         )
 
     def submit_script(
@@ -304,6 +310,7 @@ class SlurmCommands(SchedulerCommands):
         other_options=None,
         additional_files=None,
         raise_on_error=True,
+        test_only=False,
     ):
         """Submit job with script."""
         if not additional_files:
@@ -325,9 +332,10 @@ class SlurmCommands(SchedulerCommands):
             other_options=other_options,
             additional_files=additional_files,
             raise_on_error=raise_on_error,
+            test_only=test_only,
         )
 
-    def _submit_batch_job(
+    def _submit_batch_job(  # noqa: C901
         self,
         job_submit_command,
         nodes=0,
@@ -340,6 +348,7 @@ class SlurmCommands(SchedulerCommands):
         other_options=None,
         additional_files=None,
         raise_on_error=True,
+        test_only=False,
     ):
         submission_command = "sbatch"
         if host:
@@ -356,6 +365,8 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -C '{0}'".format(constraint)
         if prefer:
             submission_command += " --prefer='{0}'".format(prefer)
+        if test_only:
+            submission_command += " --test-only"
         if other_options:
             submission_command += " {0}".format(other_options)
         submission_command += " {0}".format(job_submit_command)
@@ -514,7 +525,7 @@ class SlurmCommands(SchedulerCommands):
     def submit_command_and_assert_job_accepted(self, submit_command_args):
         """Submit a command and assert the job is accepted by scheduler."""
         result = self.submit_command(**submit_command_args)
-        return self.assert_job_submitted(result.stdout)
+        return self.assert_job_submitted(result.stdout, test_only=submit_command_args.get("test_only", False))
 
     def get_partition_state(self, partition):
         """Get the state of the partition."""
@@ -601,7 +612,7 @@ class TorqueCommands(SchedulerCommands):
         match = re.search(r"exit_status = (\d+)", result.stdout)
         return match.group(1)
 
-    def assert_job_submitted(self, qsub_output):  # noqa: D102
+    def assert_job_submitted(self, qsub_output, test_only: bool = False):  # noqa: D102
         __tracebackhide__ = True
         # qsub_output is the id of the job in case of successful submissions
         id = qsub_output

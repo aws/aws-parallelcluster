@@ -61,8 +61,15 @@ SCALING_STRATEGIES = ["job-level", "node-list"]
 
 
 @pytest.mark.usefixtures("instance", "os")
+@pytest.mark.parametrize("use_login_node", [True, False])
 def test_slurm(
-    region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    scheduler_commands_factory,
+    use_login_node,
 ):
     """
     Test all AWS Slurm related features.
@@ -80,10 +87,10 @@ def test_slurm(
         scaledown_idletime=scaledown_idletime,
         gpu_instance_type=gpu_instance_type,
         compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
+        use_login_node=use_login_node,
     )
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
     slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
     _test_slurm_version(remote_command_executor)
@@ -113,34 +120,151 @@ def test_slurm(
         partition="gpu",
         instance_type=gpu_instance_type,
         max_count=5,
-        gpu_per_instance=_get_num_gpus_on_instance(gpu_instance_type_info),
-        gpu_type="m60",
+        gpu_instance_type_info=gpu_instance_type_info,
     )
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
-    assert_no_errors_in_logs(remote_command_executor, "slurm")
+
+    # Tests below must run on HeadNode or need HeadNode participate.
+    head_node_command_executor = RemoteCommandExecutor(cluster)
+    assert_no_errors_in_logs(head_node_command_executor, "slurm")
     # Test compute node bootstrap timeout
-    if scheduler == "slurm":  # TODO enable this once bootstrap_timeout feature is implemented in slurm plugin
-        _test_compute_node_bootstrap_timeout(
-            cluster,
-            pcluster_config_reader,
-            remote_command_executor,
-            compute_node_bootstrap_timeout,
-            scaledown_idletime,
-            gpu_instance_type,
-            clustermgtd_conf_path,
-            slurm_root_path,
-            slurm_commands,
-        )
+    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(head_node_command_executor)
+    _test_compute_node_bootstrap_timeout(
+        cluster,
+        pcluster_config_reader,
+        remote_command_executor,
+        compute_node_bootstrap_timeout,
+        scaledown_idletime,
+        gpu_instance_type,
+        clustermgtd_conf_path,
+        slurm_root_path,
+        slurm_commands,
+        use_login_node,
+        head_node_command_executor,
+    )
+
+
+@pytest.mark.usefixtures("instance", "os")
+def test_slurm_ticket_17399(
+    region, pcluster_config_reader, clusters_factory, test_datadir, architecture, scheduler_commands_factory
+):
+    """
+    Test Slurm ticket 17399
+
+    Check if certain valid combinations of sbatch options lead to a submission error
+    """
+    gpu_instance_type = "g4dn.12xlarge"
+    gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
+    gpus_per_instance = _get_num_gpus_on_instance(gpu_instance_type_info)
+    cpus_per_instance = gpu_instance_type_info.get("VCpuInfo").get("DefaultVCpus")
+
+    cluster_config = pcluster_config_reader(
+        gpu_instance_type=gpu_instance_type,
+    )
+    cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    # This command works fine in Slurm 23.02.4
+    slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "partition": "gpu",
+            "test_only": True,
+            "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
+            f"--cpus-per-task={cpus_per_instance//gpus_per_instance}",
+        }
+    )
+
+    # This command does not work fine in Slurm 23.02.4, even if it should
+    slurm_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 1",
+            "partition": "gpu",
+            "test_only": True,
+            "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
+            f"--cpus-per-task={cpus_per_instance//gpus_per_instance + 1}",
+        }
+    )
+
+
+@pytest.mark.usefixtures("instance", "os")
+def test_slurm_from_login_nodes_in_private_network(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    scheduler_commands_factory,
+    vpc_stack,
+):
+    """Test Slurm features in login nodes inside a private network."""
+
+    scaledown_idletime = 3
+    gpu_instance_type = "g3.4xlarge"
+    gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
+    # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
+    # Else do not spin up compute node and start running regular slurm tests
+    supports_impi = architecture == "x86_64"
+    compute_node_bootstrap_timeout = 1600
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        gpu_instance_type=gpu_instance_type,
+        compute_node_bootstrap_timeout=compute_node_bootstrap_timeout,
+    )
+    cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
+
+    bastion = vpc_stack.cfn_outputs["BastionUser"] + "@" + vpc_stack.cfn_outputs["BastionIP"]
+
+    remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion, use_login_node=True)
+    slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
+    assert "/opt/slurm" == slurm_root_path
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+
+    if supports_impi:
+        _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_commands, region, cluster)
+
+    _assert_no_node_in_cluster(region, cluster.cfn_name, slurm_commands)
+    _test_job_dependencies(slurm_commands, region, cluster.cfn_name, scaledown_idletime)
+    _test_job_arrays_and_parallel_jobs(
+        slurm_commands,
+        region,
+        cluster.cfn_name,
+        scaledown_idletime,
+        partition="ondemand",
+        instance_type="c5.xlarge",
+        cpu_per_instance=4,
+    )
+    _gpu_resource_check(
+        slurm_commands, partition="gpu", instance_type=gpu_instance_type, instance_type_info=gpu_instance_type_info
+    )
+    _test_cluster_limits(
+        slurm_commands, partition="ondemand", instance_type="c5.xlarge", max_count=5, cpu_per_instance=4
+    )
+    _test_cluster_gpu_limits(
+        slurm_commands,
+        partition="gpu",
+        instance_type=gpu_instance_type,
+        max_count=5,
+        gpu_instance_type_info=gpu_instance_type_info,
+    )
+    # Test torque command wrapper
+    _test_torque_job_submit(remote_command_executor, test_datadir)
+    head_node_command_executor = RemoteCommandExecutor(cluster)
+    assert_no_errors_in_logs(head_node_command_executor, "slurm")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_slurm_pmix(pcluster_config_reader, clusters_factory):
+@pytest.mark.parametrize("use_login_node", [True, False])
+def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_login_node):
     """Test interactive job submission using PMIx."""
+    if use_login_node and scheduler != "slurm":
+        pytest.skip(f"Skipping test because scheduler: {scheduler} is not supported for login nodes. Please use Slurm.")
     num_computes = 2
-    cluster_config = pcluster_config_reader(queue_size=num_computes)
+    cluster_config = pcluster_config_reader(queue_size=num_computes, use_login_node=use_login_node)
     cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
 
     # Ensure the expected PMIx version is listed when running `srun --mpi=list`.
     # Since we're installing PMIx v3.1.5, we expect to see pmix and pmix_v3 in the output.
@@ -1409,7 +1533,7 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_comma
 
     # Wait for compute node to start and check that mpi processes are started
     _wait_computefleet_running(region, cluster, remote_command_executor)
-    retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
+    retry(wait_fixed=seconds(10), stop_max_delay=seconds(500))(_assert_job_state)(
         slurm_commands, job_id, job_state="RUNNING"
     )
     _check_mpi_process(remote_command_executor, slurm_commands, num_nodes=2, after_completion=False)
@@ -1465,8 +1589,11 @@ def _check_mpi_process(remote_command_executor, slurm_commands, num_nodes, after
         assert_that(proc_track_result.stdout).contains("IMB-MPI1")
 
 
-def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count, gpu_per_instance, gpu_type):
+def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count, gpu_instance_type_info):
     """Test edge cases regarding the number of GPUs."""
+    gpu_per_instance = _get_num_gpus_on_instance(gpu_instance_type_info)
+    # This assumes homogeneity in the type of GPUs available on the GPU instance
+    gpu_type = gpu_instance_type_info.get("GpuInfo").get("Gpus")[0].get("Name").lower()
     logging.info("Testing scheduler does not accept jobs when requesting for more GPUs than available")
     # Expect commands below to fail with exit 1
     _submit_command_and_assert_job_rejected(
@@ -1974,13 +2101,15 @@ def _test_compute_node_bootstrap_timeout(
     clustermgtd_conf_path,
     slurm_root_path,
     slurm_commands,
+    use_login_node,
+    head_node_command_executor,
 ):
     """Test compute_node_bootstrap_timeout is passed into slurm.conf and parallelcluster_clustermgtd.conf."""
     slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
         "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
     ).stdout
     assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={compute_node_bootstrap_timeout}")
-    clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
+    clustermgtd_conf = head_node_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
     # Update cluster
     update_compute_node_bootstrap_timeout = 10
@@ -1989,13 +2118,15 @@ def _test_compute_node_bootstrap_timeout(
         gpu_instance_type=gpu_instance_type,
         compute_node_bootstrap_timeout=update_compute_node_bootstrap_timeout,
         config_file="pcluster.update.config.yaml",
+        use_login_node=use_login_node,
     )
     _update_and_start_cluster(cluster, updated_config_file)
-    slurm_parallelcluster_conf = remote_command_executor.run_remote_command(
+    slurm_parallelcluster_conf = head_node_command_executor.run_remote_command(
         "sudo cat {}/etc/slurm_parallelcluster.conf".format(slurm_root_path)
     ).stdout
+
     assert_that(slurm_parallelcluster_conf).contains(f"ResumeTimeout={update_compute_node_bootstrap_timeout}")
-    clustermgtd_conf = remote_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
+    clustermgtd_conf = head_node_command_executor.run_remote_command(f"sudo cat {clustermgtd_conf_path}").stdout
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
     assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
 
@@ -2271,7 +2402,8 @@ def _test_memory_based_scheduling_enabled_false(
         nodes=1,
         command="sleep 1",
         constraint="ondemand1-i1",
-        other_options="--mem=4000 --test-only",
+        test_only=True,
+        other_options="--mem=4000",
         raise_on_error=False,
     )
     assert_that(result.stdout).is_equal_to("allocation failure: Requested node configuration is not available")
@@ -2280,7 +2412,8 @@ def _test_memory_based_scheduling_enabled_false(
     result = slurm_commands.submit_command(
         nodes=1,
         command="sleep 1",
-        other_options="--mem=4000 --test-only",
+        test_only=True,
+        other_options="--mem=4000",
         raise_on_error=False,
     )
     assert_that(result.stdout).matches(r"^.*Job \d* to start.*$")
@@ -2370,7 +2503,8 @@ def _test_memory_based_scheduling_enabled_true(
         slots=2,
         command="sleep 1",
         constraint="ondemand1-i1",
-        other_options="-c 1 --mem-per-cpu=2000 --test-only",
+        test_only=True,
+        other_options="-c 1 --mem-per-cpu=2000",
         raise_on_error=False,
     )
     assert_that(result.stdout).is_equal_to("allocation failure: Requested node configuration is not available")
