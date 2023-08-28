@@ -7,4 +7,4 @@
 #SBATCH --output=runscript.out
 
 module load intelmpi
-mpirun -n 6 IMB-MPI1 Alltoall -npmin 2
+mpirun -n 6 bash -c 'sleep 300' -npmin 2
