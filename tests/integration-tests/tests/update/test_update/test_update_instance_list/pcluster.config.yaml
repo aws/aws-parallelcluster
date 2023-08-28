@@ -2,6 +2,9 @@ Image:
   Os: {{ os }}
 HeadNode:
   InstanceType: {{ instance }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -19,3 +22,10 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+DevSettings:
+  Cookbook:
+    ChefCookbook: https://github.com/hgreebe/aws-parallelcluster-cookbook/tarball/develop
+

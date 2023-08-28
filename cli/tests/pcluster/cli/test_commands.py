@@ -295,6 +295,7 @@ def test_setup_bucket_with_resources_upload_failure(
     upload_fileobj_awsclient_error = AWSClientError(
         function_name="upload_fileobj", message="Unable to upload file to the S3 bucket"
     )
+    upload_instance_types_data_action_error = "Unable to upload instance types data to the S3 bucket"
 
     mock_aws_api(mocker)
 
@@ -327,5 +328,8 @@ def test_setup_bucket_with_resources_upload_failure(
 
     with pytest.raises(ClusterActionError, match=upload_resource_cluster_action_error):
         cluster._upload_artifacts()
+
+    with pytest.raises(ClusterActionError, match=upload_instance_types_data_action_error):
+        cluster._upload_instance_types_data()
 
     check_bucket_mock.assert_called_with()
