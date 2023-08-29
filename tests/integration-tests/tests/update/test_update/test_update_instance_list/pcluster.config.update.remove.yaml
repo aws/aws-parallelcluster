@@ -2,10 +2,16 @@ Image:
   Os: {{ os }}
 HeadNode:
   InstanceType: {{ instance }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ bucket_name }}/failing_post_install.sh
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -13,9 +19,16 @@ Scheduling:
       ComputeResources:
         - Name: queue1-i1
           Instances:
-            - InstanceType: c5.xlarge
+            - InstanceType: m5.xlarge
           MinCount: 1
           MaxCount: 2
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+DevSettings:
+  Cookbook:
+    ChefCookbook: https://github.com/hgreebe/aws-parallelcluster-cookbook/tarball/develop
+
