@@ -1,0 +1,43 @@
+{%- import 'common.jinja2' as common -%}
+{% if REGIONS  %}
+{%- set NEW_REGIONS = [ REGIONS ] -%}
+{% else %}
+{%- set NEW_REGIONS = ["##PLACEHOLDER##"] -%}
+{% endif %}
+{% if INSTANCES  %}
+{%- set NEW_INSTANCE_TYPES = [ INSTANCES ] -%}
+{% else %}
+{%- set NEW_INSTANCE_TYPES = ["##PLACEHOLDER##"] -%}
+{% endif %}
+
+---
+test-suites:
+  health_checks:
+    test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
+      dimensions:
+        - regions: {{ NEW_REGIONS }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: [ "slurm" ]
+  schedulers:
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: {{ NEW_REGIONS }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+  dcv:
+    # Useful on GPU enabled instances
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        - regions: {{ NEW_REGIONS }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+  efa:
+    test_fabric.py::test_fabric:
+      dimensions:
+        - regions: {{ NEW_REGIONS }}
+          instances: {{ NEW_INSTANCE_TYPES }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: [ "slurm" ]
