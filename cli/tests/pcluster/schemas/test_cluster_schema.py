@@ -571,52 +571,52 @@ def test_slurm_flexible_queue(mocker, config_dict, failure_message):
         ),
         (
             {
-                "StorageType": "FsxFileCache",
+                "StorageType": "FileCache",
                 "Name": "name",
                 "MountDir": "mount/tmp",
-                "FsxFileCacheSettings": {"FileCacheId": "fc-123456789012345678"},
+                "FileCacheSettings": {"FileCacheId": "fc-123456789012345678"},
                 "EfsSettings": {"Encrypted": True},
             },
             "Multiple .*Settings sections cannot be specified in the SharedStorage items",
         ),
         # File cache is missing FileCacheSettings/FileCacheId
-        ({"StorageType": "FsxFileCache", "MountDir": "mount/tmp"}, "Missing data for required field."),
+        ({"StorageType": "FileCache", "MountDir": "mount/tmp"}, "Missing data for required field."),
         # File cache is has unknown Field 'Encrypted'
         (
             {
-                "StorageType": "FsxFileCache",
+                "StorageType": "FileCache",
                 "Name": "name",
                 "MountDir": "mount/tmp",
-                "FsxFileCacheSettings": {"Encrypted": True},
+                "FileCacheSettings": {"Encrypted": True},
             },
             "Unknown field.",
         ),
         # File Cache is missing MountDir field
         (
             {
-                "StorageType": "FsxFileCache",
+                "StorageType": "FileCache",
                 "Name": "name",
-                "FsxFileCacheSettings": {"FileCacheId": "fc-12345678"},
+                "FileCacheSettings": {"FileCacheId": "fc-12345678"},
             },
             "Missing data for required field.",
         ),
         # FileCacheID string is less than 11 characters
         (
             {
-                "StorageType": "FsxFileCache",
+                "StorageType": "FileCache",
                 "Name": "name",
                 "MountDir": "mount/tmp",
-                "FsxFileCacheSettings": {"FileCacheId": "fc-1234567"},
+                "FileCacheSettings": {"FileCacheId": "fc-1234567"},
             },
             "String does not match expected pattern.",
         ),
         # FileCacheID string is greater than 21 characters
         (
             {
-                "StorageType": "FsxFileCache",
+                "StorageType": "FileCache",
                 "Name": "name",
                 "MountDir": "mount/tmp",
-                "FsxFileCacheSettings": {"FileCacheId": "fc-1234567890123456789"},
+                "FileCacheSettings": {"FileCacheId": "fc-1234567890123456789"},
             },
             "String does not match expected pattern.",
         ),
@@ -634,19 +634,19 @@ def test_slurm_flexible_queue(mocker, config_dict, failure_message):
         ({"StorageType": "Ebs", "Name": "name", "MountDir": "mount/tmp", "EbsSettings": {"Encrypted": True}}, None),
         (
             {
-                "StorageType": "FsxFileCache",
+                "StorageType": "FileCache",
                 "Name": "name",
                 "MountDir": "mount/tmp",
-                "FsxFileCacheSettings": {"FileCacheId": "fc-12345678"},
+                "FileCacheSettings": {"FileCacheId": "fc-12345678"},
             },
             None,
         ),
         (
             {
-                "StorageType": "FsxFileCache",
+                "StorageType": "FileCache",
                 "Name": "name",
                 "MountDir": "mount/tmp",
-                "FsxFileCacheSettings": {"FileCacheId": "fc-123456789012345678"},
+                "FileCacheSettings": {"FileCacheId": "fc-123456789012345678"},
             },
             None,
         ),
