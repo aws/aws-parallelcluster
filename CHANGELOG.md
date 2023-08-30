@@ -20,27 +20,31 @@ CHANGELOG
 - Allow memory-based scheduling when multiple instance types are specified for a Slurm Compute Resource.
 - Add a queue-level parameter (`JobExclusiveAllocation`) to ensure nodes in the partition are exclusively allocated to a single job at any given time.
 - Add support for login nodes.
+- Add support to mount existing Amazon File Cache as shared storage.
 
 **CHANGES**
 - Assign Slurm dynamic nodes a priority (weight) of 1000 by default. This allows Slurm to prioritize idle static nodes over idle dynamic ones.
 - Make `aws-parallelcluster-node` daemons handle only ParallelCluster-managed Slurm partitions.
 - Increase EFS-utils watchdog poll interval to 10 seconds. Note: This change is meaningful only if [EncryptionInTransit](https://docs.aws.amazon.com/parallelcluster/latest/ug/SharedStorage-v3.html#yaml-SharedStorage-EfsSettings-EncryptionInTransit) is set to `true`, because the watchdog does not run otherwise.
-- Upgrade EFA installer to `1.25.0`
+- Upgrade EFA installer to `1.25.1`
   - Efa-driver: `efa-2.5.0-1`
   - Efa-config: `efa-config-1.15-1`
   - Efa-profile: `efa-profile-1.5-1`
   - Libfabric-aws: `libfabric-aws-1.18.1-1`
   - Rdma-core: `rdma-core-46.0-1`
-  - Open MPI: `openmpi40-aws-4.1.5-3`
+  - Open MPI: `openmpi40-aws-4.1.5-4`
 - Change the default value of `Imds/ImdsSupport` from `v1.0` to `v2.0`.
 - Upgrade Slurm to version 23.02.4.
 - Deprecate Ubuntu 18.
+- Upgrade Cinc Client to version 18.2.7.
 - Update the default root volume size to 40 GB to account for limits on Centos 7.
 - Restrict permission on file `/tmp/wait_condition_handle.txt` within the head node so that only root can read it.
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
 - Fix issue causing dangling IAM policies to be created when creating ParallelCluster CloudFormation custom resource provider with `CustomLambdaRole`.
+- Fix an issue that was causing misalignment of compute nodes DNS name on instances with multiple network interfaces,
+  when using `SlurmSettings/Dns/UseEc2Hostnames` equals to `True`.
 
 3.6.1
 ------

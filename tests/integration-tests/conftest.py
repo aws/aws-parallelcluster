@@ -185,6 +185,11 @@ def pytest_addoption(parser):
         " Note: If there are multiple instances in the list, only the first will be used.",
         action="store_true",
     )
+    parser.addoption(
+        "--force-elastic-ip",
+        help="Force the usage of Elastic IP for Multi network interface EC2 instances.",
+        action="store_true",
+    )
 
 
 def pytest_generate_tests(metafunc):
@@ -727,6 +732,13 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
                         instance_type = compute_resources["Instances"][0]["InstanceType"]
                         compute_resources.pop("Instances")
                         compute_resources["InstanceType"] = instance_type
+
+    # Force addition of ElasticIp as True for Multi Nic instance
+    if request.config.getoption("force_elastic_ip"):
+        if not dict_has_nested_key(config_content, ("HeadNode", "Networking", "ElasticIp")):
+            dict_add_nested_key(config_content, "true", ("HeadNode", "Networking", "ElasticIp"))
+        elif dict_has_nested_key(config_content, ("HeadNode", "Networking", "ElasticIp")):
+            dict_add_nested_key(config_content, "true", ("HeadNode", "Networking", "ElasticIp"))
 
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)

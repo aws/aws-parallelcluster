@@ -5,10 +5,10 @@ schemaVersion: 1.0
 constants:
   - ChefVersion:
       type: string
-      value: 17.2.29
+      value: 18.2.7
   - BerkshelfVersion:
       type: string
-      value: 7.2.0
+      value: 8.0.7
   - FailExitCode:
       type: string
       value: 1
@@ -53,7 +53,7 @@ phases:
           commands:
             - |
               set -v
-              CINC_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install-1.1.0.sh"
+              CINC_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install-1.2.0.sh"
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
               echo "${!CINC_URL}"
 

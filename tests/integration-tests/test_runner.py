@@ -90,6 +90,7 @@ TEST_DEFAULTS = {
     "resource_bucket": None,
     "lambda_layer_source": None,
     "force_run_instances": False,
+    "force_elastic_ip": False,
 }
 
 
@@ -410,6 +411,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("force_run_instances"),
         action="store_true",
     )
+    debug_group.add_argument(
+        "--force-elastic-ip",
+        help="Force the usage of Elastic IP for Multi network interface EC2 instances",
+        default=TEST_DEFAULTS.get("force_elastic_ip"),
+        action="store_true",
+    )
 
     return parser
 
@@ -541,6 +548,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     _set_custom_stack_args(args, pytest_args)
     _set_api_args(args, pytest_args)
     _set_custom_resource_args(args, pytest_args)
+    _set_validate_instance_type_args(args, pytest_args)
 
     return pytest_args
 
@@ -612,6 +620,11 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.external_shared_storage_stack_name:
         pytest_args.extend(["--external-shared-storage-stack-name", args.external_shared_storage_stack_name])
+
+
+def _set_validate_instance_type_args(args, pytest_args):
+    if args.force_elastic_ip:
+        pytest_args.append("--force-elastic-ip")
 
 
 def _set_custom_resource_args(args, pytest_args):

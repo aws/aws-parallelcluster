@@ -28,7 +28,7 @@ Scheduling:
           - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: /existing-file-cache-mount-1
-    Name: existingfsxfilecache1
-    StorageType: FsxFileCache
-    FsxFileCacheSettings:
-      FileCacheId: {{ fsx_file_cache_id }}
+    Name: existingfilecache1
+    StorageType: FileCache
+    FileCacheSettings:
+      FileCacheId: {{ file_cache_id }}
