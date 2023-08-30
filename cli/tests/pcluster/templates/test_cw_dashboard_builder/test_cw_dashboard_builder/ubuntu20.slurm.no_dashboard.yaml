@@ -60,8 +60,8 @@ SharedStorage:
       VolumeType: gp2
   - MountDir: /my/mount/fc1
     Name: name6
-    StorageType: FsxFileCache
-    FsxFileCacheSettings:
+    StorageType: FileCache
+    FileCacheSettings:
       FileCacheId: fc-12345678
   - MountDir: /my/mount/fsx-ontap/1
     Name: name7

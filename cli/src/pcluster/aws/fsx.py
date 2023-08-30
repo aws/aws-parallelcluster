@@ -91,7 +91,7 @@ class FSxClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def describe_file_caches(self, file_cache_ids):
-        """Describe FSx File cache."""
+        """Describe File Cache."""
         result = []
         missed_file_cache_ids = []
         for file_cache_id in file_cache_ids:

@@ -16,7 +16,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import Construct, Duration, Stack
 
-from pcluster.config.cluster_config import BaseClusterConfig, ExistingFsxFileCache, SharedFsxLustre, SharedStorageType
+from pcluster.config.cluster_config import BaseClusterConfig, ExistingFileCache, SharedFsxLustre, SharedStorageType
 from pcluster.constants import Feature
 from pcluster.utils import is_feature_supported
 
@@ -469,7 +469,7 @@ class CWDashboardConstruct(Construct):
             if isinstance(storage.config, SharedFsxLustre):
                 metrics = lustre_metrics
                 dimensions_map = {"FileSystemId": storage.id}
-            elif isinstance(storage.config, ExistingFsxFileCache):
+            elif isinstance(storage.config, ExistingFileCache):
                 metrics = lustre_metrics
                 dimensions_map = {"FileCacheId": storage.config.file_cache_id}
             else:
