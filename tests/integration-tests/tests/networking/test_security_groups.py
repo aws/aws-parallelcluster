@@ -22,63 +22,75 @@ from utils import check_head_node_security_group, create_hash_suffix, generate_s
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_additional_sg_and_ssh_from(region, custom_security_groups, pcluster_config_reader, clusters_factory):
+@pytest.mark.parametrize("assign_additional_security_groups", [True, False])
+def test_additional_sg_and_ssh_from(
+    region, custom_security_groups, pcluster_config_reader, clusters_factory, assign_additional_security_groups
+):
     """
     Test when additional_sg ssh_from are provided in the config file
 
     The additional security group should be added to the head and compute nodes. The
+    Test if HeadNode is replaced if we update the SecurityGroups and AdditionalSecurityGroups
     """
-    custom_security_group_id = custom_security_groups
-    ssh_from = "10.11.12.0/32"
-    cluster_config = pcluster_config_reader(additional_sg=custom_security_group_id, ssh_from=ssh_from)
-    cluster = clusters_factory(cluster_config)
-    ec2_client = boto3.client("ec2", region_name=region)
-    instances = _get_instances_by_security_group(ec2_client, custom_security_group_id)
-    logging.info("Asserting that head node and compute node has the additional security group")
-    assert_that(instances).is_length(2)
-    logging.info("Asserting the security group of pcluster is not overwritten by additional seurity group")
-    for instance in instances:
-        assert_that(
-            any(security_group["GroupName"].startswith(cluster.name) for security_group in instance["SecurityGroups"])
-        ).is_true()
-    logging.info("Asserting the security group of pcluster on the head node is aligned with ssh_from")
-    check_head_node_security_group(region, cluster, 22, ssh_from)
-
-
-@pytest.mark.parametrize("assign_additional_security_groups", [False, True])
-@pytest.mark.usefixtures("os", "instance")
-def test_overwrite_sg(
-    region,
-    scheduler,
-    custom_security_groups,
-    pcluster_config_reader,
-    clusters_factory,
-    assign_additional_security_groups,
-):
-    """Test vpc_security_group_id overwrites pcluster default sg on head and compute nodes, efs, fsx"""
     number_of_sgs = 2
 
     custom_security_group_ids = custom_security_groups(number_of_sgs=number_of_sgs)
     default_security_group_id = custom_security_group_ids[0]
 
-    fsx_name, efs_name = "fsx", "efs"
+    ssh_from = "10.11.12.0/32"
     cluster_config = pcluster_config_reader(
-        vpc_security_group_id=default_security_group_id,
-        fsx_name=fsx_name,
-        efs_name=efs_name,
+        default_security_group_id=default_security_group_id,
+        ssh_from=ssh_from,
         assign_additional_security_groups=assign_additional_security_groups,
     )
     cluster = clusters_factory(cluster_config)
+    ec2_client = boto3.client("ec2", region_name=region)
+    instances = _get_instances_by_security_group(ec2_client, default_security_group_id)
+    logging.info("Asserting that head node and compute node has the additional security group")
+    assert_that(instances).is_length(2)
+    if assign_additional_security_groups:
+        logging.info("Asserting the security group of pcluster is not overwritten by additional security group")
+        for instance in instances:
+            assert_that(
+                any(
+                    security_group["GroupName"].startswith(cluster.name)
+                    for security_group in instance["SecurityGroups"]
+                )
+            ).is_true()
+        logging.info("Asserting the security group of pcluster on the head node is aligned with ssh_from")
+        check_head_node_security_group(region, cluster, 22, ssh_from)
+
     head_node_instance_id = cluster.head_node_instance_id
     logging.info(f"HeadNode of the {cluster} is {head_node_instance_id}")
 
+    # Update the Security Groups of HeadNode check if the HeadNode instance is replaced.
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update_sg.yaml",
+        default_security_group_id=default_security_group_id,
+        updated_security_group_id=custom_security_group_ids,
+        ssh_from=ssh_from,
+        assign_additional_security_groups=assign_additional_security_groups,
+    )
+    cluster.update(str(updated_config_file), force_update="true")
+    logging.info("Verifying the HeadNode is not replaced after cluster update")
+    assert_that(head_node_instance_id).is_equal_to(cluster.head_node_instance_id)
+
+
+@pytest.mark.usefixtures("os", "instance")
+def test_overwrite_sg(region, scheduler, custom_security_groups, pcluster_config_reader, clusters_factory):
+    """Test vpc_security_group_id overwrites pcluster default sg on head and compute nodes, efs, fsx"""
+    custom_security_group_id = custom_security_groups()[0]
+    fsx_name, efs_name = "fsx", "efs"
+    cluster_config = pcluster_config_reader(
+        vpc_security_group_id=custom_security_group_id, fsx_name=fsx_name, efs_name=efs_name
+    )
+    cluster = clusters_factory(cluster_config)
     ec2_client = boto3.client("ec2", region_name=region)
-    if not assign_additional_security_groups:
-        instances = _get_instances_by_security_group(ec2_client, default_security_group_id)
-        logging.info("Asserting that head node and compute node has and only has the custom security group")
-        assert_that(instances).is_length(3 if scheduler == "slurm" else 2)
-        for instance in instances:
-            assert_that(instance["SecurityGroups"]).is_length(1)
+    instances = _get_instances_by_security_group(ec2_client, custom_security_group_id)
+    logging.info("Asserting that head node and compute node has and only has the custom security group")
+    assert_that(instances).is_length(3 if scheduler == "slurm" else 2)
+    for instance in instances:
+        assert_that(instance["SecurityGroups"]).is_length(1)
 
     # FSx is not supported in US isolated regions or when using AWS Batch as a scheduler
     if "us-iso" not in region and scheduler != "awsbatch":
@@ -102,7 +114,7 @@ def test_overwrite_sg(
         _assert_security_group_rules(
             ec2_client,
             fsx_security_group_id,
-            [fsx_security_group_id, default_security_group_id],
+            [fsx_security_group_id, custom_security_group_id],
         )
 
     logging.info("Collecting security groups of the EFS")
@@ -125,30 +137,19 @@ def test_overwrite_sg(
         _assert_security_group_rules(
             ec2_client,
             mount_target_security_group_id,
-            [mount_target_security_group_id, default_security_group_id],
+            [mount_target_security_group_id, custom_security_group_id],
         )
+
     if scheduler == "slurm":
         logging.info("Checking SSH connection between cluster nodes before cluster update")
         _check_connections_between_head_node_and_compute_nodes(cluster)
-
-        # Update the Security Groups of HeadNode check if the HeadNode instance is replaced.
-        updated_config_file = pcluster_config_reader(
-            config_file="pcluster.config.update_sg.yaml",
-            fsx_name=fsx_name,
-            efs_name=efs_name,
-            vpc_security_group_id=custom_security_group_ids,
-            assign_additional_security_groups=assign_additional_security_groups,
-        )
-        cluster.update(str(updated_config_file), force_update="true")
-        logging.info("Verifying the HeadNode is not replaced after cluster update")
-        assert_that(head_node_instance_id).is_equal_to(cluster.head_node_instance_id)
         # Update the cluster by removing the custom security group from head node.
         # As a result, head node uses pcluster created security group while compute nodes use custom security group.
         # The aim is to test that the pcluster creates proper inbound rules in the head node security group to allow
         # access from compute security groups.
         updated_config_file = pcluster_config_reader(
             config_file="pcluster.config.update.yaml",
-            vpc_security_group_id=default_security_group_id,
+            vpc_security_group_id=custom_security_group_id,
             fsx_name=fsx_name,
             efs_name=efs_name,
         )
@@ -194,52 +195,57 @@ def custom_security_groups(vpc_stack, region, request):
     stacks_factory = CfnStacksFactory(request.config.getoption("credential"))
 
     def _custom_security_groups(number_of_sgs=1):
-        template = Template()
-        template.set_version("2010-09-09")
-        template.set_description("custom security group stack for testing additional_sg and vpc_security_group_id")
-        vpc_id = vpc_stack.cfn_outputs["VpcId"]
-        for sg_index in range(number_of_sgs):
-            security_group = template.add_resource(
-                SecurityGroup(
-                    f"SecurityGroup{sg_index}",
-                    GroupDescription="custom security group for testing additional_sg and vpc_security_group_id",
-                    VpcId=vpc_id,
-                )
+        if request.config.getoption("custom_security_groups_stack_name"):
+            stack = CfnStack(
+                name=request.config.getoption("custom_security_groups_stack_name"), region=region, template=None
             )
-            cidr_block_association_set = boto3.client("ec2").describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0][
-                "CidrBlockAssociationSet"
-            ]
-            # Allow inbound connection within the VPC
-            for index, cidr_block_association in enumerate(cidr_block_association_set):
-                vpc_cidr = cidr_block_association["CidrBlock"]
-                template.add_resource(
-                    SecurityGroupIngress(
-                        f"SecurityGroupIngress{sg_index}{index}",
-                        IpProtocol="-1",
-                        FromPort=0,
-                        ToPort=65535,
-                        CidrIp=vpc_cidr,
-                        GroupId=Ref(security_group),
+        else:
+            template = Template()
+            template.set_version("2010-09-09")
+            template.set_description("custom security group stack for testing additional_sg and vpc_security_group_id")
+            vpc_id = vpc_stack.cfn_outputs["VpcId"]
+            for sg_index in range(number_of_sgs):
+                security_group = template.add_resource(
+                    SecurityGroup(
+                        f"SecurityGroup{sg_index}",
+                        GroupDescription="custom security group for testing additional_sg and vpc_security_group_id",
+                        VpcId=vpc_id,
                     )
                 )
-            # Allow all inbound SSH connection
-            template.add_resource(
-                SecurityGroupIngress(
-                    f"SecurityGroupSSHIngress{sg_index}",
-                    IpProtocol="tcp",
-                    FromPort=22,
-                    ToPort=22,
-                    GroupId=Ref(security_group),
-                    CidrIp="0.0.0.0/0",
+                cidr_block_association_set = boto3.client("ec2").describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0][
+                    "CidrBlockAssociationSet"
+                ]
+                # Allow inbound connection within the VPC
+                for index, cidr_block_association in enumerate(cidr_block_association_set):
+                    vpc_cidr = cidr_block_association["CidrBlock"]
+                    template.add_resource(
+                        SecurityGroupIngress(
+                            f"SecurityGroupIngress{sg_index}{index}",
+                            IpProtocol="-1",
+                            FromPort=0,
+                            ToPort=65535,
+                            CidrIp=vpc_cidr,
+                            GroupId=Ref(security_group),
+                        )
+                    )
+                # Allow all inbound SSH connection
+                template.add_resource(
+                    SecurityGroupIngress(
+                        f"SecurityGroupSSHIngress{sg_index}",
+                        IpProtocol="tcp",
+                        FromPort=22,
+                        ToPort=22,
+                        GroupId=Ref(security_group),
+                        CidrIp="0.0.0.0/0",
+                    )
                 )
+            stack = CfnStack(
+                name=generate_stack_name("integ-tests-custom-sg", request.config.getoption("stackname_suffix")),
+                region=region,
+                template=template.to_json(),
             )
+            stacks_factory.create_stack(stack)
 
-        stack = CfnStack(
-            name=generate_stack_name("integ-tests-custom-sg", request.config.getoption("stackname_suffix")),
-            region=region,
-            template=template.to_json(),
-        )
-        stacks_factory.create_stack(stack)
         return [stack.cfn_resources[f"SecurityGroup{sg_index}"] for sg_index in range(number_of_sgs)]
 
     yield _custom_security_groups

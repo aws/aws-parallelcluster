@@ -4,13 +4,8 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_ids[0] }}
-    {% if assign_additional_security_groups == False %}
     SecurityGroups:
       - {{ vpc_security_group_id }}
-    {% else %}
-    AdditionalSecurityGroups:
-      - {{ vpc_security_group_id }}
-    {% endif %}
   Ssh:
     KeyName: {{ key_name }}
   Imds:

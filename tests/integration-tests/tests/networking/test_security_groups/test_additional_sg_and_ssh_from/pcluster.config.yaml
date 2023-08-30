@@ -4,8 +4,13 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_ids[0] }}
+    {% if assign_additional_security_groups == False %}
+    SecurityGroups:
+      - {{ default_security_group_id }}
+    {% else %}
     AdditionalSecurityGroups:
-      - {{ additional_sg }}
+      - {{ default_security_group_id }}
+    {% endif %}
   Ssh:
     KeyName: {{ key_name }}
     AllowedIps: {{ ssh_from }}
@@ -32,4 +37,4 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_ids[1] }}
         AdditionalSecurityGroups:
-          - {{ additional_sg }}
+          - {{ default_security_group_id }}

@@ -6,13 +6,14 @@ HeadNode:
     SubnetId: {{ public_subnet_ids[0] }}
     {% if assign_additional_security_groups == False %}
     SecurityGroups:
-      - {{ vpc_security_group_id[1] }}
+      - {{ updated_security_group_id[1] }}
     {% else %}
     AdditionalSecurityGroups:
-      - {{ vpc_security_group_id[1] }}
+      - {{ updated_security_group_id[1] }}
     {% endif %}
   Ssh:
     KeyName: {{ key_name }}
+    AllowedIps: {{ ssh_from }}
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -24,26 +25,16 @@ Scheduling:
           {% if scheduler == "awsbatch" %}
           InstanceTypes:
             - {{ instance }}
-          MinvCpus: 1
+          MinvCpus: 4
+          MaxvCpus: 4
           {% else %}
           Instances:
             - InstanceType: {{ instance }}
-          MinCount: 2
+          MinCount: 1
+          MaxCount: 1
           {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[1] }}
-        SecurityGroups:
-          - {{ vpc_security_group_id[0] }}
-SharedStorage:
-  - MountDir: efs
-    Name: {{ efs_name }}
-    StorageType: Efs
-  {% if "us-iso" not in region and scheduler != "awsbatch" %}
-  - MountDir: fsx
-    Name: {{ fsx_name }}
-    StorageType: FsxLustre
-    FsxLustreSettings:
-      StorageCapacity: 1200
-      DeploymentType: SCRATCH_2
-  {% endif %}
+        AdditionalSecurityGroups:
+          - {{ default_security_group_id }}
