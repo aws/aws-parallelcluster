@@ -342,20 +342,30 @@ Outputs:
     Value: !GetAtt
       - AccountingCluster
       - Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseHost
   DatabasePort:
     Value: !GetAtt
       - AccountingCluster
       - Endpoint.Port
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabasePort
   DatabaseAdminUser:
     Value: !Ref ClusterAdmin
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseAdminUser
   DatabaseSecretArn:
     Value: !Ref AccountingClusterAdminSecret
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseSecretArn
   DatabaseVpcId:
     Value: !Ref Vpc
   DatabaseClusterSecurityGroup:
     Value: !GetAtt
       - AccountingClusterSecurityGroup
       - GroupId
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseClusterSecurityGroup
   DatabaseClusterSubnet1:
     Value: !If [CreateSubnets, !Ref AccountingClusterSubnet1, !Ref DatabaseClusterSubnetOne]
   DatabaseClusterSubnet2:
