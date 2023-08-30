@@ -511,10 +511,22 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
 @pytest.mark.usefixtures("instance")
 def test_update_instance_list(
-    region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir, request, scheduler_commands_factory
+    region,
+    os,
+    pcluster_config_reader,
+    s3_bucket_factory,
+    ami_copy,
+    clusters_factory,
+    test_datadir,
+    request,
+    scheduler_commands_factory,
 ):
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "failing_post_install.sh"), "failing_post_install.sh")
+
     ec2 = boto3.client("ec2", region)
-    init_config_file = pcluster_config_reader()
+    init_config_file = pcluster_config_reader(bucket_name=bucket_name)
     cluster = clusters_factory(init_config_file)
     # Command executor
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -533,7 +545,7 @@ def test_update_instance_list(
     _check_instance_type(ec2, instances, "c5d.xlarge")
 
     # Update cluster with new configuration, adding new instance type with lower price
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
+    updated_config_file = pcluster_config_reader(bucket_name=bucket_name, config_file="pcluster.config.update.yaml")
     cluster.update(str(updated_config_file))
 
     # Submit another exclusive job on lower price instance
@@ -551,10 +563,26 @@ def test_update_instance_list(
     _check_instance_type(ec2, new_instances, "c5.xlarge")
 
     # Update cluster removing instance type from the list
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.remove.yaml")
+    updated_config_file = pcluster_config_reader(
+        bucket_name=bucket_name, config_file="pcluster.config.update.remove.yaml"
+    )
     response = cluster.update(str(updated_config_file), raise_on_error=False)
     assert_that(response["message"]).is_equal_to("Update failure")
     assert_that(response.get("updateValidationErrors")[0].get("message")).contains("All compute nodes must be stopped")
+
+    # Update with change of instance and compute fleet stopped
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+
+    updated_config_file = pcluster_config_reader(
+        bucket_name=bucket_name, config_file="pcluster.config.update.remove.yaml"
+    )
+    cluster.update(str(updated_config_file), raise_on_error=False, log_error=False)
+
+    _check_rollback_with_expected_error_message(region, cluster)
+
+    logging.info("Checking for no key error")
+    assert_no_msg_in_logs(remote_command_executor, ["/var/log/chef-client.log"], ["KeyError:"])
 
 
 @pytest.mark.usefixtures("instance")
