@@ -338,8 +338,6 @@ Resources:
 Outputs:
   ClusterName:
     Value: !Ref ClusterName
-    Export:
-      Name: !Sub ${AWS::StackName}-ClusterName
   DatabaseHost:
     Value: !GetAtt
       - AccountingCluster
