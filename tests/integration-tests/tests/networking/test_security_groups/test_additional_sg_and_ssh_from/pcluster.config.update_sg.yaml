@@ -6,10 +6,10 @@ HeadNode:
     SubnetId: {{ public_subnet_ids[0] }}
     {% if assign_additional_security_groups == False %}
     SecurityGroups:
-      - {{ default_security_group_id }}
+      - {{ updated_security_group_id[1] }}
     {% else %}
     AdditionalSecurityGroups:
-      - {{ default_security_group_id }}
+      - {{ updated_security_group_id[1] }}
     {% endif %}
   Ssh:
     KeyName: {{ key_name }}

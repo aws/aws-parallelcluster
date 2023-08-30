@@ -179,6 +179,7 @@ def pytest_addoption(parser):
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
     )
     parser.addoption("--external-shared-storage-stack-name", help="Name of existing external shared storage stack.")
+    parser.addoption("--custom-security-groups-stack-name", help="Name of existing custom security groups stack.")
     parser.addoption(
         "--force-run-instances",
         help="Force the usage of EC2 run-instances boto3 API instead of create-fleet for compute fleet scaling up."

@@ -86,6 +86,7 @@ TEST_DEFAULTS = {
     "ldaps_nlb_stack_name": None,
     "slurm_database_stack_name": None,
     "external_shared_storage_stack_name": None,
+    "custom_security_groups_stack_name": None,
     "cluster_custom_resource_service_token": None,
     "resource_bucket": None,
     "lambda_layer_source": None,
@@ -403,6 +404,11 @@ def _init_argparser():
         help="Name of existing external shared storage stack.",
         default=TEST_DEFAULTS.get("external_shared_storage_stack_name"),
     )
+    debug_group.add_argument(
+        "--custom-security-groups-stack-name",
+        help="Name of existing custom security groups stack.",
+        default=TEST_DEFAULTS.get("custom_security_groups_stack_name"),
+    )
 
     debug_group.add_argument(
         "--force-run-instances",
@@ -634,6 +640,8 @@ def _set_custom_resource_args(args, pytest_args):
         pytest_args.extend(["--resource-bucket", args.resource_bucket])
     if args.lambda_layer_source:
         pytest_args.extend(["--lambda-layer-source", args.lambda_layer_source])
+    if args.custom_security_groups_stack_name:
+        pytest_args.extend(["--custom-security-groups-stack-name", args.custom_security_groups_stack_name])
 
 
 def _set_api_args(args, pytest_args):
