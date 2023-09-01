@@ -178,6 +178,7 @@ from pcluster.validators.s3_validators import (
     S3BucketValidator,
     UrlValidator,
 )
+from pcluster.validators.secret_validators import MungeKeySecretArnValidator
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
     CustomSlurmNodeNamesValidator,
@@ -1161,6 +1162,27 @@ class CapacityReservationTarget(Resource):
         self.capacity_reservation_resource_group_arn = Resource.init_param(capacity_reservation_resource_group_arn)
 
 
+class SlurmSettingsForCustomMungeKey(Resource):
+    """Represent the slurm settings for custom munge key test in dev settings."""
+
+    def __init__(
+        self,
+        munge_key_secret_arn: str = None,
+        **kwargs,
+    ):
+        super().__init__()
+        self.munge_key_secret_arn = Resource.init_param(munge_key_secret_arn)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        if self.munge_key_secret_arn:
+            self._register_validator(
+                MungeKeySecretArnValidator,
+                munge_key_secret_arn=self.munge_key_secret_arn,
+                region=get_region(),
+            )
+
+
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
@@ -1170,6 +1192,7 @@ class ClusterDevSettings(BaseDevSettings):
         ami_search_filters: AmiSearchFilters = None,
         instance_types_data: str = None,
         timeouts: Timeouts = None,
+        settings: SlurmSettingsForCustomMungeKey = None,
         compute_startup_time_metric_enabled: bool = None,
         **kwargs,
     ):
@@ -1181,6 +1204,7 @@ class ClusterDevSettings(BaseDevSettings):
         self.compute_startup_time_metric_enabled = Resource.init_param(
             compute_startup_time_metric_enabled, default=False
         )
+        self.settings = settings or SlurmSettingsForCustomMungeKey(implied=True)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)

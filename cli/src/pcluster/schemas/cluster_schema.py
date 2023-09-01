@@ -1102,6 +1102,17 @@ class CapacityReservationTargetSchema(BaseSchema):
             )
 
 
+class SlurmSettingsForCustomMungeKeySchema(BaseSchema):
+    """Represent the schema of slurm settings for custom munge key test in dev settings."""
+
+    munge_key_secre_arn = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SlurmSettingsForCustomMungeKeySchema(**data)
+
+
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of Dev Setting."""
 
@@ -1110,6 +1121,7 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     timeouts = fields.Nested(TimeoutsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     compute_startup_time_metric_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    slurm_settings = fields.Nested(SlurmSettingsForCustomMungeKeySchema, metadata={"update_policy": UpdatePolicy.IGNORED})
 
     @post_load
     def make_resource(self, data, **kwargs):
