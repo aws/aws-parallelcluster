@@ -30,7 +30,7 @@ class MungeKeySecretArnValidator(Validator):
 
                 # Get the actual secret value to check if it's valid Base64
                 secret_response = AWSApi.instance().secretsmanager.get_secret_value(munge_key_secret_arn)
-                secret_value = secret_response.get('SecretString')
+                secret_value = secret_response.get("SecretString")
 
                 if not secret_value:
                     self._add_failure(
