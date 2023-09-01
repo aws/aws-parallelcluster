@@ -37,4 +37,4 @@ class SecretsManagerClient(Boto3Client):
         :param secret_arn: Secret ARN.
         :return: secret value
         """
-        self._client.get_secret_value(SecretId=secret_arn)
+        return self._client.get_secret_value(SecretId=secret_arn)
