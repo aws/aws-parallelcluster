@@ -8,13 +8,12 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import base64
 import binascii
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.validators.common import FailureLevel, Validator
-
-import base64
 
 
 class MungeKeySecretArnValidator(Validator):
@@ -34,10 +33,10 @@ class MungeKeySecretArnValidator(Validator):
                 try:
                     # Attempt to decode the secret value from Base64
                     base64.b64decode(secret_value)
-                except binascii.Error as decode_error:
+                except binascii.Error:
                     self._add_failure(
                         f"The secret {munge_key_secret_arn} does not contain valid Base64 encoded data.",
-                        FailureLevel.ERROR
+                        FailureLevel.ERROR,
                     )
             else:
                 self._add_failure(
