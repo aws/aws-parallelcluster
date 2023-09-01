@@ -29,7 +29,16 @@ class MungeKeySecretArnValidator(Validator):
                 AWSApi.instance().secretsmanager.describe_secret(munge_key_secret_arn)
 
                 # Get the actual secret value to check if it's valid Base64
-                secret_value = AWSApi.instance().secretsmanager.get_secret_value(munge_key_secret_arn)
+                secret_response = AWSApi.instance().secretsmanager.get_secret_value(munge_key_secret_arn)
+                secret_value = secret_response.get('SecretString')
+
+                if not secret_value:
+                    self._add_failure(
+                        f"The secret {munge_key_secret_arn} does not contain a valid secret string.",
+                        FailureLevel.ERROR,
+                    )
+                    return
+
                 try:
                     # Attempt to decode the secret value from Base64
                     base64.b64decode(secret_value)

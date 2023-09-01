@@ -1192,7 +1192,7 @@ class ClusterDevSettings(BaseDevSettings):
         ami_search_filters: AmiSearchFilters = None,
         instance_types_data: str = None,
         timeouts: Timeouts = None,
-        settings: SlurmSettingsForCustomMungeKey = None,
+        slurm_settings: SlurmSettingsForCustomMungeKey = None,
         compute_startup_time_metric_enabled: bool = None,
         **kwargs,
     ):
@@ -1204,7 +1204,7 @@ class ClusterDevSettings(BaseDevSettings):
         self.compute_startup_time_metric_enabled = Resource.init_param(
             compute_startup_time_metric_enabled, default=False
         )
-        self.settings = settings or SlurmSettingsForCustomMungeKey(implied=True)
+        self.slurm_settings = slurm_settings or SlurmSettingsForCustomMungeKey(implied=True)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
