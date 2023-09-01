@@ -3146,6 +3146,16 @@ def test_root_volume_encryption_consistency_validator(
             id="Test with single nic queue with assigned public ip and subnet with public ip",
         ),
         pytest.param(
+            1,
+            False,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            None,
+            id="Test with single nic queue with not assigned public ip and subnet with public ip",
+        ),
+        pytest.param(
             2,
             False,
             [
