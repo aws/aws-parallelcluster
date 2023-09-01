@@ -91,6 +91,7 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     SlurmSettings,
+    SlurmSettingsForCustomMungeKey,
     Timeouts,
 )
 from pcluster.config.common import BaseTag
@@ -1110,7 +1111,7 @@ class SlurmSettingsForCustomMungeKeySchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return SlurmSettingsForCustomMungeKeySchema(**data)
+        return SlurmSettingsForCustomMungeKey(**data)
 
 
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
