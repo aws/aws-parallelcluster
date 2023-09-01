@@ -1105,7 +1105,7 @@ class CapacityReservationTargetSchema(BaseSchema):
 class SlurmSettingsForCustomMungeKeySchema(BaseSchema):
     """Represent the schema of slurm settings for custom munge key test in dev settings."""
 
-    munge_key_secre_arn = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    munge_key_secret_arn = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
