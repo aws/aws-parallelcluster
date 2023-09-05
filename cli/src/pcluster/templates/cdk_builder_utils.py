@@ -585,14 +585,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 sid="SecretsManager",
                 actions=["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
                 effect=iam.Effect.ALLOW,
-                resources=[
-                    self._format_arn(
-                        service="secretsmanager",
-                        resource="*",
-                        region=Stack.of(self).region,
-                        account=Stack.of(self).account,
-                    )
-                ],
+                resources=[self._config.dev_settings.slurm_settings.munge_key_secret_arn]
             ),
             iam.PolicyStatement(
                 sid="Ec2",
