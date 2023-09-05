@@ -27,6 +27,7 @@ from pcluster.validators import (
     monitoring_validators,
     networking_validators,
     s3_validators,
+    secret_validators,
     slurm_settings_validator,
     tags_validators,
 )
@@ -75,6 +76,7 @@ def _mock_all_validators(mocker, additional_modules=None):
         s3_validators,
         slurm_settings_validator,
         tags_validators,
+        secret_validators,
     ]
     if additional_modules:
         modules += additional_modules

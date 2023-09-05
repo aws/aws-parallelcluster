@@ -50,3 +50,36 @@ def test_custom_cookbook(mocker, test_datadir, config_file_name):
 
     assert_that(effects).contains_only("Allow")
     assert_that(actions).contains_only("s3:GetObject", "s3:GetBucketLocation")
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "config.yaml",
+    ],
+)
+def test_custom_munge_key(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    mocker.patch(
+        "pcluster.aws.secretsmanager.SecretsManagerClient.get_secret_value",
+        return_value={"SecretString": "invalidBase64"},
+    )
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    assert_that(
+        generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyDocument"]["Statement"]
+    ).contains(
+        {
+            "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+            "Effect": "Allow",
+            "Resource": "arn:aws:secretsmanager:us-east-1:123456789012:secret:TestCustomMungeKey",
+            "Sid": "SecretsManager",
+        }
+    )
