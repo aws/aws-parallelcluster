@@ -29,19 +29,22 @@ from tests.pcluster.validators.utils import assert_failure_messages
             "arn:aws:otherService:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
             {"SecretString": "validBase64Value"},
-            "The secret arn:aws:otherService:us-west-2:123456789012:secret:testSecret is not supported in region us-west-2.",
+            "The secret arn:aws:otherService:us-west-2:123456789012:secret:testSecret is not supported "
+            "in region us-west-2.",
         ),
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:otherResource:testSecret",
             "us-west-2",
             {"SecretString": "validBase64Value"},
-            "The secret arn:aws:secretsmanager:us-west-2:123456789012:otherResource:testSecret is not supported in region us-west-2.",
+            "The secret arn:aws:secretsmanager:us-west-2:123456789012:otherResource:testSecret is not supported"
+            " in region us-west-2.",
         ),
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
             {"SecretString": "invalidBase64"},
-            "The secret arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret does not contain valid Base64 encoded data.",
+            "The secret arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret does not contain"
+            " valid Base64 encoded data.",
         ),
     ],
 )
