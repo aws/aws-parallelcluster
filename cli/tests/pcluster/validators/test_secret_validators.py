@@ -8,15 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest.mock import MagicMock
 
 import pytest
 
 from pcluster.aws.common import AWSClientError
 from pcluster.validators.common import FailureLevel
 from pcluster.validators.secret_validators import MungeKeySecretArnValidator
-from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.validators.utils import assert_failure_messages, assert_failure_level
+from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 
 
 @pytest.mark.parametrize(
@@ -117,7 +115,7 @@ def test_munge_key_secret_arn_validator(
                 "Tags": [],
                 "VersionIdsToStages": {"12345678-1234-abcd-1234-567890abcdef": ["AWSCURRENT"]},
                 "CreatedDate": "2022-08-01T10:00:00+00:00",
-            }
+            },
         )
 
     actual_response = MungeKeySecretArnValidator().execute(munge_key_secret_arn, region)
