@@ -582,12 +582,6 @@ class HeadNodeIamResources(NodeIamResourcesBase):
     def _build_policy(self) -> List[iam.PolicyStatement]:
         policy = [
             iam.PolicyStatement(
-                sid="SecretsManager",
-                actions=["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
-                effect=iam.Effect.ALLOW,
-                resources=[self._config.dev_settings.slurm_settings.munge_key_secret_arn]
-            ),
-            iam.PolicyStatement(
                 sid="Ec2",
                 actions=[
                     "ec2:DescribeInstanceAttribute",
@@ -673,6 +667,18 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 ],
             ),
         ]
+
+        if self._config.dev_settings and self._config.dev_settings.slurm_settings:
+            policy.extend(
+                [
+                    iam.PolicyStatement(
+                        sid="SecretsManager",
+                        actions=["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[self._config.dev_settings.slurm_settings.munge_key_secret_arn]
+                    ),
+                ]
+            )
 
         if self._config.scheduling.scheduler != "awsbatch":
             policy.extend(
