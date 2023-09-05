@@ -583,10 +583,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         policy = [
             iam.PolicyStatement(
                 sid="SecretsManager",
-                actions=[
-                    "secretsmanager:GetSecretValue",
-                    "secretsmanager:DescribeSecret"
-                ],
+                actions=["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
                 effect=iam.Effect.ALLOW,
                 resources=[
                     self._format_arn(
