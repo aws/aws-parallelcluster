@@ -582,6 +582,22 @@ class HeadNodeIamResources(NodeIamResourcesBase):
     def _build_policy(self) -> List[iam.PolicyStatement]:
         policy = [
             iam.PolicyStatement(
+                sid="SecretsManager",
+                actions=[
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:DescribeSecret"
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="secretsmanager",
+                        resource="*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    )
+                ],
+            ),
+            iam.PolicyStatement(
                 sid="Ec2",
                 actions=[
                     "ec2:DescribeInstanceAttribute",
