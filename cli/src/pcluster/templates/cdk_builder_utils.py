@@ -675,7 +675,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         sid="SecretsManager",
                         actions=["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
                         effect=iam.Effect.ALLOW,
-                        resources=[self._config.dev_settings.slurm_settings.munge_key_secret_arn]
+                        resources=[self._config.dev_settings.slurm_settings.munge_key_secret_arn],
                     ),
                 ]
             )
