@@ -5,7 +5,7 @@ Parameters:
   DomainName:
     Description: AD Domain Name.
     Type: String
-    Default: corp.pcluster.com
+    Default: corp.example.com
     AllowedPattern: ^([a-zA-Z0-9]+[\\.-])+([a-zA-Z0-9])+$
   AdminPassword:
     Description: AD Admin Password.
@@ -409,21 +409,21 @@ Resources:
               sleep 0.5
               echo "Registering User..."
               echo "$ADMIN_PW" | adcli create-user -x -U Admin --domain="${DirectoryDomain}" --display-name="${UserName}" "${UserName}"
-              
+
               echo "Creating domain certificate..."
               PRIVATE_KEY="${DirectoryDomain}.key"
               CERTIFICATE="${DirectoryDomain}.crt"
               printf '.\n.\n.\n.\n.\n%s\n.\n' "${DirectoryDomain}" | openssl req -x509 -sha256 -nodes -newkey rsa:2048 -keyout "$PRIVATE_KEY" -days 365 -out "$CERTIFICATE"
-              
+
               echo "Storing domain private key to Secrets Manager..."
               aws secretsmanager put-secret-value --secret-id "${DomainPrivateKeySecretArn}" --secret-string "file://$PRIVATE_KEY" --region "${AWS::Region}"
-              
+
               echo "Storing domain certificate to Secrets Manager..."
               aws secretsmanager put-secret-value --secret-id "${DomainCertificateSecretArn}" --secret-string "file://$CERTIFICATE" --region "${AWS::Region}"
-              
+
               echo "Deleting private key and certificate from local file system..."
               rm -rf "$PRIVATE_KEY" "$CERTIFICATE"
-              
+
               /opt/aws/bin/cfn-signal -e "$?" --stack "${AWS::StackName}" --resource AdDomainAdminNode --region "${AWS::Region}"
 
             - { DirectoryDomain: !GetAtt Prep.DomainName,
@@ -507,7 +507,7 @@ Resources:
           def create_physical_resource_id():
               alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
               return ''.join(random.choice(alnum) for _ in range(16))
-          
+
           def redact_keys(event: dict, redactions: set):
               ret = {}
               for k in event.keys():
@@ -516,7 +516,7 @@ Resources:
                   else:
                       ret[k] = redact_keys(event[k], redactions) if type(event[k]) is dict else event[k] # handle nesting
               return ret
-          
+
           def handler(event, context):
               print(redact_keys(event, {"ReadOnlyPassword", "UserPassword", "AdminPassword"}))
               print( 'boto version {}'.format(boto3.__version__))
