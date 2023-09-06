@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 import time
 from collections import namedtuple
@@ -26,13 +27,23 @@ class EBSSnapshotsFactory:
     """Manage creation and destruction of volume snapshots."""
 
     def __init__(self):
+        self.cluster_name = None
+        self.iam = None
         self.config = None
         self.instance = None
         self.volume = None
         self.snapshot = None
         self.security_group_id = None
-        self.ec2 = None
-        self.boto_client = None
+        self._snapshot_instance_profile = None
+        self._snapshot_instance_role = None
+        self.ec2_resource = None
+        self.iam = None
+        self.ec2_client = None
+
+    def _initialize_aws_clients(self, region):
+        self.ec2_resource = boto3.resource("ec2", region_name=region)
+        self.iam = boto3.client("iam", region_name=region)
+        self.ec2_client = boto3.client("ec2", region_name=region)
 
     def create_snapshot(self, request, subnet_id, region):
         """
@@ -45,13 +56,12 @@ class EBSSnapshotsFactory:
         if self.snapshot:
             raise Exception("Snapshot already created")
 
-        self.ec2 = boto3.resource("ec2", region_name=region)
-        self.boto_client = boto3.client("ec2", region_name=region)
+        self._initialize_aws_clients(region)
 
         snapshot_config = SnapshotConfig(
             request.config.getoption("key_path"),
             request.config.getoption("key_name"),
-            self.ec2.Subnet(subnet_id).vpc_id,
+            self.ec2_resource.Subnet(subnet_id).vpc_id,
             subnet_id,
         )
         self.snapshot = self._create_snapshot(region, snapshot_config)
@@ -68,12 +78,11 @@ class EBSSnapshotsFactory:
         if self.volume:
             raise Exception("Volume already created")
 
-        self.ec2 = boto3.resource("ec2", region_name=region)
-        self.boto_client = boto3.client("ec2", region_name=region)
+        self._initialize_aws_clients(region)
         volume_config = SnapshotConfig(
             request.config.getoption("key_path"),
             request.config.getoption("key_name"),
-            self.ec2.Subnet(subnet_id).vpc_id,
+            self.ec2_resource.Subnet(subnet_id).vpc_id,
             subnet_id,
         )
         self._create_volume_process(region, volume_config)
@@ -85,7 +94,7 @@ class EBSSnapshotsFactory:
 
         self.security_group_id = self._get_security_group_id()
 
-        subnet = self.ec2.Subnet(self.config.head_node_subnet_id)
+        subnet = self.ec2_resource.Subnet(self.config.head_node_subnet_id)
 
         # Create a new volume and attach to the instance
         self.volume = self._create_volume(subnet)
@@ -107,10 +116,12 @@ class EBSSnapshotsFactory:
 
     def _create_volume_snapshot(self):
         logging.info("creating snapshot...")
-        snapshot = self.ec2.create_snapshot(Description="parallelcluster-test-snapshot", VolumeId=self.volume.id)
+        snapshot = self.ec2_resource.create_snapshot(
+            Description="parallelcluster-test-snapshot", VolumeId=self.volume.id
+        )
         while snapshot.state == "pending":
             time.sleep(10)
-            snapshot = self.ec2.Snapshot(snapshot.id)
+            snapshot = self.ec2_resource.Snapshot(snapshot.id)
         logging.info("Snapshot ready: %s" % snapshot.id)
         return snapshot
 
@@ -157,7 +168,7 @@ class EBSSnapshotsFactory:
 
     @retry(retry_on_result=lambda state: state != "attached", wait_fixed=seconds(2), stop_max_delay=minutes(5))
     def _wait_volume_attached(self):
-        vol = self.ec2.Volume(self.volume.id)
+        vol = self.ec2_resource.Volume(self.volume.id)
         attachment_state = next(
             (attachment["State"] for attachment in vol.attachments if attachment["InstanceId"] == self.instance.id), ""
         )
@@ -170,7 +181,7 @@ class EBSSnapshotsFactory:
         logging.info("Volume attached")
 
     def _create_volume(self, subnet):
-        vol = self.ec2.create_volume(
+        vol = self.ec2_resource.create_volume(
             Size=10,
             Encrypted=False,
             AvailabilityZone=subnet.availability_zone,
@@ -182,27 +193,59 @@ class EBSSnapshotsFactory:
         # We can check if the volume is now ready and available:
         logging.info("Waiting for the volume to be ready...")
         while vol.state == "creating":
-            vol = self.ec2.Volume(vol.id)
+            vol = self.ec2_resource.Volume(vol.id)
             time.sleep(2)
         logging.info("Volume ready")
         return vol
 
     def _get_security_group_id(self):
-        security_group_id = self.boto_client.create_security_group(
+        security_group_id = self.ec2_client.create_security_group(
             Description="security group for snapshot instance node",
             GroupName="snapshot-" + random_alphanumeric(),
             VpcId=self.config.vpc_id,
         )["GroupId"]
 
-        self.boto_client.authorize_security_group_ingress(
+        self.ec2_client.authorize_security_group_ingress(
             GroupId=security_group_id,
             IpPermissions=[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
         )
 
         return security_group_id
 
+    def _create_snapshot_instance_profile(self):
+        iam_resources_suffix = random_alphanumeric()
+        snapshot_instance_role_name = f"SnapshotInstanceRole-{iam_resources_suffix}"
+        snapshot_instance_profile_name = f"SnapshotInstanceProfile-{iam_resources_suffix}"
+        if not self._snapshot_instance_role:
+            trust_policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}
+                ],
+            }
+            logging.info("Creating role (%s).", snapshot_instance_role_name)
+            self._snapshot_instance_role = self.iam.create_role(
+                RoleName=snapshot_instance_role_name,
+                AssumeRolePolicyDocument=json.dumps(trust_policy),
+            )
+        if not self._snapshot_instance_profile:
+            self.iam.attach_role_policy(
+                RoleName=snapshot_instance_role_name, PolicyArn="arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+            )
+            logging.info("Creating profile (%s).", snapshot_instance_profile_name)
+            self._snapshot_instance_profile = self.iam.create_instance_profile(
+                InstanceProfileName=snapshot_instance_profile_name
+            )
+            logging.info(
+                "Adding role (%s) to instance profile (%s)", snapshot_instance_role_name, snapshot_instance_profile_name
+            )
+        self.iam.add_role_to_instance_profile(
+            InstanceProfileName=snapshot_instance_profile_name, RoleName=snapshot_instance_role_name
+        )
+
     def _launch_instance(self, ami_id, subnet):
-        instance = self.ec2.create_instances(
+        self._create_snapshot_instance_profile()
+        instance = retry(stop_max_attempt_number=5, wait_fixed=minutes(1))(self.ec2_resource.create_instances)(
             ImageId=ami_id,
             KeyName=self.config.key_name,
             MinCount=1,
@@ -220,11 +263,12 @@ class EBSSnapshotsFactory:
             TagSpecifications=[
                 {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "pcluster-snapshot-instance"}]}
             ],
+            IamInstanceProfile={"Name": self._snapshot_instance_profile["InstanceProfile"]["InstanceProfileName"]},
         )[0]
         logging.info("Waiting for instance to be running...")
         while instance.state["Name"] == "pending":
             time.sleep(10)
-            instance = self.ec2.Instance(instance.id)
+            instance = self.ec2_resource.Instance(instance.id)
 
         logging.info("Instance state: %s" % instance.state)
         logging.info("Public dns: %s" % instance.public_dns_name)
@@ -232,7 +276,7 @@ class EBSSnapshotsFactory:
 
     def _get_amazonlinux2_ami(self):
         # Finds most recent alinux2 ami in region
-        response = self.boto_client.describe_images(
+        response = self.ec2_client.describe_images(
             Owners=["amazon"],
             Filters=[
                 {"Name": "name", "Values": ["amzn2-ami-hvm-*"]},
@@ -249,6 +293,7 @@ class EBSSnapshotsFactory:
     def release_all(self):
         """Release all resources"""
         self._release_instance()
+        self._release_instance_iam()
         self._release_security_group()
         self._release_volume()
         self._release_snapshot()
@@ -267,9 +312,36 @@ class EBSSnapshotsFactory:
             logging.info("Waiting for instance to be terminated...")
             while self.instance.state["Name"] != "terminated":
                 time.sleep(10)
-                self.instance = self.ec2.Instance(self.instance.id)
+                self.instance = self.ec2_resource.Instance(self.instance.id)
             logging.info("Instance terminated")
+
         self.instance = None
+
+    def _release_instance_iam(self):
+        instance_profile_name = self._snapshot_instance_profile["InstanceProfile"]["InstanceProfileName"]
+        instance_role_name = self._snapshot_instance_role["Role"]["RoleName"]
+        if self._snapshot_instance_role:
+            role_name = self._snapshot_instance_role["Role"]["RoleName"]
+            self.iam.detach_role_policy(
+                RoleName=instance_role_name, PolicyArn="arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+            )
+            logging.info("Deleting role: %s", role_name)
+            self.iam.remove_role_from_instance_profile(
+                InstanceProfileName=instance_profile_name, RoleName=instance_role_name
+            )
+            retry(stop_max_attempt_number=5, wait_fixed=minutes(1))(self.iam.delete_role)(
+                RoleName=self._snapshot_instance_role["Role"]["RoleName"]
+            )
+            self._snapshot_instance_role = None
+        if self._snapshot_instance_profile:
+            logging.info(
+                "Deleting instance profile: %s",
+                self._snapshot_instance_profile["InstanceProfile"]["InstanceProfileName"],
+            )
+            retry(stop_max_attempt_number=5, wait_fixed=minutes(1))(self.iam.delete_instance_profile)(
+                InstanceProfileName=self._snapshot_instance_profile["InstanceProfile"]["InstanceProfileName"]
+            )
+            self._snapshot_instance_profile = None
 
     @retry(stop_max_attempt_number=5, wait_fixed=5000)
     def _release_volume(self):
@@ -282,6 +354,6 @@ class EBSSnapshotsFactory:
     def _release_security_group(self):
         if self.security_group_id:
             logging.info("Deleting security group %s" % self.security_group_id)
-            self.boto_client.delete_security_group(GroupId=self.security_group_id)
+            self.ec2_client.delete_security_group(GroupId=self.security_group_id)
             logging.info("Security group %s deleted" % self.security_group_id)
         self.security_group_id = None
