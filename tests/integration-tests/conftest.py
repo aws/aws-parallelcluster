@@ -13,6 +13,7 @@
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
 
+import copy
 import json
 import logging
 import os
@@ -22,7 +23,7 @@ from itertools import product
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 import pytest
@@ -41,7 +42,7 @@ from conftest_markers import (
 )
 from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
-from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
+from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.fixture_utils import xdist_session_fixture
@@ -616,6 +617,36 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
+def _inject_additional_iam_policies(node_config, additional_iam_policies):
+    if dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
+        for policy in additional_iam_policies:
+            if policy not in node_config["Iam"]["AdditionalIamPolicies"]:
+                node_config["Iam"]["AdditionalIamPolicies"] += copy.deepcopy(policy)
+    else:
+        dict_add_nested_key(node_config, additional_iam_policies, ("Iam", "AdditionalIamPolicies"))
+
+
+def _inject_additional_iam_policies_for_nodes(
+    config_content, scheduler: str, node_types: List[NodeType], policies: List[Dict]
+):
+    if NodeType.HEAD_NODE in node_types:
+        _inject_additional_iam_policies(config_content["HeadNode"], copy.deepcopy(policies))
+    if (
+        scheduler == "slurm"
+        and dict_has_nested_key(config_content, ("Scheduling", "SlurmQueues"))
+        and NodeType.COMPUTE_NODES in node_types
+    ):
+        for queue in config_content["Scheduling"]["SlurmQueues"]:
+            _inject_additional_iam_policies(queue, copy.deepcopy(policies))
+    if (
+        scheduler == "slurm"
+        and dict_has_nested_key(config_content, ("LoginNodes", "Pools"))
+        and NodeType.LOGIN_NODES in node_types
+    ):
+        for pool in config_content["LoginNodes"]["Pools"]:
+            _inject_additional_iam_policies(pool, copy.deepcopy(policies))
+
+
 def inject_additional_config_settings(cluster_config, request, region, benchmarks=None):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
@@ -728,6 +759,16 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
                     compute_resources.pop("Instances")
                     compute_resources["InstanceType"] = instance_type
 
+    additional_policies = [
+        {"Policy": f"arn:{get_arn_partition(region)}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
+    ]
+    _inject_additional_iam_policies_for_nodes(
+        config_content,
+        scheduler,
+        node_types=[NodeType.LOGIN_NODES, NodeType.HEAD_NODE, NodeType.COMPUTE_NODES],
+        policies=additional_policies,
+    )
+
     with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
 
@@ -737,7 +778,9 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
     if not match or len(match.groups()) < 2:
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
-        additional_iam_policies = {"Policy": f"arn:{get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
+        additional_iam_policies = [
+            {"Policy": f"arn:{get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
+        ]
         if dict_has_nested_key(node_config, ("Iam", "InstanceRole")) or dict_has_nested_key(
             node_config, ("Iam", "InstanceProfile")
         ):
@@ -750,11 +793,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
             logging.info(
                 f"{custom_option} script is an S3 URL, adding AdditionalIamPolicies: {additional_iam_policies}"
             )
-            if dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
-                if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
-                    node_config["Iam"]["AdditionalIamPolicies"].append(additional_iam_policies)
-            else:
-                dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
+            _inject_additional_iam_policies(node_config, additional_iam_policies)
 
 
 def _get_default_template_values(vpc_stack: CfnVpcStack, request):
