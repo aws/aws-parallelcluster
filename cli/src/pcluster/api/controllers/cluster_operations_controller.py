@@ -239,7 +239,6 @@ def describe_cluster(cluster_name, region=None):
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cluster_status,
         scheduler=Scheduler(type=cluster.stack.scheduler),
-        # failures=_get_creation_failures(cluster_status, cfn_stack),
         failures=_get_failures(cluster_status, cfn_stack),
     )
 

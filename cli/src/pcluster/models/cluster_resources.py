@@ -86,7 +86,7 @@ class ClusterStack(StackInfo):
 
         def _is_failed_event(event):
             return event.get("ResourceType") == "AWS::CloudFormation::WaitCondition" and (
-                event.get("ResourceStatus") in ["CREATE_FAILED", "UPDATE_FAILED"]
+                event.get("ResourceStatus") == "CREATE_FAILED"
             )
 
         stack_events = list(itertools.chain.from_iterable(get_all_stack_events(self.name)))

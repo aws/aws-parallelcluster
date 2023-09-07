@@ -1426,6 +1426,7 @@ class ClusterCdkStack:
                             f"2>/dev/null || echo 'Update failed')\""
                             f" --region {self.stack.region} --url {cloudformation_url}"
                             f" '{self.wait_condition_handle.ref}'"
+                            " rm -f /var/log/parallelcluster/bootstrap_error_msg"
                         ),
                         "cwd": "/etc/chef",
                     }
