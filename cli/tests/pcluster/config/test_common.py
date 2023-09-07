@@ -329,6 +329,7 @@ def test_nested_resource_validate():
 @pytest.mark.parametrize(
     "value, default, expected_value, expected_implied",
     [
+        ("abc ", "default_value", "abc", False),
         ("abc", "default_value", "abc", False),
         (None, "default_value", "default_value", True),
         (5, 10, 5, False),

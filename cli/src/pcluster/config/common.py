@@ -88,7 +88,7 @@ class Resource:
                 self.__value = default
                 self.__implied = True
             else:
-                self.__value = value
+                self.__value = value.strip() if isinstance(value, str) else value
                 self.__implied = False
             self.__default = default
             self.__update_policy = update_policy
