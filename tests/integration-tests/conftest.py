@@ -621,7 +621,7 @@ def _inject_additional_iam_policies(node_config, additional_iam_policies):
     if dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
         for policy in additional_iam_policies:
             if policy not in node_config["Iam"]["AdditionalIamPolicies"]:
-                node_config["Iam"]["AdditionalIamPolicies"] += copy.deepcopy(policy)
+                node_config["Iam"]["AdditionalIamPolicies"] += [copy.deepcopy(policy)]
     else:
         # InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.
         if not (
@@ -635,21 +635,21 @@ def _inject_additional_iam_policies_for_nodes(
     config_content, scheduler: str, node_types: List[NodeType], policies: List[Dict]
 ):
     if NodeType.HEAD_NODE in node_types:
-        _inject_additional_iam_policies(config_content["HeadNode"], copy.deepcopy(policies))
+        _inject_additional_iam_policies(config_content["HeadNode"], policies)
     if (
         scheduler == "slurm"
         and dict_has_nested_key(config_content, ("Scheduling", "SlurmQueues"))
         and NodeType.COMPUTE_NODES in node_types
     ):
         for queue in config_content["Scheduling"]["SlurmQueues"]:
-            _inject_additional_iam_policies(queue, copy.deepcopy(policies))
+            _inject_additional_iam_policies(queue, policies)
     if (
         scheduler == "slurm"
         and dict_has_nested_key(config_content, ("LoginNodes", "Pools"))
         and NodeType.LOGIN_NODES in node_types
     ):
         for pool in config_content["LoginNodes"]["Pools"]:
-            _inject_additional_iam_policies(pool, copy.deepcopy(policies))
+            _inject_additional_iam_policies(pool, policies)
 
 
 def inject_additional_config_settings(cluster_config, request, region, benchmarks=None):  # noqa C901
