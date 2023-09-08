@@ -139,6 +139,7 @@ from pcluster.validators.ec2_validators import (
 from pcluster.validators.efs_validators import EfsMountOptionsValidator
 from pcluster.validators.feature_validators import FeatureRegionValidator
 from pcluster.validators.fsx_validators import (
+    DraValidator,
     FsxAutoImportValidator,
     FsxBackupIdValidator,
     FsxBackupOptionsValidator,
@@ -188,6 +189,7 @@ from pcluster.validators.slurm_settings_validator import (
 from pcluster.validators.tags_validators import ComputeResourceTagsValidator
 
 LOGGER = logging.getLogger(__name__)
+
 
 # pylint: disable=C0302
 
@@ -431,6 +433,36 @@ class BaseSharedFsx(Resource):
         return self.file_system_data.dns_name if self.is_unmanaged else ""
 
 
+class DataRepositoryAssociation(Resource):
+    def __init__(
+        self,
+        name: str = None,
+        batch_import_metadata_on_create: bool = None,
+        data_repository_path: str = None,
+        file_system_path: str = None,
+        imported_file_chunk_size: int = None,
+        auto_export_policy: List[str] = None,
+        auto_import_policy: List[str] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.name = Resource.init_param(name)
+        self.batch_import_metadata_on_create = Resource.init_param(batch_import_metadata_on_create, default=False)
+        self.data_repository_path = Resource.init_param(data_repository_path)
+        self.file_system_path = Resource.init_param(file_system_path)
+        self.imported_file_chunk_size = Resource.init_param(imported_file_chunk_size)
+        self.auto_export_policy = Resource.init_param(auto_export_policy)
+        self.auto_import_policy = Resource.init_param(auto_import_policy)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        self._register_validator(SharedStorageNameValidator, name=self.name)
+        self._register_validator(S3BucketUriValidator, url=self.data_repository_path)
+        self._register_validator(
+            FsxAutoImportValidator, auto_import_policy=self.auto_import_policy, import_path=self.data_repository_path
+        )
+
+
 class SharedFsxLustre(BaseSharedFsx):
     """Represent the shared FSX resource."""
 
@@ -454,6 +486,7 @@ class SharedFsxLustre(BaseSharedFsx):
         drive_cache_type: str = None,
         fsx_storage_type: str = None,
         deletion_policy: str = None,
+        data_repository_associations: List[DataRepositoryAssociation] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -481,9 +514,16 @@ class SharedFsxLustre(BaseSharedFsx):
         self.deletion_policy = Resource.init_param(
             deletion_policy, default=DELETE_POLICY if not file_system_id else None
         )
+        self.data_repository_associations = Resource.init_param(data_repository_associations)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
+        self._register_validator(
+            DraValidator,
+            data_repository_associations=self.data_repository_associations,
+            import_path=self.import_path,
+            export_path=self.export_path,
+        )
         self._register_validator(
             FsxS3Validator,
             import_path=self.import_path,

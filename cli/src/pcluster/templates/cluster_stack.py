@@ -962,6 +962,18 @@ class ClusterCdkStack:
             ) = convert_deletion_policy(shared_fsx.deletion_policy)
 
             fsx_id = fsx_resource.ref
+
+            for dra in shared_fsx.data_repository_associations:
+                fsx.CfnDataRepositoryAssociation(
+                    batch_import_metadata_on_create=dra.batch_import_metadata_on_create,
+                    data_repository_path=dra.data_repository_path,
+                    file_system_id=fsx_id,
+                    file_system_path=dra.file_system_path,
+                    imported_file_chunk_size=dra.imported_file_chunk_size,
+                    s3=[dra.auto_export_policy, dra.auto_import_policy],
+                    tags=[CfnTag(key="Name", value=dra.name)],
+                )
+
             # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
             mount_name = fsx_resource.attr_lustre_mount_name
 
