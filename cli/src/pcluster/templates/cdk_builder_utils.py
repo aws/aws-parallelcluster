@@ -668,7 +668,11 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             ),
         ]
 
-        if self._config.dev_settings and self._config.dev_settings.slurm_settings:
+        if (
+            self._config.dev_settings
+            and self._config.dev_settings.slurm_settings
+            and self._config.dev_settings.slurm_settings.munge_key_secret_arn
+        ):
             policy.extend(
                 [
                     iam.PolicyStatement(
