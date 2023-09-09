@@ -668,7 +668,8 @@ def _create_permission_boundary(permission_boundary_name):
                     ],
                     "Effect": "Allow",
                     "Resource": [
-                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${CustomIamNamePrefix}*"}
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${CustomIamNamePrefix}*"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
                     ],
                 },
             ],
