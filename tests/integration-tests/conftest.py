@@ -629,7 +629,12 @@ def _inject_additional_iam_policies(node_config, additional_iam_policies):
             if policy not in node_config["Iam"]["AdditionalIamPolicies"]:
                 node_config["Iam"]["AdditionalIamPolicies"] += [copy.deepcopy(policy)]
     else:
-        dict_add_nested_key(node_config, additional_iam_policies, ("Iam", "AdditionalIamPolicies"))
+        # InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.
+        if not (
+            dict_has_nested_key(node_config, ("Iam", "InstanceRole"))
+            or dict_has_nested_key(node_config, ("Iam", "InstanceProfile"))
+        ):
+            dict_add_nested_key(node_config, additional_iam_policies, ("Iam", "AdditionalIamPolicies"))
 
 
 def _inject_additional_iam_policies_for_nodes(
