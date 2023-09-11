@@ -77,7 +77,7 @@ def test_custom_munge_key(mocker, test_datadir, config_file_name):
         generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyDocument"]["Statement"]
     ).contains(
         {
-            "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+            "Action": "secretsmanager:GetSecretValue",
             "Effect": "Allow",
             "Resource": "arn:aws:secretsmanager:us-east-1:123456789012:secret:TestCustomMungeKey",
             "Sid": "SecretsManager",
