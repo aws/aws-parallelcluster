@@ -93,7 +93,6 @@ def test_slurm(
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
     slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
-    _test_slurm_version(remote_command_executor)
 
     if supports_impi:
         _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_commands, region, cluster)
@@ -267,7 +266,6 @@ def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_log
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
 
     # Ensure the expected PMIx version is listed when running `srun --mpi=list`.
-    # Since we're installing PMIx v3.1.5, we expect to see pmix and pmix_v3 in the output.
     # Sample output:
     # [ec2-user@ip-172-31-33-187 ~]$ srun 2>&1 --mpi=list
     # srun: MPI types are...
@@ -275,10 +273,12 @@ def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_log
     # srun: openmpi
     # srun: pmi2
     # srun: pmix
-    # srun: pmix_v3
+    # srun: pmix_vX
+    #
+    # _vX is the Major number of the PMIx version installed and used to compile slurm.
+    # We check this in the cookbook, so we do not repeat the check here
     mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
     assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
-    assert_that(mpi_list_output).matches(r"\s+pmix_v3($|\s+)")
 
     # Compile and run an MPI program interactively
     mpi_module = "openmpi"
@@ -1744,12 +1744,6 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
     )
     job_info = slurm_commands.get_job_info(job_id)
     assert_that(job_info).contains(f"TresPerNode=gres:gpu:{gpus_per_instance}", f"CpusPerTres=gres:gpu:{cpus_per_gpu}")
-
-
-def _test_slurm_version(remote_command_executor):
-    logging.info("Testing Slurm Version")
-    version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 23.02.4")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
