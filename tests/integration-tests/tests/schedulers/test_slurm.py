@@ -229,7 +229,7 @@ def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_log
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
 
     # Ensure the expected PMIx version is listed when running `srun --mpi=list`.
-    # Since we're installing PMIx v3.1.5, we expect to see pmix and pmix_v3 in the output.
+    # Since we're installing PMIx v4.2.6, we expect to see pmix and pmix_v4 in the output.
     # Sample output:
     # [ec2-user@ip-172-31-33-187 ~]$ srun 2>&1 --mpi=list
     # srun: MPI types are...
@@ -237,10 +237,10 @@ def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_log
     # srun: openmpi
     # srun: pmi2
     # srun: pmix
-    # srun: pmix_v3
+    # srun: pmix_v4
     mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
     assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
-    assert_that(mpi_list_output).matches(r"\s+pmix_v3($|\s+)")
+    assert_that(mpi_list_output).matches(r"\s+pmix_v4($|\s+)")
 
     # Compile and run an MPI program interactively
     mpi_module = "openmpi"
@@ -1711,7 +1711,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 23.02.4")
+    assert_that(version).is_equal_to("slurm 23.02.5")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
