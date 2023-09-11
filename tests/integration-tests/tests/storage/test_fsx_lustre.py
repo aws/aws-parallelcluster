@@ -27,6 +27,7 @@ from troposphere.fsx import LustreConfiguration
 
 from tests.storage.storage_common import (
     assert_fsx_lustre_correctly_mounted,
+    check_dra,
     check_fsx,
     create_fsx_ontap,
     create_fsx_open_zfs,
@@ -177,6 +178,49 @@ def test_fsx_lustre(
         [mount_dir],
         bucket_name,
     )
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_fsx_lustre_dra(
+    region,
+    pcluster_config_reader,
+    s3_bucket_factory,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
+):
+    """Test Data Respository Associations for a FSx Lustre file system."""
+    mount_dir = "/fsx_mount_dir"
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "test1/s3_test_file")
+    cluster_config = pcluster_config_reader(
+        bucket_name=bucket_name,
+        mount_dir=mount_dir,
+        storage_capacity=1200,
+    )
+
+    cluster = clusters_factory(cluster_config)
+
+    check_dra(cluster, region, 1, "test1", mount_dir)
+
+    # Add a second DRA and modify a parameter of the first DRA
+    cluster_update_config = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        mount_dir=mount_dir,
+        bucket_name=bucket_name,
+        storage_capacity=1200,
+    )
+
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "test2/s3_test_file")
+    cluster.update(str(cluster_update_config))
+
+    check_dra(cluster, region, 2, "test2", mount_dir)
+
+    # Remove a DRA
+    cluster.update(str(cluster_config))
+
+    check_dra(cluster, region, 1, None, mount_dir)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")

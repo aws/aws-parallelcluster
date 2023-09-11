@@ -17,6 +17,7 @@ from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
     FsxBackupOptionsValidator,
+    FsxDraValidator,
     FsxPersistentOptionsValidator,
     FsxS3Validator,
     FsxStorageCapacityValidator,
@@ -71,6 +72,35 @@ def test_fsx_s3_validator(import_path, imported_file_chunk_size, export_path, au
         export_path,
         auto_import_policy,
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "data_repository_associations, import_path, export_path, expected_message",
+    [
+        (
+            ["dra-1"],
+            "s3://test",
+            None,
+            "When specifying data repository associations, import and export path "
+            "can not be used on the same file system.",
+        ),
+        (
+            ["dra-1", "dra-2", "dra-3", "dra-4", "dra-5", "6", "dra-7", "dra-8", "dra-9"],
+            None,
+            None,
+            "The number of data repository association used for one file system cannot be greater that 8.",
+        ),
+        (
+            None,
+            "s3://test",
+            "s3://test",
+            None,
+        ),
+    ],
+)
+def test_fsx_dra_validator(data_repository_associations, import_path, export_path, expected_message):
+    actual_failures = FsxDraValidator().execute(data_repository_associations, import_path, export_path)
     assert_failure_messages(actual_failures, expected_message)
 
 

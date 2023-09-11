@@ -21,6 +21,7 @@ class FSxClient(Boto3Client):
         self.svm_cache = {}
         self.volume_cache = {}
         self.fc_cache = {}
+        self.dra_cache = {}
 
     @AWSExceptionHandler.handle_client_exception
     def get_file_systems_info(self, fsx_fs_ids):
@@ -82,6 +83,24 @@ class FSxClient(Boto3Client):
             for volume in response:
                 self.volume_cache[volume.get("VolumeId")] = volume
                 result.append(volume)
+        return result
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_data_repository_associations(self, dra_ids):
+        """Describe FSx data repository associations."""
+        result = []
+        missed_dra_ids = []
+        for dra_id in dra_ids:
+            cached_data = self.dra_cache.get(dra_id)
+            if cached_data:
+                result.append(cached_data)
+            else:
+                missed_dra_ids.append(dra_id)
+        if missed_dra_ids:
+            response = self._client.describe_data_repository_associations(AssociationIds=missed_dra_ids)["Associations"]
+            for dra in response:
+                self.dra_cache[dra.get("AssociationId")] = dra
+                result.append(dra)
         return result
 
     @AWSExceptionHandler.handle_client_exception

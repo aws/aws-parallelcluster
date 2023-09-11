@@ -334,6 +334,30 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, ia
         assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport 0 0")
 
 
+def check_dra(
+    cluster,
+    region,
+    num_associations,
+    test,
+    mount_dir,
+):
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    fsx = boto3.client("fsx", region_name=region)
+    fsx_id = get_fsx_ids(cluster, region)[0]
+    logging.info("FSX ID is: %s", fsx_id)
+    associations = fsx.describe_data_repository_associations(Filters=[{"Name": "file-system-id", "Values": [fsx_id]}])[
+        "Associations"
+    ]
+    logging.info(associations)
+    assert_that(len(associations)).is_equal_to(num_associations)
+
+    if test:
+        result = remote_command_executor.run_remote_command(
+            "cat {mount_dir}/{test}/s3_test_file".format(mount_dir=mount_dir, test=test)
+        )
+        assert_that(result.stdout).is_equal_to("Downloaded by FSx Lustre")
+
+
 # for FSX
 
 

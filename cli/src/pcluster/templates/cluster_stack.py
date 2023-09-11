@@ -963,16 +963,7 @@ class ClusterCdkStack:
 
             fsx_id = fsx_resource.ref
 
-            for dra in shared_fsx.data_repository_associations:
-                fsx.CfnDataRepositoryAssociation(
-                    batch_import_metadata_on_create=dra.batch_import_metadata_on_create,
-                    data_repository_path=dra.data_repository_path,
-                    file_system_id=fsx_id,
-                    file_system_path=dra.file_system_path,
-                    imported_file_chunk_size=dra.imported_file_chunk_size,
-                    s3=[dra.auto_export_policy, dra.auto_import_policy],
-                    tags=[CfnTag(key="Name", value=dra.name)],
-                )
+            self._add_dra(fsx_id, shared_fsx)
 
             # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
             mount_name = fsx_resource.attr_lustre_mount_name
@@ -987,6 +978,30 @@ class ClusterCdkStack:
         )
 
         return fsx_id
+
+    def _add_dra(self, fsx_id: str, shared_fsx: BaseSharedFsx):
+        """Add Cfn Data Repository Association Resources."""
+        if shared_fsx.data_repository_associations:
+            for dra in shared_fsx.data_repository_associations:
+                dra_id = "{0}{1}".format(dra.name, create_hash_suffix(dra.name))
+                fsx.CfnDataRepositoryAssociation(
+                    self.stack,
+                    dra_id,
+                    batch_import_meta_data_on_create=dra.batch_import_meta_data_on_create,
+                    data_repository_path=dra.data_repository_path,
+                    file_system_id=fsx_id,
+                    file_system_path=dra.file_system_path,
+                    imported_file_chunk_size=dra.imported_file_chunk_size,
+                    s3=fsx.CfnDataRepositoryAssociation.S3Property(
+                        auto_export_policy=fsx.CfnDataRepositoryAssociation.AutoExportPolicyProperty(
+                            events=dra.auto_export_policy
+                        ),
+                        auto_import_policy=fsx.CfnDataRepositoryAssociation.AutoImportPolicyProperty(
+                            events=dra.auto_import_policy
+                        ),
+                    ),
+                    tags=[CfnTag(key="Name", value=dra.name)],
+                )
 
     def _add_efs_storage(self, id: str, shared_efs: SharedEfs):
         """Add specific Cfn Resources to map the EFS storage."""

@@ -42,6 +42,7 @@ from pcluster.config.cluster_config import (
     CustomActions,
     Dashboards,
     Database,
+    DataRepositoryAssociation,
     Dcv,
     DirectoryService,
     Dns,
@@ -359,16 +360,16 @@ class DataRepositoryAssociationSchema(BaseSchema):
     """Represent the DRA schema."""
 
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    batch_import_metadata_on_create = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    batch_import_meta_data_on_create = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     data_repository_path = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     file_system_path = fields.Str(
         required=True,
-        validate=get_field_validator("file_path"),
+        validate=validate.Regexp(r"^[^\u0000\u0085\u2028\u2029\r\n]{1,4096}$"),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     imported_file_chunk_size = fields.Int(
         validate=validate.Range(min=1, max=512000, error="has a minimum size of 1 MiB, and max size of 512,000 MiB"),
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     auto_export_policy = fields.List(
         fields.Str(validate=validate.OneOf(["NEW", "CHANGED", "DELETED"])),
@@ -380,6 +381,11 @@ class DataRepositoryAssociationSchema(BaseSchema):
         validate=validate.Length(max=3),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return DataRepositoryAssociation(**data)
 
 
 class FsxLustreSettingsSchema(BaseSchema):
@@ -439,7 +445,7 @@ class FsxLustreSettingsSchema(BaseSchema):
         DataRepositoryAssociationSchema,
         many=True,
         metadata={
-            "update_policy": UpdatePolicy(UpdatePolicy.IGNORED),
+            "update_policy": UpdatePolicy.SUPPORTED,
             "update_key": "Name",
         },
     )
@@ -475,23 +481,6 @@ class FsxLustreSettingsSchema(BaseSchema):
             for key in data:
                 if key in unsupported_config_param_names:
                     messages.append(FSX_MESSAGES["errors"]["unsupported_backup_param"].format(name=key))
-
-            if messages:
-                raise ValidationError(message=messages)
-
-    @validates_schema
-    def validate_s3_association_unsupported_parameters(self, data, **kwargs):
-        messages = []
-        if data.get("data_repository_associations") is not None:
-            unsupported_param_names = [
-                "import_path",
-                "export_path",
-                "imported_file_chunk_size",
-            ]
-
-            for key in data:
-                if key in unsupported_param_names:
-                    messages.append(FSX_MESSAGES["errors"]["unsupported_s3_association_param"].format(name=key))
 
             if messages:
                 raise ValidationError(message=messages)
