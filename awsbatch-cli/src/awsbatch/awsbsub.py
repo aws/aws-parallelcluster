@@ -172,7 +172,7 @@ def _validate_parameters(args):
     elif not isinstance(args.command, str):
         fail("Parameters validation error: command parameter is required.")
 
-    if args.depends_on and not re.match(r"^(jobId|type)=[^\s,]+([\s,]?(jobId|type)=[^\s]+)*$", args.depends_on):
+    if args.depends_on and not re.match(r"^((jobId|type)=[^\s,]+[\s,]?)+$", args.depends_on):
         fail("Parameters validation error: please double check --depends-on parameter syntax.")
 
     if args.env_blacklist and (not args.env or args.env != "all"):

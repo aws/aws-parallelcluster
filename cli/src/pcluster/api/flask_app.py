@@ -97,6 +97,9 @@ class ParallelClusterFlaskApp:
             Cache.clear_all()
             AWSApi.reset()
 
+        def sanitize_input(san):
+            return san.replace("\r\n", "").replace("\n", "")
+
         @self.flask_app.before_request
         def _log_request():  # pylint: disable=unused-variable
             data = "INVALID"
@@ -106,9 +109,9 @@ class ParallelClusterFlaskApp:
                 LOGGER.error("Exception while reading json of request.")
             LOGGER.info(
                 "Handling request: %s %s - Body: %s",
-                request.method,
-                request.full_path,
-                data,
+                sanitize_input(request.method),
+                sanitize_input(request.full_path),
+                sanitize_input(data),
             )
 
         @self.flask_app.after_request
@@ -120,8 +123,8 @@ class ParallelClusterFlaskApp:
                 LOGGER.error("Exception while reading json of response.")
             LOGGER.info(
                 "Responding to request %s %s: %s - Body: %s",
-                request.method,
-                request.full_path,
+                sanitize_input(request.method),
+                sanitize_input(request.full_path),
                 response.status_code,
                 data,
             )

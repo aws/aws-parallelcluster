@@ -108,7 +108,7 @@ def get_script_name(headers, request_context):
         "1",
     ]
 
-    if "amazonaws.com" in headers.get("Host", "") and not strip_stage_path:
+    if headers.get("Host", "").endswith("amazonaws.com") and not strip_stage_path:
         script_name = "/{}".format(request_context.get("stage", ""))
     else:
         script_name = ""
