@@ -24,24 +24,24 @@ from tests.pcluster3_config_converter import test_data
             "pcluster.config.yaml",
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to "
-                "False in AWS ParallelCluster version 2.",
+                + "False in AWS ParallelCluster version 2.",
                 "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
-                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
-                "can set HeadNode/Imds/Secured to False.",
+                + "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                + "can set HeadNode/Imds/Secured to False.",
                 "Warning: Parameter vpc_id = vpc-12345678 is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
                 "Warning: additional_iam_policies = arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess is added to "
-                "both headnode and scheduling sections. Please review the configuration file after conversion "
-                "and decide whether to further trim down the permissions and specialize.",
+                + "both headnode and scheduling sections. Please review the configuration file after conversion "
+                + "and decide whether to further trim down the permissions and specialize.",
                 "Warning: pre_install = s3://testbucket/scripts/pre_install.sh is added to both headnode and "
-                "scheduling sections. Please review the configuration file after conversion and decide whether to "
-                "further trim down the permissions and specialize.",
+                + "scheduling sections. Please review the configuration file after conversion and decide whether to "
+                + "further trim down the permissions and specialize.",
                 "Warning: post_install = s3://testbucekt/scripts/post_install.sh is added to both headnode and "
-                "scheduling sections. Please review the configuration file after conversion and decide whether "
-                "to further trim down the permissions and specialize.",
+                + "scheduling sections. Please review the configuration file after conversion and decide whether "
+                + "to further trim down the permissions and specialize.",
             ],
         ),
     ],
@@ -72,51 +72,51 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             "slurm_full.yaml",
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                "in AWS ParallelCluster version 2.",
+                + "in AWS ParallelCluster version 2.",
                 "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
-                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
-                "can set HeadNode/Imds/Secured to False.",
+                + "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                + "can set HeadNode/Imds/Secured to False.",
                 "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
                 "Warning: additional_iam_policies = arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess is added to both "
-                "headnode and scheduling sections. Please review the configuration file after conversion and decide "
-                "whether to further trim down the permissions and specialize.",
+                + "headnode and scheduling sections. Please review the configuration file after conversion and decide "
+                + "whether to further trim down the permissions and specialize.",
                 "Warning: s3_read_write_resource = arn:aws:s3:::test/hello/* is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: s3_read_resource = arn:aws:s3:::testbucket/* is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: pre_install = s3://testbucket/pre_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: post_install = s3://testbucket/post_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: proxy_server = https://x.x.x.x:8080 is added to both headnode and scheduling sections. "
-                "Please review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "Please review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
                 "Warning: additional_sg = sg-xxxxxx is added to both headnode and scheduling sections. Please review "
-                "the configuration file after conversion and decide whether to further trim down the permissions and "
-                "specialize.",
+                + "the configuration file after conversion and decide whether to further trim down the permissions and "
+                + "specialize.",
                 "Warning: vpc_security_group_id = sg-xxxxxx is added to both headnode and scheduling sections. Please "
-                "review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
                 "Warning: Parameters ['extra_json', 'custom_chef_cookbook', 'template_url', 'instance_types_data'] "
-                "are not officially supported and not recommended.",
+                + "are not officially supported and not recommended.",
                 "Warning: Duplicate names 'custom1' are not allowed in the SharedStorage section. Please change them "
-                "before cluster creation.",
+                + "before cluster creation.",
                 "Warning: '_' is not allowed in the name of 'compute_resource ondemand_i1'. Please rename it before "
-                "cluster creation.",
+                + "cluster creation.",
                 "Warning: '_' is not allowed in the name of 'compute_resource ondemand_i3'. Please rename it before "
-                "cluster creation.",
+                + "cluster creation.",
                 "Warning: Parameter initial_count = 2 is no longer supported. Ignoring it during conversion.",
                 "Warning: '_' is not allowed in the name of 'compute_resource ondemand_i2'. Please rename it before "
-                "cluster creation.",
+                + "cluster creation.",
             ],
             None,
             True,
@@ -127,14 +127,14 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             "slurm_required.yaml",
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                "in AWS ParallelCluster version 2.",
+                + "in AWS ParallelCluster version 2.",
                 "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
-                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
-                "can set HeadNode/Imds/Secured to False.",
+                + "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                + "can set HeadNode/Imds/Secured to False.",
                 "Warning: Parameter vpc_id = vpc-123 is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
             ],
             None,
             False,
@@ -145,14 +145,14 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             "awsbatch_required.yaml",
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                "in AWS ParallelCluster version 2.",
+                + "in AWS ParallelCluster version 2.",
                 "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter sanity_check = false is no longer supported, please specify "
-                "`--suppress-validators ALL` during cluster creation.",
+                + "`--suppress-validators ALL` during cluster creation.",
             ],
             None,
             False,
@@ -163,39 +163,39 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             "awsbatch_full.yaml",
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                "in AWS ParallelCluster version 2.",
+                + "in AWS ParallelCluster version 2.",
                 "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter sanity_check = false is no longer supported, please specify "
-                "`--suppress-validators ALL` during cluster creation.",
+                + "`--suppress-validators ALL` during cluster creation.",
                 "Warning: s3_read_resource = arn:aws:s3:::testbucket/* is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: disable_hyperthreading = true is added to both headnode and scheduling sections. Please "
-                "review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
                 "Warning: pre_install = s3://testbucket/pre_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: post_install = s3://testbucket/post_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: proxy_server = https://x.x.x.x:8080 is added to both headnode and scheduling sections. "
-                "Please review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "Please review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
                 "Warning: additional_sg = sg-xxxxxx is added to both headnode and scheduling sections. Please review "
-                "the configuration file after conversion and decide whether to further trim down the permissions and "
-                "specialize.",
+                + "the configuration file after conversion and decide whether to further trim down the permissions and "
+                + "specialize.",
                 "Warning: vpc_security_group_id = sg-xxxxxx is added to both headnode and scheduling sections. Please "
-                "review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
                 "Warning: Parameters ['extra_json'] are not officially supported and not recommended.",
                 "Warning: Duplicate names 'custom1' are not allowed in the SharedStorage section. Please change them "
-                "before cluster creation.",
+                + "before cluster creation.",
             ],
             None,
             True,
@@ -206,44 +206,44 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             None,
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                "in AWS ParallelCluster version 2.",
+                + "in AWS ParallelCluster version 2.",
                 "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
-                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
-                "can set HeadNode/Imds/Secured to False.",
+                + "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                + "can set HeadNode/Imds/Secured to False.",
                 "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
-                "during conversion.",
+                + "during conversion.",
                 "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it during "
-                "conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                + "during conversion.",
                 "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
                 "Warning: additional_iam_policies = arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess is added to both "
-                "headnode and scheduling sections. Please review the configuration file after conversion and decide "
-                "whether to further trim down the permissions and specialize.",
+                + "headnode and scheduling sections. Please review the configuration file after conversion and decide "
+                + "whether to further trim down the permissions and specialize.",
                 "Warning: s3_read_write_resource = arn:aws:s3:::test/hello/* is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: s3_read_resource = arn:aws:s3:::testbucket/* is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: pre_install = s3://testbucket/pre_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: post_install = s3://testbucket/post_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: proxy_server = https://x.x.x.x:8080 is added to both headnode and scheduling sections. "
-                "Please review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "Please review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
                 "Warning: additional_sg = sg-xxxxxx is added to both headnode and scheduling sections. Please review "
-                "the configuration file after conversion and decide whether to further trim down the permissions and "
-                "specialize.",
+                + "the configuration file after conversion and decide whether to further trim down the permissions and "
+                + "specialize.",
                 "Warning: vpc_security_group_id = sg-xxxxxx is added to both headnode and scheduling sections. Please "
-                "review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
             ],
             "ERROR: ['extra_json', 'custom_chef_cookbook', 'template_url', 'instance_types_data'] are not officially "
-            "supported and not recommended. If you want to proceed with conversion, please specify `--force-convert` "
-            "and rerun the command.",
+            + "supported and not recommended. If you want to proceed with conversion, please specify `--force-convert` "
+            + "and rerun the command.",
             False,
             None,
         ),
@@ -252,7 +252,7 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             None,
             None,
             "ERROR: Parameter compute_subnet_cidr = 0.0.0.0/16 is no longer supported. Please remove it and run the "
-            "converter again.",
+            + "converter again.",
             False,
             None,
         ),
@@ -285,14 +285,14 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             "sit_base.yaml",
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                "in AWS ParallelCluster version 2.",
+                + "in AWS ParallelCluster version 2.",
                 "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
-                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
-                "can set HeadNode/Imds/Secured to False.",
+                + "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                + "can set HeadNode/Imds/Secured to False.",
                 "Warning: Parameter vpc_id = vpc-12345678 is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter update_check = false is no longer supported. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it during "
-                "conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                + "during conversion.",
             ],
             None,
             False,
@@ -303,29 +303,29 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             "sit_full.yaml",
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                "in AWS ParallelCluster version 2.",
+                + "in AWS ParallelCluster version 2.",
                 "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
-                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
-                "can set HeadNode/Imds/Secured to False.",
+                + "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                + "can set HeadNode/Imds/Secured to False.",
                 "Warning: Parameter vpc_id = vpc-12345678 is no longer supported. Ignoring it during conversion.",
                 "Warning: Parameter update_check = false is no longer supported. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it during "
-                "conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                + "during conversion.",
                 "Warning: s3_read_write_resource = arn:aws:s3:::test/hello/* is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: s3_read_resource = arn:aws:s3:::testbucket/* is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: disable_hyperthreading = false is added to both headnode and scheduling sections. Please "
-                "review the configuration file after conversion and decide whether to further trim down the "
-                "permissions and specialize.",
+                + "review the configuration file after conversion and decide whether to further trim down the "
+                + "permissions and specialize.",
                 "Warning: pre_install = s3://testbucket/pre_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: post_install = s3://testbucket/post_install.sh is added to both headnode and scheduling "
-                "sections. Please review the configuration file after conversion and decide whether to further trim "
-                "down the permissions and specialize.",
+                + "sections. Please review the configuration file after conversion and decide whether to further trim "
+                + "down the permissions and specialize.",
                 "Warning: Parameter initial_queue_size = 2 is no longer supported. Ignoring it during conversion.",
             ],
             None,
@@ -588,7 +588,7 @@ def test_convert_scheduling(test_case, mocker):
             "Size",
             "getint",
             "Wrong type for master_root_volume_size in dummy-section section: invalid literal for int() with base 10: "
-            "'True'",
+            + "'True'",
         ),
         ("spot_price", 20.99, "SpotPrice", "getfloat", None),
     ],

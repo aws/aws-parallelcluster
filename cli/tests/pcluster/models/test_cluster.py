@@ -224,7 +224,7 @@ class TestCluster:
             None,
             "No UpDatES ARE TO BE PERformed",
             "some longer message also containing no updates are to be performed and more words at the end"
-            "some other error message",
+            + "some other error message",
         ],
     )
     def test_update_stack_template(self, cluster, mocker, error_message):
