@@ -48,6 +48,28 @@ class FsxS3Validator(Validator):
             )
 
 
+class FsxDraValidator(Validator):
+    """
+    FSX Dra validator.
+
+    Verify compatibility of given S3 association options for FSX.
+    """
+
+    def _validate(self, data_repository_associations, import_path, export_path):
+        if data_repository_associations and (import_path or export_path):
+            self._add_failure(
+                "When specifying data repository associations, import and export path "
+                "can not be used on the same file system.",
+                FailureLevel.ERROR,
+            )
+
+        if data_repository_associations and len(data_repository_associations) > 8:
+            self._add_failure(
+                "The number of data repository association used for one file system cannot be greater that 8.",
+                FailureLevel.ERROR,
+            )
+
+
 class FsxPersistentOptionsValidator(Validator):
     """
     FSX persistent options validator.

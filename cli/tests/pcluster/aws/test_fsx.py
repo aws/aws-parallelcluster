@@ -134,6 +134,45 @@ def get_describe_file_caches_mocked_request(file_cache_ids):
     )
 
 
+def get_describe_data_repository_associations_mocked_request(dra_ids, lifecycle):
+    return MockedBoto3Request(
+        method="describe_data_repository_associations",
+        response={"Associations": [{"AssociationId": dra_id, "Lifecycle": lifecycle} for dra_id in dra_ids]},
+        expected_params={"AssociationIds": dra_ids},
+    )
+
+
+def test_describe_data_repository_associations(boto3_stubber):
+    dra_id = "dra-012345678"
+    additional_dra_id = "dra-876543210"
+    # The first mocked request and the third are about the same fsx. However, the lifecycle of the fsx changes
+    # from CREATING to AVAILABLE. The second mocked request is about another fsx
+    mocked_requests = [
+        get_describe_data_repository_associations_mocked_request([dra_id], "CREATING"),
+        get_describe_data_repository_associations_mocked_request([additional_dra_id], "CREATING"),
+        get_describe_data_repository_associations_mocked_request([dra_id], "AVAILABLE"),
+    ]
+    boto3_stubber("fsx", mocked_requests)
+    assert_that(AWSApi.instance().fsx.describe_data_repository_associations([dra_id])[0]["Lifecycle"]).is_equal_to(
+        "CREATING"
+    )
+
+    # Second boto3 call with more volumes. The volume already cached should not be included in the boto3 call.
+    response = AWSApi.instance().fsx.describe_data_repository_associations([dra_id, additional_dra_id])
+    assert_that(response).is_length(2)
+
+    # Third boto3 call. The result should be from cache even if the lifecycle of the SVM is different
+    assert_that(AWSApi.instance().fsx.describe_data_repository_associations([dra_id])[0]["Lifecycle"]).is_equal_to(
+        "CREATING"
+    )
+
+    # Fourth boto3 call after resetting the AWSApi instance. The latest fsx lifecycle should be retrieved from boto3
+    AWSApi.reset()
+    assert_that(AWSApi.instance().fsx.describe_data_repository_associations([dra_id])[0]["Lifecycle"]).is_equal_to(
+        "AVAILABLE"
+    )
+
+
 def test_describe_file_caches(boto3_stubber):
     file_cache_id = "fc-12345678"
     additional_file_cache_id = "fc-123456789012345678"

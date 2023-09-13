@@ -5,7 +5,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-
+- Add support for Data Repository Associations when using PERSISTENT_2 as DeploymentType for a managed FSx for Lustre.
 **CHANGES**
 
 **BUG FIXES**

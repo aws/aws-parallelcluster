@@ -182,10 +182,10 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 3600
       DeploymentType: PERSISTENT_1  # PERSISTENT_1 | PERSISTENT_2 | SCRATCH_1 | SCRATCH_2
-      ImportedFileChunkSize: 1024
+      # ImportedFileChunkSize: 1024 # ImportedFileChunkSize cannot coexist with some of the fields
       DataCompressionType: LZ4
-      ExportPath: s3://bucket/folder
-      ImportPath: s3://bucket
+      # ExportPath: s3://bucket/folder # ExportPath cannot coexist with some of the fields
+      # ImportPath: s3://bucket # ImportPath cannot coexist with some of the fields
       WeeklyMaintenanceStartTime: "1:00:00"
       AutomaticBackupRetentionDays: 0
       CopyTagsToBackups: true
@@ -194,9 +194,17 @@ SharedStorage:
       # BackupId: backup-fedcba98 # BackupId cannot coexist with some of the fields
       KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
       # FileSystemId: fs-12345678123456789 # FileSystemId cannot coexist with other fields
-      AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
+      # AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED # AutoImportPolicy cannot coexist with some of the fields
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
+      DataRepositoryAssociations:
+        - Name: dra
+          BatchImportMetaDataOnCreate: false
+          DataRepositoryPath: s3://bucket/folder
+          FileSystemPath: /
+          ImportedFileChunkSize: 1024
+          AutoExportPolicy: [ NEW, CHANGED, DELETED ]
+          AutoImportPolicy: [ NEW, CHANGED, DELETED ]
   - MountDir: /my/mount/point4
     Name: name4
     StorageType: FsxOpenZfs

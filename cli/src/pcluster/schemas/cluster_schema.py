@@ -42,6 +42,7 @@ from pcluster.config.cluster_config import (
     CustomActions,
     Dashboards,
     Database,
+    DataRepositoryAssociation,
     Dcv,
     DirectoryService,
     Dns,
@@ -355,6 +356,38 @@ class EfsSettingsSchema(BaseSchema):
             )
 
 
+class DataRepositoryAssociationSchema(BaseSchema):
+    """Represent the DRA schema."""
+
+    name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    batch_import_meta_data_on_create = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    data_repository_path = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    file_system_path = fields.Str(
+        required=True,
+        validate=validate.Regexp(r"^[^\u0000\u0085\u2028\u2029\r\n]{1,4096}$"),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+    )
+    imported_file_chunk_size = fields.Int(
+        validate=validate.Range(min=1, max=512000, error="has a minimum size of 1 MiB, and max size of 512,000 MiB"),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    auto_export_policy = fields.List(
+        fields.Str(validate=validate.OneOf(["NEW", "CHANGED", "DELETED"])),
+        validate=validate.Length(max=3),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    auto_import_policy = fields.List(
+        fields.Str(validate=validate.OneOf(["NEW", "CHANGED", "DELETED"])),
+        validate=validate.Length(max=3),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return DataRepositoryAssociation(**data)
+
+
 class FsxLustreSettingsSchema(BaseSchema):
     """Represent the FSX schema."""
 
@@ -407,6 +440,14 @@ class FsxLustreSettingsSchema(BaseSchema):
     )
     deletion_policy = fields.Str(
         validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
+    data_repository_associations = fields.Nested(
+        DataRepositoryAssociationSchema,
+        many=True,
+        metadata={
+            "update_policy": UpdatePolicy.SUPPORTED,
+            "update_key": "Name",
+        },
     )
 
     @validates_schema

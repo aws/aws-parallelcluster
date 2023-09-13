@@ -1,0 +1,46 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+        EnableWriteAccess: False
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue-0
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+            EnableWriteAccess: False
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: {{ mount_dir }}
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: {{ storage_capacity }}
+      DeploymentType: PERSISTENT_2
+      PerUnitStorageThroughput: 125
+      DataRepositoryAssociations:
+        - Name: dra
+          BatchImportMetaDataOnCreate: True
+          DataRepositoryPath: s3://{{ bucket_name }}/test1
+          FileSystemPath: /test1
+          ImportedFileChunkSize: 1024
+          AutoExportPolicy: [ NEW, CHANGED, DELETED ]
+          AutoImportPolicy: [ NEW ]
