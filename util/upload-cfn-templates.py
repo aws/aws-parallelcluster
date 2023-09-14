@@ -62,7 +62,6 @@ def put_object_to_s3(s3_client, bucket, key, region, data, template_name):
                 print("Bucket is not present.")
             else:
                 raise e
-        pass
 
 
 def upload_to_s3(args, region, aws_credentials=None):
@@ -109,7 +108,6 @@ def upload_to_s3(args, region, aws_credentials=None):
                 exist = True
             except ClientError:
                 exist = False
-                pass
 
             if (exist and args.override and not args.dryrun) or (not exist and not args.dryrun):
                 put_object_to_s3(s3_client, bucket, key, region, data, template_name)
@@ -145,7 +143,6 @@ def main(main_region, args):
 
                 except ClientError:
                     print("Warning: non authorized in region '{0}', skipping".format(credential_region))
-                    pass
 
 
 if __name__ == "__main__":

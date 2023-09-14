@@ -3202,11 +3202,11 @@ def test_root_volume_encryption_consistency_validator(
             ],
             [
                 "The queue queue_1 contains an instance type with multiple network interfaces however the "
-                "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
-                "launched with a single network interface.",
+                + "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
+                + "launched with a single network interface.",
                 "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
-                "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
-                "to instances launched with a single network interface.",
+                + "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
+                + "to instances launched with a single network interface.",
             ],
             id="Test with multi nic queue with assigned public ip and subnet with public ip",
         ),

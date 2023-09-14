@@ -1356,7 +1356,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/parallelcluster/" "ParallelClusterImageCleanup-",
+                                                    ":role/parallelcluster/ParallelClusterImageCleanup-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
@@ -1839,7 +1839,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/parallelcluster/" "ParallelClusterImageCleanup-",
+                                                    ":role/parallelcluster/ParallelClusterImageCleanup-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
