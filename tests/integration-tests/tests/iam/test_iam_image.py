@@ -93,7 +93,7 @@ def _get_resources_with_image_resource(cfn_client, stack_name):
     image_resource_exists = False
     logging.info("Checking image resource")
     for resource in resources:
-        if resource["ResourceType"] == "AWS::ImageBuilder::Image":
+        if resource["ResourceType"] == "AWS::ImageBuilder::Image" and resource.get("PhysicalResourceId"):
             image_resource_exists = True
             logging.info("The image resource exists!")
             break
