@@ -189,18 +189,19 @@ class ConfigPatch:
                     )
                 )
         # Then, compare all non visited base sections vs target config.
-        for base_nested_section in base_section.get(data_key, []):
-            if not base_nested_section.get("visited", False):
-                self.changes.append(
-                    Change(
-                        param_path,
-                        data_key,
-                        base_nested_section,
-                        None,
-                        change_update_policy,
-                        is_list=True,
+        if base_section:
+            for base_nested_section in base_section.get(data_key, []):
+                if not base_nested_section.get("visited", False):
+                    self.changes.append(
+                        Change(
+                            param_path,
+                            data_key,
+                            base_nested_section,
+                            None,
+                            change_update_policy,
+                            is_list=True,
+                        )
                     )
-                )
 
     @property
     def update_policy_level(self):

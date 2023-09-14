@@ -4143,6 +4143,7 @@ SharedStorage:
     CopyTagsToBackups: true
     DailyAutomaticBackupStartTime: 01:03
     DataCompressionType: LZ4
+    DataRepositoryAssociations: null
     DeletionPolicy: Delete
     DeploymentType: PERSISTENT_1
     DriveCacheType: READ
@@ -4175,6 +4176,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4197,6 +4199,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4219,6 +4222,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4241,6 +4245,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4263,6 +4268,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4285,6 +4291,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4307,6 +4314,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4329,6 +4337,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4351,6 +4360,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4373,6 +4383,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4395,6 +4406,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4417,6 +4429,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4439,6 +4452,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4461,6 +4475,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4483,6 +4498,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4505,6 +4521,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4527,6 +4544,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
@@ -4549,6 +4567,7 @@ SharedStorage:
     CopyTagsToBackups: null
     DailyAutomaticBackupStartTime: null
     DataCompressionType: null
+    DataRepositoryAssociations: null
     DeletionPolicy: null
     DeploymentType: null
     DriveCacheType: null
