@@ -73,7 +73,7 @@ from tests.pcluster.test_utils import FAKE_NAME
             [
                 "Kms Key Id key_id is specified, the encrypted state must be True.",
                 "Root volume size 25 GB is less than the minimum required size 50 GB that equals parent ami"
-                " volume size.",
+                + " volume size.",
             ],
             [FailureLevel.ERROR, FailureLevel.ERROR],
         )
@@ -120,11 +120,11 @@ def test_imagebuilder_kms_key_id_encrypted_validator_and_ami_volume_size_validat
             URLError("[Errno 2] No such file or directory: '/test/aws-parallelcluster-cookbook-3.0.tgz'"),
             [
                 "The url 'https:///test/aws-parallelcluster-cookbook-3.0.tgz' causes URLError, the error reason is "
-                "'[Errno 2] No such file or directory: '/test/aws-parallelcluster-cookbook-3.0.tgz''",
+                + "'[Errno 2] No such file or directory: '/test/aws-parallelcluster-cookbook-3.0.tgz''",
                 "Failed when accessing object 'aws-parallelcluster-node-3.0.tgz' from bucket 'test'. This can be due "
-                "to 'aws-parallelcluster-node-3.0.tgz' not found in 'test'",
+                + "to 'aws-parallelcluster-node-3.0.tgz' not found in 'test'",
                 "The value 'ftp://test/aws-parallelcluster-batch-3.0.tgz' is not a valid URL, choose URL with "
-                "'https' or 's3' prefix.",
+                + "'https' or 's3' prefix.",
             ],
             [FailureLevel.WARNING, FailureLevel.WARNING, FailureLevel.ERROR],
         ),
@@ -439,7 +439,7 @@ class TestImageBuilder:
                     "ResourceType": "AWS::CloudFormation::Stack",
                     "StackId": "arn:aws:cloudformation:us-east-1:000000000000:stack/img",
                     "StackName": "img",
-                    "Timestamp": datetime.datetime(2021, 7, 13, 2, 20, 20, 000000, tzinfo=tz.tzutc()),
+                    "Timestamp": datetime.datetime(2021, 7, 13, 2, 20, 20, 0o00000, tzinfo=tz.tzutc()),
                 }
             ],
         }

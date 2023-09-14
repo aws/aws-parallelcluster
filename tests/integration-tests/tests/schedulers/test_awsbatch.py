@@ -135,7 +135,7 @@ def _assert_compute_instance_type_validation_successful(caplog):
     """
     error_messages = [
         "Attempting to create a Batch ComputeEnvironment using a nonexistent instance type did not result "
-        "in an error as expected.",
+        + "in an error as expected.",
         "Found the following unknown instance types/families:",
         "Unable to parse instance family for instance type",
         "Failed to parse supported Batch instance types from a CreateComputeEnvironment",
