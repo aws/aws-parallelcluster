@@ -2665,9 +2665,10 @@ class QueueUpdateStrategy(Enum):
 class SlurmScheduling(Resource):
     """Represent a slurm Scheduling resource."""
 
-    def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None):
+    def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None, scaling_strategy: str = None):
         super().__init__()
         self.scheduler = "slurm"
+        self.scaling_strategy = Resource.init_param(scaling_strategy, default="all-or-nothing")
         self.queues = queues
         self.settings = settings or SlurmSettings(implied=True)
 

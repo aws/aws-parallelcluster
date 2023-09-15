@@ -74,6 +74,7 @@ HeadNode:
 
 Scheduling:
   Scheduler: slurm
+  ScalingStrategy: all-or-nothing
   SlurmSettings:
     ScaledownIdletime: 10
     QueueUpdateStrategy: TERMINATE
