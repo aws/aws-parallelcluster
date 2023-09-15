@@ -205,6 +205,7 @@ def _get_ebs_settings_by_name(config, name):
     for shared_storage in config["SharedStorage"]:
         if shared_storage["Name"] == name:
             return shared_storage["EbsSettings"]
+    return None
 
 
 @pytest.mark.usefixtures("os", "instance")

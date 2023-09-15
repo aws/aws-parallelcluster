@@ -40,6 +40,7 @@ def suppress_and_log_exception(func):
             return func(*args, **kwargs)
         except Exception as e:
             logging.error("Failed when running function %s. Ignoring exception. Error: %s", func.__name__, e)
+            return None
 
     return wrapper
 

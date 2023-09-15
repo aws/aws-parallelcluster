@@ -173,6 +173,7 @@ def get_images_ec2_credential(filters, main_region, credential):
         return get_latest_images(images)
     except ClientError:
         print("Warning: non authorized in region '{0}', skipping".format(credential_region))
+        return None
 
 
 def get_images_ec2(filters, owner, region_name):
@@ -187,6 +188,7 @@ def get_images_ec2(filters, owner, region_name):
         return get_latest_images(images)
     except ClientError:
         print("Warning: non authorized in region '{0}', skipping".format(region_name))
+        return None
 
 
 def get_latest_images(images):

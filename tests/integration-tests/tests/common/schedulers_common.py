@@ -122,7 +122,7 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_nodes_status(self):
+    def get_nodes_status(self, filter_by_nodes=None):
         """Retrieve node state/status from scheduler"""
         pass
 
@@ -189,7 +189,7 @@ class AWSBatchCommands(SchedulerCommands):
         """Not implemented."""
         raise NotImplementedError
 
-    def get_nodes_status(self):
+    def get_nodes_status(self, filter_by_nodes=None):
         """Not implemented."""
         raise NotImplementedError
 
@@ -670,7 +670,7 @@ class TorqueCommands(SchedulerCommands):
         """Not implemented."""
         raise NotImplementedError
 
-    def get_nodes_status(self):
+    def get_nodes_status(self, filter_by_nodes=None):
         """Not implemented."""
         raise NotImplementedError
 

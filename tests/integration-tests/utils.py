@@ -418,6 +418,7 @@ def get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostn
         return conversion_dict
     except Exception as e:
         logging.error("Failed retrieving hostnames for instances {} with exception: {}".format(instance_ids, e))
+        return None
 
 
 def to_snake_case(input):

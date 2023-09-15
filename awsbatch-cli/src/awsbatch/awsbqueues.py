@@ -127,6 +127,7 @@ class AWSBqueuesCommand:
             )
         except KeyError as e:
             fail("Error building Queue item. Key (%s) not found." % e)
+            return None
 
 
 def main():

@@ -185,6 +185,7 @@ class AWSBhostsCommand:
             )
         except KeyError as e:
             fail("Error building Host item. Key (%s) not found." % e)
+            return None
 
     @staticmethod
     def __get_instance_attribute(attributes, attribute_name):

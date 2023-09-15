@@ -106,6 +106,7 @@ class S3DocumentManager:
                 logging.warning("No Object Exists to rollback too... Continuing without rollback data.")
             else:
                 raise e
+            return None
 
     def copy(self, s3_src_bucket, s3_dest_bucket, s3_object, s3_object_version=None, dryrun=True, public_read=True):
         """
