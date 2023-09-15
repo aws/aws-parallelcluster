@@ -70,6 +70,7 @@ HeadNode:
     CustomAmi: ami-98765432
 Scheduling:
   Scheduler: slurm
+  ScalingStrategy: best-effort
   SlurmSettings:
     ScaledownIdletime: 10
     QueueUpdateStrategy: TERMINATE

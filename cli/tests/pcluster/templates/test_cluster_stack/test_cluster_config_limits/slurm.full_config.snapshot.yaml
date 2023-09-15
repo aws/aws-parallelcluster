@@ -129,6 +129,7 @@ Monitoring:
       Enabled: true
 Region: us-east-1
 Scheduling:
+  ScalingStrategy: all-or-nothing
   Scheduler: slurm
   SlurmQueues:
   - CapacityReservationTarget: null

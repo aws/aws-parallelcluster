@@ -1736,6 +1736,11 @@ class SchedulingSchema(BaseSchema):
         validate=validate.OneOf(["slurm", "awsbatch"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
+    scaling_strategy = fields.Str(
+        required=False,
+        validate=validate.OneOf(["all-or-nothing", "best-effort"]),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
     # Slurm schema
     slurm_settings = fields.Nested(SlurmSettingsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     slurm_queues = fields.Nested(
@@ -1790,8 +1795,13 @@ class SchedulingSchema(BaseSchema):
         """Generate the right type of scheduling according to the child type (Slurm vs AwsBatch vs Custom)."""
         scheduler = data.get("scheduler")
         if scheduler == "slurm":
-            return SlurmScheduling(queues=data.get("slurm_queues"), settings=data.get("slurm_settings", None))
+            return SlurmScheduling(
+                queues=data.get("slurm_queues"),
+                settings=data.get("slurm_settings", None),
+                scaling_strategy=data.get("scaling_strategy", None),
+            )
         if scheduler == "awsbatch":
+            # scaling_strategy is ignored by AWS Batch plugin
             return AwsBatchScheduling(
                 queues=data.get("aws_batch_queues"), settings=data.get("aws_batch_settings", None)
             )
