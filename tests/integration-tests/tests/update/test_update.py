@@ -17,7 +17,6 @@ from collections import defaultdict
 
 import boto3
 import pytest
-import utils
 import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
@@ -26,7 +25,16 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 from time_utils import minutes, seconds
-from utils import describe_cluster_instances, is_fsx_supported, retrieve_cfn_resources, wait_for_computefleet_changed
+from utils import (
+    describe_cluster_instances,
+    generate_stack_name,
+    get_arn_partition,
+    get_root_volume_id,
+    is_fsx_supported,
+    render_jinja_template,
+    retrieve_cfn_resources,
+    wait_for_computefleet_changed,
+)
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
@@ -146,7 +154,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Update cluster with new configuration
-    additional_policy_arn = f"arn:{utils.get_arn_partition(region)}:iam::aws:policy/AWSCloudFormationReadOnlyAccess"
+    additional_policy_arn = f"arn:{get_arn_partition(region)}:iam::aws:policy/AWSCloudFormationReadOnlyAccess"
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         output_file="pcluster.config.update.successful.yaml",
@@ -808,7 +816,7 @@ def _test_update_queue_strategy_without_running_job(
     # test volume size are expected after update
     instances = cluster.get_cluster_instance_ids(node_type="Compute", queue_name="queue1")
     for instance in instances:
-        root_volume_id = utils.get_root_volume_id(instance, region, os)
+        root_volume_id = get_root_volume_id(instance, region, os)
         volume_size = (
             boto3.client("ec2", region_name=region)
             .describe_volumes(VolumeIds=[root_volume_id])
@@ -912,9 +920,7 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             for subnet in subnets:
                 subnets_by_az[subnet["AvailabilityZone"]].append(subnet["SubnetId"])
 
-            utils.render_jinja_template(
-                template_path, one_subnet_per_az=[subnets[0] for subnets in subnets_by_az.values()]
-            )
+            render_jinja_template(template_path, one_subnet_per_az=[subnets[0] for subnets in subnets_by_az.values()])
 
             vpc = vpc_stack.cfn_outputs["VpcId"]
             public_subnet_id = vpc_stack.get_public_subnet()
@@ -934,7 +940,7 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             with open(template_path, encoding="utf-8") as template_file:
                 template = template_file.read()
             stack = CfnStack(
-                name=utils.generate_stack_name(
+                name=generate_stack_name(
                     "integ-tests-external-shared-storage", request.config.getoption("stackname_suffix")
                 ),
                 region=region,

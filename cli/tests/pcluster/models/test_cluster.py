@@ -436,7 +436,7 @@ class TestCluster:
                     "ResourceType": "AWS::CloudFormation::Stack",
                     "StackId": "arn:aws:cloudformation:us-east-1:000000000000:stack/pc",
                     "StackName": "pc",
-                    "Timestamp": datetime.datetime(2021, 7, 13, 2, 20, 20, 000000, tzinfo=tz.tzutc()),
+                    "Timestamp": datetime.datetime(2021, 7, 13, 2, 20, 20, 0o00000, tzinfo=tz.tzutc()),
                 }
             ],
         }

@@ -717,6 +717,7 @@ class Pcluster3ConfigConverter(object):
             queue = self.convert_single_slurm_queue(queue_label)
             _append_if(slurm_queues, queue)
         _add_if(scheduling, param, slurm_queues)
+        return None
 
     def convert_single_slurm_queue(self, queue_label):
         """Convert single SlurmQueue."""

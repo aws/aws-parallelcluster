@@ -33,6 +33,7 @@ def handle_client_exception(func):
             print(f"Failed with error: {e}")
             if isinstance(e, ClientError) and "credentials" in str(e):
                 print("To set the credentials, run 'aws configure' or set them as environment variables")
+                return None
 
     return wrapper
 

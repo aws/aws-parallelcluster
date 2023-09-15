@@ -21,8 +21,7 @@ from builtins import str
 from functools import partial
 from typing import List
 
-import argparse
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 
 from pcluster import utils
 from pcluster.cli.commands.common import CliCommand, to_bool
@@ -96,7 +95,7 @@ Returns an ssh command with the cluster username and IP address pre-populated:
             help=self.help,
             description=self.description,
             epilog=self.epilog,
-            formatter_class=argparse.RawDescriptionHelpFormatter,
+            formatter_class=RawDescriptionHelpFormatter,
             expects_extra_args=True,
         )
 

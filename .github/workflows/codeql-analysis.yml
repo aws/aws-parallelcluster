@@ -2,7 +2,11 @@ name: "CodeQL"
 
 on:
   push:
+    paths-ignore:
+      - api/client
   pull_request:
+    paths-ignore:
+      - api/client
   schedule:
     - cron: '0 10 * * 2'
 

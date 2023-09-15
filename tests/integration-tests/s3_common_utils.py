@@ -54,3 +54,4 @@ def get_policy_resources(config, enable_write_access):
             else:
                 return [f"{bucket_name}", f"{bucket_name}/*"]
     logging.error("Bucket name couldn't be found in the configuration file.")
+    return None
