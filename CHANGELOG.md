@@ -19,6 +19,13 @@ CHANGELOG
 - Upgrade Slurm to 23.02.5 (from 23.02.4).
   - Upgrade Pmix to 4.2.6 (from 3.2.3).
   - Upgrade libjwt to 1.15.3 (from 1.12.0).
+- Upgrade EFA installer to `1.26.1`, fixing RDMA writedata issue in P5.
+  - Efa-driver: `efa-2.5.0-1`
+  - Efa-config: `efa-config-1.15-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.18.2-1`
+  - Rdma-core: `rdma-core-46.0-1`
+  - Open MPI: `openmpi40-aws-4.1.5-4`
 
 3.7.0
 ------
