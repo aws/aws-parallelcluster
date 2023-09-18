@@ -2,11 +2,7 @@ name: "CodeQL"
 
 on:
   push:
-    paths-ignore:
-      - api/client
   pull_request:
-    paths-ignore:
-      - api/client
   schedule:
     - cron: '0 10 * * 2'
 
@@ -30,5 +26,6 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         queries: +security-and-quality
+        paths-ignore: api/client
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
