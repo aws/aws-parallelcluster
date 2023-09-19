@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 from os import environ
 from typing import Any, Dict
 
@@ -53,7 +52,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 xray_recorder.configure(service="ParallelCluster Flask App")
                 XRayMiddleware(pcluster_api.flask_app, xray_recorder)
         # Setting default region to region where lambda function is executed
-        os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
+        environ["AWS_DEFAULT_REGION"] = environ["AWS_REGION"]
         return handle_request(pcluster_api.app, event, context)
     except Exception as e:
         logger.critical("Unexpected exception: %s", e, exc_info=True)
