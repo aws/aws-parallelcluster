@@ -41,7 +41,15 @@ class MungeKeySecretArnValidator(Validator):
 
                 try:
                     # Attempt to decode the secret value from Base64
-                    base64.b64decode(secret_value)
+                    decoded_secret = base64.b64decode(secret_value)
+                    # Check if the decoded secret size is within the acceptable range
+                    decoded_secret_size_in_bits = len(decoded_secret) * 8
+                    if decoded_secret_size_in_bits < 256 or decoded_secret_size_in_bits > 8192:
+                        self._add_failure(
+                            f"The size of the decoded munge key in the secret {munge_key_secret_arn} "
+                            f"is {decoded_secret_size_in_bits} bits which is outside the allowed range [256-8192].",
+                            FailureLevel.ERROR,
+                        )
                 except binascii.Error:
                     self._add_failure(
                         f"The secret {munge_key_secret_arn} does not contain valid Base64 encoded data.",
