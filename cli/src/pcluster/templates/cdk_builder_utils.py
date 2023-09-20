@@ -11,8 +11,7 @@
 
 # pylint: disable=too-many-lines
 import abc
-import hashlib
-from hashlib import sha1
+from hashlib import sha1, sha256
 from typing import List, Union
 
 import pkg_resources
@@ -289,7 +288,7 @@ def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str
         if iam_name_prefix:
             # Creating a Globally Unique Hash using Region, Type, Name and stack name
             resource_hash = (
-                hashlib.sha256((name + stack_name + iam_type + config.region).encode("utf-8")).hexdigest()[:12].upper()
+                sha256((name + stack_name + iam_type + config.region).encode("utf-8")).hexdigest()[:12].upper()
             )
             full_resource_name = iam_name_prefix + name + "-" + resource_hash
         if iam_path:
@@ -347,7 +346,7 @@ def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource)
     # A nosec comment is appended to the following line in order to disable the B324 check.
     # The sha1 is used just as a hashing function.
     # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
-    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
+    return sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
 
 
 class NodeIamResourcesBase(Construct):

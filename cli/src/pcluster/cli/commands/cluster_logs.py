@@ -11,8 +11,7 @@ import logging
 import re
 from typing import List
 
-import argparse
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
 
 from pcluster import utils
 from pcluster.cli.commands.common import CliCommand, ExportLogsCommand
@@ -98,5 +97,5 @@ class _FiltersArg:
 
     def __call__(self, value):
         if not self._pattern.match(value):
-            raise argparse.ArgumentTypeError(f"filters parameter must be in the form {self._pattern.pattern} ")
+            raise ArgumentTypeError(f"filters parameter must be in the form {self._pattern.pattern} ")
         return value

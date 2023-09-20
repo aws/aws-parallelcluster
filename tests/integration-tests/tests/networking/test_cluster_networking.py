@@ -13,7 +13,6 @@ import logging
 
 import boto3
 import pytest
-import utils
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from constants import OSU_BENCHMARK_VERSION
@@ -21,7 +20,13 @@ from fabric import Connection
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import Template
 from troposphere.ec2 import EIP
-from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os, render_jinja_template
+from utils import (
+    check_pcluster_list_cluster_log_streams,
+    generate_stack_name,
+    get_compute_nodes_instance_ids,
+    get_username_for_os,
+    render_jinja_template,
+)
 
 from tests.common.assertions import (
     assert_lambda_vpc_settings_are_correct,
@@ -161,7 +166,7 @@ def test_cluster_in_no_internet_subnet(
     _check_hostname(remote_command_executor)
     _run_prolog_epilog_jobs(remote_command_executor, slurm_commands)
     _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region)
-    utils.check_pcluster_list_cluster_log_streams(cluster, os)
+    check_pcluster_list_cluster_log_streams(cluster, os)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
     logging.info("Checking compute node is scaled down after scaledown idle time")
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)

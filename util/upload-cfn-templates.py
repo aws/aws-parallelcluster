@@ -89,7 +89,7 @@ def upload_to_s3(args, region, aws_credentials=None):
         key = "{key_path}{name}-{version}{extension}".format(
             key_path=key_path, name=t, version=args.version, extension=template_ext
         )
-        data = open(template_name, "rb")
+
         for bucket in buckets:
             try:
                 if aws_credentials:
@@ -110,7 +110,8 @@ def upload_to_s3(args, region, aws_credentials=None):
                 exist = False
 
             if (exist and args.override and not args.dryrun) or (not exist and not args.dryrun):
-                put_object_to_s3(s3_client, bucket, key, region, data, template_name)
+                with open(template_name, "rb") as data:
+                    put_object_to_s3(s3_client, bucket, key, region, data, template_name)
             else:
                 print(
                     "Not uploading %s to bucket %s, object exists %s, override is %s, dryrun is %s"
