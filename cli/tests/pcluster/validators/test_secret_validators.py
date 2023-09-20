@@ -23,15 +23,25 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
-            {"SecretString": "validBase64Value"},
+            {"SecretString": "validBase64ValueMakeItInRange[256,8192]MakeItInRange[256,8192]"},
             "",
             None,
             None,
         ),
         (
-            "arn:aws:otherService:us-west-2:123456789012:secret:testSecret",
+            "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
             {"SecretString": "validBase64Value"},
+            "The size of the decoded munge key in the secret "
+            "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret is 96 bits "
+            "which is outside the allowed range [256-8192].",
+            None,
+            FailureLevel.ERROR,
+        ),
+        (
+            "arn:aws:otherService:us-west-2:123456789012:secret:testSecret",
+            "us-west-2",
+            {"SecretString": "validBase64ValueMakeItInRange[256,8192]MakeItInRange[256,8192]"},
             "The secret arn:aws:otherService:us-west-2:123456789012:secret:testSecret is not supported "
             "in region us-west-2.",
             None,
@@ -40,7 +50,7 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:otherResource:testSecret",
             "us-west-2",
-            {"SecretString": "validBase64Value"},
+            {"SecretString": "validBase64ValueMakeItInRange[256,8192]MakeItInRange[256,8192]"},
             "The secret arn:aws:secretsmanager:us-west-2:123456789012:otherResource:testSecret is not supported"
             " in region us-west-2.",
             None,
@@ -49,7 +59,7 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
-            {"SecretString": "invalidBase64"},
+            {"SecretString": "invalidBase64MakeItInRange[256,8192]MakeItInRange[256,8192]"},
             "The secret arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret does not contain"
             " valid Base64 encoded data.",
             None,
@@ -58,7 +68,7 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
-            {"SecretString": "validBase64Value"},
+            {"SecretString": "validBase64ValueMakeItInRange[256,8192]MakeItInRange[256,8192]"},
             "The secret arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret does not exist.",
             "ResourceNotFoundExceptionSecrets",
             FailureLevel.ERROR,
@@ -66,7 +76,7 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
-            {"SecretString": "validBase64Value"},
+            {"SecretString": "validBase64ValueMakeItInRange[256,8192]MakeItInRange[256,8192]"},
             "Cannot validate secret arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret due to "
             "lack of permissions. Please refer to ParallelCluster official documentation for more information.",
             "AccessDeniedException",
@@ -75,7 +85,7 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         (
             "arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret",
             "us-west-2",
-            {"SecretString": "validBase64Value"},
+            {"SecretString": "validBase64ValueMakeItInRange[256,8192]MakeItInRange[256,8192]"},
             "Cannot validate secret arn:aws:secretsmanager:us-west-2:123456789012:secret:testSecret. "
             "Please refer to ParallelCluster official documentation for more information.",
             "ANOTHER_ERROR",
