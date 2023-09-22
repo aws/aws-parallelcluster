@@ -2551,12 +2551,14 @@ class Database(Resource):
         uri: str = None,
         user_name: str = None,
         password_secret_arn: str = None,
+        database_name: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.uri = Resource.init_param(uri)
         self.user_name = Resource.init_param(user_name)
         self.password_secret_arn = Resource.init_param(password_secret_arn)
+        self.database_name = Resource.init_param(database_name)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         region = get_region()
