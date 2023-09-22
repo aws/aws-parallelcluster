@@ -1666,6 +1666,14 @@ class DatabaseSchema(BaseSchema):
         validate=validate.Regexp(r"^arn:.*:secret"),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
+    database_name = fields.Str(
+        required=False,
+        validate=validate.And(
+            validate.Regexp(r"^[0-9a-z_]+$"),
+            validate.Length(min=1, max=64),
+        ),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
