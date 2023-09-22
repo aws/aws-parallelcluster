@@ -87,7 +87,7 @@ def _parse_args():
         "algorithm is expected to be found in the source bucket. This file is used to perform checksum validation "
         "and is also uploaded to the destination bucket",
         choices=list(HashingAlgorithm),
-        type=lambda value: HashingAlgorithm(value),
+        type=HashingAlgorithm,
         required=False,
     )
     parser.add_argument(
