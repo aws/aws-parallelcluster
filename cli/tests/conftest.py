@@ -303,7 +303,7 @@ def mock_cluster_stack(mocker, cfn_describe_stack_mock_response):
 
 @pytest.fixture()
 def mock_image_stack(mocker):
-    def _mock_image_stack(image_id: str = "image", stack_exists: bool = True):
+    def _mock_image_stack(image_id: str = "image", stack_exists: bool = True, version="3.0.0"):
         uid = "00000000-ffff-1111-9999-000000000000"
         stack_data = {
             "Capabilities": ["CAPABILITY_NAMED_IAM"],
@@ -315,13 +315,13 @@ def mock_image_stack(mocker):
             "StackName": image_id,
             "StackStatus": "CREATE_COMPLETE",
             "Tags": [
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:version", "Value": version},
                 {"Key": "parallelcluster:image_name", "Value": image_id},
                 {"Key": "parallelcluster:image_id", "Value": image_id},
                 {"Key": "parallelcluster:s3_bucket", "Value": "parallelcluster-0000000000000000-v1-do-not-delete"},
                 {
                     "Key": "parallelcluster:s3_image_dir",
-                    "Value": f"parallelcluster/3.0.0/images/{image_id}-aaaaaaaaaaaaaaaa",
+                    "Value": f"parallelcluster/{version}/images/{image_id}-aaaaaaaaaaaaaaaa",
                 },
                 {
                     "Key": "parallelcluster:build_log",
@@ -334,7 +334,7 @@ def mock_image_stack(mocker):
                     "Key": "parallelcluster:build_config",
                     "Value": (
                         "s3://parallelcluster-0cd54f8004a2e0af-v1-do-not-delete/parallelcluster/"
-                        "3.0.0/images/custom-image-0-pgdlow92odu5dbvv/configs/image-config.yaml"
+                        "{version}/images/custom-image-0-pgdlow92odu5dbvv/configs/image-config.yaml"
                     ),
                 },
             ],
