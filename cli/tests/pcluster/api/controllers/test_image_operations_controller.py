@@ -390,6 +390,61 @@ class TestDeleteImage:
             )
 
     @pytest.mark.parametrize(
+        ("error", "error_code"), [(LimitExceededImageError, 429), (BadRequestImageError, 400), (ImageError, 500)]
+    )
+    def test_delete_image_with_image_error_and_no_stack_throws_image_error(self, client, mocker, error, error_code):
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", side_effect=error("image error"))
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("describe_stack", "stack_name")
+        )
+
+        response = self._send_test_request(client, "nonExistentImage")
+
+        expected_response = {"message": "image error"}
+        if error == BadRequestImageError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize("version", ["2.0.0", "5.0.0"])
+    def test_delete_image_image_incompatible_version(self, client, mocker, version):
+        image = _create_image_info("image1", version=version)
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
+
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: Image or stack associated with image id 'image1' belongs to an"
+                    " incompatible ParallelCluster major version."
+                }
+            )
+
+    @pytest.mark.parametrize("version", ["2.0.0", "5.0.0"])
+    def test_delete_image_stack_incompatible_version(self, client, mocker, version):
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
+            side_effect=ImageNotFoundError("describe_image_by_id_tag"),
+        )
+        stack = _create_stack("image1", CloudFormationStackStatus.CREATE_COMPLETE, version=version)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack)
+
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: Image or stack associated with image id 'image1' belongs to an"
+                    " incompatible ParallelCluster major version."
+                }
+            )
+
+    @pytest.mark.parametrize(
         "region, image_id, force, expected_response",
         [
             pytest.param(
@@ -672,6 +727,66 @@ class TestBuildImage:
             region="eu-west-1",
             response=response,
         )
+
+    @pytest.mark.parametrize(
+        ("error", "error_code"), [(LimitExceededImageError, 429), (BadRequestImageError, 400), (ImageError, 500)]
+    )
+    def test_image_error_and_no_stack(self, client, mocker, error, error_code):
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", side_effect=error("image error"))
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("describe_stack", "stack_name")
+        )
+
+        response = self._send_test_request(client, dryrun=False)
+
+        expected_response = {"message": "image error"}
+        if error == BadRequestImageError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize("version", ["2.0.0", "5.0.0"])
+    def test_image_incompatible_version(self, client, mocker, version):
+        image = _create_image_info("imageid", version=version)
+        mocker.patch(
+            "pcluster.models.imagebuilder.ImageBuilder.create",
+            return_value=None,
+        )
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
+
+        response = self._send_test_request(client, dryrun=False)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: Image or stack associated with image id 'imageid' belongs to an"
+                    " incompatible ParallelCluster major version."
+                }
+            )
+
+    @pytest.mark.parametrize("version", ["2.0.0", "5.0.0"])
+    def test_stack_incompatible_version(self, client, mocker, version):
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", return_value=None)
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
+            side_effect=ImageNotFoundError("describe_image_by_id_tag"),
+        )
+        stack = _create_stack("imageid", CloudFormationStackStatus.CREATE_COMPLETE, version=version)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack)
+
+        response = self._send_test_request(client, dryrun=False)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: Image or stack associated with image id 'imageid' belongs to an"
+                    " incompatible ParallelCluster major version."
+                }
+            )
 
 
 def _create_official_image_info(version, os, architecture):
@@ -987,3 +1102,63 @@ class TestDescribeImage:
             region="us-east-1",
             response=response,
         )
+
+    @pytest.mark.parametrize(
+        ("error", "error_code"), [(LimitExceededImageError, 429), (BadRequestImageError, 400), (ImageError, 500)]
+    )
+    def test_image_error_and_no_stack(self, client, mocker, error, error_code):
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", side_effect=error("image error"))
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("describe_stack", "stack_name")
+        )
+
+        response = self._send_test_request(client, "imageid")
+
+        expected_response = {"message": "image error"}
+        if error == BadRequestImageError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize("version", ["2.0.0", "5.0.0"])
+    def test_image_incompatible_version(self, client, mocker, version):
+        image = _create_image_info("imageid", version=version)
+        mocker.patch(
+            "pcluster.models.imagebuilder.ImageBuilder.create",
+            return_value=None,
+        )
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
+
+        response = self._send_test_request(client, "imageid")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: Image or stack associated with image id 'imageid' belongs to an"
+                    " incompatible ParallelCluster major version."
+                }
+            )
+
+    @pytest.mark.parametrize("version", ["2.0.0", "5.0.0"])
+    def test_stack_incompatible_version(self, client, mocker, version):
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", return_value=None)
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
+            side_effect=ImageNotFoundError("describe_image_by_id_tag"),
+        )
+        stack = _create_stack("imageid", CloudFormationStackStatus.CREATE_COMPLETE, version=version)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack)
+
+        response = self._send_test_request(client, "imageid")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: Image or stack associated with image id 'imageid' belongs to an"
+                    " incompatible ParallelCluster major version."
+                }
+            )
