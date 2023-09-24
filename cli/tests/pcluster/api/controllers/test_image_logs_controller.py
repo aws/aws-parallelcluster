@@ -67,7 +67,7 @@ class TestGetImageLogEvents:
         ],
     )
     def test_successful_get_image_log_events_request(
-        self, client, mocker, region, next_token, start_from_head, limit, start_time, end_time
+        self, client, mocker, mock_image_stack, region, next_token, start_from_head, limit, start_time, end_time
     ):
         log_stream_name = "logstream"
         mock_log_events = [
@@ -106,6 +106,8 @@ class TestGetImageLogEvents:
             "pcluster.models.imagebuilder.ImageBuilder.get_log_events",
             return_value=mock_log_stream,
         )
+
+        mock_image_stack()
 
         response = self._send_test_request(
             client, "image", log_stream_name, region, next_token, start_from_head, limit, start_time, end_time
@@ -168,13 +170,14 @@ class TestGetImageLogEvents:
             (True, False, r"The specified log stream.*does not exist."),
         ],
     )
-    def test_invalid_logs(self, client, mocker, image_exists, log_group_exists, expected_response):
+    def test_invalid_logs(self, client, mocker, mock_image_stack, image_exists, log_group_exists, expected_response):
         err_msg = "The specified %s doesn't exist." % ("log stream" if image_exists else "log group")
         mocker.patch(
             "pcluster.aws.logs.LogsClient.get_log_events",
             autospec=True,
             side_effect=AWSClientError("get_log_events", err_msg, 404),
         )
+        mock_image_stack()
         response = self._send_test_request(client, "image", "logstream", "us-east-2", None, None, None, None, None)
         self._assert_invalid_response(response, expected_response, 404)
 
@@ -288,7 +291,8 @@ class TestGetImageStackEvents:
             (False, r"does not exist"),
         ],
     )
-    def test_invalid_image(self, client, mock_image_stack, image_stack_found, expected_response):
+    def test_invalid_image(self, client, mocker, mock_image_stack, image_stack_found, expected_response):
+        mocker.patch("pcluster.api.controllers.image_logs_controller.validate_image", return_value=False)
         mock_image_stack(image_id="image", stack_exists=image_stack_found)
         response = self._send_test_request(client, "image", "us-east-2", None)
         self._assert_invalid_response(response, expected_response, 404)
@@ -424,6 +428,7 @@ class TestListImageLogStreams:
     def test_invalid_image(self, client, mocker, mock_image_stack, image_stack_found, expected_response):
         err_msg = "The specified %s doesn't exist." % "log stream" if image_stack_found else "log group"
         mock_image_stack(image_id="image", stack_exists=image_stack_found)
+        mocker.patch("pcluster.api.controllers.image_logs_controller.validate_image", return_value=False)
         mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.get_log_events",
             autospec=True,

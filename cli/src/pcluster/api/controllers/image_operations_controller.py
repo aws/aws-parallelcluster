@@ -17,6 +17,7 @@ from pcluster.api.controllers.common import (
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
+    validate_image
 )
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,
@@ -130,6 +131,8 @@ def build_image(
             validation_failure_level=FailureLevel[validation_failure_level],
         )
 
+        validate_image(imagebuilder, exact_match=True)
+
         return BuildImageResponseContent(
             image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
             validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,
@@ -164,6 +167,7 @@ def delete_image(image_id, region=None, force=None):
     force = force or False
     imagebuilder = ImageBuilder(image_id=image_id)
     image, stack = _get_underlying_image_or_stack(imagebuilder)
+    validate_image(imagebuilder)
 
     imagebuilder.delete(force=force)
 
@@ -209,6 +213,7 @@ def describe_image(image_id, region=None):
     """
     assert_supported_operation(operation=Operation.DESCRIBE_IMAGE, region=region)
     imagebuilder = ImageBuilder(image_id=image_id)
+    validate_image(imagebuilder)
 
     try:
         return _image_to_describe_image_response(imagebuilder)

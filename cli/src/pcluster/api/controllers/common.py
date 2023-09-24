@@ -32,6 +32,8 @@ from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsS
 from pcluster.constants import SUPPORTED_REGIONS, UNSUPPORTED_OPERATIONS_MAP, Operation
 from pcluster.models.cluster import Cluster
 from pcluster.models.common import BadRequest, Conflict, LimitExceeded, NotFound, parse_config
+from pcluster.models.imagebuilder import ImageBuilder, ImageError, NonExistingImageError
+from pcluster.models.imagebuilder_resources import NonExistingStackError, StackError
 from pcluster.utils import get_installed_version, to_utc_datetime
 
 LOGGER = logging.getLogger(__name__)
@@ -125,6 +127,43 @@ def validate_cluster(cluster: Cluster):
         raise NotFoundException(
             f"Cluster '{cluster.name}' does not exist or belongs to an incompatible ParallelCluster major version."
         )
+
+
+def check_image_version(version: str, image_id: str, exact_match: bool):
+    bad_request = BadRequestException(
+        f"Image or stack associated with image id '{image_id}' belongs to an"
+        f" incompatible ParallelCluster major version."
+    )
+    if not version:
+        raise bad_request
+
+    version_check = (
+        packaging.version.parse(packaging.version.parse(get_installed_version()).base_version)
+        >= packaging.version.parse(version)
+        >= packaging.version.parse("3.0.0a0")
+    )
+    if exact_match:
+        version_check = packaging.version.parse(version) == packaging.version.parse(get_installed_version())
+
+    if not version_check:
+        raise bad_request
+
+
+def validate_image(imagebuilder: ImageBuilder, exact_match: bool = False):
+    try:
+        check_image_version(imagebuilder.image.version, imagebuilder.image_id, exact_match)
+    except NonExistingImageError:
+        try:
+            check_image_version(imagebuilder.stack.version, imagebuilder.image_id, exact_match)
+        except NonExistingStackError:
+            raise NotFoundException(
+                f"No image or stack associated with ParallelCluster image id: {imagebuilder.image_id}."
+            )
+    except ImageError as e:
+        try:
+            check_image_version(imagebuilder.stack.version, imagebuilder.image_id, exact_match)
+        except StackError:
+            raise e
 
 
 def validate_timestamp(date_str: str, ts_name: str = "Time"):

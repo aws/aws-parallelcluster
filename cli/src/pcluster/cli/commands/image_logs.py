@@ -13,7 +13,7 @@ from typing import List
 from argparse import ArgumentParser, Namespace
 
 from pcluster import utils
-from pcluster.api.controllers.common import assert_supported_operation
+from pcluster.api.controllers.common import assert_supported_operation, validate_image
 from pcluster.aws.common import get_region
 from pcluster.cli.commands.common import CliCommand, ExportLogsCommand
 from pcluster.constants import Operation
@@ -70,6 +70,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
 
         # retrieve imagebuilder config and generate model
         imagebuilder = ImageBuilder(image_id=args.image_id)
+        validate_image(imagebuilder)
         url = imagebuilder.export_logs(
             bucket=args.bucket,
             bucket_prefix=args.bucket_prefix,

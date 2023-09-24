@@ -12,6 +12,7 @@ from pcluster.api.controllers.common import (
     assert_supported_operation,
     configure_aws_region,
     convert_errors,
+    validate_image,
     validate_timestamp,
 )
 from pcluster.api.errors import BadRequestException
@@ -78,6 +79,8 @@ def get_image_log_events(
         raise BadRequestException("'limit' must be a positive integer.")
 
     imagebuilder = ImageBuilder(image_id=image_id)
+    validate_image(imagebuilder)
+
     log_events = imagebuilder.get_log_events(
         log_stream_name,
         start_time=start_dt,
@@ -115,6 +118,7 @@ def get_image_stack_events(image_id, region=None, next_token=None):
     """
     assert_supported_operation(operation=Operation.GET_IMAGE_STACK_EVENTS, region=region)
     imagebuilder = ImageBuilder(image_id=image_id)
+    validate_image(imagebuilder)
     stack_events = imagebuilder.get_stack_events(next_token=next_token)
 
     def convert_event(event):
@@ -152,6 +156,7 @@ def list_image_log_streams(image_id, region=None, next_token=None):
 
     assert_supported_operation(operation=Operation.LIST_IMAGE_LOG_STREAMS, region=region)
     imagebuilder = ImageBuilder(image_id=image_id)
+    validate_image(imagebuilder)
     logs = imagebuilder.list_log_streams(next_token=next_token)
     log_streams = [convert_log(log) for log in logs.log_streams]
     next_token = logs.next_token

@@ -33,16 +33,17 @@ from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
     ConflictImageBuilderActionError,
+    ImageError,
     LimitExceededImageBuilderActionError,
     LimitExceededImageError,
 )
 from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
-from pcluster.utils import get_installed_version, to_iso_timestr, to_utc_datetime
+from pcluster.utils import to_iso_timestr, to_utc_datetime, get_installed_version
 from pcluster.validators.common import FailureLevel, ValidationResult
 from tests.pcluster.api.controllers.utils import mock_assert_supported_operation, verify_unsupported_operation
 
 
-def _create_image_info(image_id):
+def _create_image_info(image_id, version="3.0.0"):
     return ImageInfo(
         {
             "Name": image_id,
@@ -53,14 +54,14 @@ def _create_image_info(image_id):
             "Description": "description",
             "Tags": [
                 {"Key": "parallelcluster:image_id", "Value": image_id},
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:version", "Value": version},
                 {"Key": "parallelcluster:build_config", "Value": "s3://bucket/key"},
             ],
         }
     )
 
 
-def _create_stack(image_id, status, reason=None):
+def _create_stack(image_id, status, reason=None, version="3.0.0"):
     stack = {
         "StackId": f"arn:{image_id}",
         "StackName": f"arn:{image_id}",
@@ -68,7 +69,7 @@ def _create_stack(image_id, status, reason=None):
         "CreationTime": datetime(2021, 4, 12),
         "Tags": [
             {"Key": "parallelcluster:image_id", "Value": image_id},
-            {"Key": "parallelcluster:version", "Value": "3.0.0"},
+            {"Key": "parallelcluster:version", "Value": version},
             {"Key": "parallelcluster:build_config", "Value": "s3://bucket/key"},
             {"Key": "parallelcluster:build_log", "Value": f"arn:{image_id}:build_log"},
         ],
@@ -537,7 +538,8 @@ class TestBuildImage:
         )
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS),
+            return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS,
+                                       version=get_installed_version()),
         )
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
 
@@ -548,7 +550,7 @@ class TestBuildImage:
                 "imageBuildStatus": "BUILD_IN_PROGRESS",
                 "imageId": "image1",
                 "region": "eu-west-1",
-                "version": "3.0.0",
+                "version": get_installed_version(),
             }
         }
 
