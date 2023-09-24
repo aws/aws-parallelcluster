@@ -63,13 +63,14 @@ class TestExportImageLogsCommand:
             },
         ],
     )
-    def test_execute(self, mocker, set_env, args):
+    def test_execute(self, mocker, mock_image_stack, set_env, args):
         mocked_assert_supported_operation = mocker.patch("pcluster.cli.commands.image_logs.assert_supported_operation")
         export_logs_mock = mocker.patch(
             "pcluster.cli.commands.image_logs.ImageBuilder.export_logs",
             return_value=args.get("output_file", "https://u.r.l."),
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
+        mock_image_stack()
 
         command = ["export-image-logs"] + self._build_cli_args({**REQUIRED_ARGS, **args})
         out = run(command)
@@ -101,7 +102,7 @@ class TestExportImageLogsCommand:
         mocked_assert_supported_operation.assert_called_with(operation=Operation.EXPORT_IMAGE_LOGS, region="us-east-1")
 
     @pytest.mark.parametrize("is_operation_supported", [True, False])
-    def test_operation_support(self, mocker, set_env, is_operation_supported):
+    def test_operation_support(self, mocker, mock_image_stack, set_env, is_operation_supported):
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         mocked_assert_supported_operation = mocker.patch(
@@ -110,6 +111,8 @@ class TestExportImageLogsCommand:
         )
 
         mocked_export_logs = mocker.patch("pcluster.cli.commands.image_logs.ImageBuilder.export_logs")
+
+        mock_image_stack()
 
         command = ["export-image-logs"] + self._build_cli_args(
             {**REQUIRED_ARGS},

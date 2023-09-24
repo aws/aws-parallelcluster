@@ -33,7 +33,7 @@ class TestListImageLogStreamsCommand:
         assert_that(out + err).contains(error_message)
 
     @pytest.mark.parametrize("args", [{}, {"next_token": "123"}])
-    def test_execute(self, mocker, set_env, args):
+    def test_execute(self, mocker, mock_image_stack, set_env, args):
         logs = LogStreams()
         logs.log_streams = [
             {
@@ -70,6 +70,8 @@ class TestListImageLogStreamsCommand:
             "pcluster.api.controllers.image_logs_controller.ImageBuilder.list_log_streams", return_value=logs
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
+
+        mock_image_stack()
 
         base_args = ["list-image-log-streams"]
         command = base_args + self._build_cli_args({**REQUIRED_ARGS, **args})

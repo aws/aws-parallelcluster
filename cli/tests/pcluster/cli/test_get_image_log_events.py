@@ -81,7 +81,7 @@ class TestGetImageLogEventsCommand:
             ),
         ],
     )
-    def test_execute(self, mocker, set_env, test_datadir, args):
+    def test_execute(self, mocker, mock_image_stack, set_env, test_datadir, args):
         mocked_result = [
             LogStream(
                 FAKE_ID,
@@ -122,6 +122,7 @@ class TestGetImageLogEventsCommand:
         get_image_log_events_mock = mocker.patch(
             "pcluster.api.controllers.image_logs_controller.ImageBuilder.get_log_events", side_effect=mocked_result
         )
+        mock_image_stack()
         set_env("AWS_DEFAULT_REGION", "us-east-1")
         base_args = ["get-image-log-events"]
         command = base_args + self._build_cli_args({**REQUIRED_ARGS, **args})

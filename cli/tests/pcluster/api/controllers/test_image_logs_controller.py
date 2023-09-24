@@ -5,15 +5,36 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from datetime import datetime
 
 import pytest
 from assertpy import assert_that
 
+from pcluster.api.models import Ec2AmiState
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import Operation
 from pcluster.models.common import LogStream
 from pcluster.utils import to_utc_datetime
 from tests.pcluster.api.controllers.utils import mock_assert_supported_operation, verify_unsupported_operation
+
+
+def _create_image_info(image_id: str = "image", version="3.0.0"):
+    return ImageInfo(
+        {
+            "Name": image_id,
+            "ImageId": image_id,
+            "State": Ec2AmiState.AVAILABLE,
+            "Architecture": "x86_64",
+            "CreationDate": datetime(2021, 4, 12),
+            "Description": "description",
+            "Tags": [
+                {"Key": "parallelcluster:image_id", "Value": image_id},
+                {"Key": "parallelcluster:version", "Value": version},
+                {"Key": "parallelcluster:build_config", "Value": "s3://bucket/key"},
+            ],
+        }
+    )
 
 
 class TestGetImageLogEvents:
