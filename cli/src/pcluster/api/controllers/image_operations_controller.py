@@ -17,7 +17,7 @@ from pcluster.api.controllers.common import (
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
-    validate_image
+    validate_image,
 )
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,

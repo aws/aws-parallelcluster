@@ -38,7 +38,7 @@ from pcluster.models.imagebuilder import (
     LimitExceededImageError,
 )
 from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
-from pcluster.utils import to_iso_timestr, to_utc_datetime, get_installed_version
+from pcluster.utils import get_installed_version, to_iso_timestr, to_utc_datetime
 from pcluster.validators.common import FailureLevel, ValidationResult
 from tests.pcluster.api.controllers.utils import mock_assert_supported_operation, verify_unsupported_operation
 
@@ -593,8 +593,9 @@ class TestBuildImage:
         )
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS,
-                                       version=get_installed_version()),
+            return_value=_create_stack(
+                "image1", CloudFormationStackStatus.CREATE_IN_PROGRESS, version=get_installed_version()
+            ),
         )
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
 
