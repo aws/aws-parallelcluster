@@ -178,11 +178,7 @@ from pcluster.validators.s3_validators import (
     S3BucketValidator,
     UrlValidator,
 )
-from pcluster.validators.secret_validators import (
-    MungeKeySecretArnExistsValidator,
-    MungeKeySecretArnServiceValidator,
-    MungeKeySecretSizeAndBase64Validator,
-)
+from pcluster.validators.secret_validators import ArnServiceAndResourceValidator, MungeKeySecretSizeAndBase64Validator
 from pcluster.validators.slurm_settings_validator import (
     SLURM_SETTINGS_DENY_LIST,
     CustomSlurmNodeNamesValidator,
@@ -1181,13 +1177,11 @@ class SlurmSettingsForCustomMungeKey(Resource):
         super()._register_validators(context)
         if self.munge_key_secret_arn:
             self._register_validator(
-                MungeKeySecretArnExistsValidator,
-                munge_key_secret_arn=self.munge_key_secret_arn,
-            )
-            self._register_validator(
-                MungeKeySecretArnServiceValidator,
-                munge_key_secret_arn=self.munge_key_secret_arn,
+                ArnServiceAndResourceValidator,
+                arn=self.munge_key_secret_arn,
                 region=get_region(),
+                expected_service="secretsmanager",
+                expected_resource="secret",
             )
             self._register_validator(
                 MungeKeySecretSizeAndBase64Validator,

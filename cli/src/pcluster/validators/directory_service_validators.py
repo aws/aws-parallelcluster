@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import DIRECTORY_SERVICE_RESERVED_SETTINGS
-from pcluster.validators.common import FailureLevel, SecretArnValidator, Validator
+from pcluster.validators.common import FailureLevel, Validator, _get_service_and_resource, _handle_arn_aws_client_error
 
 
 class DomainAddrValidator(Validator):
@@ -70,7 +70,7 @@ class DomainNameValidator(Validator):
             )
 
 
-class PasswordSecretArnValidator(SecretArnValidator):
+class PasswordSecretArnValidator(Validator):
     """PasswordSecretArn validator."""
 
     def _validate(self, password_secret_arn: str, region: str):
@@ -82,7 +82,7 @@ class PasswordSecretArnValidator(SecretArnValidator):
             for retro-compatibility.
         """
         try:
-            service, resource = self._get_service_and_resource(password_secret_arn)
+            service, resource = _get_service_and_resource(password_secret_arn)
             if service == "ssm":
                 resource = password_secret_arn.split(":")[5].split("/")[0]
             if service == "secretsmanager" and resource == "secret":
@@ -95,7 +95,7 @@ class PasswordSecretArnValidator(SecretArnValidator):
                     f"The secret {password_secret_arn} is not supported in region {region}.", FailureLevel.ERROR
                 )
         except AWSClientError as e:
-            self._handle_aws_client_error(e, password_secret_arn)
+            _handle_arn_aws_client_error(e, password_secret_arn, self)
 
 
 class LdapTlsReqCertValidator(Validator):

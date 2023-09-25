@@ -11,7 +11,8 @@
 #
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
-#
+# pylint: disable=protected-access
+
 import asyncio
 import functools
 from abc import ABC, abstractmethod
@@ -147,30 +148,29 @@ class ValidatorContext:
         self.during_update = during_update
 
 
-class SecretArnValidator(Validator):
-    """Common functions for secret ARN validator."""
+def _get_arn_components(arn: str):
+    return arn.split(":")
 
-    def _get_arn_components(self, arn: str):
-        return arn.split(":")
 
-    def _get_service_and_resource(self, arn: str):
-        arn_components = self._get_arn_components(arn)
-        service = arn_components[2]
-        resource = arn_components[5]
-        return service, resource
+def _get_service_and_resource(arn: str):
+    arn_components = _get_arn_components(arn)
+    service = arn_components[2]
+    resource = arn_components[5]
+    return service, resource
 
-    def _handle_aws_client_error(self, e: AWSClientError, arn: str):
-        if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
-            self._add_failure(f"The secret {arn} does not exist.", FailureLevel.ERROR)
-        elif e.error_code == "AccessDeniedException":
-            self._add_failure(
-                f"Cannot validate secret {arn} due to lack of permissions. "
-                "Please refer to ParallelCluster official documentation for more information.",
-                FailureLevel.WARNING,
-            )
-        else:
-            self._add_failure(
-                f"Cannot validate secret {arn}. "
-                "Please refer to ParallelCluster official documentation for more information.",
-                FailureLevel.WARNING,
-            )
+
+def _handle_arn_aws_client_error(e: AWSClientError, arn: str, validator_instance):
+    if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
+        validator_instance._add_failure(f"The secret {arn} does not exist.", FailureLevel.ERROR)
+    elif e.error_code == "AccessDeniedException":
+        validator_instance._add_failure(
+            f"Cannot validate secret {arn} due to lack of permissions. "
+            "Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+        )
+    else:
+        validator_instance._add_failure(
+            f"Cannot validate secret {arn}. "
+            "Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+        )

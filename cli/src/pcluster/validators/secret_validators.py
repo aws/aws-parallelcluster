@@ -13,33 +13,19 @@ import binascii
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.validators.common import FailureLevel, SecretArnValidator
+from pcluster.validators.common import FailureLevel, Validator, _get_service_and_resource, _handle_arn_aws_client_error
 
 
-class MungeKeySecretArnExistsValidator(SecretArnValidator):
-    """Validate that MungeKeySecretArn exists."""
+class ArnServiceAndResourceValidator(Validator):
+    """Validate that Arn is a valid ARN in given region."""
 
-    def _validate(self, munge_key_secret_arn: str):
-        service, resource = self._get_service_and_resource(munge_key_secret_arn)
-        try:
-            if service == "secretsmanager" and resource == "secret":
-                AWSApi.instance().secretsmanager.describe_secret(munge_key_secret_arn)
-        except AWSClientError as e:
-            self._handle_aws_client_error(e, munge_key_secret_arn)
-
-
-class MungeKeySecretArnServiceValidator(SecretArnValidator):
-    """Validate that MungeKeySecretArn is a valid ARN in given region."""
-
-    def _validate(self, munge_key_secret_arn: str, region: str, expected_service: str, expected_resource: str):
-        service, resource = self._get_service_and_resource(munge_key_secret_arn)
+    def _validate(self, arn: str, region: str, expected_service: str, expected_resource: str):
+        service, resource = _get_service_and_resource(arn)
         if not (service == expected_service and resource == expected_resource):
-            self._add_failure(
-                f"The secret {munge_key_secret_arn} is not supported in region {region}.", FailureLevel.ERROR
-            )
+            self._add_failure(f"The {arn} is not supported in region {region}.", FailureLevel.ERROR)
 
 
-class MungeKeySecretSizeAndBase64Validator(SecretArnValidator):
+class MungeKeySecretSizeAndBase64Validator(Validator):
     """Validate that MungeKeySecretArn exists.
 
     In Base64 encoding:
@@ -87,4 +73,4 @@ class MungeKeySecretSizeAndBase64Validator(SecretArnValidator):
                     FailureLevel.ERROR,
                 )
         except AWSClientError as e:
-            self._handle_aws_client_error(e, munge_key_secret_arn)
+            _handle_arn_aws_client_error(e, munge_key_secret_arn, self)
