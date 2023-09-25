@@ -229,7 +229,7 @@ DevSettings:
       {"cluster": {"scheduler_slots": "cores"}}
   AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
-  SlurmSettings:
+  MungeKeySettings:
     MungeKeySecretArn: arn:aws:secretsmanager:us-east-1:123456789012:secret:TestMungeKey
 DeploymentSettings:
   LambdaFunctionsVpcConfig:

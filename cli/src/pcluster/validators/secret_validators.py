@@ -13,64 +13,78 @@ import binascii
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.validators.common import FailureLevel, SecretArnValidator
 
 
-class MungeKeySecretArnValidator(Validator):
-    """MungeKeySecretArn validator."""
+class MungeKeySecretArnExistsValidator(SecretArnValidator):
+    """Validate that MungeKeySecretArn exists."""
 
-    def _validate(self, munge_key_secret_arn: str, region: str):
+    def _validate(self, munge_key_secret_arn: str):
+        service, resource = self._get_service_and_resource(munge_key_secret_arn)
         try:
-            arn_components = munge_key_secret_arn.split(":")
-            service = arn_components[2]
-            resource = arn_components[5]
             if service == "secretsmanager" and resource == "secret":
-                # Describe the secret to ensure it exists
                 AWSApi.instance().secretsmanager.describe_secret(munge_key_secret_arn)
+        except AWSClientError as e:
+            self._handle_aws_client_error(e, munge_key_secret_arn)
 
-                # Get the actual secret value to check if it's valid Base64
-                secret_response = AWSApi.instance().secretsmanager.get_secret_value(munge_key_secret_arn)
-                secret_value = secret_response.get("SecretString")
 
-                if not secret_value:
-                    self._add_failure(
-                        f"The secret {munge_key_secret_arn} does not contain a valid secret string.",
-                        FailureLevel.ERROR,
-                    )
-                    return
+class MungeKeySecretArnServiceValidator(SecretArnValidator):
+    """Validate that MungeKeySecretArn is a valid ARN in given region."""
 
-                try:
-                    # Attempt to decode the secret value from Base64
-                    decoded_secret = base64.b64decode(secret_value)
-                    # Check if the decoded secret size is within the acceptable range
-                    decoded_secret_size_in_bits = len(decoded_secret) * 8
-                    if decoded_secret_size_in_bits < 256 or decoded_secret_size_in_bits > 8192:
-                        self._add_failure(
-                            f"The size of the decoded munge key in the secret {munge_key_secret_arn} "
-                            f"is {decoded_secret_size_in_bits} bits which is outside the allowed range [256-8192].",
-                            FailureLevel.ERROR,
-                        )
-                except binascii.Error:
-                    self._add_failure(
-                        f"The secret {munge_key_secret_arn} does not contain valid Base64 encoded data.",
-                        FailureLevel.ERROR,
-                    )
-            else:
+    def _validate(self, munge_key_secret_arn: str, region: str, expected_service: str, expected_resource: str):
+        service, resource = self._get_service_and_resource(munge_key_secret_arn)
+        if not (service == expected_service and resource == expected_resource):
+            self._add_failure(
+                f"The secret {munge_key_secret_arn} is not supported in region {region}.", FailureLevel.ERROR
+            )
+
+
+class MungeKeySecretSizeAndBase64Validator(SecretArnValidator):
+    """Validate that MungeKeySecretArn exists.
+
+    In Base64 encoding:
+    - Every 3 bytes of input are represented as 4 characters in the encoded string.
+    - The length of the encoded string must be a multiple of 4.
+    - Valid Base64 characters include upper/lowercase letters,
+      numbers, '+', '/', and possibly trailing '=' padding chars.
+    - The '=' padding is used if the number of bytes being encoded is not divisible by 3.
+    Given these rules:
+    - "validBase64" is valid because its length is a multiple of 4 and uses valid Base64 characters.
+    - "invalidBase64" is invalid because its length is not a multiple of 4.
+
+    Also:
+    - The size of the decoded munge key must between 256 and 8192 bits.
+    """
+
+    def _validate(self, munge_key_secret_arn: str):
+        try:
+            # Get the actual key value to check if it is a valid Base64
+            secret_response = AWSApi.instance().secretsmanager.get_secret_value(munge_key_secret_arn)
+            secret_value = secret_response.get("SecretString")
+
+            if not secret_value:
                 self._add_failure(
-                    f"The secret {munge_key_secret_arn} is not supported in region {region}.", FailureLevel.ERROR
+                    f"The secret {munge_key_secret_arn} does not contain a valid secret string.",
+                    FailureLevel.ERROR,
+                )
+                return
+
+            try:
+                # Try decoding key value from Base64
+                decoded_secret = base64.b64decode(secret_value, validate=True)
+                # Check if the size of the decoding key is within the accepted range
+                decoded_secret_size_in_bits = len(decoded_secret) * 8
+                if decoded_secret_size_in_bits < 256 or decoded_secret_size_in_bits > 8192:
+                    self._add_failure(
+                        f"The size of the decoded munge key in the secret {munge_key_secret_arn} is "
+                        f"{decoded_secret_size_in_bits} bits. Please use a key with a size between 256 and 8192 bits.",
+                        FailureLevel.ERROR,
+                    )
+            except binascii.Error:
+                self._add_failure(
+                    f"The content of the secret {munge_key_secret_arn} is not a valid Base64 encoded string. "
+                    f"Please refer to the ParallelCluster official documentation for more information.",
+                    FailureLevel.ERROR,
                 )
         except AWSClientError as e:
-            if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
-                self._add_failure(f"The secret {munge_key_secret_arn} does not exist.", FailureLevel.ERROR)
-            elif e.error_code == "AccessDeniedException":
-                self._add_failure(
-                    f"Cannot validate secret {munge_key_secret_arn} due to lack of permissions. "
-                    "Please refer to ParallelCluster official documentation for more information.",
-                    FailureLevel.WARNING,
-                )
-            else:
-                self._add_failure(
-                    f"Cannot validate secret {munge_key_secret_arn}. "
-                    "Please refer to ParallelCluster official documentation for more information.",
-                    FailureLevel.WARNING,
-                )
+            self._handle_aws_client_error(e, munge_key_secret_arn)

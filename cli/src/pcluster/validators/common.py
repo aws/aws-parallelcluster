@@ -18,6 +18,8 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
+from pcluster.aws.common import AWSClientError
+
 ASYNC_TIMED_VALIDATORS_DEFAULT_TIMEOUT_SEC = 10
 
 
@@ -143,3 +145,32 @@ class ValidatorContext:
     def __init__(self, head_node_instance_id: str = None, during_update: bool = None):
         self.head_node_instance_id = head_node_instance_id
         self.during_update = during_update
+
+
+class SecretArnValidator(Validator):
+    """Common functions for secret ARN validator."""
+
+    def _get_arn_components(self, arn: str):
+        return arn.split(":")
+
+    def _get_service_and_resource(self, arn: str):
+        arn_components = self._get_arn_components(arn)
+        service = arn_components[2]
+        resource = arn_components[5]
+        return service, resource
+
+    def _handle_aws_client_error(self, e: AWSClientError, arn: str):
+        if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
+            self._add_failure(f"The secret {arn} does not exist.", FailureLevel.ERROR)
+        elif e.error_code == "AccessDeniedException":
+            self._add_failure(
+                f"Cannot validate secret {arn} due to lack of permissions. "
+                "Please refer to ParallelCluster official documentation for more information.",
+                FailureLevel.WARNING,
+            )
+        else:
+            self._add_failure(
+                f"Cannot validate secret {arn}. "
+                "Please refer to ParallelCluster official documentation for more information.",
+                FailureLevel.WARNING,
+            )

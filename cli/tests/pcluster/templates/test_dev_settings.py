@@ -58,12 +58,12 @@ def test_custom_cookbook(mocker, test_datadir, config_file_name):
         "config.yaml",
     ],
 )
-def test_custom_munge_key(mocker, test_datadir, config_file_name):
+def test_custom_munge_key_iam_policy(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
     mock_bucket_object_utils(mocker)
     mocker.patch(
         "pcluster.aws.secretsmanager.SecretsManagerClient.get_secret_value",
-        return_value={"SecretString": "invalidBase64"},
+        return_value={"SecretString": "validBase641234567890123456789012345678901234567"},
     )
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
