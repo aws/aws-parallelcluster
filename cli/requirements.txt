@@ -19,7 +19,7 @@ boto3>=1.16.14
 connexion~=2.13.0
 flask>=2.2.5,==2.2.*
 jinja2~=3.0
-jmespath~=0.10
+jmespath~=1.0
 jsii==1.85.0
 marshmallow~=3.10
 PyYAML>=5.3.1,!=5.4
