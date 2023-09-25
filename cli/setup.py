@@ -26,7 +26,7 @@ REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
     "tabulate>=0.8.8,<=0.8.10",
-    "PyYAML==6.0.1",
+    "PyYAML>=5.3.1,!=5.4",
     "jinja2~=3.0",
     "marshmallow~=3.10",
     "aws-cdk.core~=" + CDK_VERSION,
@@ -48,7 +48,7 @@ REQUIRES = [
     "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
     "werkzeug~=2.0",
     "connexion~=2.13.0",
-    "flask>=2.2.5,==2.2.*",
+    "flask>=2.2.5,<2.3",
     "jmespath~=0.10",
     "jsii==1.85.0",
 ]
