@@ -4,6 +4,9 @@ HeadNode:
   InstanceType: t2.micro
   Networking:
     SubnetId: subnet-12345678
+  LocalStorage:
+    RootVolume:
+      Size: 80
 Scheduling:
   Scheduler: slurm
   SlurmQueues:

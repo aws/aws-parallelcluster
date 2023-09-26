@@ -1152,7 +1152,11 @@ class ClusterCdkStack:
             count=1,
             handle=wait_condition_handle.ref,
             timeout=str(
-                get_attr(self.config, "dev_settings.timeouts.head_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT)
+                get_attr(
+                    self.config,
+                    "dev_settings.timeouts.head_node_bootstrap_timeout",
+                    NODE_BOOTSTRAP_TIMEOUT + self.config.additional_bootstrap_time_for_features(),
+                )
             ),
         )
         return wait_condition, wait_condition_handle
@@ -1299,6 +1303,15 @@ class ClusterCdkStack:
                     "compute_node_bootstrap_timeout": get_attr(
                         self.config, "dev_settings.timeouts.compute_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT
                     ),
+                    "install_intel_base_toolkit": str(
+                        get_attr(self.config, "additional_packages.intel_software.one_api.base_toolkit")
+                    ).lower(),
+                    "install_intel_hpc_toolkit": str(
+                        get_attr(self.config, "additional_packages.intel_software.one_api.hpc_toolkit")
+                    ).lower(),
+                    "install_intel_python": str(
+                        get_attr(self.config, "additional_packages.intel_software.python")
+                    ).lower(),
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
                         if self._condition_is_slurm()

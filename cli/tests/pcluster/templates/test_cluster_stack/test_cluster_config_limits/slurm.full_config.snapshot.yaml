@@ -1,6 +1,8 @@
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
+    OneApi: null
+    Python: null
 AdditionalResources: https://template.url
 CustomS3Bucket: String
 DeploymentSettings: null

@@ -1,12 +1,17 @@
 Image:
   Os: alinux2
+{% if enabled %}
+AdditionalPackages:
+  IntelSoftware:
+    OneApi:
+      BaseToolkit: true
+      HpcToolkit: true
+    Python: true
+{% endif %}
 HeadNode:
   InstanceType: t2.micro
   Networking:
     SubnetId: subnet-12345678
-  LocalStorage:
-    RootVolume:
-      Size: 80
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -17,9 +22,3 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.2xlarge
-SharedStorage:
-  - MountDir: /opt/shared/file-cache/unmanaged/1
-    Name: shared-file-cache-unmanaged-1
-    StorageType: FileCache
-    FileCacheSettings:
-      FileCacheId: fc-12345678
