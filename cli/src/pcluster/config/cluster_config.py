@@ -42,6 +42,8 @@ from pcluster.constants import (
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT_US_ISO,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME,
+    FEATURE_REQUIRING_ADDITION_SPACE,
     FILECACHE,
     LUSTRE,
     MAX_COMPUTE_RESOURCES_PER_QUEUE,
@@ -84,8 +86,11 @@ from pcluster.validators.cluster_validators import (
     HeadNodeLaunchTemplateValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
+    IntelHpc2018OsValidator,
     IntelHpcArchitectureValidator,
-    IntelHpcOsValidator,
+    IntelOneApiToolkitsBootstrapTimeValidator,
+    IntelOneApiToolkitsOsValidator,
+    IntelPythonOsValidator,
     LoginNodesSchedulerValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
@@ -1134,12 +1139,23 @@ class ClusterIam(Resource):
             self._register_validator(IamResourcePrefixValidator, resource_prefix=self.resource_prefix)
 
 
-class IntelSoftware(Resource):
-    """Represent the Intel select solution configuration."""
+class OneApi(Resource):
+    """Represent the OneApi configuration."""
 
-    def __init__(self, intel_hpc_platform: bool = None):
+    def __init__(self, base_toolkit: bool = None, hpc_toolkit: bool = None):
+        super().__init__()
+        self.base_toolkit = Resource.init_param(base_toolkit or hpc_toolkit, default=False)
+        self.hpc_toolkit = Resource.init_param(hpc_toolkit, default=False)
+
+
+class IntelSoftware(Resource):
+    """Represent the Intel software configuration."""
+
+    def __init__(self, one_api: OneApi = None, intel_hpc_platform: bool = None, python: bool = None):
         super().__init__()
         self.intel_hpc_platform = Resource.init_param(intel_hpc_platform, default=False)
+        self.one_api = Resource.init_param(one_api)
+        self.python = python
 
 
 class AdditionalPackages(Resource):
@@ -1530,6 +1546,7 @@ class BaseClusterConfig(Resource):
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
         self.instance_types_data_version = ""
+        self._set_default_head_node_root_volume_size()
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1572,13 +1589,21 @@ class BaseClusterConfig(Resource):
                 os=self.image.os,
                 architecture=self.head_node.architecture,
             )
-        if (
-            self.additional_packages
-            and self.additional_packages.intel_software
-            and self.additional_packages.intel_software.intel_hpc_platform
-        ):
-            self._register_validator(IntelHpcOsValidator, os=self.image.os)
-            self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
+        feature_requiring_additional_space = []
+        if self.additional_packages and self.additional_packages.intel_software:
+            if self.additional_packages.intel_software.intel_hpc_platform:
+                self._register_validator(IntelHpc2018OsValidator, os=self.image.os)
+                self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
+            if (
+                self.additional_packages.intel_software.one_api
+                and self.additional_packages.intel_software.one_api.base_toolkit
+            ):
+                feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
+                self._register_validator(IntelOneApiToolkitsOsValidator, os=self.image.os)
+                self._register_validator(IntelOneApiToolkitsBootstrapTimeValidator)
+            if self.additional_packages.intel_software.python:
+                self._register_validator(IntelPythonOsValidator, os=self.image.os)
+
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
@@ -1596,6 +1621,7 @@ class BaseClusterConfig(Resource):
             RootVolumeSizeValidator,
             root_volume_size=root_volume_size,
             ami_volume_size=ami_volume_size,
+            additional_space=self._additional_space_for_features(),
         )
         self._register_validator(
             EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
@@ -1753,6 +1779,44 @@ class BaseClusterConfig(Resource):
                 volume_ids.append(storage.volume_id)
         if volume_ids:
             AWSApi.instance().fsx.describe_volumes(volume_ids)
+
+    def _set_default_head_node_root_volume_size(self):
+        root_volume = self.head_node.local_storage.root_volume
+        if root_volume.size is None:
+            root_volume.size = Resource.init_param(
+                None,
+                default=AWSApi.instance().ec2.describe_image(self.head_node_ami).volume_size
+                + self._additional_space_for_features(),
+            )
+
+    def _additional_space_for_features(self):
+        feature_requiring_additional_space = []
+        if (
+            self.additional_packages
+            and self.additional_packages.intel_software
+            and self.additional_packages.intel_software.one_api
+            and self.additional_packages.intel_software.one_api.base_toolkit
+        ):
+            feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
+        additional_space = 0
+        for feature in feature_requiring_additional_space:
+            additional_space += FEATURE_REQUIRING_ADDITION_SPACE[feature]
+        return additional_space
+
+    def additional_bootstrap_time_for_features(self):
+        """Calculate total additional bootstrap time for enabled features."""
+        feature_requiring_additional_bootstrap_time = []
+        if (
+            self.additional_packages
+            and self.additional_packages.intel_software
+            and self.additional_packages.intel_software.one_api
+            and self.additional_packages.intel_software.one_api.base_toolkit
+        ):
+            feature_requiring_additional_bootstrap_time.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
+        additional_bootstrap_time = 0
+        for feature in feature_requiring_additional_bootstrap_time:
+            additional_bootstrap_time += FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME[feature]
+        return additional_bootstrap_time
 
     @property
     def region(self):
