@@ -433,6 +433,14 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command(command)
         return result.stdout.splitlines()
 
+    def get_unique_static_nodes(self):
+        """Get list of unique static node names (useful if custom partitions are included in a cluster)"""
+        command = (
+            "scontrol show nodes -o  | grep -iE '*State=IDLE\+CLOUD ' | awk '/^NodeName/ {print $1}'"  # noqa: W605
+        )
+        result = self._remote_command_executor.run_remote_command(command)
+        return result.stdout.splitlines()
+
     @retry(retry_on_result=lambda result: "drain" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(5))
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("sinfo -h -o '%t'").stdout

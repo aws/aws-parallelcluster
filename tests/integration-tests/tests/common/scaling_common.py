@@ -46,7 +46,7 @@ def get_compute_nodes_allocation(scheduler_commands, region, stack_name, max_mon
         stop_max_delay=max_monitoring_time,
     )
     def _watch_compute_nodes_allocation():
-        compute_nodes = scheduler_commands.compute_nodes_count()
+        compute_nodes = len(scheduler_commands.get_unique_static_nodes())
         ec2_capacity = get_compute_nodes_count(stack_name, region)
         timestamp = time.time()
 

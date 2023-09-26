@@ -1,0 +1,79 @@
+#!/bin/bash
+
+set -e
+
+cat > "/opt/slurm/etc/custom_partitions.conf" << EOF
+NodeSet=custom_nodeset_0 Nodes={{ partition }}-st-{{ cr }}-[1-703]
+NodeSet=custom_nodeset_16 Nodes={{ partition }}-st-{{ cr }}-[704-1449]
+NodeSet=custom_nodeset_22 Nodes={{ partition }}-st-{{ cr }}-[1450-1549]
+PartitionName=custom_partition_20 Nodes=q1_nodes Default=YES
+PartitionName=custom_partition_24 Nodes=custom_nodeset_0
+PartitionName=custom_partition_9 Nodes=custom_nodeset_16
+PartitionName=custom_partition_18 Nodes=custom_nodeset_22
+PartitionName=custom_partition_4 Nodes=custom_nodeset_18
+PartitionName=custom_partition_22 Nodes=q1_nodes
+NodeSet=custom_nodeset_23 Nodes={{ partition }}-st-{{ cr }}-[6,18,35,39,58,111,116,136,141,146,147,150,151,271,285,352,368,379,457,458,487,494,524,542,553,554,564,565,566,583,603,668,698,699,700,704,718,735,748,866,912,919,947,1038,1046,1049,1148,1219,1221,1222,1250,1257,1276,1290,1308,1334,1339,1340,1341,1353,1388,1396,1406,1430,1439,1445,1457,1459,1466,1467,1469,1470]
+PartitionName=custom_partition_26 Nodes=custom_nodeset_23
+NodeSet=custom_nodeset_27 Nodes={{ partition }}-st-{{ cr }}-[7,8,20,25,67,69,71,72,86,90,93,99,106,115,119,125,127,129,134,135,140,142,144,145,149,158,160,166,173,178,181,188,196,200,203,209,227,229,235,245,264,272,290,323,459,461,468,481,482,484,489,497,506,513,514,515,517,518,520,525,528,530,531,532,534,537,544,545,546,551,552,555,556,559,561,563,575,580,581,592,598,615,652,678,680,681,702,719,729,734,739,743,749,780,839,925,937,955,961,963,971,974,993,995,996,1008,1050,1077,1099,1120,1123,1127,1206,1208,1212,1216,1217,1223,1225,1226,1227,1256,1258,1259,1264,1295,1318,1324,1329,1331,1333,1336,1337,1344,1350,1381,1444,1456,1458,1461,1462,1463]
+PartitionName=custom_partition_3 Nodes=custom_nodeset_27
+NodeSet=custom_nodeset_6 Nodes={{ partition }}-st-{{ cr }}-[1-64]
+PartitionName=custom_partition_0  Nodes=custom_nodeset_6
+NodeSet=custom_nodeset_11 Nodes={{ partition }}-st-{{ cr }}-[65-96]
+PartitionName=custom_partition_25  Nodes=custom_nodeset_11
+NodeSet=custom_nodeset_5 Nodes={{ partition }}-st-{{ cr }}-[97-128]
+PartitionName=custom_partition_32  Nodes=custom_nodeset_5
+NodeSet=custom_nodeset_30 Nodes={{ partition }}-st-{{ cr }}-[129-144]
+PartitionName=custom_partition_27  Nodes=custom_nodeset_30
+NodeSet=custom_nodeset_3 Nodes={{ partition }}-st-{{ cr }}-[145-160]
+PartitionName=custom_partition_11  Nodes=custom_nodeset_3
+NodeSet=custom_nodeset_10 Nodes={{ partition }}-st-{{ cr }}-[161-208]
+PartitionName=custom_partition_14  Nodes=custom_nodeset_10
+NodeSet=custom_nodeset_14 Nodes={{ partition }}-st-{{ cr }}-[209-248]
+PartitionName=custom_partition_15  Nodes=custom_nodeset_14
+NodeSet=custom_nodeset_7 Nodes={{ partition }}-st-{{ cr }}-[249-296]
+PartitionName=custom_partition_2  Nodes=custom_nodeset_7
+NodeSet=custom_nodeset_12 Nodes={{ partition }}-st-{{ cr }}-[297-408]
+PartitionName=custom_partition_13  Nodes=custom_nodeset_12
+NodeSet=custom_nodeset_25 Nodes={{ partition }}-st-{{ cr }}-[409-440]
+PartitionName=custom_partition_17  Nodes=custom_nodeset_25
+NodeSet=custom_nodeset_24 Nodes={{ partition }}-st-{{ cr }}-[441-472]
+PartitionName=custom_partition_12  Nodes=custom_nodeset_24
+NodeSet=custom_nodeset_29 Nodes={{ partition }}-st-{{ cr }}-[473-488]
+PartitionName=custom_partition_30  Nodes=custom_nodeset_29
+NodeSet=custom_nodeset_8 Nodes={{ partition }}-st-{{ cr }}-[489-520]
+PartitionName=custom_partition_8  Nodes=custom_nodeset_8
+NodeSet=custom_partition_34_nodes Nodes={{ partition }}-st-{{ cr }}-[521-638]
+PartitionName=custom_partition_34 Nodes=custom_partition_34_nodes
+NodeSet=custom_nodeset_9 Nodes={{ partition }}-st-{{ cr }}-[639-702]
+PartitionName=custom_partition_5  Nodes=custom_nodeset_9
+NodeSet=custom_nodeset_28 Nodes={{ partition }}-st-{{ cr }}-[703-703]
+PartitionName=custom_partition_31  Nodes=custom_nodeset_28
+NodeSet=custom_nodeset_4 Nodes={{ partition }}-st-{{ cr }}-[704-863]
+PartitionName=custom_partition_10  Nodes=custom_nodeset_4
+NodeSet=custom_nodeset_19 Nodes={{ partition }}-st-{{ cr }}-[864-991]
+PartitionName=custom_partition_7  Nodes=custom_nodeset_19
+NodeSet=custom_nodeset_20 Nodes={{ partition }}-st-{{ cr }}-[992-1043]
+PartitionName=custom_partition_28  Nodes=custom_nodeset_20
+NodeSet=custom_nodeset_18 Nodes={{ partition }}-st-{{ cr }}-[1044-1299]
+PartitionName=custom_partition_21  Nodes=custom_nodeset_18
+NodeSet=custom_nodeset_13 Nodes={{ partition }}-st-{{ cr }}-[1300-1321]
+PartitionName=custom_partition_19  Nodes=custom_nodeset_13
+NodeSet=custom_nodeset_2 Nodes={{ partition }}-st-{{ cr }}-[1322-1417]
+PartitionName=custom_partition_23  Nodes=custom_nodeset_2
+NodeSet=custom_nodeset_26 Nodes={{ partition }}-st-{{ cr }}-[1418-1449]
+PartitionName=custom_partition_16  Nodes=custom_nodeset_26
+NodeSet=custom_nodeset_21 Nodes={{ partition }}-st-{{ cr }}-[1450-1453]
+PartitionName=custom_partition_29  Nodes=custom_nodeset_21
+NodeSet=custom_nodeset_1 Nodes={{ partition }}-st-{{ cr }}-[1454-1549]
+PartitionName=custom_partition_1  Nodes=custom_nodeset_1
+NodeSet=custom_nodeset_15 Nodes={{ partition }}-st-{{ cr }}-[1550-1565]
+PartitionName=custom_partition_6  Nodes=custom_nodeset_15
+EOF
+
+SLURM_CONF="/opt/slurm/etc/slurm.conf"
+
+sed -i '/^include custom_partitions.conf /d' ${SLURM_CONF}
+echo 'include custom_partitions.conf' | sudo tee -a ${SLURM_CONF}
+
+systemctl status slurmctld
+sudo -i scontrol reconfigure

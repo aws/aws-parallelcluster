@@ -23,7 +23,7 @@ from itertools import product
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import boto3
 import pytest
@@ -1193,17 +1193,119 @@ def placement_group_stack(cfn_stacks_factory, request, region):
     cfn_stacks_factory.delete_stack(stack.name, region)
 
 
-@pytest.fixture(scope="class")
-def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_stack: CfnVpcStack):
-    logging.info("Setting up the ODCR stack")
-    odcr_template = Template()
-    odcr_template.set_version()
-    odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
+def _odcr_azs(vpc_stack):
     public_subnet = vpc_stack.get_public_subnet()
     public_subnets = vpc_stack.get_all_public_subnets()
     default_public_az = boto3.resource("ec2").Subnet(public_subnet).availability_zone
     availability_zone_1 = boto3.resource("ec2").Subnet(public_subnets[0]).availability_zone
     availability_zone_2 = boto3.resource("ec2").Subnet(public_subnets[1]).availability_zone
+
+    return {"default_public_az": default_public_az, "az1": availability_zone_1, "az2": availability_zone_2}
+
+
+@pytest.fixture(scope="class")
+def scaling_odcr_stack(
+    request,
+    region,
+    cfn_stacks_factory,
+    vpc_stack: CfnVpcStack,
+):
+    odcr_stack: Union[CfnStack, None] = None
+
+    def _scaling_odcr_stack(instances_count: int):
+        nonlocal odcr_stack
+
+        logging.info("Setting up the ODCR stack for scaling with special cases")
+        odcr_template = Template()
+        odcr_template.set_version()
+        odcr_template.set_description("ODCR stack to test scaling with special cases")
+        default_public_az, availability_zone_1, availability_zone_2 = _odcr_azs(vpc_stack).values()
+
+        first_odcr_instances_count = int(instances_count // 2)
+        scaling_odcr_a = ec2.CapacityReservation(
+            "integTestsScalingOdcrA",
+            AvailabilityZone=default_public_az,
+            InstanceCount=first_odcr_instances_count,
+            InstancePlatform="Linux/UNIX",
+            InstanceType="c5.large",
+            InstanceMatchCriteria="targeted",
+        )
+        scaling_odcr_b = ec2.CapacityReservation(
+            "integTestsScalingOdcrB",
+            AvailabilityZone=default_public_az,
+            InstanceCount=instances_count - first_odcr_instances_count,
+            InstancePlatform="Linux/UNIX",
+            InstanceType="c5.large",
+            InstanceMatchCriteria="targeted",
+        )
+
+        scaling_odcr_group = resourcegroups.Group(
+            "integTestsScalingOdcrGroup",
+            Name=generate_stack_name("integ-tests-odcr-group", request.config.getoption("stackname_suffix")),
+            Configuration=[
+                resourcegroups.ConfigurationItem(Type="AWS::EC2::CapacityReservationPool"),
+                resourcegroups.ConfigurationItem(
+                    Type="AWS::ResourceGroups::Generic",
+                    Parameters=[
+                        resourcegroups.ConfigurationParameter(
+                            Name="allowed-resource-types", Values=["AWS::EC2::CapacityReservation"]
+                        )
+                    ],
+                ),
+            ],
+            Resources=[
+                Sub(
+                    "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                    partition=get_arn_partition(region),
+                    region=region,
+                    account_id=Ref("AWS::AccountId"),
+                    odcr_id=Ref(scaling_odcr_a),
+                ),
+                Sub(
+                    "arn:${partition}:ec2:${region}:${account_id}:capacity-reservation/${odcr_id}",
+                    partition=get_arn_partition(region),
+                    region=region,
+                    account_id=Ref("AWS::AccountId"),
+                    odcr_id=Ref(scaling_odcr_b),
+                ),
+            ],
+        )
+
+        odcr_template.add_resource(scaling_odcr_a)
+        odcr_template.add_resource(scaling_odcr_b)
+        odcr_template.add_resource(scaling_odcr_group)
+
+        stack = CfnStack(
+            name=generate_stack_name("integ-tests-scaling-odcr", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=odcr_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(stack)
+        odcr_stack = stack
+        return stack
+
+    yield _scaling_odcr_stack
+
+    if odcr_stack:
+        cfn_stacks_factory.delete_stack(odcr_stack.name, region)
+
+
+@pytest.fixture(scope="class")
+def odcr_stack(
+    request,
+    region,
+    placement_group_stack,
+    cfn_stacks_factory,
+    vpc_stack: CfnVpcStack,
+):
+    # TODO: Refactor this stack (and tests using it) to select which specific ODCRs are needed instead of having a
+    #  monolithic stack with ALL ODCRs
+    logging.info("Setting up the ODCR stack")
+    odcr_template = Template()
+    odcr_template.set_version()
+    odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
+    default_public_az, availability_zone_1, availability_zone_2 = _odcr_azs(vpc_stack).values()
+
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=default_public_az,
@@ -1229,6 +1331,7 @@ def odcr_stack(request, region, placement_group_stack, cfn_stacks_factory, vpc_s
         InstanceMatchCriteria="targeted",
         PlacementGroupArn=boto3.resource("ec2").PlacementGroup(pg_name).group_arn,
     )
+
     odcr_group = resourcegroups.Group(
         "integTestsOdcrGroup",
         Name=generate_stack_name("integ-tests-odcr-group", request.config.getoption("stackname_suffix")),

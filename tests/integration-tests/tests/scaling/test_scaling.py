@@ -10,15 +10,20 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import os
+from typing import Union
 
+import boto3
 import pytest
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import RetryError, retry
 from time_utils import minutes, seconds
+from utils import render_jinja_template, retrieve_resource_group_arn_from_resource
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_errors_in_logs
 from tests.common.scaling_common import get_compute_nodes_allocation, setup_ec2_launch_override_to_emulate_ice
+from tests.common.schedulers_common import SlurmCommands
 from tests.schedulers.test_slurm import _assert_job_state
 
 
@@ -158,8 +163,172 @@ def test_job_level_scaling(
     _submit_job_full_capacity(scheduler_commands, remote_command_executor)
 
 
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_scaling_special_cases(
+    region, pcluster_config_reader, clusters_factory, scaling_odcr_stack, scheduler_commands_factory, test_datadir
+):
+    full_cluster_size = 1600  # no of nodes after scaling the cluster up
+    downscaled_cluster_size = 1570  # no of nodes after scaling down the cluster
+    max_scaling_time = 7  # Chosen based on running the test multiple times
+
+    odcr_stack = scaling_odcr_stack(full_cluster_size)
+    resource_group_arn = retrieve_resource_group_arn_from_resource(
+        odcr_stack.cfn_resources["integTestsScalingOdcrGroup"]
+    )
+    cluster_config = pcluster_config_reader(
+        target_capacity_reservation_arn=resource_group_arn, full_cluster_size=full_cluster_size
+    )
+    cluster = clusters_factory(cluster_config)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    upscale_cluster_config = pcluster_config_reader(
+        config_file="pcluster-upscale.config.yaml",
+        target_capacity_reservation_arn=resource_group_arn,
+        full_cluster_size=full_cluster_size,
+    )
+
+    # Scale up cluster
+    _assert_cluster_update_scaling(
+        cluster,
+        scheduler_commands,
+        region,
+        cluster_config=str(upscale_cluster_config),
+        expected_ec2_capacity=(0, full_cluster_size),
+        expected_compute_nodes=(0, full_cluster_size),
+        max_monitoring_time=minutes(max_scaling_time),
+        is_scale_down=False,
+    )
+    _assert_compute_nodes_in_cluster_are_from_odcr(cluster, region, resource_group_arn)
+    _assert_simple_job_succeeds(scheduler_commands, full_cluster_size, partition="q1")
+
+    # Apply custom partitions
+    output_file_path = render_jinja_template(
+        template_file_path=os.path.join(str(test_datadir), "include_custom_partition_large.sh.jinja"),
+        partition="q1",
+        cr="cr1",
+    )
+    remote_command_executor.run_remote_script(output_file_path, run_as_root=True)
+    _assert_simple_job_succeeds(scheduler_commands, full_cluster_size, partition="q1")
+
+    # Scale down cluster
+    downscale_cluster_config = pcluster_config_reader(
+        config_file="pcluster-downscale.config.yaml",
+        target_capacity_reservation_arn=resource_group_arn,
+        downscaled_cluster_size=downscaled_cluster_size,
+        full_cluster_size=full_cluster_size,
+    )
+    _assert_cluster_update_scaling(
+        cluster,
+        scheduler_commands,
+        region,
+        cluster_config=str(downscale_cluster_config),
+        expected_ec2_capacity=(downscaled_cluster_size, full_cluster_size),
+        expected_compute_nodes=(downscaled_cluster_size, full_cluster_size),
+        max_monitoring_time=minutes(max_scaling_time),
+        is_scale_down=True,
+    )
+    _assert_simple_job_succeeds(scheduler_commands, downscaled_cluster_size, partition="q1")
+
+    # Scale up the cluster
+    _assert_cluster_update_scaling(
+        cluster,
+        scheduler_commands,
+        region,
+        cluster_config=str(upscale_cluster_config),
+        expected_ec2_capacity=(downscaled_cluster_size, full_cluster_size),
+        expected_compute_nodes=(downscaled_cluster_size, full_cluster_size),
+        max_monitoring_time=minutes(max_scaling_time),
+        is_scale_down=False,
+    )
+    _assert_compute_nodes_in_cluster_are_from_odcr(cluster, region, resource_group_arn)
+    _assert_simple_job_succeeds(scheduler_commands, full_cluster_size, partition="q1")
+
+
+def _assert_simple_job_succeeds(
+    scheduler_commands: SlurmCommands, no_of_nodes: int, partition: Union[str, None] = None
+):
+    job_command_args = {
+        "command": "srun sleep 10",
+        "partition": partition,
+        "nodes": no_of_nodes,
+        "slots": no_of_nodes,
+    }
+    result = scheduler_commands.submit_command(**job_command_args)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+
+def _assert_compute_nodes_in_cluster_are_from_odcr(cluster, region, odcr_resource_group_arn):
+    ec2_client = boto3.client("ec2", region_name=region)
+    describe_instances_paginator = ec2_client.get_paginator("describe_instances")
+    describe_instances_iterator = describe_instances_paginator.paginate(
+        Filters=[
+            {"Name": "tag:parallelcluster:cluster-name", "Values": [cluster.name]},
+            {"Name": "tag:parallelcluster:node-type", "Values": ["Compute"]},
+            {"Name": "instance-state-name", "Values": ["running"]},
+        ]
+    )
+    instances_outside_odcr_iter = describe_instances_iterator.search(
+        "Reservations[*].Instances[?CapacityReservationId==null && "
+        + "CapacityReservationSpecification.CapacityReservationTarget.CapacityReservationResourceGroupArn=="
+        + f"`{odcr_resource_group_arn}`"
+        + "].InstanceId[]"
+    )
+    instances_outside_odcr = [instance for instance in instances_outside_odcr_iter]
+    logging.info(f"Instances launched outside ODCR {odcr_resource_group_arn}: {instances_outside_odcr}")
+    assert_that(instances_outside_odcr).is_length(0)
+
+
+def _assert_cluster_update_scaling(
+    cluster,
+    scheduler_commands,
+    region,
+    cluster_config,
+    expected_ec2_capacity,
+    expected_compute_nodes,
+    max_monitoring_time,
+    is_scale_down=True,
+):
+    cluster.update(str(cluster_config), force_update="true", wait=False, raise_on_error=False)
+
+    logging.info("Monitoring ec2 capacity and compute nodes")
+    ec2_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
+        scheduler_commands=scheduler_commands,
+        region=region,
+        stack_name=cluster.cfn_name,
+        max_monitoring_time=max_monitoring_time,
+    )
+
+    logging.info(
+        f"Verifying scale up worked with EC2 Instances: {ec2_capacity_time_series} and "
+        f"Compute nodes: {ec2_capacity_time_series}."
+    )
+    if is_scale_down:
+        # Last value in scaling time series should be the min capacity expected
+        assert_that(ec2_capacity_time_series[-1]).is_equal_to(expected_ec2_capacity[0])
+        assert_that(compute_nodes_time_series[-1]).is_equal_to(expected_compute_nodes[0])
+    else:
+        # Last value in scaling time series should be the max capacity expected
+        assert_that(ec2_capacity_time_series[-1]).is_equal_to(expected_ec2_capacity[1])
+        assert_that(compute_nodes_time_series[-1]).is_equal_to(expected_compute_nodes[1])
+    _assert_scaling_works(
+        ec2_capacity_time_series=ec2_capacity_time_series,
+        compute_nodes_time_series=compute_nodes_time_series,
+        expected_ec2_capacity=expected_ec2_capacity,
+        expected_compute_nodes=expected_compute_nodes,
+        min_for_scaledown=is_scale_down,
+    )
+
+
 def _assert_scaling_works(
-    ec2_capacity_time_series, compute_nodes_time_series, expected_ec2_capacity, expected_compute_nodes
+    ec2_capacity_time_series,
+    compute_nodes_time_series,
+    expected_ec2_capacity,
+    expected_compute_nodes,
+    min_for_scaledown=True,  #
 ):
     """
     Verify that cluster scaling-up and scaling-down features work correctly.
@@ -168,6 +337,7 @@ def _assert_scaling_works(
     :param compute_nodes_time_series: list describing the fluctuations over time in the compute nodes
     :param expected_ec2_capacity: pair containing the expected ec2 capacity (min_ec2_capacity, max_ec2_capacity)
     :param expected_compute_nodes: pair containing the expected compute nodes (min_compute_nodes, max_compute_nodes)
+    :param consider values captured only after reaching maximum capacity when evaluating the minimum
     """
     assert_that(ec2_capacity_time_series).described_as("ec2_capacity_time_series cannot be empty").is_not_empty()
     assert_that(compute_nodes_time_series).described_as("compute_nodes_time_series cannot be empty").is_not_empty()
@@ -175,12 +345,16 @@ def _assert_scaling_works(
     expected_ec2_capacity_min, expected_ec2_capacity_max = expected_ec2_capacity
     expected_compute_nodes_min, expected_compute_nodes_max = expected_compute_nodes
     actual_ec2_capacity_max = max(ec2_capacity_time_series)
-    actual_ec2_capacity_min = min(
-        ec2_capacity_time_series[ec2_capacity_time_series.index(actual_ec2_capacity_max) :]  # noqa E203
+    actual_ec2_capacity_min = (
+        min(ec2_capacity_time_series[ec2_capacity_time_series.index(actual_ec2_capacity_max) :])  # noqa E203
+        if min_for_scaledown
+        else min(ec2_capacity_time_series)
     )
     actual_compute_nodes_max = max(compute_nodes_time_series)
-    actual_compute_nodes_min = min(
-        compute_nodes_time_series[compute_nodes_time_series.index(actual_compute_nodes_max) :]  # noqa E203
+    actual_compute_nodes_min = (
+        min(compute_nodes_time_series[compute_nodes_time_series.index(actual_compute_nodes_max) :])  # noqa E203
+        if min_for_scaledown
+        else min(ec2_capacity_time_series)
     )
     with soft_assertions():
         assert_that(actual_ec2_capacity_min).described_as(
