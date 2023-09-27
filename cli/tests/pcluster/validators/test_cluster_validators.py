@@ -1484,7 +1484,8 @@ def test_shared_storage_name_validator(name, expected_message):
         ("shared_ebs_1", None),
         ("shared", None),
         ("/shared", None),
-        ("home", "mount directory .* is reserved"),
+        ("home", None),
+        ("/opt", "The shared storage mount directory .* is reserved. Please use another directory"),
     ],
 )
 def test_shared_storage_mount_dir_validator(mount_dir, expected_message):

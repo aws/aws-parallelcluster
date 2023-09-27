@@ -892,7 +892,6 @@ class SharedStorageMountDirValidator(Validator):
             "/boot",
             "/dev",
             "/etc",
-            "/home",
             "/lib",
             "/lib64",
             "/media",
