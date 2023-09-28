@@ -14,8 +14,12 @@ Scheduling:
     - Name: q1
       ComputeResources:
         - Name: cr1
+          {% if launch_api == "run_instances" %}
+          InstanceType: {{ instance }}
+          {% elif launch_api == "create_fleet" %}
           Instances:
             - InstanceType: {{ instance }}
+          {% endif %}
           MinCount: 0
           MaxCount: {{ full_cluster_size }}
           CapacityReservationTarget:
