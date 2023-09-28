@@ -148,18 +148,20 @@ class ValidatorContext:
         self.during_update = during_update
 
 
-def _get_arn_components(arn: str):
+def get_arn_components(arn: str):
     return arn.split(":")
 
 
-def _get_service_and_resource(arn: str):
-    arn_components = _get_arn_components(arn)
+def get_arn_service_and_resource(arn: str):
+    arn_components = get_arn_components(arn)
     service = arn_components[2]
     resource = arn_components[5]
     return service, resource
 
 
-def _handle_arn_aws_client_error(e: AWSClientError, arn: str, validator_instance):
+#  TODO: Search for a better place for this function.
+#   Maybe we could create an abstract class with abstract methods, of which this could be an implementation.
+def handle_arn_aws_client_error(e: AWSClientError, arn: str, validator_instance):
     if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
         validator_instance._add_failure(f"The secret {arn} does not exist.", FailureLevel.ERROR)
     elif e.error_code == "AccessDeniedException":

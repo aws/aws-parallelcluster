@@ -21,25 +21,26 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
     "arn, region, expected_service, expected_resource, expected_response",
     [
         (
-            "arn:aws:validate_service:us-west-2:123456789012:validate_resource",
+            "arn:aws:valid_service:us-west-2:123456789012:valid_resource:valid_resource_name",
             "us-west-2",
-            "validate_service",
-            "validate_resource",
+            "valid_service",
+            "valid_resource",
             None,
         ),
         (
-            "arn:aws:s3:us-west-2:123456789012:bucket:my-bucket",
+            "arn:aws:valid_service:us-west-2:123456789012:invalid_resource:valid_resource_name",
             "us-west-2",
-            "validate_service",
-            "validate_resource",
-            "The arn:aws:s3:us-west-2:123456789012:bucket:my-bucket is not supported in region us-west-2.",
+            "valid_service",
+            "valid_resource",
+            "The arn:aws:valid_service:us-west-2:123456789012:invalid_resource:valid_resource_name "
+            "is not supported in region us-west-2.",
         ),
         (
-            "arn:aws:secretsmanager:us-west-2:123456789012:bucket:my-bucket",
+            "arn:aws:invalid_service:us-west-2:123456789012:valid_resource:valid_resource_name",
             "us-west-2",
-            "validate_service",
-            "validate_resource",
-            "The arn:aws:secretsmanager:us-west-2:123456789012:bucket:my-bucket "
+            "valid_service",
+            "valid_resource",
+            "The arn:aws:invalid_service:us-west-2:123456789012:valid_resource:valid_resource_name "
             "is not supported in region us-west-2.",
         ),
     ],
