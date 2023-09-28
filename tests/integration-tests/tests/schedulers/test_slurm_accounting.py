@@ -143,6 +143,13 @@ def _test_slurm_accounting_password(remote_command_executor):
     assert_that(storage_pass).is_not_equal_to("dummy")
 
 
+def _test_slurm_accounting_database_name(remote_command_executor: RemoteCommandExecutor, custom_database_name: str):
+    storage_loc = remote_command_executor.run_remote_command(
+        "sudo grep StorageLoc /opt/slurm/etc/slurm_parallelcluster_slurmdbd.conf | sed -e 's/StorageLoc=//g'",
+    ).stdout.strip()
+    assert_that(storage_loc).is_equal_to(custom_database_name)
+
+
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_slurm_accounting(
     region,
@@ -183,14 +190,19 @@ def test_slurm_accounting(
 
     # Update the queues to check that bug with the Slurm Accounting database server password
     # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
+    # Re-use the same update to test the modification of DatabaseName.
+    custom_database_name = "test_custom_dbname"
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         public_subnet_id=public_subnet_id,
         private_subnet_id=private_subnet_id,
+        custom_database_name=custom_database_name,
         **config_params,
     )
     cluster.update(str(updated_config_file), force_update="true")
     _test_slurm_accounting_password(remote_command_executor)
+    _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
+    _test_that_slurmdbd_is_running(remote_command_executor)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
