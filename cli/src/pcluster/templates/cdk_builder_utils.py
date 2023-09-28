@@ -742,6 +742,17 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                             )
                         ],
                     ),
+                    iam.PolicyStatement(
+                        sid="ElasticLoadBalancingDescribe",
+                        actions=[
+                            "elasticloadbalancing:DescribeLoadBalancers",
+                            "elasticloadbalancing:DescribeTags",
+                            "elasticloadbalancing:DescribeTargetGroups",
+                            "elasticloadbalancing:DescribeTargetHealth",
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        resources=["*"],
+                    ),
                 ]
             )
 
