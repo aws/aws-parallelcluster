@@ -1,0 +1,8 @@
+test-suites:
+  scaling:
+    test_scaling.py::test_scaling_special_cases:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: ["c5.large"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
