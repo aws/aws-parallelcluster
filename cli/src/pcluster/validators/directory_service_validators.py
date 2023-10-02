@@ -89,11 +89,11 @@ class PasswordSecretArnValidator(Validator):
         try:
             service, resource = get_arn_service_and_resource(password_secret_arn)
             if service == "ssm":
-                resource = password_secret_arn.split(":")[5].split("/")[0]
+                resource_type = resource.split("/")[0]
             if service == "secretsmanager" and resource == "secret":
                 AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
-            elif service == "ssm" and resource == "parameter" and region == "us-isob-east-1":
-                parameter_name = password_secret_arn.split(":")[5].split("/")[1]
+            elif service == "ssm" and resource_type == "parameter" and region == "us-isob-east-1":
+                parameter_name = resource.split("/")[1]
                 AWSApi.instance().ssm.get_parameter(parameter_name)
             else:
                 self._add_failure(
