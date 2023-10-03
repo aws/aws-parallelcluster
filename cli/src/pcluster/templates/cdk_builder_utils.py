@@ -668,6 +668,22 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             ),
         ]
 
+        if (
+            self._config.dev_settings
+            and self._config.dev_settings.munge_key_settings
+            and self._config.dev_settings.munge_key_settings.munge_key_secret_arn
+        ):
+            policy.extend(
+                [
+                    iam.PolicyStatement(
+                        sid="SecretsManager",
+                        actions=["secretsmanager:GetSecretValue"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[self._config.dev_settings.munge_key_settings.munge_key_secret_arn],
+                    ),
+                ]
+            )
+
         if self._config.scheduling.scheduler != "awsbatch":
             policy.extend(
                 [

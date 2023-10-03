@@ -11,12 +11,15 @@
 #
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
-#
+# pylint: disable=protected-access
+
 import asyncio
 import functools
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
+
+from pcluster.aws.common import AWSClientError
 
 ASYNC_TIMED_VALIDATORS_DEFAULT_TIMEOUT_SEC = 10
 
@@ -143,3 +146,33 @@ class ValidatorContext:
     def __init__(self, head_node_instance_id: str = None, during_update: bool = None):
         self.head_node_instance_id = head_node_instance_id
         self.during_update = during_update
+
+
+def get_arn_components(arn: str):
+    return arn.split(":")
+
+
+def get_arn_service_and_resource(arn: str):
+    arn_components = get_arn_components(arn)
+    service = arn_components[2]
+    resource = arn_components[5]
+    return service, resource
+
+
+#  TODO: Search for a better place for this function.
+#   Maybe we could create an abstract class with abstract methods, of which this could be an implementation.
+def handle_arn_aws_client_error(e: AWSClientError, arn: str, validator_instance):
+    if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
+        validator_instance._add_failure(f"The secret {arn} does not exist.", FailureLevel.ERROR)
+    elif e.error_code == "AccessDeniedException":
+        validator_instance._add_failure(
+            f"Cannot validate secret {arn} due to lack of permissions. "
+            "Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+        )
+    else:
+        validator_instance._add_failure(
+            f"Cannot validate secret {arn}. "
+            "Please refer to ParallelCluster official documentation for more information.",
+            FailureLevel.WARNING,
+        )

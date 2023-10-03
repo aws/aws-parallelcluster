@@ -15,7 +15,12 @@ from urllib.parse import urlparse
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import DIRECTORY_SERVICE_RESERVED_SETTINGS
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.validators.common import (
+    FailureLevel,
+    Validator,
+    get_arn_service_and_resource,
+    handle_arn_aws_client_error,
+)
 
 
 class DomainAddrValidator(Validator):
@@ -82,37 +87,20 @@ class PasswordSecretArnValidator(Validator):
             for retro-compatibility.
         """
         try:
-            # We only require the secret to exist; we do not validate its content.
-            arn_components = password_secret_arn.split(":")
-            service = arn_components[2]
-            resource = arn_components[5]
+            service, resource = get_arn_service_and_resource(password_secret_arn)
             if service == "ssm":
-                resource = arn_components[5].split("/")[0]
-
+                resource_type = resource.split("/")[0]
             if service == "secretsmanager" and resource == "secret":
                 AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
-            elif service == "ssm" and resource == "parameter" and region == "us-isob-east-1":
-                parameter_name = arn_components[5].split("/")[1]
+            elif service == "ssm" and resource_type == "parameter" and region == "us-isob-east-1":
+                parameter_name = resource.split("/")[1]
                 AWSApi.instance().ssm.get_parameter(parameter_name)
             else:
                 self._add_failure(
                     f"The secret {password_secret_arn} is not supported in region {region}.", FailureLevel.ERROR
                 )
         except AWSClientError as e:
-            if e.error_code in ("ResourceNotFoundExceptionSecrets", "ParameterNotFound"):
-                self._add_failure(f"The secret {password_secret_arn} does not exist.", FailureLevel.ERROR)
-            elif e.error_code == "AccessDeniedException":
-                self._add_failure(
-                    f"Cannot validate secret {password_secret_arn} due to lack of permissions. "
-                    "Please refer to ParallelCluster official documentation for more information.",
-                    FailureLevel.WARNING,
-                )
-            else:
-                self._add_failure(
-                    f"Cannot validate secret {password_secret_arn}. "
-                    "Please refer to ParallelCluster official documentation for more information.",
-                    FailureLevel.WARNING,
-                )
+            handle_arn_aws_client_error(e, password_secret_arn, self)
 
 
 class LdapTlsReqCertValidator(Validator):

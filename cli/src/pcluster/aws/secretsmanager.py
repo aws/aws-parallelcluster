@@ -27,3 +27,14 @@ class SecretsManagerClient(Boto3Client):
         :return: secret info
         """
         self._client.describe_secret(SecretId=secret_arn)
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_secret_value(self, secret_arn):
+        """
+        Get the Secret value.
+
+        :param secret_arn: Secret ARN.
+        :return: secret value
+        """
+        return self._client.get_secret_value(SecretId=secret_arn)
