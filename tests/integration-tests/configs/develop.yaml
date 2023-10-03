@@ -4,13 +4,14 @@ test-suites:
 {{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
 {% filter indent(2) %}
 {% include 'common/common.yaml' %}
+{% include 'common/not_released_osses.yaml' %} # FIXME: Overrides sections from common.yaml for Rocky8
 {% endfilter %}
   efa:
     test_efa.py::test_efa:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["alinux2"]
+          oss: ["rocky8"]
           schedulers: ["slurm"]
         - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
@@ -43,7 +44,7 @@ test-suites:
       dimensions:
         - regions: ["sa-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["rocky8"]
           schedulers: ["slurm"]
     test_api.py::test_cluster_awsbatch:
       dimensions:
@@ -93,7 +94,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
+          oss: ["rocky8"]
           schedulers: ["slurm"]
   trainium:
     test_trainium.py::test_trainium:
@@ -114,7 +115,7 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_update:
       dimensions:
-        - oss: ["alinux2"]
+        - oss: ["rocky8"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_update_invalid:
@@ -124,21 +125,21 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_update_tag_propagation:
       dimensions:
-        - oss: [ "alinux2" ]
+        - oss: [ "ubuntu2004" ]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_delete_out_of_band:
       dimensions:
-        - oss: ["alinux2"]
+        - oss: ["ubuntu2204"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_delete_retain:
       dimensions:
-        - oss: ["alinux2"]
+        - oss: ["rocky8"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
       dimensions:
-        - oss: ["alinux2"]
+        - oss: ["rhel8"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
