@@ -1073,6 +1073,31 @@ def test_dynamic_file_systems_update(
 
     cluster.update(update_cluster_config)
 
+    # Retrieve created shared storage ids to remove them at teardown
+    logging.info("Retrieve managed storage ids and mark them for deletion on teardown")
+    existing_ebs_ids = [existing_ebs_volume_id]
+    existing_efs_ids = [existing_efs_id]
+    existing_fsx_ids = (
+        [
+            existing_fsx_lustre_fs_id,
+            existing_fsx_ontap_volume_id,
+            existing_fsx_open_zfs_volume_id,
+            existing_file_cache_id,
+        ]
+        if fsx_supported
+        else []
+    )
+    managed_storage_ids = _retrieve_managed_storage_ids(
+        cluster,
+        existing_ebs_ids,
+        existing_efs_ids,
+        existing_fsx_ids,
+        fsx_supported,
+    )
+    for storage_type in managed_storage_ids:
+        for storage_id in managed_storage_ids[storage_type]["ids"]:
+            delete_storage_on_teardown(storage_type, storage_id)
+
     # check chef client log contains expected log
     assert_lines_in_logs(
         remote_command_executor,
@@ -1141,31 +1166,6 @@ def test_dynamic_file_systems_update(
 
     cluster.update(update_cluster_config)
 
-    existing_ebs_ids = [existing_ebs_volume_id]
-    existing_efs_ids = [existing_efs_id]
-    existing_fsx_ids = (
-        [
-            existing_fsx_lustre_fs_id,
-            existing_fsx_ontap_volume_id,
-            existing_fsx_open_zfs_volume_id,
-            existing_file_cache_id,
-        ]
-        if fsx_supported
-        else []
-    )
-
-    retained_ebs_noraid_volume_ids = [
-        id for id in cluster.cfn_outputs["EBSIds"].split(",") if id not in existing_ebs_ids
-    ]
-    retained_ebs_raid_volume_ids = [
-        id for id in cluster.cfn_outputs["RAIDIds"].split(",") if id not in existing_ebs_ids
-    ]
-    retained_ebs_volume_ids = retained_ebs_noraid_volume_ids + retained_ebs_raid_volume_ids
-    retained_efs_filesystem_ids = [id for id in cluster.cfn_outputs["EFSIds"].split(",") if id not in existing_efs_ids]
-    retained_fsx_filesystem_ids = (
-        [id for id in cluster.cfn_outputs["FSXIds"].split(",") if id not in existing_fsx_ids] if fsx_supported else []
-    )
-
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
     cluster.stop()
@@ -1197,21 +1197,15 @@ def test_dynamic_file_systems_update(
     logging.info(
         "Checking that retained managed storage resources have been retained and mark them for deletion on teardown"
     )
-    retained_storage = {
-        StorageType.STORAGE_EBS: dict(ids=retained_ebs_volume_ids, expected_states=["available"]),
-        StorageType.STORAGE_EFS: dict(ids=retained_efs_filesystem_ids, expected_states=["available"]),
-        StorageType.STORAGE_FSX: dict(ids=retained_fsx_filesystem_ids, expected_states=["AVAILABLE"]),
-    }
-    for storage_type in retained_storage:
-        for storage_id in retained_storage[storage_type]["ids"]:
+    for storage_type in managed_storage_ids:
+        for storage_id in managed_storage_ids[storage_type]["ids"]:
             assert_storage_existence(
                 region,
                 storage_type,
                 storage_id,
                 should_exist=True,
-                expected_states=retained_storage[storage_type]["expected_states"],
+                expected_states=managed_storage_ids[storage_type]["expected_states"],
             )
-            delete_storage_on_teardown(storage_type, storage_id)
 
     _test_shared_storage_rollback(
         cluster,
@@ -1227,6 +1221,25 @@ def test_dynamic_file_systems_update(
         region,
         fsx_supported,
     )
+
+
+def _retrieve_managed_storage_ids(cluster, existing_ebs_ids, existing_efs_ids, existing_fsx_ids, fsx_supported):
+    """Retrieve all the shared storages part of the cluster and exclude provided existing storage ids."""
+    managed_ebs_noraid_volume_ids = [
+        id for id in cluster.cfn_outputs["EBSIds"].split(",") if id not in existing_ebs_ids
+    ]
+    managed_ebs_raid_volume_ids = [id for id in cluster.cfn_outputs["RAIDIds"].split(",") if id not in existing_ebs_ids]
+    managed_ebs_volume_ids = managed_ebs_noraid_volume_ids + managed_ebs_raid_volume_ids
+    managed_efs_filesystem_ids = [id for id in cluster.cfn_outputs["EFSIds"].split(",") if id not in existing_efs_ids]
+    managed_fsx_filesystem_ids = (
+        [id for id in cluster.cfn_outputs["FSXIds"].split(",") if id not in existing_fsx_ids] if fsx_supported else []
+    )
+    managed_storage = {
+        StorageType.STORAGE_EBS: dict(ids=managed_ebs_volume_ids, expected_states=["available"]),
+        StorageType.STORAGE_EFS: dict(ids=managed_efs_filesystem_ids, expected_states=["available"]),
+        StorageType.STORAGE_FSX: dict(ids=managed_fsx_filesystem_ids, expected_states=["AVAILABLE"]),
+    }
+    return managed_storage
 
 
 def _create_shared_storages_resources(
