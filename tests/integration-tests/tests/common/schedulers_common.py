@@ -433,6 +433,14 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command(command)
         return result.stdout.splitlines()
 
+    def get_unique_static_nodes(self):
+        """Get list of unique static node names (useful if custom partitions are included in a cluster)"""
+        command = (
+            "scontrol show nodes -o  | grep -iE '*State=IDLE\+CLOUD ' | awk '/^NodeName/ {print $1}'"  # noqa: W605
+        )
+        result = self._remote_command_executor.run_remote_command(command)
+        return result.stdout.splitlines()
+
     @retry(retry_on_result=lambda result: "drain" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(5))
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("sinfo -h -o '%t'").stdout
@@ -526,6 +534,13 @@ class SlurmCommands(SchedulerCommands):
         """Submit a command and assert the job is accepted by scheduler."""
         result = self.submit_command(**submit_command_args)
         return self.assert_job_submitted(result.stdout, test_only=submit_command_args.get("test_only", False))
+
+    def submit_command_and_assert_job_succeeded(self, job_command_args):
+        """Submit a command and assert the job succeeded."""
+        result = self.submit_command(**job_command_args)
+        job_id = self.assert_job_submitted(result.stdout)
+        self.wait_job_completed(job_id)
+        self.assert_job_succeeded(job_id)
 
     def get_partition_state(self, partition):
         """Get the state of the partition."""

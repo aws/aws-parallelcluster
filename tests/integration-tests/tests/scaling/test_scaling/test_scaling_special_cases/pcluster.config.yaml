@@ -1,0 +1,29 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: r5d.24xlarge
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q1
+      ComputeResources:
+        - Name: cr1
+          {% if launch_api == "run_instances" %}
+          InstanceType: {{ instance }}
+          {% elif launch_api == "create_fleet" %}
+          Instances:
+            - InstanceType: {{ instance }}
+          {% endif %}
+          MinCount: 0
+          MaxCount: {{ full_cluster_size }}
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: {{ target_capacity_reservation_arn }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}

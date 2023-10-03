@@ -294,6 +294,11 @@ def retrieve_cfn_resources(stack_name, region):
     return resources
 
 
+def retrieve_resource_group_arn_from_resource(resource_group):
+    resource_groups_client = boto3.client("resource-groups")
+    return resource_groups_client.get_group(Group=resource_group)["Group"]["GroupArn"]
+
+
 def get_cfn_events(stack_name, region):
     """Retrieve CloudFormation Stack Events from a give stack."""
     if not stack_name:

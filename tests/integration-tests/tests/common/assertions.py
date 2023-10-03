@@ -33,9 +33,16 @@ def assert_instance_replaced_or_terminating(instance_id, region):
     assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in("shutting-down", "terminated")
 
 
-def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False):
+def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False, ignore_patterns=None):
     __tracebackhide__ = True
+
     ice_patterns = ["InsufficientInstanceCapacity", "Failed to launch instances due to limited EC2 capacity"]
+
+    patterns_to_ignore = []
+    if skip_ice:
+        patterns_to_ignore += ice_patterns
+    if ignore_patterns:
+        patterns_to_ignore += ignore_patterns
     if scheduler == "slurm":
         log_files = [
             "/var/log/parallelcluster/clustermgtd",
@@ -49,8 +56,9 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False)
 
     for log_file in log_files:
         log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
-        if skip_ice:
-            log = "\n".join([line for line in log.splitlines() if not any(pattern in line for pattern in ice_patterns)])
+        log = "\n".join(
+            [line for line in log.splitlines() if not any(pattern in line for pattern in patterns_to_ignore)]
+        )
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
 
