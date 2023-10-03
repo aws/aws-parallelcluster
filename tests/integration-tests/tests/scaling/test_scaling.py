@@ -81,7 +81,7 @@ def test_multiple_jobs_submission(
     _assert_test_jobs_completed(remote_command_executor, max_jobs_execution_time * 60)
 
     logging.info("Verifying auto-scaling worked correctly")
-    _assert_scaling_works(
+    _assert_scaling_results_match_expected_range(
         ec2_capacity_time_series=ec2_capacity_time_series,
         compute_nodes_time_series=compute_nodes_time_series,
         expected_ec2_capacity=(0, 3),
@@ -173,8 +173,28 @@ def test_scaling_special_cases(
     scheduler_commands_factory,
     test_datadir,
 ):
+    """
+    This test aims to verify the following:
+    1. When scaling up to 1000+ static nodes launched from an ODCR there should be with almost no bootstrap errors and
+    scale up should complete within a specific amount of time (`max_scaling_time`) with no over-scaling
+        - We however apply a threshold/allowance such that we permit at most 2% of nodes to still be pending
+        successful bootstrap (this is based on currently known limitations where some instances may fail bootstrap and
+        need to be relaunched by the scheduler)
+    2. For a cluster with custom partitions, scaling operations should NOT be impacted due to the mapping of some
+    nodes to both a PCluster managed partition and a custom partition. We will confirm that there is no over-scaling.
+
+    To test the above scenarios, the following special cases have been applied to the cluster:
+    - Compute nodes targeting an ODCR Reservation Group. `1600` nodes have been selected based on manual tests where
+     some nodes were seen to have bootstrap errors
+    - A custom partitions configuration has been applied with the partitions pointing to nodes ranging from 1 to 1565
+    in various combinations
+    """
     full_cluster_size = 1600  # no of nodes after scaling the cluster up
-    downscaled_cluster_size = 1570  # no of nodes after scaling down the cluster
+    downscaled_cluster_size = 1570  # no of nodes after scaling down the cluster,
+    # chosen because the custom partitions point up to node 1565
+    # We want to avoid scaling down to a point where some custom partitions end up pointing to nodes
+    # that no longer exist - This would result in slurmctld restart failing after scale down as expected but this
+    # is not in scope for this test
     max_scaling_time = 7  # Chosen based on running the test multiple times
 
     odcr_stack = scaling_odcr_stack(full_cluster_size)
@@ -182,6 +202,7 @@ def test_scaling_special_cases(
         odcr_stack.cfn_resources["integTestsScalingOdcrGroup"]
     )
 
+    # Using different launch APIs here to reuse the same ODCR stack
     for launch_api in ["run_instances", "create_fleet"]:
         cluster_config = pcluster_config_reader(
             target_capacity_reservation_arn=resource_group_arn,
@@ -207,7 +228,7 @@ def test_scaling_special_cases(
             scheduler_commands,
             region,
             scheduler,
-            cluster_config=str(upscale_cluster_config),
+            updated_cluster_config=str(upscale_cluster_config),
             expected_ec2_capacity=(0, full_cluster_size),
             expected_compute_nodes=(0, full_cluster_size),
             max_monitoring_time=minutes(max_scaling_time),
@@ -240,7 +261,7 @@ def test_scaling_special_cases(
             scheduler_commands,
             region,
             scheduler,
-            cluster_config=str(downscale_cluster_config),
+            updated_cluster_config=str(downscale_cluster_config),
             expected_ec2_capacity=(downscaled_cluster_size, full_cluster_size),
             expected_compute_nodes=(downscaled_cluster_size, full_cluster_size),
             max_monitoring_time=minutes(max_scaling_time),
@@ -255,7 +276,7 @@ def test_scaling_special_cases(
             scheduler_commands,
             region,
             scheduler,
-            cluster_config=str(upscale_cluster_config),
+            updated_cluster_config=str(upscale_cluster_config),
             expected_ec2_capacity=(downscaled_cluster_size, full_cluster_size),
             expected_compute_nodes=(downscaled_cluster_size, full_cluster_size),
             max_monitoring_time=minutes(max_scaling_time),
@@ -267,19 +288,14 @@ def test_scaling_special_cases(
         cluster.delete()
 
 
-def _assert_simple_job_succeeds(
-    scheduler_commands: SlurmCommands, no_of_nodes: int, partition: Union[str, None] = None
-):
+def _assert_simple_job_succeeds(slurm_commands: SlurmCommands, no_of_nodes: int, partition: Union[str, None] = None):
     job_command_args = {
         "command": "srun sleep 10",
         "partition": partition,
         "nodes": no_of_nodes,
         "slots": no_of_nodes,
     }
-    result = scheduler_commands.submit_command(**job_command_args)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
+    slurm_commands.submit_command_and_assert_job_succeeded(job_command_args)
 
 
 def _assert_compute_nodes_in_cluster_are_from_odcr(cluster, region, odcr_resource_group_arn):
@@ -303,20 +319,8 @@ def _assert_compute_nodes_in_cluster_are_from_odcr(cluster, region, odcr_resourc
     assert_that(instances_outside_odcr).is_length(0)
 
 
-def _assert_cluster_update_scaling(
-    cluster,
-    remote_command_executor,
-    scheduler_commands,
-    region,
-    scheduler,
-    cluster_config,
-    expected_ec2_capacity,
-    expected_compute_nodes,
-    max_monitoring_time,
-    is_scale_down=True,
-    threshold: float = 1,
-):
-    cluster.update(str(cluster_config), force_update="true", wait=False, raise_on_error=False)
+def _monitor_cluster_update(cluster, updated_cluster_config, scheduler_commands, region, max_monitoring_time):
+    cluster.update(str(updated_cluster_config), force_update="true", wait=False, raise_on_error=False)
 
     logging.info("Monitoring ec2 capacity and compute nodes")
     ec2_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
@@ -331,8 +335,20 @@ def _assert_cluster_update_scaling(
     waiter = cloud_formation.get_waiter("stack_update_complete")
     waiter.wait(StackName=cluster.name)
 
+    return ec2_capacity_time_series, compute_nodes_time_series, timestamps
+
+
+def _check_scaling_results(
+    ec2_capacity_time_series,
+    compute_nodes_time_series,
+    expected_ec2_capacity,
+    expected_compute_nodes,
+    max_monitoring_time,
+    threshold,
+    is_scale_down,
+):
     logging.info(
-        f"Verifying scale up worked with EC2 Instances: {ec2_capacity_time_series} and "
+        f"Verifying scaling worked with EC2 Instances: {ec2_capacity_time_series} and "
         f"Compute nodes: {compute_nodes_time_series}."
     )
     if is_scale_down:
@@ -350,13 +366,41 @@ def _assert_cluster_update_scaling(
                 f"Cluster was unable to scale up to {expected_ec2_capacity[1]} within {max_monitoring_time} seconds"
                 + "Review the clustermgtd logs for details."
             )
-    _assert_scaling_works(
+    _assert_scaling_results_match_expected_range(
         ec2_capacity_time_series=ec2_capacity_time_series,
         compute_nodes_time_series=compute_nodes_time_series,
         expected_ec2_capacity=expected_ec2_capacity,
         expected_compute_nodes=expected_compute_nodes,
         min_for_scaledown=is_scale_down,
         threshold=threshold,
+    )
+
+
+def _assert_cluster_update_scaling(
+    cluster,
+    remote_command_executor,
+    scheduler_commands,
+    region,
+    scheduler,
+    updated_cluster_config,
+    expected_ec2_capacity,
+    expected_compute_nodes,
+    max_monitoring_time,
+    is_scale_down=True,
+    threshold: float = 1,
+):
+    ec2_capacity_time_series, compute_nodes_time_series, timestamps = _monitor_cluster_update(
+        cluster, updated_cluster_config, scheduler_commands, region, max_monitoring_time
+    )
+
+    _check_scaling_results(
+        ec2_capacity_time_series,
+        compute_nodes_time_series,
+        expected_ec2_capacity,
+        expected_compute_nodes,
+        max_monitoring_time,
+        threshold,
+        is_scale_down,
     )
 
     # Thresholds less than one imply that bootstrap errors occurred,
@@ -374,7 +418,7 @@ def _assert_cluster_update_scaling(
         )
 
 
-def _assert_scaling_works(
+def _assert_scaling_results_match_expected_range(
     ec2_capacity_time_series,
     compute_nodes_time_series,
     expected_ec2_capacity,

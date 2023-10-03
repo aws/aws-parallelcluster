@@ -535,6 +535,13 @@ class SlurmCommands(SchedulerCommands):
         result = self.submit_command(**submit_command_args)
         return self.assert_job_submitted(result.stdout, test_only=submit_command_args.get("test_only", False))
 
+    def submit_command_and_assert_job_succeeded(self, job_command_args):
+        """Submit a command and assert the job succeeded."""
+        result = self.submit_command(**job_command_args)
+        job_id = self.assert_job_submitted(result.stdout)
+        self.wait_job_completed(job_id)
+        self.assert_job_succeeded(job_id)
+
     def get_partition_state(self, partition):
         """Get the state of the partition."""
         return self._remote_command_executor.run_remote_command(

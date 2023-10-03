@@ -1210,6 +1210,12 @@ def scaling_odcr_stack(
     cfn_stacks_factory,
     vpc_stack: CfnVpcStack,
 ):
+    """
+    Stack to deploy a capacity reservation group containing 2 ODCRs used when testing scaling involving 1000+ instances
+    A single ODCR has a limit of 1000 instances.
+    The number of nodes needed is distributed evenly between the 2 ODCRs.
+    TODO: Allow the caller to reserve more than 2000 instances (i.e. more than 2 ODCRs).
+    """
     odcr_stack: Union[CfnStack, None] = None
 
     def _scaling_odcr_stack(instances_count: int):
