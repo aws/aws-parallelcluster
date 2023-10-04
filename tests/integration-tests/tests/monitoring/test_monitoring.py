@@ -21,6 +21,8 @@ from retrying import retry
 from time_utils import minutes
 
 
+# TODO This test should be converted into a unit test validating the content of the CFN template +
+# a kitchen test validating that the CloudWatch Agent is emitting the expected metrics.
 @pytest.mark.usefixtures("instance", "os", "scheduler")
 @pytest.mark.parametrize("dashboard_enabled, cw_log_enabled", [(True, True), (True, False), (False, False)])
 def test_monitoring(
@@ -103,12 +105,19 @@ def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_e
 def _test_alarms(cw_client, cluster_name, headnode_instance_id, dashboard_enabled):
     alarm_response = cw_client.describe_alarms(AlarmNamePrefix=cluster_name)
     if dashboard_enabled:
+        health_alarm_name = f"{cluster_name}_HealthAlarm_HeadNode"
+        cpu_alarm_name = f"{cluster_name}_CpuAlarm_HeadNode"
         mem_alarm_name = f"{cluster_name}_MemAlarm_HeadNode"
         disk_alarm_name = f"{cluster_name}_DiskAlarm_HeadNode"
+
+        health_alarms = _get_alarm_records(alarm_response, health_alarm_name)
+        cpu_alarms = _get_alarm_records(alarm_response, cpu_alarm_name)
         mem_alarms = _get_alarm_records(alarm_response, mem_alarm_name)
         disk_alarms = _get_alarm_records(alarm_response, disk_alarm_name)
-        _verify_alarms(mem_alarms, "mem_used_percent", headnode_instance_id)
-        _verify_alarms(disk_alarms, "disk_used_percent", headnode_instance_id)
+        _verify_alarms(health_alarms, "AWS/EC2", "StatusCheckFailed", 0, headnode_instance_id)
+        _verify_alarms(cpu_alarms, "AWS/EC2", "CPUUtilization", 90, headnode_instance_id)
+        _verify_alarms(mem_alarms, "CWAgent", "mem_used_percent", 90, headnode_instance_id)
+        _verify_alarms(disk_alarms, "CWAgent", "disk_used_percent", 90, headnode_instance_id)
     else:
         assert_that(alarm_response["MetricAlarms"]).is_empty()
 
@@ -183,13 +192,13 @@ def _get_alarm_records(response, alarm_name):
     return [alarm for alarm in response["MetricAlarms"] if alarm["AlarmName"] == alarm_name]
 
 
-def _verify_alarms(alarms, metric_name, instance_id):
+def _verify_alarms(alarms, namespace, metric_name, threshold, instance_id):
     assert_that(alarms).is_length(1)
     assert_that(alarms[0]["MetricName"]).is_equal_to(metric_name)
-    assert_that(alarms[0]["Namespace"]).is_equal_to("CWAgent")
+    assert_that(alarms[0]["Namespace"]).is_equal_to(namespace)
     assert_that(alarms[0]["Statistic"]).is_equal_to("Maximum")
     assert_that(alarms[0]["Period"]).is_equal_to(60)
-    assert_that(alarms[0]["Threshold"]).is_equal_to(90)
+    assert_that(alarms[0]["Threshold"]).is_equal_to(threshold)
     assert_that(alarms[0]["ComparisonOperator"]).is_equal_to("GreaterThanThreshold")
     if metric_name == "mem_used_percent":
         assert_that(alarms[0]["Dimensions"]).contains({"Name": "InstanceId", "Value": instance_id})

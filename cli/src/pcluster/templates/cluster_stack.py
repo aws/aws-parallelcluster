@@ -315,43 +315,57 @@ class ClusterCdkStack:
                 cw_log_group=self.log_group,
             )
 
-            self._add_alarms()
+            self._add_head_node_alarms()
 
-    def _add_alarms(self):
-        self.alarms = []
+    def _cw_metric_head_node(
+        self, namespace, metric_name, statistic="Maximum", period_seconds=CW_ALARM_PERIOD_DEFAULT, extra_dimensions=None
+    ):
+        dimensions = {"InstanceId": self.head_node_instance.ref}
+        if extra_dimensions:
+            dimensions.update(extra_dimensions)
+        return cloudwatch.Metric(
+            namespace=namespace,
+            metric_name=metric_name,
+            dimensions_map=dimensions,
+            statistic=statistic,
+            period=Duration.seconds(period_seconds),
+        )
+
+    def _add_head_node_alarms(self):
+        self.head_node_alarms = []
 
         metrics_for_alarms = {
-            "Mem": cloudwatch.Metric(
-                namespace="CWAgent",
-                metric_name="mem_used_percent",
-                dimensions_map={"InstanceId": self.head_node_instance.ref},
-                statistic="Maximum",
-                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
-            ),
-            "Disk": cloudwatch.Metric(
-                namespace="CWAgent",
-                metric_name="disk_used_percent",
-                dimensions_map={"InstanceId": self.head_node_instance.ref, "path": "/"},
-                statistic="Maximum",
-                period=Duration.seconds(CW_ALARM_PERIOD_DEFAULT),
-            ),
+            "Health": self._cw_metric_head_node("AWS/EC2", "StatusCheckFailed"),
+            "Cpu": self._cw_metric_head_node("AWS/EC2", "CPUUtilization"),
+            "Mem": self._cw_metric_head_node("CWAgent", "mem_used_percent"),
+            "Disk": self._cw_metric_head_node("CWAgent", "disk_used_percent", extra_dimensions={"path": "/"}),
         }
 
         for metric_key, metric in metrics_for_alarms.items():
             alarm_id = f"HeadNode{metric_key}Alarm"
             alarm_name = f"{self.stack.stack_name}_{metric_key}Alarm_HeadNode"
-            self.alarms.append(
+            threshold = 0 if metric_key == "Health" else CW_ALARM_PERCENT_THRESHOLD_DEFAULT
+            self.head_node_alarms.append(
                 cloudwatch.Alarm(
                     scope=self.stack,
                     id=alarm_id,
+                    alarm_name=alarm_name,
                     metric=metric,
                     evaluation_periods=CW_ALARM_EVALUATION_PERIODS_DEFAULT,
-                    threshold=CW_ALARM_PERCENT_THRESHOLD_DEFAULT,
-                    alarm_name=alarm_name,
+                    threshold=threshold,
                     comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
                     datapoints_to_alarm=CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
                 )
             )
+
+        self.head_node_alarms.append(
+            cloudwatch.CompositeAlarm(
+                scope=self.stack,
+                id="HeadNodeAlarm",
+                composite_alarm_name=f"{self.stack.stack_name}_HeadNode",
+                alarm_rule=cloudwatch.AlarmRule.any_of(*self.head_node_alarms),
+            )
+        )
 
     def _add_iam_resources(self):
         head_node_iam_resources = HeadNodeIamResources(
