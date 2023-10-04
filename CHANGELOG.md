@@ -8,7 +8,7 @@ CHANGELOG
 - Add support for Data Repository Associations when using PERSISTENT_2 as DeploymentType for a managed FSx for Lustre.
 - Add `Scheduling/SlurmSettings/Database/DatabaseName` parameter to allow users to specify a custom name for the database on the database server to be used for Slurm accounting.
 - Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node.
-
+- Test
 **CHANGES**
 
 **BUG FIXES**
