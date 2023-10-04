@@ -23,6 +23,7 @@ from marshmallow import ValidationError, fields, post_load, pre_dump, validate, 
 
 from pcluster.config.cluster_config import (
     AdditionalPackages,
+    Alarms,
     AllocationStrategy,
     AmiSearchFilters,
     AwsBatchClusterConfig,
@@ -874,12 +875,24 @@ class DashboardsSchema(BaseSchema):
         return Dashboards(**data)
 
 
+class AlarmsSchema(BaseSchema):
+    """Represent the schema of the Alarms section."""
+
+    enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Alarms(**data)
+
+
 class MonitoringSchema(BaseSchema):
     """Represent the schema of the Monitoring section."""
 
     detailed_monitoring = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     logs = fields.Nested(LogsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     dashboards = fields.Nested(DashboardsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    alarms = fields.Nested(AlarmsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

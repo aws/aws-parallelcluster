@@ -116,6 +116,8 @@ LoginNodes:
     Ssh:
       KeyName: validate_key_name
 Monitoring:
+  Alarms:
+    Enabled: true
   Dashboards:
     CloudWatch:
       Enabled: true

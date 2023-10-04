@@ -302,6 +302,10 @@ class ClusterCdkStack:
                 managed_head_node_instance_role=self._managed_head_node_instance_role,  # None if provided by the user
             )
 
+        # Alarms
+        if self.config.are_alarms_enabled:
+            self._add_head_node_alarms()
+
         # CloudWatch Dashboard
         if self.config.is_cw_dashboard_enabled:
             self.cloudwatch_dashboard = CWDashboardConstruct(
@@ -314,8 +318,6 @@ class ClusterCdkStack:
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
                 cw_log_group=self.log_group,
             )
-
-            self._add_head_node_alarms()
 
     def _cw_metric_head_node(
         self, namespace, metric_name, statistic="Maximum", period_seconds=CW_ALARM_PERIOD_DEFAULT, extra_dimensions=None

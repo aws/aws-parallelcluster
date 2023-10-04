@@ -36,3 +36,5 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: {{ dashboard_enabled }}
+  Alarms:
+    Enabled: {{ alarms_enabled }}

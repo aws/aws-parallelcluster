@@ -24,10 +24,14 @@ from time_utils import minutes
 # TODO This test should be converted into a unit test validating the content of the CFN template +
 # a kitchen test validating that the CloudWatch Agent is emitting the expected metrics.
 @pytest.mark.usefixtures("instance", "os", "scheduler")
-@pytest.mark.parametrize("dashboard_enabled, cw_log_enabled", [(True, True), (True, False), (False, False)])
+@pytest.mark.parametrize(
+    "dashboard_enabled, cw_log_enabled, alarms_enabled",
+    [(True, True, True), (True, False, True), (False, False, False)],
+)
 def test_monitoring(
     dashboard_enabled,
     cw_log_enabled,
+    alarms_enabled,
     region,
     pcluster_config_reader,
     clusters_factory,
@@ -53,7 +57,7 @@ def test_monitoring(
 
     # test dashboard and alarms
     _test_dashboard(cw_client, cluster.cfn_name, region, dashboard_enabled, cw_log_enabled)
-    _test_alarms(cw_client, cluster.cfn_name, headnode_instance_id, dashboard_enabled)
+    _test_alarms(cw_client, cluster.cfn_name, headnode_instance_id, alarms_enabled)
 
     # test detailed monitoring
     _test_detailed_monitoring(region, compute_instance_ids)
@@ -102,9 +106,9 @@ def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_e
             assert_that(e.response["Error"]["Code"]).is_equal_to("ResourceNotFound")
 
 
-def _test_alarms(cw_client, cluster_name, headnode_instance_id, dashboard_enabled):
+def _test_alarms(cw_client, cluster_name, headnode_instance_id, alarms_enabled):
     alarm_response = cw_client.describe_alarms(AlarmNamePrefix=cluster_name)
-    if dashboard_enabled:
+    if alarms_enabled:
         health_alarm_name = f"{cluster_name}_HealthAlarm_HeadNode"
         cpu_alarm_name = f"{cluster_name}_CpuAlarm_HeadNode"
         mem_alarm_name = f"{cluster_name}_MemAlarm_HeadNode"

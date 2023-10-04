@@ -285,6 +285,8 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: true
+  Alarms:
+    Enabled: true
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
