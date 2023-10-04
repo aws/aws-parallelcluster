@@ -69,7 +69,7 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "ubuntu2004": {"name": "ubuntu-2004-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2204": {"name": "ubuntu-2204-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rhel8": {"name": "rhel8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
-    "rocky8": {"name": "rocky-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
+    "rocky8": {"name": "rocky8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
 }
 
 AMI_TYPE_DICT = {
