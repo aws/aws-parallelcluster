@@ -28,6 +28,7 @@ from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    CW_ALARMS_ENABLED_DEFAULT,
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
@@ -901,6 +902,14 @@ class Logs(Resource):
         self._register_validator(LogRotationValidator, log=self)
 
 
+class Alarms(Resource):
+    """Represent the Alarms."""
+
+    def __init__(self, enabled: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.enabled = Resource.init_param(enabled, default=CW_ALARMS_ENABLED_DEFAULT)
+
+
 class Dashboards(Resource):
     """Represent the Dashboards configuration."""
 
@@ -912,11 +921,19 @@ class Dashboards(Resource):
 class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
-    def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
+    def __init__(
+        self,
+        detailed_monitoring: bool = None,
+        logs: Logs = None,
+        dashboards: Dashboards = None,
+        alarms: Alarms = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=DETAILED_MONITORING_ENABLED_DEFAULT)
         self.logs = logs or Logs(implied=True)
         self.dashboards = dashboards or Dashboards(implied=True)
+        self.alarms = alarms or Alarms(implied=True)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(DetailedMonitoringValidator, is_detailed_monitoring_enabled=self.detailed_monitoring)
@@ -1907,6 +1924,11 @@ class BaseClusterConfig(Resource):
             if self.monitoring and self.monitoring.dashboards and self.monitoring.dashboards.cloud_watch
             else False
         )
+
+    @property
+    def are_alarms_enabled(self):
+        """Return False if Monitoring/Alarms/Enabled is False. True otherwise."""
+        return self.monitoring.alarms.enabled if self.monitoring and self.monitoring.alarms else True
 
     @property
     def is_detailed_monitoring_enabled(self):

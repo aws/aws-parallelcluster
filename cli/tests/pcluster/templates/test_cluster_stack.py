@@ -224,7 +224,7 @@ def test_add_alarms(mocker, config_file_name):
         "HeadNodeDiskAlarm",
     ]
 
-    if cluster.is_cw_dashboard_enabled:
+    if cluster.are_alarms_enabled:
         for alarm in head_node_alarms:
             assert_that(output_yaml).contains(alarm)
     else:

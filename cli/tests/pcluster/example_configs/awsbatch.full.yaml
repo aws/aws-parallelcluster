@@ -101,6 +101,8 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: true
+  Alarms:
+    Enabled: true
 CustomS3Bucket: String
 Tags:
   - Key: String
