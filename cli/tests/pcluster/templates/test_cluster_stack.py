@@ -216,12 +216,20 @@ def test_add_alarms(mocker, config_file_name):
     )
     output_yaml = yaml.dump(generated_template, width=float("inf"))
 
+    head_node_alarms = [
+        "HeadNodeAlarm",
+        "HeadNodeHealthAlarm",
+        "HeadNodeCpuAlarm",
+        "HeadNodeMemAlarm",
+        "HeadNodeDiskAlarm",
+    ]
+
     if cluster.is_cw_dashboard_enabled:
-        assert_that(output_yaml).contains("HeadNodeDiskAlarm")
-        assert_that(output_yaml).contains("HeadNodeMemAlarm")
+        for alarm in head_node_alarms:
+            assert_that(output_yaml).contains(alarm)
     else:
-        assert_that(output_yaml).does_not_contain("HeadNodeDiskAlarm")
-        assert_that(output_yaml).does_not_contain("HeadNodeMemAlarm")
+        for alarm in head_node_alarms:
+            assert_that(output_yaml).does_not_contain(alarm)
 
 
 def _mock_instance_type_info(instance_type):
