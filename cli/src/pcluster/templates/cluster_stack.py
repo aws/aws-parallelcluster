@@ -328,6 +328,7 @@ class ClusterCdkStack:
                 shared_storage_infos=self.shared_storage_infos,
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
                 cw_log_group=self.log_group,
+                head_node_alarms=self.head_node_alarms,
             )
 
     def _cw_metric_head_node(
