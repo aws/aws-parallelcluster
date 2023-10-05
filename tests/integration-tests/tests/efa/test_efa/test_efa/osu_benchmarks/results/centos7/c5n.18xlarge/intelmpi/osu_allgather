@@ -1,0 +1,22 @@
+# OSU MPI Allgather Latency Test v5.7.1
+# The first four latencies were retrieved as the average of four OSU benchmarks during October twenty twenty three using ParallelCluster v3.7.1
+# Size       Avg Latency(us)
+1                     233.04
+2                     265.03
+4                     265.32
+8                     309.78
+16                    365.45
+32                    350.11
+64                    370.37
+128                   476.85
+256                   634.95
+512                  1047.14
+1024                 2772.51
+2048                 3643.88
+4096                 6813.58
+8192                59343.36
+16384               64453.37
+32768               75397.30
+65536               90757.82
+131072             184482.52
+262144             241274.42
