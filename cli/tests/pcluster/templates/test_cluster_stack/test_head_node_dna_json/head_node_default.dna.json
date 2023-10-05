@@ -29,6 +29,7 @@
     "head_node_imds_secured": "true",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",
     "instance_types_data_version": "",
+    "internal_shared_storage_type": "ebs",
     "log_group_name": "/aws/parallelcluster/clustername-202101010101",
     "log_rotation_enabled": "true",
     "node_type": "HeadNode",

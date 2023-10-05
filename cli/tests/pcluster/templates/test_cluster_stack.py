@@ -904,7 +904,7 @@ def test_head_node_tags_from_launch_template(mocker, config_file_name, expected_
                 "parallelcluster:cluster-name": "clustername",
                 "parallelcluster:node-type": "HeadNode",
                 "parallelcluster:attributes": "centos7, slurm, [0-9\\.A-Za-z]+, x86_64",
-                "parallelcluster:filesystem": "efs=1, multiebs=1, raid=0, fsx=3",
+                "parallelcluster:filesystem": "efs=2, multiebs=1, raid=0, fsx=3",
                 "parallelcluster:networking": "EFA=NONE",
                 # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
                 #  but some refactoring is required to check it within this test.

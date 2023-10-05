@@ -9,6 +9,7 @@ CHANGELOG
 - Add `Scheduling/SlurmSettings/Database/DatabaseName` parameter to allow users to specify a custom name for the database on the database server to be used for Slurm accounting.
 - Add `Monitoring/Alarms/Enabled` parameter to toggle Amazon CloudWatch Alarms for the cluster.
 - Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node.
+- Add the option to use EFS storage instead of NFS exports from the head node root volume for intra-cluster shared ParallelCluster, Intel, Slurm, and login node data.
 
 **CHANGES**
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.

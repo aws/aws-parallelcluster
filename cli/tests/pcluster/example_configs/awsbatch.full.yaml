@@ -36,6 +36,7 @@ HeadNode:
       DeleteOnTermination: true
     EphemeralVolume:
       MountDir: /scratch
+  InternalSharedStorageType: Ebs  # Efs
   Dcv:
     Enabled: true
     Port: 8443

@@ -43,6 +43,7 @@ HeadNode:
   Imds:
     Secured: true
   InstanceType: t2.micro
+  InternalSharedStorageType: Efs
   LocalStorage:
     EphemeralVolume:
       MountDir: /test

@@ -1391,6 +1391,7 @@ class HeadNode(Resource):
         ssh: HeadNodeSsh = None,
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
+        internal_shared_storage_type: str = None,
         dcv: Dcv = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -1405,6 +1406,10 @@ class HeadNode(Resource):
         self.networking = networking
         self.ssh = ssh or HeadNodeSsh(implied=True)
         self.local_storage = local_storage or LocalStorage(implied=True)
+        self.internal_shared_storage_type = Resource.init_param(
+            internal_shared_storage_type,
+            default="Ebs",
+        )
         self.dcv = dcv
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)

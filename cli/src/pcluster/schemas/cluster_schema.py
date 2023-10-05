@@ -1328,6 +1328,11 @@ class HeadNodeSchema(BaseSchema):
     )
     ssh = fields.Nested(HeadNodeSshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    internal_shared_storage_type = fields.Str(
+        required=False,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.OneOf(["Ebs", "Efs"]),
+    )
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     iam = fields.Nested(HeadNodeIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
