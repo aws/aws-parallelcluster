@@ -1390,7 +1390,7 @@ def _test_shared_storage_rollback(
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
         remote_command_executor,
         ["/var/log/chef-client.log"],
-        ["Cinc Client finished"],
+        ["Infra Phase complete"],
     )
 
     # Check shared storages are not on headnode
