@@ -669,9 +669,9 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         ]
 
         if (
-            self._config.dev_settings
-            and self._config.dev_settings.munge_key_settings
-            and self._config.dev_settings.munge_key_settings.munge_key_secret_arn
+            self._config.scheduling.scheduler == "slurm"
+            and self._config.scheduling.settings
+            and self._config.scheduling.settings.munge_key_secret_arn
         ):
             policy.extend(
                 [
@@ -679,7 +679,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         sid="SecretsManager",
                         actions=["secretsmanager:GetSecretValue"],
                         effect=iam.Effect.ALLOW,
-                        resources=[self._config.dev_settings.munge_key_settings.munge_key_secret_arn],
+                        resources=[self._config.scheduling.settings.munge_key_secret_arn],
                     ),
                 ]
             )

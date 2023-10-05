@@ -14,6 +14,5 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.2xlarge
-DevSettings:
-  MungeKeySettings:
+  SlurmSettings:
     MungeKeySecretArn: arn:aws:secretsmanager:us-east-1:123456789012:secret:TestCustomMungeKey
