@@ -61,6 +61,11 @@ def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, r
         assert_that(output_yaml).contains("Head Node EC2 Metrics")
         _verify_head_node_instance_metrics_graphs(output_yaml)
 
+        if cluster_config.are_alarms_enabled:
+            assert_that(output_yaml).contains("Cluster Alarms")
+        else:
+            assert_that(output_yaml).does_not_contain("Cluster Alarms")
+
         if cluster_config.shared_storage:
             _verify_ec2_metrics_conditions(cluster_config, output_yaml)
 
@@ -75,6 +80,7 @@ def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, r
         _verify_metric_filter_dimensions(metric_filters)
     else:
         assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
+        assert_that(output_yaml).does_not_contain("Cluster Alarms")
         assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
 
 
