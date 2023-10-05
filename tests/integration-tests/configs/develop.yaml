@@ -13,6 +13,18 @@ test-suites:
           instances: ["c5n.18xlarge"]
           oss: ["rocky8"]
           schedulers: ["slurm"]
+        - regions: [ "euw1-az1" ]  # do not move, unless capacity reservation is moved as well
+          instances: [ "c5n.18xlarge" ]
+          oss: [ "centos7" ]
+          schedulers: [ "slurm" ]
+        - regions: [ "euw1-az1" ]  # do not move, unless capacity reservation is moved as well
+          instances: [ "c5n.18xlarge" ]
+          oss: [ "ubuntu2204" ]
+          schedulers: [ "slurm" ]
+        - regions: [ "euw1-az1" ]  # do not move, unless capacity reservation is moved as well
+          instances: [ "c5n.18xlarge" ]
+          oss: [ "rhel8" ]
+          schedulers: [ "slurm" ]
         - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
           oss: ["alinux2"]
