@@ -11,6 +11,7 @@ CHANGELOG
 - Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node.
 
 **CHANGES**
+- Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
 
 **BUG FIXES**
 - Fix inconsistent configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.

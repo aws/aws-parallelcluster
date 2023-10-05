@@ -41,6 +41,7 @@ from tests.pcluster.utils import (
     assert_sg_rule,
     get_asset_content_with_resource_name,
     get_resource_from_assets,
+    get_resources,
     load_cluster_model_from_yaml,
     render_user_data,
     validate_dna_json_fields,
@@ -214,22 +215,29 @@ def test_add_alarms(mocker, config_file_name):
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
-    output_yaml = yaml.dump(generated_template, width=float("inf"))
+
+    simple_type = "AWS::CloudWatch::Alarm"
+    composite_type = "AWS::CloudWatch::CompositeAlarm"
 
     head_node_alarms = [
-        "HeadNodeAlarm",
-        "HeadNodeHealthAlarm",
-        "HeadNodeCpuAlarm",
-        "HeadNodeMemAlarm",
-        "HeadNodeDiskAlarm",
+        {"name": "clustername-HeadNode", "type": composite_type},
+        {"name": "clustername-HeadNode-Health", "type": simple_type},
+        {"name": "clustername-HeadNode-Cpu", "type": simple_type},
+        {"name": "clustername-HeadNode-Mem", "type": simple_type},
+        {"name": "clustername-HeadNode-Disk", "type": simple_type},
     ]
 
     if cluster.are_alarms_enabled:
         for alarm in head_node_alarms:
-            assert_that(output_yaml).contains(alarm)
+            matched_resources = get_resources(
+                generated_template, type=alarm["type"], properties={"AlarmName": alarm["name"]}
+            )
+            assert_that(matched_resources).is_length(1)
     else:
-        for alarm in head_node_alarms:
-            assert_that(output_yaml).does_not_contain(alarm)
+        matched_simple_alarms = get_resources(generated_template, type=simple_type)
+        matched_composite_alarms = get_resources(generated_template, type=composite_type)
+        assert_that(matched_simple_alarms).is_empty()
+        assert_that(matched_composite_alarms).is_empty()
 
 
 def _mock_instance_type_info(instance_type):

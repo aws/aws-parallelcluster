@@ -345,7 +345,7 @@ class ClusterCdkStack:
 
         for metric_key, metric in metrics_for_alarms.items():
             alarm_id = f"HeadNode{metric_key}Alarm"
-            alarm_name = f"{self.stack.stack_name}_{metric_key}Alarm_HeadNode"
+            alarm_name = f"{self.stack.stack_name}-HeadNode-{metric_key}"
             threshold = 0 if metric_key == "Health" else CW_ALARM_PERCENT_THRESHOLD_DEFAULT
             self.head_node_alarms.append(
                 cloudwatch.Alarm(
@@ -364,7 +364,7 @@ class ClusterCdkStack:
             cloudwatch.CompositeAlarm(
                 scope=self.stack,
                 id="HeadNodeAlarm",
-                composite_alarm_name=f"{self.stack.stack_name}_HeadNode",
+                composite_alarm_name=f"{self.stack.stack_name}-HeadNode",
                 alarm_rule=cloudwatch.AlarmRule.any_of(*self.head_node_alarms),
             )
         )

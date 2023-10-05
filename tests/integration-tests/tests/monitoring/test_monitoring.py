@@ -109,10 +109,10 @@ def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_e
 def _test_alarms(cw_client, cluster_name, headnode_instance_id, alarms_enabled):
     alarm_response = cw_client.describe_alarms(AlarmNamePrefix=cluster_name)
     if alarms_enabled:
-        health_alarm_name = f"{cluster_name}_HealthAlarm_HeadNode"
-        cpu_alarm_name = f"{cluster_name}_CpuAlarm_HeadNode"
-        mem_alarm_name = f"{cluster_name}_MemAlarm_HeadNode"
-        disk_alarm_name = f"{cluster_name}_DiskAlarm_HeadNode"
+        health_alarm_name = f"{cluster_name}-HeadNode-Health"
+        cpu_alarm_name = f"{cluster_name}-HeadNode-Cpu"
+        mem_alarm_name = f"{cluster_name}-HeadNode-Mem"
+        disk_alarm_name = f"{cluster_name}-HeadNode-Disk"
 
         health_alarms = _get_alarm_records(alarm_response, health_alarm_name)
         cpu_alarms = _get_alarm_records(alarm_response, cpu_alarm_name)
