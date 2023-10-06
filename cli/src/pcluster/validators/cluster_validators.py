@@ -31,6 +31,7 @@ from pcluster.constants import (
     PCLUSTER_NAME_REGEX,
     PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
+    PRIVATE_OSES,
     RETAIN_POLICY,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
@@ -133,6 +134,22 @@ class SchedulerOsValidator(Validator):
         if os not in supported_os:
             self._add_failure(
                 f"{scheduler} scheduler supports the following operating systems: {supported_os}.", FailureLevel.ERROR
+            )
+
+
+class OsCustomAmiValidator(Validator):
+    """For some OSes we don't publish official AMIs, so CustomAmi parameter is required."""
+
+    def _validate(self, os: str, custom_ami: str):
+        if not custom_ami and os in PRIVATE_OSES:
+            self._add_failure(
+                (
+                    f"ParallelCluster has no official AMI for {os}. "
+                    "Please build your own AMI using pcluster build-image command, "
+                    "as explained in the documentation: "
+                    "https://docs.aws.amazon.com/parallelcluster/latest/ug/building-custom-ami-v3.html"
+                ),
+                FailureLevel.ERROR,
             )
 
 

@@ -93,6 +93,7 @@ from pcluster.validators.cluster_validators import (
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
+    OsCustomAmiValidator,
     OverlappingMountDirValidator,
     RegionValidator,
     RootVolumeEncryptionConsistencyValidator,
@@ -1218,6 +1219,7 @@ class Image(Resource):
         self.custom_ami = Resource.init_param(custom_ami)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(OsCustomAmiValidator, os=self.os, custom_ami=self.custom_ami)
         if self.custom_ami:
             self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
             self._register_validator(AmiOsCompatibleValidator, os=self.os, image_id=self.custom_ami)
