@@ -42,6 +42,7 @@ HeadNode:
       DeleteOnTermination: true
     EphemeralVolume:
       MountDir: /test
+  InternalSharedStorageType: Efs  # Ebs
   Dcv:
     Enabled: true
     Port: 8443

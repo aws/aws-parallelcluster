@@ -141,6 +141,7 @@ class Pool(Construct):
                                 "DirectoryServiceEnabled": str(ds_config is not None).lower(),
                                 "DirectoryServiceReadOnlyUser": ds_config.domain_read_only_user if ds_config else "",
                                 "DirectoryServiceGenerateSshKeys": ds_generate_keys,
+                                "InternalSharedStorageType": self._config.head_node.internal_shared_storage_type.lower(),  # noqa: E501  pylint: disable=line-too-long
                                 "EbsSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.EBS]
                                 ),

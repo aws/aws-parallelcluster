@@ -259,6 +259,17 @@ class ClusterCdkStack:
         # Head Node ENI
         self._head_eni = self._add_head_eni()
 
+        # Add the internal use shared storage to the stack
+        # This FS will be mounted, the shared dirs will be added,
+        # then it will be unmounted and the shared dirs will be
+        # mounted.  We need to create the additional mount points first.
+        if self.config.head_node.internal_shared_storage_type.lower() == SharedStorageType.EFS.value:
+            internal_efs_storage_shared = SharedEfs(
+                mount_dir="/opt/parallelcluster/init_shared", name="internal_pcluster_shared"
+            )
+            self._add_shared_storage(internal_efs_storage_shared)
+
+        # Add user configured shared storage
         if self.config.shared_storage:
             for storage in self.config.shared_storage:
                 self._add_shared_storage(storage)
@@ -1230,6 +1241,7 @@ class ClusterCdkStack:
                     ),
                     "base_os": self.config.image.os,
                     "region": self.stack.region,
+                    "internal_shared_storage_type": self.config.head_node.internal_shared_storage_type.lower(),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                     "efs_encryption_in_transits": to_comma_separated_string(
