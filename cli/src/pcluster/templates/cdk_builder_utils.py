@@ -684,6 +684,23 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 ]
             )
 
+            if self._config.login_nodes:
+                policy.extend(
+                    [
+                        iam.PolicyStatement(
+                            sid="ElasticLoadBalancingDescribe",
+                            actions=[
+                                "elasticloadbalancing:DescribeLoadBalancers",
+                                "elasticloadbalancing:DescribeTags",
+                                "elasticloadbalancing:DescribeTargetGroups",
+                                "elasticloadbalancing:DescribeTargetHealth",
+                            ],
+                            effect=iam.Effect.ALLOW,
+                            resources=["*"],
+                        ),
+                    ]
+                )
+
         if self._config.scheduling.scheduler != "awsbatch":
             policy.extend(
                 [
@@ -741,17 +758,6 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                                 resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{Stack.of(self).stack_name}",
                             )
                         ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="ElasticLoadBalancingDescribe",
-                        actions=[
-                            "elasticloadbalancing:DescribeLoadBalancers",
-                            "elasticloadbalancing:DescribeTags",
-                            "elasticloadbalancing:DescribeTargetGroups",
-                            "elasticloadbalancing:DescribeTargetHealth",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
                     ),
                 ]
             )
