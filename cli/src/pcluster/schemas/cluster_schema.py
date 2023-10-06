@@ -92,7 +92,6 @@ from pcluster.config.cluster_config import (
     SlurmQueueNetworking,
     SlurmScheduling,
     SlurmSettings,
-    SlurmSettingsForCustomMungeKey,
     Timeouts,
 )
 from pcluster.config.common import BaseTag
@@ -1116,17 +1115,6 @@ class CapacityReservationTargetSchema(BaseSchema):
             )
 
 
-class SlurmSettingsForCustomMungeKeySchema(BaseSchema):
-    """Represent the schema of slurm settings for custom munge key test in dev settings."""
-
-    munge_key_secret_arn = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SlurmSettingsForCustomMungeKey(**data)
-
-
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of Dev Setting."""
 
@@ -1135,9 +1123,6 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     timeouts = fields.Nested(TimeoutsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     compute_startup_time_metric_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    munge_key_settings = fields.Nested(
-        SlurmSettingsForCustomMungeKeySchema, metadata={"update_policy": UpdatePolicy.IGNORED}
-    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1730,6 +1715,7 @@ class SlurmSettingsSchema(BaseSchema):
     database = fields.Nested(DatabaseSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     custom_slurm_settings = fields.List(fields.Dict, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     custom_slurm_settings_include_file = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    munge_key_secret_arn = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1756,7 +1742,7 @@ class SchedulingSchema(BaseSchema):
     )
     scaling_strategy = fields.Str(
         required=False,
-        validate=validate.OneOf(["all-or-nothing", "best-effort"]),
+        validate=validate.OneOf(["all-or-nothing", "best-effort", "greedy-all-or-nothing"]),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     # Slurm schema

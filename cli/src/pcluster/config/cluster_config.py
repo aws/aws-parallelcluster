@@ -1179,33 +1179,6 @@ class CapacityReservationTarget(Resource):
         self.capacity_reservation_resource_group_arn = Resource.init_param(capacity_reservation_resource_group_arn)
 
 
-class SlurmSettingsForCustomMungeKey(Resource):
-    """Represent the slurm settings for custom munge key test in dev settings."""
-
-    def __init__(
-        self,
-        munge_key_secret_arn: str = None,
-        **kwargs,
-    ):
-        super().__init__()
-        self.munge_key_secret_arn = Resource.init_param(munge_key_secret_arn)
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        if self.munge_key_secret_arn:
-            self._register_validator(
-                ArnServiceAndResourceValidator,
-                arn=self.munge_key_secret_arn,
-                region=get_region(),
-                expected_service="secretsmanager",
-                expected_resource="secret",
-            )
-            self._register_validator(
-                MungeKeySecretSizeAndBase64Validator,
-                munge_key_secret_arn=self.munge_key_secret_arn,
-            )
-
-
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
@@ -1215,7 +1188,6 @@ class ClusterDevSettings(BaseDevSettings):
         ami_search_filters: AmiSearchFilters = None,
         instance_types_data: str = None,
         timeouts: Timeouts = None,
-        munge_key_settings: SlurmSettingsForCustomMungeKey = None,
         compute_startup_time_metric_enabled: bool = None,
         **kwargs,
     ):
@@ -1227,7 +1199,6 @@ class ClusterDevSettings(BaseDevSettings):
         self.compute_startup_time_metric_enabled = Resource.init_param(
             compute_startup_time_metric_enabled, default=False
         )
-        self.munge_key_settings = munge_key_settings or SlurmSettingsForCustomMungeKey(implied=True)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -2642,6 +2613,7 @@ class SlurmSettings(Resource):
         database: Database = None,
         custom_slurm_settings: List[Dict] = None,
         custom_slurm_settings_include_file: str = None,
+        munge_key_secret_arn: str = None,
         **kwargs,
     ):
         super().__init__()
@@ -2654,6 +2626,7 @@ class SlurmSettings(Resource):
         self.database = database
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings)
         self.custom_slurm_settings_include_file = Resource.init_param(custom_slurm_settings_include_file)
+        self.munge_key_secret_arn = Resource.init_param(munge_key_secret_arn)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -2678,6 +2651,18 @@ class SlurmSettings(Resource):
                 CustomSlurmSettingsIncludeFileOnlyValidator,
                 custom_settings=self.custom_slurm_settings,
                 include_file_url=self.custom_slurm_settings_include_file,
+            )
+        if self.munge_key_secret_arn:
+            self._register_validator(
+                ArnServiceAndResourceValidator,
+                arn=self.munge_key_secret_arn,
+                region=get_region(),
+                expected_service="secretsmanager",
+                expected_resource="secret",
+            )
+            self._register_validator(
+                MungeKeySecretSizeAndBase64Validator,
+                munge_key_secret_arn=self.munge_key_secret_arn,
             )
 
 
