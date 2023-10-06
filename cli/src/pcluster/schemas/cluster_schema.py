@@ -1737,7 +1737,7 @@ class SchedulingSchema(BaseSchema):
     )
     scaling_strategy = fields.Str(
         required=False,
-        validate=validate.OneOf(["all-or-nothing", "best-effort"]),
+        validate=validate.OneOf(["all-or-nothing", "best-effort", "greedy-all-or-nothing"]),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     # Slurm schema
