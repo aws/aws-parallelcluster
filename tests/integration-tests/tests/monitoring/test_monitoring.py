@@ -40,6 +40,7 @@ def test_monitoring(
     cluster_config = pcluster_config_reader(
         dashboard_enabled=str(dashboard_enabled).lower(),
         cw_log_enabled=str(cw_log_enabled).lower(),
+        alarms_enabled=str(alarms_enabled).lower(),
     )
     cluster = clusters_factory(cluster_config)
     cw_client = boto3.client("cloudwatch", region_name=region)
