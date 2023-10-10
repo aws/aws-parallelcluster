@@ -1101,3 +1101,52 @@ def test_security_group_with_restricted_ssh_access(
         for rule in ln_ingress_rules:
             if rule["FromPort"] == 22:  # SSH
                 assert rule[expected_field] == expected_value
+
+
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        ("config.yaml"),
+        ("config_with_login_nodes.yaml"),
+    ],
+)
+def test_custom_munge_key_iam_policy(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    assert_that(
+        generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyDocument"]["Statement"]
+    ).contains(
+        {
+            "Action": "secretsmanager:GetSecretValue",
+            "Effect": "Allow",
+            "Resource": "arn:aws:secretsmanager:us-east-1:123456789012:secret:TestCustomMungeKey",
+            "Sid": "SecretsManager",
+        }
+    )
+
+    if config_file_name == "config_with_login_nodes.yaml":
+        assert_that(
+            generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyDocument"][
+                "Statement"
+            ]
+        ).contains(
+            {
+                "Action": [
+                    "elasticloadbalancing:DescribeLoadBalancers",
+                    "elasticloadbalancing:DescribeTags",
+                    "elasticloadbalancing:DescribeTargetGroups",
+                    "elasticloadbalancing:DescribeTargetHealth",
+                ],
+                "Effect": "Allow",
+                "Resource": "*",
+                "Sid": "ElasticLoadBalancingDescribe",
+            }
+        )
