@@ -684,6 +684,23 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 ]
             )
 
+            if self._config.login_nodes:
+                policy.extend(
+                    [
+                        iam.PolicyStatement(
+                            sid="ElasticLoadBalancingDescribe",
+                            actions=[
+                                "elasticloadbalancing:DescribeLoadBalancers",
+                                "elasticloadbalancing:DescribeTags",
+                                "elasticloadbalancing:DescribeTargetGroups",
+                                "elasticloadbalancing:DescribeTargetHealth",
+                            ],
+                            effect=iam.Effect.ALLOW,
+                            resources=["*"],
+                        ),
+                    ]
+                )
+
         if self._config.scheduling.scheduler != "awsbatch":
             policy.extend(
                 [
