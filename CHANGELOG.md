@@ -10,6 +10,7 @@ CHANGELOG
 - Add `Monitoring/Alarms/Enabled` parameter to toggle Amazon CloudWatch Alarms for the cluster.
 - Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node.
 - Add the option to use EFS storage instead of NFS exports from the head node root volume for intra-cluster shared ParallelCluster, Intel, Slurm, and login node data.
+- Allow for mounting `home` as an EFS or FSx external shared storage via the `SharedStorage` section of the config file.
 
 **CHANGES**
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
