@@ -4,7 +4,7 @@ CHANGELOG
 3.7.2
 ------
 **CHANGES**
-- ...
+- Upgrade Slurm to 23.02.6.
 
 3.7.1
 ------
