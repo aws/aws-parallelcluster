@@ -18,7 +18,8 @@ ignore =
     F821,
     # B028: Consider replacing f"'{foo}'" with f"{foo!r}".
     # Currently being disabled by flake8-bugbear. See https://github.com/PyCQA/flake8-bugbear/pull/333
-    B028
+    B028,
+    T499
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method
 per-file-ignores =

@@ -48,13 +48,13 @@ create:
     dimensions:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.NOT_RELEASED_OSES }}
+        oss: ["alinux2"]
         schedulers: ["slurm"]
   test_create.py::test_create_imds_secured:
     dimensions:
       - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{common.OSS_COMMERCIAL_X86}}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
   test_create.py::test_cluster_creation_with_problematic_preinstall_script:
     dimensions:
