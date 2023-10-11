@@ -84,7 +84,7 @@ from utils import (
 )
 from xdist import get_xdist_worker_id
 
-from tests.common.osu_common import run_osu_benchmarks
+from tests.common.osu_common import PRIVATE_OSES, run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.storage.constants import StorageType
 from tests.common.storage.ebs_utils import delete_ebs_volume
@@ -93,6 +93,7 @@ from tests.common.storage.fsx_utils import delete_fsx_filesystem
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
+    retrieve_latest_ami,
     retrieve_pcluster_ami_without_standard_naming,
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
@@ -564,7 +565,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, architecture):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -591,7 +592,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         output_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(output_file_path, request, region, benchmarks)
+            inject_additional_config_settings(output_file_path, request, region, architecture, benchmarks)
         else:
             inject_additional_image_configs_settings(output_file_path, request)
         return output_file_path
@@ -658,7 +659,7 @@ def _inject_additional_iam_policies_for_nodes(
             _inject_additional_iam_policies(pool, policies)
 
 
-def inject_additional_config_settings(cluster_config, request, region, benchmarks=None):  # noqa C901
+def inject_additional_config_settings(cluster_config, request, region, architecture, benchmarks=None):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -684,6 +685,20 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
 
     if request.config.getoption("custom_ami") and not dict_has_nested_key(config_content, ("Image", "CustomAmi")):
         dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
+    # Adding Internal AMI we create for integration testing of those OSses which we do not publicly publish/release
+    if config_content["Image"]["Os"] in PRIVATE_OSES and not dict_has_nested_key(
+        config_content, ("Image", "CustomAmi")
+    ):
+        dict_add_nested_key(
+            config_content,
+            retrieve_latest_ami(
+                region,
+                config_content["Image"]["Os"],
+                architecture=architecture,
+                ami_type="pcluster",
+            ),
+            ("Image", "CustomAmi"),
+        )
 
     if not dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
         if (

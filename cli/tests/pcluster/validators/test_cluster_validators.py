@@ -60,6 +60,7 @@ from pcluster.validators.cluster_validators import (
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
+    OsCustomAmiValidator,
     OverlappingMountDirValidator,
     RegionValidator,
     RootVolumeEncryptionConsistencyValidator,
@@ -3239,3 +3240,35 @@ def test_multi_network_interfaces_instances_validator(
         assert_failure_level(actual_failures, FailureLevel.ERROR)
     else:
         assert_that(actual_failures).is_empty()
+
+
+@pytest.mark.parametrize(
+    "custom_ami_id, os, expected_message, expected_failure_level",
+    [
+        ("ami-000000000000", "rocky8", None, None),
+        ("ami-000000000000", "alinux2", None, None),
+        ("ami-000000000000", "rhel8", None, None),
+        ("ami-000000000000", "ubuntu22", None, None),
+        ("ami-000000000000", "ubuntu20", None, None),
+        ("ami-000000000000", "centos7", None, None),
+        (
+            None,
+            "rocky8",
+            "ParallelCluster has no official AMI for rocky8. "
+            "Please build your own AMI using pcluster build-image command, "
+            "as explained in the documentation: "
+            "https://docs.aws.amazon.com/parallelcluster/latest/ug/building-custom-ami-v3.html",
+            FailureLevel.ERROR,
+        ),
+        (None, "alinux2", None, None),
+        (None, "rhel8", None, None),
+        (None, "ubuntu22", None, None),
+        (None, "ubuntu20", None, None),
+        (None, "centos7", None, None),
+    ],
+)
+def test_compute_ami_os_compatible_validator(mocker, custom_ami_id, os, expected_message, expected_failure_level):
+    mock_aws_api(mocker)
+    actual_failures = OsCustomAmiValidator().execute(custom_ami=custom_ami_id, os=os)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, expected_failure_level)
