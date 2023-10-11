@@ -19,6 +19,11 @@ CHANGELOG
 **BUG FIXES**
 - Fix inconsistent configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.
 
+3.7.2
+------
+**CHANGES**
+- Upgrade Slurm to 23.02.6.
+
 3.7.1
 ------
 
@@ -38,7 +43,6 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add support for Rocky Linux 8.
 - Allow configuration of static and dynamic node priorities in Slurm compute resources via the ParallelCluster configuration YAML file.
 - Add support for Ubuntu 22.
 - Allow memory-based scheduling when multiple instance types are specified for a Slurm Compute Resource.
@@ -60,7 +64,6 @@ CHANGELOG
 - Change the default value of `Imds/ImdsSupport` from `v1.0` to `v2.0`.
 - Upgrade Slurm to version 23.02.4.
 - Deprecate Ubuntu 18.
-- Upgrade Cinc Client to version 18.2.7.
 - Update the default root volume size to 40 GB to account for limits on Centos 7.
 - Restrict permission on file `/tmp/wait_condition_handle.txt` within the head node so that only root can read it.
 
