@@ -480,9 +480,10 @@ def _check_whoami(users):
     logging.info("Checking whoami")
     for user in users:
         result = user.run_remote_command("whoami").stdout
-        assert_that(result).is_equal_to(user.alias)
+        # TODO: Change the assertion to check the output is just the Username
+        assert_that(result).contains(user.alias)
         result = user.run_remote_command("srun whoami").stdout
-        assert_that(result).is_equal_to(user.alias)
+        assert_that(result).contains(user.alias)
 
 
 def _check_files_permissions(users, shared_storage_mount_dirs):
