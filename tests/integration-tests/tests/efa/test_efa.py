@@ -61,9 +61,12 @@ def test_efa(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition="efa-enabled")
-    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
+    # Run EFA tests if not running OSU benchmark, in future decouple EFA from OSU tests
+    # TODO: Remove this condition once OSU benchmark tests are decoupled from EFA tests
+    if instance not in osu_benchmarks_instances or os == "rocky8":
+        _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
+        _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition="efa-enabled")
+        logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
     run_system_analyzer(cluster, scheduler_commands_factory, request, partition="efa-enabled")
 
@@ -78,6 +81,7 @@ def test_efa(
                     remote_command_executor,
                     scheduler_commands,
                     test_datadir,
+                    os,
                     instance,
                     slots_per_instance,
                     partition="efa-enabled",
@@ -89,6 +93,7 @@ def test_efa(
                     remote_command_executor,
                     scheduler_commands,
                     test_datadir,
+                    os,
                     instance,
                     num_instances=max_queue_size,
                     slots_per_instance=slots_per_instance,
@@ -106,10 +111,13 @@ def test_efa(
             slots_per_instance,
             partition="efa-enabled",
         )
-    _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
-    if instance == "p4d.24xlarge" and os != "centos7":
-        _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
+    # TODO: Remove this condition once OSU benchmark tests are decoupled from EFA tests
+    if instance not in osu_benchmarks_instances or os == "rocky8":
+        _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
+
+        if instance == "p4d.24xlarge" and os != "centos7":
+            _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
@@ -140,7 +148,14 @@ def _test_efa_installation(scheduler_commands, remote_command_executor, efa_inst
 
 
 def _test_osu_benchmarks_pt2pt(
-    mpi_version, remote_command_executor, scheduler_commands, test_datadir, instance, slots_per_instance, partition=None
+    mpi_version,
+    remote_command_executor,
+    scheduler_commands,
+    test_datadir,
+    os,
+    instance,
+    slots_per_instance,
+    partition=None,
 ):
     # OSU pt2pt benchmarks cannot be executed with more than 2 MPI ranks.
     # Run them in 2 instances with 1 proc per instance, defined by map-by parameter.
@@ -161,7 +176,7 @@ def _test_osu_benchmarks_pt2pt(
             slots_per_instance,
             test_datadir,
         )
-        failures = _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output)
+        failures = _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, benchmark_name, output)
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
@@ -173,6 +188,7 @@ def _test_osu_benchmarks_collective(
     remote_command_executor,
     scheduler_commands,
     test_datadir,
+    os,
     instance,
     num_instances,
     slots_per_instance,
@@ -195,7 +211,7 @@ def _test_osu_benchmarks_collective(
             test_datadir,
             timeout=24,
         )
-        failures = _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output)
+        failures = _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, benchmark_name, output)
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
@@ -241,7 +257,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 
-def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output):
+def _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, benchmark_name, output):
     logging.info(output)
     # Check avg latency for all packet sizes
     failures = 0
@@ -249,7 +265,8 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
     metric_namespace = "ParallelCluster/test_efa"
     for packet_size, value in re.findall(r"(\d+)\s+(\d+)\.", output):
         with open(
-            str(test_datadir / "osu_benchmarks" / "results" / instance / mpi_version / benchmark_name), encoding="utf-8"
+            str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
+            encoding="utf-8",
         ) as result:
             previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
 
