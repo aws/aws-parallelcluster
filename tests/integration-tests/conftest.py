@@ -659,7 +659,7 @@ def _inject_additional_iam_policies_for_nodes(
             _inject_additional_iam_policies(pool, policies)
 
 
-def inject_additional_config_settings(cluster_config, request, region, architecture, benchmarks=None):  # noqa C901
+def inject_additional_config_settings(cluster_config, request, region, architecture=None, benchmarks=None):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
