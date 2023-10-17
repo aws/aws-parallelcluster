@@ -15,15 +15,15 @@ cloudwatch_logging:
       # 2) run the test for all OSes with slurm
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["ubuntu2204"]
         schedulers: ["slurm"]
-      - regions: [ "ap-east-1" ]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.NOT_RELEASED_OSES }}
-        schedulers: [ "slurm" ]
+        oss: ["ubuntu2204", "rhel8"]
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8", "centos7"]
+        oss: ["centos7"]
+        schedulers: ["slurm"]
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.NOT_RELEASED_OSES }}
         schedulers: ["slurm"]
   test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
     dimensions:
