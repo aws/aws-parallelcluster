@@ -15,6 +15,7 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+    AllowedIps: 0.0.0.0/0
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
