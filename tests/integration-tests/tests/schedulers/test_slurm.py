@@ -2695,7 +2695,7 @@ def _test_scontrol_reboot_nodes(
     )
 
 
-@retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(6))
 def trigger_slurm_reconfigure_race_condition(remote_command_executor):
     # trigger slurmctld restart and scontrol reconfigure until they are executed in the same timestamp second
     remote_command_executor.run_remote_command("sudo -i systemctl restart slurmctld && sudo -i scontrol reconfigure")
