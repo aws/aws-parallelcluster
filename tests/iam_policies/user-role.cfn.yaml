@@ -1089,6 +1089,7 @@ Resources:
               - cloudwatch:DeleteDashboards
               - cloudwatch:GetDashboard
               - cloudwatch:PutMetricAlarm
+              - cloudwatch:PutCompositeAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
             Resource: "*"
