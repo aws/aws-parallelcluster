@@ -34,7 +34,9 @@ class RemoteCommandExecutor:
         """
         Initiate SSH connection
 
-        By default, commands are executed on head node. If `compute_node_ip` is specified, execute commands on compute.
+        By default, commands are executed on head node.
+        If `compute_node_ip` is specified, execute commands on compute.
+        If `use_login_node` is set to True, execute commands on login node.
         """
         if not username:
             username = get_username_for_os(cluster.os)
