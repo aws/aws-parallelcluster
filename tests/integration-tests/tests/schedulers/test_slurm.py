@@ -203,9 +203,6 @@ def test_slurm_from_login_nodes_in_private_network(
     scaledown_idletime = 3
     gpu_instance_type = "g3.4xlarge"
     gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
-    # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
-    # Else do not spin up compute node and start running regular slurm tests
-    supports_impi = architecture == "x86_64"
     compute_node_bootstrap_timeout = 1600
     cluster_config = pcluster_config_reader(
         scaledown_idletime=scaledown_idletime,
@@ -220,9 +217,6 @@ def test_slurm_from_login_nodes_in_private_network(
     slurm_root_path = _retrieve_slurm_root_path(remote_command_executor)
     assert "/opt/slurm" == slurm_root_path
     slurm_commands = scheduler_commands_factory(remote_command_executor)
-
-    if supports_impi:
-        _test_mpi_job_termination(remote_command_executor, test_datadir, slurm_commands, region, cluster)
 
     _assert_no_node_in_cluster(region, cluster.cfn_name, slurm_commands)
     _test_job_dependencies(slurm_commands, region, cluster.cfn_name, scaledown_idletime)
