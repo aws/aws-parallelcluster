@@ -590,6 +590,7 @@ def _create_permission_boundary(permission_boundary_name):
                         "cloudwatch:DeleteDashboards",
                         "cloudwatch:GetDashboard",
                         "cloudwatch:PutMetricAlarm",
+                        "cloudwatch:PutCompositeAlarm",
                         "cloudwatch:DeleteAlarms",
                         "cloudwatch:DescribeAlarms",
                     ],
