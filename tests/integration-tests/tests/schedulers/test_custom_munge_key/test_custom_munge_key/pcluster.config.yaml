@@ -9,7 +9,7 @@ LoginNodes:
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
-      GracetimePeriod: 5
+      GracetimePeriod: 3
 {% endif %}
 HeadNode:
   InstanceType: {{ instance }}
