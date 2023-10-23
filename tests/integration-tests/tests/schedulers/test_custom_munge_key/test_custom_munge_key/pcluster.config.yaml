@@ -1,6 +1,5 @@
 Image:
   Os: {{ os }}
-{% if use_login_node == True %}
 LoginNodes:
   Pools:
     - Name: pool
@@ -10,7 +9,6 @@ LoginNodes:
         SubnetIds:
           - {{ public_subnet_id }}
       GracetimePeriod: 3
-{% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
