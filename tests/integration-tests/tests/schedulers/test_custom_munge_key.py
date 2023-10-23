@@ -9,41 +9,59 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-from time import sleep
+import base64
+import os
 
 import pytest
 from assertpy import assert_that
 from constants import ENCODE_CUSTOM_MUNGE_KEY
 from remote_command_executor import RemoteCommandExecutor
+from retrying import retry
+from time_utils import minutes, seconds
 from utils import wait_for_computefleet_changed
 
 
 @pytest.mark.usefixtures("instance", "os")
-@pytest.mark.parametrize("use_login_node", [True, False])
 def test_custom_munge_key(
     region,
     pcluster_config_reader,
     clusters_factory,
     scheduler_commands_factory,
     store_secret_in_secret_manager,
-    use_login_node,
 ):
     """
     Test custom munge key config, rotate, update and remove.
 
-    This test contains two case: with LoginNodes and without LoginNodes section.
+    This test is focused on the scenario with LoginNodes.
+    Because this scenario covers all the logic covered by the test without login nodes。
+
+    Test phases summary:
+    1. Deployment verification: Confirm munge key is successfully shared across head, compute and login nodes, and jobs
+       can be submitted.
+    2. Rotation prep: Attempt munge key rotation without stopping compute and login nodes, expecting error messages.
+    3. Compute fleet shutdown: Prepare for munge key rotation scenario.
+    4. Key rotation without login node stop: Attempt rotation, checking for expected failure and error messages.
+    5. Login node stoppage and munge key rotation: Update cluster to stop login nodes, then execute munge key rotation.
+    6. Munge key removal: Update cluster to remove the custom munge key.
     """
+    custom_munge_key = create_base64_encoded_key()
     custom_munge_key_arn = store_secret_in_secret_manager(
         region,
-        secret_string=ENCODE_CUSTOM_MUNGE_KEY,
+        secret_string=custom_munge_key,
     )
-    cluster_config = pcluster_config_reader(use_login_node=use_login_node, custom_munge_key_arn=custom_munge_key_arn)
+    cluster_config = pcluster_config_reader(use_login_node=True, custom_munge_key_arn=custom_munge_key_arn)
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
+
+    # Test if the munge key was successfully fetched, decoded and shared in HeadNode and LoginNodes
     remote_command_executor = RemoteCommandExecutor(cluster)
     _test_custom_munge_key_fetch_and_decode(remote_command_executor)
     _test_munge_key_shared(remote_command_executor)
 
-    # Test if compute node can run jobs, which means its munge key fetched successfully.
+    remote_command_executor_login = RemoteCommandExecutor(cluster, use_login_node=True)
+    _test_custom_munge_key_fetch_and_decode(remote_command_executor_login)
+    remote_command_executor_login.close_connection()
+
+    # Test if compute node can run jobs, indicating the munge key was successfully fetched.
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
@@ -51,53 +69,61 @@ def test_custom_munge_key(
             "nodes": 2,
         }
     )
+
     # Test error message when both compute and login nodes are not stopped.
     _test_update_munge_key_without_stop_login_or_compute(remote_command_executor)
-
-    if use_login_node:
-        remote_command_executor_login = RemoteCommandExecutor(cluster, use_login_node=True)
-        _test_custom_munge_key_fetch_and_decode(remote_command_executor_login)
-        remote_command_executor_login.close_connection()
 
     # Stop compute fleets
     cluster.stop()
     wait_for_computefleet_changed(cluster, "STOPPED")
 
-    if use_login_node:
-        # Test error message when login nodes are not stopped.
-        _test_update_munge_key_without_stop_login_or_compute(remote_command_executor, compute_stopped=True)
+    # Test error message when login nodes are not stopped.
+    _test_update_munge_key_without_stop_login_or_compute(remote_command_executor, compute_stopped=True)
 
-        # Update cluster with pcluster.stop_login.config.yaml to stop login nodes.
-        update_cluster_stop_login_config = pcluster_config_reader(
-            config_file="pcluster.stop_login.config.yaml",
-            custom_munge_key_arn=custom_munge_key_arn,
-        )
-        cluster.update(str(update_cluster_stop_login_config))
+    # Update cluster with pcluster.stop_login.config.yaml to stop login nodes.
+    update_cluster_stop_login_config = pcluster_config_reader(
+        config_file="pcluster.stop_login.config.yaml",
+        custom_munge_key_arn=custom_munge_key_arn,
+    )
+    cluster.update(str(update_cluster_stop_login_config))
 
     # wait for LoginNodes gracetime_period
-    for _i in range(5):
-        result = remote_command_executor.run_remote_command(
-            "sudo /opt/parallelcluster/scripts/slurm/check_login_nodes_stopped.sh",
-            raise_on_error=False,
-        )
-        exit_code = result.return_code
-        if exit_code == 0:
-            break
-        else:
-            sleep(180)
+    check_login_nodes_stopped(remote_command_executor)
 
-    # Test rotation script run successfully
+    # Test rotation script runs successfully
     result = remote_command_executor.run_remote_command("sudo /opt/parallelcluster/scripts/slurm/update_munge_key.sh")
     exit_code = result.return_code
     assert_that(exit_code).is_equal_to(0)
 
     update_cluster_remove_custom_munge_key_config = pcluster_config_reader(
         config_file="pcluster.remove_custom_munge_key.config.yaml",
-        use_login_node=use_login_node,
+        use_login_node=True,
     )
     cluster.update(str(update_cluster_remove_custom_munge_key_config))
+
     # Test Munge Key has been changed
     _test_custom_munge_key_fetch_and_decode(remote_command_executor, use_custom_munge_key=False)
+
+
+def generate_secure_random_key(length=64):
+    return os.urandom(length)
+
+
+def create_base64_encoded_key():
+    random_key = generate_secure_random_key()
+    base64_encoded_key = base64.b64encode(random_key).decode("utf-8")
+
+    return base64_encoded_key
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(15))
+def check_login_nodes_stopped(remote_command_executor):
+    result = remote_command_executor.run_remote_command(
+        "sudo /opt/parallelcluster/scripts/slurm/check_login_nodes_stopped.sh",
+        raise_on_error=False,
+    )
+    exit_code = result.return_code
+    assert_that(exit_code).is_equal_to(0)
 
 
 def _test_custom_munge_key_fetch_and_decode(remote_command_executor, use_custom_munge_key=True):
