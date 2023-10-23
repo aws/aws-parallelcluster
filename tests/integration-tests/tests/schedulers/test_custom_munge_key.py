@@ -48,7 +48,7 @@ def test_custom_munge_key(
         region,
         secret_string=encode_custom_munge_key,
     )
-    cluster_config = pcluster_config_reader(use_login_node=True, custom_munge_key_arn=custom_munge_key_arn)
+    cluster_config = pcluster_config_reader(custom_munge_key_arn=custom_munge_key_arn)
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
 
     # Test if the munge key was successfully fetched, decoded and shared in HeadNode and LoginNodes
@@ -95,8 +95,7 @@ def test_custom_munge_key(
     assert_that(exit_code).is_equal_to(0)
 
     update_cluster_remove_custom_munge_key_config = pcluster_config_reader(
-        config_file="pcluster.remove_custom_munge_key.config.yaml",
-        use_login_node=True,
+        config_file="pcluster.remove_custom_munge_key.config.yaml"
     )
     cluster.update(str(update_cluster_remove_custom_munge_key_config))
 
