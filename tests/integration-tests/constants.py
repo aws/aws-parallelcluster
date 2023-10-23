@@ -14,11 +14,6 @@ SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
 
 OSU_BENCHMARK_VERSION = "5.7.1"
 
-ENCODE_CUSTOM_MUNGE_KEY = (
-    "lWXJDxgGhJxIVqLdbaycUICm12u0gHtcDFslGGxJlyLoVIQJFuskDfkK8wjvQfhT5pkeyuxA+vjgg9R+E+ftPV"
-    "TsVLHaf4bx3RmEfe30bZo79Yg+GhTRJRzV401/VaTlVEGFwMcJhmVKrXX/MbfnIdMwWNgCL8swUELbFOI4CG0K"
-)
-
 
 class NodeType(Enum):
     """Categories of nodes."""
