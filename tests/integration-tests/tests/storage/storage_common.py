@@ -53,7 +53,7 @@ def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head
 
 
 def test_directory_correctly_shared_between_ln_and_hn(
-    remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
+    remote_command_executor_head_node, remote_command_executor_login_node, mount_dir, run_sudo=False
 ):
     """
     This test verifies if a shared directory is correctly shared between the HeadNode and the LoginNode.
@@ -75,7 +75,8 @@ def test_directory_correctly_shared_between_ln_and_hn(
     head_node_file = random_alphanumeric()
     logging.info(f"Writing HeadNode File: {head_node_file}")
     remote_command_executor_head_node.run_remote_command(
-        "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
+        ("sudo " if run_sudo else "")
+        + "touch {mount_dir}/{head_node_file} && cat {mount_dir}/{head_node_file}".format(
             mount_dir=mount_dir, head_node_file=head_node_file
         )
     )
@@ -83,7 +84,8 @@ def test_directory_correctly_shared_between_ln_and_hn(
     login_node_file = random_alphanumeric()
     logging.info(f"Writing LoginNode File: {login_node_file}")
     remote_command_executor_login_node.run_remote_command(
-        "touch {mount_dir}/{login_node_file} && cat {mount_dir}/{login_node_file}".format(
+        ("sudo " if run_sudo else "")
+        + "touch {mount_dir}/{login_node_file} && cat {mount_dir}/{login_node_file}".format(
             mount_dir=mount_dir, login_node_file=login_node_file
         )
     )
@@ -101,7 +103,9 @@ def test_directory_correctly_shared_between_ln_and_hn(
     remote_command_executor_login_node.run_remote_command(read_all_files_command)
 
 
-def verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=None):
+def verify_directory_correctly_shared(
+    remote_command_executor, mount_dir, scheduler_commands, partitions=None, run_sudo=False
+):
     """
     Confirm nodes can read and write to the FileSystem
     Example:
@@ -116,11 +120,11 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
     executor_node_file = random_alphanumeric()
     logging.info(f"{remote_command_executor.get_target_host_type()}: Writing File: {executor_node_file}")
     remote_command_executor.run_remote_command(
-        "touch {mount_dir}/{executor_node_file} && cat {mount_dir}/{executor_node_file}".format(
+        ("sudo " if run_sudo else "")
+        + "touch {mount_dir}/{executor_node_file} && cat {mount_dir}/{executor_node_file}".format(
             mount_dir=mount_dir, executor_node_file=executor_node_file
         )
     )
-
     # Submit a "Write" job to each partition
     files_to_read = [executor_node_file]
     partitions = (
@@ -129,7 +133,9 @@ def verify_directory_correctly_shared(remote_command_executor, mount_dir, schedu
     for partition in partitions:
         compute_file = "{}-{}".format(partition, random_alphanumeric())
         logging.info(f"Writing Compute File: {compute_file} from {partition}")
-        job_command = "touch {mount_dir}/{compute_file} && cat {mount_dir}/{compute_file}".format(
+        job_command = (
+            "sudo " if run_sudo else ""
+        ) + "touch {mount_dir}/{compute_file} && cat {mount_dir}/{compute_file}".format(
             mount_dir=mount_dir, compute_file=compute_file
         )
         result = scheduler_commands.submit_command(job_command, partition=partition)
