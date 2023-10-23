@@ -14,7 +14,6 @@ import os
 
 import pytest
 from assertpy import assert_that
-from constants import ENCODE_CUSTOM_MUNGE_KEY
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
@@ -44,21 +43,21 @@ def test_custom_munge_key(
     5. Login node stoppage and munge key rotation: Update cluster to stop login nodes, then execute munge key rotation.
     6. Munge key removal: Update cluster to remove the custom munge key.
     """
-    custom_munge_key = create_base64_encoded_key()
+    encode_custom_munge_key = create_base64_encoded_key()
     custom_munge_key_arn = store_secret_in_secret_manager(
         region,
-        secret_string=custom_munge_key,
+        secret_string=encode_custom_munge_key,
     )
     cluster_config = pcluster_config_reader(use_login_node=True, custom_munge_key_arn=custom_munge_key_arn)
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
 
     # Test if the munge key was successfully fetched, decoded and shared in HeadNode and LoginNodes
     remote_command_executor = RemoteCommandExecutor(cluster)
-    _test_custom_munge_key_fetch_and_decode(remote_command_executor)
+    _test_custom_munge_key_fetch_and_decode(remote_command_executor, encode_custom_munge_key)
     _test_munge_key_shared(remote_command_executor)
 
     remote_command_executor_login = RemoteCommandExecutor(cluster, use_login_node=True)
-    _test_custom_munge_key_fetch_and_decode(remote_command_executor_login)
+    _test_custom_munge_key_fetch_and_decode(remote_command_executor_login, encode_custom_munge_key)
     remote_command_executor_login.close_connection()
 
     # Test if compute node can run jobs, indicating the munge key was successfully fetched.
@@ -102,7 +101,9 @@ def test_custom_munge_key(
     cluster.update(str(update_cluster_remove_custom_munge_key_config))
 
     # Test Munge Key has been changed
-    _test_custom_munge_key_fetch_and_decode(remote_command_executor, use_custom_munge_key=False)
+    _test_custom_munge_key_fetch_and_decode(
+        remote_command_executor, encode_custom_munge_key, use_custom_munge_key=False
+    )
 
 
 def generate_secure_random_key(length=64):
@@ -126,14 +127,16 @@ def check_login_nodes_stopped(remote_command_executor):
     assert_that(exit_code).is_equal_to(0)
 
 
-def _test_custom_munge_key_fetch_and_decode(remote_command_executor, use_custom_munge_key=True):
+def _test_custom_munge_key_fetch_and_decode(
+    remote_command_executor, encode_custom_munge_key, use_custom_munge_key=True
+):
     """Test encoded munge key in secret manager has been successfully fetched by cluster and decode."""
     result = remote_command_executor.run_remote_command("sudo cat /etc/munge/munge.key | base64")
     encode_munge_key = result.stdout.strip().replace("\n", "")
     if use_custom_munge_key:
-        assert_that(encode_munge_key).is_equal_to(ENCODE_CUSTOM_MUNGE_KEY)
+        assert_that(encode_munge_key).is_equal_to(encode_custom_munge_key)
     else:
-        assert_that(encode_munge_key).is_not_equal_to(ENCODE_CUSTOM_MUNGE_KEY)
+        assert_that(encode_munge_key).is_not_equal_to(encode_custom_munge_key)
 
 
 def _test_munge_key_shared(remote_command_executor):
