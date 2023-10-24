@@ -10,9 +10,9 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import base64
-import boto3
 import os
 
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -32,7 +32,7 @@ def test_custom_munge_key(
     s3_bucket_factory,
 ):
     """
-    Test custom munge key config, rotate, update and remove.
+    Test custom munge key config, rotate, update, remove and roll back.
 
     This test is focused on the scenario with LoginNodes.
     Because this scenario covers all the logic covered by the test without login nodes。
@@ -118,7 +118,7 @@ def test_custom_munge_key(
         custom_munge_key_arn=custom_munge_key_arn,
         bucket_name=bucket_name,
     )
-    cluster.update(str(update_cluster_fail_roll_back_config))
+    cluster.update(str(update_cluster_fail_roll_back_config), raise_on_error=False)
 
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
