@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import base64
+import boto3
 import os
 
 import pytest
@@ -27,6 +28,8 @@ def test_custom_munge_key(
     clusters_factory,
     scheduler_commands_factory,
     store_secret_in_secret_manager,
+    test_datadir,
+    s3_bucket_factory,
 ):
     """
     Test custom munge key config, rotate, update and remove.
@@ -41,7 +44,9 @@ def test_custom_munge_key(
     3. Compute fleet shutdown: Prepare for munge key rotation scenario.
     4. Key rotation without login node stop: Attempt rotation, checking for expected failure and error messages.
     5. Login node stoppage and munge key rotation: Update cluster to stop login nodes, then execute munge key rotation.
-    6. Munge key removal: Update cluster to remove the custom munge key.
+    6. Munge key removal: Update cluster to remove the custom munge key. Test Munge Key has been changed
+    7. Roll back with failure: Update cluster to add back the custom munge key. But let the cluster update fail after
+       the custom munge key has been added. Trigger cluster roll back. Test if munge key is fully functional.
     """
     encode_custom_munge_key = create_base64_encoded_key()
     custom_munge_key_arn = store_secret_in_secret_manager(
@@ -102,6 +107,26 @@ def test_custom_munge_key(
     # Test Munge Key has been changed
     _test_custom_munge_key_fetch_and_decode(
         remote_command_executor, encode_custom_munge_key, use_custom_munge_key=False
+    )
+
+    # Test if munge key is fully functional after cluster roll back
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "fail-on-node-updated.sh"), "fail-on-node-updated.sh")
+    update_cluster_fail_roll_back_config = pcluster_config_reader(
+        config_file="pcluster.roll_back.config.yaml",
+        custom_munge_key_arn=custom_munge_key_arn,
+        bucket_name=bucket_name,
+    )
+    cluster.update(str(update_cluster_fail_roll_back_config))
+
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+    scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "srun sleep 1",
+            "nodes": 2,
+        }
     )
 
 

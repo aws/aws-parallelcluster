@@ -1,0 +1,43 @@
+Image:
+  Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Name: pool
+      InstanceType: {{ instance }}
+      Count: 0
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 3
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeUpdated:
+      Script: s3://{{ bucket_name }}/fail-on-node-updated.sh
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    MungeKeySecretArn: {{ custom_munge_key_arn }}
+  SlurmQueues:
+    - Name: queue
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: compute1
+          Instances:
+            - InstanceType: c4.xlarge
+          MinCount: 1
+          MaxCount: 5
+        - Name: compute2
+          Instances:
+            - InstanceType: c5.xlarge
+          MinCount: 1
+          MaxCount: 5
