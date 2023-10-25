@@ -62,15 +62,15 @@ def test_custom_munge_key(
 
     # Test if the munge key was successfully fetched, decoded and shared in HeadNode and LoginNodes
     remote_command_executor = RemoteCommandExecutor(cluster)
-    check_encoded_munge_key(remote_command_executor, encoded_custom_munge_key)
+    _check_encoded_munge_key(remote_command_executor, encoded_custom_munge_key)
     _test_munge_key_shared(remote_command_executor)
 
     remote_command_executor_login = RemoteCommandExecutor(cluster, use_login_node=True)
-    check_encoded_munge_key(remote_command_executor_login, encoded_custom_munge_key)
+    _check_encoded_munge_key(remote_command_executor_login, encoded_custom_munge_key)
 
     # Test if compute node can run jobs from LoginNodes and HeadNode, indicating the munge key was successfully fetched.
     scheduler_commands = scheduler_commands_factory(remote_command_executor_login)
-    scheduler_commands.submit_command_and_assert_job_accepted(
+    scheduler_commands.submit_command_and_assert_job_succeeded(
         submit_command_args={
             "command": "srun sleep 1",
             "nodes": 2,
@@ -79,7 +79,7 @@ def test_custom_munge_key(
     remote_command_executor_login.close_connection()
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    scheduler_commands.submit_command_and_assert_job_accepted(
+    scheduler_commands.submit_command_and_assert_job_succeeded(
         submit_command_args={
             "command": "srun sleep 1",
             "nodes": 2,
@@ -116,7 +116,7 @@ def test_custom_munge_key(
         config_file="pcluster.remove_custom_munge_key.config.yaml"
     )
     cluster.update(str(update_cluster_remove_custom_munge_key_config))
-    check_encoded_munge_key(remote_command_executor, encoded_custom_munge_key, use_custom_munge_key=False)
+    _check_encoded_munge_key(remote_command_executor, encoded_custom_munge_key, use_custom_munge_key=False)
 
     # 7. Roll back with failure: Update cluster to add back the custom munge key. But let the cluster update fail after
     # the custom munge key has been added. Trigger cluster roll back. Test if munge key is fully functional.
@@ -132,7 +132,7 @@ def test_custom_munge_key(
 
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
-    scheduler_commands.submit_command_and_assert_job_accepted(
+    scheduler_commands.submit_command_and_assert_job_succeeded(
         submit_command_args={
             "command": "srun sleep 1",
             "nodes": 2,
@@ -158,7 +158,7 @@ def _check_login_nodes_stopped(remote_command_executor):
     assert_that(exit_code).is_equal_to(0)
 
 
-def check_encoded_munge_key(remote_command_executor, expected_encoded_munge_key, use_custom_munge_key=True):
+def _check_encoded_munge_key(remote_command_executor, expected_encoded_munge_key, use_custom_munge_key=True):
     """Test encoded munge key in secret manager has been successfully fetched by cluster and decode."""
     result = remote_command_executor.run_remote_command("sudo cat /etc/munge/munge.key | base64")
     encoded_munge_key = result.stdout.strip().replace("\n", "")
