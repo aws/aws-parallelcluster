@@ -67,24 +67,17 @@ def test_custom_munge_key(
 
     remote_command_executor_login = RemoteCommandExecutor(cluster, use_login_node=True)
     _check_encoded_munge_key(remote_command_executor_login, encoded_custom_munge_key)
-
+    job_command_args = {
+        "command": "srun sleep 1",
+        "nodes": 2,
+    }
     # Test if compute node can run jobs from LoginNodes and HeadNode, indicating the munge key was successfully fetched.
     scheduler_commands = scheduler_commands_factory(remote_command_executor_login)
-    scheduler_commands.submit_command_and_assert_job_succeeded(
-        submit_command_args={
-            "command": "srun sleep 1",
-            "nodes": 2,
-        }
-    )
+    scheduler_commands.submit_command_and_assert_job_succeeded(job_command_args)
     remote_command_executor_login.close_connection()
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    scheduler_commands.submit_command_and_assert_job_succeeded(
-        submit_command_args={
-            "command": "srun sleep 1",
-            "nodes": 2,
-        }
-    )
+    scheduler_commands.submit_command_and_assert_job_succeeded(job_command_args)
 
     # 2. Rotation prep: Attempt munge key rotation without stopping compute and login nodes, expecting error messages.
     _test_update_munge_key_without_stop_login_or_compute(remote_command_executor)
@@ -132,12 +125,7 @@ def test_custom_munge_key(
 
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
-    scheduler_commands.submit_command_and_assert_job_succeeded(
-        submit_command_args={
-            "command": "srun sleep 1",
-            "nodes": 2,
-        }
-    )
+    scheduler_commands.submit_command_and_assert_job_succeeded(job_command_args)
 
 
 def create_base64_encoded_key():
