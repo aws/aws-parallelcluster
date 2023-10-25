@@ -27,11 +27,6 @@ Scheduling:
       ComputeResources:
         - Name: compute1
           Instances:
-            - InstanceType: c4.xlarge
-          MinCount: 1
-          MaxCount: 5
-        - Name: compute2
-          Instances:
-            - InstanceType: c5.xlarge
+            - InstanceType: t2.medium
           MinCount: 1
           MaxCount: 5

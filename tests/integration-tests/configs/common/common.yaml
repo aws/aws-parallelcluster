@@ -776,3 +776,10 @@ health_checks:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+schedulers:
+  test_custom_munge_key.py::test_custom_munge_key:
+    dimensions:
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
