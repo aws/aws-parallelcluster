@@ -26,5 +26,5 @@ Scheduling:
         - Name: compute1
           Instances:
             - InstanceType: t2.medium
-          MinCount: 1
+          MinCount: 2
           MaxCount: 5
