@@ -1687,7 +1687,7 @@ class DatabaseSchema(BaseSchema):
     database_name = fields.Str(
         required=False,
         validate=validate.And(
-            validate.Regexp(r"^[0-9a-z_]+$"),
+            validate.Regexp(r"^[0-9a-z_]+$", error="String does not match expected regex pattern: ^[0-9a-z_]+$"),
             validate.Length(min=1, max=64),
         ),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
