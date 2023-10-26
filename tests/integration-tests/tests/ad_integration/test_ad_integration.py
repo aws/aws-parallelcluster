@@ -148,37 +148,6 @@ def zip_dir(path):
     return file_out
 
 
-@pytest.fixture(scope="class")
-def store_secret_in_secret_manager(request, cfn_stacks_factory):
-    secret_arns = {}
-
-    def _store_secret(region, secret_string=None, secret_binary=None):
-        secrets_manager_client = boto3.client("secretsmanager")
-        if secret_string is None and secret_binary is None:
-            logging.error("secret string and scecret binary can not both be empty")
-        secret_name = generate_stack_name("integ-tests-secret", request.config.getoption("stackname_suffix"))
-        if secret_string:
-            secret_arn = secrets_manager_client.create_secret(Name=secret_name, SecretString=secret_string)["ARN"]
-        else:
-            secret_arn = secrets_manager_client.create_secret(Name=secret_name, SecretBinary=secret_binary)["ARN"]
-        if secret_arns.get(region):
-            secret_arns[region].append(secret_arn)
-        else:
-            secret_arns[region] = [secret_arn]
-        return secret_arn
-
-    yield _store_secret
-
-    if request.config.getoption("no_delete"):
-        logging.info("Not deleting stack secrets because --no-delete option was specified")
-    else:
-        for region, secrets in secret_arns.items():
-            secrets_manager_client = boto3.client("secretsmanager", region_name=region)
-            for secret_arn in secrets:
-                logging.info("Deleting secret %s", secret_arn)
-                secrets_manager_client.delete_secret(SecretId=secret_arn)
-
-
 def _create_directory_stack(
     cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack: CfnVpcStack
 ):
