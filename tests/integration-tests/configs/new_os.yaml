@@ -29,6 +29,11 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
+  capacity_reservations:
+    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+      dimensions:
+        - regions: ["us-west-2"]
+          oss: {{ NEW_OS }}
   cfn-init:
     test_cfn_init.py::test_replace_compute_on_failure:
       dimensions:
@@ -144,10 +149,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
-      dimensions:
-        - regions: [ "us-west-2" ]
-          oss: {{ NEW_OS }}
   scaling:
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
