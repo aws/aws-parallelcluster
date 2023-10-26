@@ -33,3 +33,8 @@ test-suites:
     test_cluster_custom_resource.py::test_cluster_1_click:
       dimensions:
         - regions: ["us-east-2"]
+  capacity_reservations:
+    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+      dimensions:
+        - regions: ["us-west-2"]
+          oss: ["alinux2"]
