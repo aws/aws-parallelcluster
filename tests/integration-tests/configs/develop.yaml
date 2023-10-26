@@ -150,6 +150,10 @@ test-suites:
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
   capacity_reservations:
+    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+      dimensions:
+        - regions: ["us-west-2"]
+          oss: ["alinux2"]
     test_capacity_blocks.py::test_capacity_blocks:
       dimensions:
         - regions: ["eu-west-1"]
