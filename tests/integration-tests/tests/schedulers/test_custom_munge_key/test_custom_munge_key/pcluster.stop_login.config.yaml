@@ -1,0 +1,32 @@
+Image:
+  Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Name: pool
+      InstanceType: {{ instance }}
+      Count: 0
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 3
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    MungeKeySecretArn: {{ custom_munge_key_arn }}
+  SlurmQueues:
+    - Name: queue
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: compute1
+          Instances:
+            - InstanceType: t2.medium
+          MinCount: 2
+          MaxCount: 5
