@@ -524,7 +524,7 @@ def get_describe_capacity_reservation_mocked_request(capacity_reservations, stat
                 for capacity_reservation in capacity_reservations
             ]
         },
-        expected_params={"CapacityReservationIds": capacity_reservations},
+        expected_params={"CapacityReservationIds": capacity_reservations},  # TODO add: "ReservationType": None},
     )
 
 
@@ -540,7 +540,7 @@ def test_describe_capacity_reservations_cache(boto3_stubber):
         get_describe_capacity_reservation_mocked_request([capacity_reservation], "active"),
     ]
     boto3_stubber("ec2", mocked_requests)
-    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0]["State"]).is_equal_to(
+    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0].state()).is_equal_to(
         "pending"
     )
 
@@ -551,13 +551,13 @@ def test_describe_capacity_reservations_cache(boto3_stubber):
     assert_that(response).is_length(2)
 
     # Third boto3 call. The result should be from cache even if the state of the cr is different
-    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0]["State"]).is_equal_to(
+    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0].state()).is_equal_to(
         "pending"
     )
 
     # Fourth boto3 call after resetting the AWSApi instance. The latest cr state should be retrieved from boto3
     AWSApi.reset()
-    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0]["State"]).is_equal_to(
+    assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0].state()).is_equal_to(
         "active"
     )
 
