@@ -1444,6 +1444,7 @@ class BaseComputeResource(Resource):
 class CapacityType(Enum):
     """Enum to identify the type compute supported by the queues."""
 
+    CAPACITY_BLOCK = "CAPACITY_BLOCK"
     ONDEMAND = "ONDEMAND"
     SPOT = "SPOT"
 
@@ -1462,12 +1463,20 @@ class BaseQueue(Resource):
     def __init__(self, name: str, capacity_type: str = None):
         super().__init__()
         self.name = Resource.init_param(name)
-        _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
+        try:
+            _capacity_type = CapacityType[capacity_type.upper()] if isinstance(capacity_type, str) else None
+        except KeyError as e:
+            LOGGER.error("%s is not a valid CapacityType value, setting ONDEMAND", e)
+            _capacity_type = None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
     def is_spot(self):
         """Return True if the queue has SPOT capacity."""
         return self.capacity_type == CapacityType.SPOT
+
+    def is_capacity_block(self):
+        """Return True if the queue has CAPACITY_BLOCK capacity."""
+        return self.capacity_type == CapacityType.CAPACITY_BLOCK
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
@@ -2443,6 +2452,7 @@ class AllocationStrategy(Enum):
 
     LOWEST_PRICE = "lowest-price"
     CAPACITY_OPTIMIZED = "capacity-optimized"
+    USE_CAPACITY_RESERVATIONS_FIRST = "use-capacity-reservations-first"
 
 
 class SlurmQueue(_CommonQueue):

@@ -16,15 +16,18 @@ class _LaunchTemplateBuilder(ABC):
         return block_device_mappings
 
     def get_instance_market_options(self, queue, compute_resource):
-        """Return the instance market options for spot instances."""
+        """Return the instance market options for no on-demand instances."""
         instance_market_options = None
         if queue.is_spot():
-            instance_market_options = self._instance_market_option(
+            instance_market_options = self._spot_instance_market_option(
                 market_type="spot",
                 spot_instance_type="one-time",
                 instance_interruption_behavior="terminate",
                 max_price=None if compute_resource.spot_price is None else str(compute_resource.spot_price),
             )
+        elif queue.is_capacity_block():
+            instance_market_options = self._capacity_block_instance_market_option(market_type="capacity-block")
+
         return instance_market_options
 
     def get_capacity_reservation(self, queue, compute_resource):
@@ -44,7 +47,11 @@ class _LaunchTemplateBuilder(ABC):
         pass
 
     @abstractmethod
-    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+    def _spot_instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+        pass
+
+    @abstractmethod
+    def _capacity_block_instance_market_option(self, market_type):
         pass
 
     @abstractmethod

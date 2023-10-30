@@ -5,6 +5,8 @@ from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config.cluster_config import (
     AmiSearchFilters,
     BaseClusterConfig,
+    BaseQueue,
+    CapacityType,
     ClusterDevSettings,
     ComputeSettings,
     Ebs,
@@ -82,6 +84,46 @@ def instance_type_info_mock(aws_api_mock):
             "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
         }
     )
+
+
+class TestBaseQueue:
+    @pytest.mark.parametrize(
+        ("capacity_type", "expected_capacity_type", "expected_error"),
+        [
+            (None, CapacityType.ONDEMAND, False),
+            ("", CapacityType.ONDEMAND, False),
+            ("capacity_block", CapacityType.CAPACITY_BLOCK, False),
+            ("CAPACITY_BLOCK", CapacityType.CAPACITY_BLOCK, False),
+            ("spot", CapacityType.SPOT, False),
+            ("SPOT", CapacityType.SPOT, False),
+            ("ONDEMAND", CapacityType.ONDEMAND, False),
+            ("ondemand", CapacityType.ONDEMAND, False),
+            ("wrong-value", CapacityType.ONDEMAND, True),
+        ],
+    )
+    def test_capacity_type_init(self, capacity_type, expected_capacity_type, expected_error, caplog):
+        queue = BaseQueue(name="queue1", capacity_type=capacity_type)
+        if expected_error:
+            assert_that(caplog.text).contains("'WRONG-VALUE' is not a valid CapacityType value, setting ONDEMAND")
+
+        assert_that(queue.name).is_equal_to("queue1")
+        assert_that(queue.capacity_type).is_equal_to(expected_capacity_type)
+
+    @pytest.mark.parametrize(
+        ("capacity_type", "expected_result"),
+        [("CAPACITY_BLOCK", False), ("spot", True), ("SPOT", True), ("ONDEMAND", False)],
+    )
+    def test_is_spot(self, capacity_type, expected_result):
+        queue = BaseQueue(name="queue1", capacity_type=capacity_type)
+        assert_that(queue.is_spot()).is_equal_to(expected_result)
+
+    @pytest.mark.parametrize(
+        ("capacity_type", "expected_result"),
+        [("capacity_block", True), ("CAPACITY_BLOCK", True), ("SPOT", False), ("ONDEMAND", False)],
+    )
+    def test_is_capacity_block(self, capacity_type, expected_result):
+        queue = BaseQueue(name="queue1", capacity_type=capacity_type)
+        assert_that(queue.is_capacity_block()).is_equal_to(expected_result)
 
 
 @pytest.mark.usefixtures("instance_type_info_mock")

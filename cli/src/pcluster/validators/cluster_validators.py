@@ -1416,7 +1416,7 @@ class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
     def _block_device_mapping_for_virt(self, device_name, virtual_name):
         return {"DeviceName": device_name, "VirtualName": virtual_name}
 
-    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+    def _spot_instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
         return {
             "MarketType": market_type,
             "SpotOptions": remove_none_values(
@@ -1427,6 +1427,9 @@ class DictLaunchTemplateBuilder(_LaunchTemplateBuilder):
                 }
             ),
         }
+
+    def _capacity_block_instance_market_option(self, market_type):
+        return {"MarketType": market_type}
 
     def _capacity_reservation(self, cr_target):
         return {
