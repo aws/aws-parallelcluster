@@ -1046,7 +1046,7 @@ class CdkLaunchTemplateBuilder(_LaunchTemplateBuilder):
     def _block_device_mapping_for_virt(self, device_name, virtual_name):
         return ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
 
-    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+    def _spot_instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
         return ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
             market_type=market_type,
             spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
@@ -1055,6 +1055,9 @@ class CdkLaunchTemplateBuilder(_LaunchTemplateBuilder):
                 max_price=max_price,
             ),
         )
+
+    def _capacity_block_instance_market_option(self, market_type):
+        return ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(market_type=market_type)
 
     def _capacity_reservation(self, cr_target):
         return ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(

@@ -5,6 +5,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
+- Add support for EC2 Capacity Blocks for ML.
 - Add support for Data Repository Associations when using PERSISTENT_2 as DeploymentType for a managed FSx for Lustre.
 - Add `Scheduling/SlurmSettings/Database/DatabaseName` parameter to allow users to specify a custom name for the database on the database server to be used for Slurm accounting.
 - Add `Monitoring/Alarms/Enabled` parameter to toggle Amazon CloudWatch Alarms for the cluster.
