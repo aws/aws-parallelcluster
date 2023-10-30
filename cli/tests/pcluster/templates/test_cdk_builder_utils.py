@@ -337,6 +337,12 @@ class TestCdkLaunchTemplateBuilder:
                 None,
                 id="test without spot capacity",
             ),
+            pytest.param(
+                BaseQueue(name="queue2", capacity_type="capacity_block"),
+                SlurmComputeResource(name="compute2", instance_type="t2.medium"),
+                ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(market_type="capacity-block"),
+                id="test with capacity block",
+            ),
         ],
     )
     def test_get_instance_market_options(self, queue, compute_resource, expected_response):
