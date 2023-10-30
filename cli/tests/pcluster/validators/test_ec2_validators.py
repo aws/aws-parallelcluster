@@ -13,7 +13,7 @@ from collections import namedtuple
 import pytest
 from assertpy import assert_that
 
-from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import CapacityReservationInfo, ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import CapacityReservationTarget, CapacityType, PlacementGroup
 from pcluster.validators.ec2_validators import (
@@ -370,10 +370,12 @@ def test_key_pair_validator(mocker, key_pair, ec2_return, os, side_effect, expec
 @pytest.mark.parametrize(
     "capacity_type, supported_usage_classes, expected_message",
     [
-        (CapacityType.ONDEMAND, ["ondemand", "spot"], None),
-        (CapacityType.SPOT, ["ondemand", "spot"], None),
+        (CapacityType.ONDEMAND, ["ondemand", "spot", "capacity-block"], None),
+        (CapacityType.CAPACITY_BLOCK, ["ondemand", "spot", "capacity-block"], None),
+        (CapacityType.SPOT, ["ondemand", "spot", "capacity-block"], None),
         (CapacityType.ONDEMAND, ["ondemand"], None),
         (CapacityType.SPOT, ["spot"], None),
+        (CapacityType.CAPACITY_BLOCK, ["capacity-block"], None),
         (CapacityType.SPOT, [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
         (
             CapacityType.ONDEMAND,
@@ -382,6 +384,16 @@ def test_key_pair_validator(mocker, key_pair, ec2_return, os, side_effect, expec
         ),
         (CapacityType.SPOT, ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
         (CapacityType.ONDEMAND, ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            ["ondemand"],
+            "Usage type 'capacity-block' not supported with instance type 'instance-type'",
+        ),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            ["spot"],
+            "Usage type 'capacity-block' not supported with instance type 'instance-type'",
+        ),
     ],
 )
 def test_capacity_type_validator(mocker, capacity_type, supported_usage_classes, expected_message):
@@ -603,10 +615,12 @@ def test_capacity_reservation_validator(
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
         return_value=[
-            {
-                "InstanceType": capacity_reservation_instance_type,
-                "AvailabilityZone": capacity_reservation_availability_zone,
-            }
+            CapacityReservationInfo(
+                {
+                    "InstanceType": capacity_reservation_instance_type,
+                    "AvailabilityZone": capacity_reservation_availability_zone,
+                }
+            )
         ],
     )
     mocker.patch(
@@ -802,7 +816,9 @@ def test_capacity_reservation_resource_group_validator(
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
         side_effect=lambda capacity_reservation_ids: [
-            {"CapacityReservationId": cr.id, "InstanceType": cr.instance_type, "AvailabilityZone": cr.az}
+            CapacityReservationInfo(
+                {"CapacityReservationId": cr.id, "InstanceType": cr.instance_type, "AvailabilityZone": cr.az}
+            )
             for cr in capacity_reservations_in_resource_group
         ],
     )
@@ -820,38 +836,60 @@ def test_capacity_reservation_resource_group_validator(
     assert_failure_messages(actual_failures, expected_message)
 
 
-mock_odcrs = [
-    {
-        "CapacityReservationId": "cr-123",
-        "InstanceType": "mock-type",
-        "AvailabilityZone": "mock-zone",
-    },
-    {
-        "CapacityReservationId": "cr-321",
-        "InstanceType": "mock-type",
-        "AvailabilityZone": "mock-zone",
-        "PlacementGroupArn": "mock-acct/mock-arn",
-    },
-    {
-        "CapacityReservationId": "cr-456",
-        "InstanceType": "mock-type-2",
-        "AvailabilityZone": "mock-zone",
-        "PlacementGroupArn": "mock-acct/mock-arn",
-    },
+mock_capacity_reservations = [
+    CapacityReservationInfo(
+        {
+            "CapacityReservationId": "cr-123",
+            "InstanceType": "mock-type",
+            "AvailabilityZone": "mock-zone",
+        }
+    ),
+    CapacityReservationInfo(
+        {
+            "CapacityReservationId": "cr-321",
+            "InstanceType": "mock-type",
+            "AvailabilityZone": "mock-zone",
+            "PlacementGroupArn": "mock-acct/mock-arn",
+        }
+    ),
+    CapacityReservationInfo(
+        {
+            "CapacityReservationId": "cr-456",
+            "InstanceType": "mock-type-2",
+            "AvailabilityZone": "mock-zone",
+            "PlacementGroupArn": "mock-acct/mock-arn",
+        }
+    ),
+    CapacityReservationInfo(
+        {
+            "CapacityReservationId": "cr-789",
+            "InstanceType": "mock-type-2",
+            "AvailabilityZone": "mock-zone",
+        }
+    ),
 ]
 
 
 @pytest.mark.parametrize(
-    "placement_group, odcr, subnets, instance_types, odcr_list, "
+    "placement_group, odcr, subnets, instance_types, capacity_reservations, "
     "multi_az_enabled, subnet_id_az_mapping, expected_message",
     [
-        (None, None, "mock-subnet-1", ["mock-type"], mock_odcrs[:2], False, {"mock-subnet-1": "us-east-1"}, None),
+        (
+            None,
+            None,
+            "mock-subnet-1",
+            ["mock-type"],
+            mock_capacity_reservations[:2],
+            False,
+            {"mock-subnet-1": "us-east-1"},
+            None,
+        ),
         (
             None,
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
             ["mock-subnet-1"],
             ["mock-type"],
-            mock_odcrs[:2],
+            mock_capacity_reservations[:2],
             False,
             {"mock-subnet-1": "us-east-1"},
             None,
@@ -861,7 +899,21 @@ mock_odcrs = [
             CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
             ["mock-subnet-1"],
             ["mock-type", "mock-type-2"],
-            mock_odcrs[:3],
+            mock_capacity_reservations[:3],
+            False,
+            {"mock-subnet-1": "us-east-1"},
+            (
+                "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' in 'us-east-1' "
+                "and no placement group provided. Please either provide a placement group or add an ODCR that "
+                "does not target a placement group and targets the instance type"
+            ),
+        ),
+        (
+            None,
+            CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
+            ["mock-subnet-1"],
+            ["mock-type", "mock-type-2"],
+            mock_capacity_reservations[:4],
             False,
             {"mock-subnet-1": "us-east-1"},
             None,
@@ -871,7 +923,7 @@ mock_odcrs = [
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
             ["mock-subnet-1"],
             ["mock-type", "mock-type-2"],
-            mock_odcrs[:2],
+            mock_capacity_reservations[:2],
             False,
             {"mock-subnet-1": "us-east-1"},
             "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' in 'us-east-1' and "
@@ -883,7 +935,7 @@ mock_odcrs = [
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
             ["mock-subnet-2"],
             ["mock-type"],
-            mock_odcrs[:2],
+            mock_capacity_reservations[:2],
             False,
             {"mock-subnet-1": "us-east-1"},
             "When using an open or targeted capacity reservation with an unrelated placement group, "
@@ -897,7 +949,7 @@ mock_odcrs = [
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
             ["mock-subnet-3"],
             ["mock-type"],
-            mock_odcrs[1:2],
+            mock_capacity_reservations[1:2],
             False,
             {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test' targets the 'mock-type' instance type but there "
@@ -908,7 +960,7 @@ mock_odcrs = [
             CapacityReservationTarget(capacity_reservation_id="cr-123"),
             ["mock-subnet-3"],
             ["mock-type"],
-            mock_odcrs[1:2],
+            mock_capacity_reservations[1:2],
             False,
             {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test-2' targets the 'mock-type' instance type but there "
@@ -919,7 +971,7 @@ mock_odcrs = [
             CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
             ["mock-subnet-1", "mock-subnet-2"],
             ["mock-type", "mock-type-2"],
-            mock_odcrs[:3],
+            mock_capacity_reservations[:3],
             True,
             {"mock-subnet-1": "us-east-1"},
             None,
@@ -929,7 +981,7 @@ mock_odcrs = [
             CapacityReservationTarget(capacity_reservation_resource_group_arn="cr-123"),
             ["mock-subnet-1", "mock-subnet-2"],
             ["mock-type"],
-            mock_odcrs[:3],
+            mock_capacity_reservations[:3],
             True,
             {"mock-subnet-1": "us-east-1"},
             None,
@@ -942,7 +994,7 @@ def test_placement_group_capacity_reservation_validator(
     odcr,
     subnets,
     instance_types,
-    odcr_list,
+    capacity_reservations,
     multi_az_enabled,
     subnet_id_az_mapping,
     expected_message,
@@ -951,12 +1003,9 @@ def test_placement_group_capacity_reservation_validator(
     desired_availability_zone = "mock-zone"
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
-        side_effect=lambda capacity_reservation_ids: odcr_list,
+        side_effect=lambda capacity_reservation_ids: capacity_reservations,
     )
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
-        return_value=desired_availability_zone,
-    )
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", return_value=desired_availability_zone)
     actual_failure = PlacementGroupCapacityReservationValidator().execute(
         placement_group=placement_group,
         odcr=odcr,

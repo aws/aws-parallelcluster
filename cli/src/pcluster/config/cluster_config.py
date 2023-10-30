@@ -3010,7 +3010,7 @@ class SlurmClusterConfig(BaseClusterConfig):
     def capacity_reservation_arns(self):
         """Return a list of capacity reservation ARNs specified in the config."""
         return [
-            capacity_reservation["CapacityReservationArn"]
+            capacity_reservation.capacity_reservation_arn()
             for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
                 self.capacity_reservation_ids
             )
