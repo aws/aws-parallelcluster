@@ -449,3 +449,53 @@ class ImageInfo:
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)
+
+
+class CapacityReservationInfo:
+    """
+    Data object wrapping the result of a describe-capacity-reservations call.
+
+    {
+        "CapacityReservationId": "cr-abcdEXAMPLE9876ef ",
+        "EndDateType": "unlimited",
+        "AvailabilityZone": "eu-west-1a",
+        "InstanceMatchCriteria": "open",
+        "Tags": [],
+        "EphemeralStorage": false,
+        "CreateDate": "2019-08-07T11:34:19.000Z",
+        "AvailableInstanceCount": 3,
+        "InstancePlatform": "Linux/UNIX",
+        "TotalInstanceCount": 3,
+        "State": "cancelled",
+        "Tenancy": "default",
+        "EbsOptimized": true,
+        "InstanceType": "m5.large"
+    }
+    """
+
+    def __init__(self, capacity_reservation_data):
+        self.capacity_reservation_data = capacity_reservation_data
+
+    def capacity_reservation_arn(self):
+        """Return the arn of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("CapacityReservationArn")
+
+    def capacity_reservation_id(self):
+        """Return the id of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("CapacityReservationId")
+
+    def state(self):
+        """Return the state of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("State")
+
+    def instance_type(self):
+        """Return the instance type associated to the Capacity Reservation."""
+        return self.capacity_reservation_data.get("InstanceType")
+
+    def availability_zone(self):
+        """Return the availability zone associated to the Capacity Reservation."""
+        return self.capacity_reservation_data.get("AvailabilityZone")
+
+    def placement_group_arn(self):
+        """Return the placement group arn of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("PlacementGroupArn")
