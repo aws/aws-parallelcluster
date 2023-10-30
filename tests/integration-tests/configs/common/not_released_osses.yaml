@@ -420,7 +420,7 @@ storage:
               collective: ["osu_alltoall"]
       - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.NOT_RELEASED_OSES }}
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -428,7 +428,7 @@ storage:
         schedulers: ["slurm"]
       - regions: ["us-gov-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["rocky8"]
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_multi_az_fsx:
     dimensions:
