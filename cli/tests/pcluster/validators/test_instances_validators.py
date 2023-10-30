@@ -476,25 +476,48 @@ def test_instances_networking_validator(
 
 
 @pytest.mark.parametrize(
-    "compute_resource_name, capacity_type, allocation_strategy, expected_message",
+    "capacity_type, allocation_strategy, expected_message",
     [
         # OnDemand Capacity type only supports "lowest-price" allocation strategy
-        # Spot Capacity type supports both "lowest-price" and "capacity-optimized" allocation strategy
         (
-            "TestComputeResource",
             CapacityType.ONDEMAND,
             AllocationStrategy.CAPACITY_OPTIMIZED,
             "Compute Resource TestComputeResource is using an OnDemand CapacityType but the Allocation Strategy "
             "specified is capacity-optimized. OnDemand CapacityType can only use 'lowest-price' allocation strategy.",
         ),
-        ("TestComputeResource", CapacityType.ONDEMAND, AllocationStrategy.LOWEST_PRICE, ""),
+        (CapacityType.ONDEMAND, AllocationStrategy.LOWEST_PRICE, ""),
+        (
+            CapacityType.ONDEMAND,
+            None,
+            "Compute Resource TestComputeResource is using an OnDemand CapacityType but the Allocation Strategy "
+            "specified is not set. OnDemand CapacityType can only use 'lowest-price' allocation strategy.",
+        ),
+        # Spot Capacity type supports both "lowest-price" and "capacity-optimized" allocation strategy
+        (CapacityType.SPOT, AllocationStrategy.LOWEST_PRICE, ""),
+        (CapacityType.SPOT, AllocationStrategy.CAPACITY_OPTIMIZED, ""),
+        (CapacityType.SPOT, None, ""),
+        # Capacity Block type supports does not support any allocation strategy
+        (
+            CapacityType.CAPACITY_BLOCK,
+            AllocationStrategy.CAPACITY_OPTIMIZED,
+            (
+                "Compute Resource TestComputeResource is using a CAPACITY_BLOCK CapacityType but the Allocation "
+                "Strategy specified is capacity-optimized. When using CAPACITY_BLOCK CapacityType, "
+                "allocation strategy should not be set."
+            ),
+        ),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            AllocationStrategy.LOWEST_PRICE,
+            "Compute Resource TestComputeResource is using a CAPACITY_BLOCK CapacityType but the Allocation Strategy "
+            "specified is lowest-price. When using CAPACITY_BLOCK CapacityType, allocation strategy should not be set.",
+        ),
+        (CapacityType.CAPACITY_BLOCK, None, ""),
     ],
 )
-def test_instances_allocation_strategy_validator(
-    compute_resource_name: str, capacity_type: Enum, allocation_strategy: Enum, expected_message: str
-):
+def test_instances_allocation_strategy_validator(capacity_type: Enum, allocation_strategy: Enum, expected_message: str):
     actual_failures = InstancesAllocationStrategyValidator().execute(
-        compute_resource_name, capacity_type, allocation_strategy
+        "TestComputeResource", capacity_type, allocation_strategy
     )
     assert_failure_messages(actual_failures, expected_message)
 

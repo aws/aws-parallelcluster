@@ -2452,7 +2452,6 @@ class AllocationStrategy(Enum):
 
     LOWEST_PRICE = "lowest-price"
     CAPACITY_OPTIMIZED = "capacity-optimized"
-    USE_CAPACITY_RESERVATIONS_FIRST = "use-capacity-reservations-first"
 
 
 class SlurmQueue(_CommonQueue):
@@ -2475,10 +2474,11 @@ class SlurmQueue(_CommonQueue):
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
+            default_allocation_strategy = None if self.is_capacity_block() else AllocationStrategy.LOWEST_PRICE
             self.allocation_strategy = (
                 AllocationStrategy[to_snake_case(allocation_strategy).upper()]
                 if allocation_strategy
-                else AllocationStrategy.LOWEST_PRICE
+                else default_allocation_strategy
             )
 
     @property
