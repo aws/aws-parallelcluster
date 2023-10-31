@@ -17,6 +17,7 @@ from pcluster import imagebuilder_utils
 from pcluster.aws.aws_api import AWSApi, KeyPairInfo
 from pcluster.aws.aws_resources import CapacityReservationInfo
 from pcluster.aws.common import AWSClientError
+from pcluster.config.common import CapacityType
 from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -274,7 +275,17 @@ class AmiOsCompatibleValidator(Validator):
 class CapacityReservationValidator(Validator):
     """Validate capacity reservation can be used with the instance type and subnet."""
 
-    def _validate(self, capacity_reservation_id: str, instance_type: str, subnet: str):
+    @staticmethod
+    def _get_reservation_type_from_capacity_type(capacity_type: CapacityType):
+        """
+        Return value to search in ReservationType according to capacity type.
+
+        ReservationType is an attribute of capacity block that can be retrieved by describe-capacity-reservations call.
+        """
+        capacity_type_to_reservation_type_class_map = {"CAPACITY_BLOCK": "capacity-block"}
+        return capacity_type_to_reservation_type_class_map.get(capacity_type.value, capacity_type.value.lower())
+
+    def _validate(self, capacity_reservation_id: str, instance_type: str, subnet: str, capacity_type: CapacityType):
         if capacity_reservation_id:
             capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
             if not instance_type:  # If the instance type doesn't exist, this is an invalid config
@@ -296,6 +307,19 @@ class CapacityReservationValidator(Validator):
                 self._add_failure(
                     f"Capacity reservation {capacity_reservation_id} must use the same availability zone "
                     f"as subnet {subnet}.",
+                    FailureLevel.ERROR,
+                )
+
+            reservation_type = capacity_reservation.reservation_type()
+            if (
+                capacity_type == CapacityType.CAPACITY_BLOCK
+                and reservation_type != self._get_reservation_type_from_capacity_type(capacity_type)
+            ):
+                self._add_failure(
+                    (
+                        f"Capacity reservation {capacity_reservation_id} is not a Capacity Block reservation. "
+                        f"It cannot be used when specifying CapacityType: {capacity_type.value}."
+                    ),
                     FailureLevel.ERROR,
                 )
 

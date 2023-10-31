@@ -15,7 +15,8 @@ from assertpy import assert_that
 
 from pcluster.aws.aws_resources import CapacityReservationInfo, ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
-from pcluster.config.cluster_config import CapacityReservationTarget, CapacityType, PlacementGroup
+from pcluster.config.cluster_config import CapacityReservationTarget, PlacementGroup
+from pcluster.config.common import CapacityType
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
@@ -552,92 +553,138 @@ def test_placement_group_validator(
 
 
 @pytest.mark.parametrize(
-    "capacity_reservation_instance_type, capacity_reservation_availability_zone, "
-    "instance_type, subnet_availability_zone, expected_messages",
+    "capacity_reservation_info, instance_type, subnet_availability_zone, capacity_type, expected_messages",
     [
-        ("c5.xlarge", "us-east-1a", "c5.xlarge", "us-east-1a", [None]),
-        # Wrong instance type
         (
-            "m5.xlarge",
-            "us-east-1a",
+            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
             "c5.xlarge",
             "us-east-1a",
+            None,
+            [],
+        ),
+        # Wrong instance type
+        (
+            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1a"}),
+            "c5.xlarge",
+            "us-east-1a",
+            CapacityType.ONDEMAND,
             ["Capacity reservation .* must have the same instance type as c5.xlarge."],
         ),
         # Wrong availability zone
         (
-            "c5.xlarge",
-            "us-east-1b",
+            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1b"}),
             "c5.xlarge",
             "us-east-1a",
+            CapacityType.SPOT,
             ["Capacity reservation .* must use the same availability zone as subnet"],
         ),
         # Both instance type and availability zone are wrong
         (
-            "m5.xlarge",
-            "us-east-1b",
+            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             "c5.xlarge",
             "us-east-1a",
+            CapacityType.ONDEMAND,
             [
                 "Capacity reservation .* must have the same instance type as c5.xlarge.",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
         (
-            "m5.xlarge",
-            "us-east-1b",
+            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             "c5.xlarge",
             "us-east-1a",
+            CapacityType.SPOT,
             ["Capacity reservation .* must use the same availability zone as subnet"],
         ),
         (
-            "m5.xlarge",
-            "us-east-1b",
+            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             None,
             "us-east-1a",
+            CapacityType.ONDEMAND,
             [
                 "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
         (
-            "m5.xlarge",
-            "us-east-1b",
+            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             "",
             "us-east-1a",
+            CapacityType.SPOT,
             [
                 "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
+        ),
+        # wrong capacity type
+        (
+            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
+            "c5.xlarge",
+            "us-east-1a",
+            CapacityType.CAPACITY_BLOCK,
+            [
+                "Capacity reservation cr-123 is not a Capacity Block reservation. "
+                "It cannot be used when specifying CapacityType: CAPACITY_BLOCK."
+            ],
+        ),
+        (
+            CapacityReservationInfo(
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "capacity-block"}
+            ),
+            "c5.xlarge",
+            "us-east-1a",
+            CapacityType.ONDEMAND,
+            [],  # Do not check Ondemand capacity type
+        ),
+        (
+            CapacityReservationInfo(
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
+            ),
+            "c5.xlarge",
+            "us-east-1a",
+            CapacityType.CAPACITY_BLOCK,
+            [
+                "Capacity reservation cr-123 is not a Capacity Block reservation. "
+                "It cannot be used when specifying CapacityType: CAPACITY_BLOCK."
+            ],
+        ),
+        # right capacity type
+        (
+            CapacityReservationInfo(
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
+            ),
+            "c5.xlarge",
+            "us-east-1a",
+            CapacityType.ONDEMAND,
+            [],
+        ),
+        (
+            CapacityReservationInfo(
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "capacity-block"}
+            ),
+            "c5.xlarge",
+            "us-east-1a",
+            CapacityType.CAPACITY_BLOCK,
+            [],
         ),
     ],
 )
 def test_capacity_reservation_validator(
     mocker,
-    capacity_reservation_instance_type,
-    capacity_reservation_availability_zone,
+    capacity_reservation_info,
     instance_type,
     subnet_availability_zone,
+    capacity_type,
     expected_messages,
 ):
     mock_aws_api(mocker)
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
-        return_value=[
-            CapacityReservationInfo(
-                {
-                    "InstanceType": capacity_reservation_instance_type,
-                    "AvailabilityZone": capacity_reservation_availability_zone,
-                }
-            )
-        ],
-    )
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_capacity_reservations", return_value=[capacity_reservation_info])
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
         return_value=subnet_availability_zone,
     )
     actual_failures = CapacityReservationValidator().execute(
-        capacity_reservation_id="cr-123", instance_type=instance_type, subnet="subnet-123"
+        capacity_reservation_id="cr-123", instance_type=instance_type, subnet="subnet-123", capacity_type=capacity_type
     )
     assert_failure_messages(actual_failures, expected_messages)
 
