@@ -4,7 +4,6 @@ test-suites:
 {{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
 {% filter indent(2) %}
 {% include 'common/common.yaml' %}
-{% include 'common/not_released_osses.yaml' %} # FIXME: Overrides sections from common.yaml for Rocky8
 {% endfilter %}
   efa:
     test_efa.py::test_efa:
