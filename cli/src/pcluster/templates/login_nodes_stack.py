@@ -1,3 +1,4 @@
+import hashlib
 from typing import Dict
 
 from aws_cdk import aws_autoscaling as autoscaling
@@ -26,6 +27,15 @@ from pcluster.templates.cdk_builder_utils import (
     to_comma_separated_string,
 )
 from pcluster.utils import get_attr, get_http_tokens_setting
+
+
+def _get_target_group_name(cluster_name, pool_name):
+    partial_cluster_name = cluster_name[:7]
+    partial_pool_name = pool_name[:7]
+    combined_name = cluster_name + pool_name
+    hash_value = hashlib.sha256(combined_name.encode()).hexdigest()[:16]
+
+    return f"{partial_cluster_name}-{partial_pool_name}-{hash_value}"
 
 
 class Pool(Construct):
@@ -280,6 +290,7 @@ class Pool(Construct):
             protocol=elbv2.Protocol.TCP,
             target_type=elbv2.TargetType.INSTANCE,
             vpc=self._vpc,
+            target_group_name=_get_target_group_name(self._config.cluster_name, self._pool.name),
         )
 
     def _add_login_nodes_pool_load_balancer(

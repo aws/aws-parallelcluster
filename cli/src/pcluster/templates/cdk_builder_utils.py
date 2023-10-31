@@ -44,6 +44,7 @@ from pcluster.constants import (
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
+from pcluster.templates.login_nodes_stack import _get_target_group_name
 from pcluster.utils import (
     get_installed_version,
     get_resource_name_from_resource_arn,
@@ -685,18 +686,34 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             )
 
             if self._config.login_nodes:
+                target_group_name = _get_target_group_name(
+                    self._config.cluster_name,
+                    self._config.login_nodes.pools[0].name,
+                )
                 policy.extend(
                     [
                         iam.PolicyStatement(
-                            sid="ElasticLoadBalancingDescribe",
+                            sid="TargetGroupDescribe",
                             actions=[
-                                "elasticloadbalancing:DescribeLoadBalancers",
-                                "elasticloadbalancing:DescribeTags",
                                 "elasticloadbalancing:DescribeTargetGroups",
-                                "elasticloadbalancing:DescribeTargetHealth",
                             ],
                             effect=iam.Effect.ALLOW,
                             resources=["*"],
+                        ),
+                        iam.PolicyStatement(
+                            sid="TargetHealthDescribe",
+                            actions=[
+                                "elasticloadbalancing:DescribeTargetHealth",
+                            ],
+                            effect=iam.Effect.ALLOW,
+                            resources=[
+                                self._format_arn(
+                                    service="elasticloadbalancing",
+                                    resource=f"targetgroup/{target_group_name}/*",
+                                    region=Stack.of(self).region,
+                                    account=Stack.of(self).account,
+                                ),
+                            ],
                         ),
                     ]
                 )
