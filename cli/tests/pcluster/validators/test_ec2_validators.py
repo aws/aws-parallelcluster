@@ -553,16 +553,16 @@ def test_placement_group_validator(
 
 @pytest.mark.parametrize(
     "capacity_reservation_instance_type, capacity_reservation_availability_zone, "
-    "instance_type, subnet_availability_zone, expected_message",
+    "instance_type, subnet_availability_zone, expected_messages",
     [
-        ("c5.xlarge", "us-east-1a", "c5.xlarge", "us-east-1a", None),
+        ("c5.xlarge", "us-east-1a", "c5.xlarge", "us-east-1a", [None]),
         # Wrong instance type
         (
             "m5.xlarge",
             "us-east-1a",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must have the same instance type as c5.xlarge.",
+            ["Capacity reservation .* must have the same instance type as c5.xlarge."],
         ),
         # Wrong availability zone
         (
@@ -570,7 +570,7 @@ def test_placement_group_validator(
             "us-east-1b",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must use the same availability zone as subnet",
+            ["Capacity reservation .* must use the same availability zone as subnet"],
         ),
         # Both instance type and availability zone are wrong
         (
@@ -578,28 +578,37 @@ def test_placement_group_validator(
             "us-east-1b",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must have the same instance type as c5.xlarge.",
+            [
+                "Capacity reservation .* must have the same instance type as c5.xlarge.",
+                "Capacity reservation .* must use the same availability zone as subnet",
+            ],
         ),
         (
             "m5.xlarge",
             "us-east-1b",
             "c5.xlarge",
             "us-east-1a",
-            "Capacity reservation .* must use the same availability zone as subnet",
+            ["Capacity reservation .* must use the same availability zone as subnet"],
         ),
         (
             "m5.xlarge",
             "us-east-1b",
             None,
             "us-east-1a",
-            "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+            [
+                "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+                "Capacity reservation .* must use the same availability zone as subnet",
+            ],
         ),
         (
             "m5.xlarge",
             "us-east-1b",
             "",
             "us-east-1a",
-            "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+            [
+                "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+                "Capacity reservation .* must use the same availability zone as subnet",
+            ],
         ),
     ],
 )
@@ -609,7 +618,7 @@ def test_capacity_reservation_validator(
     capacity_reservation_availability_zone,
     instance_type,
     subnet_availability_zone,
-    expected_message,
+    expected_messages,
 ):
     mock_aws_api(mocker)
     mocker.patch(
@@ -630,7 +639,8 @@ def test_capacity_reservation_validator(
     actual_failures = CapacityReservationValidator().execute(
         capacity_reservation_id="cr-123", instance_type=instance_type, subnet="subnet-123"
     )
-    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_messages(actual_failures, expected_messages)
+
 
 
 mock_good_config = {"GroupConfiguration": {"Configuration": [{"Type": "AWS::EC2::CapacityReservationPool"}]}}
