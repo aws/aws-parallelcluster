@@ -265,7 +265,7 @@ class ClusterCdkStack:
         # mounted.  We need to create the additional mount points first.
         if self.config.head_node.internal_shared_storage_type.lower() == SharedStorageType.EFS.value:
             internal_efs_storage_shared = SharedEfs(
-                mount_dir="/opt/parallelcluster/init_shared", name="internal_pcluster_shared"
+                mount_dir="/opt/parallelcluster/init_shared", name="internal_pcluster_shared", throughput_mode="elastic"
             )
             self._add_shared_storage(internal_efs_storage_shared)
 
