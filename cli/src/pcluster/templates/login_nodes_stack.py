@@ -1,4 +1,3 @@
-import hashlib
 from typing import Dict
 
 from aws_cdk import aws_autoscaling as autoscaling
