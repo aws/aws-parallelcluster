@@ -1138,10 +1138,7 @@ def test_custom_munge_key_iam_policy(mocker, test_datadir, config_file_name):
         ]["Statement"]
         assert_that(iam_policies).contains(
             {
-                "Action": [
-                    "elasticloadbalancing:DescribeTargetGroups",
-                    "elasticloadbalancing:DescribeTargetHealth"
-                ],
+                "Action": ["elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"],
                 "Effect": "Allow",
                 "Resource": "*",
                 "Sid": "TargetGroupDescribe",
