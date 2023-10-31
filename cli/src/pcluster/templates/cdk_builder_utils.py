@@ -694,34 +694,16 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             )
 
             if self._config.login_nodes:
-                target_group_name = _get_target_group_name(
-                    self._config.cluster_name,
-                    self._config.login_nodes.pools[0].name,
-                )
                 policy.extend(
                     [
                         iam.PolicyStatement(
                             sid="TargetGroupDescribe",
                             actions=[
                                 "elasticloadbalancing:DescribeTargetGroups",
-                            ],
-                            effect=iam.Effect.ALLOW,
-                            resources=["*"],
-                        ),
-                        iam.PolicyStatement(
-                            sid="TargetHealthDescribe",
-                            actions=[
                                 "elasticloadbalancing:DescribeTargetHealth",
                             ],
                             effect=iam.Effect.ALLOW,
-                            resources=[
-                                self._format_arn(
-                                    service="elasticloadbalancing",
-                                    resource=f"targetgroup/{target_group_name}/*",
-                                    region=Stack.of(self).region,
-                                    account=Stack.of(self).account,
-                                ),
-                            ],
+                            resources=["*"],
                         ),
                     ]
                 )

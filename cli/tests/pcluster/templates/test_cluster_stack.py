@@ -1138,30 +1138,12 @@ def test_custom_munge_key_iam_policy(mocker, test_datadir, config_file_name):
         ]["Statement"]
         assert_that(iam_policies).contains(
             {
-                "Action": "elasticloadbalancing:DescribeTargetGroups",
+                "Action": [
+                    "elasticloadbalancing:DescribeTargetGroups",
+                    "elasticloadbalancing:DescribeTargetHealth"
+                ],
                 "Effect": "Allow",
                 "Resource": "*",
                 "Sid": "TargetGroupDescribe",
             }
-        )
-        assert_that(iam_policies).contains(
-            {
-                "Action": "elasticloadbalancing:DescribeTargetHealth",
-                "Effect": "Allow",
-                "Resource": {
-                    "Fn::Join": [
-                        "",
-                        [
-                            "arn:",
-                            {"Ref": "AWS::Partition"},
-                            ":elasticloadbalancing:",
-                            {"Ref": "AWS::Region"},
-                            ":",
-                            {"Ref": "AWS::AccountId"},
-                            ":targetgroup/cluster-pool-bd8a861086ff7b00/*",
-                        ],
-                    ]
-                },
-                "Sid": "TargetHealthDescribe",
-            },
         )
