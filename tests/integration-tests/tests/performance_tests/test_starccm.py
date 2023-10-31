@@ -10,7 +10,7 @@ STARCCM_INSTALLATION_TIMEOUT = 1800
 STARCCM_JOB_TIMEOUT = 600
 STARCCM_LICENCE_SECRET = "starccm-license-secret"
 TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
-BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {8: 64.475, 16: 33.1723, 32: 17.8983}
+BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {8: 60.0233, 16: 31.3820, 32: 17.2294}
 PERF_TEST_DIFFERENCE_TOLERANCE = 5
 
 
@@ -28,7 +28,7 @@ def perf_test_difference(perf_test_result, number_of_nodes):
 
 
 def starccm_installed(headnode):
-    cmd = "/shared/ec2-user/STAR-CCM+/16.02.008/STAR-CCM+16.02.008/star/bin/starccm+ --version"
+    cmd = "/shared/ec2-user/STAR-CCM+/18.02.008/STAR-CCM+18.02.008/star/bin/starccm+ --version"
     try:
         headnode.run_remote_command(cmd)
         return True
