@@ -23,7 +23,7 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, DeploymentSettings
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, CapacityType, DeploymentSettings
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -1440,14 +1440,6 @@ class BaseComputeResource(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
-
-
-class CapacityType(Enum):
-    """Enum to identify the type compute supported by the queues."""
-
-    CAPACITY_BLOCK = "CAPACITY_BLOCK"
-    ONDEMAND = "ONDEMAND"
-    SPOT = "SPOT"
 
 
 class ComputeSettings(Resource):
@@ -2909,6 +2901,7 @@ class SlurmClusterConfig(BaseClusterConfig):
                         capacity_reservation_id=cr_target.capacity_reservation_id,
                         instance_type=getattr(compute_resource, "instance_type", None),
                         subnet=queue.networking.subnet_ids[0],
+                        capacity_type=queue.capacity_type,
                     )
                     self._register_validator(
                         CapacityReservationResourceGroupValidator,
