@@ -285,17 +285,30 @@ class CapacityReservationValidator(Validator):
         capacity_type_to_reservation_type_class_map = {"CAPACITY_BLOCK": "capacity-block"}
         return capacity_type_to_reservation_type_class_map.get(capacity_type.value, capacity_type.value.lower())
 
-    def _validate(self, capacity_reservation_id: str, instance_type: str, subnet: str, capacity_type: CapacityType):
+    def _validate(
+        self, capacity_reservation_id: str, instance_types: List[str], subnet: str, capacity_type: CapacityType
+    ):
         if capacity_reservation_id:
             capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
-            if not instance_type:  # If the instance type doesn't exist, this is an invalid config
+
+            if not instance_types:
+                # If the instance type doesn't exist, this is an invalid config
                 self._add_failure(
                     "The CapacityReservationId parameter can only be used with the InstanceType parameter "
                     "(https://docs.aws.amazon.com/parallelcluster/latest/ug/Scheduling-v3.html#yaml-"
                     "Scheduling-SlurmQueues-ComputeResources-InstanceType).",
                     FailureLevel.ERROR,
                 )
+            elif len(instance_types) != 1:
+                self._add_failure(
+                    (
+                        "A single instance type must be specified when using "
+                        f"Capacity reservation id: {capacity_reservation_id}"
+                    ),
+                    FailureLevel.ERROR,
+                )
             else:
+                instance_type = instance_types[0]
                 if capacity_reservation.instance_type() != instance_type:
                     self._add_failure(
                         f"Capacity reservation {capacity_reservation_id} must have the same instance type "

@@ -2899,7 +2899,7 @@ class SlurmClusterConfig(BaseClusterConfig):
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
-                        instance_type=getattr(compute_resource, "instance_type", None),
+                        instance_types=compute_resource.instance_types,
                         subnet=queue.networking.subnet_ids[0],
                         capacity_type=queue.capacity_type,
                     )
