@@ -289,10 +289,10 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     compute_resource_size_validator.assert_has_calls(
         [
             # Defaults of min_count=0, max_count=10
-            call(min_count=0, max_count=5),
-            call(min_count=0, max_count=10),
-            call(min_count=0, max_count=10),
-            call(min_count=0, max_count=10),
+            call(min_count=0, max_count=5, capacity_type=CapacityType.ONDEMAND),
+            call(min_count=0, max_count=10, capacity_type=CapacityType.ONDEMAND),
+            call(min_count=0, max_count=10, capacity_type=CapacityType.ONDEMAND),
+            call(min_count=0, max_count=10, capacity_type=CapacityType.ONDEMAND),
         ],
         any_order=True,
     )

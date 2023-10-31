@@ -17,6 +17,7 @@ import itertools
 import json
 import logging
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import List, Set
 
 from pcluster.validators.common import AsyncValidator, FailureLevel, ValidationResult, Validator, ValidatorContext
@@ -25,6 +26,14 @@ from pcluster.validators.networking_validators import LambdaFunctionsVpcConfigVa
 from pcluster.validators.s3_validators import UrlValidator
 
 LOGGER = logging.getLogger(__name__)
+
+
+class CapacityType(Enum):
+    """Enum to identify the type compute supported by the queues."""
+
+    CAPACITY_BLOCK = "CAPACITY_BLOCK"
+    ONDEMAND = "ONDEMAND"
+    SPOT = "SPOT"
 
 
 class ValidatorSuppressor(ABC):

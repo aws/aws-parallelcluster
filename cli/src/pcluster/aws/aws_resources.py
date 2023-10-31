@@ -456,20 +456,52 @@ class CapacityReservationInfo:
     Data object wrapping the result of a describe-capacity-reservations call.
 
     {
-        "CapacityReservationId": "cr-abcdEXAMPLE9876ef ",
-        "EndDateType": "unlimited",
-        "AvailabilityZone": "eu-west-1a",
-        "InstanceMatchCriteria": "open",
-        "Tags": [],
-        "EphemeralStorage": false,
-        "CreateDate": "2019-08-07T11:34:19.000Z",
-        "AvailableInstanceCount": 3,
+        "CapacityReservationId": "cr-a1234567",
+        "OwnerId": "123",
+        "CapacityReservationArn": "arn:aws:ec2:eu-west-1:123:capacity-reservation/cr-a123456",
+        "AvailabilityZoneId": "euw1-az3",
+        "InstanceType": "t2.large",
         "InstancePlatform": "Linux/UNIX",
-        "TotalInstanceCount": 3,
-        "State": "cancelled",
+        "AvailabilityZone": "eu-west-1a",
         "Tenancy": "default",
+        "TotalInstanceCount": 1,
+        "AvailableInstanceCount": 0,
+        "EbsOptimized": false,
+        "EphemeralStorage": false,
+        "State": "active",
+        "StartDate": "2023-11-02T12:16:35+00:00",
+        "EndDate": "2023-11-03T09:00:00+00:00",
+        "EndDateType": "limited",
+        "InstanceMatchCriteria": "open",
+        "CreateDate": "2023-11-02T12:16:35+00:00",
+        "Tags": [],
+        "CapacityAllocations": [
+            {
+                "AllocationType": "used",
+                "Count": 1
+            }
+        ]
+    },
+
+    # describe-capacity-reservations --capacity-type capacity-block
+    {   "CapacityReservationId": "cr-a1234567",
+        "OwnerId": "123",
+        "CapacityReservationArn": "arn:aws:ec2:eu-west-1:123:capacity-reservation/cr-a123456",
+        "EndDateType": "limited",
+        "ReservationType": "capacity-block",
+        "AvailabilityZone": "eu-east-2a",
+        "InstanceMatchCriteria":  "targeted",
+        "EphemeralStorage": false,
+        "CreateDate": "2023-07-29T14:22:45Z  ",
+        “StartDate": "2023-08-15T12:00:00Z",
+        “EndDate": "2023-08-19T12:00:00Z",
+        "AvailableInstanceCount": 0,
+        "InstancePlatform":  "Linux/UNIX",
+        "TotalInstanceCount": 16,
+        “State": "payment-pending",
+        "Tenancy":  "default",
         "EbsOptimized": true,
-        "InstanceType": "m5.large"
+        "InstanceType": "p5.48xlarge“
     }
     """
 
@@ -499,3 +531,10 @@ class CapacityReservationInfo:
     def placement_group_arn(self):
         """Return the placement group arn of the Capacity Reservation."""
         return self.capacity_reservation_data.get("PlacementGroupArn")
+
+    def reservation_type(self):
+        """Return the reservation type, if present, None otherwise."""
+        return self.capacity_reservation_data.get("ReservationType")
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
