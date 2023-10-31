@@ -18,6 +18,7 @@ from pcluster.constants import (
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
+    _get_target_group_name,
     get_common_user_data_env,
     get_default_instance_tags,
     get_default_volume_tags,
@@ -27,15 +28,6 @@ from pcluster.templates.cdk_builder_utils import (
     to_comma_separated_string,
 )
 from pcluster.utils import get_attr, get_http_tokens_setting
-
-
-def _get_target_group_name(cluster_name, pool_name):
-    partial_cluster_name = cluster_name[:7]
-    partial_pool_name = pool_name[:7]
-    combined_name = cluster_name + pool_name
-    hash_value = hashlib.sha256(combined_name.encode()).hexdigest()[:16]
-
-    return f"{partial_cluster_name}-{partial_pool_name}-{hash_value}"
 
 
 class Pool(Construct):

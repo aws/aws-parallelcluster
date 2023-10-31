@@ -44,7 +44,6 @@ from pcluster.constants import (
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
-from pcluster.templates.login_nodes_stack import _get_target_group_name
 from pcluster.utils import (
     get_installed_version,
     get_resource_name_from_resource_arn,
@@ -53,6 +52,15 @@ from pcluster.utils import (
 )
 
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
+
+
+def _get_target_group_name(cluster_name, pool_name):
+    partial_cluster_name = cluster_name[:7]
+    partial_pool_name = pool_name[:7]
+    combined_name = cluster_name + pool_name
+    hash_value = sha256(combined_name.encode()).hexdigest()[:16]
+
+    return f"{partial_cluster_name}-{partial_pool_name}-{hash_value}"
 
 
 def create_hash_suffix(string_to_hash: str):
