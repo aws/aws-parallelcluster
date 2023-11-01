@@ -258,7 +258,7 @@ def run(sys_args, model=None):
         os.environ["AWS_DEFAULT_REGION"] = args.region
 
     LOGGER.info("Handling CLI command %s", args.operation)
-    LOGGER.info("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
+    LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
     return _run_operation(model, args, extra_args)
 
 
