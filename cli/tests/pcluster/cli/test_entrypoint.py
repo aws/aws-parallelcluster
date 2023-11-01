@@ -5,6 +5,9 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
+import os
+
+from assertpy import assert_that
 
 
 class TestParallelClusterCli:
@@ -19,3 +22,19 @@ class TestParallelClusterCli:
         run_cli(command, expect_failure=True)
 
         assert_out_err(expected_out="", expected_err=(test_datadir / "pcluster-command-error.txt").read_text().strip())
+
+    def test_logger(self, test_datadir, run_cli, assert_out_err):
+        home = os.path.expanduser("~")
+        cli_log = home + "/.parallelcluster/pcluster-cli.log"
+        log = open(cli_log, "r")
+        log.readlines()
+
+        command = ["pcluster", "version"]
+        run_cli(command, expect_failure=False)
+
+        new = log.readlines()
+
+        log.close()
+
+        assert_that(new[0]).contains("Handling CLI command")
+        assert_that(len(new)).is_equal_to(1)
