@@ -282,8 +282,8 @@ class Pool(Construct):
             target_type=elbv2.TargetType.INSTANCE,
             vpc=self._vpc,
             target_group_name=_get_resource_combination_name(
-                resource_name_1=self._config.cluster_name,
-                resource_name_2=self._pool.name,
+                self._config.cluster_name,
+                self._pool.name,
                 partial_length=7,
                 hash_length=16,
             ),

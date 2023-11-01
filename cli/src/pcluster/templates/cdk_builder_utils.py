@@ -54,13 +54,12 @@ from pcluster.utils import (
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
 
 
-def _get_resource_combination_name(resource_name_1, resource_name_2, partial_length, hash_length):
-    partial_resource_name_1 = resource_name_1[:partial_length]
-    partial_resource_name_2 = resource_name_2[:partial_length]
-    combined_name = resource_name_1 + resource_name_2
+def _get_resource_combination_name(*resource_names, partial_length=7, hash_length=16):
+    combined_name = "".join(resource_names)
     hash_value = sha256(combined_name.encode()).hexdigest()[:hash_length]
+    prefix = "-".join(name[:partial_length] for name in resource_names)
 
-    return f"{partial_resource_name_1}-{partial_resource_name_2}-{hash_value}"
+    return f"{prefix}-{hash_value}"
 
 
 def create_hash_suffix(string_to_hash: str):

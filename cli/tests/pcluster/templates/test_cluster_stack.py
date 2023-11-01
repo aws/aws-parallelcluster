@@ -1159,8 +1159,8 @@ def test_resource_combination_name(
     resource_name_1, resource_name_2, partial_length, hash_length, expected_combination_name
 ):
     combination_name = _get_resource_combination_name(
-        resource_name_1=resource_name_1,
-        resource_name_2=resource_name_2,
+        resource_name_1,
+        resource_name_2,
         partial_length=partial_length,
         hash_length=hash_length,
     )
