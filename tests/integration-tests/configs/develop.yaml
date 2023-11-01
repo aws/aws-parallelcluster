@@ -2,6 +2,7 @@
 ---
 test-suites:
 {{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
+{{- common.OSS_COMMERCIAL_X86.append("rocky8") or "" -}}
 {% filter indent(2) %}
 {% include 'common/common.yaml' %}
 {% endfilter %}
@@ -10,7 +11,7 @@ test-suites:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["rocky8"]
+          oss: {{ common.NOT_RELEASED_OSES }}
           schedulers: ["slurm"]
         - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
@@ -43,7 +44,7 @@ test-suites:
       dimensions:
         - regions: ["sa-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rocky8"]
+          oss: {{ common.NOT_RELEASED_OSES }}
           schedulers: ["slurm"]
     test_api.py::test_cluster_awsbatch:
       dimensions:
@@ -93,7 +94,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rocky8"]
+          oss: {{ common.NOT_RELEASED_OSES }}
           schedulers: ["slurm"]
   trainium:
     test_trainium.py::test_trainium:
@@ -114,7 +115,7 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_update:
       dimensions:
-        - oss: ["rocky8"]
+        - oss: {{ common.NOT_RELEASED_OSES }}
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_update_invalid:
@@ -134,7 +135,7 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_delete_retain:
       dimensions:
-        - oss: ["rocky8"]
+        - oss: {{ common.NOT_RELEASED_OSES }}
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
