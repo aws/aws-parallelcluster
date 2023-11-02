@@ -2291,7 +2291,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
-        self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
             SchedulableMemoryValidator,
             schedulable_memory=self.schedulable_memory,
@@ -2547,6 +2546,12 @@ class SlurmQueue(_CommonQueue):
                 ).enabled
                 is False,
                 multi_az_enabled=self.multi_az_enabled,
+            )
+            self._register_validator(
+                ComputeResourceSizeValidator,
+                min_count=compute_resource.min_count,
+                max_count=compute_resource.max_count,
+                capacity_type=self.capacity_type,
             )
             if compute_resource.custom_slurm_settings:
                 self._register_validator(
