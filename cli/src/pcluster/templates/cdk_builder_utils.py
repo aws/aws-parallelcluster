@@ -54,6 +54,14 @@ from pcluster.utils import (
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
 
 
+def _get_resource_combination_name(*resource_names, partial_length=7, hash_length=16):
+    combined_name = "".join(resource_names)
+    hash_value = sha256(combined_name.encode()).hexdigest()[:hash_length]
+    prefix = "-".join(name[:partial_length] for name in resource_names)
+
+    return f"{prefix}-{hash_value}"
+
+
 def create_hash_suffix(string_to_hash: str):
     """Create 16digit hash string."""
     return (
@@ -688,10 +696,8 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 policy.extend(
                     [
                         iam.PolicyStatement(
-                            sid="ElasticLoadBalancingDescribe",
+                            sid="TargetGroupDescribe",
                             actions=[
-                                "elasticloadbalancing:DescribeLoadBalancers",
-                                "elasticloadbalancing:DescribeTags",
                                 "elasticloadbalancing:DescribeTargetGroups",
                                 "elasticloadbalancing:DescribeTargetHealth",
                             ],
