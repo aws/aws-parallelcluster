@@ -33,6 +33,7 @@ from pcluster.constants import (
 from pcluster.models.s3_bucket import S3FileFormat, format_content
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.templates.cdk_builder_utils import _get_resource_combination_name
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket, mock_bucket_object_utils
@@ -1133,20 +1134,34 @@ def test_custom_munge_key_iam_policy(mocker, test_datadir, config_file_name):
     )
 
     if config_file_name == "config_with_login_nodes.yaml":
-        assert_that(
-            generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"]["PolicyDocument"][
-                "Statement"
-            ]
-        ).contains(
+        iam_policies = generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"][
+            "PolicyDocument"
+        ]["Statement"]
+        assert_that(iam_policies).contains(
             {
-                "Action": [
-                    "elasticloadbalancing:DescribeLoadBalancers",
-                    "elasticloadbalancing:DescribeTags",
-                    "elasticloadbalancing:DescribeTargetGroups",
-                    "elasticloadbalancing:DescribeTargetHealth",
-                ],
+                "Action": ["elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"],
                 "Effect": "Allow",
                 "Resource": "*",
-                "Sid": "ElasticLoadBalancingDescribe",
+                "Sid": "TargetGroupDescribe",
             }
         )
+
+
+@pytest.mark.parametrize(
+    "resource_name_1, resource_name_2, partial_length, hash_length, expected_combination_name",
+    [
+        ("test-cluster", "test-pool", 7, 16, "test-cl-test-po-18c74b16dfbc78ac"),
+        ("abcdefghijk", "lmnopqrst", 8, 14, "abcdefgh-lmnopqrs-dd65eea0329dcb"),
+        ("a", "b", 7, 16, "a-b-fb8e20fc2e4c3f24"),
+    ],
+)
+def test_resource_combination_name(
+    resource_name_1, resource_name_2, partial_length, hash_length, expected_combination_name
+):
+    combination_name = _get_resource_combination_name(
+        resource_name_1,
+        resource_name_2,
+        partial_length=partial_length,
+        hash_length=hash_length,
+    )
+    assert_that(combination_name).is_equal_to(expected_combination_name)

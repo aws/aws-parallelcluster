@@ -17,6 +17,7 @@ from pcluster.constants import (
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
+    _get_resource_combination_name,
     get_common_user_data_env,
     get_default_instance_tags,
     get_default_volume_tags,
@@ -280,6 +281,12 @@ class Pool(Construct):
             protocol=elbv2.Protocol.TCP,
             target_type=elbv2.TargetType.INSTANCE,
             vpc=self._vpc,
+            target_group_name=_get_resource_combination_name(
+                self._config.cluster_name,
+                self._pool.name,
+                partial_length=7,
+                hash_length=16,
+            ),
         )
 
     def _add_login_nodes_pool_load_balancer(
