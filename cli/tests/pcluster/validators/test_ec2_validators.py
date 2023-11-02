@@ -20,6 +20,7 @@ from pcluster.config.common import CapacityType
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
+    CapacityReservationSizeValidator,
     CapacityReservationValidator,
     CapacityTypeValidator,
     InstanceTypeAcceleratorManufacturerValidator,
@@ -698,6 +699,32 @@ def test_capacity_reservation_validator(
         instance_types=instance_types,
         subnet="subnet-123",
         capacity_type=capacity_type,
+    )
+    assert_failure_messages(actual_failures, expected_messages)
+
+
+@pytest.mark.parametrize(
+    "capacity_reservation_info, num_of_instances, expected_messages",
+    [
+        (CapacityReservationInfo({"TotalInstanceCount": 1}), 1, []),
+        (CapacityReservationInfo({"TotalInstanceCount": 2}), 1, []),
+        (
+            CapacityReservationInfo({}),
+            1,
+            ["Number of instances .* cr-123: 1 is exceeding .* instances count .* for the Capacity Reservation: 0"],
+        ),
+        (
+            CapacityReservationInfo({"TotalInstanceCount": 1}),
+            2,
+            ["Number of instances .* cr-123: 2 is exceeding .* instances count .* for the Capacity Reservation: 1"],
+        ),
+    ],
+)
+def test_capacity_reservation_size_validator(mocker, capacity_reservation_info, num_of_instances, expected_messages):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_capacity_reservations", return_value=[capacity_reservation_info])
+    actual_failures = CapacityReservationSizeValidator().execute(
+        capacity_reservation_id="cr-123", num_of_instances=num_of_instances
     )
     assert_failure_messages(actual_failures, expected_messages)
 
