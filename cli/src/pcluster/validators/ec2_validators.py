@@ -337,6 +337,24 @@ class CapacityReservationValidator(Validator):
                 )
 
 
+class CapacityReservationSizeValidator(Validator):
+    """Validate capacity reservation size is not overloaded by max count in the queues/compute resource settings."""
+
+    def _validate(self, capacity_reservation_id: str, num_of_instances: int):
+        if capacity_reservation_id:
+            capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
+
+            if num_of_instances > capacity_reservation.total_instance_count():
+                self._add_failure(
+                    (
+                        f"Number of instances configured for Capacity Reservation {capacity_reservation_id}: "
+                        f"{num_of_instances} is exceeding the total instances count available for the "
+                        f"Capacity Reservation: {capacity_reservation.total_instance_count()}"
+                    ),
+                    FailureLevel.ERROR,
+                )
+
+
 def get_capacity_reservations(capacity_reservation_resource_group_arn: str):
     """Get capacity reservations info for a given Reservation Resource Group Arn."""
     capacity_reservation_ids = AWSApi.instance().resource_groups.get_capacity_reservation_ids_from_group_resources(

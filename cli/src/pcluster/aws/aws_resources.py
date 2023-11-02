@@ -536,5 +536,9 @@ class CapacityReservationInfo:
         """Return the reservation type, if present, None otherwise."""
         return self.capacity_reservation_data.get("ReservationType")
 
+    def total_instance_count(self):
+        """Return the total instance count, if present, 0 otherwise."""
+        return self.capacity_reservation_data.get("TotalInstanceCount", 0)
+
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
