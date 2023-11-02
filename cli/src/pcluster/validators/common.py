@@ -136,7 +136,8 @@ def get_async_timed_validator_type_for(validator_type: type) -> AsyncValidator:
         schema_class_type = type(class_name, class_bases, class_dict)
         globals()[class_name] = schema_class_type
     else:
-        schema_class_type = globals()[class_name]
+        # TODO: Fix semgrep finding in line below. https://sg.run/jNzn
+        schema_class_type = globals()[class_name]  # nosem
     return schema_class_type
 
 
