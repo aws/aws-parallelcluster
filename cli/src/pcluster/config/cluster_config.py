@@ -127,6 +127,7 @@ from pcluster.validators.ebs_validators import (
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
+    CapacityReservationSizeValidator,
     CapacityReservationValidator,
     CapacityTypeValidator,
     InstanceTypeAcceleratorManufacturerValidator,
@@ -2853,6 +2854,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         checked_images = []
+        capacity_reservation_id_max_count_map = {}
         for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
             if index == 0:
@@ -2885,6 +2887,7 @@ class SlurmClusterConfig(BaseClusterConfig):
             if queue_image not in checked_images and queue.queue_ami:
                 checked_images.append(queue_image)
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
+
             for compute_resource in queue.compute_resources:
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
@@ -2901,6 +2904,15 @@ class SlurmClusterConfig(BaseClusterConfig):
                 # to make sure the subnet APIs are cached by previous validations.
                 cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
                 if cr_target:
+                    if cr_target.capacity_reservation_id:
+                        # increment counter of number of instances used for a given capacity reservation
+                        # to verify to not exceed instance count when considering all the configured compute resources
+                        num_of_instances_in_capacity_reservation = capacity_reservation_id_max_count_map.get(
+                            cr_target.capacity_reservation_id, 0
+                        )
+                        capacity_reservation_id_max_count_map[cr_target.capacity_reservation_id] = (
+                            num_of_instances_in_capacity_reservation + compute_resource.max_count
+                        )
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
@@ -2981,6 +2993,13 @@ class SlurmClusterConfig(BaseClusterConfig):
                     queue_tags=queue.get_tags(),
                     compute_resource_tags=compute_resource.get_tags(),
                 )
+
+        for capacity_reservation_id, num_of_instances in capacity_reservation_id_max_count_map.items():
+            self._register_validator(
+                CapacityReservationSizeValidator,
+                capacity_reservation_id=capacity_reservation_id,
+                num_of_instances=num_of_instances,
+            )
 
     @property
     def image_dict(self):
