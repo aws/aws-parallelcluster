@@ -11,6 +11,7 @@ CHANGELOG
 - Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node.
 - Add the option to use EFS storage instead of NFS exports from the head node root volume for intra-cluster shared ParallelCluster, Intel, Slurm, and login node data.
 - Allow for mounting `home` as an EFS or FSx external shared storage via the `SharedStorage` section of the config file.
+- Add support for Rocky Linux 8, only using a `CustomAmi` created through `build-image` process. No official Rocky8 Linux AMIs will be published.
 
 **CHANGES**
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
