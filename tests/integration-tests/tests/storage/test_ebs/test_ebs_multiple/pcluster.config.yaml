@@ -20,13 +20,9 @@ HeadNode:
   LocalStorage:
     RootVolume:
       Encrypted: false # Test turning off root volume encryption
-      {% if "-iso" in region %}
-      VolumeType: gp2
-      {% else %}
       VolumeType: gp3
       Throughput: 135
       Iops: 3400
-      {% endif %}
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -38,13 +34,9 @@ Scheduling:
         LocalStorage:
           RootVolume:
             Encrypted: false  # Test turning off root volume encryption
-            {% if "-iso" in region %}
-            VolumeType: gp2
-            {% else %}
             VolumeType: gp3
             Throughput: 130
             Iops: 3200
-            {% endif %}
       {% endif %}
       ComputeResources:
         - Name: compute-resource-0
@@ -67,13 +59,9 @@ Scheduling:
         LocalStorage:
           RootVolume:
             Encrypted: false
-            {% if "-iso" in region %}
-            VolumeType: gp2
-            {% else %}
             VolumeType: gp3
             Throughput: 130
             Iops: 3200
-            {% endif %}
       ComputeResources:
         - Name: compute-resource-0
           Instances:
@@ -91,13 +79,9 @@ SharedStorage:
     EbsSettings:
       Size: {{ volume_sizes[0] }}
       Encrypted: true
-      {% if "-iso" in region %}
-      VolumeType: gp2
-      {% else %}
       VolumeType: gp3
       Throughput: 130
       Iops: 3200
-      {% endif %}
   - MountDir: {{ mount_dirs[1] }}
     Name: ebs2
     StorageType: Ebs
@@ -111,7 +95,7 @@ SharedStorage:
     EbsSettings:
       Size: {{ volume_sizes[2] }}
       {% if "-iso" in region %}
-      VolumeType: gp2
+      VolumeType: gp3
       {% else %}
       VolumeType: io2
       Iops: 150

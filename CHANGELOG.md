@@ -21,6 +21,7 @@ CHANGELOG
 - Add support for Python 3.10 in aws-parallelcluster-batch-cli.
 - Remove `all_or_nothing_batch` resume configuration parameter, in favor of the new `scaling_strategy` parameter 
   that can be set using `Scheduling/ScalingStrategy` cluster configuration.
+- Change default EBS volume types in ADC regions from gp2 to gp3, for both the root and additional volumes.
 
 **BUG FIXES**
 - Fix inconsistent configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.
