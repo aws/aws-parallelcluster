@@ -344,12 +344,16 @@ class CapacityReservationSizeValidator(Validator):
         if capacity_reservation_id:
             capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
 
-            if num_of_instances > capacity_reservation.total_instance_count():
+            # total_instance_count is available for standard ODCR, incremental_requested_quantity for Capacity Block
+            reserved_instances = max(
+                capacity_reservation.total_instance_count(), capacity_reservation.incremental_requested_quantity()
+            )
+            if num_of_instances > reserved_instances:
                 self._add_failure(
                     (
                         f"Number of instances configured for Capacity Reservation {capacity_reservation_id}: "
                         f"{num_of_instances} is exceeding the total instances count available for the "
-                        f"Capacity Reservation: {capacity_reservation.total_instance_count()}"
+                        f"Capacity Reservation: {reserved_instances}"
                     ),
                     FailureLevel.ERROR,
                 )

@@ -13,7 +13,12 @@ from collections import namedtuple
 import pytest
 from assertpy import assert_that
 
-from pcluster.aws.aws_resources import CapacityReservationInfo, ImageInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import (
+    CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY,
+    CapacityReservationInfo,
+    ImageInfo,
+    InstanceTypeInfo,
+)
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import CapacityReservationTarget, PlacementGroup
 from pcluster.config.common import CapacityType
@@ -709,6 +714,29 @@ def test_capacity_reservation_validator(
         (CapacityReservationInfo({"TotalInstanceCount": 1}), 1, []),
         (CapacityReservationInfo({"TotalInstanceCount": 2}), 1, []),
         (
+            CapacityReservationInfo(
+                {
+                    "TotalInstanceCount": 0,
+                    "Tags": [
+                        {"Key": CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, "Value": "1"},
+                    ],
+                }
+            ),
+            1,
+            [],
+        ),
+        (
+            CapacityReservationInfo(
+                {
+                    "Tags": [
+                        {"Key": CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, "Value": "1"},
+                    ],
+                }
+            ),
+            1,
+            [],
+        ),
+        (
             CapacityReservationInfo({}),
             1,
             ["Number of instances .* cr-123: 1 is exceeding .* instances count .* for the Capacity Reservation: 0"],
@@ -717,6 +745,67 @@ def test_capacity_reservation_validator(
             CapacityReservationInfo({"TotalInstanceCount": 1}),
             2,
             ["Number of instances .* cr-123: 2 is exceeding .* instances count .* for the Capacity Reservation: 1"],
+        ),
+        (
+            CapacityReservationInfo(
+                {
+                    "TotalInstanceCount": 0,
+                    "Tags": [
+                        {"Key": CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, "Value": "1"},
+                    ],
+                }
+            ),
+            2,
+            ["Number of instances .* cr-123: 2 is exceeding .* instances count .* for the Capacity Reservation: 1"],
+        ),
+        # Corner cases, incrementalRequestedQuantity with strange values, should not happen:
+        (
+            CapacityReservationInfo(
+                {
+                    "TotalInstanceCount": 1,
+                    "Tags": [  # this should not happen
+                        {"Key": CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, "Value": "0"},
+                    ],
+                }
+            ),
+            1,
+            [],
+        ),
+        (
+            CapacityReservationInfo(
+                {
+                    "TotalInstanceCount": 1,
+                    "Tags": [  # this should not happen
+                        {"Key": CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, "Value": "0"},
+                    ],
+                }
+            ),
+            2,
+            ["Number of instances .* cr-123: 2 is exceeding .* instances count .* for the Capacity Reservation: 1"],
+        ),
+        (
+            CapacityReservationInfo(
+                {
+                    "TotalInstanceCount": 1,
+                    "Tags": [  # this should not happen
+                        {"Key": CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, "Value": "0"},
+                    ],
+                }
+            ),
+            2,
+            ["Number of instances .* cr-123: 2 is exceeding .* instances count .* for the Capacity Reservation: 1"],
+        ),
+        (
+            CapacityReservationInfo(
+                {
+                    "TotalInstanceCount": 0,
+                    "Tags": [  # this should not happen
+                        {"Key": CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, "Value": ""},
+                    ],
+                }
+            ),
+            2,
+            ["Number of instances .* cr-123: 2 is exceeding .* instances count .* for the Capacity Reservation: 0"],
         ),
     ],
 )

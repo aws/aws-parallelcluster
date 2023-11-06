@@ -23,6 +23,8 @@ from pcluster.constants import (
     SUPPORTED_ARCHITECTURES,
 )
 
+CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY = "aws:ec2capacityreservation:incrementalRequestedQuantity"
+
 
 class StackInfo:
     """Object to store Stack information, initialized with a describe_stacks call."""
@@ -539,6 +541,22 @@ class CapacityReservationInfo:
     def total_instance_count(self):
         """Return the total instance count, if present, 0 otherwise."""
         return self.capacity_reservation_data.get("TotalInstanceCount", 0)
+
+    def get_tag(self, tag_key: str):
+        """Get stack tag by tag key."""
+        return next(
+            iter([tag["Value"] for tag in self.capacity_reservation_data.get("Tags", []) if tag["Key"] == tag_key]),
+            None,
+        )
+
+    def incremental_requested_quantity(self):
+        """
+        Return the value of the tag CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, 0 otherwise.
+
+        This only exists for Capacity Blocks reservation.
+        """
+        requested_quantity = self.get_tag(CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY)
+        return int(requested_quantity) if requested_quantity and isinstance(requested_quantity, str) else 0
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
