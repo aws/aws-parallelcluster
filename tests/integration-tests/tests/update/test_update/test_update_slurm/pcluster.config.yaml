@@ -84,7 +84,7 @@ SharedStorage:
     Name: ebs
     StorageType: Ebs
     EbsSettings:
-      VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
+      VolumeType: gp3
 #      Iops: 3200 #Initially not set
 #      Throughput: 130 #Initially not set
   - MountDir: efs
@@ -97,7 +97,7 @@ SharedStorage:
     StorageType: Ebs
     Name: raid
     EbsSettings:
-      VolumeType: {% if "-iso" in region %}gp2{% else %}gp3{% endif %}
+      VolumeType: gp3
 #      Iops: 3200 #Initially not set
 #     Throughput: 130 #Initially not set
       Raid:
