@@ -459,8 +459,8 @@ class TestBaseClusterConfig:
     @pytest.mark.parametrize(
         "region, expected_volume_type",
         [
-            ("us-iso-WHATEVER", "gp2"),
-            ("us-isob-WHATEVER", "gp2"),
+            ("us-iso-WHATEVER", "gp3"),
+            ("us-isob-WHATEVER", "gp3"),
             ("WHATEVER_ELSE_REGION", "gp3"),
         ],
     )
@@ -478,8 +478,8 @@ class TestBaseClusterConfig:
     @pytest.mark.parametrize(
         "region, expected_volume_type",
         [
-            ("us-iso-WHATEVER", "gp2"),
-            ("us-isob-WHATEVER", "gp2"),
+            ("us-iso-WHATEVER", "gp3"),
+            ("us-isob-WHATEVER", "gp3"),
             ("WHATEVER_ELSE_REGION", "gp3"),
         ],
     )
@@ -618,8 +618,8 @@ class TestSharedEbs:
     @pytest.mark.parametrize(
         "region, expected_volume_type",
         [
-            ("us-iso-WHATEVER", "gp2"),
-            ("us-isob-WHATEVER", "gp2"),
+            ("us-iso-WHATEVER", "gp3"),
+            ("us-isob-WHATEVER", "gp3"),
             ("WHATEVER_ELSE_REGION", "gp3"),
         ],
     )
@@ -635,8 +635,8 @@ class TestEbs:
     @pytest.mark.parametrize(
         "region, expected_volume_type",
         [
-            ("us-iso-WHATEVER", "gp2"),
-            ("us-isob-WHATEVER", "gp2"),
+            ("us-iso-WHATEVER", "gp3"),
+            ("us-isob-WHATEVER", "gp3"),
             ("WHATEVER_ELSE_REGION", "gp3"),
         ],
     )
