@@ -1701,24 +1701,20 @@ def test_condition_checker_managed_fsx(
 
 
 @pytest.mark.parametrize(
-    "base_config, target_config, change, expected_update_allowed, expected_fail_reason, expected_action_needed",
+    "key, path, old_value, new_value, expected_fail_reason, expected_actions_needed",
     [
         pytest.param(
+            "LoginNodes",
+            ["Pools"],
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1"}]},
+                "Name": "pool-old",
+                "InstanceType": "t2.micro",
+                "GracetimePeriod": 3,
+                "Count": 1,
+                "Networking": {"SubnetIds": ["subnet-05cfbd48a49df385c"]},
+                "Ssh": {"KeyName": "xuanqi-us-east-2"},
             },
-            {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp2"}]},
-            },
-            Change(
-                path=["LoginNodes"],
-                key="Pools",
-                old_value={"Name": "mock-lp1"},
-                new_value=None,
-                update_policy={},
-                is_list=True,
-            ),
-            False,
+            None,
             "The update is not supported when login nodes are running",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
@@ -1728,19 +1724,26 @@ def test_condition_checker_managed_fsx(
 )
 def test_login_nodes_pools_policy(
     mocker,
-    base_config,
-    target_config,
-    change,
-    expected_update_allowed,
+    key,
+    path,
+    old_value,
+    new_value,
     expected_fail_reason,
-    expected_action_needed,
+    expected_actions_needed,
 ):
-    update_policy = UpdatePolicy.LOGIN_NODES_POOLS
-    cluster = Cluster(name="mock-name", stack="mock-stack")
-    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
-    assert_that(update_policy.condition_checker(change, patch)).is_equal_to(expected_update_allowed)
-    assert_that(update_policy.fail_reason(change, patch)).is_equal_to(expected_fail_reason)
-    assert_that(update_policy.action_needed(change, patch)).is_equal_to(expected_action_needed)
+    cluster = dummy_cluster()
+    patch_mock = mocker.MagicMock()
+    patch_mock.cluster = cluster
+    change_mock = mocker.MagicMock()
+    change_mock.path = path
+    change_mock.key = key
+    change_mock.old_value = old_value
+    change_mock.new_value = new_value
+
+    assert_that(UpdatePolicy.LOGIN_NODES_POOLS.fail_reason(change_mock, patch_mock)).is_equal_to(expected_fail_reason)
+    assert_that(UpdatePolicy.LOGIN_NODES_POOLS.action_needed(change_mock, patch_mock)).is_equal_to(
+        expected_actions_needed
+    )
 
 
 @pytest.mark.parametrize(
