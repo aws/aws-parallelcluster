@@ -372,10 +372,6 @@ def condition_checker_login_nodes_pools_policy(change, patch):
     return result
 
 
-def is_login_pool_removed(change):
-    return change.is_list and change.key == "Pools" and change.old_value is not None and change.new_value is None
-
-
 def condition_checker_login_nodes_stop_policy(_, patch):
     return not patch.cluster.has_running_login_nodes()
 

@@ -1752,7 +1752,7 @@ def test_login_nodes_pools_policy(
     expected_actions_needed,
 ):
     cluster = dummy_cluster()
-    mocker.patch.object(cluster, 'has_running_login_nodes', return_value=True)
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=True)
 
     patch_mock = mocker.MagicMock()
     patch_mock.cluster = cluster
@@ -1762,7 +1762,9 @@ def test_login_nodes_pools_policy(
     change_mock.old_value = old_value
     change_mock.new_value = new_value
 
-    assert_that(UpdatePolicy.LOGIN_NODES_POOLS.condition_checker(change_mock, patch_mock)).is_equal_to(expected_update_allowed)
+    assert_that(UpdatePolicy.LOGIN_NODES_POOLS.condition_checker(change_mock, patch_mock)).is_equal_to(
+        expected_update_allowed
+    )
     assert_that(UpdatePolicy.LOGIN_NODES_POOLS.fail_reason(change_mock, patch_mock)).is_equal_to(expected_fail_reason)
     assert_that(UpdatePolicy.LOGIN_NODES_POOLS.action_needed(change_mock, patch_mock)).is_equal_to(
         expected_actions_needed
