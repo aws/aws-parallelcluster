@@ -1701,11 +1701,11 @@ def test_condition_checker_managed_fsx(
 
 
 @pytest.mark.parametrize(
-    "key, path, old_value, new_value, expected_fail_reason, expected_actions_needed",
+    "key, path, old_value, new_value, expected_update_allowed, expected_fail_reason, expected_actions_needed",
     [
         pytest.param(
-            "LoginNodes",
-            ["Pools"],
+            "Pools",
+            ["LoginNodes"],
             {
                 "Name": "pool-old",
                 "InstanceType": "t2.micro",
@@ -1715,10 +1715,29 @@ def test_condition_checker_managed_fsx(
                 "Ssh": {"KeyName": "xuanqi-us-east-2"},
             },
             None,
+            False,
             "The update is not supported when login nodes are running",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             id="Login nodes must be stopped to remove a pool",
+        ),
+        pytest.param(
+            "Pools",
+            ["LoginNodes"],
+            None,
+            {
+                "Name": "pool-new",
+                "InstanceType": "t2.micro",
+                "GracetimePeriod": 3,
+                "Count": 1,
+                "Networking": {"SubnetIds": ["subnet-05cfbd48a49df385c"]},
+                "Ssh": {"KeyName": "xuanqi-us-east-2"},
+            },
+            True,
+            "The update is not supported when login nodes are running",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            id="Login pools can be added",
         ),
     ],
 )
@@ -1728,10 +1747,13 @@ def test_login_nodes_pools_policy(
     path,
     old_value,
     new_value,
+    expected_update_allowed,
     expected_fail_reason,
     expected_actions_needed,
 ):
     cluster = dummy_cluster()
+    mocker.patch.object(cluster, 'has_running_login_nodes', return_value=True)
+
     patch_mock = mocker.MagicMock()
     patch_mock.cluster = cluster
     change_mock = mocker.MagicMock()
@@ -1740,6 +1762,7 @@ def test_login_nodes_pools_policy(
     change_mock.old_value = old_value
     change_mock.new_value = new_value
 
+    assert_that(UpdatePolicy.LOGIN_NODES_POOLS.condition_checker(change_mock, patch_mock)).is_equal_to(expected_update_allowed)
     assert_that(UpdatePolicy.LOGIN_NODES_POOLS.fail_reason(change_mock, patch_mock)).is_equal_to(expected_fail_reason)
     assert_that(UpdatePolicy.LOGIN_NODES_POOLS.action_needed(change_mock, patch_mock)).is_equal_to(
         expected_actions_needed
