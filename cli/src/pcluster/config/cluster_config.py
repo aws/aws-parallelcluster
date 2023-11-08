@@ -2284,11 +2284,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         """List of instance types under this compute resource."""
         return [self.instance_type]
 
-    @property
-    def instance_type_info(self) -> InstanceTypeInfo:
-        """Return instance type information."""
-        return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
         self._register_validator(
@@ -2323,7 +2318,7 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.default_threads_per_core() > 1
+        return self.disable_simultaneous_multithreading and self._instance_type_info.default_threads_per_core() > 1
 
 
 class _CommonQueue(BaseQueue):
