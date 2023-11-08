@@ -2425,7 +2425,7 @@ class _CommonQueue(BaseQueue):
             if isinstance(compute_resource, SlurmComputeResource):
                 self._register_validator(
                     EfaValidator,
-                    instance_type=compute_resource.instance_type,
+                    instance_type=compute_resource.instance_types[0],
                     efa_enabled=compute_resource.efa.enabled,
                     gdr_support=compute_resource.efa.gdr_support,
                     multiaz_enabled=self.multi_az_enabled,
