@@ -176,7 +176,7 @@ class QueuesStack(NestedStack):
         if compute_resource.is_ebs_optimized:
             conditional_template_properties.update({"ebs_optimized": True})
         if isinstance(compute_resource, SlurmComputeResource):
-            conditional_template_properties.update({"instance_type": compute_resource.instance_type})
+            conditional_template_properties.update({"instance_type": compute_resource.instance_types[0]})
 
         return ec2.CfnLaunchTemplate(
             self,
