@@ -40,5 +40,23 @@ Scheduling:
         - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: {{ mount_dir }}
-    Name: efs
-    StorageType: Efs
+    Name: home
+    StorageType: {{ storage_type }}
+    {% if storage_type == "FsxLustre" %}
+    FsxLustreSettings:
+      StorageCapacity: 1200
+    {% elif storage_type == "FsxOpenZfs" %}
+    FsxOpenZfsSettings:
+      VolumeId: {{ volume_id }}
+    {% elif storage_type == "FsxOntap" %}
+    FsxOntapSettings:
+      VolumeId: {{ volume_id }}
+    {% elif storage_type == "FileCache" %}
+    FileCacheSettings:
+      FileCacheId: {{ file_cache_id }}
+    {% elif storage_type == "Ebs" %}
+    EbsSettings:
+      Raid:
+        Type: 1
+      Size: 40
+    {% endif %}

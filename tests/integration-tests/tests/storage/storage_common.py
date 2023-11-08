@@ -375,6 +375,7 @@ def check_fsx(
     bucket_name,
     headnode_only=False,
     file_cache_path=None,
+    run_sudo=False,
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -420,7 +421,7 @@ def check_fsx(
         elif file_system_type == "ONTAP":
             assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, fsx_id)
         if not headnode_only:
-            assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
+            assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir, run_sudo=run_sudo)
 
 
 def get_efs_ids(cluster, region):
@@ -468,10 +469,14 @@ def assert_subnet_az_relations_from_config(
         assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
 
 
-def assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
+def assert_fsx_correctly_shared(scheduler_commands, remote_command_executor, mount_dir, run_sudo=False):
     logging.info("Testing fsx correctly shared on HeadNode and Compute Nodes")
     verify_directory_correctly_shared(
-        remote_command_executor, mount_dir, scheduler_commands, partitions=scheduler_commands.get_partitions()
+        remote_command_executor,
+        mount_dir,
+        scheduler_commands,
+        partitions=scheduler_commands.get_partitions(),
+        run_sudo=run_sudo,
     )
 
 
@@ -690,7 +695,11 @@ def create_fsx_open_zfs(fsx_factory, num):
             ThroughputCapacity=64,
             RootVolumeConfiguration=RootVolumeConfiguration(
                 NfsExports=[
-                    NfsExports(ClientConfigurations=[ClientConfigurations(Clients="*", Options=["rw", "crossmnt"])])
+                    NfsExports(
+                        ClientConfigurations=[
+                            ClientConfigurations(Clients="*", Options=["rw", "crossmnt", "no_root_squash"])
+                        ]
+                    )
                 ]
             ),
         ),
