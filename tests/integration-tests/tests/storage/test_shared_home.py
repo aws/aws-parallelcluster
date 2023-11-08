@@ -24,6 +24,9 @@ from tests.storage.storage_common import (
     test_efs_correctly_mounted,
     verify_directory_correctly_shared,
 )
+from tests.storage.test_fsx_lustre import create_file_cache  # noqa  # pylint: disable=unused-import
+
+# flake8: noqa
 
 
 @pytest.mark.parametrize(
