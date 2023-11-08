@@ -25,6 +25,8 @@ from retrying import retry
 from time_utils import seconds
 from utils import get_instance_info, run_command
 
+from tests.common.osu_common import PRIVATE_OSES
+
 LOGGER = logging.getLogger(__name__)
 
 SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
@@ -103,6 +105,7 @@ def retrieve_latest_ami(
                 and not request.config.getoption("cookbook_git_ref")
                 and not request.config.getoption("node_git_ref")
                 and not allow_private_ami
+                and os not in PRIVATE_OSES
             ):  # If none of Git refs is provided, the test is running against released version.
                 # Then retrieve public pcluster AMIs
                 additional_filters.append({"Name": "is-public", "Values": ["true"]})

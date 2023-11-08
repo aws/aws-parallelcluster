@@ -5,7 +5,7 @@
 {%- set SCHEDULERS_ALL = ["slurm", "awsbatch"] -%}
 {%- set SCHEDULERS_TRAD = ["slurm"] -%}
 {%- set OSS_BATCH = ["alinux2"] -%}
-{%- set OSS_COMMERCIAL_X86 = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"] -%}
+{%- set OSS_COMMERCIAL_X86 = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8"] -%}
 {%- set OSS_CHINA_X86 = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"] -%}
 {%- set OSS_GOVCLOUD_X86 = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"] -%}
 {%- set OSS_COMMERCIAL_ARM = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8"] -%}
@@ -17,7 +17,7 @@
 {%- set INSTANCES_DEFAULT = ["c5.xlarge", "m6g.xlarge"] -%}
 {%- set INSTANCES_EFA_SUPPORTED_X86 = ["c5n.9xlarge"] -%}
 {%- set INSTANCES_EFA_UNSUPPORTED_X86 = ["t2.micro"] -%}
-{%- set NOT_RELEASED_OSES = [ "rocky8" ] -%}
+{%- set NOT_RELEASED_OSES = ["rocky8"] -%}
 
 {%- macro instance(instance_key) -%}
     {%- if additional_instance_types_map -%}
