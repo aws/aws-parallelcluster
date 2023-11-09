@@ -24,6 +24,7 @@ from pcluster.constants import (
 )
 
 CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY = "aws:ec2capacityreservation:incrementalRequestedQuantity"
+CAPACITY_BLOCK_RESERVATION_TYPE_TAG_KEY = "aws:ec2capacityreservation:capacityReservationType"
 
 
 class StackInfo:
@@ -486,24 +487,37 @@ class CapacityReservationInfo:
     },
 
     # describe-capacity-reservations --capacity-type capacity-block
-    {   "CapacityReservationId": "cr-a1234567",
+    {
+        "CapacityReservationId": "cr-a1234567",
         "OwnerId": "123",
-        "CapacityReservationArn": "arn:aws:ec2:eu-west-1:123:capacity-reservation/cr-a123456",
-        "EndDateType": "limited",
-        "ReservationType": "capacity-block",
-        "AvailabilityZone": "eu-east-2a",
-        "InstanceMatchCriteria":  "targeted",
-        "EphemeralStorage": false,
-        "CreateDate": "2023-07-29T14:22:45Z  ",
-        “StartDate": "2023-08-15T12:00:00Z",
-        “EndDate": "2023-08-19T12:00:00Z",
+        "CapacityReservationArn": "arn:aws:ec2:us-east-2:123:capacity-reservation/cr-a123456",
+        "AvailabilityZoneId": "use2-az1",
+        "InstanceType": "p5.48xlarge",
+        "InstancePlatform": "Linux/UNIX",
+        "AvailabilityZone": "us-east-2a",
+        "Tenancy": "default",
+        "TotalInstanceCount": 0,
         "AvailableInstanceCount": 0,
-        "InstancePlatform":  "Linux/UNIX",
-        "TotalInstanceCount": 16,
-        “State": "payment-pending",
-        "Tenancy":  "default",
-        "EbsOptimized": true,
-        "InstanceType": "p5.48xlarge“
+        "EbsOptimized": false,
+        "EphemeralStorage": false,
+        "State": "scheduled",
+        "StartDate": "2023-11-20T11:30:00+00:00",
+        "EndDate": "2023-11-21T11:30:00+00:00",
+        "EndDateType": "limited",
+        "InstanceMatchCriteria": "targeted",
+        "CreateDate": "2023-11-06T12:03:21+00:00",
+        "Tags": [
+            {
+                "Key": "aws:ec2capacityreservation:incrementalRequestedQuantity",
+                "Value": "1"
+            },
+            {
+                "Key": "aws:ec2capacityreservation:capacityReservationType",
+                "Value": "capacity-block"
+            }
+        ],
+        "CapacityAllocations": [],
+        "ReservationType": "capacity-block"
     }
     """
 
@@ -535,8 +549,14 @@ class CapacityReservationInfo:
         return self.capacity_reservation_data.get("PlacementGroupArn")
 
     def reservation_type(self):
-        """Return the reservation type, if present, None otherwise."""
-        return self.capacity_reservation_data.get("ReservationType")
+        """
+        Return the reservation type, if present, None otherwise.
+
+        Return the value of the tag CAPACITY_BLOCK_RESERVATION_TYPE_TAG_KEY, if ReservationType tag is not valued.
+        """
+        return self.capacity_reservation_data.get(
+            "ReservationType", self.get_tag(CAPACITY_BLOCK_RESERVATION_TYPE_TAG_KEY)
+        )
 
     def total_instance_count(self):
         """Return the total instance count, if present, 0 otherwise."""
