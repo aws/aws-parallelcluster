@@ -114,10 +114,16 @@ Conditions:
 Resources:
   ### IAM POLICIES
 
+  # Every policy name comes with a suffix derived from the Stack ID to avoid name collisions.
+  # Given a stack id arn:aws:cloudformation:REGION:ACCOUNT:stack/STACK_NAME/8131d980-7fb5-11ee-9589-0a6424944f95,
+  # the resulting StackIdSuffix will be 8131d980.
   DefaultParallelClusterIamAdminPolicy:
     Type: AWS::IAM::ManagedPolicy
     Condition: EnableIamPolicy
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}DefaultParallelClusterIamAdminPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       Roles:
         - !Ref ParallelClusterLambdaRole
       PolicyDocument:
@@ -221,6 +227,9 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Condition: EnableBatchAccessCondition
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicyBatch-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -330,6 +339,9 @@ Resources:
   ParallelClusterClusterPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -615,6 +627,9 @@ Resources:
   ParallelClusterBuildImageManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterBuildImageManagedPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       Description: Managed policy to execute pcluster build-image command without IAM permission
       PolicyDocument:
         Version: '2012-10-17'
@@ -732,6 +747,9 @@ Resources:
   ParallelClusterDeleteImageManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterDeleteImageManagedPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       Description: Managed policy to execute pcluster delete-image command without IAM permission
       PolicyDocument:
         Version: '2012-10-17'
@@ -817,6 +835,9 @@ Resources:
   ParallelClusterListImagesManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterListImagesManagedPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       Description: Managed policy to execute pcluster list-images command
       PolicyDocument:
         Version: '2012-10-17'
@@ -836,6 +857,9 @@ Resources:
   ParallelClusterDescribeImageManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterDescribeImageManagedPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       Description: Managed policy to execute pcluster describe-image command
       PolicyDocument:
         Version: '2012-10-17'
@@ -857,6 +881,9 @@ Resources:
   ParallelClusterLogRetrievalPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterLogRetrievalPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       Description: Policies needed to retrieve cluster and images logs
       PolicyDocument:
         Version: '2012-10-17'
