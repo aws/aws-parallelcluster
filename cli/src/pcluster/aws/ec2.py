@@ -16,7 +16,7 @@ from typing import Any, List, Tuple
 from botocore.exceptions import ClientError
 
 from pcluster import utils
-from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import CapacityReservationInfo, ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError, get_region
 from pcluster.constants import (
     IMAGE_NAME_PART_TO_OS_MAP,
@@ -87,8 +87,8 @@ class Ec2Client(Boto3Client):
         return result
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_capacity_reservations(self, capacity_reservation_ids):
-        """Return a list of Capacity Reservations."""
+    def describe_capacity_reservations(self, capacity_reservation_ids: List[str]) -> List[CapacityReservationInfo]:
+        """Accept a space separated list of ids. Return a list of CapacityReservationInfo."""
         result = []
         missed_capacity_reservations = []
         for capacity_reservation_id in capacity_reservation_ids:
@@ -106,8 +106,8 @@ class Ec2Client(Boto3Client):
             for capacity_reservation in response:
                 self.capacity_reservations_cache[
                     capacity_reservation.get("CapacityReservationId")
-                ] = capacity_reservation
-                result.append(capacity_reservation)
+                ] = CapacityReservationInfo(capacity_reservation)
+                result.append(CapacityReservationInfo(capacity_reservation))
         return result
 
     @AWSExceptionHandler.handle_client_exception

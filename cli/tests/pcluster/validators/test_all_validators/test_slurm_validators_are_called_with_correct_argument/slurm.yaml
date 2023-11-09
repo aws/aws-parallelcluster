@@ -24,6 +24,7 @@ Scheduling:
   Scheduler: slurm
   SlurmQueues:
     - Name: queue1
+      CapacityType: SPOT
       Networking:
         SubnetIds:
           - subnet-23456789
@@ -52,11 +53,31 @@ Scheduling:
         - Name: compute_resource3
           InstanceType: t2.large
           DisableSimultaneousMultithreading: true
+          CapacityReservationTarget:
+            CapacityReservationId: "cr-34567"
       Tags:
         - Key: queue_tag1
           Value: String
         - Key: queue_tag2
           Value: String
+    - Name: queue3
+      CapacityType: CAPACITY_BLOCK
+      CapacityReservationTarget:
+        CapacityReservationId: "cr-12345"
+      Networking:
+        SubnetIds:
+          - subnet-23456789
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: t2.xlarge
+          MinCount: 5
+          MaxCount: 5
+        - Name: compute_resource2
+          InstanceType: t2.xlarge
+          MinCount: 3
+          MaxCount: 3
+          CapacityReservationTarget:
+            CapacityReservationId: "cr-23456"
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1

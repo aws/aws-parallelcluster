@@ -1,5 +1,6 @@
 assertpy
 aws-lambda-powertools
+aws-xray-sdk
 freezegun
 jinja2
 munch

@@ -33,7 +33,6 @@ from pcluster.config.cluster_config import (
     AwsBatchScheduling,
     AwsBatchSettings,
     CapacityReservationTarget,
-    CapacityType,
     CloudWatchDashboards,
     CloudWatchLogs,
     ClusterDevSettings,
@@ -94,7 +93,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Timeouts,
 )
-from pcluster.config.common import BaseTag
+from pcluster.config.common import BaseTag, CapacityType
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
@@ -1856,7 +1855,7 @@ class DirectoryServiceSchema(BaseSchema):
 class ClusterSchema(BaseSchema):
     """Represent the schema of the Cluster."""
 
-    login_nodes = fields.Nested(LoginNodesSchema, many=False, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    login_nodes = fields.Nested(LoginNodesSchema, many=False, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     image = fields.Nested(ImageSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     head_node = fields.Nested(HeadNodeSchema, required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     scheduling = fields.Nested(SchedulingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
