@@ -2215,11 +2215,7 @@ class FlexibleInstanceType(Resource):
 class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
-    def __init__(
-        self,
-        instances: List[FlexibleInstanceType],
-        **kwargs,
-    ):
+    def __init__(self, instances: List[FlexibleInstanceType], **kwargs):
         super().__init__(**kwargs)
         self.instances = Resource.init_param(instances)
 
@@ -2271,13 +2267,10 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
 class SlurmComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with a Single Instance Type."""
 
-    def __init__(
-        self,
-        instance_type,
-        **kwargs,
-    ):
+    def __init__(self, instance_type=None, **kwargs):
         super().__init__(**kwargs)
-        self.instance_type = Resource.init_param(instance_type)
+        _instance_type = instance_type if instance_type else self._instance_type_from_capacity_reservation()
+        self.instance_type = Resource.init_param(_instance_type)
         self.__instance_type_info = None
 
     @property
@@ -2320,6 +2313,18 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
         return self.disable_simultaneous_multithreading and self._instance_type_info.default_threads_per_core() > 1
+
+    def _instance_type_from_capacity_reservation(self):
+        """Return the instance type from the configured CapacityReservationId, if any."""
+        instance_type = None
+        capacity_reservation_id = (
+            self.capacity_reservation_target.capacity_reservation_id if self.capacity_reservation_target else None
+        )
+        if capacity_reservation_id:
+            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
+            if capacity_reservations:
+                instance_type = capacity_reservations[0].instance_type()
+        return instance_type
 
 
 class _CommonQueue(BaseQueue):
