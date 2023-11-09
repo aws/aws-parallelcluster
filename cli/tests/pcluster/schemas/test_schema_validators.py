@@ -127,6 +127,8 @@ def test_compute_type_validator(capacity_type, expected_message):
     ],
 )
 def test_slurm_compute_resource_validator(section_dict, expected_message):
+    # Add required field
+    section_dict.update({"InstanceType": "t2.micro"})
     _validate_and_assert_error(SlurmComputeResourceSchema(), section_dict, expected_message)
 
 
