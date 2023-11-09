@@ -55,3 +55,25 @@ class TestCapacityReservationInfo:
         assert_that(CapacityReservationInfo(capacity_reservation_data).incremental_requested_quantity()).is_equal_to(
             expected_value
         )
+
+    @pytest.mark.parametrize(
+        ("capacity_reservation_data", "expected_value"),
+        [
+            ({}, None),
+            ({"ReservationType": "capacity-block"}, "capacity-block"),
+            (
+                {"Tags": [{"Key": "aws:ec2capacityreservation:capacityReservationType", "Value": "capacity-block"}]},
+                "capacity-block",
+            ),
+            # The following should not happen, anyway is just to confirm that ReservationType value is preferred
+            (
+                {
+                    "ReservationType": "on-demand",
+                    "Tags": [{"Key": "aws:ec2capacityreservation:capacityReservationType", "Value": "capacity-block"}],
+                },
+                "on-demand",
+            ),
+        ],
+    )
+    def test_reservation_type(self, capacity_reservation_data, expected_value):
+        assert_that(CapacityReservationInfo(capacity_reservation_data).reservation_type()).is_equal_to(expected_value)
