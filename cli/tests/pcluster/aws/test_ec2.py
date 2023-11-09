@@ -15,7 +15,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import CapacityReservationInfo, ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.config.cluster_config import AmiSearchFilters, Tag
@@ -560,6 +560,49 @@ def test_describe_capacity_reservations_cache(boto3_stubber):
     assert_that(AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation])[0].state()).is_equal_to(
         "active"
     )
+
+
+FAKE_CAPACITY_BLOCK_ID = "cr-a1234567"
+FAKE_CAPACITY_BLOCK_INFO = {
+    "CapacityReservationId": FAKE_CAPACITY_BLOCK_ID,
+    "EndDateType": "limited",
+    # "ReservationType": "capacity-block",
+    "AvailabilityZone": "eu-east-2a",
+    "InstanceMatchCriteria": "targeted",
+    "EphemeralStorage": False,
+    "CreateDate": "2023-07-29T14:22:45Z  ",
+    "StartDate": "2023-08-15T12:00:00Z",
+    "EndDate": "2023-08-19T12:00:00Z",
+    "AvailableInstanceCount": 0,
+    "InstancePlatform": "Linux/UNIX",
+    "TotalInstanceCount": 16,
+    "State": "payment-pending",
+    "Tenancy": "default",
+    "EbsOptimized": True,
+    "InstanceType": "p5.48xlarge",
+}
+
+
+@pytest.mark.parametrize("generate_error", [True, False])
+def test_describe_capacity_reservations(boto3_stubber, generate_error):
+    """Verify that describe_capacity_reservations behaves as expected."""
+    dummy_message = "dummy error message"
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_capacity_reservations",
+            expected_params={"CapacityReservationIds": [FAKE_CAPACITY_BLOCK_ID]},
+            response=dummy_message if generate_error else {"CapacityReservations": [FAKE_CAPACITY_BLOCK_INFO]},
+            generate_error=generate_error,
+            error_code=None,
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    if generate_error:
+        with pytest.raises(AWSClientError, match=dummy_message):
+            Ec2Client().describe_capacity_reservations(capacity_reservation_ids=[FAKE_CAPACITY_BLOCK_ID])
+    else:
+        return_value = Ec2Client().describe_capacity_reservations(capacity_reservation_ids=[FAKE_CAPACITY_BLOCK_ID])
+        assert_that(return_value).is_equal_to([CapacityReservationInfo(FAKE_CAPACITY_BLOCK_INFO)])
 
 
 def get_describe_security_groups_mocked_request(security_groups, ip_permissions):
