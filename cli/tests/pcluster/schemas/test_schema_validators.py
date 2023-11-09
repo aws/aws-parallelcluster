@@ -92,9 +92,10 @@ def test_root_volume_size_validator(size, expected_message):
     "capacity_type, expected_message",
     [
         ("ONDEMAND", None),
-        ("", "Must be one of: ONDEMAND, SPOT"),
-        ("wrong_value", "Must be one of: ONDEMAND, SPOT"),
-        ("NONE", "Must be one of: ONDEMAND, SPOT"),
+        ("CAPACITY_BLOCK", None),
+        ("", "Must be one of: CAPACITY_BLOCK, ONDEMAND, SPOT"),
+        ("wrong_value", "Must be one of: CAPACITY_BLOCK, ONDEMAND, SPOT"),
+        ("NONE", "Must be one of: CAPACITY_BLOCK, ONDEMAND, SPOT"),
         ("SPOT", None),
     ],
 )

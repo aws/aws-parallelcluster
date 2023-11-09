@@ -23,6 +23,9 @@ from pcluster.constants import (
     SUPPORTED_ARCHITECTURES,
 )
 
+CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY = "aws:ec2capacityreservation:incrementalRequestedQuantity"
+CAPACITY_BLOCK_RESERVATION_TYPE_TAG_KEY = "aws:ec2capacityreservation:capacityReservationType"
+
 
 class StackInfo:
     """Object to store Stack information, initialized with a describe_stacks call."""
@@ -449,3 +452,131 @@ class ImageInfo:
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)
+
+
+class CapacityReservationInfo:
+    """
+    Data object wrapping the result of a describe-capacity-reservations call.
+
+    {
+        "CapacityReservationId": "cr-a1234567",
+        "OwnerId": "123",
+        "CapacityReservationArn": "arn:aws:ec2:eu-west-1:123:capacity-reservation/cr-a123456",
+        "AvailabilityZoneId": "euw1-az3",
+        "InstanceType": "t2.large",
+        "InstancePlatform": "Linux/UNIX",
+        "AvailabilityZone": "eu-west-1a",
+        "Tenancy": "default",
+        "TotalInstanceCount": 1,
+        "AvailableInstanceCount": 0,
+        "EbsOptimized": false,
+        "EphemeralStorage": false,
+        "State": "active",
+        "StartDate": "2023-11-02T12:16:35+00:00",
+        "EndDate": "2023-11-03T09:00:00+00:00",
+        "EndDateType": "limited",
+        "InstanceMatchCriteria": "open",
+        "CreateDate": "2023-11-02T12:16:35+00:00",
+        "Tags": [],
+        "CapacityAllocations": [
+            {
+                "AllocationType": "used",
+                "Count": 1
+            }
+        ]
+    },
+
+    # describe-capacity-reservations --capacity-type capacity-block
+    {
+        "CapacityReservationId": "cr-a1234567",
+        "OwnerId": "123",
+        "CapacityReservationArn": "arn:aws:ec2:us-east-2:123:capacity-reservation/cr-a123456",
+        "AvailabilityZoneId": "use2-az1",
+        "InstanceType": "p5.48xlarge",
+        "InstancePlatform": "Linux/UNIX",
+        "AvailabilityZone": "us-east-2a",
+        "Tenancy": "default",
+        "TotalInstanceCount": 0,
+        "AvailableInstanceCount": 0,
+        "EbsOptimized": false,
+        "EphemeralStorage": false,
+        "State": "scheduled",
+        "StartDate": "2023-11-20T11:30:00+00:00",
+        "EndDate": "2023-11-21T11:30:00+00:00",
+        "EndDateType": "limited",
+        "InstanceMatchCriteria": "targeted",
+        "CreateDate": "2023-11-06T12:03:21+00:00",
+        "Tags": [
+            {
+                "Key": "aws:ec2capacityreservation:incrementalRequestedQuantity",
+                "Value": "1"
+            },
+            {
+                "Key": "aws:ec2capacityreservation:capacityReservationType",
+                "Value": "capacity-block"
+            }
+        ],
+        "CapacityAllocations": [],
+        "ReservationType": "capacity-block"
+    }
+    """
+
+    def __init__(self, capacity_reservation_data):
+        self.capacity_reservation_data = capacity_reservation_data
+
+    def capacity_reservation_arn(self):
+        """Return the arn of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("CapacityReservationArn")
+
+    def capacity_reservation_id(self):
+        """Return the id of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("CapacityReservationId")
+
+    def state(self):
+        """Return the state of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("State")
+
+    def instance_type(self):
+        """Return the instance type associated to the Capacity Reservation."""
+        return self.capacity_reservation_data.get("InstanceType")
+
+    def availability_zone(self):
+        """Return the availability zone associated to the Capacity Reservation."""
+        return self.capacity_reservation_data.get("AvailabilityZone")
+
+    def placement_group_arn(self):
+        """Return the placement group arn of the Capacity Reservation."""
+        return self.capacity_reservation_data.get("PlacementGroupArn")
+
+    def reservation_type(self):
+        """
+        Return the reservation type, if present, None otherwise.
+
+        Return the value of the tag CAPACITY_BLOCK_RESERVATION_TYPE_TAG_KEY, if ReservationType tag is not valued.
+        """
+        return self.capacity_reservation_data.get(
+            "ReservationType", self.get_tag(CAPACITY_BLOCK_RESERVATION_TYPE_TAG_KEY)
+        )
+
+    def total_instance_count(self):
+        """Return the total instance count, if present, 0 otherwise."""
+        return self.capacity_reservation_data.get("TotalInstanceCount", 0)
+
+    def get_tag(self, tag_key: str):
+        """Get stack tag by tag key."""
+        return next(
+            iter([tag["Value"] for tag in self.capacity_reservation_data.get("Tags", []) if tag["Key"] == tag_key]),
+            None,
+        )
+
+    def incremental_requested_quantity(self):
+        """
+        Return the value of the tag CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY, 0 otherwise.
+
+        This only exists for Capacity Blocks reservation.
+        """
+        requested_quantity = self.get_tag(CAPACITY_BLOCK_REQUESTED_QUANTITY_TAG_KEY)
+        return int(requested_quantity) if requested_quantity and isinstance(requested_quantity, str) else 0
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__

@@ -23,7 +23,7 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, DeploymentSettings
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, CapacityType, DeploymentSettings
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -127,6 +127,7 @@ from pcluster.validators.ebs_validators import (
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
+    CapacityReservationSizeValidator,
     CapacityReservationValidator,
     CapacityTypeValidator,
     InstanceTypeAcceleratorManufacturerValidator,
@@ -1442,13 +1443,6 @@ class BaseComputeResource(Resource):
         self._register_validator(NameValidator, name=self.name)
 
 
-class CapacityType(Enum):
-    """Enum to identify the type compute supported by the queues."""
-
-    ONDEMAND = "ONDEMAND"
-    SPOT = "SPOT"
-
-
 class ComputeSettings(Resource):
     """Represent the ComputeSettings resource."""
 
@@ -1463,12 +1457,20 @@ class BaseQueue(Resource):
     def __init__(self, name: str, capacity_type: str = None):
         super().__init__()
         self.name = Resource.init_param(name)
-        _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
+        try:
+            _capacity_type = CapacityType[capacity_type.upper()] if isinstance(capacity_type, str) else None
+        except KeyError as e:
+            LOGGER.error("%s is not a valid CapacityType value, setting ONDEMAND", e)
+            _capacity_type = None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
     def is_spot(self):
         """Return True if the queue has SPOT capacity."""
         return self.capacity_type == CapacityType.SPOT
+
+    def is_capacity_block(self):
+        """Return True if the queue has CAPACITY_BLOCK capacity."""
+        return self.capacity_type == CapacityType.CAPACITY_BLOCK
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(NameValidator, name=self.name)
@@ -2290,7 +2292,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
-        self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
             SchedulableMemoryValidator,
             schedulable_memory=self.schedulable_memory,
@@ -2466,10 +2467,11 @@ class SlurmQueue(_CommonQueue):
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
+            default_allocation_strategy = None if self.is_capacity_block() else AllocationStrategy.LOWEST_PRICE
             self.allocation_strategy = (
                 AllocationStrategy[to_snake_case(allocation_strategy).upper()]
                 if allocation_strategy
-                else AllocationStrategy.LOWEST_PRICE
+                else default_allocation_strategy
             )
 
     @property
@@ -2545,6 +2547,12 @@ class SlurmQueue(_CommonQueue):
                 ).enabled
                 is False,
                 multi_az_enabled=self.multi_az_enabled,
+            )
+            self._register_validator(
+                ComputeResourceSizeValidator,
+                min_count=compute_resource.min_count,
+                max_count=compute_resource.max_count,
+                capacity_type=self.capacity_type,
             )
             if compute_resource.custom_slurm_settings:
                 self._register_validator(
@@ -2846,6 +2854,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         checked_images = []
+        capacity_reservation_id_max_count_map = {}
         for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
             if index == 0:
@@ -2878,6 +2887,7 @@ class SlurmClusterConfig(BaseClusterConfig):
             if queue_image not in checked_images and queue.queue_ami:
                 checked_images.append(queue_image)
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
+
             for compute_resource in queue.compute_resources:
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
@@ -2894,11 +2904,21 @@ class SlurmClusterConfig(BaseClusterConfig):
                 # to make sure the subnet APIs are cached by previous validations.
                 cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
                 if cr_target:
+                    if cr_target.capacity_reservation_id:
+                        # increment counter of number of instances used for a given capacity reservation
+                        # to verify to not exceed instance count when considering all the configured compute resources
+                        num_of_instances_in_capacity_reservation = capacity_reservation_id_max_count_map.get(
+                            cr_target.capacity_reservation_id, 0
+                        )
+                        capacity_reservation_id_max_count_map[cr_target.capacity_reservation_id] = (
+                            num_of_instances_in_capacity_reservation + compute_resource.max_count
+                        )
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
-                        instance_type=getattr(compute_resource, "instance_type", None),
+                        instance_types=compute_resource.instance_types,
                         subnet=queue.networking.subnet_ids[0],
+                        capacity_type=queue.capacity_type,
                     )
                     self._register_validator(
                         CapacityReservationResourceGroupValidator,
@@ -2974,6 +2994,13 @@ class SlurmClusterConfig(BaseClusterConfig):
                     compute_resource_tags=compute_resource.get_tags(),
                 )
 
+        for capacity_reservation_id, num_of_instances in capacity_reservation_id_max_count_map.items():
+            self._register_validator(
+                CapacityReservationSizeValidator,
+                capacity_reservation_id=capacity_reservation_id,
+                num_of_instances=num_of_instances,
+            )
+
     @property
     def image_dict(self):
         """Return image dict of queues, key is queue name, value is image id."""
@@ -3011,7 +3038,7 @@ class SlurmClusterConfig(BaseClusterConfig):
     def capacity_reservation_arns(self):
         """Return a list of capacity reservation ARNs specified in the config."""
         return [
-            capacity_reservation["CapacityReservationArn"]
+            capacity_reservation.capacity_reservation_arn()
             for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
                 self.capacity_reservation_ids
             )
