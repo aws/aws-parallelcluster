@@ -2562,10 +2562,12 @@ class SlurmQueue(_CommonQueue):
                     settings_level=CustomSlurmSettingLevel.COMPUTE_RESOURCE,
                 )
             for instance_type in compute_resource.instance_types:
+                cr_target = compute_resource.capacity_reservation_target or self.capacity_reservation_target
                 self._register_validator(
                     CapacityTypeValidator,
                     capacity_type=self.capacity_type,
                     instance_type=instance_type,
+                    capacity_reservation_id=cr_target.capacity_reservation_id if cr_target else None,
                 )
 
 

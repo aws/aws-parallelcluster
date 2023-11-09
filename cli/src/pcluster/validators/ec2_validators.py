@@ -11,7 +11,7 @@
 import json
 import logging
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pcluster import imagebuilder_utils
 from pcluster.aws.aws_api import AWSApi, KeyPairInfo
@@ -232,10 +232,18 @@ class CapacityTypeValidator(Validator):
         capacity_type_to_supported_usage_class_map = {"CAPACITY_BLOCK": "capacity-block"}
         return capacity_type_to_supported_usage_class_map.get(capacity_type.value, capacity_type.value.lower())
 
-    def _validate(self, capacity_type, instance_type):
+    def _validate(self, capacity_type: CapacityType, instance_type: str, capacity_reservation_id: Optional[str]):
         compute_type_value = self._get_supported_usage_class_from_capacity_type(capacity_type)
         supported_usage_classes = AWSApi.instance().ec2.get_instance_type_info(instance_type).supported_usage_classes()
 
+        # Be sure to have a Capacity reservation id when using capacity block
+        if capacity_type == CapacityType.CAPACITY_BLOCK and not capacity_reservation_id:
+            self._add_failure(
+                "Capacity Reservation id is required when using CAPACITY_BLOCK as capacity type.",
+                FailureLevel.ERROR,
+            )
+
+        # Verify capacity type is supported by the given instance type
         if not supported_usage_classes:
             self._add_failure(
                 f"Could not check support for usage class '{compute_type_value}' with instance type '{instance_type}'",
