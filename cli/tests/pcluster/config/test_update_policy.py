@@ -1701,7 +1701,8 @@ def test_condition_checker_managed_fsx(
 
 
 @pytest.mark.parametrize(
-    "key, path, old_value, new_value, expected_has_running_login_nodes_response, expected_update_allowed, expected_fail_reason, expected_actions_needed",
+    "key, path, old_value, new_value, expected_has_running_login_nodes_response, expected_update_allowed, "
+    "expected_fail_reason, expected_actions_needed",
     [
         pytest.param(
             "Pools",
@@ -1804,7 +1805,9 @@ def test_login_nodes_pools_policy(
         expected_update_allowed
     )
     if not expected_update_allowed:
-        assert_that(UpdatePolicy.LOGIN_NODES_POOLS.fail_reason(change_mock, patch_mock)).is_equal_to(expected_fail_reason)
+        assert_that(UpdatePolicy.LOGIN_NODES_POOLS.fail_reason(change_mock, patch_mock)).is_equal_to(
+            expected_fail_reason
+        )
         assert_that(UpdatePolicy.LOGIN_NODES_POOLS.action_needed(change_mock, patch_mock)).is_equal_to(
             expected_actions_needed
         )
