@@ -27,6 +27,8 @@ CHANGELOG
 - Make `InstanceType` an optional configuration parameter when configuring `CapacityReservationTarget/CapacityReservationId` in the compute resource.
 - Add `Scheduling/ScalingStrategy` parameter to control job-level scaling strategy for node to be resumed by Slurm.
   Possible values are `all-or-nothing`, `greedy-all-or-nothing`, `best-effort`, with `all-or-nothing` being the default.
+- Add possibility to specify a prefix for IAM roles and policies created by ParallelCluster API.
+- Add possibility to specify a permissions boundary to be applied for IAM roles and policies created by ParallelCluster API.
 
 **CHANGES**
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
@@ -34,6 +36,7 @@ CHANGELOG
 - Add support for Python 3.10 in aws-parallelcluster-batch-cli.
 - Remove `all_or_nothing_batch` resume configuration parameter, in favor of the new `scaling_strategy` parameter
   that can be set using `Scheduling/ScalingStrategy` cluster configuration.
+- The optional permissions boundary for the ParallelCluster API is now applied to every IAM role created by the API infrastructure.
 
 **BUG FIXES**
 - Fix inconsistent configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.
