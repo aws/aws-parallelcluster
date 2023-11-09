@@ -524,7 +524,7 @@ def get_describe_capacity_reservation_mocked_request(capacity_reservations, stat
                 for capacity_reservation in capacity_reservations
             ]
         },
-        expected_params={"CapacityReservationIds": capacity_reservations},  # TODO add: "ReservationType": None},
+        expected_params={"CapacityReservationIds": capacity_reservations},
     )
 
 

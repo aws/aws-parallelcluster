@@ -62,6 +62,8 @@ Scheduling:
           Value: String
     - Name: queue3
       CapacityType: CAPACITY_BLOCK
+      CapacityReservationTarget:
+        CapacityReservationId: "cr-12345"
       Networking:
         SubnetIds:
           - subnet-23456789
@@ -70,8 +72,6 @@ Scheduling:
           InstanceType: t2.xlarge
           MinCount: 5
           MaxCount: 5
-          CapacityReservationTarget:
-            CapacityReservationId: "cr-12345"
         - Name: compute_resource2
           InstanceType: t2.xlarge
           MinCount: 3
