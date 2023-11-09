@@ -284,6 +284,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     capacity_reservation_validator = mocker.patch(
         ec2_validators + ".CapacityReservationValidator._validate", return_value=[]
     )
+    capacity_type_validator = mocker.patch(ec2_validators + ".CapacityTypeValidator._validate", return_value=[])
 
     mock_aws_api(mocker)
 
@@ -411,6 +412,22 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
                 capacity_type=CapacityType.CAPACITY_BLOCK,
             ),
         ]
+    )
+    capacity_type_validator.assert_has_calls(
+        [
+            call(capacity_type=CapacityType.SPOT, instance_type="t2.large", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.SPOT, instance_type="c4.2xlarge", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.ONDEMAND, instance_type="c5.4xlarge", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.ONDEMAND, instance_type="c5d.xlarge", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.ONDEMAND, instance_type="t2.large", capacity_reservation_id="cr-34567"),
+            call(
+                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t2.xlarge", capacity_reservation_id="cr-12345"
+            ),
+            call(
+                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t2.xlarge", capacity_reservation_id="cr-23456"
+            ),
+        ],
+        any_order=True,
     )
 
     # No assertion on the argument for minor validators

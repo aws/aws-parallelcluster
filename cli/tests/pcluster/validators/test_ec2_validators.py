@@ -375,35 +375,62 @@ def test_key_pair_validator(mocker, key_pair, ec2_return, os, side_effect, expec
 
 
 @pytest.mark.parametrize(
-    "capacity_type, supported_usage_classes, expected_message",
+    "capacity_type, supported_usage_classes, capacity_reservation_id, expected_message",
     [
-        (CapacityType.ONDEMAND, ["ondemand", "spot", "capacity-block"], None),
-        (CapacityType.CAPACITY_BLOCK, ["ondemand", "spot", "capacity-block"], None),
-        (CapacityType.SPOT, ["ondemand", "spot", "capacity-block"], None),
-        (CapacityType.ONDEMAND, ["ondemand"], None),
-        (CapacityType.SPOT, ["spot"], None),
-        (CapacityType.CAPACITY_BLOCK, ["capacity-block"], None),
-        (CapacityType.SPOT, [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
+        (CapacityType.ONDEMAND, ["ondemand", "spot", "capacity-block"], None, None),
+        (CapacityType.CAPACITY_BLOCK, ["ondemand", "spot", "capacity-block"], "cr-123456", None),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            ["ondemand", "spot", "capacity-block"],
+            None,
+            "Capacity Reservation id is required when using CAPACITY_BLOCK as capacity type",
+        ),
+        (CapacityType.SPOT, ["ondemand", "spot", "capacity-block"], None, None),
+        (CapacityType.ONDEMAND, ["ondemand"], None, None),
+        (CapacityType.SPOT, ["spot"], None, None),
+        (CapacityType.CAPACITY_BLOCK, ["capacity-block"], "cr-123456", None),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            ["capacity-block"],
+            None,
+            "Capacity Reservation id is required when using CAPACITY_BLOCK as capacity type",
+        ),
+        (
+            CapacityType.SPOT,
+            [],
+            None,
+            "Could not check support for usage class 'spot' with instance type 'instance-type'",
+        ),
         (
             CapacityType.ONDEMAND,
             [],
+            None,
             "Could not check support for usage class 'ondemand' with instance type 'instance-type'",
         ),
-        (CapacityType.SPOT, ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
-        (CapacityType.ONDEMAND, ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
+        (CapacityType.SPOT, ["ondemand"], None, "Usage type 'spot' not supported with instance type 'instance-type'"),
+        (
+            CapacityType.ONDEMAND,
+            ["spot"],
+            None,
+            "Usage type 'ondemand' not supported with instance type 'instance-type'",
+        ),
         (
             CapacityType.CAPACITY_BLOCK,
             ["ondemand"],
+            None,
             "Usage type 'capacity-block' not supported with instance type 'instance-type'",
         ),
         (
             CapacityType.CAPACITY_BLOCK,
             ["spot"],
+            None,
             "Usage type 'capacity-block' not supported with instance type 'instance-type'",
         ),
     ],
 )
-def test_capacity_type_validator(mocker, capacity_type, supported_usage_classes, expected_message):
+def test_capacity_type_validator(
+    mocker, capacity_type, supported_usage_classes, capacity_reservation_id, expected_message
+):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
@@ -411,7 +438,9 @@ def test_capacity_type_validator(mocker, capacity_type, supported_usage_classes,
             {"InstanceType": "instance-type", "SupportedUsageClasses": supported_usage_classes}
         ),
     )
-    actual_failures = CapacityTypeValidator().execute(capacity_type=capacity_type, instance_type="instance-type")
+    actual_failures = CapacityTypeValidator().execute(
+        capacity_type=capacity_type, instance_type="instance-type", capacity_reservation_id=capacity_reservation_id
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
