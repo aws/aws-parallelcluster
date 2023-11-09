@@ -1508,13 +1508,21 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     @validates_schema
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
         """Validate that 'instance_type' and 'instances' do not co-exist."""
-        if self.fields_coexist(
-            data,
-            ["instance_type", "instances"],
-            one_required=True,
-            **kwargs,
-        ):
+        if self.fields_coexist(data, ["instance_type", "instances"], **kwargs):
             raise ValidationError("A Compute Resource needs to specify either InstanceType or Instances.")
+
+    @validates_schema
+    def instance_type_declaration(self, data, **kwargs):
+        """Validate that 'instance_type' is specified, directly or through capacity reservation id."""
+        if not data.get("instances"):
+            capacity_reservation_target = data.get("capacity_reservation_target")
+            capacity_reservation_id = (
+                capacity_reservation_target.capacity_reservation_id if capacity_reservation_target else None
+            )
+            if not data.get("instance_type") and not capacity_reservation_id:
+                raise ValidationError(
+                    "A Compute Resource needs to specify Instances, InstanceType or CapacityReservationId."
+                )
 
     @validates("instances")
     def no_duplicate_instance_types(self, flexible_instance_types: List[FlexibleInstanceType]):

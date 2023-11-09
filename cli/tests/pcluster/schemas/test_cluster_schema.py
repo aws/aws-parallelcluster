@@ -16,6 +16,7 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
+from pcluster.aws.aws_resources import CapacityReservationInfo
 from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
@@ -486,7 +487,33 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
                     }
                 ],
             },
-            "A Compute Resource needs to specify either InstanceType or Instances.",
+            "A Compute Resource needs to specify Instances, InstanceType or CapacityReservationId.",
+        ),
+        (
+            {
+                "Name": "Flex-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "AllocationStrategy": "lowest-price",
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "CapacityReservationTarget": {"CapacityReservationId": "id"}}
+                ],
+            },
+            None,
+        ),
+        # Failing to specify either InstanceType, Instances or CapacityReservationId should return a validation error
+        (
+            {
+                "Name": "Flex-Queue",
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+                "AllocationStrategy": "lowest-price",
+                "ComputeResources": [
+                    {
+                        "Name": "compute_resource1",
+                        "CapacityReservationTarget": {"CapacityReservationResourceGroupArn": "arn"},
+                    }
+                ],
+            },
+            "A Compute Resource needs to specify Instances, InstanceType or CapacityReservationId.",
         ),
         # Mixing InstanceType and Instances in a Compute Resource should return a validation error
         (
@@ -526,6 +553,10 @@ def test_scheduling_schema(mocker, config_dict, failure_message):
 )
 def test_slurm_flexible_queue(mocker, config_dict, failure_message):
     mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+        return_value=[CapacityReservationInfo({"InstanceType": "t2.micro"})],
+    )
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
