@@ -747,6 +747,11 @@ def test_capacity_reservation_validator(
             ["Number of instances .* cr-123: 2 is exceeding .* instances count .* for the Capacity Reservation: 1"],
         ),
         (
+            CapacityReservationInfo({"Tags": []}),
+            1,
+            ["Number of instances .* cr-123: 1 is exceeding .* instances count .* for the Capacity Reservation: 0"],
+        ),
+        (
             CapacityReservationInfo(
                 {
                     "TotalInstanceCount": 0,
