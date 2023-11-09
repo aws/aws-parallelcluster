@@ -1701,7 +1701,7 @@ def test_condition_checker_managed_fsx(
 
 
 @pytest.mark.parametrize(
-    "key, path, old_value, new_value, expected_has_running_login_nodes_response, expected_update_allowed, "
+    "key, path, old_value, new_value, expected_running_login_nodes, expected_update_allowed, "
     "expected_fail_reason, expected_actions_needed",
     [
         pytest.param(
@@ -1712,8 +1712,8 @@ def test_condition_checker_managed_fsx(
                 "InstanceType": "t2.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
-                "Networking": {"SubnetIds": ["subnet-05cfbd48a49df385c"]},
-                "Ssh": {"KeyName": "xuanqi-us-east-2"},
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
             },
             None,
             True,
@@ -1731,8 +1731,8 @@ def test_condition_checker_managed_fsx(
                 "InstanceType": "t2.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
-                "Networking": {"SubnetIds": ["subnet-05cfbd48a49df385c"]},
-                "Ssh": {"KeyName": "xuanqi-us-east-2"},
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
             },
             None,
             False,
@@ -1750,8 +1750,8 @@ def test_condition_checker_managed_fsx(
                 "InstanceType": "t2.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
-                "Networking": {"SubnetIds": ["subnet-05cfbd48a49df385c"]},
-                "Ssh": {"KeyName": "xuanqi-us-east-2"},
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
             },
             True,
             True,
@@ -1768,8 +1768,8 @@ def test_condition_checker_managed_fsx(
                 "InstanceType": "t2.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
-                "Networking": {"SubnetIds": ["subnet-05cfbd48a49df385c"]},
-                "Ssh": {"KeyName": "xuanqi-us-east-2"},
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
             },
             False,
             True,
@@ -1785,13 +1785,13 @@ def test_login_nodes_pools_policy(
     path,
     old_value,
     new_value,
-    expected_has_running_login_nodes_response,
+    expected_running_login_nodes,
     expected_update_allowed,
     expected_fail_reason,
     expected_actions_needed,
 ):
     cluster = dummy_cluster()
-    mocker.patch.object(cluster, "has_running_login_nodes", return_value=expected_has_running_login_nodes_response)
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=expected_running_login_nodes)
 
     patch_mock = mocker.MagicMock()
     patch_mock.cluster = cluster
