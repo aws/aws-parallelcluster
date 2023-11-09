@@ -224,6 +224,7 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
         """On-demand Capacity type only supports "lowest-price" allocation strategy."""
         if (
             capacity_type == cluster_config.CapacityType.ONDEMAND
+            and allocation_strategy
             and allocation_strategy != cluster_config.AllocationStrategy.LOWEST_PRICE
         ):
             alloc_strategy_msg = allocation_strategy.value if allocation_strategy else "not set"
