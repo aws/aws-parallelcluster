@@ -21,7 +21,7 @@ CHANGELOG
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
 - Add head node alarms to cluster dashboard.
 - Add support for Python 3.10 in aws-parallelcluster-batch-cli.
-- Remove `all_or_nothing_batch` resume configuration parameter, in favor of the new `scaling_strategy` parameter 
+- Remove `all_or_nothing_batch` resume configuration parameter, in favor of the new `scaling_strategy` parameter
   that can be set using `Scheduling/ScalingStrategy` cluster configuration.
 
 **BUG FIXES**
@@ -74,6 +74,9 @@ CHANGELOG
 - Deprecate Ubuntu 18.
 - Update the default root volume size to 40 GB to account for limits on Centos 7.
 - Restrict permission on file `/tmp/wait_condition_handle.txt` within the head node so that only root can read it.
+- Upgrade NVIDIA driver to version 535.54.03.
+- Upgrade CUDA library to version 12.2.0.
+- Upgrade NVIDIA Fabric manager to `nvidia-fabricmanager-535`
 
 **BUG FIXES**
 - Add validation to `ScaledownIdletime` value, to prevent setting a value lower than `-1`.
