@@ -1754,7 +1754,11 @@ def open_zfs_volume_factory(vpc_stack, cfn_stacks_factory, request, region, key_
                 VolumeType="OPENZFS",
                 OpenZFSConfiguration=VolumeOpenZFSConfiguration(
                     NfsExports=[
-                        NfsExports(ClientConfigurations=[ClientConfigurations(Clients="*", Options=["rw", "crossmnt"])])
+                        NfsExports(
+                            ClientConfigurations=[
+                                ClientConfigurations(Clients="*", Options=["rw", "crossmnt", "no_root_squash"])
+                            ]
+                        )
                     ],
                     ParentVolumeId=root_volume_id,
                 ),
