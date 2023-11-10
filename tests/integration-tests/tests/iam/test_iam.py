@@ -472,15 +472,13 @@ def _create_permission_boundary(permission_boundary_name):
                         "iam:AddRoleToInstanceProfile",
                         "iam:TagInstanceProfile",
                         "iam:UntagInstanceProfile",
+                        "iam:GetInstanceProfile",
                     ],
                     "Effect": "Allow",
                     "Resource": [
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*"},
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamNamePrefix}*"},
-                        {
-                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/"
-                            "${CustomIamPathPrefix}/*"
-                        },
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*"},
                     ],
                 },
                 {
