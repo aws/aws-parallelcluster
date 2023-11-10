@@ -8,12 +8,11 @@ HeadNode:
     KeyName: {{ key_name }}
 Scheduling:
   Scheduler: slurm
+  {% if scheduler =="slurm" %}
+  ScalingStrategy: {{ scaling_strategy }}
+  {% endif %}
   SlurmQueues:
-{% for strategy in scaling_strategies %}
-    - Name: queue-{{ strategy }}
-      {% if strategy == "job-level" %}
-      JobExclusiveAllocation: true
-      {% endif %}
+    - Name: queue
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -33,7 +32,6 @@ Scheduling:
           MinCount: 1
         - Name: ondemand1-i1
           InstanceType: {{ instance }}
-{% endfor %}
 SharedStorage:
   - MountDir: /shared
     Name: name1
