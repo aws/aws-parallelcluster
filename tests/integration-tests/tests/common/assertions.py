@@ -15,7 +15,7 @@ from typing import List
 import boto3
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
-from retrying import retry
+from retrying import RetryError, retry
 from time_utils import minutes, seconds
 from utils import get_cfn_resources, get_compute_nodes_count, get_compute_nodes_instance_ids
 
@@ -89,6 +89,34 @@ def assert_lines_in_logs(remote_command_executor: RemoteCommandExecutor, log_fil
         log += remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
     for message in expected_errors:
         assert_that(log).matches(message)
+
+
+def submit_job_and_assert_logs(
+    scheduler_commands,
+    remote_command_executor: RemoteCommandExecutor,
+    job_kwargs: dict,
+    log_files: list,
+    log_assertions: list,
+    wait_for_job_completion: bool = False,
+    clear_logs_before_job_submission: bool = False,
+):
+    """Submit a job based on specific keyword-arguments and assert log patterns in specific log files."""
+    if clear_logs_before_job_submission:
+        for log_file in log_files:
+            remote_command_executor.clear_log_file(log_file)
+
+    result = scheduler_commands.submit_command(**job_kwargs)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    if wait_for_job_completion:
+        try:
+            scheduler_commands.wait_job_completed(job_id, timeout=2)
+        except RetryError as e:
+            # Timeout waiting for job to be completed
+            logging.info("Exception while waiting for job to complete: %s", e)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
+        remote_command_executor, log_files, log_assertions
+    )
+    scheduler_commands.cancel_job(job_id)
 
 
 def assert_no_node_in_ec2(region, stack_name, instance_types=None):
