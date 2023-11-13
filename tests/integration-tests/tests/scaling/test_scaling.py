@@ -17,11 +17,11 @@ import boto3
 import pytest
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from retrying import RetryError, retry
+from retrying import retry
 from time_utils import minutes, seconds
 from utils import render_jinja_template, retrieve_resource_group_arn_from_resource
 
-from tests.common.assertions import assert_lines_in_logs, assert_no_errors_in_logs
+from tests.common.assertions import assert_no_errors_in_logs, submit_job_and_assert_logs
 from tests.common.scaling_common import get_compute_nodes_allocation, setup_ec2_launch_override_to_emulate_ice
 from tests.common.schedulers_common import SlurmCommands
 from tests.schedulers.test_slurm import _assert_job_state
@@ -92,64 +92,170 @@ def test_multiple_jobs_submission(
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-def _submit_job_partial_capacity(scheduler_commands, remote_command_executor):
-    remote_command_executor.clear_slurm_resume_log()
-
-    result = scheduler_commands.submit_command(
-        "srun hostname",
-        partition="queue-jls-1-partial",
-        host="queue-jls-1-partial-dy-compute-resource-0-1,queue-jls-1-partial-dy-ice-cr-multiple-1",
-        other_options="--ntasks-per-node 1 --ntasks 2",
-    )
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    try:
-        scheduler_commands.wait_job_completed(job_id, timeout=2)
-    except RetryError as e:
-        # Timeout waiting for job to be completed
-        logging.info("Exception while waiting for job to complete: %s", e)
-
-    scheduler_commands.assert_job_state(job_id, expected_state="PENDING")
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
-        remote_command_executor,
-        ["/var/log/parallelcluster/slurm_resume.log"],
-        [
-            "Terminating unassigned launched instances.*queue-jls-1-partial.*compute-resource-0.*",
-            "Failed to launch following nodes.*\\(x2\\) \\['queue-jls-1-partial-dy-ice-cr-multiple-1', "
-            + "'queue-jls-1-partial-dy-compute-resource-0-1'\\]",
-        ],
-    )
-    scheduler_commands.cancel_job(job_id)
-
-
-def _submit_job_full_capacity(scheduler_commands, remote_command_executor):
-    remote_command_executor.clear_slurm_resume_log()
-
-    result = scheduler_commands.submit_command(
-        "srun hostname",
-        partition="queue-jls-1-full",
-        host="queue-jls-1-full-dy-compute-resource-0-1,queue-jls-1-full-dy-compute-resource-1-1",
-        other_options="--ntasks-per-node 1 --ntasks 2",
-    )
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
-        remote_command_executor,
-        ["/var/log/parallelcluster/slurm_resume.log"],
-        [
-            "Successful launched all instances for nodes \\(x2\\) \\['queue-jls-1-full-dy-compute-resource-0-1', "
-            + "'queue-jls-1-full-dy-compute-resource-1-1'\\]",
-        ],
-    )
-
-
 @pytest.mark.usefixtures("os", "instance")
+@pytest.mark.parametrize(
+    "scaling_strategy, scaling_behaviour_by_capacity",
+    [
+        (
+            "all-or-nothing",
+            {
+                "partial_capacity": {
+                    "job": {
+                        "command": "srun hostname",
+                        "partition": "queue-jls-1-partial",
+                        "host": "queue-jls-1-partial-dy-compute-resource-0-1,queue-jls-1-partial-dy-ice-cr-multiple-1",
+                        "other_options": "--ntasks-per-node 1 --ntasks 2",
+                    },
+                    "log_assertions": {
+                        "launch": [
+                            ".*Launching all-or-nothing .*\\['queue-.+-partial-.+-resource-0-1'\\]",
+                            ".*Launching all-or-nothing .*\\['queue-.+-partial-dy-ice-cr-multiple-1'\\]",
+                        ],
+                        "node_assignment": [
+                            ".*Assigning nodes with all-or-nothing strategy.*",
+                        ],
+                        "post_scaling": [
+                            "Terminating unassigned launched instances.*queue-jls-1-partial.*compute-resource-0.*",
+                            "Failed to launch following nodes.*\\(x2\\) \\["
+                            + "('queue-.+-partial-dy-ice-cr-multiple-1', 'queue-.+-partial-dy-.+-resource-0-1'|"
+                            + "'queue-.+-partial-dy-.+-resource-0-1', 'queue-.+-partial-dy-ice-cr-multiple-1')\\]",
+                        ],
+                    },
+                },
+                "full_capacity": {
+                    "job": {
+                        "command": "srun hostname",
+                        "partition": "queue-jls-1-full",
+                        "host": "queue-jls-1-full-dy-compute-resource-0-1,queue-jls-1-full-dy-compute-resource-1-1",
+                        "other_options": "--ntasks-per-node 1 --ntasks 2",
+                    },
+                    "log_assertions": {
+                        "launch": [
+                            ".*Launching all-or-nothing .*\\['queue-.+-full-dy-compute-resource-0-1'\\]",
+                            ".*Launching all-or-nothing .*\\['queue-.+-full-dy-compute-resource-1-1'\\]",
+                        ],
+                        "node_assignment": [
+                            ".*Assigning nodes with all-or-nothing strategy.*",
+                        ],
+                        "post_scaling": [
+                            "Successful launched all instances for nodes \\(x2\\) \\["
+                            + "('queue-.+-full-.+-resource-0-1', 'queue-.+-full-.+-resource-1-1'|"
+                            + "'queue-.+-full-.+-resource-1-1', 'queue-.+-full-.+-resource-0-1')\\]"
+                        ],
+                    },
+                },
+            },
+        ),
+        (
+            "best-effort",
+            {
+                "partial_capacity": {
+                    "job": {
+                        "command": "srun hostname",
+                        "partition": "queue-jls-1-partial",
+                        "host": "queue-jls-1-partial-dy-compute-resource-0-1,queue-jls-1-partial-dy-ice-cr-multiple-1",
+                        "other_options": "--ntasks-per-node 1 --ntasks 2",
+                    },
+                    "log_assertions": {
+                        "launch": [
+                            ".*Launching best-effort .*\\['queue-.+-partial-.+-resource-0-1'\\]",
+                            ".*Launching best-effort .*\\['queue-.+-partial-dy-ice-cr-multiple-1'\\]",
+                        ],
+                        "node_assignment": [
+                            ".*Assigning nodes with best-effort strategy.*",
+                        ],
+                        "post_scaling": [
+                            "Nodes are now configured with instances \\(x1\\).*queue-.*-partial.*compute-resource-0-1",
+                            "Successful launched partial instances for nodes.*queue-.*-partial.*compute-resource-0-1",
+                            "Failed to launch following nodes.*\\(x1\\) \\['queue-.+-partial-dy-ice-cr-multiple-1'\\]",
+                        ],
+                    },
+                },
+                "full_capacity": {
+                    "job": {
+                        "command": "srun hostname",
+                        "partition": "queue-jls-1-full",
+                        "host": "queue-jls-1-full-dy-compute-resource-0-1,queue-jls-1-full-dy-compute-resource-1-1",
+                        "other_options": "--ntasks-per-node 1 --ntasks 2",
+                    },
+                    "log_assertions": {
+                        "launch": [
+                            ".*Launching best-effort .*\\['queue-.+-full-dy-compute-resource-0-1'\\]",
+                            ".*Launching best-effort .*\\['queue-.+-full-dy-compute-resource-1-1'\\]",
+                        ],
+                        "node_assignment": [
+                            ".*Assigning nodes with best-effort strategy.*",
+                        ],
+                        "post_scaling": [
+                            "Successful launched all instances for nodes \\(x2\\) \\["
+                            + "('queue-.+-full-.+-resource-0-1', 'queue-.+-full-.+-resource-1-1'|"
+                            + "'queue-.+-full-.+-resource-1-1', 'queue-.+-full-.+-resource-0-1')\\]"
+                        ],
+                    },
+                },
+            },
+        ),
+        (
+            "greedy-all-or-nothing",
+            {
+                "partial_capacity": {
+                    "job": {
+                        "command": "srun hostname",
+                        "partition": "queue-jls-1-partial",
+                        "host": "queue-jls-1-partial-dy-compute-resource-0-1,queue-jls-1-partial-dy-ice-cr-multiple-1",
+                        "other_options": "--ntasks-per-node 1 --ntasks 2",
+                    },
+                    "log_assertions": {
+                        "launch": [
+                            ".*Launching best-effort .*\\['queue-.+-partial-.+-resource-0-1'\\]",
+                            ".*Launching best-effort .*\\['queue-.+-partial-dy-ice-cr-multiple-1'\\]",
+                        ],
+                        "node_assignment": [
+                            ".*Assigning nodes with all-or-nothing strategy.*",
+                        ],
+                        "post_scaling": [
+                            "Terminating unassigned launched instances.*queue-jls-1-partial.*compute-resource-0.*",
+                            "Failed to launch following nodes.*\\(x2\\) \\["
+                            + "('queue-.+-partial-dy-ice-cr-multiple-1', 'queue-.+-partial-dy-.+-resource-0-1'|"
+                            + "'queue-.+-partial-dy-.+-resource-0-1', 'queue-.+-partial-dy-ice-cr-multiple-1')\\]",
+                        ],
+                    },
+                },
+                "full_capacity": {
+                    "job": {
+                        "command": "srun hostname",
+                        "partition": "queue-jls-1-full",
+                        "host": "queue-jls-1-full-dy-compute-resource-0-1,queue-jls-1-full-dy-compute-resource-1-1",
+                        "other_options": "--ntasks-per-node 1 --ntasks 2",
+                    },
+                    "log_assertions": {
+                        "launch": [
+                            ".*Launching best-effort .*\\['queue-.+-full-dy-compute-resource-0-1'\\]",
+                            ".*Launching best-effort .*\\['queue-.+-full-dy-compute-resource-1-1'\\]",
+                        ],
+                        "node_assignment": [
+                            ".*Assigning nodes with all-or-nothing strategy.*",
+                        ],
+                        "post_scaling": [
+                            "Successful launched all instances for nodes \\(x2\\) \\["
+                            + "('queue-.+-full-.+-resource-0-1', 'queue-.+-full-.+-resource-1-1'|"
+                            + "'queue-.+-full-.+-resource-1-1', 'queue-.+-full-.+-resource-0-1')\\]"
+                        ],
+                    },
+                },
+            },
+        ),
+    ],
+)
 def test_job_level_scaling(
     pcluster_config_reader,
     clusters_factory,
     scheduler_commands_factory,
     test_datadir,
+    scaling_strategy,
+    scaling_behaviour_by_capacity,
 ):
-    cluster_config = pcluster_config_reader()
+    cluster_config = pcluster_config_reader(scaling_strategy=scaling_strategy)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -159,8 +265,37 @@ def test_job_level_scaling(
         multi_instance_types_ice_cr="ice-cr-multiple",
     )
 
-    _submit_job_partial_capacity(scheduler_commands, remote_command_executor)
-    _submit_job_full_capacity(scheduler_commands, remote_command_executor)
+    partial_capacity_log_assertions = scaling_behaviour_by_capacity["partial_capacity"]["log_assertions"]
+    full_capacity_log_assertions = scaling_behaviour_by_capacity["full_capacity"]["log_assertions"]
+
+    # Assert scaling behaviour when partial capacity for a job is available
+    submit_job_and_assert_logs(
+        scheduler_commands=scheduler_commands,
+        remote_command_executor=remote_command_executor,
+        job_kwargs=scaling_behaviour_by_capacity["partial_capacity"]["job"],
+        log_files=["/var/log/parallelcluster/slurm_resume.log"],
+        log_assertions=list(
+            partial_capacity_log_assertions["launch"]
+            + partial_capacity_log_assertions["node_assignment"]
+            + partial_capacity_log_assertions["post_scaling"]
+        ),
+        wait_for_job_completion=False,
+        clear_logs_before_job_submission=True,
+    )
+    # Assert scaling behaviour when all capacity is available
+    submit_job_and_assert_logs(
+        scheduler_commands=scheduler_commands,
+        remote_command_executor=remote_command_executor,
+        job_kwargs=scaling_behaviour_by_capacity["full_capacity"]["job"],
+        log_files=["/var/log/parallelcluster/slurm_resume.log"],
+        log_assertions=list(
+            full_capacity_log_assertions["launch"]
+            + full_capacity_log_assertions["node_assignment"]
+            + full_capacity_log_assertions["post_scaling"]
+        ),
+        wait_for_job_completion=True,
+        clear_logs_before_job_submission=True,
+    )
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
