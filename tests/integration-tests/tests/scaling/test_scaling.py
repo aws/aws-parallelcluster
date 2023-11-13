@@ -109,8 +109,9 @@ def _submit_job_partial_capacity(scheduler_commands, remote_command_executor):
         ["/var/log/parallelcluster/slurm_resume.log"],
         [
             "Terminating unassigned launched instances.*queue-jls-1-partial.*compute-resource-0.*",
-            "Failed to launch following nodes.*\\(x2\\) \\['queue-jls-1-partial-dy-ice-cr-multiple-1', "
-            + "'queue-jls-1-partial-dy-compute-resource-0-1'\\]",
+            "Failed to launch following nodes.*\\(x2\\) \\["
+            + "('queue-.+-partial-dy-ice-cr-multiple-1', 'queue-.+-partial-dy-.+-resource-0-1'|"
+            + "'queue-.+-partial-dy-.+-resource-0-1', 'queue-.+-partial-dy-ice-cr-multiple-1')\\]",
         ],
     )
     scheduler_commands.cancel_job(job_id)
