@@ -2549,10 +2549,7 @@ class SlurmQueue(_CommonQueue):
                 multi_az_enabled=self.multi_az_enabled,
             )
             self._register_validator(
-                ComputeResourceSizeValidator,
-                min_count=compute_resource.min_count,
-                max_count=compute_resource.max_count,
-                capacity_type=self.capacity_type,
+                ComputeResourceSizeValidator, min_count=compute_resource.min_count, max_count=compute_resource.max_count
             )
             if compute_resource.custom_slurm_settings:
                 self._register_validator(

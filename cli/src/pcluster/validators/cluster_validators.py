@@ -20,7 +20,6 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
-from pcluster.config.common import CapacityType
 from pcluster.constants import (
     CIDR_ALL_IPS,
     DELETE_POLICY,
@@ -203,19 +202,9 @@ class ComputeResourceSizeValidator(Validator):
     Validate min count and max count combinations.
     """
 
-    def _validate(self, min_count: int, max_count: int, capacity_type: CapacityType):
+    def _validate(self, min_count: int, max_count: int):
         if max_count < min_count:
             self._add_failure("Max count must be greater than or equal to min count.", FailureLevel.ERROR)
-        if capacity_type == CapacityType.CAPACITY_BLOCK:
-            if max_count != min_count:
-                self._add_failure(
-                    "Max count must be set to the same value of min count when using Capacity Block reservation.",
-                    FailureLevel.ERROR,
-                )
-            if min_count == 0:
-                self._add_failure(
-                    "Min count must be a value > 0 when using Capacity Block reservation.", FailureLevel.ERROR
-                )
 
 
 class EfaOsArchitectureValidator(Validator):

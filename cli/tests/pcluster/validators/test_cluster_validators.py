@@ -30,7 +30,6 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
-from pcluster.config.common import CapacityType
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -482,46 +481,17 @@ def test_scheduler_os_validator(os, scheduler, expected_message):
 
 
 @pytest.mark.parametrize(
-    "min_count, max_count, capacity_type, expected_messages",
+    "min_count, max_count, expected_messages",
     [
-        (0, 0, None, None),
-        (1, 2, None, None),
-        (1, 1, None, None),
-        (1, 2, CapacityType.ONDEMAND, None),
-        (1, 1, CapacityType.ONDEMAND, None),
-        (1, 2, CapacityType.SPOT, None),
-        (1, 1, CapacityType.SPOT, None),
-        (
-            1,
-            2,
-            CapacityType.CAPACITY_BLOCK,
-            "Max count must be set to the same value of min count when using Capacity Block reservation",
-        ),
-        (
-            0,
-            2,
-            CapacityType.CAPACITY_BLOCK,
-            [
-                "Max count must be set to the same value of min count when using Capacity Block reservation",
-                "Min count must be a value > 0 when using Capacity Block reservation.",
-            ],
-        ),
-        (0, 0, CapacityType.CAPACITY_BLOCK, "Min count must be a value > 0 when using Capacity Block reservation."),
-        (1, 1, CapacityType.CAPACITY_BLOCK, None),
-        (2, 1, None, "Max count must be greater than or equal to min count"),
-        (
-            2,
-            1,
-            CapacityType.CAPACITY_BLOCK,
-            [
-                "Max count must be greater than or equal to min count",
-                "Max count must be set to the same value of min count when using Capacity Block reservation",
-            ],
-        ),
+        (0, 0, None),
+        (1, 2, None),
+        (1, 1, None),
+        (0, 2, None),
+        (2, 1, "Max count must be greater than or equal to min count"),
     ],
 )
-def test_compute_resource_size_validator(min_count, max_count, capacity_type, expected_messages):
-    actual_failures = ComputeResourceSizeValidator().execute(min_count, max_count, capacity_type)
+def test_compute_resource_size_validator(min_count, max_count, expected_messages):
+    actual_failures = ComputeResourceSizeValidator().execute(min_count, max_count)
     assert_failure_messages(actual_failures, expected_messages)
 
 
