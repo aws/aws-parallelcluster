@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
+from itertools import chain
 from typing import Union
 
 import boto3
@@ -265,19 +266,14 @@ def test_job_level_scaling(
         multi_instance_types_ice_cr="ice-cr-multiple",
     )
 
-    partial_capacity_log_assertions = scaling_behaviour_by_capacity["partial_capacity"]["log_assertions"]
-    full_capacity_log_assertions = scaling_behaviour_by_capacity["full_capacity"]["log_assertions"]
-
     # Assert scaling behaviour when partial capacity for a job is available
     submit_job_and_assert_logs(
         scheduler_commands=scheduler_commands,
         remote_command_executor=remote_command_executor,
         job_kwargs=scaling_behaviour_by_capacity["partial_capacity"]["job"],
         log_files=["/var/log/parallelcluster/slurm_resume.log"],
-        log_assertions=list(
-            partial_capacity_log_assertions["launch"]
-            + partial_capacity_log_assertions["node_assignment"]
-            + partial_capacity_log_assertions["post_scaling"]
+        log_assertions=chain.from_iterable(
+            scaling_behaviour_by_capacity["partial_capacity"]["log_assertions"].values()
         ),
         wait_for_job_completion=False,
         clear_logs_before_job_submission=True,
@@ -288,11 +284,7 @@ def test_job_level_scaling(
         remote_command_executor=remote_command_executor,
         job_kwargs=scaling_behaviour_by_capacity["full_capacity"]["job"],
         log_files=["/var/log/parallelcluster/slurm_resume.log"],
-        log_assertions=list(
-            full_capacity_log_assertions["launch"]
-            + full_capacity_log_assertions["node_assignment"]
-            + full_capacity_log_assertions["post_scaling"]
-        ),
+        log_assertions=chain.from_iterable(scaling_behaviour_by_capacity["full_capacity"]["log_assertions"].values()),
         wait_for_job_completion=True,
         clear_logs_before_job_submission=True,
     )
