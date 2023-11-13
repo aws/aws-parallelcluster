@@ -467,6 +467,7 @@ def _create_permission_boundary(permission_boundary_name):
                 {
                     "Action": [
                         "iam:DeleteInstanceProfile",
+                        "iam:GetInstanceProfile",
                         "iam:RemoveRoleFromInstanceProfile",
                         "iam:CreateInstanceProfile",
                         "iam:AddRoleToInstanceProfile",
