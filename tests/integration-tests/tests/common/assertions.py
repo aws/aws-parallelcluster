@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 import time
-from typing import List
+from typing import List, Union
 
 import boto3
 from assertpy import assert_that, soft_assertions
@@ -96,7 +96,7 @@ def submit_job_and_assert_logs(
     remote_command_executor: RemoteCommandExecutor,
     job_kwargs: dict,
     log_files: list,
-    log_assertions: list,
+    log_assertions: Union[list, iter],
     wait_for_job_completion: bool = False,
     clear_logs_before_job_submission: bool = False,
 ):
