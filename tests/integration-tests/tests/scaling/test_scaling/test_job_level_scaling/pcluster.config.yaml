@@ -10,9 +10,9 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: slurm
+  ScalingStrategy: {{ scaling_strategy }}
   SlurmQueues:
     - Name: queue-jls-1-full
-      JobExclusiveAllocation: true
       ComputeResources:
         - Name: compute-resource-0
           Instances:
@@ -24,7 +24,6 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
     - Name: queue-jls-1-partial
-      JobExclusiveAllocation: true
       ComputeResources:
         - Name: compute-resource-0
           Instances:
