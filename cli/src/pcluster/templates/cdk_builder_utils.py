@@ -54,6 +54,14 @@ from pcluster.utils import (
 PCLUSTER_LAMBDA_PREFIX = "pcluster-"
 
 
+def _get_resource_combination_name(*resource_names, partial_length=7, hash_length=16):
+    combined_name = "".join(resource_names)
+    hash_value = sha256(combined_name.encode()).hexdigest()[:hash_length]
+    prefix = "-".join(name[:partial_length] for name in resource_names)
+
+    return f"{prefix}-{hash_value}"
+
+
 def create_hash_suffix(string_to_hash: str):
     """Create 16digit hash string."""
     return (
@@ -688,10 +696,8 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 policy.extend(
                     [
                         iam.PolicyStatement(
-                            sid="ElasticLoadBalancingDescribe",
+                            sid="TargetGroupDescribe",
                             actions=[
-                                "elasticloadbalancing:DescribeLoadBalancers",
-                                "elasticloadbalancing:DescribeTags",
                                 "elasticloadbalancing:DescribeTargetGroups",
                                 "elasticloadbalancing:DescribeTargetHealth",
                             ],
@@ -1040,7 +1046,7 @@ class CdkLaunchTemplateBuilder(_LaunchTemplateBuilder):
     def _block_device_mapping_for_virt(self, device_name, virtual_name):
         return ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
 
-    def _instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
+    def _spot_instance_market_option(self, market_type, spot_instance_type, instance_interruption_behavior, max_price):
         return ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
             market_type=market_type,
             spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
@@ -1049,6 +1055,9 @@ class CdkLaunchTemplateBuilder(_LaunchTemplateBuilder):
                 max_price=max_price,
             ),
         )
+
+    def _capacity_block_instance_market_option(self, market_type):
+        return ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(market_type=market_type)
 
     def _capacity_reservation(self, cr_target):
         return ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(

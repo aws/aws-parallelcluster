@@ -1,10 +1,13 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_resources import CapacityReservationInfo, InstanceTypeInfo
 from pcluster.config.cluster_config import (
     AmiSearchFilters,
     BaseClusterConfig,
+    BaseQueue,
+    CapacityReservationTarget,
+    CapacityType,
     ClusterDevSettings,
     ComputeSettings,
     Ebs,
@@ -34,6 +37,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 mock_compute_resources = [
     SlurmComputeResource(
@@ -82,6 +86,105 @@ def instance_type_info_mock(aws_api_mock):
             "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
         }
     )
+
+
+class TestBaseQueue:
+    @pytest.mark.parametrize(
+        ("capacity_type", "expected_capacity_type", "expected_error"),
+        [
+            (None, CapacityType.ONDEMAND, False),
+            ("", CapacityType.ONDEMAND, False),
+            ("capacity_block", CapacityType.CAPACITY_BLOCK, False),
+            ("CAPACITY_BLOCK", CapacityType.CAPACITY_BLOCK, False),
+            ("spot", CapacityType.SPOT, False),
+            ("SPOT", CapacityType.SPOT, False),
+            ("ONDEMAND", CapacityType.ONDEMAND, False),
+            ("ondemand", CapacityType.ONDEMAND, False),
+            ("wrong-value", CapacityType.ONDEMAND, True),
+        ],
+    )
+    def test_capacity_type_init(self, capacity_type, expected_capacity_type, expected_error, caplog):
+        queue = BaseQueue(name="queue1", capacity_type=capacity_type)
+        if expected_error:
+            assert_that(caplog.text).contains("'WRONG-VALUE' is not a valid CapacityType value, setting ONDEMAND")
+
+        assert_that(queue.name).is_equal_to("queue1")
+        assert_that(queue.capacity_type).is_equal_to(expected_capacity_type)
+
+    @pytest.mark.parametrize(
+        ("capacity_type", "expected_result"),
+        [("CAPACITY_BLOCK", False), ("spot", True), ("SPOT", True), ("ONDEMAND", False)],
+    )
+    def test_is_spot(self, capacity_type, expected_result):
+        queue = BaseQueue(name="queue1", capacity_type=capacity_type)
+        assert_that(queue.is_spot()).is_equal_to(expected_result)
+
+    @pytest.mark.parametrize(
+        ("capacity_type", "expected_result"),
+        [("capacity_block", True), ("CAPACITY_BLOCK", True), ("SPOT", False), ("ONDEMAND", False)],
+    )
+    def test_is_capacity_block(self, capacity_type, expected_result):
+        queue = BaseQueue(name="queue1", capacity_type=capacity_type)
+        assert_that(queue.is_capacity_block()).is_equal_to(expected_result)
+
+
+class TestSlurmComputeResource:
+    @pytest.mark.parametrize(
+        ("capacity_reservation_target", "avail_capacity_reservations", "expected_instance_type"),
+        [
+            (None, None, None),
+            (CapacityReservationTarget(), None, None),
+            (CapacityReservationTarget(capacity_reservation_resource_group_arn="arn"), None, None),
+            (CapacityReservationTarget(capacity_reservation_id="cr-123456"), None, None),
+            (CapacityReservationTarget(capacity_reservation_id="cr-123456"), [], None),
+            (
+                CapacityReservationTarget(capacity_reservation_id="cr-123456"),
+                [CapacityReservationInfo({"InstanceType": "mocked-instance-type"})],
+                "mocked-instance-type",
+            ),
+        ],
+    )
+    def test_instance_type_from_capacity_reservation(
+        self, mocker, capacity_reservation_target, avail_capacity_reservations, expected_instance_type
+    ):
+        mock_aws_api(mocker)
+        describe_capacity_res_mock = mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations", return_value=avail_capacity_reservations
+        )
+
+        compute_resource = SlurmComputeResource(name="name", capacity_reservation_target=capacity_reservation_target)
+        assert_that(compute_resource._instance_type_from_capacity_reservation()).is_equal_to(expected_instance_type)
+        if capacity_reservation_target and capacity_reservation_target.capacity_reservation_id:
+            describe_capacity_res_mock.assert_called()
+        else:
+            describe_capacity_res_mock.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("instance_type", "capacity_reservation_target", "expected_instance_type"),
+        [
+            (None, None, None),
+            ("t2.micro", None, "t2.micro"),
+            (None, CapacityReservationTarget(capacity_reservation_resource_group_arn="arn"), None),
+            (None, CapacityReservationTarget(capacity_reservation_id="cr-123456"), "mocked-instance-type"),
+            # instance type param wins
+            ("t2.micro", CapacityReservationTarget(capacity_reservation_id="cr-123456"), "t2.micro"),
+        ],
+    )
+    def test_instance_types(self, mocker, instance_type, capacity_reservation_target, expected_instance_type):
+        mock_aws_api(mocker)
+        describe_capacity_res_mock = mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+            return_value=[CapacityReservationInfo({"InstanceType": "mocked-instance-type"})],
+        )
+        compute_resource = SlurmComputeResource(
+            name="name", instance_type=instance_type, capacity_reservation_target=capacity_reservation_target
+        )
+        assert_that(compute_resource.instance_types).is_equal_to([expected_instance_type])
+
+        if not instance_type and capacity_reservation_target and capacity_reservation_target.capacity_reservation_id:
+            describe_capacity_res_mock.assert_called()
+        else:
+            describe_capacity_res_mock.assert_not_called()
 
 
 @pytest.mark.usefixtures("instance_type_info_mock")

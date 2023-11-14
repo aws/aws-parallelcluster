@@ -13,6 +13,7 @@ from unittest.mock import PropertyMock, call
 from assertpy import assert_that
 
 from pcluster.aws.aws_resources import ImageInfo
+from pcluster.config.common import CapacityType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 from pcluster.validators import (
@@ -279,6 +280,11 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo({"BlockDeviceMappings": [{"Ebs": {"VolumeSize": 35}}]}),
     )
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_capacity_reservations", return_value=[])
+    capacity_reservation_validator = mocker.patch(
+        ec2_validators + ".CapacityReservationValidator._validate", return_value=[]
+    )
+    capacity_type_validator = mocker.patch(ec2_validators + ".CapacityTypeValidator._validate", return_value=[])
 
     mock_aws_api(mocker)
 
@@ -289,18 +295,22 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     compute_resource_size_validator.assert_has_calls(
         [
             # Defaults of min_count=0, max_count=10
-            call(min_count=0, max_count=5),
-            call(min_count=0, max_count=10),
-            call(min_count=0, max_count=10),
-            call(min_count=0, max_count=10),
+            call(min_count=0, max_count=10, capacity_type=CapacityType.SPOT),
+            call(min_count=0, max_count=10, capacity_type=CapacityType.SPOT),
+            call(min_count=0, max_count=5, capacity_type=CapacityType.ONDEMAND),
+            call(min_count=0, max_count=10, capacity_type=CapacityType.ONDEMAND),
+            call(min_count=0, max_count=10, capacity_type=CapacityType.ONDEMAND),
+            call(min_count=5, max_count=5, capacity_type=CapacityType.CAPACITY_BLOCK),
+            call(min_count=3, max_count=3, capacity_type=CapacityType.CAPACITY_BLOCK),
         ],
         any_order=True,
     )
     max_count_validator.assert_has_calls(
         [
-            call(resources_length=2, max_length=50, resource_name="SlurmQueues"),
-            call(resources_length=5, max_length=50, resource_name="ComputeResources per Cluster"),
+            call(resources_length=3, max_length=50, resource_name="SlurmQueues"),
+            call(resources_length=7, max_length=50, resource_name="ComputeResources per Cluster"),
             call(resources_length=3, max_length=50, resource_name="ComputeResources per Queue"),
+            call(resources_length=2, max_length=50, resource_name="ComputeResources per Queue"),
             call(resources_length=2, max_length=50, resource_name="ComputeResources per Queue"),
         ],
         any_order=True,
@@ -315,20 +325,15 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(instance_type="c5.4xlarge", image="ami-12345678"),
             call(instance_type="c5d.xlarge", image="ami-12345678"),
             call(instance_type="t2.large", image="ami-12345678"),
+            call(instance_type="t2.xlarge", image="ami-12345678"),
         ],
         any_order=True,
     )
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-12345678", "subnet-23456789", "subnet-12345678"])])
     single_instance_type_subnet_validator.assert_has_calls(
         [
-            call(
-                queue_name="queue1",
-                subnet_ids=["subnet-23456789"],
-            ),
-            call(
-                queue_name="queue2",
-                subnet_ids=["subnet-23456789"],
-            ),
+            call(queue_name="queue1", subnet_ids=["subnet-23456789"]),
+            call(queue_name="queue2", subnet_ids=["subnet-23456789"]),
         ]
     )
     security_groups_validator.assert_has_calls(
@@ -344,12 +349,14 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             {"instance_types": ["c5.4xlarge"], "architecture": "x86_64"},
             {"instance_types": ["c5d.xlarge"], "architecture": "x86_64"},
             {"instance_types": ["t2.large"], "architecture": "x86_64"},
+            {"instance_types": ["t2.xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["t2.xlarge"], "architecture": "x86_64"},
         ],
         validator=instance_architecture_compatibility_validator,
     )
 
     root_volume_encryption_consistency_validator.assert_has_calls(
-        [call(encryption_settings=[("queue1", True), ("queue2", True)])]
+        [call(encryption_settings=[("queue1", True), ("queue2", True), ("queue3", True)])]
     )
     ebs_volume_type_size_validator.assert_has_calls([call(volume_type="gp3", volume_size=35)])
     kms_key_validator.assert_has_calls([call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab")])
@@ -383,6 +390,46 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         ],
         any_order=True,
     )
+    # capacity reservation validators
+    capacity_reservation_validator.assert_has_calls(
+        [
+            call(
+                capacity_reservation_id="cr-34567",
+                instance_types=["t2.large"],
+                subnet="subnet-23456789",
+                capacity_type=CapacityType.ONDEMAND,
+            ),
+            call(
+                capacity_reservation_id="cr-12345",
+                instance_types=["t2.xlarge"],
+                subnet="subnet-23456789",
+                capacity_type=CapacityType.CAPACITY_BLOCK,
+            ),
+            call(
+                capacity_reservation_id="cr-23456",
+                instance_types=["t2.xlarge"],
+                subnet="subnet-23456789",
+                capacity_type=CapacityType.CAPACITY_BLOCK,
+            ),
+        ]
+    )
+    capacity_type_validator.assert_has_calls(
+        [
+            call(capacity_type=CapacityType.SPOT, instance_type="t2.large", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.SPOT, instance_type="c4.2xlarge", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.ONDEMAND, instance_type="c5.4xlarge", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.ONDEMAND, instance_type="c5d.xlarge", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.ONDEMAND, instance_type="t2.large", capacity_reservation_id="cr-34567"),
+            call(
+                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t2.xlarge", capacity_reservation_id="cr-12345"
+            ),
+            call(
+                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t2.xlarge", capacity_reservation_id="cr-23456"
+            ),
+        ],
+        any_order=True,
+    )
+
     # No assertion on the argument for minor validators
     name_validator.assert_called()
     fsx_s3_validator.assert_called()

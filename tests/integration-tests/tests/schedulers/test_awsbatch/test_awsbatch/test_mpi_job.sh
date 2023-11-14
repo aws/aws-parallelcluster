@@ -58,6 +58,9 @@ EOF
     echo "Compiling..."
     /usr/lib64/openmpi/bin/mpicc -o "${_job_dir}/mpi_hello_world" "${_shared_dir}/mpi_hello_world.c"
 
+    echo "Sleeping here 15 sec to see if all nodes have established NFS connection"
+    sleep 15
+
     echo "Running..."
     /usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 --allow-run-as-root --machinefile "${HOME}/hostfile" "${_job_dir}/mpi_hello_world"
 

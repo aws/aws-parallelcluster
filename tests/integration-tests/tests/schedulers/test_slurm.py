@@ -57,8 +57,6 @@ from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.monitoring import structured_log_event_utils
 
-SCALING_STRATEGIES = ["job-level", "node-list"]
-
 
 @pytest.mark.usefixtures("instance", "os")
 @pytest.mark.parametrize("use_login_node", [True, False])
@@ -475,6 +473,7 @@ def test_error_handling(
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_protected_mode
+@pytest.mark.parametrize("scaling_strategy", ["all-or-nothing", "greedy-all-or-nothing", "best-effort"])
 def test_slurm_protected_mode(
     region,
     pcluster_config_reader,
@@ -482,6 +481,7 @@ def test_slurm_protected_mode(
     test_datadir,
     s3_bucket_factory,
     scheduler_commands_factory,
+    scaling_strategy,
 ):
     """Test that slurm protected mode logic can handle bootstrap failure nodes."""
     # Create S3 bucket for pre-install scripts
@@ -490,35 +490,34 @@ def test_slurm_protected_mode(
     # Upload bootstrap script that triggers a fails if a `c5.large` instance is used
     # Hence emulating a bootstrap error
     bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
-    cluster_config = pcluster_config_reader(bucket=bucket_name, scaling_strategies=SCALING_STRATEGIES)
+    cluster_config = pcluster_config_reader(bucket=bucket_name, scaling_strategy=scaling_strategy)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
-    for strategy in SCALING_STRATEGIES:
-        remote_command_executor.clear_clustermgtd_log()
-        remote_command_executor.clear_slurm_resume_log()
+    remote_command_executor.clear_clustermgtd_log()
+    remote_command_executor.clear_slurm_resume_log()
 
-        _test_disable_protected_mode(
-            remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path
-        )
+    _test_disable_protected_mode(
+        remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path, scaling_strategy
+    )
 
-        # Re-enable protected mode
-        _enable_protected_mode(remote_command_executor, clustermgtd_conf_path)
-        # Decrease protected failure count for quicker enter protected mode.
-        _set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
+    # Re-enable protected mode
+    _enable_protected_mode(remote_command_executor, clustermgtd_conf_path)
+    # Decrease protected failure count for quicker enter protected mode.
+    _set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
 
-        partition = f"{strategy}-half-broken"
-        pending_job_id = _test_active_job_running(
-            scheduler_commands, remote_command_executor, running_partition=partition, failing_partition=partition
-        )
-        _test_protected_mode(scheduler_commands, remote_command_executor, cluster, strategy)
-        test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
-        _test_job_run_in_working_queue(scheduler_commands, strategy)
-        _test_recover_from_protected_mode(
-            pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands, strategy
-        )
+    partition = "half-broken"
+    pending_job_id = _test_active_job_running(
+        scheduler_commands, remote_command_executor, running_partition=partition, failing_partition=partition
+    )
+    _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
+    test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
+    _test_job_run_in_working_queue(scheduler_commands)
+    _test_recover_from_protected_mode(
+        pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands, scaling_strategy
+    )
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -553,14 +552,16 @@ def test_slurm_protected_mode_on_cluster_create(
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.fast_capacity_failover
+@pytest.mark.parametrize("scaling_strategy", ["all-or-nothing", "greedy-all-or-nothing", "best-effort"])
 def test_fast_capacity_failover(
     pcluster_config_reader,
+    scaling_strategy,
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
     region,
 ):
-    cluster_config = pcluster_config_reader(scaling_strategies=SCALING_STRATEGIES)
+    cluster_config = pcluster_config_reader(scaling_strategy=scaling_strategy)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
@@ -573,82 +574,81 @@ def test_fast_capacity_failover(
         multi_instance_types_exp_cr="exception-cr-multiple",
     )
 
-    for strategy in SCALING_STRATEGIES:
-        partition = f"queue-{strategy}"
-        # All nodes
-        nodes_in_scheduler = scheduler_commands.get_compute_nodes(partition, all_nodes=True)
-        static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
+    partition = "queue"
+    # All nodes
+    nodes_in_scheduler = scheduler_commands.get_compute_nodes(partition, all_nodes=True)
+    static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
 
-        # Nodes in Single Instance Type CR
-        ice_single_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
-        ice_single_static_nodes = [node for node in static_nodes if "ice-compute-resource" in node]
+    # Nodes in Single Instance Type CR
+    ice_single_dynamic_nodes = [node for node in dynamic_nodes if "ice-compute-resource" in node]
+    ice_single_static_nodes = [node for node in static_nodes if "ice-compute-resource" in node]
 
-        # Nodes in Multiple Instance Type (overridden with invalid values)
-        ice_multi_dynamic_nodes = [node for node in dynamic_nodes if "ice-cr-multiple" in node]
-        ice_multi_static_nodes = [node for node in static_nodes if "ice-cr-multiple" in node]
+    # Nodes in Multiple Instance Type (overridden with invalid values)
+    ice_multi_dynamic_nodes = [node for node in dynamic_nodes if "ice-cr-multiple" in node]
+    ice_multi_static_nodes = [node for node in static_nodes if "ice-cr-multiple" in node]
 
-        # Nodes in Multiple Instance Type (overridden with values that will trigger an exception)
-        exception_multi_dynamic_nodes = [node for node in dynamic_nodes if "exception-cr-multiple" in node]
-        exception_multi_static_nodes = [node for node in static_nodes if "exception-cr-multiple" in node]
+    # Nodes in Multiple Instance Type (overridden with values that will trigger an exception)
+    exception_multi_dynamic_nodes = [node for node in dynamic_nodes if "exception-cr-multiple" in node]
+    exception_multi_static_nodes = [node for node in static_nodes if "exception-cr-multiple" in node]
 
-        # Checks Fast Failover in case of Single Instance Type - using RunInstances API
-        # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
-        _test_enable_fast_capacity_failover(
-            partition,
-            scheduler_commands,
-            remote_command_executor,
-            clustermgtd_conf_path,
-            ice_single_static_nodes,
-            ice_single_dynamic_nodes,
-            target_compute_resource="ice-compute-resource",
-            expected_error_code="InsufficientHostCapacity",
-        )
+    # Checks Fast Failover in case of Single Instance Type - using RunInstances API
+    # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
+    _test_enable_fast_capacity_failover(
+        partition,
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        ice_single_static_nodes,
+        ice_single_dynamic_nodes,
+        target_compute_resource="ice-compute-resource",
+        expected_error_code="InsufficientHostCapacity",
+    )
 
-        # Check observability logic
-        structured_log_event_utils.assert_that_event_exists(
-            cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
-        )
-        test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
+    # Check observability logic
+    structured_log_event_utils.assert_that_event_exists(
+        cluster, r".+\.slurm_resume_events", "node-launch-failure-count"
+    )
+    test_cluster_health_metric(["InsufficientCapacityErrors"], cluster.cfn_name, region)
 
-        # Test behavior with RunInstance when Fast Failover is disabled
-        # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
-        _test_disable_fast_capacity_failover(
-            partition,
-            scheduler_commands,
-            remote_command_executor,
-            clustermgtd_conf_path,
-            ice_single_static_nodes,
-            ice_single_dynamic_nodes,
-            target_compute_resource="ice-compute-resource",
-            expected_error_code="InsufficientHostCapacity",
-        )
+    # Test behavior with RunInstance when Fast Failover is disabled
+    # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
+    _test_disable_fast_capacity_failover(
+        partition,
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        ice_single_static_nodes,
+        ice_single_dynamic_nodes,
+        target_compute_resource="ice-compute-resource",
+        expected_error_code="InsufficientHostCapacity",
+    )
 
-        # Checks Fast Failover in case of Multiple Instance Types - using CreateFleet API
-        # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
-        # CreateFleet will return an empty list of instances, that should trigger FFO behavior
-        _test_enable_fast_capacity_failover(
-            partition,
-            scheduler_commands,
-            remote_command_executor,
-            clustermgtd_conf_path,
-            ice_multi_static_nodes,
-            ice_multi_dynamic_nodes,
-            target_compute_resource="ice-cr-multiple",
-            expected_error_code="InsufficientInstanceCapacity",
-        )
+    # Checks Fast Failover in case of Multiple Instance Types - using CreateFleet API
+    # Requires 1 static node in the CR, expects the job to be partially reallocated in a different CR and succeed
+    # CreateFleet will return an empty list of instances, that should trigger FFO behavior
+    _test_enable_fast_capacity_failover(
+        partition,
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        ice_multi_static_nodes,
+        ice_multi_dynamic_nodes,
+        target_compute_resource="ice-cr-multiple",
+        expected_error_code="InsufficientInstanceCapacity",
+    )
 
-        # Test behavior with CreateFleet when Fast Failover is disabled
-        # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
-        _test_disable_fast_capacity_failover(
-            partition,
-            scheduler_commands,
-            remote_command_executor,
-            clustermgtd_conf_path,
-            exception_multi_static_nodes,
-            exception_multi_dynamic_nodes,
-            target_compute_resource="exception-cr-multiple",
-            expected_error_code="InvalidParameterValue",
-        )
+    # Test behavior with CreateFleet when Fast Failover is disabled
+    # Requires 1 static node in the CR, force the job to stay in the CR and expects it to fail
+    _test_disable_fast_capacity_failover(
+        partition,
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        exception_multi_static_nodes,
+        exception_multi_dynamic_nodes,
+        target_compute_resource="exception-cr-multiple",
+        expected_error_code="InvalidParameterValue",
+    )
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1903,10 +1903,10 @@ def _update_and_start_cluster(cluster, config_file):
     wait_for_computefleet_changed(cluster, "RUNNING")
 
 
-def _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader):
+def _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader, scaling_strategy):
     """Update cluster to include pre-install script, which introduce bootstrap error."""
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.broken.yaml", bucket=bucket_name, scaling_strategies=SCALING_STRATEGIES
+        config_file="pcluster.config.broken.yaml", bucket=bucket_name, scaling_strategy=scaling_strategy
     )
     _update_and_start_cluster(cluster, updated_config_file)
 
@@ -1943,12 +1943,12 @@ def _enable_protected_mode(remote_command_executor, clustermgtd_conf_path):
 
 
 def _test_disable_protected_mode(
-    remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path
+    remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path, scaling_strategy
 ):
     """Test Bootstrap failures have no affect on cluster when protected mode is disabled."""
     # Disable protected_mode by setting protected_failure_count to -1
     _set_protected_failure_count(remote_command_executor, -1, clustermgtd_conf_path)
-    _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader)
+    _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader, scaling_strategy)
     # wait till the node failed
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
         remote_command_executor,
@@ -2009,15 +2009,15 @@ def _test_active_job_running(scheduler_commands, remote_command_executor, runnin
     return job_id_pending
 
 
-def _test_protected_mode(scheduler_commands, remote_command_executor, cluster, strategy):
+def _test_protected_mode(scheduler_commands, remote_command_executor, cluster):
     """Test cluster will be placed into protected mode when protected count reach threshold and no job running."""
     # See if the cluster can be put into protected mode when there's no job running after reaching threshold
     _check_protected_mode_message_in_log(remote_command_executor)
     # Assert bootstrap failure queues are inactive and compute fleet status is PROTECTED
     check_status(cluster, compute_fleet_status="PROTECTED")
-    assert_that(scheduler_commands.get_partition_state(partition=f"{strategy}-normal")).is_equal_to("UP")
-    _wait_for_partition_state_changed(scheduler_commands, f"{strategy}-broken", "INACTIVE")
-    _wait_for_partition_state_changed(scheduler_commands, f"{strategy}-half-broken", "INACTIVE")
+    assert_that(scheduler_commands.get_partition_state(partition="normal")).is_equal_to("UP")
+    _wait_for_partition_state_changed(scheduler_commands, "broken", "INACTIVE")
+    _wait_for_partition_state_changed(scheduler_commands, "half-broken", "INACTIVE")
 
 
 def _check_protected_mode_message_in_log(remote_command_executor):
@@ -2033,17 +2033,17 @@ def _check_protected_mode_message_in_log(remote_command_executor):
     )
 
 
-def _test_job_run_in_working_queue(scheduler_commands, strategy):
+def _test_job_run_in_working_queue(scheduler_commands):
     """After enter protected state, submit a job to the active queue to make sure it can still run jobs."""
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "sleep 1", "nodes": 2, "partition": f"{strategy}-normal"}
+        submit_command_args={"command": "sleep 1", "nodes": 2, "partition": "normal"}
     )
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
 
 
 def _test_recover_from_protected_mode(
-    incomplete_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands, strategy
+    incomplete_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands, scaling_strategy
 ):
     """
     Test cluster after recovering from protected mode.
@@ -2053,13 +2053,13 @@ def _test_recover_from_protected_mode(
     """
     # Update the cluster again, remove the pre-install script to make the cluster work as expected
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.recover.yaml", bucket=bucket_name, scaling_strategies=SCALING_STRATEGIES
+        config_file="pcluster.config.recover.yaml", bucket=bucket_name, scaling_strategy=scaling_strategy
     )
     _update_and_start_cluster(cluster, updated_config_file)
     # Assert all queues are UP
-    assert_that(scheduler_commands.get_partition_state(partition=f"{strategy}-normal")).is_equal_to("UP")
-    assert_that(scheduler_commands.get_partition_state(partition=f"{strategy}-broken")).is_equal_to("UP")
-    assert_that(scheduler_commands.get_partition_state(partition=f"{strategy}-half-broken")).is_equal_to("UP")
+    assert_that(scheduler_commands.get_partition_state(partition="normal")).is_equal_to("UP")
+    assert_that(scheduler_commands.get_partition_state(partition="broken")).is_equal_to("UP")
+    assert_that(scheduler_commands.get_partition_state(partition="half-broken")).is_equal_to("UP")
     # Pending job that is in the queue when cluster entered protected mode will be run again when cluster is
     # taken out of protected mode.
     scheduler_commands.wait_job_completed(incomplete_job_id)
@@ -2067,7 +2067,7 @@ def _test_recover_from_protected_mode(
     # Job can be run succesfully in all queues
     for partition in ["normal", "broken", "half-broken"]:
         job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-            submit_command_args={"command": "sleep 1", "partition": f"{strategy}-{partition}"}
+            submit_command_args={"command": "sleep 1", "partition": f"{partition}"}
         )
         scheduler_commands.wait_job_completed(job_id)
         scheduler_commands.assert_job_succeeded(job_id)

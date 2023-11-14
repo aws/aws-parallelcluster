@@ -1701,46 +1701,116 @@ def test_condition_checker_managed_fsx(
 
 
 @pytest.mark.parametrize(
-    "base_config, target_config, change, expected_update_allowed, expected_fail_reason, expected_action_needed",
+    "key, path, old_value, new_value, expected_running_login_nodes, expected_update_allowed, "
+    "expected_fail_reason, expected_actions_needed",
     [
         pytest.param(
+            "Pools",
+            ["LoginNodes"],
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1"}]},
+                "Name": "pool-old",
+                "InstanceType": "t2.micro",
+                "GracetimePeriod": 3,
+                "Count": 1,
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
             },
-            {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp2"}]},
-            },
-            Change(
-                path=["LoginNodes"],
-                key="Pools",
-                old_value={"Name": "mock-lp1"},
-                new_value=None,
-                update_policy={},
-                is_list=True,
-            ),
+            None,
+            True,
             False,
             "The update is not supported when login nodes are running",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             id="Login nodes must be stopped to remove a pool",
         ),
+        pytest.param(
+            "Pools",
+            ["LoginNodes"],
+            {
+                "Name": "pool-old",
+                "InstanceType": "t2.micro",
+                "GracetimePeriod": 3,
+                "Count": 1,
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
+            },
+            None,
+            False,
+            True,
+            None,
+            None,
+            id="Login pools can be removed when Login Nodes stopped",
+        ),
+        pytest.param(
+            "Pools",
+            ["LoginNodes"],
+            None,
+            {
+                "Name": "pool-new",
+                "InstanceType": "t2.micro",
+                "GracetimePeriod": 3,
+                "Count": 1,
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
+            },
+            True,
+            True,
+            None,
+            None,
+            id="Login pools can be added",
+        ),
+        pytest.param(
+            "Pools",
+            ["LoginNodes"],
+            None,
+            {
+                "Name": "pool-new",
+                "InstanceType": "t2.micro",
+                "GracetimePeriod": 3,
+                "Count": 1,
+                "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
+                "Ssh": {"KeyName": "valid-key"},
+            },
+            False,
+            True,
+            None,
+            None,
+            id="Login pools can be added",
+        ),
     ],
 )
 def test_login_nodes_pools_policy(
     mocker,
-    base_config,
-    target_config,
-    change,
+    key,
+    path,
+    old_value,
+    new_value,
+    expected_running_login_nodes,
     expected_update_allowed,
     expected_fail_reason,
-    expected_action_needed,
+    expected_actions_needed,
 ):
-    update_policy = UpdatePolicy.LOGIN_NODES_POOLS
-    cluster = Cluster(name="mock-name", stack="mock-stack")
-    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
-    assert_that(update_policy.condition_checker(change, patch)).is_equal_to(expected_update_allowed)
-    assert_that(update_policy.fail_reason(change, patch)).is_equal_to(expected_fail_reason)
-    assert_that(update_policy.action_needed(change, patch)).is_equal_to(expected_action_needed)
+    cluster = dummy_cluster()
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=expected_running_login_nodes)
+
+    patch_mock = mocker.MagicMock()
+    patch_mock.cluster = cluster
+    change_mock = mocker.MagicMock()
+    change_mock.path = path
+    change_mock.key = key
+    change_mock.old_value = old_value
+    change_mock.new_value = new_value
+
+    assert_that(UpdatePolicy.LOGIN_NODES_POOLS.condition_checker(change_mock, patch_mock)).is_equal_to(
+        expected_update_allowed
+    )
+    if not expected_update_allowed:
+        assert_that(UpdatePolicy.LOGIN_NODES_POOLS.fail_reason(change_mock, patch_mock)).is_equal_to(
+            expected_fail_reason
+        )
+        assert_that(UpdatePolicy.LOGIN_NODES_POOLS.action_needed(change_mock, patch_mock)).is_equal_to(
+            expected_actions_needed
+        )
 
 
 @pytest.mark.parametrize(

@@ -92,9 +92,10 @@ def test_root_volume_size_validator(size, expected_message):
     "capacity_type, expected_message",
     [
         ("ONDEMAND", None),
-        ("", "Must be one of: ONDEMAND, SPOT"),
-        ("wrong_value", "Must be one of: ONDEMAND, SPOT"),
-        ("NONE", "Must be one of: ONDEMAND, SPOT"),
+        ("CAPACITY_BLOCK", None),
+        ("", "Must be one of: CAPACITY_BLOCK, ONDEMAND, SPOT"),
+        ("wrong_value", "Must be one of: CAPACITY_BLOCK, ONDEMAND, SPOT"),
+        ("NONE", "Must be one of: CAPACITY_BLOCK, ONDEMAND, SPOT"),
         ("SPOT", None),
     ],
 )
@@ -126,6 +127,8 @@ def test_compute_type_validator(capacity_type, expected_message):
     ],
 )
 def test_slurm_compute_resource_validator(section_dict, expected_message):
+    # Add required field
+    section_dict.update({"InstanceType": "t2.micro"})
     _validate_and_assert_error(SlurmComputeResourceSchema(), section_dict, expected_message)
 
 

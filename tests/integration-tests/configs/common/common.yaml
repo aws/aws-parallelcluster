@@ -60,8 +60,12 @@ cloudwatch_logging:
         schedulers: ["slurm"]
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8", "centos7"]
         schedulers: ["slurm"]
+        oss: ["centos7"]
+      - regions: ["ap-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm"]
+        oss: {{ common.NOT_RELEASED_OSES }}
   test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
     dimensions:
       - regions: ["ap-east-1"]
@@ -162,7 +166,10 @@ createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2204", "alinux2", "rhel8"]
+        oss: ["ubuntu2204", "rhel8"]
+      - regions: ["eu-west-3"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.NOT_RELEASED_OSES }}
   test_createami.py::test_kernel4_build_image_run_cluster:
     dimensions:
       - regions: ["eu-south-1"]
@@ -189,8 +196,8 @@ monitoring:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
         schedulers: ["slurm"]
+        oss: {{ common.NOT_RELEASED_OSES }}
   test_structured_log_events.py::test_custom_compute_action_failure:
     dimensions:
       - regions: ["af-south-1"]
@@ -203,7 +210,7 @@ dcv:
       # DCV on GPU enabled instance
       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
         instances: ["g4dn.2xlarge"]
-        oss: ["centos7"]
+        oss: {{ common.NOT_RELEASED_OSES }}
         schedulers: ["slurm"]
       # DCV on ARM + GPU
       - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
@@ -288,7 +295,7 @@ iam:
   test_iam_image.py::test_iam_roles:
     dimensions:
       - regions: ["eu-south-1"]
-        oss: ["alinux2"]
+        oss: {{ common.NOT_RELEASED_OSES }}
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
   test_iam.py::test_s3_read_write_resource:
     dimensions:
@@ -342,7 +349,7 @@ networking:
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: {{ common.NOT_RELEASED_OSES }}
         schedulers: ["slurm"]
       - regions: ["us-gov-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -364,7 +371,7 @@ networking:
     dimensions:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
+        oss: {{ common.NOT_RELEASED_OSES }}
         schedulers: ["slurm"]
   test_placement_group.py::test_placement_group:
     dimensions:
@@ -392,6 +399,12 @@ scaling:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
+        schedulers: ["slurm"]
+  test_scaling.py::test_job_level_scaling:
+    dimensions:
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: [ "alinux2" ]
         schedulers: ["slurm"]
 schedulers:
   test_awsbatch.py::test_awsbatch:
@@ -442,7 +455,7 @@ schedulers:
     dimensions:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: {{ common.NOT_RELEASED_OSES }}
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_protected_mode:
     dimensions:
@@ -464,10 +477,10 @@ schedulers:
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_config_update:
     dimensions:
-      - regions: ["ap-east-1"]
+      - regions: [ "ap-east-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004"]
-        schedulers: ["slurm"]
+        oss: {{ common.NOT_RELEASED_OSES }}
+        schedulers: [ "slurm" ]
   test_slurm.py::test_slurm_memory_based_scheduling:
     dimensions:
       - regions: ["ap-east-1"]
@@ -512,9 +525,9 @@ schedulers:
         schedulers: ["slurm"]
   test_slurm.py::test_slurm_reconfigure_race_condition:
     dimensions:
-      - regions: ["af-south-1"]
+      - regions: [ "af-south-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: {{ common.NOT_RELEASED_OSES }}
         schedulers: [ "slurm" ]
   test_slurm.py::test_slurm_custom_partitions:
     dimensions:
@@ -584,10 +597,10 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-gov-west-1"]
+      - regions: [ "us-gov-west-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["slurm"]
+        oss: {{ common.NOT_RELEASED_OSES }}
+        schedulers: [ "slurm" ]
   test_fsx_lustre.py::test_multi_az_fsx:
     dimensions:
       - regions: ["eu-west-2"]
@@ -615,10 +628,10 @@ storage:
         schedulers: ["slurm"]
   test_efs.py::test_efs_same_az:
     dimensions:
-      - regions: ["ca-central-1"]
+      - regions: [ "ca-central-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["slurm"]
+        oss: {{ common.NOT_RELEASED_OSES }}
+        schedulers: [ "slurm" ]
   # The checks performed in test_efs_same_az is similar to test_multiple_efs.
   # We should consider this when assigning dimensions to each test.
   test_efs.py::test_multiple_efs:
@@ -651,8 +664,12 @@ storage:
     dimensions:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004", "centos7"]
+        oss: ["centos7"]
         schedulers: ["slurm"]
+      - regions: [ "ap-south-1" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: [ "slurm" ]
+        oss: {{ common.NOT_RELEASED_OSES }}
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["rhel8"]
@@ -671,10 +688,10 @@ storage:
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_snapshot:
     dimensions:
-      - regions: ["us-east-2"]
+      - regions: [ "us-east-2" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8"]
-        schedulers: ["slurm"]
+        oss: {{ common.NOT_RELEASED_OSES }}
+        schedulers: [ "slurm" ]
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["rhel8"]
@@ -703,6 +720,12 @@ storage:
       - regions: [ "us-west-2" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: [ "ubuntu2204" ]
+        schedulers: [ "slurm" ]
+  test_shared_home.py::test_shared_home:
+    dimensions:
+      - regions: [ "us-west-1" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: [ "alinux2" ]
         schedulers: [ "slurm" ]
 tags:
   test_tag_propagation.py::test_tag_propagation:
@@ -735,10 +758,10 @@ update:
         schedulers: ["slurm"]
   test_update.py::test_queue_parameters_update:
     dimensions:
-      - regions: ["ap-south-1"]
+      - regions: [ "ap-south-1" ]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["rhel8"]
-        schedulers: ["slurm"]
+        oss: {{ common.NOT_RELEASED_OSES }}
+        schedulers: [ "slurm" ]
   test_update.py::test_dynamic_file_systems_update:
     dimensions:
       - regions: ["eu-west-2"]
