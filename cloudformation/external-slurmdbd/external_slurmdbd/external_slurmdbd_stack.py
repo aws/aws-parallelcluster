@@ -1,7 +1,8 @@
+from aws_cdk import App, CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
-from aws_cdk.core import CfnParameter, Construct, Fn, Stack
+from constructs import Construct
 
 
 class ExternalSlurmdbdStack(Stack):
@@ -17,14 +18,14 @@ class ExternalSlurmdbdStack(Stack):
         # define Network Load Balancer (NLB)
         self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(self._external_slurmdbd_target_group)
 
+        # use cfn-init and cfn-hup configure instance
+        self._cfn_init_config = self._add_cfn_init_config()
+
         # create Launch Template
         self._launch_template = self._add_external_slurmdbd_launch_template()
 
         # define EC2 Auto Scaling Group (ASG)
         self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
-
-        # use cfn-init and cfn-hup configure instance
-        self._cfn_init_config = self._add_cfn_init_config()
 
     def _add_cfn_init_config(self):
         return {
@@ -47,7 +48,7 @@ class ExternalSlurmdbdStack(Stack):
                             "[cfn-auto-reloader-hook]\n"
                             "triggers=post.update\n"
                             "path=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
-                            "action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --configsets default --region ${AWS::Region}\n"
+                            "action=/usr/bin/echo 'I was triggered by a change in AWS::CloudFormation::Init metadata!' > /tmp/cfn_init_metadata_update.log\n"
                             "runas=root\n"
                         ),
                         "mode": "000400",
@@ -69,7 +70,7 @@ class ExternalSlurmdbdStack(Stack):
             port=22,
             protocol=elbv2.Protocol.TCP,
             target_type=elbv2.TargetType.INSTANCE,
-            vpc=self._vpc,
+            vpc=self.vpc,
         )
 
     def _add_external_slurmdbd_launch_template(self):
@@ -81,12 +82,15 @@ class ExternalSlurmdbdStack(Stack):
             image_id=ami_id_param.value_as_string,
         )
 
-        return ec2.CfnLaunchTemplate(
+        launch_template = ec2.CfnLaunchTemplate(
             self,
             "LaunchTemplate",
             launch_template_data=launch_template_data,
-            metadata={"AWS::CloudFormation::Init": self._cfn_init_config},
         )
+
+        launch_template.add_metadata("AWS::CloudFormation::Init", self._cfn_init_config)
+
+        return launch_template
 
     def _add_external_slurmdbd_load_balancer(
         self,
@@ -108,7 +112,7 @@ class ExternalSlurmdbdStack(Stack):
             min_size="1",
             desired_capacity="1",
             launch_template=autoscaling.CfnAutoScalingGroup.LaunchTemplateSpecificationProperty(
-                launch_template_id=self._launch_template.ref
+                version=self._launch_template.attr_latest_version_number, launch_template_id=self._launch_template.ref
             ),
             vpc_zone_identifier=[subnet.subnet_id for subnet in self.vpc.public_subnets],
         )
