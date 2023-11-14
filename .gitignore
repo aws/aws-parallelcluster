@@ -18,3 +18,4 @@ tests_outputs/
 .python-version
 test.yaml
 .vscode
+configs/

@@ -478,6 +478,7 @@ class SharedFsxLustre(BaseSharedFsx):
         data_compression_type: str = None,
         export_path: str = None,
         import_path: str = None,
+        fsx_security_groups: list = None,
         imported_file_chunk_size: int = None,
         weekly_maintenance_start_time: str = None,
         automatic_backup_retention_days: int = None,
@@ -503,6 +504,7 @@ class SharedFsxLustre(BaseSharedFsx):
         self.data_compression_type = Resource.init_param(data_compression_type)
         self.export_path = Resource.init_param(export_path)
         self.import_path = Resource.init_param(import_path)
+        self.fsx_security_groups = Resource.init_param(fsx_security_groups)
         self.imported_file_chunk_size = Resource.init_param(imported_file_chunk_size)
         self.weekly_maintenance_start_time = Resource.init_param(weekly_maintenance_start_time)
         self.automatic_backup_retention_days = Resource.init_param(automatic_backup_retention_days)
@@ -582,6 +584,8 @@ class SharedFsxLustre(BaseSharedFsx):
                 FsxAutoImportValidator, auto_import_policy=self.auto_import_policy, import_path=self.import_path
             )
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
+        if self.fsx_security_groups:
+            self._register_validator(SecurityGroupsValidator, security_group_ids=self.fsx_security_groups)
 
     @property
     def existing_mount_name(self):
