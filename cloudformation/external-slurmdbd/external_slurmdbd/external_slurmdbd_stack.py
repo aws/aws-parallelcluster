@@ -1,49 +1,114 @@
-from aws_cdk import CfnParameter, RemovalPolicy, Stack
+from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
-from constructs import Construct
+from aws_cdk import aws_elasticloadbalancingv2 as elbv2
+from aws_cdk.core import CfnParameter, Construct, Fn, Stack
 
 
 class ExternalSlurmdbdStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
 
-        # Create a VPC or select existing VPC
-        vpc = ec2.Vpc.from_lookup(self, "PclusterVPC", vpc_id="vpc-0d81e638ed472eacc")
+        # define EC2 VPC
+        self.vpc = ec2.Vpc(self, "VPC")
 
+        # define Target Group
+        self._external_slurmdbd_target_group = self._add_external_slurmdbd_target_group()
+
+        # define Network Load Balancer (NLB)
+        self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(self._external_slurmdbd_target_group)
+
+        # create Launch Template
+        self._launch_template = self._add_external_slurmdbd_launch_template()
+
+        # define EC2 Auto Scaling Group (ASG)
+        self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
+
+        # use cfn-init and cfn-hup configure instance
+        self._cfn_init_config = self._add_cfn_init_config()
+
+    def _add_cfn_init_config(self):
+        return {
+            "configSets": {"default": ["setup", "configure"]},
+            "setup": {
+                # TODO: * configuration of slurmdbd (same as done in config_slurm_accounting.rb), including:
+                #           * configuration of munge systemd service;
+                #           * retrieval of the munge key from Secret Manager (this requires an appropriate IAM policy);
+                #           * configuration of slurmdbd systemd service;
+                #           * retrieval of DBMS credentials from Secret Manager (this requires an appropriate IAM policy);
+                #           * creation of slurmdbd.conf;
+                #           * start of slurmdbd;
+                #           * minimal bootstrapping of Slurm Accounting database.
+                #        * configuration of CloudWatch log group creation and slurmdbd log push to the CW log group (this require appropriate IAM policies).
+            },
+            "configure": {
+                "files": {
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                        "content": Fn.sub(
+                            "[cfn-auto-reloader-hook]\n"
+                            "triggers=post.update\n"
+                            "path=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
+                            "action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --configsets default --region ${AWS::Region}\n"
+                            "runas=root\n"
+                        ),
+                        "mode": "000400",
+                        "owner": "root",
+                        "group": "root",
+                    }
+                }
+            },
+        }
+
+    def _add_external_slurmdbd_target_group(self):
+        return elbv2.NetworkTargetGroup(
+            self,
+            "External-Slurmdbd-TG",
+            health_check=elbv2.HealthCheck(
+                port="22",
+                protocol=elbv2.Protocol.TCP,
+            ),
+            port=22,
+            protocol=elbv2.Protocol.TCP,
+            target_type=elbv2.TargetType.INSTANCE,
+            vpc=self._vpc,
+        )
+
+    def _add_external_slurmdbd_launch_template(self):
         # Define a CfnParameter for the AMI ID
+        # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
         ami_id_param = CfnParameter(self, "AmiId", type="String", description="The AMI id for the EC2 instance.")
 
-        # Define the EC2 instance
-        instance = ec2.Instance(
+        launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+            image_id=ami_id_param.value_as_string,
+        )
+
+        return ec2.CfnLaunchTemplate(
             self,
-            "MyInstance",
-            instance_type=ec2.InstanceType("t3.micro"),
-            machine_image=ec2.MachineImage.generic_linux({"us-east-2": ami_id_param.value_as_string}),
-            vpc=vpc,
+            "LaunchTemplate",
+            launch_template_data=launch_template_data,
+            metadata={"AWS::CloudFormation::Init": self._cfn_init_config},
         )
 
-        # Add a secondary private IP to the primary network interface
-        secondary_ip_param = CfnParameter(self, "SecondaryPrivateIp", type="String", description="The secondary private IP for the primary network interface.")
-        instance.instance.add_property_override(
-            "NetworkInterfaces",
-            [
-                {
-                    "DeviceIndex": "0",
-                    "AssociatePublicIpAddress": True,
-                    "SubnetId": vpc.public_subnets[0].subnet_id,
-                    "PrivateIpAddresses": [
-                        {
-                            "Primary": True,
-                            "PrivateIpAddress": "10.0.0.10"
-                        },
-                        {
-                            "Primary": False,
-                            "PrivateIpAddress": secondary_ip_param.value_as_string,
-                        },
-                    ],
-                }
-            ],
-        )
+    def _add_external_slurmdbd_load_balancer(
+        self,
+        target_group,
+    ):
+        nlb = elbv2.NetworkLoadBalancer(self, "External-Slurmdbd-NLB", vpc=self.vpc, internet_facing=False)
 
-        # Set the removal policy to DESTROY to clean up when the stack is deleted
-        instance.apply_removal_policy(RemovalPolicy.DESTROY)
+        # add listener to NLB
+        listener = nlb.add_listener("External-Slurmdbd-Listener", port=22)
+        listener.add_target_groups("External-Slurmdbd-Target", target_group)
+
+        return nlb
+
+    def _add_external_slurmdbd_auto_scaling_group(self):
+        return autoscaling.CfnAutoScalingGroup(
+            self,
+            "External-Slurmdbd-ASG",
+            max_size="1",
+            min_size="1",
+            desired_capacity="1",
+            launch_template=autoscaling.CfnAutoScalingGroup.LaunchTemplateSpecificationProperty(
+                launch_template_id=self._launch_template.ref
+            ),
+            vpc_zone_identifier=[subnet.subnet_id for subnet in self.vpc.public_subnets],
+        )
