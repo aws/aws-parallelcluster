@@ -1,0 +1,25 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: t2.large
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: queue1
+      # CapacityType will be modified to CAPACITY_BLOCK in the fleet-config.json file at runtime.
+      # Do not modify queue, campute resource names and instance type.
+      CapacityType: ONDEMAND
+      ComputeResources:
+        - Name: cr1
+          InstanceType: t2.micro
+          MinCount: 2
+          MaxCount: 4
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
