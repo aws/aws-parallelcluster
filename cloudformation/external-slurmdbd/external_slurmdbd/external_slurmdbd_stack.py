@@ -2,24 +2,42 @@ from aws_cdk import App, CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
+from aws_cdk import aws_iam as iam
 from constructs import Construct
+
+from pcluster.constants import EXTERNAL_SLURMDBD_ASG_SIZE
 
 
 class ExternalSlurmdbdStack(Stack):
-    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
-        super().__init__(scope, id, **kwargs)
+    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+        self.stack = Stack(scope=scope, id=construct_id, **kwargs)
 
-        # define EC2 VPC
-        self.vpc = ec2.Vpc(self, "VPC")
+        # define networking stuff
+        self.vpc_id = CfnParameter(
+            self, "VPC_id", type="String", description="The VPC to be used for the Slurmdbd stack."
+        )
+
+        self.subnet_id = CfnParameter(
+            self, "SubnetId", type="String", description="The Subnet to be used for the Slurmdbd stack."
+        )
+
+        # define IAM role and necessary IAM policies
+        self._role = self._add_iam_role()
 
         # define Target Group
         self._external_slurmdbd_target_group = self._add_external_slurmdbd_target_group()
 
         # define Network Load Balancer (NLB)
-        self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(self._external_slurmdbd_target_group)
+        self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(
+            target_group=self._external_slurmdbd_target_group
+        )
 
         # use cfn-init and cfn-hup configure instance
         self._cfn_init_config = self._add_cfn_init_config()
+
+        # create management security group with SSH access from anywhere (TEMPORARY!)
+        self._ssh_server_sg, self._ssh_client_sg = self._add_management_security_groups()
 
         # create Launch Template
         self._launch_template = self._add_external_slurmdbd_launch_template()
@@ -54,7 +72,19 @@ class ExternalSlurmdbdStack(Stack):
                         "mode": "000400",
                         "owner": "root",
                         "group": "root",
-                    }
+                    },
+                    "/etc/cfn/cfn-hup.conf": {
+                        "content": Fn.sub(
+                            "[main]\n" "stack=${StackId}\n" "region=${Region}\n" "interval=2\n",
+                            {
+                                "StackId": self.stack.stack_id,
+                                "Region": self.stack.region,
+                            },
+                        ),
+                        "mode": "000400",
+                        "owner": "root",
+                        "group": "root",
+                    },
                 }
             },
         }
@@ -62,24 +92,69 @@ class ExternalSlurmdbdStack(Stack):
     def _add_external_slurmdbd_target_group(self):
         return elbv2.NetworkTargetGroup(
             self,
+            # TODO: add resource name!
             "External-Slurmdbd-TG",
             health_check=elbv2.HealthCheck(
-                port="22",
+                port="6819",
                 protocol=elbv2.Protocol.TCP,
             ),
-            port=22,
+            port=6819,
             protocol=elbv2.Protocol.TCP,
             target_type=elbv2.TargetType.INSTANCE,
             vpc=self.vpc,
         )
 
+    def _add_management_security_groups(self):
+        server_sg = ec2.CfnSecurityGroup(
+            self,
+            "SSHServerSecurityGroup",
+            group_description="Allow SSH access to slurmdbd instance (server)",
+            vpc_id=self.vpc_id.value_as_string,
+        )
+
+        client_sg = ec2.CfnSecurityGroup(
+            self,
+            "SSHClientSecurityGroup",
+            group_description="Allow SSH access to slurmdbd instance (client)",
+            vpc_id=self.vpc_id.value_as_string,
+        )
+
+        ec2.CfnSecurityGroupIngress(
+            self,
+            "Allow SSH access from client SG",
+            ip_protocol="tcp",
+            from_port=22,
+            to_port=22,
+            source_security_group_id=client_sg.ref,
+            group_id=server_sg.ref,
+        )
+        client_sg.add_egress_rule(
+            peer=server_sg, connection=ec2.Port.tcp(22), description="Allow SSH access to server SG"
+        )
+        return server_sg, client_sg
+
     def _add_external_slurmdbd_launch_template(self):
         # Define a CfnParameter for the AMI ID
         # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
         ami_id_param = CfnParameter(self, "AmiId", type="String", description="The AMI id for the EC2 instance.")
+        instance_type_param = CfnParameter(
+            self,
+            "InstanceType",
+            type="String",
+            description="The instance type for the EC2 instance",
+        )
+        key_name_param = CfnParameter(
+            self,
+            "KeyName",
+            type="String",
+            description="The SSH key name to access the instance (for management purposes only)",
+        )
 
         launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+            key_name=key_name_param.value_as_string,
             image_id=ami_id_param.value_as_string,
+            instance_type=instance_type_param.value_as_string,
+            security_group_ids=[self._ssh_server_sg.security_group_id],
         )
 
         launch_template = ec2.CfnLaunchTemplate(
@@ -96,10 +171,16 @@ class ExternalSlurmdbdStack(Stack):
         self,
         target_group,
     ):
-        nlb = elbv2.NetworkLoadBalancer(self, "External-Slurmdbd-NLB", vpc=self.vpc, internet_facing=False)
+        nlb = elbv2.NetworkLoadBalancer(
+            self,
+            "External-Slurmdbd-NLB",
+            vpc=self.vpc,
+            vpc_subnets=ec2.SubnetSelection(subnets=[self.subnet]),
+            internet_facing=False,
+        )
 
         # add listener to NLB
-        listener = nlb.add_listener("External-Slurmdbd-Listener", port=22)
+        listener = nlb.add_listener("External-Slurmdbd-Listener", port=6819)
         listener.add_target_groups("External-Slurmdbd-Target", target_group)
 
         return nlb
@@ -108,11 +189,53 @@ class ExternalSlurmdbdStack(Stack):
         return autoscaling.CfnAutoScalingGroup(
             self,
             "External-Slurmdbd-ASG",
-            max_size="1",
-            min_size="1",
-            desired_capacity="1",
+            max_size=EXTERNAL_SLURMDBD_ASG_SIZE,
+            min_size=EXTERNAL_SLURMDBD_ASG_SIZE,
+            desired_capacity=EXTERNAL_SLURMDBD_ASG_SIZE,
             launch_template=autoscaling.CfnAutoScalingGroup.LaunchTemplateSpecificationProperty(
                 version=self._launch_template.attr_latest_version_number, launch_template_id=self._launch_template.ref
             ),
-            vpc_zone_identifier=[subnet.subnet_id for subnet in self.vpc.public_subnets],
+            vpc_zone_identifier=[self.subnet_id.value_as_string],
         )
+
+    def _add_iam_role(self):
+        role = iam.Role(
+            self,
+            "SlurmdbdInstanceRole",
+            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+            description="Role for Slurmdbd EC2 instance to access necessary AWS resources",
+        )
+
+        role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["secretsmanager:GetSecretValue"],
+                resources=[
+                    self.stack.format_arn(
+                        service="secretsmanager",
+                        account=self.stack.account,
+                        region=self.stack.region,
+                        resource="secret:*",
+                    ),
+                ],
+                effect=iam.Effect.ALLOW,
+                sid="SecretsManagerPolicy",
+            )
+        )
+
+        role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogStream", "logs:PutLogEvents"],
+                resources=[
+                    self.stack.format_arn(
+                        service="logs",
+                        account=self.stack.account,
+                        region=self.stack.region,
+                        resource="log-group:*",
+                    ),
+                ],
+                effect=iam.Effect.ALLOW,
+                sid="CloudWatchLogsPolicy",
+            )
+        )
+
+        return role
