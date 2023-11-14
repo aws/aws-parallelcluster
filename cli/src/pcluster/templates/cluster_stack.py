@@ -957,7 +957,7 @@ class ClusterCdkStack:
                     drive_cache_type = shared_fsx.drive_cache_type
                 else:
                     drive_cache_type = "NONE"
-            if shared_fsx.fsx_security_groups == None:
+            if shared_fsx.fsx_security_groups:
                 managed_file_system_security_groups = [self._add_storage_security_group(id, shared_fsx)]
                 file_system_security_groups = [sg.ref for sg in managed_file_system_security_groups]
             else:
