@@ -77,7 +77,19 @@ def test_shared_home(
         )
     else:
         cluster_config = pcluster_config_reader(mount_dir=mount_dir, storage_type=storage_type)
-    cluster = clusters_factory(cluster_config)
+    cluster1 = clusters_factory(cluster_config)
+    _check_shared_home(
+        cluster1, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, file_cache_path
+    )
+    cluster2 = clusters_factory(cluster_config)
+    _check_shared_home(
+        cluster2, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, file_cache_path
+    )
+
+
+def _check_shared_home(
+    cluster, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, file_cache_path
+):
     remote_command_executor = RemoteCommandExecutor(cluster)
     remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
 
