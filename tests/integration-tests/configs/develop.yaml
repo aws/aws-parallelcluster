@@ -143,3 +143,9 @@ test-suites:
         - oss: ["rhel8"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
+  capacity_reservations:
+    test_capacity_blocks.py::test_capacity_blocks:
+      dimensions:
+        - regions: ["eu-west-1"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
