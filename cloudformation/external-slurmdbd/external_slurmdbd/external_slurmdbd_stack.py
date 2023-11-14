@@ -9,14 +9,18 @@ class ExternalSlurmdbdStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # define EC2 VPC
-        self.vpc = ec2.Vpc(self, "VPC")
+        # define networking stuff
+        self.vpc_id = CfnParameter(self, "VPC_id", type="String", description="The VPC to be used for the Slurmdbd stack.")
+        self.vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_id=self.vpc_id.value_as_string)
+
+        self.subnet_id = CfnParameter(self, "Subnet_id", type="String", description="The Subnet to be used for the Slurmdbd stack.")
+        self.subnet = ec2.Subnet.from_subnet_id(self, "subnet", subnet_id=self.subnet_id.value_as_string)
 
         # define Target Group
         self._external_slurmdbd_target_group = self._add_external_slurmdbd_target_group()
 
         # define Network Load Balancer (NLB)
-        self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(self._external_slurmdbd_target_group)
+        self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(target_group=self._external_slurmdbd_target_group)
 
         # use cfn-init and cfn-hup configure instance
         self._cfn_init_config = self._add_cfn_init_config()
@@ -54,7 +58,22 @@ class ExternalSlurmdbdStack(Stack):
                         "mode": "000400",
                         "owner": "root",
                         "group": "root",
-                    }
+                    },
+                    "/etc/cfn/cfn-hup.conf": {
+                        "content": Fn.sub(
+                            "[main]\n"
+                            "stack=${StackId}\n"
+                            "region=${Region}\n"
+                            "interval=2\n",
+                            {
+                                "StackId": self.stack_id,
+                                "Region": self.region,
+                            },
+                        ),
+                        "mode": "000400",
+                        "owner": "root",
+                        "group": "root",
+                    },
                 }
             },
         }
@@ -62,12 +81,13 @@ class ExternalSlurmdbdStack(Stack):
     def _add_external_slurmdbd_target_group(self):
         return elbv2.NetworkTargetGroup(
             self,
+            # TODO: add resource name!
             "External-Slurmdbd-TG",
             health_check=elbv2.HealthCheck(
-                port="22",
+                port="6819",
                 protocol=elbv2.Protocol.TCP,
             ),
-            port=22,
+            port=6819,
             protocol=elbv2.Protocol.TCP,
             target_type=elbv2.TargetType.INSTANCE,
             vpc=self.vpc,
@@ -96,10 +116,15 @@ class ExternalSlurmdbdStack(Stack):
         self,
         target_group,
     ):
-        nlb = elbv2.NetworkLoadBalancer(self, "External-Slurmdbd-NLB", vpc=self.vpc, internet_facing=False)
+        nlb = elbv2.NetworkLoadBalancer(
+            self,
+            "External-Slurmdbd-NLB",
+            vpc=self.vpc,
+            vpc_subnets=ec2.SubnetSelection(subnets=[self.subnet]),
+            internet_facing=False)
 
         # add listener to NLB
-        listener = nlb.add_listener("External-Slurmdbd-Listener", port=22)
+        listener = nlb.add_listener("External-Slurmdbd-Listener", port=6819)
         listener.add_target_groups("External-Slurmdbd-Target", target_group)
 
         return nlb
@@ -114,5 +139,5 @@ class ExternalSlurmdbdStack(Stack):
             launch_template=autoscaling.CfnAutoScalingGroup.LaunchTemplateSpecificationProperty(
                 version=self._launch_template.attr_latest_version_number, launch_template_id=self._launch_template.ref
             ),
-            vpc_zone_identifier=[subnet.subnet_id for subnet in self.vpc.public_subnets],
+            vpc_zone_identifier=[self.subnet_id.value_as_string],
         )
