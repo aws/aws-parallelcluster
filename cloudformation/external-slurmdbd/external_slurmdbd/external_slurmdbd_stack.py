@@ -25,6 +25,9 @@ class ExternalSlurmdbdStack(Stack):
         # use cfn-init and cfn-hup configure instance
         self._cfn_init_config = self._add_cfn_init_config()
 
+        # create management security group with SSH access from anywhere (TEMPORARY!)
+        self._ssh_server_sg, self._ssh_client_sg = self._add_management_security_groups()
+
         # create Launch Template
         self._launch_template = self._add_external_slurmdbd_launch_template()
 
@@ -93,6 +96,31 @@ class ExternalSlurmdbdStack(Stack):
             vpc=self.vpc,
         )
 
+    def _add_management_security_groups(self):
+        server_sg = ec2.SecurityGroup(
+            self,
+            "SSHServerSecurityGroup",
+            description="Allow SSH access to slurmdbd instance (server)",
+            vpc=self.vpc,
+        )
+        client_sg = ec2.SecurityGroup(
+            self,
+            "SSHClientSecurityGroup",
+            description="Allow SSH access to slurmdbd instance (client)",
+            vpc=self.vpc,
+        )
+        server_sg.add_ingress_rule(
+            peer=client_sg,
+            connection=ec2.Port.tcp(22),
+            description="Allow SSH access from client SG"
+        )
+        client_sg.add_egress_rule(
+            peer=server_sg,
+            connection=ec2.Port.tcp(22),
+            description="Allow SSH access to server SG"
+        )
+        return server_sg, client_sg
+
     def _add_external_slurmdbd_launch_template(self):
         # Define a CfnParameter for the AMI ID
         # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
@@ -103,10 +131,18 @@ class ExternalSlurmdbdStack(Stack):
             type="String",
             description="The instance type for the EC2 instance"
         )
+        key_name_param = CfnParameter(
+            self,
+            "KeyName",
+            type="String",
+            description="The SSH key name to access the instance (for management purposes only)"
+        )
 
         launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+            key_name=key_name_param.value_as_string,
             image_id=ami_id_param.value_as_string,
             instance_type=instance_type_param.value_as_string,
+            security_group_ids=[self._ssh_server_sg.security_group_id]
         )
 
         launch_template = ec2.CfnLaunchTemplate(
