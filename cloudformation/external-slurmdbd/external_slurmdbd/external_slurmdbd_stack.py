@@ -13,7 +13,7 @@ class ExternalSlurmdbdStack(Stack):
         self.vpc_id = CfnParameter(self, "VPC_id", type="String", description="The VPC to be used for the Slurmdbd stack.")
         self.vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_id=self.vpc_id.value_as_string)
 
-        self.subnet_id = CfnParameter(self, "Subnet_id", type="String", description="The Subnet to be used for the Slurmdbd stack.")
+        self.subnet_id = CfnParameter(self, "SubnetId", type="String", description="The Subnet to be used for the Slurmdbd stack.")
         self.subnet = ec2.Subnet.from_subnet_id(self, "subnet", subnet_id=self.subnet_id.value_as_string)
 
         # define Target Group
@@ -97,9 +97,16 @@ class ExternalSlurmdbdStack(Stack):
         # Define a CfnParameter for the AMI ID
         # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
         ami_id_param = CfnParameter(self, "AmiId", type="String", description="The AMI id for the EC2 instance.")
+        instance_type_param = CfnParameter(
+            self,
+            "InstanceType",
+            type="String",
+            description="The instance type for the EC2 instance"
+        )
 
         launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
             image_id=ami_id_param.value_as_string,
+            instance_type=instance_type_param.value_as_string,
         )
 
         launch_template = ec2.CfnLaunchTemplate(
