@@ -72,7 +72,7 @@ write_files:
           "raid_type": "${RAIDType}",
           "base_os": "${BaseOS}",
           "region": "${AWS::Region}",
-          "internal_shared_storage_type": "${InternalSharedStorageType}",
+          "shared_storage_type": "${SharedStorageType}",
           "efs_fs_ids": "${EFSIds}",
           "efs_shared_dirs": "${EFSSharedDirs}",
           "efs_encryption_in_transits": "${EFSEncryptionInTransits}",

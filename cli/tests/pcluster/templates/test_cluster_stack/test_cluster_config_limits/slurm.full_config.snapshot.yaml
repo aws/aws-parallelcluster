@@ -43,7 +43,6 @@ HeadNode:
   Imds:
     Secured: true
   InstanceType: t2.micro
-  InternalSharedStorageType: Efs
   LocalStorage:
     EphemeralVolume:
       MountDir: /test
@@ -71,6 +70,7 @@ HeadNode:
       HttpProxyAddress: https://proxy-address:port
     SecurityGroups: null
     SubnetId: subnet-12345678
+  SharedStorageType: Efs
   Ssh:
     AllowedIps: 1.2.3.4/32
     KeyName: ec2-key-name

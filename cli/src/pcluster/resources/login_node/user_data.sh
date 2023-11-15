@@ -64,7 +64,7 @@ write_files:
             "domain_read_only_user": "${DirectoryServiceReadOnlyUser}",
             "generate_ssh_keys_for_users": "${DirectoryServiceGenerateSshKeys}"
           },
-          "internal_shared_storage_type": "${InternalSharedStorageType}",
+          "shared_storage_type": "${SharedStorageType}",
           "ebs_shared_dirs": "${EbsSharedDirs}",
           "efs_fs_ids": "${EFSIds}",
           "efs_shared_dirs": "${EFSSharedDirs}",
