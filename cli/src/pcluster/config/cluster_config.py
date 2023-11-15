@@ -106,6 +106,7 @@ from pcluster.validators.cluster_validators import (
     SchedulableMemoryValidator,
     SchedulerOsValidator,
     SchedulerValidator,
+    SharedFileCacheNotHomeValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
@@ -654,6 +655,10 @@ class ExistingFileCache(BaseSharedFsx):
         self.file_cache_id = file_cache_id
         self.file_system_id = file_cache_id
         self.file_system_type = FILECACHE
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        self._register_validator(SharedFileCacheNotHomeValidator, mount_dir=self.mount_dir)
 
     @property
     def existing_dns_name(self):
@@ -1381,7 +1386,7 @@ class HeadNode(Resource):
         ssh: HeadNodeSsh = None,
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
-        internal_shared_storage_type: str = None,
+        shared_storage_type: str = None,
         dcv: Dcv = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -1396,8 +1401,8 @@ class HeadNode(Resource):
         self.networking = networking
         self.ssh = ssh or HeadNodeSsh(implied=True)
         self.local_storage = local_storage or LocalStorage(implied=True)
-        self.internal_shared_storage_type = Resource.init_param(
-            internal_shared_storage_type,
+        self.shared_storage_type = Resource.init_param(
+            shared_storage_type,
             default="Ebs",
         )
         self.dcv = dcv

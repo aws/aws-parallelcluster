@@ -198,6 +198,11 @@ SharedStorage:
     StorageType: FsxOpenZfs
     FsxOpenZfsSettings:
       VolumeId: "fsvol-00e6e91b8898ec4ef"
+  - MountDir: /my/mount/point6
+    Name: name6
+    StorageType: FileCache
+    FileCacheSettings:
+      FileCacheId: "fc-00e6e91b8898ec4ef"
 Iam:
   PermissionsBoundary: arn:aws:iam::aws:policy/boundary
   ResourcePrefix: /path-prefix/name-prefix

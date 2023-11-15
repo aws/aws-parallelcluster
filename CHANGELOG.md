@@ -21,11 +21,11 @@ CHANGELOG
 - Add `Scheduling/SlurmSettings/Database/DatabaseName` parameter to allow users to specify a custom name for the database on the database server to be used for Slurm accounting.
 - Add `Monitoring/Alarms/Enabled` parameter to toggle Amazon CloudWatch Alarms for the cluster.
 - Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node.
-- Add the option to use EFS storage instead of NFS exports from the head node root volume for intra-cluster shared ParallelCluster, Intel, Slurm, and login node data.
+- Add the option to use EFS storage instead of NFS exports from the head node root volume for intra-cluster shared ParallelCluster, Intel, Slurm, login node, and /home data.
 - Allow for mounting `home` as an EFS or FSx external shared storage via the `SharedStorage` section of the config file.
 - Add support for Rocky Linux 8, only using a `CustomAmi` created through `build-image` process. No official Rocky8 Linux AMIs will be published.
 - Make `InstanceType` an optional configuration parameter when configuring `CapacityReservationTarget/CapacityReservationId` in the compute resource.
-- Add `Scheduling/ScalingStrategy` parameter to control job-level scaling strategy for node to be resumed by Slurm. 
+- Add `Scheduling/ScalingStrategy` parameter to control job-level scaling strategy for node to be resumed by Slurm.
   Possible values are `all-or-nothing`, `greedy-all-or-nothing`, `best-effort`, with `all-or-nothing` being the default.
 
 **CHANGES**

@@ -32,7 +32,6 @@
     "install_intel_python": "none",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",
     "instance_types_data_version": "",
-    "internal_shared_storage_type": "ebs",
     "log_group_name": "/aws/parallelcluster/clustername-202101010101",
     "log_rotation_enabled": "true",
     "node_type": "HeadNode",
@@ -41,6 +40,7 @@
     "raid_type": "",
     "raid_vol_ids": "",
     "region": "{'Ref': 'AWS::Region'}",
+    "shared_storage_type": "ebs",
     "stack_arn": "{'Ref': 'AWS::StackId'}",
     "stack_name": "clustername",
     "volume": ""

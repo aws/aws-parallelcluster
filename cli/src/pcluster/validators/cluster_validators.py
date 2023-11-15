@@ -954,6 +954,24 @@ class SharedStorageMountDirValidator(Validator):
             )
 
 
+class SharedFileCacheNotHomeValidator(Validator):
+    """
+    Shared FileCache Not Home Validator.
+
+    Validate if the provided name for the shared storage is not /home for FileCache
+    """
+
+    def _validate(self, mount_dir: str):
+        if mount_dir in ("/home", "home"):
+            self._add_failure(
+                (
+                    f"Error: FileCache cannot be used to mount the shared storage directory '{mount_dir}'.  Please "
+                    f"select a supported filesystem."
+                ),
+                FailureLevel.ERROR,
+            )
+
+
 class DeletionPolicyValidator(Validator):
     """Print warning message when deletion policy is set to Delete or Retain."""
 
