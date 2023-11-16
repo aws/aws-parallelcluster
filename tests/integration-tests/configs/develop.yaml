@@ -96,6 +96,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.NOT_RELEASED_OSES }}
           schedulers: ["slurm"]
+    test_scaling.py::test_job_level_scaling:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "alinux2" ]
+          schedulers: ["slurm"]
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
@@ -143,3 +149,13 @@ test-suites:
         - oss: ["rhel8"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
+  capacity_reservations:
+    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+      dimensions:
+        - regions: ["us-west-2"]
+          oss: ["alinux2"]
+    test_capacity_blocks.py::test_capacity_blocks:
+      dimensions:
+        - regions: ["eu-west-1"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]

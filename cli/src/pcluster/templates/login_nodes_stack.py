@@ -19,6 +19,7 @@ from pcluster.templates.cdk_builder_utils import (
     LoginNodesIamResources,
     _get_resource_combination_name,
     get_common_user_data_env,
+    get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
     get_login_nodes_security_groups_full,
@@ -218,12 +219,14 @@ class Pool(Construct):
                         tags=get_default_instance_tags(
                             self.stack_name, self._config, self._pool, "LoginNode", self._shared_storage_infos
                         )
-                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)],
+                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
+                        + get_custom_tags(self._config),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "LoginNode")
-                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)],
+                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
+                        + get_custom_tags(self._config),
                     ),
                 ],
             ),
