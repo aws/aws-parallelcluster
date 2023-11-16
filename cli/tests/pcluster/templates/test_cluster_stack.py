@@ -393,12 +393,14 @@ class LoginNodeLTAssertion:
         image_id,
         http_tokens,
         iam_instance_profile_name,
+        custom_tags=None,
     ):
         self.subnet_ids = subnet_ids
         self.root_volume_encrypted = root_volume_encrypted
         self.image_id = image_id
         self.http_tokens = http_tokens
         self.iam_instance_profile_name = iam_instance_profile_name
+        self.custom_tags = custom_tags
 
     def assert_lt_properties(self, generated_template, resource_type):
         resources = generated_template["Resources"][resource_type]
@@ -413,6 +415,9 @@ class LoginNodeLTAssertion:
             lt_block_device_mappings[len(lt_block_device_mappings) - 1]["Ebs"]["Encrypted"]
             == self.root_volume_encrypted
         )
+        if self.custom_tags:
+            for tag in self.custom_tags:
+                assert tag in properties["LaunchTemplateData"]["TagSpecifications"][0]["Tags"]
 
 
 @pytest.mark.parametrize(
@@ -441,6 +446,24 @@ class LoginNodeLTAssertion:
                     image_id="dummy-ami-id",
                     http_tokens="required",
                     iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
+        (
+            "test-login-nodes-stack-with-custom-tags.yaml",
+            [
+                LoginNodeLTAssertion(
+                    subnet_ids=["subnet-12345678"],
+                    root_volume_encrypted=True,
+                    image_id="dummy-ami-id",
+                    http_tokens="required",
+                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
+                    custom_tags=[
+                        {"Key": "rs:environment", "Value": "development"},
+                        {"Key": "rs:project", "Value": "solutions"},
+                    ],
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
