@@ -23,6 +23,13 @@ Scheduling:
           MaxCount: 1
           CapacityReservationTarget:
             CapacityReservationResourceGroupArn: {{ open_capacity_reservation_arn }}
+        - Name: open-odcr-arn-fl-cr
+          Instances:
+          - InstanceType: m5.2xlarge
+          MinCount: 1
+          MaxCount: 1
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: {{ open_capacity_reservation_arn }}
         - Name: open-odcr-id-pg-cr
           InstanceType: m5.2xlarge
           MinCount: 1
@@ -34,6 +41,16 @@ Scheduling:
             CapacityReservationId: {{ open_capacity_reservation_id }}
         - Name: open-odcr-arn-pg-cr
           InstanceType: m5.2xlarge
+          MinCount: 1
+          MaxCount: 1
+          Networking:
+            PlacementGroup:
+              Enabled: true
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: {{ open_capacity_reservation_arn }}
+        - Name: open-odcr-arn-pg-fl-cr
+          Instances:
+            - InstanceType: m5.2xlarge
           MinCount: 1
           MaxCount: 1
           Networking:
@@ -58,6 +75,13 @@ Scheduling:
           MaxCount: 1
           CapacityReservationTarget:
             CapacityReservationResourceGroupArn: {{ target_capacity_reservation_arn }}
+        - Name: target-odcr-arn-fl-cr
+          Instances:
+            - InstanceType: r5.xlarge
+          MinCount: 1
+          MaxCount: 1
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: {{ target_capacity_reservation_arn }}
         - Name: target-odcr-id-pg-cr
           InstanceType: r5.xlarge
           MinCount: 1
@@ -69,6 +93,13 @@ Scheduling:
             CapacityReservationId: {{ target_capacity_reservation_id }}
         - Name: target-odcr-arn-pg-cr
           InstanceType: r5.xlarge
+          MinCount: 1
+          MaxCount: 1
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: {{ target_capacity_reservation_arn }}
+        - Name: target-odcr-arn-pg-fl-cr
+          Instances:
+            - InstanceType: r5.xlarge
           MinCount: 1
           MaxCount: 1
           CapacityReservationTarget:
@@ -89,6 +120,16 @@ Scheduling:
             CapacityReservationId: {{ pg_capacity_reservation_id }}
         - Name: pg-odcr-arn-cr
           InstanceType: m5.xlarge
+          MinCount: 1
+          MaxCount: 1
+          Networking:
+            PlacementGroup:
+              Name: {{ placement_group }}
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: {{ pg_capacity_reservation_arn }}
+        - Name: pg-odcr-arn-fleet-cr
+          Instances:
+            - InstanceType: m5.xlarge
           MinCount: 1
           MaxCount: 1
           Networking:
