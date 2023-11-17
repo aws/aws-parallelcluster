@@ -1,8 +1,11 @@
+import json
+
 from aws_cdk import App, CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_iam as iam
+from aws_cdk import aws_logs as logs
 from constructs import Construct
 
 from pcluster.constants import EXTERNAL_SLURMDBD_ASG_SIZE
@@ -22,15 +25,24 @@ class ExternalSlurmdbdStack(Stack):
             self, "SubnetId", type="String", description="The Subnet to be used for the Slurmdbd stack."
         )
 
-        # define IAM role and necessary IAM policies
-        self._role = self._add_iam_role()
-
         # define Target Group
         self._external_slurmdbd_target_group = self._add_external_slurmdbd_target_group()
 
         # define Network Load Balancer (NLB)
         self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(
             target_group=self._external_slurmdbd_target_group
+        )
+
+        # Define additional CloudFormation parameters for dna.json to pass to cookbook
+        self.dbms_uri = CfnParameter(self, "DBMSUri", type="String", description="DBMS URI for Slurmdbd.")
+        self.dbms_username = CfnParameter(
+            self, "DBMSUsername", type="String", description="DBMS Username for Slurmdbd."
+        )
+        self.dbms_password_secret_arn = CfnParameter(
+            self, "DBMSPasswordSecretArn", type="String", description="Secret ARN for DBMS password."
+        )
+        self.munge_key_secret_arn = CfnParameter(
+            self, "MungeKeySecretArn", type="String", description="Secret ARN for Munge key."
         )
 
         # use cfn-init and cfn-hup configure instance
@@ -45,19 +57,40 @@ class ExternalSlurmdbdStack(Stack):
         # define EC2 Auto Scaling Group (ASG)
         self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
 
+        # Create a CloudWatch log group
+        self._log_group = self._add_cloudwatch_log_group()
+
+        # define IAM role and necessary IAM policies
+        self._role = self._add_iam_role()
+
     def _add_cfn_init_config(self):
+        dna_json_content = {
+            "dbms_uri": self.dbms_uri_param.value_as_string,
+            "dbms_username": self.dbms_username_param.value_as_string,
+            "dbms_password_secret_arn": self.dbms_password_secret_arn_param.value_as_string,
+            "munge_key_secret_arn": self.munge_key_secret_arn_param.value_as_string,
+        }
+
         return {
             "configSets": {"default": ["setup", "configure"]},
             "setup": {
-                # TODO: * configuration of slurmdbd (same as done in config_slurm_accounting.rb), including:
-                #           * configuration of munge systemd service;
-                #           * retrieval of the munge key from Secret Manager (this requires an appropriate IAM policy);
-                #           * configuration of slurmdbd systemd service;
-                #           * retrieval of DBMS credentials from Secret Manager (this requires an appropriate IAM policy);
-                #           * creation of slurmdbd.conf;
-                #           * start of slurmdbd;
-                #           * minimal bootstrapping of Slurm Accounting database.
-                #        * configuration of CloudWatch log group creation and slurmdbd log push to the CW log group (this require appropriate IAM policies).
+                "files": {
+                    "/etc/chef/dna.json": {
+                        "content": Fn.sub(json.dumps(dna_json_content)),
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                    },
+                },
+                "chef": {
+                    "command": (
+                        "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
+                        "--logfile /var/log/chef-client.log --force-formatter --no-color "
+                        "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
+                        "--override-runlist aws-parallelcluster-entrypoints::external_slurmdbd_config"
+                    ),
+                    "cwd": "/etc/chef",
+                },
             },
             "configure": {
                 "files": {
@@ -210,12 +243,8 @@ class ExternalSlurmdbdStack(Stack):
             iam.PolicyStatement(
                 actions=["secretsmanager:GetSecretValue"],
                 resources=[
-                    self.stack.format_arn(
-                        service="secretsmanager",
-                        account=self.stack.account,
-                        region=self.stack.region,
-                        resource="secret:*",
-                    ),
+                    self.dbms_password_secret_arn.value_as_string,
+                    self.munge_key_secret_arn.value_as_string,
                 ],
                 effect=iam.Effect.ALLOW,
                 sid="SecretsManagerPolicy",
@@ -225,17 +254,19 @@ class ExternalSlurmdbdStack(Stack):
         role.add_to_policy(
             iam.PolicyStatement(
                 actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                resources=[
-                    self.stack.format_arn(
-                        service="logs",
-                        account=self.stack.account,
-                        region=self.stack.region,
-                        resource="log-group:*",
-                    ),
-                ],
+                resources=[self._log_group.log_group_arn],
                 effect=iam.Effect.ALLOW,
                 sid="CloudWatchLogsPolicy",
             )
         )
 
         return role
+
+    def _add_cloudwatch_log_group(self):
+        # Create a new CloudWatch log group
+        return logs.LogGroup(
+            self,
+            "SlurmdbdLogGroup",
+            log_group_name=f"/aws/slurmdbd/{self.stack.stack_name}",
+            retention=logs.RetentionDays.ONE_WEEK,
+        )
