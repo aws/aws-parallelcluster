@@ -19,7 +19,7 @@ def perf_test_difference(perf_test_result, number_of_nodes):
 
 
 def openfoam_installed(headnode):
-    cmd = '[ -d "/shared/ec2-user/SubspaceBenchmarks" ]'
+    cmd = '[ -d "/shared/SubspaceBenchmarks" ]'
     try:
         headnode.run_remote_command(cmd)
         return True
@@ -53,7 +53,7 @@ def test_openfoam(
         )
     logging.info("OpenFOAM Installed")
     performance_degradation = {}
-    subspace_benchmarks_dir = "/shared/ec2-user/SubspaceBenchmarks"
+    subspace_benchmarks_dir = "/shared/SubspaceBenchmarks"
     for node in number_of_nodes:
         logging.info(f"Submitting OpenFOAM job with {node} nodes")
         remote_command_executor.run_remote_command(
