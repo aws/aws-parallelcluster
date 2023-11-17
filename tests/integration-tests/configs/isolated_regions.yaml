@@ -510,6 +510,12 @@ test-suites:
           instances: ["m5d.xlarge"]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_shared_home.py::test_shared_home:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   tags:
     test_tag_propagation.py::test_tag_propagation:
       dimensions:
