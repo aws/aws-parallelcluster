@@ -177,6 +177,8 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     validators_path = "pcluster.validators"
 
     cluster_validators = validators_path + ".cluster_validators"
+    feature_validators = validators_path + ".feature_validators"
+    feature_region_validator = mocker.patch(feature_validators + ".FeatureRegionValidator._validate", return_value=[])
     scheduler_os_validator = mocker.patch(cluster_validators + ".SchedulerOsValidator._validate", return_value=[])
     compute_resource_size_validator = mocker.patch(
         cluster_validators + ".ComputeResourceSizeValidator._validate", return_value=[]
@@ -437,6 +439,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
 
     # No assertion on the argument for minor validators
     name_validator.assert_called()
+    feature_region_validator.assert_called()
     fsx_s3_validator.assert_called()
     fsx_backup_options_validator.assert_called()
     fsx_storage_type_options_validator.assert_called()

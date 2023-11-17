@@ -2651,6 +2651,7 @@ class SlurmQueue(_CommonQueue):
                     instance_type=instance_type,
                     capacity_reservation_id=cr_target.capacity_reservation_id if cr_target else None,
                 )
+                self._register_validator(FeatureRegionValidator, feature=self.capacity_type)
 
 
 class Dns(Resource):
