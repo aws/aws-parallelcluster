@@ -313,6 +313,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_scaling.py::test_job_level_scaling:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   schedulers:
     test_slurm.py::test_slurm:
       dimensions:
@@ -411,6 +417,12 @@ test-suites:
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
     test_slurm.py::test_slurm_custom_config_parameters:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_custom_munge_key.py::test_custom_munge_key:
       dimensions:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}
