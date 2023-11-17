@@ -588,11 +588,19 @@ def test_placement_group_validator(
 
 
 @pytest.mark.parametrize(
-    "capacity_reservation_info, instance_types, subnet_availability_zone, capacity_type, expected_messages",
+    (
+        "capacity_reservation_info",
+        "instance_types",
+        "is_flexible",
+        "subnet_availability_zone",
+        "capacity_type",
+        "expected_messages",
+    ),
     [
         (
             CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             None,
             [],
@@ -601,6 +609,7 @@ def test_placement_group_validator(
         (
             CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1a"}),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.ONDEMAND,
             ["Capacity reservation .* must have the same instance type as c5.xlarge."],
@@ -609,6 +618,7 @@ def test_placement_group_validator(
         (
             CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1b"}),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.SPOT,
             ["Capacity reservation .* must use the same availability zone as subnet"],
@@ -617,6 +627,7 @@ def test_placement_group_validator(
         (
             CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.ONDEMAND,
             [
@@ -627,27 +638,32 @@ def test_placement_group_validator(
         (
             CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.SPOT,
             ["Capacity reservation .* must use the same availability zone as subnet"],
         ),
+        # empty instance type, this should not happen because instance type is automatically retrieved when usinc cr-id
         (
             CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             None,
+            False,
             "us-east-1a",
             CapacityType.ONDEMAND,
             [
-                "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+                "Unexpected failure. InstanceType parameter cannot be empty when using CapacityReservationId",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
+        # empty instance type, this should not happen because instance type is automatically retrieved when usinc cr-id
         (
             CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
             "",
+            False,
             "us-east-1a",
             CapacityType.SPOT,
             [
-                "The CapacityReservationId parameter can only be used with the InstanceType parameter.",
+                "Unexpected failure. InstanceType parameter cannot be empty when using CapacityReservationId",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
@@ -655,6 +671,7 @@ def test_placement_group_validator(
         (
             CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
             [
@@ -667,6 +684,7 @@ def test_placement_group_validator(
                 {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "capacity-block"}
             ),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.ONDEMAND,
             [],  # Do not check Ondemand capacity type
@@ -676,6 +694,7 @@ def test_placement_group_validator(
                 {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
             ),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
             [
@@ -689,6 +708,7 @@ def test_placement_group_validator(
                 {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
             ),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.ONDEMAND,
             [],
@@ -698,19 +718,30 @@ def test_placement_group_validator(
                 {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "capacity-block"}
             ),
             ["c5.xlarge"],
+            False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
             [],
         ),
-        # multiple instance types with capacity_reservation_id
+        # Flexible instance type, with a single instance and capacity_reservation_id
+        (
+            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
+            ["c5.xlarge"],
+            True,
+            "us-east-1a",
+            None,
+            ["CapacityReservationId parameter cannot be used with Instances parameter."],
+        ),
+        # Flexible instance type with multiple instance types and capacity_reservation_id
         (
             CapacityReservationInfo(
                 {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
             ),
             ["c5.xlarge", "m5.2xlarge"],
+            True,
             "us-east-1a",
             CapacityType.ONDEMAND,
-            ["A single instance type must be specified when using Capacity reservation id: cr-123"],
+            ["CapacityReservationId parameter cannot be used with Instances parameter."],
         ),
     ],
 )
@@ -719,18 +750,17 @@ def test_capacity_reservation_validator(
     capacity_reservation_info,
     instance_types,
     subnet_availability_zone,
+    is_flexible,
     capacity_type,
     expected_messages,
 ):
     mock_aws_api(mocker)
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_capacity_reservations", return_value=[capacity_reservation_info])
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone",
-        return_value=subnet_availability_zone,
-    )
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", return_value=subnet_availability_zone)
     actual_failures = CapacityReservationValidator().execute(
         capacity_reservation_id="cr-123",
         instance_types=instance_types,
+        is_flexible=is_flexible,
         subnet="subnet-123",
         capacity_type=capacity_type,
     )

@@ -294,24 +294,31 @@ class CapacityReservationValidator(Validator):
         return capacity_type_to_reservation_type_class_map.get(capacity_type.value, capacity_type.value.lower())
 
     def _validate(
-        self, capacity_reservation_id: str, instance_types: List[str], subnet: str, capacity_type: CapacityType
+        self,
+        capacity_reservation_id: str,
+        instance_types: List[str],
+        is_flexible: bool,
+        subnet: str,
+        capacity_type: CapacityType,
     ):
         if capacity_reservation_id:
             capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
 
             if not instance_types:
-                # If the instance type doesn't exist, this is an invalid config
+                # If the instance type doesn't exist, this is an invalid config,
+                # this cannot happen because instance type is automatically retrieved.
                 self._add_failure(
-                    "The CapacityReservationId parameter can only be used with the InstanceType parameter "
-                    "(https://docs.aws.amazon.com/parallelcluster/latest/ug/Scheduling-v3.html#yaml-"
-                    "Scheduling-SlurmQueues-ComputeResources-InstanceType).",
+                    "Unexpected failure. InstanceType parameter cannot be empty when using CapacityReservationId.",
                     FailureLevel.ERROR,
                 )
-            elif len(instance_types) != 1:
+            elif is_flexible:
+                # CapacityReservationId is not supported by create-fleet (FlexibleComputeResource)
                 self._add_failure(
                     (
-                        "A single instance type must be specified when using "
-                        f"Capacity reservation id: {capacity_reservation_id}"
+                        "CapacityReservationId parameter cannot be used with Instances parameter."
+                        "CapacityReservationId can only be used with the InstanceType parameter "
+                        "(https://docs.aws.amazon.com/parallelcluster/latest/ug/Scheduling-v3.html#yaml-"
+                        "Scheduling-SlurmQueues-ComputeResources-InstanceType)."
                     ),
                     FailureLevel.ERROR,
                 )
