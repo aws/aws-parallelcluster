@@ -1329,14 +1329,14 @@ def odcr_stack(
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=default_public_az,
-        InstanceCount=4,
+        InstanceCount=6,
         InstancePlatform="Linux/UNIX",
         InstanceType="m5.2xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
         AvailabilityZone=default_public_az,
-        InstanceCount=4,
+        InstanceCount=6,
         InstancePlatform="Linux/UNIX",
         InstanceType="r5.xlarge",
         InstanceMatchCriteria="targeted",
@@ -1345,7 +1345,7 @@ def odcr_stack(
     pg_odcr = ec2.CapacityReservation(
         "integTestsPgOdcr",
         AvailabilityZone=default_public_az,
-        InstanceCount=2,
+        InstanceCount=3,
         InstancePlatform="Linux/UNIX",
         InstanceType="m5.xlarge",
         InstanceMatchCriteria="targeted",

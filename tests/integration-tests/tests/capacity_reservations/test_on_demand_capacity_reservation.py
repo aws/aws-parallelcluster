@@ -69,8 +69,8 @@ def test_on_demand_capacity_reservation(
 def _assert_instance_in_capacity_reservation(cluster, region, compute_resource_name, expected_reservation):
     instances = describe_cluster_instances(cluster.name, region, filter_by_compute_resource_name=compute_resource_name)
     if len(instances) == 1:
-        logging.info("One instance found!")
         assert_that(instances[0]["CapacityReservationId"]).is_equal_to(expected_reservation)
+        logging.info(f"One instance launched in the {expected_reservation}")
     else:
         logging.error("Too many instances returned from describe_cluster_instances")
-        pytest.fail("Too many instances found")
+        pytest.fail(f"Too many instances found in the {expected_reservation}")
