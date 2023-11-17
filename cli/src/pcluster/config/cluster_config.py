@@ -2214,6 +2214,11 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
         self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
 
+    @abstractmethod
+    def is_flexible(self) -> bool:
+        """Return True if the ComputeResource can contain multiple instance types, False otherwise."""
+        pass
+
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
         """Return instance type information."""
@@ -2306,6 +2311,10 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             instance_type=smallest_type,
         )
 
+    def is_flexible(self):
+        """Return True because the ComputeResource can contain multiple instance types."""
+        return True
+
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
@@ -2336,6 +2345,10 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         _instance_type = instance_type if instance_type else self._instance_type_from_capacity_reservation()
         self.instance_type = Resource.init_param(_instance_type)
         self.__instance_type_info = None
+
+    def is_flexible(self):
+        """Return False because the ComputeResource can not contain multiple instance types."""
+        return False
 
     @property
     def instance_types(self) -> List[str]:
@@ -2983,6 +2996,7 @@ class SlurmClusterConfig(BaseClusterConfig):
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
                         instance_types=compute_resource.instance_types,
+                        is_flexible=compute_resource.is_flexible(),
                         subnet=queue.networking.subnet_ids[0],
                         capacity_type=queue.capacity_type,
                     )

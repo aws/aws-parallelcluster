@@ -51,7 +51,8 @@ Scheduling:
           InstanceType: c5d.xlarge
           DisableSimultaneousMultithreading: false
         - Name: compute_resource3
-          InstanceType: t2.large
+          Instances:
+            - InstanceType: t2.large
           DisableSimultaneousMultithreading: true
           CapacityReservationTarget:
             CapacityReservationId: "cr-34567"
@@ -69,7 +70,8 @@ Scheduling:
           - subnet-23456789
       ComputeResources:
         - Name: compute_resource1
-          InstanceType: t2.xlarge
+          Instances:
+            - InstanceType: t2.xlarge
           MinCount: 5
           MaxCount: 5
         - Name: compute_resource2
