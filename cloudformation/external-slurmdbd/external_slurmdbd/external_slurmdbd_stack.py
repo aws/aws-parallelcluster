@@ -70,6 +70,7 @@ class ExternalSlurmdbdStack(Stack):
             "dbms_username": self.dbms_username_param.value_as_string,
             "dbms_password_secret_arn": self.dbms_password_secret_arn_param.value_as_string,
             "munge_key_secret_arn": self.munge_key_secret_arn_param.value_as_string,
+            "region": self.stack.region,
         }
 
         return {
