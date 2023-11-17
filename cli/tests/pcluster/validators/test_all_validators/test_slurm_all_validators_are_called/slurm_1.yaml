@@ -188,6 +188,14 @@ SharedStorage:
       AutoImportPolicy: NEW  # NEW | NEW_CHANGED | NEW_CHANGED_DELETED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
+      DataRepositoryAssociations:
+        - Name: dra
+          BatchImportMetaDataOnCreate: false
+          DataRepositoryPath: s3://bucket/folder
+          FileSystemPath: /
+          ImportedFileChunkSize: 1024
+          AutoExportPolicy: [ NEW, CHANGED, DELETED ]
+          AutoImportPolicy: [ NEW, CHANGED, DELETED ]
   - MountDir: /my/mount/point4
     Name: name4
     StorageType: FsxOntap

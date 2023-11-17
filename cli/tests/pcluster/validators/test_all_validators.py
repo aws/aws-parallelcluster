@@ -21,6 +21,7 @@ from pcluster.validators import (
     database_validators,
     ebs_validators,
     ec2_validators,
+    feature_validators,
     fsx_validators,
     iam_validators,
     instances_validators,
@@ -78,6 +79,7 @@ def _mock_all_validators(mocker, additional_modules=None):
         slurm_settings_validator,
         tags_validators,
         secret_validators,
+        feature_validators,
     ]
     if additional_modules:
         modules += additional_modules
