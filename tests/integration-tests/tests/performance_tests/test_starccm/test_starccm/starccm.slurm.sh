@@ -22,10 +22,9 @@ export FI_EFA_FORK_SAFE=1
 export I_MPI_HYDRA_BOOTSTRAP="slurm"
 
 SHARED_DIR="/shared"
-TARGET_USER=$(whoami)
 
-STARCCM="${SHARED_DIR}/${TARGET_USER}/STAR-CCM+/18.02.008/STAR-CCM+18.02.008/star/bin/starccm+"
-SIM_FILE="${SHARED_DIR}/${TARGET_USER}/lemans_poly_17m.amg@00500.sim"
+STARCCM="${SHARED_DIR}/STAR-CCM+/18.02.008/STAR-CCM+18.02.008/star/bin/starccm+"
+SIM_FILE="${SHARED_DIR}/lemans_poly_17m.amg@00500.sim"
 
 podkey="$1"
 licpath="$2"
